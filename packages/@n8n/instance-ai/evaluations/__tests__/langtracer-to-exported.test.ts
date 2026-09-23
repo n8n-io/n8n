@@ -85,6 +85,36 @@ describe('diskCaseToLangTracerCreate', () => {
 		expect('description' in body).toBe(false);
 	});
 
+	it('forwards typed scenario seed tables so lang-tracer stores their rows', () => {
+		const seedDataTables = [
+			{
+				id: 'mcv2CustomersTbl0001',
+				name: 'Customers',
+				columns: [{ name: 'email', type: 'string' as const }],
+				rows: [{ email: 'dana@harbor.example' }],
+			},
+		];
+		const body = diskCaseToLangTracerCreate(
+			diskCase({
+				executionScenarios: [
+					{
+						name: 'seeded',
+						description: 'd',
+						dataSetup: 's',
+						successCriteria: 'ok',
+						seedDataTables,
+					},
+					{ name: 'plain', description: 'd', dataSetup: 's', successCriteria: 'ok' },
+				],
+			}),
+			'c',
+			{ suiteId: 1, setKind: 'regression', synthetic: true },
+		);
+
+		expect(body.scenarios?.[0].seedDataTables).toEqual(seedDataTables);
+		expect('seedDataTables' in (body.scenarios?.[1] ?? {})).toBe(false);
+	});
+
 	it('preserves a scenario `requires` field when present', () => {
 		const body = diskCaseToLangTracerCreate(
 			diskCase({

@@ -3,7 +3,7 @@
 // network call so the disk→API key-renaming contract is unit-testable without a server.
 
 import type { CaseSeed, EvalTestCaseInput } from '../harness/schema';
-import type { TestCaseCredential } from '../types';
+import type { ExecutionScenario, TestCaseCredential } from '../types';
 
 /** One scenario in the create-case payload (`executionScenarios` renamed to `scenarios`). */
 export interface LangTracerScenario {
@@ -12,6 +12,9 @@ export interface LangTracerScenario {
 	dataSetup?: string;
 	successCriteria?: string;
 	requires?: string;
+	/** Typed seed tables with rows (TRUST-311). lang-tracer stores them on create
+	 *  and PATCH and emits them on export, so the round-trip check compares them. */
+	seedDataTables?: ExecutionScenario['seedDataTables'];
 }
 
 /** Body for `POST /api/v1/cases`. Disk keys are renamed (`complexity`→`evalComplexity`,
@@ -169,11 +172,13 @@ function mapScenario(scenario: {
 	dataSetup?: string;
 	successCriteria?: string;
 	requires?: string;
+	seedDataTables?: ExecutionScenario['seedDataTables'];
 }): LangTracerScenario {
 	const mapped: LangTracerScenario = { name: scenario.name };
 	if (scenario.description !== undefined) mapped.description = scenario.description;
 	if (scenario.dataSetup !== undefined) mapped.dataSetup = scenario.dataSetup;
 	if (scenario.successCriteria !== undefined) mapped.successCriteria = scenario.successCriteria;
 	if (scenario.requires !== undefined) mapped.requires = scenario.requires;
+	if (scenario.seedDataTables !== undefined) mapped.seedDataTables = scenario.seedDataTables;
 	return mapped;
 }

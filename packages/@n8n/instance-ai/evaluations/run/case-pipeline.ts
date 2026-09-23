@@ -23,11 +23,7 @@ import {
 import { buildFailedOnInfra } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import {
-	scenariosRequireSerialSeeding,
-	warnAgentSeedDataTablesIgnored,
-	type ScenarioSeedContext,
-} from '../harness/seed-tables';
+import { scenariosRequireSerialSeeding, type ScenarioSeedContext } from '../harness/seed-tables';
 import {
 	classifyScenarioExecutionError,
 	extractErrorMessage,
@@ -37,6 +33,13 @@ import {
 } from '../harness/transient-error';
 import { BUILD_ONLY_SCENARIO_NAME, type DatasetExampleInputs } from '../langsmith/dataset-sync';
 import type { BuildExpectationResult, ExecutionScenario, WorkflowTestCase } from '../types';
+
+/** A scenario that declares seed tables must not run without them (MCP and
+ *  prebuilt builds never seed data tables) — executing anyway would grade the
+ *  artifact against empty tables and report the miss as a builder failure. */
+const NO_SEED_MAPPING_REASON =
+	'Scenario declares seedDataTables but the build provided no seeded-table mapping ' +
+	'(MCP/prebuilt builds do not seed data tables) — refusing to run without the declared rows';
 
 /** Row inputs: the per-scenario fields (dataset example shape) plus the
  *  iteration tag the drivers stamp when expanding for N iterations. */
@@ -304,18 +307,16 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			});
 		}
 
+		// TRUST-311: a seeded row resets + seeds its declared table rows just before
+		// it runs; the agent and the workflow branch both need the build's mapping.
+		const seedContext: ScenarioSeedContext | undefined =
+			build.threadId && build.seededScenarioTableIdsByName
+				? { threadId: build.threadId, tableIdsByName: build.seededScenarioTableIdsByName }
+				: undefined;
+
 		// Agent scenario path — real model, mocked tool HTTP. Mirrors the
 		// workflow branch below (retry loop, framework_issue guard, output shape).
 		if (agentRunnable && agentRef) {
-			// Dataset rows don't carry seedDataTables — check the authored scenario.
-			warnAgentSeedDataTablesIgnored(
-				logger,
-				scenario.name,
-				testCaseByFileSlug
-					.get(inputs.testCaseFile)
-					?.executionScenarios?.find((s) => s.name === scenario.name)?.seedDataTables,
-			);
-			const agentExecStart = Date.now();
 			const capturedAgent = await agentContextByKey.get(cacheKey);
 			const agentContext = capturedAgent?.rendered ?? '(agent configuration could not be fetched)';
 			const agentArtifactFields = capturedAgent?.artifact
@@ -347,78 +348,108 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					planRejections: build.proxyDecisionStats?.rejection ?? 0,
 				});
 			}
-			let agentResult;
-			for (let attempt = 1; ; attempt++) {
-				try {
-					agentResult = await builtOnLane.tracedExecuteAgent({
-						agentId: agentRef.id,
-						scenario,
-						agentContext,
-						buildTrace: build.buildTrace,
-						timeoutMs: effectiveTimeoutMs(
-							testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
-							args.timeoutMs,
-						),
-						testCaseName: inputs.testCaseFile,
-					});
-					break;
-				} catch (error: unknown) {
-					const errorMessage = extractErrorMessage(error);
-					if (shouldRetryScenarioExecution(errorMessage, attempt)) {
-						logger.warn(
-							`    [${scenario.name}] agent execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
-						);
-						await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
-						continue;
-					}
-					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-					return await attachExpectations({
-						buildSuccess: true,
-						agentId: agentRef.id,
-						agentContext,
-						...agentArtifactFields,
-						passed: false,
-						score: 0,
-						reasoning: `Agent scenario execution error: ${errorMessage}`,
-						failureCategory: 'framework_issue',
-						attribution: 'framework_issue',
-						execErrors: [errorMessage],
-						buildDurationMs,
-						...buildSpendFields,
-						execDurationMs: Date.now() - agentExecStart,
-						nodeCount: 0,
-						threadId: build.threadId,
-						buildTrace: build.buildTrace,
-						planRejections: build.proxyDecisionStats?.rejection ?? 0,
-					});
-				}
+			if ((scenario.seedDataTables?.length ?? 0) > 0 && !seedContext) {
+				logger.error(`    ERROR [${scenario.name}]: ${NO_SEED_MAPPING_REASON}`);
+				return await attachExpectations({
+					buildSuccess: true,
+					agentId: agentRef.id,
+					agentContext,
+					...agentArtifactFields,
+					passed: false,
+					score: 0,
+					reasoning: NO_SEED_MAPPING_REASON,
+					failureCategory: 'framework_issue',
+					attribution: 'framework_issue',
+					execErrors: [NO_SEED_MAPPING_REASON],
+					buildDurationMs,
+					...buildSpendFields,
+					execDurationMs: 0,
+					nodeCount: 0,
+					threadId: build.threadId,
+					buildTrace: build.buildTrace,
+					planRejections: build.proxyDecisionStats?.rejection ?? 0,
+				});
 			}
+			const runAgentScenario = async (): Promise<TargetOutput> => {
+				const agentExecStart = Date.now();
+				let agentResult;
+				for (let attempt = 1; ; attempt++) {
+					try {
+						agentResult = await builtOnLane.tracedExecuteAgent({
+							agentId: agentRef.id,
+							scenario,
+							agentContext,
+							buildTrace: build.buildTrace,
+							timeoutMs: effectiveTimeoutMs(
+								testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
+								args.timeoutMs,
+							),
+							testCaseName: inputs.testCaseFile,
+							seedContext,
+						});
+						break;
+					} catch (error: unknown) {
+						const errorMessage = extractErrorMessage(error);
+						if (shouldRetryScenarioExecution(errorMessage, attempt)) {
+							logger.warn(
+								`    [${scenario.name}] agent execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
+							);
+							await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+							continue;
+						}
+						logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+						return await attachExpectations({
+							buildSuccess: true,
+							agentId: agentRef.id,
+							agentContext,
+							...agentArtifactFields,
+							passed: false,
+							score: 0,
+							reasoning: `Agent scenario execution error: ${errorMessage}`,
+							failureCategory: 'framework_issue',
+							attribution: 'framework_issue',
+							execErrors: [errorMessage],
+							buildDurationMs,
+							...buildSpendFields,
+							execDurationMs: Date.now() - agentExecStart,
+							nodeCount: 0,
+							threadId: build.threadId,
+							buildTrace: build.buildTrace,
+							planRejections: build.proxyDecisionStats?.rejection ?? 0,
+						});
+					}
+				}
 
-			const agentFailureCategory = agentResult.success ? undefined : agentResult.failureCategory;
-			const agentRootCause = agentResult.success ? undefined : agentResult.rootCause;
-			const agentAttribution = agentResult.success ? undefined : agentResult.attribution;
-			return await attachExpectations({
-				buildSuccess: true,
-				agentId: agentRef.id,
-				agentContext,
-				...agentArtifactFields,
-				agentEvalResult: agentResult.agentEvalResult,
-				passed: agentResult.success,
-				score: agentResult.score,
-				reasoning: agentResult.reasoning,
-				failureCategory: agentFailureCategory,
-				attribution: agentAttribution,
-				rootCause: agentRootCause,
-				...(agentResult.incomplete ? { incomplete: true } : {}),
-				execErrors: agentResult.agentEvalResult?.errors ?? [],
-				buildDurationMs,
-				...buildSpendFields,
-				execDurationMs: Date.now() - agentExecStart,
-				nodeCount: 0,
-				threadId: build.threadId,
-				buildTrace: build.buildTrace,
-				planRejections: build.proxyDecisionStats?.rejection ?? 0,
-			});
+				const agentFailureCategory = agentResult.success ? undefined : agentResult.failureCategory;
+				const agentRootCause = agentResult.success ? undefined : agentResult.rootCause;
+				const agentAttribution = agentResult.success ? undefined : agentResult.attribution;
+				return await attachExpectations({
+					buildSuccess: true,
+					agentId: agentRef.id,
+					agentContext,
+					...agentArtifactFields,
+					agentEvalResult: agentResult.agentEvalResult,
+					passed: agentResult.success,
+					score: agentResult.score,
+					reasoning: agentResult.reasoning,
+					failureCategory: agentFailureCategory,
+					attribution: agentAttribution,
+					rootCause: agentRootCause,
+					...(agentResult.incomplete ? { incomplete: true } : {}),
+					execErrors: agentResult.agentEvalResult?.errors ?? [],
+					buildDurationMs,
+					...buildSpendFields,
+					execDurationMs: Date.now() - agentExecStart,
+					nodeCount: 0,
+					threadId: build.threadId,
+					buildTrace: build.buildTrace,
+					planRejections: build.proxyDecisionStats?.rejection ?? 0,
+				});
+			};
+			// Rows of one seeded case share tables by name — same gate as the workflow branch.
+			return scenariosRequireSerialSeeding(authoredScenarios)
+				? await withSerialSeeding(cacheKey, runAgentScenario)
+				: await runAgentScenario();
 		}
 		if (!build.workflowId) {
 			// agentRunnable without an agentRef is unreachable; this narrows for TS
@@ -428,18 +459,8 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// Captured as a const so the narrowing survives into the closure below.
 		const workflowId = build.workflowId;
 
-		// Mirrors the retired direct loop (TRUST-311): a seeded row resets + seeds
-		const seedContext: ScenarioSeedContext | undefined =
-			build.threadId && build.seededScenarioTableIdsByName
-				? { threadId: build.threadId, tableIdsByName: build.seededScenarioTableIdsByName }
-				: undefined;
-		// A scenario that declares seed tables must not run without them (MCP and
-		// prebuilt builds never seed data tables) — executing anyway would grade the
-		// workflow against empty tables and report the miss as a builder failure.
 		if ((scenario.seedDataTables?.length ?? 0) > 0 && !seedContext) {
-			const reason =
-				'Scenario declares seedDataTables but the build provided no seeded-table mapping ' +
-				'(MCP/prebuilt builds do not seed data tables) — refusing to run without the declared rows';
+			const reason = NO_SEED_MAPPING_REASON;
 			logger.error(`    ERROR [${scenario.name}]: ${reason}`);
 			return await attachExpectations({
 				buildSuccess: true,
