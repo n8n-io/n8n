@@ -2,6 +2,7 @@ export {
 	SystemTask,
 	resolveSystemTaskRunOptions,
 	resolveSystemTaskSchedule,
+	validateSystemTask,
 } from './system-task';
 export type {
 	SystemTaskClass,

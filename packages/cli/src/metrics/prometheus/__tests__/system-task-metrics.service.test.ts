@@ -162,6 +162,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 	describe('system-task-routed and the timers', () => {
 		const leaderTimer = { task: 'prune', mode: 'leader_timer' };
 		const durable = { task: 'prune', mode: 'durable' };
+		const instanceTimer = { task: 'sweep', mode: 'instance_timer' };
 
 		it('seeds the info, scheduled and in-flight series of a durable task when routed', () => {
 			service.init();
@@ -248,6 +249,42 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			expect(
 				metric('system_task_next_run_timestamp_seconds').remove,
 			).toHaveBeenCalledExactlyOnceWith({ task: 'prune' });
+		});
+
+		it('seeds the series of an instance-scoped task when routed, without waiting for the timers', () => {
+			service.init();
+
+			handler('system-task-routed')({ name: 'sweep', mode: 'instance_timer', intervalSeconds: 30 });
+
+			expect(metric('system_task_info').set).toHaveBeenCalledWith(instanceTimer, 1);
+			expect(metric('system_task_scheduled').set).toHaveBeenCalledWith(instanceTimer, 1);
+			expect(metric('system_task_runs_in_flight').value(instanceTimer)).toBe(0);
+			expect(metric('system_task_interval_seconds').set).toHaveBeenCalledWith(
+				{ task: 'sweep' },
+				30,
+			);
+		});
+
+		it('keeps the instance-scoped series when the leader timers stop', () => {
+			service.init();
+			handler('system-task-timers-started')({});
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer' });
+			handler('system-task-routed')({ name: 'sweep', mode: 'instance_timer' });
+
+			handler('system-task-timers-stopped')({});
+
+			for (const name of [
+				'system_task_info',
+				'system_task_scheduled',
+				'system_task_runs_in_flight',
+				'system_task_last_success_timestamp_seconds',
+			]) {
+				expect(metric(name).remove).not.toHaveBeenCalledWith(instanceTimer);
+			}
+			expect(metric('system_task_next_run_timestamp_seconds').remove).not.toHaveBeenCalledWith({
+				task: 'sweep',
+			});
+			expect(metric('system_task_info').value(instanceTimer)).toBe(1);
 		});
 	});
 

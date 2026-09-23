@@ -10,17 +10,17 @@ import type { PrometheusMetricsCollector } from './base';
 import { DURATION_BUCKETS_SECONDS, LAG_BUCKETS_SECONDS } from './constant';
 
 /**
- * Collects Prometheus metrics for system tasks, on both of their paths: the
- * in-memory timers of the leader and the durable scheduler, told apart by the
- * `mode` label. Opt-in via `includeSystemTaskMetrics`. Every value comes from
- * `EventService`, so this is the only place that touches `prom-client` for
- * system tasks.
+ * Collects Prometheus metrics for system tasks, on all of their paths: the
+ * in-memory timers of the leader, the durable scheduler and the per-instance
+ * timers, told apart by the `mode` label. Opt-in via
+ * `includeSystemTaskMetrics`. Every value comes from `EventService`, so this is
+ * the only place that touches `prom-client` for system tasks.
  *
- * The per-task gauges of a durable task are seeded when it is routed, so the
- * series exist before the first run and a restart shows as a reset rather than
- * a gap. Those of a leader_timer task exist only while this instance leads:
- * seeded when the timers start, removed when they stop, so a former leader
- * does not export frozen series for runs it no longer makes.
+ * The per-task gauges of a durable or per-instance task are seeded when it is
+ * routed, so the series exist before the first run and a restart shows as a
+ * reset rather than a gap. Those of a leader_timer task exist only while this
+ * instance leads: seeded when the timers start, removed when they stop, so a
+ * former leader does not export frozen series for runs it no longer makes.
  *
  * Labels are bounded (task name, mode, result, reason): no instance label,
  * Prometheus adds one per scrape target.
@@ -41,14 +41,14 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const runDuration = new promClient.Histogram({
 			name: `${prefix}system_task_run_duration_seconds`,
-			help: 'Duration in seconds of a system task run, by task, mode (leader_timer, durable) and result (success, failure, aborted).',
+			help: 'Duration in seconds of a system task run, by task, mode (leader_timer, instance_timer, durable) and result (success, failure, aborted).',
 			labelNames: ['task', 'mode', 'result'],
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
 
 		const runsSkipped = new promClient.Counter({
 			name: `${prefix}system_task_runs_skipped_total`,
-			help: 'Total number of in-memory system task occurrences that did not run, by task and reason (overlap, provisioned_elsewhere, aborted, coalesced).',
+			help: 'Total number of timer-driven system task occurrences that did not run on this instance, by task and reason (overlap, provisioned_elsewhere, aborted, coalesced).',
 			labelNames: ['task', 'reason'],
 		});
 
@@ -66,7 +66,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const info = new promClient.Gauge({
 			name: `${prefix}system_task_info`,
-			help: 'Always 1 for every system task this instance can run, by task and mode: leader_timer tasks on the leader, durable tasks on every main.',
+			help: 'Always 1 for every system task this instance can run, by task and mode: leader_timer tasks on the leader, instance_timer tasks in every instance that runs them, durable tasks on every main.',
 			labelNames: ['task', 'mode'],
 		});
 
@@ -78,31 +78,31 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const nextRun = new promClient.Gauge({
 			name: `${prefix}system_task_next_run_timestamp_seconds`,
-			help: 'Unix timestamp in seconds of the next occurrence an in-memory system task is armed for on this instance, by task.',
+			help: 'Unix timestamp in seconds of the next occurrence a timer-driven system task is armed for on this instance, by task.',
 			labelNames: ['task'],
 		});
 
 		const scheduled = new promClient.Gauge({
 			name: `${prefix}system_task_scheduled`,
-			help: '1 while a system task is scheduled to run on this instance, 0 once it stopped being scheduled, by task and mode: its in-memory schedule could not be planned, or its durable job could not be provisioned.',
+			help: '1 while a system task is scheduled to run on this instance, 0 once it stopped being scheduled, by task and mode: the schedule of a leader_timer or instance_timer task could not be planned, or the job of a durable task could not be provisioned.',
 			labelNames: ['task', 'mode'],
 		});
 
 		const provisionCheckFailures = new promClient.Counter({
 			name: `${prefix}system_task_provision_check_failures_total`,
-			help: 'Total number of times the check for the durable job of a system task failed, so the task ran in memory anyway, by task.',
+			help: 'Total number of times the check for the durable job of a system task failed, so the task ran on the leader timer anyway, by task.',
 			labelNames: ['task'],
 		});
 
 		const retries = new promClient.Counter({
 			name: `${prefix}system_task_retries_total`,
-			help: 'Total number of in-memory system task retries scheduled after a failed run, by task.',
+			help: 'Total number of timer-driven system task retries scheduled on this instance after a failed run, by task.',
 			labelNames: ['task'],
 		});
 
 		const fireLag = new promClient.Histogram({
 			name: `${prefix}system_task_fire_lag_seconds`,
-			help: 'Delay in seconds between an in-memory system task occurrence being due and its timer firing, by task.',
+			help: 'Delay in seconds between a timer-driven system task occurrence being due and its timer firing on this instance, by task.',
 			labelNames: ['task'],
 			buckets: LAG_BUCKETS_SECONDS,
 		});
@@ -132,7 +132,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 			if (mode === 'leader_timer') {
 				leaderTimerTasks.add(name);
 			}
-			if (mode === 'durable' || timersRunning) {
+			if (mode !== 'leader_timer' || timersRunning) {
 				seed(name, mode);
 			}
 		});
