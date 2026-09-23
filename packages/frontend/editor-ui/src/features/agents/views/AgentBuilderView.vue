@@ -4,6 +4,7 @@ import { StorageSerializers, useEventListener, useLocalStorage, useStorage } fro
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import {
 	N8nCanvasPill,
+	N8nEmptyState,
 	N8nIcon,
 	N8nIconButton,
 	N8nResizeWrapper,
@@ -265,6 +266,7 @@ const isAiPanelOpen = computed({
 });
 const showAiPanel = computed(
 	() =>
+		initialized.value &&
 		!isArtifactMode.value &&
 		!isStandalonePreview.value &&
 		instanceAiReady.value &&
@@ -452,6 +454,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
  *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
+const initializationFailed = ref(false);
 let disposed = false;
 let latestSessionsFetchRequestId = 0;
 /**
@@ -564,7 +567,7 @@ const builderTelemetry = useAgentBuilderTelemetry({
  */
 const isBuilt = computed(() => agent.value?.isRunnable === true);
 
-const showBuilderLoading = computed(() => !initialized.value);
+const showBuilderLoading = computed(() => !initialized.value && !initializationFailed.value);
 
 watch(
 	config,
@@ -1417,7 +1420,7 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 }
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }) {
-	if (!localConfig.value) return;
+	if (!initialized.value || !localConfig.value) return;
 	// The persisted validation result no longer reflects the working copy —
 	// Publish must not stay enabled against a result that predates this edit.
 	invalidateConfigValidation();
@@ -1901,6 +1904,7 @@ function resetAutosaveLoops() {
 
 async function initialize({ preserveState = false }: { preserveState?: boolean } = {}) {
 	const sessionsFetchRequestId = ++latestSessionsFetchRequestId;
+	initializationFailed.value = false;
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
 	const targetAgentPending = isAgentPending.value;
@@ -2074,13 +2078,14 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 				query: { ...route.query, prompt: undefined, expandBuildChat: undefined },
 			});
 		}
+		initialized.value = true;
 	} catch (error: unknown) {
 		if (isCurrentInitialization()) {
+			initializationFailed.value = !initialized.value;
 			showError(error, locale.baseText('agents.builder.loadError'));
 		}
 	} finally {
-		if (isCurrentInitialization()) {
-			initialized.value = true;
+		if (isCurrentInitialization() && initialized.value) {
 			void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
 			warmAgentKnowledgeSandboxForPage();
 		}
@@ -2336,16 +2341,16 @@ function onSwitchAgent(nextAgentId: string) {
 			:project-id="projectId"
 			:agent-id="agentId"
 			:project-name="projectName"
-			:header-actions="headerActions"
+			:header-actions="initialized ? headerActions : []"
 			:save-status="saveStatus"
 			:before-revert-to-published="settleAutosave"
 			:artifact-mode="isArtifactMode"
-			:editing-locked="isEditingLocked"
+			:editing-locked="isEditingLocked || !initialized"
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
-			:instance-ai-available="instanceAiAvailable"
+			:instance-ai-available="instanceAiAvailable && initialized"
 			:is-ai-panel-open="isAiPanelOpen"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
@@ -2421,6 +2426,18 @@ function onSwitchAgent(nextAgentId: string) {
 			<AgentBuildingIndicator v-if="embeddedAiBuilding" />
 			<div v-if="showBuilderLoading" :class="$style.loading">
 				<N8nIcon icon="spinner" spin />
+			</div>
+			<div
+				v-else-if="initializationFailed"
+				:class="$style.loading"
+				role="alert"
+				data-testid="agent-builder-load-error"
+			>
+				<N8nEmptyState
+					:heading="locale.baseText('agents.builder.loadError')"
+					:button-text="locale.baseText('generic.retry')"
+					@click:button="initialize()"
+				/>
 			</div>
 			<template v-else>
 				<AgentPreviewChatPage

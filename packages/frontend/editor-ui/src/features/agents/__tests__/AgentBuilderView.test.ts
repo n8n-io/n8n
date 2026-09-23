@@ -544,6 +544,7 @@ const commonStubs = {
 			'headerActions',
 			'beforeRevertToPublished',
 			'artifactMode',
+			'editingLocked',
 			'isPreviewOpen',
 			'instanceAiAvailable',
 			'isAiPanelOpen',
@@ -4505,17 +4506,149 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 	});
 
-	it('clears the loading spinner and shows an error when initialize() throws (finally path)', async () => {
-		getAgentMock.mockRejectedValueOnce(new Error('network error'));
+	it.each([
+		{ source: 'agent', request: getAgentMock },
+		{ source: 'configuration', request: fetchConfigMock },
+	])('shows a retry state when the $source request fails', async ({ request }) => {
+		const loadError = new Error('Required');
+		request.mockRejectedValueOnce(loadError);
 
-		const wrapper = await renderView({ waitForAsyncSetup: false });
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 
+		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="agent-builder-load-error"]').text()).toContain(
+			'agents.builder.loadError',
+		);
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).exists()).toBe(false);
+		expect(header.props('editingLocked')).toBe(true);
+		expect(header.props('headerActions')).toEqual([]);
+		expect(showErrorMock).toHaveBeenCalledWith(loadError, 'agents.builder.loadError');
+		expect(fetchSessionThreadsMock).not.toHaveBeenCalled();
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(createAgentMock).not.toHaveBeenCalled();
+	});
+
+	it('blocks configuration autosave until initialization succeeds', async () => {
+		let rejectAgent!: (error: Error) => void;
+		getAgentMock.mockReturnValueOnce(
+			new Promise((_resolve, reject) => {
+				rejectAgent = reject;
+			}),
+		);
+		const wrapper = await renderView();
+		const view = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<AgentJsonConfig>) => void;
+			flushAutosave: () => Promise<void>;
+		};
+
+		expect(fetchConfigMock).toHaveBeenCalled();
+		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(true);
+		view.onConfigFieldUpdate({ instructions: 'Edit during initialization' });
+		await view.flushAutosave();
+		expect(updateConfigMock).not.toHaveBeenCalled();
+
+		rejectAgent(new Error('Required'));
+		await flushPromises();
+		view.onConfigFieldUpdate({ instructions: 'Edit after load failure' });
+		await view.flushAutosave();
+
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(createAgentMock).not.toHaveBeenCalled();
+	});
+
+	it('restores the saved configuration after retry and then permits autosave', async () => {
+		fetchConfigMock.mockRejectedValueOnce(new Error('Required'));
+		const wrapper = await renderView();
+		let resolveAgent!: (agent: ReturnType<typeof makeAgentResponse>) => void;
+		getAgentMock.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveAgent = resolve;
+			}),
+		);
+
+		await wrapper.get('[data-testid="agent-builder-load-error"] button').trigger('click');
 		await flushPromises();
 
-		// initialized is set in the `finally` block, so the spinner must be gone.
+		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-load-error"]').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(false);
+		expect(updateConfigMock).not.toHaveBeenCalled();
+
+		resolveAgent(makeAgentResponse());
+		await flushPromises();
+
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('localConfig')).toEqual(withDefaultLlm(intendedConfig));
 		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
-		// The catch block must have surfaced the error to the user.
-		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('editingLocked')).toBe(
+			false,
+		);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(2);
+		expect(updateConfigMock).not.toHaveBeenCalled();
+
+		editor.vm.$emit('update:config', { instructions: 'Edit after retry' });
+		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ name: 'Agent One', instructions: 'Edit after retry' }),
+			'hash-1',
+		);
+	});
+
+	it('loads the correct configuration after navigation away from a failed agent and back', async () => {
+		const originalConfig = intendedConfig;
+		fetchConfigMock.mockRejectedValueOnce(new Error('Required'));
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-builder-load-error"]').exists()).toBe(true);
+
+		intendedConfig = { name: 'Agent Two', instructions: 'Instructions for Agent Two' };
+		getAgentMock.mockResolvedValue(makeAgentResponse({ id: 'a2', name: 'Agent Two' }));
+		routeParams.agentId = 'a2';
+		await nextTick();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-builder-load-error"]').exists()).toBe(false);
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+		).toEqual(withDefaultLlm(intendedConfig));
+		expect(fetchConfigMock).toHaveBeenLastCalledWith('p1', 'a2');
+
+		intendedConfig = originalConfig;
+		getAgentMock.mockResolvedValue(makeAgentResponse());
+		routeParams.agentId = 'a1';
+		await nextTick();
+		await flushPromises();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+		).toEqual(withDefaultLlm(originalConfig));
+		expect(fetchConfigMock).toHaveBeenLastCalledWith('p1', 'a1');
+		expect(updateConfigMock).not.toHaveBeenCalled();
+	});
+
+	it('retains the loaded editor when a same-agent refresh fails', async () => {
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		const editorElement = editor.element;
+		const savedConfig = editor.props('localConfig');
+		const loadError = new Error('Required');
+		fetchConfigMock.mockRejectedValueOnce(loadError);
+
+		await (
+			wrapper.vm as unknown as {
+				initialize: (options: { preserveState: boolean }) => Promise<void>;
+			}
+		).initialize({ preserveState: true });
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).element).toBe(editorElement);
+		expect(editor.props('localConfig')).toEqual(savedConfig);
+		expect(wrapper.find('[data-testid="agent-builder-load-error"]').exists()).toBe(false);
+		expect(showErrorMock).toHaveBeenCalledWith(loadError, 'agents.builder.loadError');
+		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 });
 
