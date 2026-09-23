@@ -293,6 +293,15 @@ export function useArtifactMentionIndex(options: UseArtifactMentionIndexOptions)
 				);
 			const revisionBeforeChange = revision.value;
 			const nextIds = new Set(artifacts.map(([workflowId]) => workflowId));
+			for (const [workflowId, name] of artifacts) {
+				const entry = entries.get(workflowId);
+				if (!entry?.index || entry.source === 'active' || entry.index.workflowName === name)
+					continue;
+				setEntry(workflowId, {
+					...entry,
+					index: { ...entry.index, workflowName: name },
+				});
+			}
 			for (const [workflowId] of previousArtifacts) {
 				if (nextIds.has(workflowId)) continue;
 				nextGeneration(workflowId);

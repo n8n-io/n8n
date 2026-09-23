@@ -170,6 +170,22 @@ describe('useArtifactMentionIndex', () => {
 		scope.stop();
 	});
 
+	it('updates a fetched index when its artifact is renamed', async () => {
+		const artifacts = ref([{ id: '1', name: 'Original workflow' }]);
+		const { index, scope } = setupIndex({
+			artifacts,
+			fetchWorkflow: async () => makeWorkflow('1', { name: 'Original workflow' }),
+			getActiveWorkflow: () => undefined,
+		});
+		await index.load('1');
+
+		artifacts.value = [{ id: '1', name: 'Renamed workflow' }];
+		await nextTick();
+
+		expect(index.getIndex('1')?.workflowName).toBe('Renamed workflow');
+		scope.stop();
+	});
+
 	it('ignores an invalidated response and allows a fresh retry', async () => {
 		const stale = deferred<IWorkflowDb>();
 		const fetchWorkflow = vi
