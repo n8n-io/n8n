@@ -137,8 +137,8 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	): Promise<void> {
 		const waitMs = Math.max(waitTill.getTime() - Date.now(), 0);
 
-		// A short wait that only its deadline can end sleeps here. Suspending it would
-		// cost a write and a reload, and the tracker could not fire it on time anyway.
+		// Suspending a short wait costs a write and a reload, and the tracker polls too
+		// slowly to promise an on-time resume.
 		if (options?.acceptsResumeRequest === false && waitMs < MAX_IN_PROCESS_WAIT_MS) {
 			return await new Promise<void>((resolve) => {
 				const timer = setTimeout(resolve, waitMs);

@@ -97,7 +97,7 @@ describe('Execute Wait Node', () => {
 		expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expect.any(Date), {
 			acceptsResumeRequest: false,
 		});
-		// The sleep and its cancellation handler belong to core now.
+		// Core owns the sleep and its cancellation handler.
 		expect(executeFunctionsMock.onExecutionCancellation).not.toHaveBeenCalled();
 	});
 
@@ -206,8 +206,7 @@ describe('Execute Wait Node', () => {
 					});
 
 					if (!error) {
-						// Every valid interval takes the same path. Core decides whether the
-						// wait sleeps in the process or suspends the execution.
+						// Every valid interval takes the same path. Core chooses how to wait.
 						await expect(waitNode.execute(executeFunctionsMock)).resolves.toEqual([inputData]);
 						expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expectedWaitTill?.(), {
 							acceptsResumeRequest: false,

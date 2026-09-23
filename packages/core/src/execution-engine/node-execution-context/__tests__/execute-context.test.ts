@@ -951,7 +951,6 @@ describe('ExecuteContext', () => {
 			await vi.advanceTimersByTimeAsync(1_000);
 			await pending;
 
-			// The short sleep never flips the execution to waiting.
 			expect(waitRunExecutionData.waitTill).toBeUndefined();
 			expect(waitAdditionalData.setExecutionStatus).not.toHaveBeenCalled();
 		});

@@ -591,7 +591,7 @@ export class Wait extends Webhook {
 			}
 		}
 
-		// Only the deadline ends these two modes, so a short wait may sleep in the process.
+		// "After Time Interval" and "At Specified Time" give the user no resume URL.
 		return await this.putToWait(context, waitTill, { acceptsResumeRequest: false });
 	}
 

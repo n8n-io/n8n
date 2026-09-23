@@ -1351,9 +1351,9 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		/**
 		 * Pauses the execution until `waitTill`.
 		 *
-		 * Set `acceptsResumeRequest` to `false` when the deadline is the only thing that
-		 * can end the wait. A short wait then sleeps in the process, and the execution
-		 * stays active. The default is `true`, which makes every wait durable.
+		 * Set `acceptsResumeRequest` to `false` when only the deadline can end the wait.
+		 * The engine then keeps a short wait in the process, so the wait does not survive
+		 * a restart. Without the option the engine suspends and persists the execution.
 		 */
 		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
 		sendMessageToUI(message: any): void;

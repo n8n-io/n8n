@@ -9,11 +9,12 @@ export const WAIT_INDEFINITELY = new Date('3000-01-01T00:00:00.000Z');
 export const WAIT_FOR_SUB_EXECUTION = new Date('2999-12-31T00:00:00.000Z');
 
 /**
- * A wait shorter than this sleeps in the process instead of suspending the execution.
- * The waiting-executions tracker polls every 60 seconds and selects the rows that come
- * due in the next 70 seconds. A wait that is written just after one pass is therefore
- * seen by the next pass only when it lasts at least 65 seconds. Change this number with
- * those two, never alone.
+ * The longest wait that sleeps in the process instead of suspending the execution.
+ * `WaitTracker` polls every 60 seconds, so it can need a full minute to see a new row.
+ * A suspended wait shorter than that resumes late. The 5 extra seconds cover the delay
+ * until the row is written. `ExecutionRepository.getWaitingExecutions` must keep
+ * selecting rows further out than one poll interval. Change this number only with
+ * those two.
  */
 export const MAX_IN_PROCESS_WAIT_MS = 65_000;
 
