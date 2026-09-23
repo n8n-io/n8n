@@ -30,8 +30,7 @@ export class InstanceAiPage extends BasePage {
 		await this.getChatInput()
 			.waitFor({ state: 'visible', timeout: 10_000 })
 			.catch(async () => {
-				const aiMenuItem = this.page.getByRole('menuitem', { name: 'Assistant' });
-				await aiMenuItem.click({ timeout: 10_000 });
+				await this.getNewThreadButton().click({ timeout: 10_000 });
 				await this.enableInstanceAiIfPrompted();
 			});
 		await expect(this.getChatInput()).toBeVisible({ timeout: 30_000 });
@@ -120,7 +119,9 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getNewThreadButton(): Locator {
-		return this.page.getByRole('menuitem', { name: 'Assistant' });
+		return this.page
+			.getByTestId('project-instance-ai-menu-item')
+			.getByRole('menuitem', { name: 'Assistant', exact: true });
 	}
 
 	/**
