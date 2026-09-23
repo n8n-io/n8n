@@ -1386,8 +1386,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			it('reports a retired occurrence whose blocking run ended before the sweep', async () => {
 				const limited = await createLimitedJob(1);
 				const deadline = new Date(Date.now() - 30_000);
-				// Held the single slot across the deadline, then finished: by the time the
-				// sweep runs, nothing of this job is running any more.
+				// Ran across the deadline, then finished before the reaper runs.
 				await createTask({
 					jobId: limited.id,
 					status: 'succeeded',
@@ -1406,7 +1405,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			it('reports nothing when the job only filled its slot after the deadline', async () => {
 				const limited = await createLimitedJob(1);
 				const deadline = new Date(Date.now() - 30_000);
-				// Started after the deadline, so it is not what kept the row from a claim.
+				// Started after the deadline, so it did not block the task.
 				await createTask({
 					jobId: limited.id,
 					status: 'running',
@@ -1421,6 +1420,30 @@ describe('ScheduledTaskRepository executor methods', () => {
 
 				expect(result.retired).toBe(1);
 				expect(result.heldByConcurrencyLimit).toEqual([]);
+			});
+
+			it('reports nothing when the next occurrence was claimed and started after the deadline', async () => {
+				const limited = await createLimitedJob(1);
+				const expired = await createTask({
+					jobId: limited.id,
+					runAt: new Date(Date.now() - 30_000),
+					missedAfter: new Date(Date.now() - 20_000),
+				});
+				await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 10_000) });
+
+				const [ready] = await taskRepository.claimDueTasks(claimOpts());
+				expect(
+					await taskRepository.beginDispatch(
+						{ id: ready.id, host: HOST_A, claimedEpoch: ready.leaseEpoch },
+						60_000,
+					),
+				).toBe(1);
+
+				const result = await taskRepository.retireMissedPending(10);
+
+				expect(result.retired).toBe(1);
+				expect(result.heldByConcurrencyLimit).toEqual([]);
+				expect((await reload(expired.id)).status).toBe('missed');
 			});
 
 			it('never lets two concurrent sweeps report the same retired occurrence', async () => {
@@ -1447,7 +1470,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 				const reported = [...a.heldByConcurrencyLimit, ...b.heldByConcurrencyLimit].map(
 					(row) => row.id,
 				);
-				// Each row is reported by the sweep that retired it, and by that one only.
+				// Only the call that retired a task reports it.
 				expect(reported).toHaveLength(held.length);
 				expect(new Set(reported)).toEqual(new Set(held.map((task) => task.id)));
 			});
