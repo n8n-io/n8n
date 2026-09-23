@@ -63,7 +63,7 @@ export const MCP_CLIENT_BRAND_MATCHERS: ReadonlyArray<{
 	{ pattern: /(visual studio code|vs ?code)/i, brand: 'vscode', type: 'editor' },
 	{ pattern: /codex/i, brand: 'openai', type: 'cli' },
 	{ pattern: /chatgpt|openai/i, brand: 'openai', type: 'assistant' },
-	{ pattern: /mistral|\ble ?chat\b/i, brand: 'mistral', type: 'assistant' },
+	{ pattern: /mistral|\bvibe\b/i, brand: 'mistral', type: 'assistant' },
 ];
 
 export function getMcpClientType(clientName: string): McpClientType | null {
