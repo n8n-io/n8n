@@ -1,11 +1,6 @@
 import { defineStore } from 'pinia';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { MCP_ENDPOINT, MCP_STORE } from './mcp.constants';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
-import type { IWorkflowSettings, WorkflowListItem } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	updateMcpSettings,
@@ -17,6 +12,7 @@ import {
 	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
+	fetchMcpExposedWorkflows,
 	fetchMcpAgents,
 	getAllowedRedirectUris,
 	updateAllowedRedirectUris,
@@ -26,14 +22,13 @@ import {
 	type ToggleAgentsMcpAccessResponse,
 	type ToggleAgentsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
-import type { Agent } from '@/features/agents/agent.types';
+import type { McpAgent, McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	EMPTY_OAUTH_CLIENT_FILTERS,
 	type OAuthClientFilters,
 } from '@/features/ai/mcpAccess/clients.utils';
-import { isWorkflowListItem } from '@/app/utils/typeGuards';
 import type {
 	ApiKey,
 	InstanceMcpClientStatsResponseDto,
@@ -43,7 +38,6 @@ import type {
 import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
-	const workflowsListStore = useWorkflowsListStore();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
@@ -81,17 +75,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
 		pageSize = 50,
-	): Promise<{ data: WorkflowListItem[]; count: number }> {
-		const { data, count } = await workflowsListStore.fetchWorkflowsPageWithCount(
-			undefined, // projectId
-			page,
-			pageSize,
-			'updatedAt:desc',
-			{ isArchived: false, availableInMCP: true },
-			false, // includeFolders
-			false, // onlySharedWithMe
-		);
-		return { data: data.filter(isWorkflowListItem), count };
+	): Promise<{ data: McpWorkflow[]; count: number }> {
+		const { data, count } = await fetchMcpExposedWorkflows(rootStore.restApiContext, {
+			skip: (page - 1) * pageSize,
+			take: pageSize,
+		});
+		return { data, count };
 	}
 
 	/**
@@ -116,14 +105,14 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	async function fetchWorkflowsAvailableForMCPPage(
 		page: number,
 		pageSize: number,
-	): Promise<{ data: WorkflowListItem[]; count: number; page: number }> {
+	): Promise<{ data: McpWorkflow[]; count: number; page: number }> {
 		return await clampToLastPage(fetchWorkflowsAvailableForMCP, page, pageSize);
 	}
 
 	async function fetchAgentsAvailableForMCP(
 		page = 1,
 		pageSize = 50,
-	): Promise<{ data: Agent[]; count: number }> {
+	): Promise<{ data: McpAgent[]; count: number }> {
 		const { data, count } = await fetchMcpAgents(rootStore.restApiContext, {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
@@ -135,7 +124,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	async function fetchAgentsAvailableForMCPPage(
 		page: number,
 		pageSize: number,
-	): Promise<{ data: Agent[]; count: number; page: number }> {
+	): Promise<{ data: McpAgent[]; count: number; page: number }> {
 		return await clampToLastPage(fetchAgentsAvailableForMCP, page, pageSize);
 	}
 
@@ -166,20 +155,6 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return response.autoExposeNewWorkflows;
 	}
 
-	function applyAvailableInMCPToLocalStores(workflowId: string, availableInMCP: boolean) {
-		const existing = workflowsListStore.workflowsById[workflowId];
-		if (existing) {
-			if (existing.settings) {
-				existing.settings.availableInMCP = availableInMCP;
-			} else {
-				existing.settings = { availableInMCP } as IWorkflowSettings;
-			}
-		}
-
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		workflowDocumentStore.mergeSettings({ availableInMCP });
-	}
-
 	// Toggle MCP access for a single workflow
 	async function toggleWorkflowMcpAccess(
 		workflowId: string,
@@ -204,7 +179,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			);
 		}
 
-		applyAvailableInMCPToLocalStores(workflowId, availableInMCP);
+		capabilityRegistry.use(capabilities.workflowMcpAccessSync)([workflowId], availableInMCP);
 
 		return response;
 	}
@@ -228,8 +203,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			...(response.unchangedIds ?? []),
 		]);
 
-		for (const id of confirmedIds) {
-			applyAvailableInMCPToLocalStores(id, availableInMCP);
+		// Scope-mode responses carry no ids, so there is nothing to sync back.
+		if (confirmedIds.size > 0) {
+			capabilityRegistry.use(capabilities.workflowMcpAccessSync)([...confirmedIds], availableInMCP);
 		}
 
 		return response;
@@ -374,7 +350,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		take?: number;
 		skip?: number;
 		query?: string;
-	}): Promise<{ count: number; data: WorkflowListItem[] }> {
+	}): Promise<{ count: number; data: McpWorkflow[] }> {
 		return await fetchMcpEligibleWorkflows(rootStore.restApiContext, options);
 	}
 
@@ -382,7 +358,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		take?: number;
 		skip?: number;
 		query?: string;
-	}): Promise<{ count: number; data: Agent[] }> {
+	}): Promise<{ count: number; data: McpAgent[] }> {
 		return await fetchMcpAgents(rootStore.restApiContext, options);
 	}
 

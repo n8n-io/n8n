@@ -15,7 +15,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
-import type { WorkflowListItem } from '@/Interface';
+import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import {
 	LOADING_INDICATOR_TIMEOUT,
@@ -34,7 +34,7 @@ const mcpStore = useMCPStore();
 const uiStore = useUIStore();
 
 const workflowsLoading = ref(false);
-const availableWorkflows = ref<WorkflowListItem[]>([]);
+const availableWorkflows = ref<McpWorkflow[]>([]);
 const availableWorkflowsTotal = ref(0);
 const workflowsTableState = ref<TableOptions>({
 	page: 0,
@@ -129,7 +129,7 @@ const onBulkRemoveWorkflowsMCPAccess = async (workflowIds: string[]) => {
 	}
 };
 
-const onUpdateDescription = (workflow: WorkflowListItem) => {
+const onUpdateDescription = (workflow: McpWorkflow) => {
 	uiStore.openModalWithData({
 		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
 		data: {

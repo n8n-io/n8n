@@ -10,10 +10,9 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { FrontendSettings, OAuthClientResponseDto } from '@n8n/api-types';
 import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
-import type { WorkflowListItem } from '@/Interface';
+import type { McpAgent, McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
-import type { Agent } from '@/features/agents/agent.types';
 
 import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@n8n/composables/useToast';
@@ -100,7 +99,7 @@ const createComponent = createComponentRenderer(SettingsMCPView, {
 	},
 });
 
-const workflowPage = (data: WorkflowListItem[] = [], count = data.length) => ({ data, count });
+const workflowPage = (data: McpWorkflow[] = [], count = data.length) => ({ data, count });
 
 const enableMcpSettings = () => {
 	settingsStore.moduleSettings = {
@@ -287,8 +286,8 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should show placeholder while fetchWorkflowsAvailableForMCP is pending', async () => {
-			let resolveWorkflows!: (value: { data: WorkflowListItem[]; count: number }) => void;
-			const workflowsPromise = new Promise<{ data: WorkflowListItem[]; count: number }>((res) => {
+			let resolveWorkflows!: (value: { data: McpWorkflow[]; count: number }) => void;
+			const workflowsPromise = new Promise<{ data: McpWorkflow[]; count: number }>((res) => {
 				resolveWorkflows = res;
 			});
 			mcpStore.fetchWorkflowsAvailableForMCP.mockReturnValue(workflowsPromise);
@@ -328,8 +327,8 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should show placeholder while fetchAgentsAvailableForMCP is pending', async () => {
-			let resolveAgents!: (value: { data: Agent[]; count: number }) => void;
-			const agentsPromise = new Promise<{ data: Agent[]; count: number }>((res) => {
+			let resolveAgents!: (value: { data: McpAgent[]; count: number }) => void;
+			const agentsPromise = new Promise<{ data: McpAgent[]; count: number }>((res) => {
 				resolveAgents = res;
 			});
 
