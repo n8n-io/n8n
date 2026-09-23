@@ -71,23 +71,29 @@ describe('applyAgentTemplate', () => {
 		expect(result?.tools).toHaveLength(2);
 	});
 
-	it('sets the personalisation icon from the template and keeps the gradient', () => {
+	it('sets the personalisation icon and gradient from the template', () => {
 		const template = AGENT_TEMPLATES.find((t) => t.id === 'process-incoming-emails')!;
-		const gradient = {
-			from: '#111111',
-			to: '#222222',
-			angle: 90,
-			fromStop: 0,
-			toStop: 100,
-		};
 		const result = applyAgentTemplate(
-			blankConfig({ personalisation: { icon: 'bot', gradient } }),
+			blankConfig({
+				personalisation: {
+					icon: 'bot',
+					gradient: {
+						from: '#111111',
+						to: '#222222',
+						angle: 90,
+						fromStop: 0,
+						toStop: 100,
+					},
+				},
+			}),
 			template,
 			'New Agent',
 		);
 
-		expect(result?.personalisation?.icon).toBe('mail');
-		expect(result?.personalisation?.gradient).toEqual(gradient);
+		expect(result?.personalisation).toEqual({
+			icon: 'mail',
+			gradient: template.gradient,
+		});
 	});
 
 	it('keeps a renamed agent name', () => {
@@ -207,9 +213,15 @@ describe('AGENT_TEMPLATES', () => {
 		}
 	});
 
-	it('each template has an icon', () => {
+	it('each template has an icon and a distinct gradient', () => {
+		const seen = new Set<string>();
 		for (const template of AGENT_TEMPLATES) {
 			expect(template.icon).toBeTruthy();
+			expect(template.gradient.from).toMatch(/^#[0-9A-Fa-f]{6}$/);
+			expect(template.gradient.to).toMatch(/^#[0-9A-Fa-f]{6}$/);
+			const key = `${template.gradient.from}:${template.gradient.to}`;
+			expect(seen.has(key)).toBe(false);
+			seen.add(key);
 		}
 	});
 });

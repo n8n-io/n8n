@@ -8,6 +8,7 @@
 import { N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { AGENT_TEMPLATES, type AgentTemplate } from '../agentTemplates';
+import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 
 const emit = defineEmits<{ select: [template: AgentTemplate] }>();
 
@@ -32,7 +33,10 @@ const i18n = useI18n();
 				@click="emit('select', template)"
 			>
 				<span :class="$style.exampleIcon" :data-test-id="`agent-template-icon-${template.id}`">
-					<N8nIcon :icon="template.icon" size="small" />
+					<AgentPersonalisationIcon
+						:personalisation="{ icon: template.icon, gradient: template.gradient }"
+						:size="32"
+					/>
 				</span>
 				<span :class="$style.exampleText">
 					<N8nText size="small" :class="$style.exampleLabel">
@@ -55,6 +59,7 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--sm);
 }
 
 .subtitle {
@@ -95,13 +100,6 @@ const i18n = useI18n();
 .exampleIcon {
 	flex: 0 0 auto;
 	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	border-radius: 50%;
-	background: var(--color--primary--tint-3);
-	color: var(--color--primary);
 }
 
 .exampleText {

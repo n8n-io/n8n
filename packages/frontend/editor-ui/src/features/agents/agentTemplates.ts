@@ -1,11 +1,13 @@
 import type { BaseTextKey } from '@n8n/i18n';
-import {
-	DEFAULT_AGENT_PERSONALISATION,
-	type AgentIntegrationConfig,
-	type AgentJsonConfig,
-	type AgentJsonToolConfig,
-	type AgentTaskConfig,
+import type {
+	AgentIntegrationConfig,
+	AgentJsonConfig,
+	AgentJsonToolConfig,
+	AgentPersonalisation,
+	AgentTaskConfig,
 } from '@n8n/api-types';
+
+type AgentTemplateGradient = AgentPersonalisation['gradient'];
 
 /**
  * A one-click starter agent template. Selecting one writes a working example
@@ -17,6 +19,8 @@ export interface AgentTemplate {
 	labelKey: BaseTextKey;
 	descriptionKey: BaseTextKey;
 	icon: string;
+	/** Avatar gradient shown on the option and written onto the agent. */
+	gradient: AgentTemplateGradient;
 	/** Written onto a blank agent. `model` is never set here. */
 	config: {
 		name: string;
@@ -47,6 +51,7 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 		labelKey: 'agents.builder.templates.morningNewsBrief.label',
 		descriptionKey: 'agents.builder.templates.morningNewsBrief.description',
 		icon: 'sun',
+		gradient: { from: '#F5A524', to: '#FF5A1F', angle: 160, fromStop: 8, toStop: 92 },
 		config: {
 			name: 'Morning News Brief',
 			instructions:
@@ -69,6 +74,7 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 		labelKey: 'agents.builder.templates.processIncomingEmails.label',
 		descriptionKey: 'agents.builder.templates.processIncomingEmails.description',
 		icon: 'mail',
+		gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
 		config: {
 			name: 'Process Incoming Emails',
 			instructions:
@@ -116,6 +122,7 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 		labelKey: 'agents.builder.templates.qualifyNewLeads.label',
 		descriptionKey: 'agents.builder.templates.qualifyNewLeads.description',
 		icon: 'users',
+		gradient: { from: '#059669', to: '#84CC16', angle: 120, fromStop: 4, toStop: 88 },
 		config: {
 			name: 'Qualify New Leads',
 			instructions:
@@ -127,6 +134,7 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 		labelKey: 'agents.builder.templates.linkedinOutreach.label',
 		descriptionKey: 'agents.builder.templates.linkedinOutreach.description',
 		icon: 'link',
+		gradient: { from: '#0A66C2', to: '#22D3EE', angle: 145, fromStop: 0, toStop: 96 },
 		config: {
 			name: 'LinkedIn Outreach',
 			instructions:
@@ -173,8 +181,8 @@ export function isAgentConfigBlank(config: AgentJsonConfig): boolean {
  * Returns the config with the template written onto it, or `null` when the
  * agent already has content (instructions or tools). `name` is only replaced
  * while it still equals `defaultName` (the seeded "New Agent"), so a renamed
- * agent keeps its name. The template icon replaces the personalisation icon;
- * the existing gradient stays. `model` and every other field are preserved.
+ * agent keeps its name. The template icon and gradient replace the
+ * personalisation. `model` and every other field are preserved.
  */
 export function applyAgentTemplate(
 	config: AgentJsonConfig,
@@ -191,7 +199,7 @@ export function applyAgentTemplate(
 		config: { ...config.config, ...template.config.config },
 		personalisation: {
 			icon: template.icon,
-			gradient: config.personalisation?.gradient ?? { ...DEFAULT_AGENT_PERSONALISATION.gradient },
+			gradient: { ...template.gradient },
 		},
 	};
 }
