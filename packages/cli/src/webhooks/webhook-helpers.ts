@@ -1,14 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable id-denylist */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
 import merge from 'lodash/merge';
@@ -478,7 +473,8 @@ export function setupResponseNodePromise(
 
 			process.nextTick(() => res.end());
 		})
-		.catch(async (error) => {
+		.catch(async (e: unknown) => {
+			const error = ensureError(e);
 			Container.get(ErrorReporter).error(error);
 			Container.get(Logger).error(
 				`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
@@ -674,7 +670,7 @@ export async function executeWebhook(
 	let project: Project;
 	try {
 		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
-	} catch (error) {
+	} catch {
 		throw new NotFoundError('Cannot find workflow');
 	}
 
@@ -914,14 +910,15 @@ export async function executeWebhook(
 				workflowId: workflow.id,
 				node: workflowStartNode,
 			});
-		} catch (err) {
+		} catch (e: unknown) {
+			const error = ensureError(e);
 			// Send error response to webhook caller
 			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
 				? 'Form'
 				: 'Webhook';
-			const errorMessage = _privateGetWebhookErrorMessage(err, webhookType);
+			const errorMessage = _privateGetWebhookErrorMessage(error, webhookType);
 
-			Container.get(ErrorReporter).error(err, {
+			Container.get(ErrorReporter).error(error, {
 				extra: {
 					nodeName: workflowStartNode.name,
 					nodeType: workflowStartNode.type,
@@ -939,9 +936,9 @@ export async function executeWebhook(
 					runData: {},
 					lastNodeExecuted: workflowStartNode.name,
 					error: {
-						...err,
-						message: err.message,
-						stack: err.stack,
+						...error,
+						message: error.message,
+						stack: error.stack,
 					},
 				},
 			};
@@ -982,7 +979,7 @@ export async function executeWebhook(
 				// Data to respond with is given
 				if (!didSendResponse) {
 					responseCallback(null, {
-						data: webhookResultData.webhookResponse,
+						data: webhookResultData.webhookResponse as IDataObject | IDataObject[],
 						responseCode,
 					});
 					didSendResponse = true;
@@ -1358,41 +1355,45 @@ export async function executeWebhook(
 					didSendResponse = true;
 					return runData;
 				})
-				.catch((e) => {
-					Container.get(ErrorReporter).error(e, { executionId });
+				.catch((e: unknown) => {
+					const error = ensureError(e);
+					Container.get(ErrorReporter).error(error, { executionId });
 
 					if (!didSendResponse) {
 						responseCallback(
 							new OperationalError('There was a problem executing the workflow', {
-								cause: e,
+								cause: error,
 							}),
 							{},
 						);
 					}
 
-					const internalServerError = new InternalServerError(e.message, e);
-					if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
+					const internalServerError = new InternalServerError(error.message, error);
+					if (error instanceof ExecutionCancelledError) internalServerError.level = 'warning';
 					throw internalServerError;
 				});
 		}
 		return executionId;
-	} catch (e) {
+	} catch (e: unknown) {
 		// Nothing will ever answer this one, so stop waiting for it.
 		pendingEngineV2Response?.release();
 
-		let error: Error;
-		if (e instanceof ResponseError && e.httpStatusCode < 500) {
-			error = e;
-		} else if (routesToEngineV2 && e instanceof UserError) {
+		const error = ensureError(e);
+		let responseError: Error;
+		if (error instanceof ResponseError && error.httpStatusCode < 500) {
+			responseError = error;
+		} else if (routesToEngineV2 && error instanceof UserError) {
 			// The v2 path never falls back to v1, so its reason is the answer. The
 			// branch below would replace it with a generic 500 and report it as a bug.
-			error = new BadRequestError(e.message);
+			responseError = new BadRequestError(error.message);
 		} else {
-			Container.get(ErrorReporter).error(e, { executionId });
-			error = new OperationalError('There was a problem executing the workflow', { cause: e });
+			Container.get(ErrorReporter).error(error, { executionId });
+			responseError = new OperationalError('There was a problem executing the workflow', {
+				cause: error,
+			});
 		}
-		if (didSendResponse) throw error;
-		responseCallback(error, {});
+		if (didSendResponse) throw responseError;
+		responseCallback(responseError, {});
 		return;
 	} finally {
 		await cleanupMultipartFiles?.();
@@ -1550,19 +1551,19 @@ function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookRespo
  *
  * ONLY EXPORTED FOR TESTING.
  *
- * @param err the error being handled
+ * @param error the error being handled
  */
 export function _privateGetWebhookErrorMessage(
-	err: unknown,
+	error: unknown,
 	webhookType: 'Form' | 'Webhook',
 ): string {
 	// if workflow started manually, show an actual error message
-	if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
-		return err.message;
+	if (error instanceof NodeOperationError && error.type === 'manual-form-test') {
+		return error.message;
 	}
 	// if the error relates to a configuration error on the workflow, surface it
-	if (err instanceof WorkflowConfigurationError) {
-		return err.message;
+	if (error instanceof WorkflowConfigurationError) {
+		return error.message;
 	}
 	return `Workflow ${webhookType} Error: Workflow could not be started!`;
 }
