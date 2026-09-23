@@ -273,14 +273,13 @@ export async function resolveUserTarget(
 }
 
 /**
- * Builds one `aadUserConversationMember` entry for `POST /chats` and `POST /chats/{id}/members`.
- * The bind has two escaping layers: percent-encode the id for the URL (a B2B guest UPN
- * truncates at its `#` otherwise), then double any quote for the OData literal.
+ * Builds one `aadUserConversationMember` entry. `userRef` is the full `user@odata.bind` URL:
+ * the two endpoints document different key forms, so each call site composes its own.
  */
-export const aadUserConversationMember = (baseUrl: string, id: string, role: string) => ({
+export const aadUserConversationMember = (userRef: string, role: string) => ({
 	'@odata.type': '#microsoft.graph.aadUserConversationMember',
 	roles: [role],
-	'user@odata.bind': `${baseUrl}/v1.0/users('${escapeODataValue(encodeURIComponent(id))}')`,
+	'user@odata.bind': userRef,
 });
 
 /**

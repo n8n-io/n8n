@@ -5,6 +5,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { stampItemIndexOnError, validateUserTargetId } from '../../../../GenericFunctions';
@@ -238,7 +239,12 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const baseUrl = await getGraphBaseUrl.call(this);
 
 	const toMember = (member: { id: string; role: string; tenantId?: string }) => ({
-		...aadUserConversationMember(baseUrl, member.id, member.role),
+		// Two escaping layers hold this bind: percent-encode the id for the URL (a B2B guest UPN
+		// truncates at its `#` otherwise), then double any quote for the OData literal.
+		...aadUserConversationMember(
+			`${baseUrl}/v1.0/users('${escapeODataValue(encodeURIComponent(member.id))}')`,
+			member.role,
+		),
 		...(member.tenantId ? { tenantId: member.tenantId } : {}),
 	});
 

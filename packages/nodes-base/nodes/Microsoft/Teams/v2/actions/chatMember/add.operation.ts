@@ -107,17 +107,17 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	// Direct validator call rather than buildTeamsPath: this id is interpolated into
 	// the body, and RLC `validation` is UI-only, so an expression can still supply
-	// anything. The returned value (trimmed, decoded) is what must be interpolated:
-	// `aadUserConversationMember` encodes it once, so it has to arrive decoded.
+	// anything. The returned value (trimmed, decoded) is what must be interpolated.
 	const userId = validateTeamsId(
 		this.getNodeParameter('userId', i, '', { extractValue: true }) as string,
 		this.getNode(),
 	);
 	const options = this.getNodeParameter('options', i, {});
 
+	// Slash key form, as the add-member docs show. Raw is safe: the validator above rejects
+	// `/ \ ? # %`, so the id cannot break out of the path.
 	const body: IDataObject = aadUserConversationMember(
-		await getGraphBaseUrl.call(this),
-		userId,
+		`${await getGraphBaseUrl.call(this)}/v1.0/users/${userId}`,
 		options.role === 'guest' ? 'guest' : 'owner',
 	);
 
