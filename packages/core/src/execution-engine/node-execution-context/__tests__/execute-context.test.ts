@@ -1002,6 +1002,22 @@ describe('ExecuteContext', () => {
 			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
 		});
 
+		it('leaves no cancellation listener behind when a sleep ends normally', async () => {
+			const abortController = new AbortController();
+			const added = vi.spyOn(abortController.signal, 'addEventListener');
+			const removed = vi.spyOn(abortController.signal, 'removeEventListener');
+			const { context } = makeWaitContext(abortController.signal);
+
+			const pending = context.putExecutionToWait(new Date(Date.now() + SHORT_MS), {
+				acceptsResumeRequest: false,
+			});
+			await vi.advanceTimersByTimeAsync(SHORT_MS);
+			await pending;
+
+			// A workflow can reach many short waits. Each one must release its listener.
+			expect(removed.mock.calls.length).toBe(added.mock.calls.length);
+		});
+
 		it('ends a sleep early when the execution is cancelled', async () => {
 			const abortController = new AbortController();
 			const { context, waitRunExecutionData } = makeWaitContext(abortController.signal);

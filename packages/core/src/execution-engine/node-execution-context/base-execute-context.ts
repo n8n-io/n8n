@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import type { Result } from '@n8n/utils/result';
 import get from 'lodash/get';
 import type {
@@ -140,13 +141,8 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		// Suspending a short wait costs a write and a reload, and the tracker polls too
 		// slowly to promise an on-time resume.
 		if (options?.acceptsResumeRequest === false && waitMs < MAX_IN_PROCESS_WAIT_MS) {
-			return await new Promise<void>((resolve) => {
-				const timer = setTimeout(resolve, waitMs);
-				this.onExecutionCancellation(() => {
-					clearTimeout(timer);
-					resolve();
-				});
-			});
+			// A cancelled execution ends the wait, and the step still returns its input.
+			return await sleep(waitMs, this.abortSignal).catch(() => undefined);
 		}
 
 		this.runExecutionData.waitTill = waitTill;
