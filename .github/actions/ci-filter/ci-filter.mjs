@@ -159,7 +159,9 @@ export function getAddedFiles(baseRef, headRef = 'HEAD') {
 function fetchUntilMergeBase(baseRef, headRef) {
 	let step = Number(process.env.CI_FILTER_DEEPEN_STEP) || 200;
 	const maxDeepen = Number(process.env.CI_FILTER_MAX_DEEPEN) || 20_000;
-	const depth = isShallow() ? `--depth=${step} ` : '';
+	// A PR merge checkout already has the base commit as its first parent.
+	const hasBaseCommit = headRef === 'HEAD^2' && hasCommit('HEAD^1');
+	const depth = isShallow() && !hasBaseCommit ? `--depth=${step} ` : '';
 	execSync(`git fetch --no-tags --prune --filter=blob:none ${depth}origin ${baseRef}`, {
 		stdio: 'pipe',
 	});
@@ -172,6 +174,15 @@ function fetchUntilMergeBase(baseRef, headRef) {
 		}
 		deepenFetch(baseRef, step, maxDeepen);
 		step *= 2;
+	}
+}
+
+function hasCommit(ref) {
+	try {
+		execSync(`git cat-file -e ${ref}^{commit}`, { stdio: 'pipe' });
+		return true;
+	} catch {
+		return false;
 	}
 }
 
