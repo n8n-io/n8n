@@ -1227,12 +1227,13 @@ export async function executeWebhook(
 				const errorResponse = isUndeliverable
 					? {
 							logMessage: 'Could not deliver an engine v2 webhook response',
-							message: outcome.error.message,
+							responseMessage: outcome.error.message,
 							responseCode: 500,
 						}
 					: {
+							// timeout
 							logMessage: 'No answer arrived for an engine v2 webhook run',
-							message: 'The workflow did not answer in time',
+							responseMessage: 'The workflow did not answer in time',
 							responseCode: 504,
 						};
 				Container.get(Logger).warn(errorResponse.logMessage, {
@@ -1244,7 +1245,7 @@ export async function executeWebhook(
 				// second response when the execution response later settles.
 				if (!didSendResponse) {
 					responseCallback(null, {
-						data: { message: errorResponse.message },
+						data: { message: errorResponse.responseMessage },
 						responseCode: errorResponse.responseCode,
 					});
 					didSendResponse = true;
