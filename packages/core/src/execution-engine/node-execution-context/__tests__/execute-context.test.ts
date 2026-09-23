@@ -22,6 +22,7 @@ import {
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 	WAIT_INDEFINITELY,
 	WAIT_FOR_SUB_EXECUTION,
+	MAX_IN_PROCESS_WAIT_MS,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -902,8 +903,8 @@ describe('ExecuteContext', () => {
 	});
 
 	describe('putExecutionToWait', () => {
-		const SHORT_MS = 30_000;
-		const LONG_MS = 10 * 60_000;
+		const SHORT_MS = MAX_IN_PROCESS_WAIT_MS / 2;
+		const LONG_MS = MAX_IN_PROCESS_WAIT_MS * 10;
 
 		const makeWaitContext = (abortSignal?: AbortSignal) => {
 			const waitRunExecutionData = {
@@ -932,6 +933,10 @@ describe('ExecuteContext', () => {
 
 		afterEach(() => {
 			vi.useRealTimers();
+		});
+
+		it('keeps the threshold at the value the tracker poll interval sets', () => {
+			expect(MAX_IN_PROCESS_WAIT_MS).toBe(65_000);
 		});
 
 		it('sleeps in the process when only a deadline can end a short wait', async () => {
@@ -965,11 +970,11 @@ describe('ExecuteContext', () => {
 			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
 		});
 
-		it('suspends a short wait when the caller states nothing', async () => {
+		it('suspends a wait that lands exactly on the threshold', async () => {
 			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
-			const waitTill = new Date(Date.now() + SHORT_MS);
+			const waitTill = new Date(Date.now() + MAX_IN_PROCESS_WAIT_MS);
 
-			await context.putExecutionToWait(waitTill);
+			await context.putExecutionToWait(waitTill, { acceptsResumeRequest: false });
 
 			expect(waitRunExecutionData.waitTill).toEqual(waitTill);
 			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');

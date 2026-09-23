@@ -75,7 +75,7 @@ describe('Execute Wait Node', () => {
 		},
 	);
 
-	test('hands a short time wait to core and sleeps for nothing itself', async () => {
+	test('hands a short time wait to core without sleeping itself', async () => {
 		const putExecutionToWaitSpy = vi.fn();
 		const waitNode = new Wait();
 		const inputData = [{ json: { test: 'data' } }];
@@ -92,11 +92,16 @@ describe('Execute Wait Node', () => {
 			getNode: vi.fn(),
 		});
 
+		const before = Date.now();
 		await expect(waitNode.execute(executeFunctionsMock)).resolves.toEqual([inputData]);
+		const after = Date.now();
 
-		expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expect.any(Date), {
-			acceptsResumeRequest: false,
-		});
+		const [waitTill, options] = putExecutionToWaitSpy.mock.calls[0] as [Date, unknown];
+		expect(options).toEqual({ acceptsResumeRequest: false });
+		// Pin the deadline itself. A sentinel date is also a `Date`, and core would then
+		// suspend the execution with nothing able to resume it.
+		expect(waitTill.getTime()).toBeGreaterThanOrEqual(before + 30_000);
+		expect(waitTill.getTime()).toBeLessThanOrEqual(after + 30_000);
 		// Core owns the sleep and its cancellation handler.
 		expect(executeFunctionsMock.onExecutionCancellation).not.toHaveBeenCalled();
 	});
