@@ -321,6 +321,28 @@ describe('FrontendService', () => {
 			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
 		});
 
+		it('should surface the assistant Cloud UBB entitlement when the AI Assistant is enabled and entitled', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
+			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiAssistant).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
+		it('should keep the assistant Cloud UBB entitlement off when the AI Assistant is disabled', async () => {
+			globalConfig.aiAssistant.baseUrl = '';
+			licenseState.isAiAssistantLicensed.mockReturnValue(false);
+			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiAssistant).toMatchObject({ enabled: false, cloudUbbEnabled: false });
+		});
+
 		it('should normalize configured postMessage origins', async () => {
 			securityConfig.postMessageAllowedOrigins =
 				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url, data:text/html;foo';
