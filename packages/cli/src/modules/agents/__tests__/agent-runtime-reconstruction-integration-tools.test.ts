@@ -27,6 +27,7 @@ import type { AiService } from '@/services/ai.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentConfigService } from '../agent-config.service';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
@@ -237,8 +238,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		runtimeCacheService = new AgentRuntimeCacheService(
 			logger,
 			agentRepository,
-			publisher,
-			globalConfig,
+			new AgentChangePublisher(publisher, globalConfig, logger),
 			agentRuntimeReconstructionService,
 			credentialsService,
 			agentSandboxRuntimeService,

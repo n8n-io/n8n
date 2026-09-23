@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { UserRepository } from '@n8n/db';
-import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
@@ -15,21 +14,13 @@ describe('SlackManualSetupService', () => {
 		const methods = mock<SlackMethodsService>();
 		const userRepository = mock<UserRepository>();
 		const cacheService = mock<CacheService>();
-		const cipher = mock<Cipher>();
 		const projectService = mock<ProjectService>();
 		projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 		return {
-			service: new SlackManualSetupService(
-				methods,
-				userRepository,
-				cacheService,
-				cipher,
-				projectService,
-			),
+			service: new SlackManualSetupService(methods, userRepository, cacheService, projectService),
 			methods,
 			userRepository,
 			cacheService,
-			cipher,
 			projectService,
 		};
 	}
@@ -87,7 +78,7 @@ describe('SlackManualSetupService', () => {
 	});
 
 	it('completes OAuth by atomically consuming state and creating the bot credential', async () => {
-		const { service, methods, userRepository, cacheService, cipher } = makeService();
+		const { service, methods, userRepository, cacheService } = makeService();
 		const user = { id: 'user-1' };
 		const agent = {
 			id: 'agent-1',
@@ -105,7 +96,7 @@ describe('SlackManualSetupService', () => {
 			redirectUrl: 'https://n8n.example/callback',
 		};
 		cacheService.take.mockResolvedValue('encrypted-session');
-		cipher.decryptV2.mockResolvedValue(JSON.stringify(session));
+		methods.decodeSession.mockResolvedValue(session);
 		userRepository.findOne.mockResolvedValue(user as never);
 		methods.getAgent.mockResolvedValue(agent as never);
 		methods.callSlackApi.mockResolvedValue({
@@ -130,20 +121,18 @@ describe('SlackManualSetupService', () => {
 	});
 
 	it('rejects callback state for a different project or agent', async () => {
-		const { service, methods, cacheService, cipher } = makeService();
+		const { service, methods, cacheService } = makeService();
 		cacheService.take.mockResolvedValue('encrypted-session');
-		cipher.decryptV2.mockResolvedValue(
-			JSON.stringify({
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				userId: 'user-1',
-				appId: 'app-1',
-				clientId: 'client-1',
-				clientSecret: 'secret-1',
-				signingSecret: 'signing-1',
-				redirectUrl: 'https://n8n.example/callback',
-			}),
-		);
+		methods.decodeSession.mockResolvedValue({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			userId: 'user-1',
+			appId: 'app-1',
+			clientId: 'client-1',
+			clientSecret: 'secret-1',
+			signingSecret: 'signing-1',
+			redirectUrl: 'https://n8n.example/callback',
+		});
 
 		await expect(
 			service.completeInstall({

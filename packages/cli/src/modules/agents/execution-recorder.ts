@@ -11,7 +11,7 @@ import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
-import type { ToolRegistry } from './tool-registry';
+import type { ToolRegistry, ToolRegistryEntry } from './tool-registry';
 
 /** Cap on child trace characters persisted per delegation. Tighter than the
  *  live forwarding budget because this is written into every parent execution row. */
@@ -203,7 +203,7 @@ function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | u
 export interface ToolCallDetails {
 	toolName: string;
 	displayName?: string;
-	kind: 'tool' | 'workflow' | 'node';
+	kind: ToolRegistryEntry['kind'];
 	input: unknown;
 	node?: {
 		type: string;
@@ -267,7 +267,7 @@ export type TimelineEvent =
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
 	| {
 			type: 'tool-call';
-			kind: 'tool' | 'workflow' | 'node';
+			kind: ToolRegistryEntry['kind'];
 			name: string;
 			toolCallId: string;
 			input: unknown;
