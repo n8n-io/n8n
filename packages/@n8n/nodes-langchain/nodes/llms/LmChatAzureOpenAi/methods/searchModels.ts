@@ -9,24 +9,18 @@ import { AuthenticationType, AZURE_AI_FOUNDRY_AUDIENCE } from '../types';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 
 interface AzureResourceCredential {
-	resourceName?: string;
 	endpointType?: 'classic' | 'foundry';
 	foundryEndpoint?: string;
 }
 
-/** The deployments-list endpoint lives on the same host for Classic and Foundry. */
-function resolveBaseURL(node: INode, credential: AzureResourceCredential): string {
-	if (credential.endpointType === 'foundry') {
-		return new URL(requireFoundryEndpoint(node, credential.foundryEndpoint)).origin;
-	}
-
-	if (!credential.resourceName?.trim()) {
-		throw new NodeOperationError(
-			node,
-			'Resource Name is missing in the selected Azure OpenAI credential.',
-		);
-	}
-	return `https://${credential.resourceName}.services.ai.azure.com`;
+/**
+ * The deployments-list endpoint only exists on the Foundry data plane. A
+ * Classic (kind: OpenAI) resource has no `services.ai.azure.com` host at all
+ * (confirmed against a live resource: DNS fails), and its deployments are
+ * only reachable through the ARM control plane, which this call doesn't use.
+ */
+function resolveFoundryBaseURL(node: INode, foundryEndpoint?: string): string {
+	return new URL(requireFoundryEndpoint(node, foundryEndpoint)).origin;
 }
 
 export async function searchModels(
@@ -47,13 +41,19 @@ export async function searchModels(
 		const credential = await this.getCredentials<AzureResourceCredential & { apiKey: string }>(
 			'azureOpenAiApi',
 		);
-		baseURL = resolveBaseURL(this.getNode(), credential);
+		if (credential.endpointType !== 'foundry') {
+			return { results: [] };
+		}
+		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
 		headers = { 'api-key': credential.apiKey };
 	} else {
 		const credential = await this.getCredentials<AzureEntraCognitiveServicesOAuth2ApiCredential>(
 			'azureEntraCognitiveServicesOAuth2Api',
 		);
-		baseURL = resolveBaseURL(this.getNode(), credential);
+		if (credential.endpointType !== 'foundry') {
+			return { results: [] };
+		}
+		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
 		// Mints a token for the Foundry audience, which this call needs.
 		const token = await new N8nOAuth2TokenCredential(
 			this.getNode(),
