@@ -10,6 +10,8 @@ packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
 packages/cli/src/modules/agents/agent-workflow-execution.service.ts
   s_782619aac31c26::t_beeec2657eece7 497,506-507,509-515,519
   s_782619aac31c26::t_f91d18ef608c07 95-96,172,380-384,452
+  s_782619aac31c26::t_6fc34ba3087965 37-40
+  s_782619aac31c26::t_d6ac997708a0ae 505,508
 packages/cli/src/modules/agents/__tests__/test-utils/session-leases.ts
   s_782619aac31c26::t_aef86a5776f377 1-15
 packages/cli/src/modules/agents/json-config/from-json-config.ts
