@@ -192,12 +192,20 @@ describe('GET /workflows/:workflowId/test-runs/:runId', () => {
 });
 
 describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
-	test('should return per-case results with sanitized fields', async () => {
+	test('should return a completed case with every field populated', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const testRun = await createTestRun(workflow.id, { status: 'completed' });
+		const execution = await createExecution({ status: 'success' }, workflow);
+		const runAt = new Date('2026-09-23T10:42:04.214Z');
+		const completedAt = new Date('2026-09-23T10:42:04.300Z');
 		const testCase = await createTestCaseExecution(testRun.id, {
 			status: 'success',
-			metrics: { accuracy: 1 },
+			runAt,
+			completedAt,
+			metrics: { 'String similarity': 1, totalTokens: 0, executionTime: 65 },
+			inputs: { name: 'Charlie' },
+			outputs: { output: 'Charlie' },
+			executionId: execution.id,
 		});
 
 		const response = await authOwnerAgent.get(
@@ -209,9 +217,35 @@ describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
 			{
 				id: testCase.id,
 				status: 'success',
+				runAt: runAt.toISOString(),
+				completedAt: completedAt.toISOString(),
+				metrics: { 'String similarity': 1, totalTokens: 0, executionTime: 65 },
+				errorCode: null,
+				errorDetails: null,
+				inputs: { name: 'Charlie' },
+				outputs: { output: 'Charlie' },
+				executionId: Number(execution.id),
+			},
+		]);
+	});
+
+	test('should return a case that has not started with null fields', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const testRun = await createTestRun(workflow.id, { status: 'running' });
+		const testCase = await createTestCaseExecution(testRun.id, { status: 'new' });
+
+		const response = await authOwnerAgent.get(
+			`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toStrictEqual([
+			{
+				id: testCase.id,
+				status: 'new',
 				runAt: null,
 				completedAt: null,
-				metrics: { accuracy: 1 },
+				metrics: {},
 				errorCode: null,
 				errorDetails: null,
 				inputs: null,
@@ -219,20 +253,6 @@ describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
 				executionId: null,
 			},
 		]);
-	});
-
-	test('should return the execution id of a case as a number', async () => {
-		const workflow = await createWorkflow(undefined, owner);
-		const testRun = await createTestRun(workflow.id, { status: 'completed' });
-		const execution = await createExecution({ status: 'success' }, workflow);
-		await createTestCaseExecution(testRun.id, { status: 'success', executionId: execution.id });
-
-		const response = await authOwnerAgent.get(
-			`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`,
-		);
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data[0].executionId).toBe(Number(execution.id));
 	});
 
 	test('should paginate per-case results via cursor', async () => {
