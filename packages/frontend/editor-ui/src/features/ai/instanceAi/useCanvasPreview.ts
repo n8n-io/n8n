@@ -172,28 +172,16 @@ export function useCanvasPreview({
 
 	const dataTableRefreshKey = ref(0);
 
-	const isPreviewVisible = computed(
-		() =>
-			isPreviewOpen.value &&
-			activeTabId.value !== undefined &&
-			allArtifactTabs.value.some((tab) => tab.id === activeTabId.value),
-	);
+	const isPreviewVisible = computed(() => isPreviewOpen.value && activeTabId.value !== undefined);
 
 	// --- Resource attachments (workflow or agent hand-offs) ---
 	// A workflow or agent attached to a message surfaces as an artifact tab via the
 	// resource registry. The first one is opened on arrival. (Its execution, if
 	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
 	const firstAttachedArtifactId = computed(() => {
-		const tabIds = new Set(allArtifactTabs.value.map(({ id }) => id));
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
-				const artifactId =
-					attachment.type === 'nodes' && attachment.workflowName
-						? attachment.workflowId
-						: attachment.type === 'workflow' || attachment.type === 'agent'
-							? attachment.id
-							: undefined;
-				if (artifactId && tabIds.has(artifactId)) return artifactId;
+				if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
 			}
 		}
 		return undefined;

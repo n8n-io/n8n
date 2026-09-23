@@ -70,7 +70,6 @@ import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 
 const props = defineProps<{
 	threadId: string;
-	mentionsEnabled?: boolean;
 }>();
 
 const store = useInstanceAiStore();
@@ -859,7 +858,6 @@ function handleNewThreadClick() {
 				<InstanceAiConversation
 					ref="conversation"
 					:above-input-overlap-height="setupPanelWorkflowId ? setupOverlapHeight : undefined"
-					:mentions-enabled="props.mentionsEnabled"
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
