@@ -8877,7 +8877,6 @@
 	"promotions.bindings.consumers": "{project}: {workflows}",
 	"promotions.bindings.savedResources": "Closing keeps the credentials and variables you saved. It does not import workflows.",
 	"promotions.bindings.sourceChanged": "The source changed. Start Apply remote changes again to confirm the latest source.",
-	"promotions.bindings.error.create": "The item could not be saved. Open Create to try again.",
 	"promotions.bindings.error.creationMismatch": "The saved item does not match the required binding. Check its identity and destination scope before you continue.",
 	"promotions.bindings.error.continue": "Apply could not be completed. Check the destination before you try again. Some changes may already have been applied.",
 	"promotions.bindings.access.title": "Access required",

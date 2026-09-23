@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import {
 	N8nButton,
 	N8nCallout,
@@ -59,6 +59,12 @@ watch(
 	{ immediate: true },
 );
 onBeforeUnmount(bindings.end);
+
+const errorDetail = computed(() =>
+	error.value?.kind === 'continue' && error.value.cause instanceof Error
+		? error.value.cause.message
+		: undefined,
+);
 
 function close() {
 	if (!props.open || isBusy.value) return;
@@ -159,7 +165,8 @@ async function continueApply() {
 					{{ i18n.baseText('promotions.bindings.sourceChanged') }}
 				</N8nCallout>
 				<N8nCallout v-if="error" theme="danger">
-					{{ i18n.baseText(`promotions.bindings.error.${error}`) }}
+					{{ i18n.baseText(`promotions.bindings.error.${error.kind}`) }}
+					<p v-if="errorDetail">{{ errorDetail }}</p>
 				</N8nCallout>
 				<section v-for="group in groups" :key="group.project.id" :class="$style.project">
 					<h3 v-if="groups.length > 1" :class="$style.projectName">{{ group.project.name }}</h3>

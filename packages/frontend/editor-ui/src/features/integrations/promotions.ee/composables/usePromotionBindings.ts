@@ -29,6 +29,11 @@ type BindingRow = {
 	created?: CreatedPromotionBinding;
 };
 
+type PromotionBindingsError =
+	| { kind: 'creationMismatch' }
+	// The UI uses the cause to show why Continue failed.
+	| { kind: 'continue'; cause: unknown };
+
 type BindingGroup = {
 	project: PromotionBindingConsumer['project'];
 	workflows: Array<{
@@ -62,7 +67,7 @@ export function usePromotionBindings() {
 	const isCreating = ref(false);
 	const isFinished = ref(false);
 	const sourceChanged = ref(false);
-	const error = ref<'create' | 'creationMismatch' | 'continue' | null>(null);
+	const error = shallowRef<PromotionBindingsError | null>(null);
 	let session = 0;
 	let expectedSource: ContinueApplyPackageDto['expectedSource'] | undefined;
 	let connectionId: string | undefined;
@@ -172,7 +177,7 @@ export function usePromotionBindings() {
 			const created = await create(binding);
 			if (currentSession !== session || !created) return;
 			if (!matchesCreation(binding, created)) {
-				error.value = 'creationMismatch';
+				error.value = { kind: 'creationMismatch' };
 				return;
 			}
 			createdBindings.value = new Map(createdBindings.value).set(key, created);
@@ -180,7 +185,7 @@ export function usePromotionBindings() {
 			next.delete(key);
 			missingKeys.value = next;
 		} catch {
-			if (currentSession === session) error.value = 'create';
+			// The adapter reports its own failures.
 		} finally {
 			if (currentSession === session) isCreating.value = false;
 		}
@@ -200,8 +205,8 @@ export function usePromotionBindings() {
 			if (result.status === 'source-changed') sourceChanged.value = true;
 			if (result.status === 'applied') isFinished.value = true;
 			return result;
-		} catch {
-			if (currentSession === session) error.value = 'continue';
+		} catch (cause) {
+			if (currentSession === session) error.value = { kind: 'continue', cause };
 			return undefined;
 		} finally {
 			if (currentSession === session) isSubmitting.value = false;

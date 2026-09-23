@@ -85,7 +85,7 @@ it('keeps global variables unresolved after a project variable is saved', async 
 			scope: { kind: 'project', project: consumers[0].project },
 		};
 	});
-	expect(session.error.value).toBe('creationMismatch');
+	expect(session.error.value).toEqual({ kind: 'creationMismatch' });
 	expect(session.canContinue.value).toBe(false);
 });
 
@@ -102,7 +102,7 @@ it('guards creation and Continue while the editor is open and recovers after fai
 	expect(session.isCreating.value).toBe(true);
 	pending.reject(new Error('Save failed'));
 	await first;
-	expect(session.error.value).toBe('create');
+	expect(session.error.value).toBeNull();
 	expect(session.isCreating.value).toBe(false);
 	expect(session.unresolvedCount.value).toBe(1);
 });
@@ -227,7 +227,7 @@ it.each([new Error('Offline'), new ResponseError('Forbidden', { httpStatusCode: 
 		await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
 		vi.mocked(continueApplyPromotion).mockRejectedValue(error);
 		await session.continueApply();
-		expect(session.error.value).toBe('continue');
+		expect(session.error.value).toEqual({ kind: 'continue', cause: error });
 		expect(session.savedResources.value).toEqual([savedCredential]);
 		expect(session.canContinue.value).toBe(true);
 		expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
