@@ -110,7 +110,7 @@ describe('EngineV2Module', () => {
 				graph: { nodes: [], edges: [] },
 				workflow: {},
 				executionId: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa',
-				callerContext: {},
+				callerContext: { hostMode: 'trigger' },
 			});
 
 			expect(client.startExecution).toHaveBeenCalled();
