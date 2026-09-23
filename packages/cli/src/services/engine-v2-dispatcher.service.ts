@@ -8,9 +8,10 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { classifyTriggerIdentity, isTriggerNodeType, UserError } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import { toWorkflowDocument } from '@/executions/execution-data/types';
-import { createExecutionIdV2 } from '@/executions/execution-id';
+import { createExecutionIdV2, isExecutionIdV2 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -82,7 +83,12 @@ export class EngineV2Dispatcher {
 		return workflowData.settings?.engineType === 'v2' && ROUTED_MODES.has(executionMode);
 	}
 
-	/** Returns the execution id this dispatch minted. */
+	/**
+	 * Returns the execution id this run uses.
+	 *
+	 * A caller that has to wait for the run's answer mints the id itself, so it
+	 * can subscribe before the run can produce one.
+	 */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
 		const trigger = this.resolveFiredTrigger(data);
 
@@ -98,7 +104,9 @@ export class EngineV2Dispatcher {
 
 		const graph = new V1WorkflowConverter().convert(workflowData, trigger.name);
 
-		const executionId = createExecutionIdV2();
+		const executionId = data.engineExecutionId ?? createExecutionIdV2();
+		// A caller that minted the id is waiting on that exact run.
+		assert(isExecutionIdV2(executionId), 'Engine 2.0 was given an id it cannot run');
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
 		this.registerPushSession(executionId, data, trigger);
 

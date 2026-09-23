@@ -178,6 +178,44 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'variable:delete',
 		],
 	},
+	credential: {
+		// Instance-wide credential access: what the role can do with credentials it is
+		// not a member of the project for. Project-level credential rights are granted
+		// per project via a project role and are untouched by this group.
+		//
+		// Each option is a strict superset of the one below it, which the editor's
+		// implied/downgrade arithmetic requires (see SUPERSEDED_BY in editor-ui's
+		// instanceRoleScopes).
+		//
+		// View sees every credential in Overview but cannot select one in a node, test
+		// it, or run it — `credential:use` is the separate rung for that.
+		//
+		// Manage also grants instance-wide plaintext decrypt, because decryption is
+		// gated on `credential:read` + `credential:update` (see the TODO about
+		// `credential:decrypt` in credentials.service.ee.ts). Hence the escalation
+		// warning on this group in the editor.
+		//
+		// Deliberately excluded from every option, so they stay Owner/Admin-only:
+		// `credential:shareGlobally` (makes a credential usable by every user on the
+		// instance), `credential:manageInstance` (a separate lane for provider
+		// connections that never reach workflows), `credential:createEndUser` (an
+		// owner-level *project* capability with no instance-wide meaning) and
+		// `credential:connect` (per-user, per-credential; globally it would attach the
+		// holder's own account to every end-user credential on the instance).
+		View: ['credential:list', 'credential:read'],
+		Use: ['credential:list', 'credential:read', 'credential:use'],
+		Manage: [
+			'credential:list',
+			'credential:read',
+			'credential:use',
+			'credential:create',
+			'credential:update',
+			'credential:delete',
+			'credential:move',
+			'credential:share',
+			'credential:unshare',
+		],
+	},
 	project: {
 		Create: ['project:create'],
 	},

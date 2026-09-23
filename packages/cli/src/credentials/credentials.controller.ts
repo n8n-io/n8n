@@ -495,10 +495,13 @@ export class CredentialsController {
 			throw new BadRequestError('Bad request');
 		}
 
+		// Read to compute the share diff; `credential:share` below is the real gate, so
+		// visibility is enough here.
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
 			['credential:read'],
+			{ visibilityOnly: true },
 		);
 
 		if (!credential) {

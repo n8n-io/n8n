@@ -8,21 +8,23 @@ describe('ADR convention files', () => {
 	const rootDir = path.resolve('/repo');
 
 	describe('findAdrFiles', () => {
-		it('finds and parses ADR files outside generated directories', async () => {
+		it('finds and parses ADR files and the template outside generated directories', async () => {
 			const validPath = path.join(rootDir, 'docs/adr/ADR-20260922-use-a-parser.md');
 			const invalidPath = path.join(rootDir, 'docs/adr/ADR-invalid.md');
+			const templatePath = path.join(rootDir, 'docs/ADR_TEMPLATE.md');
 			const sources = new Map([
 				[validPath, '# Use a parser\r\n'],
 				[invalidPath, '# Invalid name\n'],
+				[templatePath, '# <Decision title>\n'],
 			]);
 			const fileAccess: AdrFileAccess = {
-				glob: vi.fn(async () => [validPath, invalidPath]),
+				glob: vi.fn(async () => [validPath, invalidPath, templatePath]),
 				readFile: vi.fn((filePath: string) => sources.get(filePath) ?? ''),
 			};
 
 			const files = await findAdrFiles(rootDir, fileAccess);
 
-			expect(fileAccess.glob).toHaveBeenCalledWith('**/ADR-*.md', {
+			expect(fileAccess.glob).toHaveBeenCalledWith(['**/ADR-*.md', 'docs/ADR_TEMPLATE.md'], {
 				cwd: rootDir,
 				absolute: true,
 				onlyFiles: true,
@@ -37,7 +39,7 @@ describe('ADR convention files', () => {
 					'.git/**',
 				],
 			});
-			expect(files).toHaveLength(2);
+			expect(files).toHaveLength(3);
 			expect(files).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -49,6 +51,11 @@ describe('ADR convention files', () => {
 					}),
 					expect.objectContaining({
 						fileName: 'ADR-invalid.md',
+						fileId: undefined,
+					}),
+					expect.objectContaining({
+						fileName: 'ADR_TEMPLATE.md',
+						relativePath: 'docs/ADR_TEMPLATE.md',
 						fileId: undefined,
 					}),
 				]),

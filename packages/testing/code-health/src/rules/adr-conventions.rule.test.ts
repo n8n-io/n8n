@@ -27,8 +27,11 @@ function createFileAccess(rootDir: string): AdrFileAccess {
 	return {
 		glob: vi.fn(async (patterns) => {
 			const filePaths = [...testFiles.keys()];
-			if (typeof patterns === 'string') {
-				return filePaths.filter((filePath) => path.basename(filePath).startsWith('ADR-'));
+			if (Array.isArray(patterns) && patterns.includes('**/ADR-*.md')) {
+				return filePaths.filter((filePath) => {
+					const fileName = path.basename(filePath);
+					return fileName.startsWith('ADR-') || fileName === 'ADR_TEMPLATE.md';
+				});
 			}
 			return filePaths.filter(
 				(filePath) => filePath === path.join(rootDir, 'packages/engine/package.json'),
@@ -40,6 +43,47 @@ function createFileAccess(rootDir: string): AdrFileAccess {
 			return content;
 		}),
 	};
+}
+
+function validAdrTemplate(): string {
+	return `# <Decision title>
+
+Date: YYYY-MM-DD
+
+Status: <!-- Active / Superseded / Deprecated -->
+
+Decision Owner: <!-- Owning team -->
+
+Source: <!-- RFC, issue, project, incident, or other source -->
+
+Supersedes: <!-- Omit if not relevant -->
+
+Superseded by: <!-- Omit if not relevant -->
+
+## Context
+
+<!-- Explain the problem and the important constraints. -->
+
+## Decision
+
+<!-- State the decision clearly. -->
+
+## Alternatives Considered
+
+<!-- List the main alternatives. -->
+
+## Consequences
+
+<!-- List the important consequences. -->
+
+## Links
+
+RFC: <!-- RFC from which this originated. '-' if none -->
+
+Documentation: <!-- Links to documents related to this ADR. '-' if none -->
+
+Related ADRs: <!-- Links to related ADRs. '-' if none -->
+`;
 }
 
 function validAdr(
@@ -153,6 +197,26 @@ describe('AdrConventionsRule', () => {
 		} finally {
 			fs.rmSync(diskRoot, { recursive: true, force: true });
 		}
+	});
+
+	it('accepts the root ADR template', async () => {
+		addTestFile(tmpDir, 'docs/ADR_TEMPLATE.md', validAdrTemplate());
+
+		await expect(rule.analyze(context())).resolves.toEqual([]);
+	});
+
+	it('checks the root ADR template structure', async () => {
+		addTestFile(
+			tmpDir,
+			'docs/ADR_TEMPLATE.md',
+			validAdrTemplate().replace('## Consequences', '## Effects'),
+		);
+
+		const violations = await rule.analyze(context());
+
+		expect(violations.some((violation) => violation.message.includes('required H2 sections'))).toBe(
+			true,
+		);
 	});
 
 	it('discovers invalid locations, malformed names, and duplicate IDs on disk', async () => {
