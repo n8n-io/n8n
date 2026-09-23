@@ -5,7 +5,11 @@ import { DynamicStructuredTool, type Tool } from '@langchain/classic/tools';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, type BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
+import {
+	ChatPromptTemplate,
+	MessagesPlaceholder,
+	type BaseMessagePromptTemplateLike,
+} from '@langchain/core/prompts';
 import { isChatInstance } from '@n8n/ai-utilities';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -19,6 +23,7 @@ import type {
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
+import { injectToolResultImages, type ToolResultImageOptions } from '@utils/agent-execution';
 import { getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
@@ -64,6 +69,20 @@ function isPdfFile(mimeType: string): boolean {
 // Fallback used only when the AiConfig cannot be resolved from the DI container
 // (e.g. in unit tests). At runtime the configured value is authoritative.
 const DEFAULT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES = 50 * 1024 * 1024;
+
+/**
+ * The size cap (in bytes) above which a passed-through attachment is rejected
+ * instead of forwarded to the model. Shared by the `item.binary` passthrough
+ * path and the tool-result-image passthrough path below, since both attach
+ * base64 payloads to the same request and are equally subject to a provider's
+ * payload-size limit. Configurable via N8N_AI_AGENT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES.
+ */
+function getMaxPassthroughBinarySizeBytes(): number {
+	return (
+		Container.get(AiConfig)?.maxAgentPassthroughBinarySizeBytes ??
+		DEFAULT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES
+	);
+}
 
 type BinaryPassthroughOptions = {
 	passthroughBinaryImages?: boolean;
@@ -152,9 +171,7 @@ async function processBinaryForAgentPassthrough(
 	// documents cap the request payload, so we reject early with a clear message
 	// instead of surfacing an opaque provider-side error. The limit is
 	// configurable via N8N_AI_AGENT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES.
-	const maxSizeInBytes =
-		Container.get(AiConfig)?.maxAgentPassthroughBinarySizeBytes ??
-		DEFAULT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES;
+	const maxSizeInBytes = getMaxPassthroughBinarySizeBytes();
 	// Decode the base64 length exactly (Buffer.byteLength accounts for padding).
 	const sizeInBytes = Buffer.byteLength(base64Data, 'base64');
 	if (sizeInBytes > maxSizeInBytes) {
@@ -562,6 +579,31 @@ export async function getTools(
  * @param options - Options containing systemMessage and other parameters
  * @returns The array of prompt messages
  */
+/**
+ * Drop-in replacement for the plain `{agent_scratchpad}` placeholder tuple.
+ * Formats the scratchpad exactly like `MessagesPlaceholder` would, then
+ * post-processes the result with `injectToolResultImages` so that images
+ * returned by a tool call (e.g. an MCP tool's screenshot) reach the model as
+ * real image content instead of being serialized to useless base64 text.
+ *
+ * Only used when a node explicitly opts in via `passthroughToolResultImages`
+ * (see `prepareMessages` below) — every other agent keeps the original
+ * text-only scratchpad behavior unchanged.
+ */
+class ToolResultImagesPlaceholder extends MessagesPlaceholder {
+	constructor(
+		variableName: string,
+		private readonly imageOptions: ToolResultImageOptions,
+	) {
+		super(variableName);
+	}
+
+	async formatMessages(values: Record<string, unknown>): Promise<BaseMessage[]> {
+		const messages = await super.formatMessages(values);
+		return injectToolResultImages(messages, this.imageOptions);
+	}
+}
+
 export async function prepareMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
@@ -569,6 +611,12 @@ export async function prepareMessages(
 		systemMessage?: string;
 		passthroughBinaryImages?: boolean;
 		passthroughBinaryPdfs?: boolean;
+		// Opt-in: rewrite tool-result images (e.g. from an MCP tool call) into a
+		// synthetic HumanMessage so the model actually receives them, instead of
+		// the raw base64 that would otherwise reach it as unusable JSON text.
+		// Off by default — requires a vision-capable model, and changes how the
+		// agent_scratchpad is formatted.
+		passthroughToolResultImages?: boolean;
 		outputParser?: N8nOutputParser;
 		// The connected chat model, used to pick the right file content-block format.
 		model?: BaseChatModel;
@@ -609,7 +657,15 @@ export async function prepareMessages(
 
 	// We add the agent scratchpad last, so that the agent will not run in loops
 	// by adding binary messages between each interaction
-	messages.push(['placeholder', '{agent_scratchpad}']);
+	if (options.passthroughToolResultImages) {
+		messages.push(
+			new ToolResultImagesPlaceholder('agent_scratchpad', {
+				maxImageBytes: getMaxPassthroughBinarySizeBytes(),
+			}),
+		);
+	} else {
+		messages.push(['placeholder', '{agent_scratchpad}']);
+	}
 	return messages;
 }
 
