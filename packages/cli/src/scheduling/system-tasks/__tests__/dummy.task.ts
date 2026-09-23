@@ -1,5 +1,5 @@
 import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 @SystemTask()
 export class DummySystemTask implements SystemTask {
@@ -9,9 +9,7 @@ export class DummySystemTask implements SystemTask {
 
 	effects: SystemTaskEffects = 'idempotent';
 
-	durable = false;
-
-	runOnTakeover = false;
+	placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
 
 	retryDelaySeconds?: number;
 

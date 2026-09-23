@@ -139,7 +139,7 @@ export class SystemTaskRunner {
 			const inMemoryTasks = this.inMemoryTasks();
 			for (const routed of inMemoryTasks) {
 				routed.timer.start(from);
-				if (routed.task.runOnTakeover) {
+				if (routed.task.placement.runOnTakeover) {
 					void this.run(routed);
 				}
 			}
@@ -270,7 +270,7 @@ export class SystemTaskRunner {
 
 			if (this.timersStarted) {
 				routed.timer.start(new Date());
-				if (task.runOnTakeover) {
+				if (task.placement.runOnTakeover) {
 					void this.run(routed);
 				}
 			}
@@ -279,7 +279,7 @@ export class SystemTaskRunner {
 
 	private runsDurably(task: SystemTask): boolean {
 		return (
-			task.durable &&
+			task.placement.durable &&
 			this.globalConfig.scheduler.enabledForSystemTasks &&
 			this.durableScheduler.isActive()
 		);
@@ -355,7 +355,7 @@ export class SystemTaskRunner {
 
 	private async runOnce(routed: RoutedTask): Promise<void> {
 		const { task } = routed;
-		if (task.durable && (await this.jobRegistrar.isProvisioned(task.name))) {
+		if (task.placement.durable && (await this.jobRegistrar.isProvisioned(task.name))) {
 			this.logger.debug('Skipped an in-memory system task run, its durable job is provisioned', {
 				name: task.name,
 			});
