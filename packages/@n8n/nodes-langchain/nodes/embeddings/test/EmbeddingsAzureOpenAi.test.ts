@@ -129,6 +129,81 @@ describe('AzureOpenAIEmbeddings', () => {
 			expect(MockedAzureOpenAIEmbeddings).not.toHaveBeenCalled();
 		});
 
+		describe('with Entra ID', () => {
+			const entraCredential = {
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				accessTokenUrl: 'https://login.microsoftonline.com/tenant/oauth2/token',
+				authentication: 'body',
+				scope: '',
+				tenantId: 'tenant',
+			};
+
+			const selectEntra = (context: Mocked<ISupplyDataFunctions>) => {
+				context.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'authentication') return 'azureEntraCognitiveServicesOAuth2Api';
+					if (paramName === 'model') return 'text-embedding-3-large';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+			};
+
+			it('should pass a token provider to a classic deployment, and no API key', async () => {
+				const mockContext = setupMockContext();
+				mockContext.getCredentials.mockResolvedValue({
+					...entraCredential,
+					endpoint: 'https://test-resource-name.openai.azure.com',
+					apiVersion: 'v1',
+				});
+				selectEntra(mockContext);
+
+				await embeddingsAzureOpenAi.supplyData.call(mockContext, 0);
+
+				expect(MockedAzureOpenAIEmbeddings).toHaveBeenCalledWith(
+					expect.objectContaining({
+						azureADTokenProvider: expect.any(Function),
+						azureOpenAIApiKey: undefined,
+						azureOpenAIBasePath: 'https://test-resource-name.openai.azure.com/openai/deployments',
+					}),
+				);
+			});
+
+			// A function, not an awaited string: the client calls it per request, so a long run never
+			// sends a token that has since expired.
+			it('should pass a token provider as the Foundry apiKey, not a resolved string', async () => {
+				const mockContext = setupMockContext();
+				const MockedOpenAIEmbeddings = vi.mocked(OpenAIEmbeddings);
+				mockContext.getCredentials.mockResolvedValue({
+					...entraCredential,
+					endpointType: 'foundry',
+					foundryEndpoint: 'https://test.services.ai.azure.com/openai/v1',
+				});
+				selectEntra(mockContext);
+
+				await embeddingsAzureOpenAi.supplyData.call(mockContext, 0);
+
+				const config = MockedOpenAIEmbeddings.mock.calls[0][0];
+				expect(typeof config?.apiKey).toBe('function');
+				expect(MockedAzureOpenAIEmbeddings).not.toHaveBeenCalled();
+			});
+
+			it('should read the Entra credential, not the API key one', async () => {
+				const mockContext = setupMockContext();
+				mockContext.getCredentials.mockResolvedValue({
+					...entraCredential,
+					endpoint: 'https://test-resource-name.openai.azure.com',
+				});
+				selectEntra(mockContext);
+
+				await embeddingsAzureOpenAi.supplyData.call(mockContext, 0);
+
+				expect(mockContext.getCredentials).toHaveBeenCalledWith(
+					'azureEntraCognitiveServicesOAuth2Api',
+				);
+				expect(mockContext.getCredentials).not.toHaveBeenCalledWith('azureOpenAiApi');
+			});
+		});
+
 		it('should reject a Foundry credential that has no endpoint', async () => {
 			const mockContext = setupMockContext();
 
