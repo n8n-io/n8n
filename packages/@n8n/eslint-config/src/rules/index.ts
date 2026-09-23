@@ -32,6 +32,7 @@ import { NoUnsealedCredentialsEntityWriteRule } from './no-unsealed-credentials-
 import { RequireEscapedQueryValuesRule } from './require-escaped-query-values.js';
 import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
+import { NoRawEnumRule } from './no-raw-enum.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -67,4 +68,5 @@ export const rules = {
 	'require-escaped-query-values': RequireEscapedQueryValuesRule,
 	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
 	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
+	'no-raw-enum': NoRawEnumRule,
 } satisfies Record<string, AnyRuleModule>;

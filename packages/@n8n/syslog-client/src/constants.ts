@@ -1,4 +1,4 @@
-/* eslint-disable no-restricted-syntax */
+/* eslint-disable n8n-local-rules/no-raw-enum */
 /* We want the runtime overhead here */
 
 /**

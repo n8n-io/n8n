@@ -7,13 +7,6 @@
 		"rule id when one exists but we still do not enable it. `replacement` records",
 		"the intended migration path for each gap."
 	],
-	"no-restricted-syntax": {
-		"layer": "base",
-		"native": null,
-		"reason": "oxlint 1.78 has no AST-selector rule and no equivalent. It is an ESLint core rule, so a jsPlugin cannot host it either: `Rule 'no-restricted-syntax' not found in plugin 'eslint'`. base uses it for the raw-enum ban; editor-ui uses it for store-migration ratchets, and editor-ui keeps ESLint.",
-		"impact": "The const-enum ban is unenforced in migrated packages.",
-		"replacement": "Add a native selector rule, or replace each selector use with a purpose-built syntactic rule."
-	},
 	"no-octal": {
 		"layer": "base",
 		"native": null,
@@ -42,6 +35,13 @@
 		"impact": "Low at runtime. The direction that breaks DI stays guarded by no-type-only-import-in-di, and these packages leave `verbatimModuleSyntax` off, so TypeScript elides a type-only-used import at emit. The cost is drift from a clean baseline.",
 		"replacement": "Wait for the upstream emitDecoratorMetadata option, or use an approved shim that suppresses decorated files.",
 		"upstream": "https://github.com/oxc-project/oxc/issues/13609"
+	},
+	"frontend/no-restricted-syntax": {
+		"layer": "frontend",
+		"native": null,
+		"reason": "editor-ui uses package-specific AST selectors for workflow-store and modal-migration ratchets. The frontend keeps ESLint for these selectors.",
+		"impact": "None for the backend migration.",
+		"replacement": "Replace each selector with a focused rule before an Oxlint-only frontend migration."
 	},
 	"frontend/vue-template-rules": {
 		"layer": "frontend",

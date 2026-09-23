@@ -17,9 +17,8 @@
  *   local rules would read as missing. Those are read from the config objects
  *   instead, which is weaker: it describes what we declared, not what oxlint
  *   resolved. A fixture probe is the only way to prove they fire.
- * - `--print-config` resolves the config, not a file, so `overrides` do not
- *   appear. Both sides are therefore compared as a union across the package's
- *   sample files.
+ * - `--print-config` does not apply overrides to its top-level rule table. Both
+ *   sides are therefore compared as a union across the package's sample files.
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -126,7 +125,10 @@ function resolvedNativeRules() {
 		throw new Error(`oxlint --print-config failed: ${(out.stderr || out.stdout).trim()}`);
 	}
 	const parsed = JSON.parse(out.stdout.slice(start));
-	return Object.entries(parsed.rules ?? {})
+	return [
+		...Object.entries(parsed.rules ?? {}),
+		...(parsed.overrides ?? []).flatMap(({ rules }) => Object.entries(rules ?? {})),
+	]
 		.filter(([, severity]) => isEnabled(severity))
 		.map(([id]) => id);
 }
@@ -164,10 +166,8 @@ async function declaredJsPluginRules() {
 	return { ids, overrideOnly, plugins: [...plugins] };
 }
 
-// The test-file override is only comparable when a test file was sampled:
-// ESLint resolves its config per file, oxlint's --print-config does not resolve
-// overrides at all, so without a test sample there is nothing to compare and an
-// override-only rule would read as unrequested.
+// A JavaScript-plugin test override is only comparable when a test was sampled.
+// Without a test sample, an override-only rule would read as unrequested.
 const isTestSample = (key) => /(\.test\.ts|\/__tests__\/|^test\/)/.test(key.split('|')[1] ?? '');
 
 const native = oxlintRuleIds();
@@ -194,9 +194,7 @@ const { ids: jsPluginIds, overrideOnly, plugins } = await declaredJsPluginRules(
 const comparable = (id) => !overrideOnly.has(id) || sampledTestFile;
 
 const oxlintRules = new Set(
-	[...resolvedNativeRules(), ...jsPluginIds]
-		.filter(comparable)
-		.map((id) => canonical(id, native)),
+	[...resolvedNativeRules(), ...jsPluginIds].filter(comparable).map((id) => canonical(id, native)),
 );
 
 const matched = [];
@@ -225,7 +223,9 @@ const undocumented = missing.filter((entry) => !isDocumented(entry));
 console.log(`${pkgDir}: ${sampled} sample files, ${eslintRules.size} ESLint rules at error`);
 console.log(`  jsPlugins declared: ${plugins.join(', ') || 'none'}`);
 console.log(`  matched:            ${matched.length}`);
-console.log(`  missing in oxlint:  ${missing.length} (${missing.length - undocumented.length} documented)`);
+console.log(
+	`  missing in oxlint:  ${missing.length} (${missing.length - undocumented.length} documented)`,
+);
 console.log(`  extra in oxlint:    ${extra.length}`);
 
 for (const id of extra) console.log(`  EXTRA   ${id}`);

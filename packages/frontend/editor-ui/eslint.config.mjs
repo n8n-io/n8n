@@ -323,6 +323,12 @@ export default defineConfig(
 		},
 	},
 	{
+		files: ['src/features/agents/components/AgentPreviewDock.vue'],
+		rules: {
+			'n8n-local-rules/no-raw-enum': 'off',
+		},
+	},
+	{
 		files: ['src/features/agents/**/*.ts', 'src/features/agents/**/*.vue'],
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
