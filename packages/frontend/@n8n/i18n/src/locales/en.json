@@ -7367,6 +7367,8 @@
 	"instanceAi.preferenceCard.notConfirmed": "Preference not confirmed",
 	"instanceAi.preferenceCard.notConfirmedMessage": "The save was interrupted before n8n could confirm it. Open Manage preferences to see whether it was saved.",
 	"instanceAi.preferenceCard.appliesTo": "Applies to {scope}",
+	"instanceAi.preferenceCard.scope.project": "This project · {name}",
+	"instanceAi.preferenceCard.scope.projectFallback": "This project",
 	"instanceAi.preferenceCard.edit": "Edit",
 	"instanceAi.preferenceCard.manage": "Manage preferences",
 	"instanceAi.preferenceCard.modal.title": "Edit preference",

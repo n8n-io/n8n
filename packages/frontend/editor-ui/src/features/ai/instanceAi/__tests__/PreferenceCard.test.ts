@@ -5,6 +5,7 @@ import { screen, waitFor } from '@testing-library/vue';
 import type { InstanceAiEvent, InstanceAiToolCallState } from '@n8n/api-types';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import { STORES } from '@n8n/stores';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import PreferenceCard from '../components/PreferenceCard.vue';
@@ -42,7 +43,16 @@ function toolCall(overrides: Partial<InstanceAiToolCallState> = {}): InstanceAiT
 		toolName: 'save_user_preference',
 		args: {},
 		isLoading: false,
-		result: { ok: true, preference: { id: 'pref-1', content: STORED_TEXT, scope: 'user' } },
+		result: {
+			ok: true,
+			preference: {
+				id: 'pref-1',
+				content: STORED_TEXT,
+				scope: 'user',
+				userId: 'user-1',
+				projectId: null,
+			},
+		},
 		...overrides,
 	};
 }
@@ -63,10 +73,29 @@ const editedEvent: InstanceAiEvent = {
 	},
 };
 
+const projectsState = {
+	[STORES.PROJECTS]: {
+		myProjects: [
+			{
+				id: 'thread-project',
+				name: 'Marketing',
+				type: 'team',
+				scopes: ['projectAiPreference:create'],
+			},
+			{
+				id: 'personal-1',
+				name: 'Me <me@n8n.io>',
+				type: 'personal',
+				scopes: ['projectAiPreference:create'],
+			},
+		],
+	},
+};
+
 const thread = makeThread();
 const renderCard = createThreadComponentRenderer(
 	PreferenceCard,
-	{ pinia: createTestingPinia() },
+	{ pinia: createTestingPinia({ initialState: projectsState }) },
 	() => thread,
 );
 
@@ -151,11 +180,77 @@ describe('PreferenceCard', () => {
 	});
 
 	describe('the compact card', () => {
-		it('names the scope and links to the settings page', () => {
+		it('names "Just you" for a user-scoped row and links to the settings page', () => {
 			renderActive();
 
-			expect(screen.getByText(/instanceAi\.preferenceCard\.appliesTo/)).toBeInTheDocument();
+			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
+				'instanceAi.preferenceCard.appliesTo:{"scope":"settings.context.preferences.scope.user"}',
+			);
 			expect(screen.getByTestId('instance-ai-preference-card-manage')).toBeInTheDocument();
+		});
+
+		it('names the project once a fact moved the row into one', () => {
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'project',
+					projectId: 'thread-project',
+				},
+			});
+
+			// The mock's baseText renders `key:{json}`; the outer appliesTo call re-encodes
+			// this scope string as JSON, which escapes its quotes. Assert on the key and the
+			// interpolated name separately rather than on the brittle escaped literal.
+			const scope = screen.getByTestId('instance-ai-preference-card-scope');
+			expect(scope).toHaveTextContent('instanceAi.preferenceCard.scope.project');
+			expect(scope).toHaveTextContent('Marketing');
+		});
+
+		it('calls a personal project by its kind, not its email-shaped name', () => {
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'project',
+					projectId: 'personal-1',
+				},
+			});
+
+			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
+				'settings.context.preferences.scope.personalProject',
+			);
+		});
+
+		it('falls back to "This project" for a project the store does not know', () => {
+			// Review focus 5: an unknown project must not throw or show an id.
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'project',
+					projectId: 'gone',
+				},
+			});
+
+			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
+				'instanceAi.preferenceCard.scope.projectFallback',
+			);
+		});
+
+		it('names everyone on the instance after a move to instance scope', () => {
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'instance',
+					projectId: null,
+				},
+			});
+
+			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
+				'settings.context.preferences.scope.instance',
+			);
 		});
 
 		it('keeps "Manage preferences" and drops "Edit" in history', async () => {

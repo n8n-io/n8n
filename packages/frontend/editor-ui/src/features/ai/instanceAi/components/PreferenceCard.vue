@@ -13,8 +13,10 @@ import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 
 import { VIEWS } from '@/app/constants';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { resolvePreferenceCard, resolvePreferenceRejection } from '../preferenceCard.utils';
+import { preferenceScopeLabel } from '../preferenceScope.utils';
 import PreferenceEditModal from './PreferenceEditModal.vue';
 
 const props = defineProps<{
@@ -31,6 +33,13 @@ const card = computed(() => resolvePreferenceCard(props.toolCall));
 const rejection = computed(() => resolvePreferenceRejection(props.toolCall));
 // The call ended before it answered, so the row may or may not exist.
 const isUnconfirmed = computed(() => rejection.value?.reason === 'interrupted');
+
+const projectsStore = useProjectsStore();
+const scopeLabel = computed(() =>
+	card.value
+		? preferenceScopeLabel(i18n, card.value.scope, card.value.projectId, projectsStore.myProjects)
+		: '',
+);
 const isRemoved = computed(() => card.value?.state === 'undone');
 // Only the latest turn may correct a preference, and a removed one has nothing to correct.
 const isEditable = computed(() => card.value !== null && !props.readOnly && !isRemoved.value);
@@ -110,10 +119,10 @@ const modalOpen = ref(false);
 
 				<div v-else :class="$style.scope">
 					<N8nIcon icon="layers" size="small" />
-					<N8nText size="small" color="text-light">
+					<N8nText size="small" color="text-light" data-test-id="instance-ai-preference-card-scope">
 						{{
 							i18n.baseText('instanceAi.preferenceCard.appliesTo', {
-								interpolate: { scope: i18n.baseText('settings.context.preferences.scope.user') },
+								interpolate: { scope: scopeLabel },
 							})
 						}}
 					</N8nText>
