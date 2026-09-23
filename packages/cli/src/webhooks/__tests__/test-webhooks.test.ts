@@ -732,6 +732,12 @@ describe('TestWebhooks', () => {
 
 		describe('multi-main, webhook handled on a main that does not hold the pushRef', () => {
 			const pushRef = 'owner-session';
+			const originalIsMultiMain = (testWebhooks as any).instanceSettings.isMultiMain;
+
+			afterEach(() => {
+				(testWebhooks as any).instanceSettings.isMultiMain = originalIsMultiMain;
+				((testWebhooks as any).push.hasPushRef as Mock).mockReset();
+			});
 
 			const setup = (responseMode: string) => {
 				const expression = mock<WorkflowExpression>();
