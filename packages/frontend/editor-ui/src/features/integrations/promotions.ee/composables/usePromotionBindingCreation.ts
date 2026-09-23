@@ -21,7 +21,18 @@ import type {
 	CreatedPromotionBinding,
 	CreatedPromotionProject,
 	CreatePromotionBinding,
+	MissingPromotionBinding,
 } from '../promotions.types';
+
+type MissingCredentialBinding = Extract<MissingPromotionBinding, { kind: 'credential' }>;
+type MissingVariableBinding = Extract<MissingPromotionBinding, { kind: 'variable' }>;
+type EditorSetup = { destination?: ResourceEditorDestination; notice?: () => string };
+// Connects an open editor to its pending createBinding call.
+type EditorSession = {
+	checkActive: () => void;
+	save: (binding: CreatedPromotionBinding) => void;
+	fail: (error: unknown) => void;
+};
 
 export function usePromotionBindingCreation(
 	result: BlockedApplyResult,
@@ -82,56 +93,143 @@ export function usePromotionBindingCreation(
 		return project;
 	}
 
+	function bindingProject(binding: MissingPromotionBinding) {
+		if (binding.kind === 'credential') return binding.ownerProject;
+		return binding.scope.kind === 'project' ? binding.scope.project : undefined;
+	}
+
+	async function prepareDestination(project: { id: string } | undefined): Promise<EditorSetup> {
+		if (!project) return {};
+		const missing = preflight.missingProjects.find((item) => item.id === project.id);
+		if (!missing || knownProjectIds.has(project.id)) {
+			return { destination: { kind: 'resolved', project: await loadProject(project.id) } };
+		}
+		return {
+			destination: {
+				kind: 'pending',
+				id: project.id,
+				name: missing.name,
+				permissions: {
+					create: projectsStore.canCreateProjects && projectsStore.hasPermissionToCreateProjects,
+				},
+			},
+			notice: () => {
+				const created = createdProjects.value.get(project.id);
+				return i18n.baseText(
+					created
+						? 'promotions.bindings.projectSetup.retained'
+						: 'promotions.bindings.projectSetup.beforeSave',
+					{ interpolate: { projectName: created?.name ?? missing.name } },
+				);
+			},
+		};
+	}
+
+	async function assertEditorAvailable(binding: MissingPromotionBinding) {
+		if (binding.kind === 'credential') {
+			await credentialsStore.fetchCredentialTypes(false);
+			if (!credentialsStore.getCredentialTypeByName(binding.credentialType)) {
+				throw new Error(i18n.baseText('credentialEdit.typeUnavailable'));
+			}
+			return;
+		}
+		if (!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
+			throw new Error(i18n.baseText('promotions.bindings.variablesUnavailable'));
+		}
+		await environmentsStore.fetchAllVariables();
+	}
+
+	function openCredentialEditor(
+		binding: MissingCredentialBinding,
+		setup: EditorSetup,
+		session: EditorSession,
+	) {
+		uiStore.openNewCredential(
+			binding.credentialType,
+			false,
+			true,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			{
+				...setup,
+				initialName: binding.name,
+				initialData: binding.expressionData,
+				appendToBody: true,
+				hideAskAssistant: true,
+				usageScope: 'project',
+				onInitializeError: session.fail,
+				createCredential: async (details, projectId) => {
+					session.checkActive();
+					await ensureProject(projectId, 'credential');
+					session.checkActive();
+					const credential = await createPublicCredential(rootStore.publicApiContext, {
+						id: binding.sourceId,
+						name: details.name,
+						type: binding.credentialType,
+						data: details.data ?? {},
+						projectId,
+						isResolvable: false,
+					});
+					session.checkActive();
+					session.save({
+						kind: 'credential',
+						sourceId: binding.sourceId,
+						id: credential.id,
+						name: credential.name,
+						credentialType: credential.type,
+						projectId,
+					});
+					return credential.id;
+				},
+			},
+		);
+	}
+
+	function openVariableEditor(
+		binding: MissingVariableBinding,
+		setup: EditorSetup,
+		session: EditorSession,
+	) {
+		const project = bindingProject(binding);
+		const options: VariableModalOptions = {
+			...setup,
+			mode: 'new',
+			initialValues: { key: binding.name, value: '' },
+			fixedKey: true,
+			projectId: project?.id ?? null,
+			appendToBody: true,
+			onCreate: async (values) => {
+				session.checkActive();
+				if (project) await ensureProject(project.id, 'projectVariable');
+				session.checkActive();
+				const variable = await environmentsStore.createVariable({
+					key: binding.name,
+					value: values.value,
+					projectId: project?.id ?? null,
+				});
+				session.checkActive();
+				session.save({
+					kind: 'variable',
+					id: variable.id,
+					name: variable.key,
+					scope: variable.project
+						? { kind: 'project', project: variable.project }
+						: { kind: 'global' },
+				});
+				return variable;
+			},
+		};
+		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: options });
+	}
+
 	const createBinding: CreatePromotionBinding = async (binding) => {
 		if (active || disposed) throw new Error(i18n.baseText('promotions.bindings.editorBusy'));
 		active = true;
 		try {
-			const project =
-				binding.kind === 'credential'
-					? binding.ownerProject
-					: binding.scope.kind === 'project'
-						? binding.scope.project
-						: undefined;
-			let destination: ResourceEditorDestination | undefined;
-			let notice: (() => string) | undefined;
-			if (project) {
-				const missing = preflight.missingProjects.find((item) => item.id === project.id);
-				if (missing && !knownProjectIds.has(project.id)) {
-					destination = {
-						kind: 'pending',
-						id: project.id,
-						name: missing.name,
-						permissions: {
-							create:
-								projectsStore.canCreateProjects && projectsStore.hasPermissionToCreateProjects,
-						},
-					};
-					notice = () => {
-						const created = createdProjects.value.get(project.id);
-						return i18n.baseText(
-							created
-								? 'promotions.bindings.projectSetup.retained'
-								: 'promotions.bindings.projectSetup.beforeSave',
-							{
-								interpolate: { projectName: created?.name ?? missing.name },
-							},
-						);
-					};
-				} else {
-					destination = { kind: 'resolved', project: await loadProject(project.id) };
-				}
-			}
-			if (binding.kind === 'credential') {
-				await credentialsStore.fetchCredentialTypes(false);
-				if (!credentialsStore.getCredentialTypeByName(binding.credentialType)) {
-					throw new Error(i18n.baseText('credentialEdit.typeUnavailable'));
-				}
-			} else {
-				if (!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
-					throw new Error(i18n.baseText('promotions.bindings.variablesUnavailable'));
-				}
-				await environmentsStore.fetchAllVariables();
-			}
+			const setup = await prepareDestination(bindingProject(binding));
+			await assertEditorAvailable(binding);
 			if (disposed) return null;
 			const modalName =
 				binding.kind === 'credential' ? CREDENTIAL_EDIT_MODAL_KEY : VARIABLE_MODAL_KEY;
@@ -149,94 +247,27 @@ export function usePromotionBindingCreation(
 					if (error) reject(error);
 					else resolve(saved);
 				};
-				const checkActive = () => {
-					if (settled || disposed)
-						throw new Error(i18n.baseText('promotions.bindings.editorClosed'));
-				};
 				finish = () => {
 					settle();
 					uiStore.closeModal(modalName);
 				};
+				const session: EditorSession = {
+					checkActive: () => {
+						if (settled || disposed)
+							throw new Error(i18n.baseText('promotions.bindings.editorClosed'));
+					},
+					save: (value) => {
+						saved = value;
+					},
+					fail: (error) => {
+						if (settled || disposed) return;
+						settle(error);
+						uiStore.closeModal(modalName);
+					},
+				};
 				try {
-					if (binding.kind === 'credential') {
-						uiStore.openNewCredential(
-							binding.credentialType,
-							false,
-							true,
-							undefined,
-							undefined,
-							undefined,
-							undefined,
-							{
-								destination,
-								notice,
-								initialName: binding.name,
-								initialData: binding.expressionData,
-								appendToBody: true,
-								hideAskAssistant: true,
-								usageScope: 'project',
-								onInitializeError: (error) => {
-									if (settled || disposed) return;
-									settle(error);
-									uiStore.closeModal(modalName);
-								},
-								createCredential: async (details, projectId) => {
-									checkActive();
-									await ensureProject(projectId, 'credential');
-									checkActive();
-									const credential = await createPublicCredential(rootStore.publicApiContext, {
-										id: binding.sourceId,
-										name: details.name,
-										type: binding.credentialType,
-										data: details.data ?? {},
-										projectId,
-										isResolvable: false,
-									});
-									checkActive();
-									saved = {
-										kind: 'credential',
-										sourceId: binding.sourceId,
-										id: credential.id,
-										name: credential.name,
-										credentialType: credential.type,
-										projectId,
-									};
-									return credential.id;
-								},
-							},
-						);
-					} else {
-						const options: VariableModalOptions = {
-							mode: 'new',
-							initialValues: { key: binding.name, value: '' },
-							fixedKey: true,
-							projectId: project?.id ?? null,
-							destination,
-							notice,
-							appendToBody: true,
-							onCreate: async (values) => {
-								checkActive();
-								if (project) await ensureProject(project.id, 'projectVariable');
-								checkActive();
-								const variable = await environmentsStore.createVariable({
-									key: binding.name,
-									value: values.value,
-									projectId: project?.id ?? null,
-								});
-								checkActive();
-								saved = {
-									kind: 'variable',
-									id: variable.id,
-									name: variable.key,
-									scope: variable.project
-										? { kind: 'project', project: variable.project }
-										: { kind: 'global' },
-								};
-								return variable;
-							},
-						};
-						uiStore.openModalWithData({ name: modalName, data: options });
-					}
+					if (binding.kind === 'credential') openCredentialEditor(binding, setup, session);
+					else openVariableEditor(binding, setup, session);
 					stopWatching = watch(
 						() => uiStore.modalsById[modalName]?.open,
 						(open) => {
@@ -248,7 +279,7 @@ export function usePromotionBindingCreation(
 				}
 			});
 		} catch (error) {
-			toast.showError(error, i18n.baseText('promotions.bindings.error.create'));
+			toast.showError(error, i18n.baseText('promotions.bindings.error.setup'));
 			throw error;
 		} finally {
 			active = false;

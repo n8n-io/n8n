@@ -218,7 +218,7 @@ async function onApplyAll() {
 		// A changed source needs a fresh review.
 		toast.showMessage({
 			title: i18n.baseText('promotions.modal.incoming.paused.title'),
-			message: i18n.baseText(`promotions.modal.incoming.paused.${result.status}`),
+			message: i18n.baseText('promotions.modal.incoming.paused.source-changed'),
 			type: 'warning',
 		});
 	} catch (applyError) {
