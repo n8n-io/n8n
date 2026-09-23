@@ -237,6 +237,13 @@ const setupPanelProjectId = computed(() =>
 		: undefined,
 );
 const setupOverlapHeight = ref(0);
+const setupPanelRef = useTemplateRef<InstanceType<typeof InstanceAiSetupPanel>>('setupPanel');
+onUnmounted(
+	thread.registerSetupChatTelemetryContext(() => {
+		const context = setupPanelRef.value?.getChatTelemetryContext();
+		return context?.workflow_id === setupPanelWorkflowId.value ? context : undefined;
+	}),
+);
 
 const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
 const agentReturnWorkflowId = agentReturnContext?.workflowId;
@@ -841,6 +848,7 @@ function handleNewThreadClick() {
 					<template #above-input>
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
+							ref="setupPanel"
 							:workflow-id="setupPanelWorkflowId"
 							:project-id="setupPanelProjectId"
 							@update:overlap-height="setupOverlapHeight = $event"

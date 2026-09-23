@@ -12,6 +12,11 @@ import {
 
 import { Agent } from '../entities/agent.entity';
 
+export interface AgentListResult {
+	count: number;
+	data: Agent[];
+}
+
 export type AgentSummary = Pick<
 	Agent,
 	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
@@ -86,7 +91,7 @@ export class AgentRepository extends Repository<Agent> {
 		projectIds: string[] | null,
 		options: ListAgentsQueryDto,
 		{ withProject = false }: { withProject?: boolean } = {},
-	): Promise<{ count: number; data: Agent[] }> {
+	): Promise<AgentListResult> {
 		if (projectIds?.length === 0) return { count: 0, data: [] };
 
 		const query = this.createQueryBuilder('agent').leftJoinAndSelect(

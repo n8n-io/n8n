@@ -8,4 +8,14 @@ export class AgentResourceRepository extends Repository<AgentResourceEntity> {
 	constructor(dataSource: DataSource) {
 		super(AgentResourceEntity, dataSource.manager);
 	}
+
+	async ensureExists(resourceId: string): Promise<void> {
+		// Concurrent callers can create the same resource. Keep the first row.
+		await this.createQueryBuilder()
+			.insert()
+			.into(AgentResourceEntity)
+			.values({ id: resourceId, metadata: null })
+			.orIgnore()
+			.execute();
+	}
 }

@@ -68,7 +68,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		graph,
 		workflow: {},
 		triggerOutputs: null,
-		callerContext: {},
+		callerContext: { hostMode: 'trigger' },
 		...overrides,
 	};
 	return {
@@ -153,7 +153,7 @@ describe('StepReadyHandler', () => {
 				workflowId: 'wf-1',
 				mode: 'production',
 				iteration: 0,
-				callerContext: {},
+				callerContext: { hostMode: 'trigger' },
 			},
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);

@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
 import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { McpRegistryService } from './registry/mcp-registry.service';
 
@@ -21,11 +21,13 @@ export class McpRegistryRefreshTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
-
-	// Only the leader polls the remote registry, so a new leader may be
-	// running on outdated data until this runs.
-	readonly runOnTakeover = true;
+	readonly placement: SystemTaskPlacement = {
+		scope: 'cluster',
+		durable: false,
+		// Only the leader polls the remote registry, so a new leader may be
+		// running on outdated data until this runs.
+		runOnTakeover: true,
+	};
 
 	constructor(private readonly mcpRegistryService: McpRegistryService) {}
 

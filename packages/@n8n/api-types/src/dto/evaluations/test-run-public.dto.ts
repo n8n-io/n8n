@@ -4,6 +4,8 @@ import { z } from 'zod';
 
 import {
 	listTestRunsQueryFieldDocs,
+	testCaseExecutionFieldDocs,
+	testCaseExecutionListFieldDocs,
 	testRunFieldDocs,
 	testRunListFieldDocs,
 } from './test-run-public.openapi';
@@ -53,6 +55,52 @@ export class CreatedTestRunPublicDto extends Z.class({
 	id: z.string().openapi(testRunFieldDocs.id),
 	status: testRunStatusSchema,
 	createdAt: z.string().datetime(),
+}) {}
+
+export const testCaseExecutionStatusSchema = z.enum([
+	'new',
+	'running',
+	'evaluation_running',
+	'success',
+	'error',
+	'warning',
+	'cancelled',
+]);
+export type TestCaseExecutionStatusPublic = z.infer<typeof testCaseExecutionStatusSchema>;
+
+export const testCaseExecutionPublicSchema = z.object({
+	id: z.string().openapi(testCaseExecutionFieldDocs.id),
+	status: testCaseExecutionStatusSchema,
+	runAt: z.string().datetime().nullable(),
+	completedAt: z.string().datetime().nullable(),
+	metrics: nullableObjectGuardSchema<Record<string, number | boolean>>().openapi(
+		testCaseExecutionFieldDocs.metrics,
+	),
+	errorCode: z.string().nullable(),
+	errorDetails: nullableObjectGuardSchema<Record<string, unknown>>().openapi(
+		testCaseExecutionFieldDocs.errorDetails,
+	),
+	inputs: nullableObjectGuardSchema<Record<string, unknown>>().openapi(
+		testCaseExecutionFieldDocs.inputs,
+	),
+	outputs: nullableObjectGuardSchema<Record<string, unknown>>().openapi(
+		testCaseExecutionFieldDocs.outputs,
+	),
+	executionId: z.number().int().nullable().openapi(testCaseExecutionFieldDocs.executionId),
+});
+
+export type TestCaseExecutionPublic = z.infer<typeof testCaseExecutionPublicSchema>;
+
+export class TestCaseExecutionPublicDto extends Z.class(testCaseExecutionPublicSchema.shape) {}
+
+export class TestCaseExecutionListPublicDto extends Z.class({
+	data: z.array(testCaseExecutionPublicSchema),
+	nextCursor: z.string().nullable().openapi(testCaseExecutionListFieldDocs.nextCursor),
+}) {}
+
+export class ListTestCasesQueryPublicDto extends Z.class({
+	limit: publicApiPaginationSchema.limit,
+	cursor: z.string().optional(),
 }) {}
 
 export class CancelledTestRunPublicDto extends Z.class({

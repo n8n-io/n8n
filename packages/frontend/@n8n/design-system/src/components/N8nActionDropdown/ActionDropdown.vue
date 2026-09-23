@@ -158,7 +158,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 						:class="{ [$style.clickableBadge]: !!slotProps.item.data?.disabled }"
 						@click.stop="slotProps.item.data?.disabled && onBadgeClick(slotProps.item.id)"
 					>
-						<N8nBadge theme="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
+						<N8nBadge variant="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
 							{{ slotProps.item.data.badge }}
 						</N8nBadge>
 					</span>

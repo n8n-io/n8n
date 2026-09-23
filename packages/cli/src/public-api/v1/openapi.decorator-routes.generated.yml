@@ -32,6 +32,12 @@ paths:
       $ref: ./handlers/workflows/spec/paths/getTestRuns.generated.yml
     post:
       $ref: ./handlers/workflows/spec/paths/createTestRun.generated.yml
+  /workflows/{workflowId}/test-runs/{runId}:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getTestRun.generated.yml
+  /workflows/{workflowId}/test-runs/{runId}/test-cases:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getTestCases.generated.yml
   /workflows/{workflowId}/test-runs/{runId}/cancel:
     post:
       $ref: ./handlers/workflows/spec/paths/cancelTestRun.generated.yml
@@ -60,6 +66,8 @@ paths:
   /projects/{projectId}/folders:
     get:
       $ref: ./handlers/projects/spec/paths/listFolders.generated.yml
+    post:
+      $ref: ./handlers/projects/spec/paths/createFolder.generated.yml
   /projects/{projectId}/folders/{folderId}:
     get:
       $ref: ./handlers/projects/spec/paths/getFolder.generated.yml

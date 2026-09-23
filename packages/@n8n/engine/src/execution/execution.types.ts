@@ -25,7 +25,7 @@ export interface CallerContext {
 	 * The host's own execution mode, which is finer than `ExecutionMode`. Opaque
 	 * to the engine; a v1 host stores its `WorkflowExecuteMode` here.
 	 */
-	hostMode?: string;
+	hostMode: string;
 }
 
 /**

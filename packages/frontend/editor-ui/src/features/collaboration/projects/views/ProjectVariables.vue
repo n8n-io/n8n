@@ -405,7 +405,7 @@ onMounted(() => {
 					<template v-if="data.value">
 						<span v-n8n-truncate:20="data.value" />
 					</template>
-					<N8nBadge v-else theme="warning"> Value missing </N8nBadge>
+					<N8nBadge v-else variant="warning"> Value missing </N8nBadge>
 				</td>
 				<td>
 					<VariablesUsageBadge v-if="data.key" :name="data.key" />

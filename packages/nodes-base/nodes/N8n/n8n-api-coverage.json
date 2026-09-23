@@ -196,13 +196,13 @@
 		"POST /workflows/{workflowId}/test-runs": {
 			"status": "gap"
 		},
-		"GET /workflows/{id}/test-runs/{runId}": {
+		"GET /workflows/{workflowId}/test-runs/{runId}": {
 			"status": "gap"
 		},
 		"POST /workflows/{workflowId}/test-runs/{runId}/cancel": {
 			"status": "gap"
 		},
-		"GET /workflows/{id}/test-runs/{runId}/test-cases": {
+		"GET /workflows/{workflowId}/test-runs/{runId}/test-cases": {
 			"status": "gap"
 		},
 		"GET /users": {

@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
+import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -416,11 +417,20 @@ async function handleRun(
 	}
 
 	// Approved or always_allow — execute
-	return await context.executionService.run(workflowId, input.inputData, {
+	const result = await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
 		triggerNodeName: input.triggerNodeName,
 		abortSignal,
 	});
+	// A live test is the evidence verification cannot produce itself. Record it
+	// so the publish gate stops disclosing simulations that this run replaced.
+	const verificationClaim = await recordLiveRunVerification({
+		context,
+		workflowId,
+		triggerNodeName: input.triggerNodeName,
+		result,
+	});
+	return verificationClaim ? { ...result, verificationClaim } : result;
 }
 
 /**

@@ -5,8 +5,8 @@ import { I18nT } from 'vue-i18n';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 import {
 	INSTANCE_SCOPE_GROUP_LIST,
-	SUPERSEDED_BY,
 	getEscalationWarningKey,
+	impliedByOption,
 	isOptionImplied,
 	isOptionMandatory,
 	mandatoryOptionTooltipKey,
@@ -40,9 +40,7 @@ function optionTestId(resource: string, option: InstanceScopeOption): string {
 }
 
 function impliedTooltip(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]): string {
-	const supersededByKey = SUPERSEDED_BY[option.key];
-	if (!supersededByKey) return '';
-	const superseding = groupOptions.find((o) => o.key === supersededByKey);
+	const superseding = impliedByOption(option, groupOptions, props.modelValue);
 	if (!superseding) return '';
 	return i18n.baseText('instanceRoles.option.includedIn', {
 		interpolate: { option: i18n.baseText(superseding.labelKey) },

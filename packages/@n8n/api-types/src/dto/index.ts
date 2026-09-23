@@ -34,6 +34,10 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export {
+	InstanceAiPreferenceCardUndoRequestDto,
+	InstanceAiPreferenceCardEditRequestDto,
+} from './instance-ai/instance-ai-preference-card-request.dto';
 export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
 export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';
 
@@ -157,6 +161,7 @@ export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dt
 export {
 	AiPreferenceListQueryDto,
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
+	AI_PREFERENCES_MAX_IDS_FILTER,
 	AI_PREFERENCES_MAX_PAGE_SIZE,
 } from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
@@ -269,14 +274,17 @@ export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
 export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 export {
+	CreateFolderPublicDto,
+	CreatedFolderPublicDto,
 	DeleteFolderQueryPublicDto,
+	FolderDetailsPublicDto,
 	FolderListPublicDto,
 	FolderPublicDto,
-	FolderDetailsPublicDto,
 	ListFoldersQueryPublicDto,
-	folderPublicSchema,
 	UpdateFolderPublicDto,
 	UpdatedFolderPublicDto,
+	folderProjectIdParamSchema,
+	folderPublicSchema,
 } from './folders/folder-public.dto';
 export type { FolderPublic } from './folders/folder-public.dto';
 

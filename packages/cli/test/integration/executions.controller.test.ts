@@ -283,6 +283,7 @@ describe('GET /executions/:id', () => {
 			workflowId,
 			status: 'completed',
 			mode: 'manual',
+			hostMode: 'manual',
 			graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [] },
 			workflow: ranWorkflow(workflowId),
 			createdAt: '2026-08-25T10:00:00.000Z',
