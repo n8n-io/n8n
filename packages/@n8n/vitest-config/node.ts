@@ -7,6 +7,8 @@ import type { InlineConfig } from 'vitest/node';
 import { coverageExcludes } from './coverage-excludes.js';
 import { profilingConfig, profilingReporters } from './profiling.js';
 
+export { profilingReporters } from './profiling.js';
+
 /**
  * Pin dual-build (ESM+CJS) deps to their CJS entry so a single class identity is shared
  * across test/source (which ESM-import the dep) and externalized workspace dist (which

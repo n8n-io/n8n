@@ -197,6 +197,7 @@ function nodeProfileArgs(profileKinds, profileDir, target) {
 function vitestArgs(testCase, options) {
 	return [
 		...(options.file ? [options.file] : []),
+		...(options.directTask?.args.includes('--passWithNoTests') ? [] : ['--passWithNoTests']),
 		`--shard=${testCase.index}/${testCase.shards}`,
 		`--maxWorkers=${options.workers}`,
 		...(options.profileKinds.includes('imports') ? ['--experimental.importDurations.print'] : []),
@@ -216,13 +217,8 @@ function directTask(packageDir, task) {
 		fail(`cannot reproduce the environment of ${task} in direct mode; use --runner turbo`);
 	}
 	const args = tokens.slice(vitestIndex + 2);
-	if (
-		args.some(
-			(token, index) =>
-				!token.startsWith('--config=') && token !== '--config' && args[index - 1] !== '--config',
-		)
-	) {
-		fail(`cannot reproduce the arguments of ${task} in direct mode; use --runner turbo`);
+	if (args.some((token) => /^--(?:shard|maxWorkers|coverage)(?:[.=]|$)/.test(token))) {
+		fail(`--task ${task} sets a profiler-owned Vitest flag; use --runner turbo`);
 	}
 	return {
 		args,
@@ -305,7 +301,7 @@ function prepareBuild(options) {
 
 	return new Promise((resolvePrepare, rejectPrepare) => {
 		child.once('error', rejectPrepare);
-		child.once('exit', (exitCode, signal) => {
+		child.once('close', (exitCode, signal) => {
 			logStream.end();
 			const result = {
 				skipped: false,
@@ -389,7 +385,7 @@ async function runCase(testCase, options) {
 		child.once('error', (error) =>
 			resolveOutcome({ exitCode: null, signal: null, error: error.message }),
 		);
-		child.once('exit', (exitCode, signal) => resolveOutcome({ exitCode, signal }));
+		child.once('close', (exitCode, signal) => resolveOutcome({ exitCode, signal }));
 	});
 	clearInterval(sampler);
 	await sample();
