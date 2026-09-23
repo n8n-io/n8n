@@ -1359,6 +1359,65 @@ describe('CredentialEdit', () => {
 			return { credentialsStore, uiStore, ...renderResult };
 		};
 
+		test('retries loading a saved credential without creating it again', async () => {
+			const credentialType: ICredentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			};
+			const createCredential = vi.fn().mockResolvedValue('source-id');
+			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, {
+				initialName: 'Source name',
+				createCredential,
+				notice: () => 'Saving creates Source project.',
+				destination: {
+					kind: 'pending',
+					id: 'source-project',
+					name: 'Source project',
+					permissions: { create: true },
+				},
+			});
+			credentialsStore.getCredentialData.mockRejectedValueOnce(new Error('Load failed'));
+			const saved = createCredentialResponse({
+				id: 'source-id',
+				name: 'Source name',
+				type: 'testApi',
+				scopes: ['credential:update'],
+			});
+			credentialsStore.getCredentialData.mockResolvedValue(saved);
+			credentialsStore.updateCredential.mockResolvedValue(saved);
+			const { getByTestId, findByRole, queryByText } = renderComponent({
+				props: { activeId: 'testApi', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				pinia,
+			});
+			const save = await findByRole('button', { name: 'Save' });
+			expect(queryByText('Saving creates Source project.')).toBeInTheDocument();
+			await userEvent.click(save);
+			const retryLoad = await findByRole('button', { name: 'Retry' });
+			expect(createCredential).toHaveBeenCalledTimes(1);
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
+			expect(save).toBeDisabled();
+			await userEvent.click(retryLoad);
+			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalledTimes(2));
+			expect(credentialsStore.getCredentialData).toHaveBeenLastCalledWith({ id: 'source-id' });
+			expect(createCredential).toHaveBeenCalledTimes(1);
+			expect(credentialsStore.createNewCredential).not.toHaveBeenCalled();
+			expect(queryByText('Sharing')).not.toBeInTheDocument();
+			const name = getByTestId('credential-name');
+			await userEvent.click(name);
+			const input = name.querySelector('input');
+			if (!input) throw new Error('Name input not found');
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Updated name{Enter}');
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+			await waitFor(() =>
+				expect(credentialsStore.updateCredential).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'source-id' }),
+				),
+			);
+			expect(createCredential).toHaveBeenCalledTimes(1);
+		});
+
 		test('closes the modal after saving credentials that cannot be tested when closeOnSave is enabled', async () => {
 			const credentialType = {
 				name: 'testApi',

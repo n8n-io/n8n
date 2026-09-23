@@ -1,3 +1,4 @@
+import type { Schema } from 'jsonschema';
 import type {
 	AddDataTableColumnDto,
 	AddDataTableRowsDto,
@@ -124,7 +125,7 @@ export interface IDependency {
 export interface IJsonSchema {
 	additionalProperties: false;
 	type: 'object';
-	properties: { [key: string]: { type: string } };
+	properties: { [key: string]: Schema };
 	allOf?: IDependency[];
 	required: string[];
 }

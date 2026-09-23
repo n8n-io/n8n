@@ -8910,5 +8910,13 @@
 	"promotions.modal.incoming.paused.title": "Apply paused",
 	"promotions.modal.incoming.paused.blocked": "Some credentials or variables are not set up on this instance yet. Nothing was changed.",
 	"promotions.modal.incoming.paused.source-changed": "The source changed since this preview. Refresh and review the changes again.",
-	"promotions.applied.projectRemoved": "Apply removed this project from the instance."
+	"promotions.applied.projectRemoved": "Apply removed this project from the instance.",
+	"promotions.bindings.projectSetup.beforeSave": "Saving creates the project {projectName}. It stays even if this item can't be saved.",
+	"promotions.bindings.projectSetup.retained": "Created project {projectName}. It stays when you close this dialog.",
+	"promotions.bindings.variablesUnavailable": "Variables aren't available on this plan. Upgrade your plan to create this variable.",
+	"promotions.bindings.destinationDenied": "You can't create this item in the destination project. Ask a project admin for access.",
+	"promotions.bindings.editorBusy": "Another editor is open. Close it and try again.",
+	"promotions.bindings.editorClosed": "The editor closed. Open it again to continue.",
+	"credentialEdit.typeUnavailable": "This credential type isn't available. Install it and try again.",
+	"credentialEdit.savedLoadFailed": "The credential was saved, but its details couldn't be loaded. Retry to continue editing."
 }

@@ -76,6 +76,14 @@ function preventBusyDismissal(event: Event) {
 	if (isBusy.value) event.preventDefault();
 }
 
+function preventEscapeDismissal(event: KeyboardEvent) {
+	// An editor can close before this event reaches the parent dialog.
+	const dialog = title.value?.closest('[role="dialog"]');
+	if (isBusy.value || !(event.target instanceof Node) || !dialog?.contains(event.target)) {
+		event.preventDefault();
+	}
+}
+
 function focusTitle(event: Event) {
 	event.preventDefault();
 	void nextTick(() => title.value?.focus());
@@ -131,9 +139,10 @@ async function continueApply() {
 		size="fit"
 		:show-close-button="!isBusy"
 		:trap-focus="!isCreating"
+		:disable-outside-pointer-events="!isCreating"
 		@open-auto-focus="focusTitle"
 		@update:open="close"
-		@escape-key-down="preventBusyDismissal"
+		@escape-key-down="preventEscapeDismissal"
 		@interact-outside="preventBusyDismissal"
 	>
 		<form :class="$style.form" @submit.prevent="continueApply">
@@ -160,6 +169,7 @@ async function continueApply() {
 				</div>
 			</header>
 			<div :class="$style.body" data-test-id="promotion-bindings-body">
+				<slot name="notices" />
 				<p :class="$style.description">{{ i18n.baseText('promotions.bindings.description') }}</p>
 				<N8nCallout v-if="sourceChanged" theme="warning">
 					{{ i18n.baseText('promotions.bindings.sourceChanged') }}

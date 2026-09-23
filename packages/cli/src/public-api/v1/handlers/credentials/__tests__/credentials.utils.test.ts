@@ -142,6 +142,43 @@ describe('credentials.utils', () => {
 			).not.toThrow();
 		});
 
+		it('does not require a field that has a default value', () => {
+			const credentialsHelper = credentialsHelperWithProperties([
+				{ name: 'host', type: 'string', required: true, displayName: 'Host', default: '' },
+				{ name: 'port', type: 'number', required: true, displayName: 'Port', default: 21 },
+			]);
+
+			expect(() =>
+				validateCredentialData(credentialsHelper, 'someType', { host: 'ftp.example.com' }),
+			).not.toThrow();
+			expect(() => validateCredentialData(credentialsHelper, 'someType', { port: 21 })).toThrow(
+				/request\.body\.data/,
+			);
+		});
+
+		it('accepts an expression string in a non-string field', () => {
+			const credentialsHelper = credentialsHelperWithProperties([
+				{ name: 'port', type: 'number', displayName: 'Port', default: 21 },
+				{
+					name: 'mode',
+					type: 'options',
+					options: [{ value: 'a', name: 'A' }],
+					displayName: 'Mode',
+					default: 'a',
+				},
+			]);
+
+			expect(() =>
+				validateCredentialData(credentialsHelper, 'someType', {
+					port: '={{ $vars.PORT }}',
+					mode: '={{ $vars.MODE }}',
+				}),
+			).not.toThrow();
+			expect(() =>
+				validateCredentialData(credentialsHelper, 'someType', { port: 'twenty-one' }),
+			).toThrow(/request\.body\.data/);
+		});
+
 		it('enforces conditionally-required fields when partialData is not set', () => {
 			const credentialsHelper = credentialsHelperWithProperties(CONDITIONAL_PROPERTIES);
 
@@ -300,8 +337,10 @@ describe('credentials.utils', () => {
 			const props = schema.properties as IDataObject;
 			expect(props).toBeDefined();
 			expect(props.keyType).toEqual({
-				type: 'string',
-				enum: ['passphrase', 'pemKey'],
+				anyOf: [
+					{ type: 'string', enum: ['passphrase', 'pemKey'] },
+					{ type: 'string', pattern: '^=' },
+				],
 			});
 
 			expect(schema.required).not.toContain('secret');
@@ -411,7 +450,7 @@ describe('credentials.utils', () => {
 
 			const schema = toJsonSchema(properties);
 
-			expect(schema.required).toEqual(expect.arrayContaining(['apiKey', 'authType']));
+			expect(schema.required).toEqual(['apiKey']);
 			expect(schema.required).not.toContain('username');
 			expect(schema.required).not.toContain('password');
 			expect(schema.required).not.toContain('clientId');
@@ -527,12 +566,14 @@ describe('credentials.utils', () => {
 			expect(props).toBeDefined();
 			expect(props.field1).toEqual({ type: 'string' });
 			expect(props.field2).toEqual({
-				type: 'string',
-				enum: ['opt1', 'opt2'],
+				anyOf: [
+					{ type: 'string', enum: ['opt1', 'opt2'] },
+					{ type: 'string', pattern: '^=' },
+				],
 			});
 			expect(props.field3).toEqual({ type: 'string' });
 
-			expect(schema.required).toEqual(expect.arrayContaining(['field1', 'field2']));
+			expect(schema.required).toEqual(['field1']);
 			expect(schema.required).not.toContain('field3');
 
 			const allOf = schema.allOf as GenericValue[] | IDataObject[];

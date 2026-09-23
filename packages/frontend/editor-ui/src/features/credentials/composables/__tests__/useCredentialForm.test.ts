@@ -1,3 +1,6 @@
+import { mock } from 'vitest-mock-extended';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -173,6 +176,65 @@ describe('useCredentialForm', () => {
 	});
 
 	describe('initialize', () => {
+		it('copies initial expressions and keeps the exact name', async () => {
+			const initialData = { user: '={{ $vars.USER }}', nested: { values: ['={{ $vars.KEY }}'] } };
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'httpBasicAuth',
+				initialName: 'Source name',
+				initialData,
+			});
+			await form.initialize();
+			expect(form.credentialName.value).toBe('Source name');
+			expect(form.credentialData.value).toMatchObject({ ...initialData, password: '' });
+			expect(form.credentialData.value.nested).not.toBe(initialData.nested);
+			form.onDataChange({ name: 'nested.values[0]', value: 'edited' });
+			expect(initialData.nested.values[0]).toBe('={{ $vars.KEY }}');
+			form.setCredentialPropertyDefaults();
+			expect(form.credentialData.value.nested).toEqual({ values: ['edited'] });
+			expect(credentialsStore.getNewCredentialName).not.toHaveBeenCalled();
+			expect(credentialsStore.getDedupedCredentialName).not.toHaveBeenCalled();
+		});
+
+		it('uses pending create permission until the real project loads', () => {
+			const projects = mockedStore(useProjectsStore);
+			projects.currentProject = mock<Project>({
+				id: 'active-project',
+				scopes: ['credential:create'],
+			});
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'httpBasicAuth',
+				destination: {
+					kind: 'pending',
+					id: 'source-project',
+					name: 'Source project',
+					permissions: { create: true },
+				},
+			});
+			expect(form.homeProject.value).toBeUndefined();
+			expect(form.credentialPermissions.value.create).toBe(true);
+			expect(form.credentialPermissions.value.update).toBeFalsy();
+			expect(form.credentialPermissions.value.share).toBeFalsy();
+			projects.myProjects = [mock<ProjectListItem>({ id: 'source-project', scopes: [] })];
+			expect(form.homeProject.value?.id).toBe('source-project');
+			expect(form.credentialPermissions.value.create).toBeFalsy();
+			projects.myProjects = [];
+			form.credentialId.value = 'saved-id';
+			expect(form.credentialPermissions.value.create).toBeFalsy();
+		});
+
+		it('uses a resolved project even when the project list omits it', () => {
+			const project = mock<Project>({ id: 'destination', scopes: ['credential:create'] });
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'httpBasicAuth',
+				destination: { kind: 'resolved', project },
+			});
+			expect(form.homeProject.value).toEqual(project);
+			expect(form.credentialPermissions.value.create).toBe(true);
+		});
+
 		it('seeds a generated name and property defaults for a new credential', async () => {
 			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
 

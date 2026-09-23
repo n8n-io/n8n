@@ -1,3 +1,4 @@
+import type { ResourceEditorDestination } from '@/features/collaboration/projects/projects.types';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
@@ -54,6 +55,9 @@ const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 ]);
 
 export interface UseCredentialFormOptions {
+	initialName?: MaybeRefOrGetter<string | undefined>;
+	initialData?: MaybeRefOrGetter<Record<string, unknown> | undefined>;
+	destination?: MaybeRefOrGetter<ResourceEditorDestination | undefined>;
 	mode: MaybeRefOrGetter<'new' | 'edit'>;
 	/** In 'new' mode: the credential type to create. In 'edit' mode: the credential id to load. */
 	activeId?: MaybeRefOrGetter<string | undefined>;
@@ -116,6 +120,11 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	});
 
 	const homeProject = computed(() => {
+		const destination = toValue(options.destination);
+		if (destination?.kind === 'resolved') return destination.project;
+		if (destination?.kind === 'pending') {
+			return projectsStore.myProjects.find((project) => project.id === destination.id);
+		}
 		const overrideProjectId = toValue(options.projectId);
 		if (overrideProjectId) {
 			const override = projectsStore.myProjects.find((p) => p.id === overrideProjectId);
@@ -317,13 +326,22 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		return credentialsStore.isCredentialTypeTestable(credentialTypeName.value);
 	});
 
-	const credentialPermissions = computed(
-		() =>
-			getResourcePermissions(
-				(currentCredential.value as ICredentialsResponse | null)?.scopes ??
-					homeProject.value?.scopes,
-			).credential,
-	);
+	const credentialPermissions = computed(() => {
+		const permissions = getResourcePermissions(
+			currentCredential.value?.scopes ?? homeProject.value?.scopes,
+		).credential;
+		const destination = toValue(options.destination);
+		if (
+			destination?.kind === 'pending' &&
+			toValue(options.mode) === 'new' &&
+			!credentialId.value &&
+			!currentCredential.value &&
+			!homeProject.value
+		) {
+			return { ...permissions, create: destination.permissions.create };
+		}
+		return permissions;
+	});
 
 	// --- helpers -----------------------------------------------------------
 	function getParentTypes(name: string): string[] {
@@ -532,6 +550,14 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		// Render the form immediately; generating its saved name can wait for the server.
 		setCredentialPropertyDefaults();
 		if (setupHint) seedFromSetupHint(setupHint);
+		const initialData = toValue(options.initialData);
+		if (initialData) {
+			Object.assign(credentialData.value, deepCopy(initialData));
+			// Client fields that the instance overwrites only show in custom OAuth mode.
+			if (credentialType.value?.__overwrittenProperties?.some((name) => name in initialData)) {
+				useCustomOAuth.value = true;
+			}
+		}
 		// Recipe-created credentials carry the creator's name ("fal.ai API Key
 		// (Jan D)") so same-recipe credentials stay tellable-apart in shared
 		// projects. A host-suggested name still needs the numbering dedup —
@@ -541,13 +567,15 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			const base = setupHint.suggestedName || suggestedName;
 			if (base) suggestedName = composeCredentialNameWithUser(base, usersStore.currentUser);
 		}
-		credentialName.value = suggestedName
-			? await credentialsStore.getDedupedCredentialName(suggestedName)
-			: credentialTypeName.value
-				? await credentialsStore.getNewCredentialName({
-						credentialTypeName: credentialTypeName.value,
-					})
-				: (credentialType.value?.displayName ?? '');
+		credentialName.value =
+			toValue(options.initialName) ??
+			(suggestedName
+				? await credentialsStore.getDedupedCredentialName(suggestedName)
+				: credentialTypeName.value
+					? await credentialsStore.getNewCredentialName({
+							credentialTypeName: credentialTypeName.value,
+						})
+					: (credentialType.value?.displayName ?? ''));
 		if (homeProject.value) {
 			credentialData.value = { ...credentialData.value, homeProject: homeProject.value };
 		}

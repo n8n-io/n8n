@@ -1,3 +1,5 @@
+import type { CreateCredentialPublicDto, CredentialPublicDto } from '@n8n/api-types';
+import { request, type PublicApiContext } from '@n8n/rest-api-client';
 import type {
 	CredentialFetchScope,
 	ICredentialsDecryptedResponse,
@@ -171,4 +173,16 @@ export async function probeCredential(
 	credentialId: string,
 ): Promise<INodeCredentialTestResult> {
 	return await makeRestApiRequest(context, 'POST', `/credentials/${credentialId}/probe`);
+}
+
+export async function createPublicCredential(
+	context: PublicApiContext,
+	data: CreateCredentialPublicDto,
+): Promise<CredentialPublicDto> {
+	return await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: '/credentials',
+		data,
+	});
 }

@@ -1,6 +1,6 @@
 import type { UpdateCredentialPublicDto } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
-import { validate } from 'jsonschema';
+import { validate, type Schema } from 'jsonschema';
 import {
 	type DisplayCondition,
 	type INodeProperties,
@@ -103,6 +103,29 @@ export function assertValidUpdateProperties(
 	}
 }
 
+// An expression string is valid for every field type. It is resolved at run time.
+const EXPRESSION_SCHEMA: Schema = { type: 'string', pattern: '^=' };
+
+function toPropertySchema(property: INodeProperties): Schema {
+	if (property.type === 'string') return { type: 'string' };
+	const literal: Schema =
+		property.type === 'options'
+			? {
+					type: 'string',
+					enum: isNodePropertyOptions(property.options)
+						? property.options.map((option) => option.value)
+						: undefined,
+				}
+			: { type: property.type };
+	return { anyOf: [literal, EXPRESSION_SCHEMA] };
+}
+
+// Same rule as the internal route: an omitted field takes its default value.
+function isRequired(property: INodeProperties): boolean {
+	if (!property.required) return false;
+	return property.default === undefined || property.default === null || property.default === '';
+}
+
 /**
  * toJsonSchema
  * Take an array of credentials parameter and map it
@@ -144,27 +167,10 @@ export function toJsonSchema(properties: INodeProperties[]): IJsonSchema {
 	// the credentials sent in the API call.
 	// eslint-disable-next-line complexity
 	properties.forEach((property) => {
-		if (property.required) {
+		if (isRequired(property)) {
 			requiredFields.push(property.name);
 		}
-		if (property.type === 'options') {
-			// if the property is type options,
-			// include all possible values in the enum property.
-			Object.assign(jsonSchema.properties, {
-				[property.name]: {
-					type: 'string',
-					enum: isNodePropertyOptions(property.options)
-						? property.options.map((data) => data.value)
-						: undefined,
-				},
-			});
-		} else {
-			Object.assign(jsonSchema.properties, {
-				[property.name]: {
-					type: property.type,
-				},
-			});
-		}
+		jsonSchema.properties[property.name] = toPropertySchema(property);
 
 		// if the credential property has a dependency
 		// then add a JSON Schema condition that satisfy each property value
@@ -274,7 +280,7 @@ export function toJsonSchema(properties: INodeProperties[]): IJsonSchema {
 			}
 
 			// Only enforce a field as required when the credential actually marks it `required`.
-			if (property.required) {
+			if (isRequired(property)) {
 				propertyRequiredDependencies[dependencyKey].then?.allOf.push({
 					required: [property.name],
 				});
