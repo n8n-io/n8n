@@ -59,13 +59,13 @@ function handleClickCollapseAll() {
 </script>
 <template>
 	<Controls :show-zoom="false" :show-fit-view="false">
-		<N8nButtonList>
+		<N8nButtonList :class="$style.container">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.zoomToFit')"
 				:shortcut="{ keys: ['1'] }"
 			>
 				<N8nIconButton
-					variant="outline"
+					variant="ghost"
 					size="large"
 					icon="maximize"
 					:aria-label="i18n.baseText('nodeView.zoomToFit')"
@@ -78,7 +78,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ keys: ['+'] }"
 			>
 				<N8nIconButton
-					variant="outline"
+					variant="ghost"
 					size="large"
 					icon="zoom-in"
 					:aria-label="i18n.baseText('nodeView.zoomIn')"
@@ -91,7 +91,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ keys: ['-'] }"
 			>
 				<N8nIconButton
-					variant="outline"
+					variant="ghost"
 					size="large"
 					icon="zoom-out"
 					:aria-label="i18n.baseText('nodeView.zoomOut')"
@@ -109,7 +109,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ keys: ['Z'] }"
 			>
 				<N8nIconButton
-					variant="outline"
+					variant="ghost"
 					iconOnly
 					size="large"
 					:class="$style.iconButton"
@@ -128,7 +128,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ shiftKey: true, altKey: true, keys: ['T'] }"
 			>
 				<N8nButton
-					variant="outline"
+					variant="ghost"
 					iconOnly
 					size="large"
 					:aria-label="i18n.baseText('nodeView.tidyUp')"
@@ -145,7 +145,7 @@ function handleClickCollapseAll() {
 				:content="i18n.baseText('nodeView.expandAllNodes')"
 			>
 				<N8nIconButton
-					variant="outline"
+					variant="ghost"
 					size="large"
 					icon="maximize-2"
 					:aria-label="i18n.baseText('nodeView.expandAllNodes')"
@@ -158,7 +158,7 @@ function handleClickCollapseAll() {
 				:content="i18n.baseText('nodeView.collapseAllNodes')"
 			>
 				<N8nIconButton
-					variant="outline"
+					variant="ghost"
 					size="large"
 					icon="minimize-2"
 					:aria-label="i18n.baseText('nodeView.collapseAllNodes')"
@@ -178,5 +178,13 @@ function handleClickCollapseAll() {
 		width: 16px;
 		height: 16px;
 	}
+}
+.container {
+	background: var(--background--surface);
+	border: var(--border);
+	box-shadow: var(--shadow--xs);
+	border-radius: var(--radius--full);
+	padding: var(--spacing--5xs);
+	gap: var(--spacing--5xs);
 }
 </style>

@@ -175,7 +175,7 @@ function openCommandBar(event: MouseEvent) {
 				placement="left"
 			>
 				<N8nIconButton
-					variant="outline"
+					variant="ghost"
 					size="large"
 					icon="plus"
 					:aria-label="i18n.baseText('nodeView.openNodesPanel')"
@@ -191,7 +191,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				variant="outline"
+				variant="ghost"
 				size="large"
 				icon="search"
 				:aria-label="i18n.baseText('nodeView.openCommandBar')"
@@ -205,7 +205,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				variant="outline"
+				variant="ghost"
 				size="large"
 				icon="sticky-note"
 				:aria-label="i18n.baseText('nodeView.addStickyHint')"
@@ -219,7 +219,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				variant="outline"
+				variant="ghost"
 				size="large"
 				icon="panel-right"
 				:aria-label="sidePanelTooltip"
@@ -235,7 +235,7 @@ function openCommandBar(event: MouseEvent) {
 			v-if="
 				chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
 			"
-			variant="outline"
+			variant="ghost"
 			icon-only
 			size="large"
 			:aria-label="i18n.baseText('aiAssistant.tooltip')"
@@ -256,7 +256,7 @@ function openCommandBar(event: MouseEvent) {
 		>
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
-				variant="outline"
+				variant="ghost"
 				iconOnly
 				size="large"
 				:aria-label="i18n.baseText('aiAssistant.tooltip')"
@@ -284,9 +284,15 @@ function openCommandBar(event: MouseEvent) {
 <style lang="scss" module>
 .nodeButtonsWrapper {
 	position: absolute;
-	top: 0;
-	right: 0;
-	padding: var(--spacing--sm);
+	top: var(--spacing--sm);
+	right: var(--spacing--sm);
+	padding: var(--spacing--5xs);
+	background: var(--background--surface);
+	border: var(--border);
+	box-shadow: var(--shadow--xs);
+	border-radius: var(--radius--full);
+	padding: var(--spacing--5xs);
+	gap: var(--spacing--5xs);
 	pointer-events: all !important;
 }
 
