@@ -7417,9 +7417,15 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../@n8n/vitest-config
+      change-case:
+        specifier: 'catalog:'
+        version: 5.4.4
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
+      markdown-it:
+        specifier: 'catalog:'
+        version: 13.0.2
       ts-morph:
         specifier: 'catalog:'
         version: 27.0.2
@@ -7433,6 +7439,9 @@ importers:
         specifier: 'catalog:'
         version: 2.8.3
     devDependencies:
+      '@types/markdown-it':
+        specifier: 'catalog:'
+        version: 13.0.9
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
