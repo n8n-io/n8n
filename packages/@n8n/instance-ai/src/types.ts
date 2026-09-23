@@ -1470,6 +1470,8 @@ export interface InstanceAiConversationHistoryReader {
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
+	/** Instance-wide gate for credential description output and guidance. */
+	credentialDescriptionsEnabled?: boolean;
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration

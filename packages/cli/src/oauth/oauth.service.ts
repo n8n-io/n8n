@@ -415,10 +415,13 @@ export class OauthService {
 
 		const credentials = new Credentials(credential, credential.type, credential.data);
 		await credentials.updateData(toUpdate, toDelete);
-		await this.credentialsRepository.update(credential.id, {
-			...credentials.getDataToSave(),
+		// Ciphertext only. `name` and `type` would be written back unchanged, and a payload
+		// that cannot carry `type` keeps this off the sealed `credentialSave` path.
+		const update: Pick<ICredentialsDb, 'data' | 'updatedAt'> = {
+			data: credentials.getDataToSave().data,
 			updatedAt: new Date(),
-		});
+		};
+		await this.credentialsRepository.update(credential.id, update);
 	}
 
 	/** Get a credential without user check */

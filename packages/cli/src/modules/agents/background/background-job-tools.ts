@@ -1,4 +1,4 @@
-import type { BuiltTool, ToolContext } from '@n8n/agents';
+import type { BuiltTool, CreateDelegateSubAgentToolOptions, ToolContext } from '@n8n/agents';
 import { INLINE_SUB_AGENT_ID } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { SUB_AGENT_TASK_DIFFICULTIES, type SubAgentSource } from '@n8n/api-types';
@@ -7,8 +7,10 @@ import { z } from 'zod';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentBackgroundJobService } from './agent-background-job.service';
-import type { SubAgentBackgroundRunner } from './sub-agent-background-runner';
-import type { SubAgentRunContext } from '../sub-agents/sub-agent-runner';
+import type {
+	BackgroundSubAgentRunContext,
+	SubAgentBackgroundRunner,
+} from './sub-agent-background-runner';
 
 /** Cap on the result text echoed to the model; the full text stays on the row. */
 const RESULT_ECHO_MAX_CHARS = 8000;
@@ -17,20 +19,12 @@ export interface BackgroundJobToolsOptions {
 	jobService: AgentBackgroundJobService;
 	backgroundRunner: SubAgentBackgroundRunner;
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
+	availableSubAgents: NonNullable<CreateDelegateSubAgentToolOptions['availableSubAgents']>;
 	projectId: string;
 	parentAgentId: string;
 	// The workspace handle is principal-scoped, not thread-scoped. The sandbox
 	// outlives the parent turn, so capture it when the tool is built.
-	runContext: Pick<
-		SubAgentRunContext,
-		| 'credentialProvider'
-		| 'runType'
-		| 'workflowToolExecutionMode'
-		| 'user'
-		| 'instrumentation'
-		| 'parentWorkspaceHandle'
-	>;
+	runContext: BackgroundSubAgentRunContext;
 }
 
 /**

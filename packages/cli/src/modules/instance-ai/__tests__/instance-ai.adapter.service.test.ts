@@ -72,6 +72,8 @@ import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
@@ -2284,8 +2286,10 @@ describe('createDataTableAdapter', () => {
 // ---------------------------------------------------------------------------
 
 function createWorkflowAdapterForTests(overrides?: {
+	setupPanelVariant?: 'control' | 'variant';
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
+	teamProjectsLicensed?: boolean;
 	branchReadOnly?: boolean;
 	sharingEnabled?: boolean;
 	folderExploration?: boolean;
@@ -2371,6 +2375,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 	const mockProjectService = {
 		getAccessibleProjects: vi.fn().mockResolvedValue([{ id: 'team-project-id' }, { id: 'p2' }]),
+		getPersonalProject: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
 	};
 	const mockLogger = {
 		error: vi.fn(),
@@ -2454,6 +2459,11 @@ function createWorkflowAdapterForTests(overrides?: {
 			: (mockFolderFinderService as unknown as ConstructorParameters<
 					typeof InstanceAiAdapterService
 				>[41]),
+		undefined,
+		undefined,
+		{
+			isTeamProjectsLicensed: vi.fn().mockReturnValue(overrides?.teamProjectsLicensed ?? true),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[44],
 	);
 
 	const boundProjectId =
@@ -2462,6 +2472,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		threadId: 'thread-1',
 		projectId: boundProjectId,
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
+		setupPanelVariant: overrides?.setupPanelVariant,
 	});
 	const adapter = context.workflowService;
 
@@ -3581,6 +3592,38 @@ describe('createWorkflowAdapter', () => {
 		});
 	});
 
+	it.each(['control', 'variant', undefined] as const)(
+		'carries setup assignment %s on workflow creation, updates, and publishing',
+		async (setupPanelVariant) => {
+			const { adapter, mockTelemetry } = createWorkflowAdapterForTests({ setupPanelVariant });
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+			await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+			await adapter.publish('wf-new');
+
+			for (const event of [
+				'Builder created workflow',
+				'Builder modified workflow',
+				'Builder published workflow',
+			]) {
+				const properties = mockTelemetry.track.mock.calls.find(([name]) => name === event)?.[1];
+				expect(properties).toMatchObject({
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					workflow_id: 'wf-new',
+				});
+				if (setupPanelVariant) {
+					expect(properties).toMatchObject({
+						variant: setupPanelVariant,
+						[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: setupPanelVariant,
+					});
+				} else {
+					expect(properties).not.toHaveProperty('variant');
+					expect(properties).not.toHaveProperty(`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`);
+				}
+			}
+		},
+	);
+
 	it('marks the workflow as AI-builder temporary when markAsAiTemporary is true', async () => {
 		const {
 			adapter,
@@ -4253,6 +4296,49 @@ describe('license-gated features', () => {
 		});
 	});
 
+	describe('projects (quota:maxTeamProjects)', () => {
+		// An admin reads every project on the instance, peer personal ones included.
+		const accessibleProjects = [
+			{ id: 'personal-project-id', name: 'Personal', type: 'personal' },
+			{ id: 'team-project-id', name: 'Team', type: 'team' },
+			{ id: 'p2', name: 'Other team', type: 'team' },
+			{ id: 'peer-personal-id', name: 'Peer', type: 'personal' },
+		];
+
+		it('lists every accessible project when team projects are licensed', async () => {
+			const { context, mockProjectService } = createWorkflowAdapterForTests({
+				teamProjectsLicensed: true,
+			});
+			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
+
+			await expect(context.workspaceService!.listProjects()).resolves.toEqual(accessibleProjects);
+		});
+
+		it('lists only the personal and the bound project when team projects are not licensed', async () => {
+			const { context, mockProjectService } = createWorkflowAdapterForTests({
+				teamProjectsLicensed: false,
+			});
+			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
+
+			await expect(context.workspaceService!.listProjects()).resolves.toEqual([
+				{ id: 'personal-project-id', name: 'Personal', type: 'personal' },
+				{ id: 'team-project-id', name: 'Team', type: 'team' },
+			]);
+		});
+
+		it('lists only the personal project when team projects are not licensed and no project is bound', async () => {
+			const { context, mockProjectService } = createWorkflowAdapterForTests({
+				teamProjectsLicensed: false,
+				projectId: null,
+			});
+			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
+
+			await expect(context.workspaceService!.listProjects()).resolves.toEqual([
+				{ id: 'personal-project-id', name: 'Personal', type: 'personal' },
+			]);
+		});
+	});
+
 	describe('licenseHints', () => {
 		it('includes hints for unlicensed features', () => {
 			const { context } = createWorkflowAdapterForTests({
@@ -4287,6 +4373,16 @@ describe('license-gated features', () => {
 			expect(context.licenseHints).not.toEqual(
 				expect.arrayContaining([expect.stringContaining('Named workflow versions')]),
 			);
+		});
+
+		it('includes a hint when team projects are not licensed', () => {
+			const { context } = createWorkflowAdapterForTests({
+				namedVersionsLicensed: true,
+				foldersLicensed: true,
+				teamProjectsLicensed: false,
+			});
+
+			expect(context.licenseHints).toEqual([expect.stringContaining('Team projects')]);
 		});
 	});
 });
@@ -6026,6 +6122,7 @@ describe('resolveExperimentGates', () => {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
@@ -6035,9 +6132,12 @@ describe('resolveExperimentGates', () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
 			progressiveBuildingEnabled: true,
+			setupPanelEnabled: true,
+			setupPanelVariant: 'variant',
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
@@ -6103,21 +6203,37 @@ describe('resolveExperimentGates', () => {
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
+			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			setupPanelEnabled: false,
+			setupPanelVariant: 'control',
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 		});
 	});
+
+	it.each([true, 'unexpected'])(
+		'keeps setup disabled for invalid assignment %s',
+		async (assignment) => {
+			stubContainer({ [INSTANCE_AI_SETUP_PANEL_FLAG]: assignment });
+
+			const gates = await createAdapter().resolveExperimentGates(user);
+
+			expect(gates.setupPanelEnabled).toBe(false);
+			expect(gates).not.toHaveProperty('setupPanelVariant');
+		},
+	);
 
 	// Regression guard for the shipped bug: the flag is multivariate, so a
 	// boolean `true` is not a value PostHog can return for it. Reading it as one
@@ -6144,9 +6260,11 @@ describe('resolveExperimentGates', () => {
 		stubContainer({});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
@@ -6159,9 +6277,11 @@ describe('resolveExperimentGates', () => {
 		getFeatureFlags.mockRejectedValueOnce(new Error('PostHog unreachable'));
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
@@ -6501,7 +6621,7 @@ describe('createContext — builder delegate wiring', () => {
 		service.createContext(mockUser, {
 			threadId: 'thread-1',
 			projectId: 'proj-1',
-			credentialIdAllowlist: [],
+			getCredentialIdAllowlist: () => [],
 		});
 
 		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(

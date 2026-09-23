@@ -1,5 +1,6 @@
 import {
 	type Project,
+	type Role,
 	type User,
 	type CredentialsEntity,
 	type SharedCredentialsRepository,
@@ -287,7 +288,7 @@ describe('CredentialsPermissionChecker', () => {
 		});
 	});
 
-	it('should skip credential checks if the home project owner has global scope', async () => {
+	it('should skip credential checks if the home project owner may use any credential', async () => {
 		const projectOwner = mock<User>({ role: GLOBAL_OWNER_ROLE });
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(projectOwner);
 
@@ -757,7 +758,7 @@ describe('CredentialsPermissionChecker', () => {
 			await expect(permissionChecker.checkForUser(userId, [node])).resolves.not.toThrow();
 		});
 
-		it('should skip the check for a user with instance-wide credential listing', async () => {
+		it('should skip the check for a user who may use any credential', async () => {
 			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
 
 			await expect(permissionChecker.checkForUser(userId, [node])).resolves.not.toThrow();
@@ -773,6 +774,77 @@ describe('CredentialsPermissionChecker', () => {
 			await expect(permissionChecker.checkForUser(userId, [node])).rejects.toThrow(
 				'Node "Test Node" uses a credential you do not have access to',
 			);
+			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('a global role needs `credential:use`, not just list/read', () => {
+		// The skip is what lets an Owner run anything. A see-only instance role holds
+		// list and read but not use, so it must not short-circuit either check.
+		const userId = 'user-123';
+		const viewOnlyRole = {
+			slug: 'global:cred-viewer',
+			displayName: 'Credential viewer',
+			description: null,
+			systemRole: false,
+			roleType: 'global',
+			scopes: ['credential:list', 'credential:read'].map((scope) => ({
+				slug: scope,
+				displayName: scope,
+				description: null,
+			})),
+		} as Role;
+
+		it('findInaccessible does not skip for a view-only home project owner', async () => {
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(
+				mock<User>({ role: viewOnlyRole }),
+			);
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
+			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce([]);
+
+			const result = await permissionChecker.findInaccessible(workflowId, [credentialId]);
+
+			expect(result.inaccessibleIds).toEqual([credentialId]);
+			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+				[personalProject.id],
+				[credentialId],
+			);
+		});
+
+		it('check throws for a view-only home project owner whose credential is not shared', async () => {
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(
+				mock<User>({ role: viewOnlyRole }),
+			);
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
+			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce([]);
+
+			await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+				'Node "Test Node" does not have access to the credential',
+			);
+		});
+
+		it('checkForUser does not skip for a view-only user', async () => {
+			userRepository.findOne.mockResolvedValueOnce(mock<User>({ id: userId, role: viewOnlyRole }));
+			credentialsFinderService.findCredentialsForUser.mockResolvedValueOnce([]);
+
+			await expect(permissionChecker.checkForUser(userId, [node])).rejects.toThrow(
+				'Node "Test Node" uses a credential you do not have access to',
+			);
+			expect(credentialsFinderService.findCredentialsForUser).toHaveBeenCalled();
+		});
+
+		it('checkForUser skips once `credential:use` is granted', async () => {
+			const canUseRole = {
+				...viewOnlyRole,
+				slug: 'global:cred-user',
+				scopes: [
+					...viewOnlyRole.scopes,
+					{ slug: 'credential:use', displayName: 'credential:use', description: null },
+				],
+			} as Role;
+			userRepository.findOne.mockResolvedValueOnce(mock<User>({ id: userId, role: canUseRole }));
+
+			await expect(permissionChecker.checkForUser(userId, [node])).resolves.not.toThrow();
 			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
 		});
 	});

@@ -55,7 +55,11 @@ export { InstanceCredentialAssignmentRepository } from './instance-credential-as
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectPoolSettingsRepository } from './project-pool-settings.repository.ee';
 export { ProjectRelationRepository } from './project-relation.repository';
-export { ProjectRepository, type ProjectListOptions } from './project.repository';
+export {
+	ProjectRepository,
+	ProjectIdConflictError,
+	type ProjectListOptions,
+} from './project.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
 export { ScheduledJobRepository } from './scheduled-job.repository';

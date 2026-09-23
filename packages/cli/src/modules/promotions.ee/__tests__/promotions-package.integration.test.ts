@@ -293,7 +293,14 @@ async function prepareBindingApply() {
 	const connection = await createInstanceConnection(remote.bareDir);
 	await service.clone(connection.id, 'promote');
 	await service.clone(connection.id, 'apply');
-	const project = await createTeamProject('Orders', owner);
+	const project = await projectService.createTeamProject(
+		owner,
+		{
+			name: 'Orders',
+			icon: { type: 'icon', value: 'briefcase' },
+		},
+		{ description: 'Order workflows', customTelemetryTags: [{ key: ' team ', value: 'Sales' }] },
+	);
 	const credential = await saveCredential(
 		{ name: 'Header credential', type: 'httpHeaderAuth', data: {} },
 		{ project, role: 'credential:owner' },
@@ -685,13 +692,14 @@ describe('Promote and Apply', () => {
 	});
 
 	it.each([
-		{ targetValue: '', shadow: false },
-		{ targetValue: 'configured target value', shadow: true },
+		{ targetValue: '', shadow: false, missingProject: true },
+		{ targetValue: 'configured target value', shadow: true, missingProject: false },
 	])(
-		'blocks without writes and continues with target value %j',
-		async ({ targetValue, shadow }) => {
+		'continues after binding setup with missing project: $missingProject',
+		async ({ targetValue, shadow, missingProject }) => {
 			const { connection, credential, variable, project, workflow, removedProject } =
 				await prepareBindingApply();
+			if (missingProject) await projectService.deleteProject(owner, project.id);
 			const before = await snapshotApplyState();
 			const agent = testServer.publicApiAgentFor(owner);
 			const applyResponse = await agent
@@ -722,6 +730,31 @@ describe('Promote and Apply', () => {
 			).body;
 			expect(stillBlocked).toEqual(blocked);
 			expect(await snapshotApplyState()).toEqual(before);
+
+			if (missingProject) {
+				expect(blocked.preflight.missingProjects).toEqual([
+					{
+						id: project.id,
+						name: project.name,
+						icon: project.icon,
+						description: project.description,
+						customTelemetryTags: project.customTelemetryTags,
+					},
+				]);
+				await agent.post('/projects').send(blocked.preflight.missingProjects[0]).expect(201);
+				// A failed binding request must leave the created project in place.
+				await agent.post('/credentials').send({ projectId: project.id }).expect(400);
+				expect(await projectRepository.findOneBy({ id: project.id })).toMatchObject(
+					blocked.preflight.missingProjects[0],
+				);
+			} else {
+				await projectRepository.update(project.id, {
+					name: 'Outdated',
+					description: 'Outdated',
+					icon: null,
+					customTelemetryTags: [],
+				});
+			}
 
 			const targetData = { name: 'Authorization', value: 'target-secret' };
 			const createBody = {
@@ -765,6 +798,15 @@ describe('Promote and Apply', () => {
 			expect(result.warnings).toEqual(
 				shadow ? [expect.objectContaining({ code: 'variable-shadowed', name: variable.key })] : [],
 			);
+			expect(await projectRepository.findOneBy({ id: project.id })).toMatchObject({
+				id: project.id,
+				name: project.name,
+				icon: project.icon,
+				description: project.description,
+				customTelemetryTags: project.customTelemetryTags,
+			});
+			expect(result.counts.projects.created).toBe(0);
+
 			expect(result.counts.credentials).toEqual({ matched: 1, stubbed: 0 });
 			expect(result.counts.variables).toMatchObject({ created: 0, updated: 0, stubbed: 0 });
 			expect(
@@ -792,9 +834,15 @@ describe('Promote and Apply', () => {
 	);
 
 	it('stops Continue when the remote commit changes and permits a new review', async () => {
-		const { connection, remote } = await prepareBindingApply();
+		const { connection, remote, project } = await prepareBindingApply();
+		await projectService.deleteProject(owner, project.id);
 		const blocked = await service.apply(connection.id, owner);
 		assert(blocked.status === 'blocked');
+		await testServer
+			.publicApiAgentFor(owner)
+			.post('/projects')
+			.send(blocked.preflight.missingProjects[0])
+			.expect(201);
 		const before = await snapshotApplyState();
 		await remote.git.pull('origin', 'main');
 		await writeRemoteFile(remote, 'README.md', 'Updated description');

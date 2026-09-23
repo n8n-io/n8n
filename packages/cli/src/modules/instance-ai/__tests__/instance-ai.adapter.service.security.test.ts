@@ -572,7 +572,7 @@ describe('credentialService.list — eval allowlist', () => {
 			{ id: 'c3', name: 'Slack #2', type: 'slackApi', description: null },
 		] as never);
 
-		const ctx = service.createContext(user, { credentialIdAllowlist: ['c1', 'c3'] });
+		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => ['c1', 'c3'] });
 		const result = await ctx.credentialService.list();
 
 		expect(result).toEqual([
@@ -581,8 +581,23 @@ describe('credentialService.list — eval allowlist', () => {
 		]);
 	});
 
+	it('reads the allowlist on every call, so a credential allowlisted mid-run is listed', async () => {
+		credentialsService.getMany.mockResolvedValue([
+			{ id: 'c1', name: 'Slack', type: 'slackApi', description: null },
+			{ id: 'c2', name: 'OpenAI', type: 'openAiApi', description: null },
+		] as never);
+		const allowlist = ['c1'];
+
+		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => allowlist });
+		expect((await ctx.credentialService.list()).map((c) => c.id)).toEqual(['c1']);
+
+		// The harness creates a credential on a setup card and re-sends the whole list.
+		allowlist.push('c2');
+		expect((await ctx.credentialService.list()).map((c) => c.id)).toEqual(['c1', 'c2']);
+	});
+
 	it('returns an empty list without querying the credentials service when the allowlist is empty', async () => {
-		const ctx = service.createContext(user, { credentialIdAllowlist: [] });
+		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => [] });
 		const result = await ctx.credentialService.list();
 
 		expect(result).toEqual([]);

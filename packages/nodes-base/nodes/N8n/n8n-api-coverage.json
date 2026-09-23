@@ -190,10 +190,10 @@
 		"PUT /workflows/{id}/tags": {
 			"status": "gap"
 		},
-		"GET /workflows/{id}/test-runs": {
+		"GET /workflows/{workflowId}/test-runs": {
 			"status": "gap"
 		},
-		"POST /workflows/{id}/test-runs": {
+		"POST /workflows/{workflowId}/test-runs": {
 			"status": "gap"
 		},
 		"GET /workflows/{id}/test-runs/{runId}": {
@@ -214,10 +214,10 @@
 		"GET /users/{userId}": {
 			"status": "gap"
 		},
-		"DELETE /users/{id}": {
+		"DELETE /users/{userId}": {
 			"status": "gap"
 		},
-		"PATCH /users/{id}/role": {
+		"PATCH /users/{userId}/role": {
 			"status": "gap"
 		},
 		"POST /source-control/pull": {

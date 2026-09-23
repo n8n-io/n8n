@@ -1,6 +1,5 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	type User,
 	FolderRepository,
@@ -8,6 +7,7 @@ import {
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
+	ProjectIdConflictError,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	type ProjectListOptions,
@@ -30,6 +30,7 @@ import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -480,49 +481,30 @@ export class ProjectService {
 		return results;
 	}
 
-	private async createTeamProjectWithEntityManager(
-		adminUser: User,
-		data: CreateProjectDto,
-		trx: EntityManager,
-		overrides: ProjectCreateOverrides = {},
-	) {
-		const limit = this.licenseState.getMaxTeamProjects();
-		if (limit !== UNLIMITED_LICENSE_QUOTA) {
-			const teamProjectCount = await trx.count(Project, { where: { type: 'team' } });
-			if (teamProjectCount >= limit) {
-				throw new TeamProjectOverQuotaError(limit);
-			}
-		}
-
-		const project = await trx.save(
-			Project,
-			this.projectRepository.create({
-				...data,
-				...overrides,
-				type: 'team',
-				creatorId: adminUser.id,
-			}),
-		);
-
-		// Link admin
-		await this.addUser(project.id, { userId: adminUser.id, role: 'project:admin' }, trx);
-
-		return project;
-	}
-
 	async createTeamProject(
 		adminUser: User,
 		data: CreateProjectDto,
 		overrides: ProjectCreateOverrides = {},
 	): Promise<Project> {
-		// This needs to be SERIALIZABLE otherwise the count would not block a
-		// concurrent transaction and we could insert multiple projects.
-		const project = await this.projectRepository.manager.transaction(
-			'SERIALIZABLE',
-			async (trx) => {
-				return await this.createTeamProjectWithEntityManager(adminUser, data, trx, overrides);
-			},
-		);
+		const limit = this.licenseState.getMaxTeamProjects();
+		let project: Project | null;
+		try {
+			project = await this.projectRepository.insertTeamProjectWithAdmin(
+				{
+					name: data.name,
+					icon: data.icon ?? null,
+					id: overrides.id,
+					description: overrides.description ?? null,
+					customTelemetryTags: overrides.customTelemetryTags ?? [],
+				},
+				adminUser.id,
+				limit,
+			);
+		} catch (error) {
+			if (error instanceof ProjectIdConflictError) throw new ConflictError(error.message);
+			throw error;
+		}
+		if (!project) throw new TeamProjectOverQuotaError(limit);
 
 		this.eventService.emit('team-project-created', {
 			userId: adminUser.id,
@@ -537,14 +519,17 @@ export class ProjectService {
 		user: User,
 		projectId: string,
 		{ name, icon, description, customTelemetryTags }: UpdateProjectDto,
+		{ preserveCustomTelemetryTags = false }: { preserveCustomTelemetryTags?: boolean } = {},
 	): Promise<void> {
-		const trimmedTags = customTelemetryTags
-			?.map(({ key, value }) => ({ key: key.trim(), value }))
-			.filter(({ key }) => key !== '');
+		const tags = preserveCustomTelemetryTags
+			? customTelemetryTags
+			: customTelemetryTags
+					?.map(({ key, value }) => ({ key: key.trim(), value }))
+					.filter(({ key }) => key !== '');
 
 		const result = await this.projectRepository.update(
 			{ id: projectId, type: 'team' },
-			{ name, icon, description, customTelemetryTags: trimmedTags },
+			{ name, icon, description, customTelemetryTags: tags },
 		);
 		if (!result.affected) {
 			throw new ProjectNotFoundError(projectId);

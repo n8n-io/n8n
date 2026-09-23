@@ -35,7 +35,7 @@ const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows', 'type-availability-policies'],
 	modules: ['policy-infrastructure', 'type-availability-policies'],
 	enabledFeatures: [
-		LICENSE_FEATURES.NODE_TYPE_POLICIES,
+		LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES,
 		LICENSE_FEATURES.SHARING,
 		LICENSE_FEATURES.ADVANCED_PERMISSIONS,
 	],

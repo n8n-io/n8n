@@ -45,6 +45,7 @@ import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/typ
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 import type { ComputerUseChannel } from '@n8n/api-types';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
@@ -136,14 +137,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
 	);
-	/**
-	 * Setup panel v2 gate — the single FE accessor; the backing mechanism (env var
-	 * today) stays swappable. Named with the instanceAi prefix because the canvas
-	 * Focus sidebar has its own unrelated `isSetupPanelEnabled` (setupPanel store).
-	 */
-	const isInstanceAiSetupPanelEnabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.instanceAiSetupPanelEnabled === true,
-	);
+	const { isEnabled: isInstanceAiSetupPanelEnabled } = useInstanceAiSetupPanelExperiment();
 
 	function syncInstanceAiFlagIntoGlobalModuleSettings(
 		adminRes: InstanceAiAdminSettingsResponse,
@@ -172,7 +166,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				? (prev?.sandboxUnavailableReason ?? null)
 				: null,
 			runDebugEnabled: prev?.runDebugEnabled ?? false,
-			instanceAiSetupPanelEnabled: prev?.instanceAiSetupPanelEnabled ?? false,
 		};
 		settingsStore.moduleSettings = {
 			...ms,

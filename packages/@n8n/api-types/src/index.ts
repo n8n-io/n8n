@@ -164,8 +164,10 @@ export {
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
 	tagIdParamSchema,
+	testRunIdParamSchema,
 	userIdParamSchema,
 	userIdentifierParamSchema,
+	userUuidParamSchema,
 	variableIdParamSchema,
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
@@ -190,6 +192,7 @@ export {
 	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
 	credentialDescriptionSchema,
 } from './schemas/credential-description.schema';
+export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
 export type {
 	DependencyType,
 	DependencyResourceType,
@@ -424,12 +427,19 @@ export {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	computerUseChannelSchema,
+	INSTANCE_CONTEXT_SURFACE_DEPTH,
+	instanceContextSurfaceSchema,
+	instanceContextReachSchema,
+	instanceContextAbsenceReasonSchema,
+	instanceContextInjectionSchema,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
@@ -585,6 +595,11 @@ export type {
 	InstanceAiToolCallState,
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
+	InstanceContextSurface,
+	InstanceContextReach,
+	InstanceContextLegs,
+	InstanceContextAbsenceReason,
+	InstanceContextInjection,
 	InstanceAiMessage,
 	InstanceAiThreadSummary,
 	InstanceAiSSEConnectionState,
@@ -840,6 +855,7 @@ export {
 	SSO_ERROR_QUERY_PARAM,
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
+export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
 
 export {
 	instanceAiApprovalDetailsSchema,

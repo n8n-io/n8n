@@ -13,8 +13,8 @@ import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
 	AgentKnowledgeFileStore,
 	type StoredAgentKnowledgeFile,
@@ -45,7 +45,7 @@ export class AgentKnowledgeService {
 		files: Express.Multer.File[],
 	): Promise<AgentFileDto[]> {
 		try {
-			await this.ensureAgentBelongsToProject(agentId, projectId);
+			await getAgentOrThrow(this.agentRepository, agentId, projectId);
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(agentId, files);
 
@@ -68,20 +68,20 @@ export class AgentKnowledgeService {
 	}
 
 	async listFiles(agentId: string, projectId: string): Promise<AgentFileDto[]> {
-		await this.ensureAgentBelongsToProject(agentId, projectId);
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		return files.map((file) => toAgentFileDto(file));
 	}
 
 	async warmKnowledgeSandbox(agentId: string, projectId: string): Promise<void> {
-		await this.ensureAgentBelongsToProject(agentId, projectId);
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		if (!(await this.agentFileRepository.hasFilesForAgent(agentId))) return;
 
 		await this.agentSandboxRuntimeService.warmKnowledgeSandbox(projectId, agentId);
 	}
 
 	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
-		await this.ensureAgentBelongsToProject(agentId, projectId);
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
 		if (!file) {
@@ -274,14 +274,6 @@ export class AgentKnowledgeService {
 				`${label} must be ${MAX_AGENT_FILE_METADATA_LENGTH} characters or less`,
 			);
 		}
-	}
-
-	private async ensureAgentBelongsToProject(agentId: string, projectId: string) {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
-		return agent;
 	}
 
 	private async cleanupUploadTempFiles(files: Express.Multer.File[]) {
