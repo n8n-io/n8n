@@ -132,7 +132,7 @@ export class EngineV2Webhooks {
 
 	/** Converts the data plane's answer to the shape the v1 response path reads. */
 	async toRun(
-		outcome: Exclude<WebhookRunOutcome, { status: 'timeout' }>,
+		outcome: Exclude<WebhookRunOutcome, { status: 'timeout' | 'undeliverable' }>,
 		executionMode: WorkflowExecuteMode,
 	): Promise<IRun> {
 		const runData: IRunData = {};
@@ -156,7 +156,7 @@ export class EngineV2Webhooks {
 		return {
 			mode: executionMode,
 			startedAt: new Date(),
-			status: outcome.status === 'completed' ? 'success' : 'error',
+			status: outcome.status === 'failed' ? 'error' : 'success',
 			// The data plane holds the run. This object never reaches a store.
 			storedAt: 'db',
 			data: createRunExecutionData({
@@ -164,7 +164,7 @@ export class EngineV2Webhooks {
 					runData,
 					lastNodeExecuted,
 					error:
-						outcome.status !== 'completed'
+						outcome.status === 'failed'
 							? new WorkflowOperationError(outcome.error?.message ?? 'The workflow failed')
 							: undefined,
 				},
