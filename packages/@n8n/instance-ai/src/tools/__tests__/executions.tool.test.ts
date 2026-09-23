@@ -5,6 +5,11 @@ import type { z } from 'zod';
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
 import { createExecutionsTool } from '../executions.tool';
+import { recordLiveRunVerification } from '../orchestration/verification/record-live-run';
+
+vi.mock('../orchestration/verification/record-live-run', () => ({
+	recordLiveRunVerification: vi.fn().mockResolvedValue(undefined),
+}));
 
 // ── Mock helpers ───────────────────────────────────────────────────────────────
 
@@ -459,6 +464,53 @@ describe('executions tool', () => {
 				undefined,
 				expect.objectContaining({ triggerNodeName: 'Weekly 5pm' }),
 			);
+		});
+
+		describe('live run verification', () => {
+			const runResult = { executionId: 'exec-1', status: 'success' as const };
+
+			function createAllowedContext() {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					aiCreatedWorkflowIds: new Set(['wf-1']),
+				});
+				(context.executionService.run as Mock).mockResolvedValue(runResult);
+				return context;
+			}
+
+			it('returns the recorded claim with the run result', async () => {
+				const context = createAllowedContext();
+				const claim = { level: 'verified', publishReady: true };
+				vi.mocked(recordLiveRunVerification).mockResolvedValueOnce(claim as never);
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1', triggerNodeName: 'Every Morning' },
+					createAgentCtx() as never,
+				);
+
+				expect(result).toEqual({ ...runResult, verificationClaim: claim });
+				expect(recordLiveRunVerification).toHaveBeenCalledWith({
+					context,
+					workflowId: 'wf-1',
+					triggerNodeName: 'Every Morning',
+					result: runResult,
+				});
+			});
+
+			it('returns the plain run result when no claim was recorded', async () => {
+				const context = createAllowedContext();
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx() as never,
+				);
+
+				expect(result).toEqual(runResult);
+			});
 		});
 
 		describe('session grant (always allow)', () => {
