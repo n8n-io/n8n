@@ -1,0 +1,14 @@
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  h_32d8cd6a0d6aad 177,195,201,208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f1b3c46e43545de3a6b0ac2957aafb197bf97ccb",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
