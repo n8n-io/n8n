@@ -221,11 +221,8 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	}
 
 	/**
-	 * Persists an imported credential row, gated on a clearance for `contentImport`.
-	 *
-	 * An import can match an existing row or insert a new one, so the subject binds to the id
-	 * when there is one and to the type hash otherwise — the same rule `WorkflowRepository`'s
-	 * `upsertImportedContent` applies to workflows.
+	 * Persists an imported credential row, gated on a clearance for `contentImport`. Binds to the
+	 * id when there is one, else to the type hash, same as `WorkflowRepository`.
 	 */
 	async upsertImportedContent(
 		content: UpsertableCredentialContent,

@@ -254,10 +254,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		}
 		credential.type = type;
 
-		// An existing credential keeps its current project when no `--userId`/`--projectId`
-		// re-owner flag is given — `checkRelations` skips the ownership check for that exact
-		// case, and the write below never moves ownership either. Policy must be evaluated
-		// against that same project, not the batch's default target.
+		// An existing credential keeps its owner project, so its policy applies, not the batch target.
 		let landingProjectId = project.id;
 		if (existing) {
 			const sharedCredential = await transactionManager.findOne(SharedCredentials, {

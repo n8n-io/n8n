@@ -74,9 +74,7 @@ const auditedViolation = ({
  *
  * A save with no stored row is a create, and any id on its payload is the client's claim rather
  * than a committed row — the seal discards it for the same reason. `workflowName` is what
- * identifies a create. Structural rather than derived from `AnyPolicyContext`: `contentImport`'s
- * context is a union that only sometimes carries `workflow`, and a minimal shape is what every
- * workflow-shaped context (including that one) actually satisfies.
+ * identifies a create.
  */
 const policedWorkflowId = (context: {
 	workflow: PolicedWorkflow;

@@ -79,8 +79,7 @@ describe('SourceControlService', () => {
 		vi.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
 		// Reset mock implementations
 		mockStatusService.getStatus.mockReset();
-		// Most tests here don't exercise credential import; give it a harmless default so the
-		// production loop over its result has something to iterate.
+		// The pull iterates this result, so an unmocked `undefined` would throw.
 		sourceControlImportService.importCredentialsFromWorkFolder.mockResolvedValue([]);
 	});
 

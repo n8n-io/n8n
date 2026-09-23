@@ -125,18 +125,8 @@ export type ContentImportTransport = 'cli' | 'source-control' | 'package' | 'git
 /**
  * What's being imported, plus where it's landing and how it arrived.
  *
- * `workflow` and `credential` are mutually exclusive, and neither key exists on the other
- * arm — not even as `undefined` — so `'workflow' in context` / `'credential' in context`
- * narrows cleanly. A workflow-only implementer checks the tag once (`if (!('workflow' in
- * context)) return NO_VIOLATIONS`) rather than getting a value it can access without asking.
- *
- * The two-arm shape only *encourages* exclusivity, it doesn't compile-enforce it: TypeScript
- * still accepts an object literal naming both keys, because each is declared somewhere in the
- * union (a `?: never` companion on the opposite arm would close that gap, but it reintroduces
- * the same key on both arms and breaks the `in` narrowing above). No call site constructs both,
- * and `assertClearedFor` is the real backstop — it binds on whichever field `enforce*` reads
- * first, so a clearance minted for the wrong shape fails the write's own subject check rather
- * than silently taking effect.
+ * Exactly one of `workflow` / `credential` is set; narrow with `'workflow' in context`. No
+ * `?: never` on the other arm, because that breaks the `in` narrowing.
  */
 export type ContentImportContext = {
 	readonly projectId: string | null;

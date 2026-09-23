@@ -115,14 +115,12 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 	}
 
 	/**
-	 * A workflow import carries no stored workflow, and loading one here would read state the
-	 * host never vetted, so it is judged on its whole content, same as publish/start.
-	 * `transport` is not read: an unattended sync and a hand-run import are held to the same
-	 * policy, and each host already picks its own fail posture.
+	 * The context carries no stored workflow, and loading one here would read state the host
+	 * never vetted, so an import is judged on its whole content. `transport` is not read: an
+	 * unattended sync and a hand-run import are held to the same policy, and each host already
+	 * picks its own fail posture.
 	 *
-	 * A credential import is judged on its own type, same as save and decrypt — there is no
-	 * stored credential to grandfather against, since importing one is a create-or-replace,
-	 * not an edit of something already open.
+	 * A credential import is judged on its own type, with nothing to grandfather.
 	 */
 	async onContentImport(context: ContentImportContext): Promise<PolicyCheckResult> {
 		if ('credential' in context) {

@@ -1110,10 +1110,8 @@ export class SourceControlImportService {
 					personalProject,
 				);
 
-				// Enforced before decrypting or merging existing data: a blocked type is skipped,
-				// not fatal, and must not depend on that data being readable in the first place —
-				// an undecryptable existing row must not fail the whole pull for a credential the
-				// policy would have refused anyway.
+				// Enforced before the decrypt and merge, so a blocked credential is skipped even when
+				// its stored data can't be read.
 				let cleared: PolicyCleared<'contentImport'>;
 				try {
 					cleared = await this.policyEnforcementService.enforceContentImport({
