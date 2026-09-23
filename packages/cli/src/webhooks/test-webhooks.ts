@@ -221,6 +221,7 @@ export class TestWebhooks implements IWebhookManager {
 						command: 'clear-test-webhooks',
 						payload: { webhookKey: key, workflowEntity, pushRef },
 					});
+					// Only the response callback passed to executeWebhook settles the promise.
 					return;
 				}
 
