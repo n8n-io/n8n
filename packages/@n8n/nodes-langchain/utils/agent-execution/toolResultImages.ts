@@ -40,12 +40,28 @@ export interface ToolResultImageOptions {
 // levels deep at most.
 const MAX_SCAN_DEPTH = 8;
 
+// Formats providers actually accept in an `image_url` data URL. `startsWith('image/')`
+// alone would also match svg/tiff/bmp/heic — those are valid MCP image blocks but get
+// rejected by the model API (a 400 that fails the *entire* agent run, not just the one
+// attachment), so unsupported formats are treated as absent images, not real ones.
+const SUPPORTED_IMAGE_MIME_TYPES = new Set([
+	'image/png',
+	'image/jpeg',
+	'image/gif',
+	'image/webp',
+]);
+
 interface McpImageBlock {
 	type: 'image';
 	data: string;
 	mimeType: string;
 }
 
+// Structural check only: is this shaped like an MCP image content block at all.
+// Whether it's actually safe to forward to a model (supported mime type,
+// non-empty data) is decided separately in extractImagesFromValue, so an
+// unsupported-format block is still recognized (and replaced with a clear
+// note) rather than silently passed through as opaque JSON.
 function isMcpImageBlock(value: unknown): value is McpImageBlock {
 	if (value === null || typeof value !== 'object') return false;
 	const block = value as Record<string, unknown>;
@@ -83,6 +99,20 @@ function extractImagesFromValue(
 	if (depth > MAX_SCAN_DEPTH) return value;
 
 	if (isMcpImageBlock(value)) {
+		if (!SUPPORTED_IMAGE_MIME_TYPES.has(value.mimeType) || value.data.length === 0) {
+			// Not a size problem — a format models reject outright (svg/tiff/bmp/heic/...)
+			// or an empty payload. Forwarding it would 400 the whole agent run, so treat
+			// it the same as "omitted", just with a note that says why.
+			state.omitted++;
+			return {
+				type: 'image',
+				note:
+					value.data.length === 0
+						? 'image omitted: empty image data'
+						: `image omitted: unsupported image format "${value.mimeType}"`,
+			};
+		}
+
 		const raw = stripDataUriPrefix(value.data);
 		if (maxImageBytes !== undefined && estimateDecodedBytes(raw) > maxImageBytes) {
 			state.omitted++;
@@ -102,7 +132,11 @@ function extractImagesFromValue(
 	}
 
 	if (value !== null && typeof value === 'object') {
-		const out: Record<string, unknown> = {};
+		// A null-prototype object, not `{}`: a tool result with its own `__proto__`
+		// JSON key would otherwise reassign this clone's prototype instead of
+		// setting an own property, silently dropping that key from the
+		// JSON.stringify output below.
+		const out: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
 		for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
 			out[key] = extractImagesFromValue(item, depth + 1, collected, maxImageBytes, state);
 		}

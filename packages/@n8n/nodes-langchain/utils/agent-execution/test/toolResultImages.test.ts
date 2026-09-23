@@ -13,9 +13,76 @@ function mcpImageBlock(overrides: Partial<{ data: string; mimeType: string }> = 
 	};
 }
 
+// The real shape n8n's MCP runtime produces for a V3 agent tool call: runToolCall()
+// (packages/@n8n/nodes-langchain/nodes/mcp/shared/runtime.ts) sets item.json to
+// `{ response: result.content }`, where result.content is the already-parsed MCP
+// content array (validated by CallToolResultSchema, never a JSON string); buildSteps.ts
+// then JSON.stringify()s an array of these items exactly once. So the true observation
+// is single-encoded and wraps each tool's content in an outer array + `response` key,
+// not a bare top-level image block.
+function realMcpEnvelope(...blocks: unknown[]): string {
+	return JSON.stringify([{ response: blocks }]);
+}
+
 describe('extractImagesFromObservation', () => {
 	it('returns undefined for non-JSON observations', () => {
 		expect(extractImagesFromObservation('not json')).toBeUndefined();
+	});
+
+	it('extracts an image from the real n8n MCP tool-call envelope shape', () => {
+		const observation = realMcpEnvelope(
+			{ type: 'text', text: 'Screenshot attached' },
+			mcpImageBlock(),
+		);
+		const result = extractImagesFromObservation(observation)!;
+
+		expect(result.images).toHaveLength(1);
+		expect(result.images[0]).toEqual({ mimeType: 'image/png', data: PNG_BASE64_1X1 });
+		expect(result.text).not.toContain(PNG_BASE64_1X1);
+		expect(result.text).toContain('Screenshot attached');
+	});
+
+	it('omits an unsupported image format (e.g. svg) instead of forwarding it to the model', () => {
+		const observation = JSON.stringify(mcpImageBlock({ mimeType: 'image/svg+xml' }));
+		const result = extractImagesFromObservation(observation)!;
+
+		expect(result.images).toHaveLength(0);
+		expect(result.omitted).toBe(1);
+		expect(result.text).toContain('unsupported image format');
+	});
+
+	it('omits an image block with empty data instead of forwarding a broken data URL', () => {
+		const observation = JSON.stringify(mcpImageBlock({ data: '' }));
+		const result = extractImagesFromObservation(observation)!;
+
+		expect(result.images).toHaveLength(0);
+		expect(result.omitted).toBe(1);
+		expect(result.text).toContain('empty image data');
+	});
+
+	it.each(['image/jpeg', 'image/gif', 'image/webp'])('accepts %s', (mimeType) => {
+		const observation = JSON.stringify(mcpImageBlock({ mimeType }));
+		const result = extractImagesFromObservation(observation)!;
+
+		expect(result.images).toHaveLength(1);
+	});
+
+	it('preserves an own "__proto__" JSON key instead of silently dropping it via prototype reassignment', () => {
+		// Built from a raw JSON string, not a JS object literal: `{__proto__: x}` as
+		// object-literal syntax sets the prototype (no own property is created at
+		// all), which would make this test pass for the wrong reason. JSON.parse of
+		// the same text creates a genuine own data property named "__proto__" —
+		// that's the shape a tool's JSON response actually has.
+		const observation =
+			'{"__proto__":{"note":"own field"},"screenshot":' +
+			JSON.stringify(mcpImageBlock()) +
+			'}';
+		const result = extractImagesFromObservation(observation)!;
+
+		expect(result.images).toHaveLength(1);
+		const roundTripped = JSON.parse(result.text) as Record<string, unknown>;
+		expect(Object.prototype.hasOwnProperty.call(roundTripped, '__proto__')).toBe(true);
+		expect((roundTripped as { __proto__: unknown }).__proto__).toEqual({ note: 'own field' });
 	});
 
 	it('returns undefined for a plain scalar JSON value', () => {

@@ -9,6 +9,7 @@ import {
 	ChatPromptTemplate,
 	MessagesPlaceholder,
 	type BaseMessagePromptTemplateLike,
+	type MessagesPlaceholderFields,
 } from '@langchain/core/prompts';
 import { isChatInstance } from '@n8n/ai-utilities';
 import { AiConfig } from '@n8n/config';
@@ -592,10 +593,16 @@ export async function getTools(
  */
 class ToolResultImagesPlaceholder extends MessagesPlaceholder {
 	constructor(
-		variableName: string,
+		fields: MessagesPlaceholderFields<string>,
 		private readonly imageOptions: ToolResultImageOptions,
 	) {
-		super(variableName);
+		// The plain `['placeholder', '{agent_scratchpad}']` tuple this class
+		// replaces resolves to an *optional* MessagesPlaceholder (LangChain's
+		// tuple coercion sets `optional: true`), so a run with nothing in the
+		// scratchpad yet (first iteration, a resumed HITL run, ...) doesn't fail
+		// to format. Preserve that here explicitly, since the constructor
+		// overload we call defaults `optional` to `false`.
+		super({ ...fields, optional: true });
 	}
 
 	async formatMessages(values: Record<string, unknown>): Promise<BaseMessage[]> {
@@ -659,9 +666,10 @@ export async function prepareMessages(
 	// by adding binary messages between each interaction
 	if (options.passthroughToolResultImages) {
 		messages.push(
-			new ToolResultImagesPlaceholder('agent_scratchpad', {
-				maxImageBytes: getMaxPassthroughBinarySizeBytes(),
-			}),
+			new ToolResultImagesPlaceholder(
+				{ variableName: 'agent_scratchpad' },
+				{ maxImageBytes: getMaxPassthroughBinarySizeBytes() },
+			),
 		);
 	} else {
 		messages.push(['placeholder', '{agent_scratchpad}']);
