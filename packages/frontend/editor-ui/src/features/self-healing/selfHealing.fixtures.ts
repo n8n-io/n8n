@@ -397,6 +397,8 @@ export interface BuildOutcomeOptions {
 	id: string;
 	title: string;
 	summary: string;
+	/** Body of the assistant's report in the activity feed. */
+	analysis: string;
 	outcome: Omit<SelfHealingOutcome, 'dismissedAt'>;
 	executionId: string;
 	workflowId: string;
@@ -409,8 +411,9 @@ export interface BuildOutcomeOptions {
 
 /**
  * An inbox item that is not a review: the assistant either needs the user to
- * act or gave up. It reuses the review item shape so the inbox lists it, but
- * carries no diff and nobody can decide on it.
+ * act or gave up. It reuses the review item shape so the inbox lists it and
+ * the detail shows the same description and activity, but it carries no diff
+ * and nobody can decide on it.
  */
 export function buildSelfHealingOutcome(
 	options: BuildOutcomeOptions,
@@ -463,7 +466,7 @@ export function buildSelfHealingOutcome(
 		],
 		viewerCanDecide: false,
 		viewerDecisionIneligibilityReason: null,
-		viewerCanComment: false,
+		viewerCanComment: true,
 	};
 
 	const activity: WorkflowReviewActivityEntry[] = [
@@ -478,6 +481,24 @@ export function buildSelfHealingOutcome(
 					{ workflowId: options.workflowId, workflowVersionId: version.versionId },
 				],
 			},
+		},
+		{
+			id: nextEntryId(),
+			typeVersion: 1,
+			type: 'comment.created',
+			createdBy: SELF_HEALING_ASSISTANT,
+			createdAt: options.createdAt,
+			data: null,
+			messages: [
+				{
+					id: `${options.id}-analysis`,
+					body: options.analysis,
+					createdBy: SELF_HEALING_ASSISTANT,
+					createdAt: options.createdAt,
+					updatedAt: null,
+					deletedAt: null,
+				},
+			],
 		},
 	];
 
@@ -606,21 +627,11 @@ export function createSeedReviews(
 				nodes: DEAL_ALERTS_NODES,
 				reviewers,
 				createdAt: hoursAgo(0.7, now),
+				analysis:
+					'What failed: execution #48377 stopped at "Get new deals" with "Authorization failed. Please check your credentials (401 Unauthorized)".\n\nWhat I found: the pre-check matched this error to an expired OAuth token on the credential "HubSpot – Sales". The workflow has not changed since its last successful run, so there is nothing in it to fix.\n\nWhat to do next:\n1. Reconnect the credential "HubSpot – Sales" under Credentials.\n2. Run the failed execution again, or wait for the next hourly run.\n\nCredits used: none. The pre-check caught this before I ran.',
 				outcome: {
 					kind: 'needs_you',
-					failure: {
-						node: 'Get new deals',
-						message: 'Authorization failed. Please check your credentials (401 Unauthorized).',
-					},
-					findings:
-						'The pre-check matched this error to an expired OAuth token on the credential "HubSpot – Sales". The workflow has not changed since its last successful run, so there is nothing in it to fix.',
-					reason: null,
-					nextSteps: [
-						'Reconnect the credential "HubSpot – Sales" under Credentials.',
-						'Run the failed execution again, or wait for the next hourly run.',
-					],
 					action: { type: 'open_credential', credentialName: 'HubSpot – Sales' },
-					usage: null,
 				},
 			},
 			nextEntryId,
@@ -638,23 +649,11 @@ export function createSeedReviews(
 				nodes: ORDER_SYNC_NODES,
 				reviewers,
 				createdAt: hoursAgo(5, now),
+				analysis:
+					'What failed: execution #48311 stopped at "Create shipment" with HTTP 400 "Unknown field shipping_method_v1".\n\nWhat I found: the same request succeeded until yesterday at 22:10 and nothing in the workflow changed since, so the warehouse API has renamed or removed the field.\n\nWhy I stopped: the error does not say what replaced the field, and the API reference I can reach still lists the old name. Guessing a field name could create shipments with wrong data.\n\nWhat to do next:\n1. Check the warehouse vendor\'s API changelog for the new shipping method field.\n2. Update the field mapping in "Create shipment", then run the failed execution again.\n3. Or continue in chat with the changelog link and I will prepare the fix.\n\nCredits used: 9 credits over 6 turns in 3 min.',
 				outcome: {
 					kind: 'could_not_fix',
-					failure: {
-						node: 'Create shipment',
-						message: 'HTTP 400 Bad Request: Unknown field "shipping_method_v1".',
-					},
-					findings:
-						'Execution #48311 stopped at "Create shipment" with HTTP 400 "Unknown field shipping_method_v1". The same request succeeded until yesterday at 22:10 and nothing in the workflow changed since, so the warehouse API has renamed or removed the field.',
-					reason:
-						'The error does not say what replaced the field, and the API reference the Assistant can reach still lists the old name. Guessing a field name could create shipments with wrong data, so it stopped.',
-					nextSteps: [
-						"Check the warehouse vendor's API changelog for the new shipping method field.",
-						'Update the field mapping in "Create shipment", then run the failed execution again.',
-						'Or continue in chat with the changelog link, and the Assistant prepares the fix.',
-					],
 					action: null,
-					usage: { credits: 9, turns: 6, durationSeconds: 170 },
 				},
 			},
 			nextEntryId,

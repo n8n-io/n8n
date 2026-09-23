@@ -14,11 +14,21 @@ import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
 
 export type WorkflowReviewDetailTab = 'activity' | 'changes';
 
-const props = defineProps<{
-	review: WorkflowReviewInboxItem | WorkflowReviewRequestDetail;
-	tab: WorkflowReviewDetailTab;
-	deciding: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		review: WorkflowReviewInboxItem | WorkflowReviewRequestDetail;
+		tab: WorkflowReviewDetailTab;
+		deciding: boolean;
+		/** Off for items that carry no diff, such as a self-healing report. */
+		showChanges?: boolean;
+	}>(),
+	{ showChanges: true },
+);
+
+// A deep link to the changes tab falls back to activity when there is no diff.
+const activeTab = computed<WorkflowReviewDetailTab>(() =>
+	props.showChanges ? props.tab : 'activity',
+);
 
 const emit = defineEmits<{
 	'update:tab': [tab: WorkflowReviewDetailTab];
@@ -90,10 +100,14 @@ const tabOptions = computed(() => [
 		label: i18n.baseText('workflowReviews.detail.tabs.activity'),
 		value: 'activity' as const,
 	},
-	{
-		label: i18n.baseText('workflowReviews.detail.tabs.changes'),
-		value: 'changes' as const,
-	},
+	...(props.showChanges
+		? [
+				{
+					label: i18n.baseText('workflowReviews.detail.tabs.changes'),
+					value: 'changes' as const,
+				},
+			]
+		: []),
 ]);
 </script>
 
@@ -101,7 +115,7 @@ const tabOptions = computed(() => [
 	<div :class="$style.container" data-test-id="workflow-review-detail-tabs">
 		<div :class="$style.tabRow">
 			<N8nTabs
-				:model-value="tab"
+				:model-value="activeTab"
 				:options="tabOptions"
 				variant="modern"
 				data-test-id="workflow-review-detail-tab-bar"
@@ -111,20 +125,22 @@ const tabOptions = computed(() => [
 			<!-- Gated on `detail`, not `review`: eligibility only arrives with the
 				detail payload, so the list item alone can't say who may decide. -->
 			<div v-if="detail?.state === 'open'" :class="$style.decisionActions">
-				<WorkflowReviewDecisionPopover
-					:deciding="deciding"
-					:viewer-can-decide="viewerCanDecide"
-					:viewer-can-comment="viewerCanComment"
-					:ineligibility-hint="ineligibilityHint"
-					@decide="emit('decide', $event)"
-					@comment-posted="emit('update:tab', 'activity')"
-				/>
+				<slot name="actions">
+					<WorkflowReviewDecisionPopover
+						:deciding="deciding"
+						:viewer-can-decide="viewerCanDecide"
+						:viewer-can-comment="viewerCanComment"
+						:ineligibility-hint="ineligibilityHint"
+						@decide="emit('decide', $event)"
+						@comment-posted="emit('update:tab', 'activity')"
+					/>
+				</slot>
 			</div>
 		</div>
 
 		<div :class="$style.detailBody">
 			<div
-				v-if="tab === 'activity'"
+				v-if="activeTab === 'activity'"
 				:class="$style.activityPanel"
 				data-test-id="workflow-review-activity-panel"
 			>

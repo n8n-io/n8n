@@ -242,7 +242,7 @@ describe('useSelfHealingStore', () => {
 			const fix = items.find((item) => store.getInboxKind(item.id) === 'fix');
 			const needsYou = items.find((item) => store.getInboxKind(item.id) === 'needs_you');
 			expect(fix && store.getOutcome(fix.id)).toBeNull();
-			expect(needsYou && store.getOutcome(needsYou.id)?.usage).toBeNull();
+			expect(needsYou && store.getOutcome(needsYou.id)?.action?.type).toBe('open_credential');
 		});
 
 		it('dismiss closes an outcome item and leaves reviews alone', () => {

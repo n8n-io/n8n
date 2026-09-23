@@ -88,18 +88,8 @@ export type SelfHealingInboxKind = 'fix' | 'needs_you' | 'could_not_fix';
 
 export interface SelfHealingOutcome {
 	kind: Exclude<SelfHealingInboxKind, 'fix'>;
-	/** The failure that started the investigation. */
-	failure: { node: string; message: string };
-	/** What the assistant established, in its own words. */
-	findings: string;
-	/** Why the assistant stopped. Only for `could_not_fix`. */
-	reason: string | null;
-	/** What the user should do, in order. */
-	nextSteps: string[];
-	/** Deep link for the first step. */
+	/** Deep link offered next to Dismiss. `null` falls back to "Continue in chat". */
 	action: { type: 'open_credential'; credentialName: string } | null;
-	/** Spent on the investigation. `null` when the pre-check stopped it before any AI ran. */
-	usage: { credits: number; turns: number; durationSeconds: number } | null;
 	dismissedAt: string | null;
 }
 
