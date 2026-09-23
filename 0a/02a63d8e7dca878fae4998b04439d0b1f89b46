@@ -5,6 +5,7 @@ packages/cli/src/modules/agents/utils/__tests__/abort-signal.test.ts
   s_782619aac31c26::t_0b4230ab12e8e2 1-26
 packages/cli/src/modules/agents/agent-turn-execution.service.ts
   s_782619aac31c26::t_87be58a166f0ef 27,84-85,138-142,223-227,444-448
+  s_782619aac31c26::t_153b198bb72d49 449
 packages/cli/src/modules/agents/__tests__/agent-session-lease.service.test.ts
   s_782619aac31c26::t_0b4230ab12e8e2 8
 packages/cli/src/modules/agents/utils/__tests__/agent-stream.test.ts
@@ -27,6 +28,7 @@ packages/cli/src/modules/agents/utils/abort-signal.ts
 packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
   s_782619aac31c26::t_77baea3c660099 52
   s_782619aac31c26::t_87be58a166f0ef 244-245,319,416,423-427
+  s_782619aac31c26::t_4efbe0a6b0caf4 250,277,279,351
 packages/cli/src/modules/agents/agent-workflow-execution.service.ts
   s_782619aac31c26::t_77baea3c660099 60,373-374,377-384,394,444
 ---
