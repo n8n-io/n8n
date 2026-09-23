@@ -454,13 +454,14 @@ describe('ToolsConnectionModal', () => {
 		const status = getByRole('status');
 
 		expect(rows[0]).toHaveAttribute('data-active', 'true');
-		expect(input).toHaveAccessibleDescription('tools.connection.search.keyboardInstructions');
+		expect(input).toHaveAccessibleDescription();
 		expect(status).toHaveAttribute('aria-live', 'polite');
-		expect(status).toHaveTextContent('tools.connection.search.activeItem');
+		expect(status).toHaveTextContent('Synthetic MCP Server #1, 1 of 3');
 
 		await fireEvent.keyDown(input, { key: 'ArrowDown' });
 		expect(rows[0]).toHaveAttribute('data-active', 'false');
 		expect(rows[1]).toHaveAttribute('data-active', 'true');
+		expect(status).toHaveTextContent('Synthetic MCP Server #2, 2 of 3');
 		expect(scrollToKeyIfNeededMock).toHaveBeenLastCalledWith('item:mcp-generated-1');
 
 		await fireEvent.keyDown(input, { key: 'ArrowUp' });

@@ -198,8 +198,8 @@ function tabCount(category: ToolCategoryKey): string {
 	return count > MAX_DISPLAYED_COUNT ? `${MAX_DISPLAYED_COUNT}+` : String(count);
 }
 
-type CreateWorkflowRow = { key: 'create-workflow' };
-type NavigableRow = FlattenedRow | CreateWorkflowRow;
+type CreateWorkflowListRow = { key: 'create-workflow' };
+type NavigableRow = FlattenedRow | CreateWorkflowListRow;
 type ListRow = NavigableRow | { key: 'suggestion' };
 
 const toolRows = computed<FlattenedRow[]>(() =>
