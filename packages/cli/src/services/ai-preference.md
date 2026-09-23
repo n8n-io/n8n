@@ -35,6 +35,44 @@ every write, so a new write path that forgets to name one fails instead of recor
 silent `ui`. The telemetry and the settings list use this column to tell an assistant
 write from a person's own write.
 
+## Writes without a scope in hand
+
+`updateContent(user, id, content)` replaces the text and keeps the scope where it is. It
+serves callers that hold an id and no scope, such as an MCP client editing a row that
+`get_user_preferences` returned; `update()` needs the full request and would read a missing
+scope as a move.
+
+`undoWrite(user, id, source)` removes a row only when the named surface created it for the
+caller: `source` and `createdById` must both match. It is the undo of an assistant write,
+narrower than `delete()` on purpose, so a client can take back what it saved and nothing the
+person wrote by hand. A row that fails the check answers like one that does not exist.
+
+## The assistant write
+
+Every assistant surface writes through `writeAssistantPreference` in
+[`ai-preference-write.ts`](./ai-preference-write.ts): the n8n Assistant tool with
+`surface: 'aia'` and the MCP tool with `surface: 'mcp'`. It sets `source`, maps a refusal
+to one of six reasons (`too_long`, `scope_full`, `duplicate`, `not_permitted`,
+`blocked_by_admin`, `failed`) and fires the events, so the two surfaces cannot drift.
+
+## The MCP write tools
+
+Three tools in `packages/cli/src/modules/mcp/tools/`, all behind the `aiPreference:write`
+OAuth scope and the `CONTEXT_PREFERENCES_FLAG`:
+
+| Tool | Does |
+| --- | --- |
+| `save_user_preference` | Creates a personal preference with `source` set to `mcp`, at once, with no confirmation gate. The result names the saved text, the id and the settings page. |
+| `update_user_preference` | Replaces the text of a row by id, through `updateContent`. |
+| `undo_user_preference` | Removes a row through `undoWrite`, so only what MCP saved for this user. |
+
+On a client that declares the elicitation capability, the save follows the write with one
+form: the saved text, editable, and a "remove" box. It is the second round of the same
+`tools/call` (multi-round-trip elicitation, revision 2026-07-28); the row id travels in
+`requestState`, and the retry re-authorizes through the service. Accept applies the edit or
+the removal. Decline and cancel keep the row: the write already happened, and a dismissed
+form must not delete data.
+
 ## Who may read and write
 
 `AiPreferenceService` holds the rules for every surface, and the REST controller adds
@@ -137,6 +175,13 @@ area. Six more cover the assistant paths: the preferences applied to a turn, an 
 write, the confirmation shown and answered, the scope accepted against the scope offered,
 and a refused write with its reason. The `get_user_preferences` MCP tool reports the count
 and the scopes it returned on the existing tool event.
+
+The MCP write tools fire the same events with `surface` set to `mcp`, through the shared
+write. A removal from the review form, or through the undo tool, is `User deleted
+preferences` with `source` set to `rejected`, as the chat card reports its Undo, and carries
+`seconds_since_saved`. An edit from the form is `accepted_after_edit`. A dismissed form fires
+no event of its own; the tool event records it, along with whether the client declared
+elicitation at all.
 
 Run `pnpm --filter @n8n/telemetry catalog` to read the registered events and their
 properties. No event carries preference text. The events report lengths, counts and

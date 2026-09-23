@@ -1,9 +1,10 @@
-import type { AiPreferenceScope, AiPreferenceUserDto } from '@n8n/api-types';
+import type { AiPreferenceScope, AiPreferenceSource, AiPreferenceUserDto } from '@n8n/api-types';
 import {
 	aiPreferenceScopeOf,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -74,6 +75,14 @@ export function preferenceAudience(
 			}
 			return { kind: 'project', name: row.project?.name ?? null };
 	}
+}
+
+/** The surface that wrote the row, as the settings list names it. */
+export function preferenceSourceLabel(
+	i18n: { baseText: (key: BaseTextKey) => string },
+	source: AiPreferenceSource,
+): string {
+	return i18n.baseText(`settings.context.preferences.source.${source}`);
 }
 
 export function preferenceUserName(user: AiPreferenceUserDto | null): string {

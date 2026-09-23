@@ -563,6 +563,132 @@ describe('AiPreferenceService', () => {
 			expect(aiPreferenceRepository.existsForTargetWithContent).not.toHaveBeenCalled();
 		});
 	});
+
+	/** For callers that hold an id and no scope, such as an MCP client. */
+	describe('updateContent', () => {
+		const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+
+		beforeEach(() => {
+			aiPreferenceRepository.save.mockImplementation(
+				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
+			);
+			aiPreferenceRepository.existsForTargetWithContent.mockResolvedValue(false);
+		});
+
+		it('replaces the text and leaves the scope and the source where they are', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: 'user-1', source: 'ui' }),
+			);
+
+			const updated = await service.updateContent(member, 'pref-1', 'A better rule.');
+
+			expect(updated).toMatchObject({ content: 'A better rule.', userId: 'user-1', source: 'ui' });
+			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ content: 'A better rule.', userId: 'user-1', source: 'ui' }),
+			);
+			// An edit in place never moves the row, so the cap is not the edit's business.
+			expect(aiPreferenceRepository.countForTarget).not.toHaveBeenCalled();
+		});
+
+		it('answers not found for a row the caller cannot see, like the other reads', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: 'user-2' }),
+			);
+
+			await expect(service.updateContent(member, 'pref-1', 'Mine now.')).rejects.toBeInstanceOf(
+				NotFoundError,
+			);
+			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('refuses a text another row in the scope already holds, through the shared rule', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: 'user-1' }),
+			);
+			aiPreferenceRepository.existsForTargetWithContent.mockResolvedValue(true);
+
+			await expect(service.updateContent(member, 'pref-1', 'Other.')).rejects.toThrow(
+				'This user already has a preference with the same text',
+			);
+			expect(aiPreferenceRepository.existsForTargetWithContent).toHaveBeenCalledWith(
+				{ scope: 'user', userId: 'user-1' },
+				'Other.',
+				'pref-1',
+			);
+		});
+
+		it('skips the duplicate check when the text did not change', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: 'user-1' }),
+			);
+
+			await service.updateContent(member, 'pref-1', 'Rule.');
+
+			expect(aiPreferenceRepository.existsForTargetWithContent).not.toHaveBeenCalled();
+		});
+	});
+
+	/**
+	 * The undo of an assistant write. Narrower than delete on purpose: a client takes back what it
+	 * saved, and nothing the person wrote by hand.
+	 */
+	describe('undoWrite', () => {
+		const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+
+		it('removes a row the named surface created for the caller', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({
+					id: 'pref-1',
+					content: 'Rule.',
+					userId: 'user-1',
+					source: 'mcp',
+					createdById: 'user-1',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				}),
+			);
+
+			const removed = await service.undoWrite(member, 'pref-1', 'mcp');
+
+			expect(aiPreferenceRepository.delete).toHaveBeenCalledWith({ id: 'pref-1' });
+			expect(removed).toMatchObject({ id: 'pref-1', content: 'Rule.', source: 'mcp' });
+		});
+
+		it.each([
+			['a row the person wrote in settings', { source: 'ui' as const, createdById: 'user-1' }],
+			['a row another surface wrote', { source: 'aia' as const, createdById: 'user-1' }],
+			[
+				'a row the same surface wrote for somebody else',
+				{ source: 'mcp' as const, createdById: 'owner-1' },
+			],
+		])('refuses %s and answers like a missing row', async (_label, overrides) => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: 'user-1', ...overrides }),
+			);
+
+			await expect(service.undoWrite(member, 'pref-1', 'mcp')).rejects.toBeInstanceOf(
+				NotFoundError,
+			);
+			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('refuses a row the caller cannot see, before it reads the source', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({
+					id: 'pref-1',
+					content: 'Rule.',
+					userId: 'user-2',
+					source: 'mcp',
+					createdById: 'user-1',
+				}),
+			);
+
+			await expect(service.undoWrite(member, 'pref-1', 'mcp')).rejects.toBeInstanceOf(
+				NotFoundError,
+			);
+			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('groupAiPreferences', () => {
