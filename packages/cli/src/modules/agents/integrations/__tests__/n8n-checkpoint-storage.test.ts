@@ -1,6 +1,7 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
+import type { OperationContext, Transaction } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -13,6 +14,7 @@ import {
 	CHECKPOINT_RECONCILIATION_OVERFLOW,
 	N8NCheckpointStorage,
 } from '../n8n-checkpoint-storage';
+import { mockSessionLeases } from '../../__tests__/test-utils/session-leases';
 
 const suspendedState: SerializableAgentState = {
 	status: 'suspended',
@@ -31,13 +33,15 @@ const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'use
 
 function makeService() {
 	const repository = mock<AgentCheckpointRepository>();
+	const sessionLeases = mockSessionLeases();
 	const service = new N8NCheckpointStorage(
 		repository,
 		mockLogger(),
 		mock<AgentsConfig>({ checkpointTtlSeconds: 60 }),
+		sessionLeases,
 	);
 
-	return { service, repository };
+	return { service, repository, sessionLeases };
 }
 
 describe('N8NCheckpointStorage', () => {
@@ -49,7 +53,7 @@ describe('N8NCheckpointStorage', () => {
 			expired: false,
 			state: JSON.stringify(suspendedState),
 		} as AgentCheckpoint;
-		repository.findByRunId.mockResolvedValue(null);
+		repository.findByRunIdInContext.mockResolvedValue(null);
 		repository.create.mockReturnValue(checkpoint);
 
 		await service.getStorage('agent-1').save('run-1', suspendedState);
@@ -61,7 +65,7 @@ describe('N8NCheckpointStorage', () => {
 			expired: false,
 			state: JSON.stringify(suspendedState),
 		});
-		expect(repository.save).toHaveBeenCalledWith(checkpoint);
+		expect(repository.saveInContext).toHaveBeenCalledWith(checkpoint, {});
 	});
 
 	it.each(['thread-1', undefined])('replaces the saved thread key with %s', async (threadId) => {
@@ -73,7 +77,7 @@ describe('N8NCheckpointStorage', () => {
 			expired: true,
 			state: null,
 		} as AgentCheckpoint;
-		repository.findByRunId.mockResolvedValue(checkpoint);
+		repository.findByRunIdInContext.mockResolvedValue(checkpoint);
 		const state = {
 			...suspendedState,
 			persistence: threadId ? { threadId, resourceId: 'resource-1' } : undefined,
@@ -87,14 +91,14 @@ describe('N8NCheckpointStorage', () => {
 			expired: false,
 			state: JSON.stringify(state),
 		});
-		expect(repository.save).toHaveBeenCalledWith(checkpoint);
+		expect(repository.saveInContext).toHaveBeenCalledWith(checkpoint, {});
 	});
 
 	it.each(['agent-2', null])(
 		'rejects overwriting a checkpoint owned by %s',
 		async (existingAgentId) => {
 			const { service, repository } = makeService();
-			repository.findByRunId.mockResolvedValue({
+			repository.findByRunIdInContext.mockResolvedValue({
 				runId: 'run-1',
 				agentId: existingAgentId,
 				expired: false,
@@ -104,7 +108,7 @@ describe('N8NCheckpointStorage', () => {
 			await expect(service.getStorage('agent-1').save('run-1', suspendedState)).rejects.toThrow(
 				'owned by a different agent',
 			);
-			expect(repository.save).not.toHaveBeenCalled();
+			expect(repository.saveInContext).not.toHaveBeenCalled();
 		},
 	);
 
@@ -134,6 +138,7 @@ describe('N8NCheckpointStorage', () => {
 			'agent-1',
 			JSON.stringify(suspendedState),
 			JSON.stringify({ ...suspendedState, status: 'running' }),
+			{},
 		);
 		await expect(storage.claimForResume?.('run-1', suspendedState)).resolves.toBe(false);
 	});
@@ -148,6 +153,7 @@ describe('N8NCheckpointStorage', () => {
 			'run-1',
 			'agent-1',
 			JSON.stringify(suspendedState),
+			{},
 		);
 	});
 
@@ -186,7 +192,40 @@ describe('N8NCheckpointStorage', () => {
 
 		await service.getStorage('agent-1').delete('run-1');
 
-		expect(repository.expireByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1');
+		expect(repository.expireByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1', {});
+	});
+
+	it('runs each checkpoint write in one fenced transaction', async () => {
+		const { service, repository, sessionLeases } = makeService();
+		const trxCtx: OperationContext = { trx: mock<Transaction>() };
+		sessionLeases.fencedWrite.mockImplementation(async (_ctx, write) => await write(trxCtx));
+		const checkpoint = { runId: 'run-1', agentId: 'agent-1' } as AgentCheckpoint;
+		repository.findByRunIdInContext.mockResolvedValue(null);
+		repository.create.mockReturnValue(checkpoint);
+		const storage = service.getStorage('agent-1');
+
+		await storage.save('run-1', suspendedState);
+		await storage.claimForResume?.('run-1', suspendedState);
+		await service.cancelSuspended('run-1', suspendedState, 'agent-1');
+		await storage.delete('run-1');
+
+		expect(sessionLeases.fencedWrite).toHaveBeenCalledTimes(4);
+		expect(repository.findByRunIdInContext).toHaveBeenCalledWith('run-1', trxCtx);
+		expect(repository.saveInContext).toHaveBeenCalledWith(checkpoint, trxCtx);
+		expect(repository.claimForResume).toHaveBeenCalledWith(
+			'run-1',
+			'agent-1',
+			expect.any(String),
+			expect.any(String),
+			trxCtx,
+		);
+		expect(repository.cancelSuspended).toHaveBeenCalledWith(
+			'run-1',
+			'agent-1',
+			expect.any(String),
+			trxCtx,
+		);
+		expect(repository.expireByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1', trxCtx);
 	});
 
 	it('returns every persisted active run for the principal workspace', async () => {

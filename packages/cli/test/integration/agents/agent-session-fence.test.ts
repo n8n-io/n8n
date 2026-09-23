@@ -1,3 +1,4 @@
+import type { SerializableAgentState } from '@n8n/agents';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
@@ -5,7 +6,9 @@ import { v4 as uuid } from 'uuid';
 import { AgentSessionLeaseLostError } from '@/modules/agents/agent-session-lease-lost.error';
 import { AgentSessionLeaseService } from '@/modules/agents/agent-session-lease.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
+import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentMessageRepository } from '@/modules/agents/repositories/agent-message.repository';
@@ -115,6 +118,49 @@ describe('Fenced agent session writes', () => {
 			expect(await messages.countBy({ threadId })).toBe(1);
 			await memory.deleteMessages([message.id]);
 			expect(await messages.countBy({ threadId })).toBe(0);
+
+			staleTurn.settle();
+		});
+	});
+
+	describe('checkpoints', () => {
+		const suspendedState = (threadId: string): SerializableAgentState => ({
+			status: 'suspended',
+			persistence: { threadId, resourceId: 'user-1' },
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			pendingToolCalls: {},
+		});
+
+		it('rejects the checkpoint writes of a turn whose lease another main took over', async () => {
+			const threadId = uuid();
+			const state = suspendedState(threadId);
+			const checkpoints = Container.get(AgentCheckpointRepository);
+			const storage = Container.get(N8NCheckpointStorage);
+			const store = storage.getStorage(agentId);
+			await store.save('run-parked', state);
+			const staleTurn = await startStaleTurn(threadId);
+
+			await expect(staleTurn.write(async () => await store.save('run-new', state))).rejects.toThrow(
+				AgentSessionLeaseLostError,
+			);
+			await expect(
+				staleTurn.write(async () => await store.claimForResume?.('run-parked', state)),
+			).rejects.toThrow(AgentSessionLeaseLostError);
+			await expect(
+				staleTurn.write(async () => await storage.cancelSuspended('run-parked', state, agentId)),
+			).rejects.toThrow(AgentSessionLeaseLostError);
+			await expect(staleTurn.write(async () => await store.delete('run-parked'))).rejects.toThrow(
+				AgentSessionLeaseLostError,
+			);
+			expect(await checkpoints.findByRunId('run-new')).toBeNull();
+			expect(await storage.getStatus('run-parked', agentId)).toEqual({
+				status: 'active',
+				checkpoint: state,
+			});
+
+			await expect(store.claimForResume?.('run-parked', state)).resolves.toBe(true);
+			await store.delete('run-parked');
+			expect(await storage.getStatus('run-parked', agentId)).toEqual({ status: 'expired' });
 
 			staleTurn.settle();
 		});

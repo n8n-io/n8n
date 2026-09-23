@@ -343,7 +343,7 @@ describe('AgentExecutionRepository', () => {
 	}
 
 	async function startSuspendedApprovalRun(user?: User, approvals = 1, messageQueueEnabled = true) {
-		const { turns, executionService } = recordingServices(
+		const { turns, executionService, sessionLeases } = recordingServices(
 			undefined,
 			undefined,
 			messageQueueEnabled,
@@ -360,7 +360,13 @@ describe('AgentExecutionRepository', () => {
 			userMessage: 'Start',
 		};
 		const checkpointRepo = Container.get(AgentCheckpointRepository);
-		const storage = new N8NCheckpointStorage(checkpointRepo, mockLogger(), new AgentsConfig());
+		// The turns and the storage share one lease service, so checkpoint writes are fenced.
+		const storage = new N8NCheckpointStorage(
+			checkpointRepo,
+			mockLogger(),
+			new AgentsConfig(),
+			sessionLeases,
+		);
 		const { action, makeAgent } = createApprovalAgentFactory(threadId, user?.id, approvals);
 		const common = {
 			toolRegistry: new Map(),
@@ -427,9 +433,13 @@ describe('AgentExecutionRepository', () => {
 		}).initialize();
 		try {
 			const otherStorage = new N8NCheckpointStorage(
-				new AgentCheckpointRepository(secondConnection),
+				new AgentCheckpointRepository(
+					secondConnection,
+					new TypeOrmTransactionRunner(secondConnection, mockLogger()),
+				),
 				mockLogger(),
 				new AgentsConfig(),
+				Container.get(AgentSessionLeaseService),
 			);
 			// The admitted attempt waits until the other one is rejected, so the
 			// other attempt competes for the session lease while it is held.
@@ -487,9 +497,13 @@ describe('AgentExecutionRepository', () => {
 		}).initialize();
 		try {
 			const otherStorage = new N8NCheckpointStorage(
-				new AgentCheckpointRepository(secondConnection),
+				new AgentCheckpointRepository(
+					secondConnection,
+					new TypeOrmTransactionRunner(secondConnection, mockLogger()),
+				),
 				mockLogger(),
 				new AgentsConfig(),
+				Container.get(AgentSessionLeaseService),
 			);
 			const bothLoaded = createDeferredPromise<boolean>();
 			let loaded = 0;

@@ -6,6 +6,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -13,6 +14,7 @@ import {
 	decodeAgentSandboxHostMetadata,
 	type AgentSandboxPrincipalHash,
 } from '../agent-sandbox-principal';
+import { AgentSessionLeaseService } from '../agent-session-lease.service';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
 /** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
@@ -47,6 +49,7 @@ export class N8NCheckpointStorage {
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly sessionLeases: AgentSessionLeaseService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -88,9 +91,22 @@ export class N8NCheckpointStorage {
 		return runIds;
 	}
 
+	/** During a turn, each checkpoint write is fenced by the session lease. */
 	async save(key: string, checkpointState: SerializableAgentState, agentId: string): Promise<void> {
 		const state = stripStateFileData(checkpointState);
-		const existing = await this.agentCheckpointRepository.findByRunId(key);
+		await this.sessionLeases.fencedWrite(
+			{},
+			async (ctx) => await this.writeCheckpoint(key, state, agentId, ctx),
+		);
+	}
+
+	private async writeCheckpoint(
+		key: string,
+		state: SerializableAgentState,
+		agentId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		const existing = await this.agentCheckpointRepository.findByRunIdInContext(key, ctx);
 
 		if (existing) {
 			if (existing.agentId !== agentId) {
@@ -99,7 +115,7 @@ export class N8NCheckpointStorage {
 			existing.state = JSON.stringify(state);
 			existing.threadId = state.persistence?.threadId ?? null;
 			existing.expired = false;
-			await this.agentCheckpointRepository.save(existing);
+			await this.agentCheckpointRepository.saveInContext(existing, ctx);
 		} else {
 			const checkpoint = this.agentCheckpointRepository.create({
 				runId: key,
@@ -108,7 +124,7 @@ export class N8NCheckpointStorage {
 				state: JSON.stringify(state),
 				expired: false,
 			});
-			await this.agentCheckpointRepository.save(checkpoint);
+			await this.agentCheckpointRepository.saveInContext(checkpoint, ctx);
 		}
 	}
 
@@ -135,11 +151,16 @@ export class N8NCheckpointStorage {
 		agentId: string,
 	): Promise<boolean> {
 		const state = stripStateFileData(checkpointState);
-		return await this.agentCheckpointRepository.claimForResume(
-			key,
-			agentId,
-			JSON.stringify(state),
-			JSON.stringify({ ...state, status: 'running' }),
+		return await this.sessionLeases.fencedWrite(
+			{},
+			async (ctx) =>
+				await this.agentCheckpointRepository.claimForResume(
+					key,
+					agentId,
+					JSON.stringify(state),
+					JSON.stringify({ ...state, status: 'running' }),
+					ctx,
+				),
 		);
 	}
 
@@ -149,10 +170,15 @@ export class N8NCheckpointStorage {
 		agentId: string,
 	): Promise<boolean> {
 		if (state.status !== 'suspended') return false;
-		return await this.agentCheckpointRepository.cancelSuspended(
-			key,
-			agentId,
-			JSON.stringify(state),
+		return await this.sessionLeases.fencedWrite(
+			{},
+			async (ctx) =>
+				await this.agentCheckpointRepository.cancelSuspended(
+					key,
+					agentId,
+					JSON.stringify(state),
+					ctx,
+				),
 		);
 	}
 
@@ -219,7 +245,11 @@ export class N8NCheckpointStorage {
 	}
 
 	async delete(key: string, agentId: string): Promise<void> {
-		await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId);
+		await this.sessionLeases.fencedWrite(
+			{},
+			async (ctx) =>
+				await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId, ctx),
+		);
 	}
 
 	/** Marks checkpoints past their TTL as expired. A failure propagates to the caller. */

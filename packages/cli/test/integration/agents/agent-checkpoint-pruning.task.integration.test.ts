@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { DbConnectionOptions } from '@n8n/db';
+import { DbConnectionOptions, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { QueryRunner } from '@n8n/typeorm';
 import { DataSource, IsNull, Not } from '@n8n/typeorm';
@@ -12,6 +12,7 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentCheckpointPruningTask } from '@/modules/agents/agent-checkpoint-pruning.task';
+import { AgentSessionLeaseService } from '@/modules/agents/agent-session-lease.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
@@ -47,7 +48,12 @@ describe('AgentCheckpointPruningTask', () => {
 		agentRepository = Container.get(AgentRepository);
 		checkpointRepository = Container.get(AgentCheckpointRepository);
 		config = Container.get(AgentsConfig);
-		storage = new N8NCheckpointStorage(checkpointRepository, logger, config);
+		storage = new N8NCheckpointStorage(
+			checkpointRepository,
+			logger,
+			config,
+			Container.get(AgentSessionLeaseService),
+		);
 		task = new AgentCheckpointPruningTask(storage);
 		stale = new Date(Date.now() - (config.checkpointTtlSeconds + Time.hours.toSeconds) * 1000);
 	});
@@ -142,10 +148,16 @@ describe('AgentCheckpointPruningTask', () => {
 		beforeEach(async () => {
 			otherRunner = otherConnection.createQueryRunner();
 			await otherRunner.startTransaction();
-			const repository = new AgentCheckpointRepository({
-				manager: otherRunner.manager,
-			} as DataSource);
-			otherStorage = new N8NCheckpointStorage(repository, logger, config);
+			const repository = new AgentCheckpointRepository(
+				{ manager: otherRunner.manager } as DataSource,
+				Container.get(TransactionRunner),
+			);
+			otherStorage = new N8NCheckpointStorage(
+				repository,
+				logger,
+				config,
+				Container.get(AgentSessionLeaseService),
+			);
 		});
 
 		afterEach(async () => {

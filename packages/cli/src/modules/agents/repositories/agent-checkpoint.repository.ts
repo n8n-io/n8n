@@ -1,16 +1,28 @@
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 
 @Service()
-export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
-	constructor(dataSource: DataSource) {
-		super(AgentCheckpoint, dataSource.manager);
+export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentCheckpoint, dataSource.manager, transactionRunner);
 	}
 
 	async findByRunId(runId: string): Promise<AgentCheckpoint | null> {
 		return await this.findOneBy({ runId });
+	}
+
+	async findByRunIdInContext(
+		runId: string,
+		ctx: OperationContext,
+	): Promise<AgentCheckpoint | null> {
+		return await this.managerFor(ctx).findOneBy(AgentCheckpoint, { runId });
+	}
+
+	async saveInContext(checkpoint: AgentCheckpoint, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).save(AgentCheckpoint, checkpoint);
 	}
 
 	async findByRunIdAndAgentId(runId: string, agentId: string): Promise<AgentCheckpoint | null> {
@@ -41,8 +53,10 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 		agentId: string,
 		suspendedState: string,
 		runningState: string,
+		ctx: OperationContext,
 	): Promise<boolean> {
-		const result = await this.update(
+		const result = await this.managerFor(ctx).update(
+			AgentCheckpoint,
 			{ runId, agentId, expired: false, state: suspendedState },
 			{ state: runningState },
 		);
@@ -50,8 +64,14 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 		return (result.affected ?? 0) > 0;
 	}
 
-	async cancelSuspended(runId: string, agentId: string, suspendedState: string): Promise<boolean> {
-		const result = await this.update(
+	async cancelSuspended(
+		runId: string,
+		agentId: string,
+		suspendedState: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			AgentCheckpoint,
 			{ runId, agentId, expired: false, state: suspendedState },
 			{ expired: true },
 		);
@@ -59,8 +79,16 @@ export class AgentCheckpointRepository extends Repository<AgentCheckpoint> {
 		return (result.affected ?? 0) > 0;
 	}
 
-	async expireByRunIdAndAgentId(runId: string, agentId: string): Promise<void> {
-		await this.update({ runId, agentId }, { expired: true, state: null });
+	async expireByRunIdAndAgentId(
+		runId: string,
+		agentId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(
+			AgentCheckpoint,
+			{ runId, agentId },
+			{ expired: true, state: null },
+		);
 	}
 
 	async markExpired(olderThan: Date): Promise<number> {
