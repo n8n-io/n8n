@@ -11,6 +11,7 @@ import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
 import { NodeTypes } from '@/node-types';
+import { OtelService } from '@/modules/otel/otel.service';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
@@ -33,6 +34,7 @@ mockInstance(NodeTypes);
 mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
+mockInstance(OtelService);
 mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
