@@ -267,7 +267,9 @@ export class PromotionsService {
 			);
 		}
 
+		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
+
 		this.workingCopy.validateSelection(selection);
 		await this.assertTeamProject(selection.projectId);
 		await this.assertCheckoutReady(input, 'promoting');
