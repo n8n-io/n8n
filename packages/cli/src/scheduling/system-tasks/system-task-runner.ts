@@ -46,9 +46,9 @@ export class SystemTaskRunner {
 
 	private readonly logger: Logger;
 
-	private readonly leaderTimers: InMemorySystemTaskRunner;
+	private readonly leaderTaskRunner: InMemorySystemTaskRunner;
 
-	private readonly instanceTimers: InMemorySystemTaskRunner;
+	private readonly instanceTaskRunner: InMemorySystemTaskRunner;
 
 	private initialized = false;
 
@@ -69,27 +69,33 @@ export class SystemTaskRunner {
 		private readonly tracing: Tracing,
 	) {
 		this.logger = logger.scoped('system-tasks');
-		const { timezone } = globalConfig.generic;
-		const reportFailure = this.reportFailure.bind(this);
-		this.leaderTimers = new InMemorySystemTaskRunner(
+		this.leaderTaskRunner = this.createLeaderTaskRunner();
+		this.instanceTaskRunner = this.createInstanceTaskRunner();
+	}
+
+	private createLeaderTaskRunner(): InMemorySystemTaskRunner {
+		return new InMemorySystemTaskRunner(
 			'leader_timer',
 			this.logger,
-			eventService,
-			tracing,
-			timezone,
+			this.eventService,
+			this.tracing,
+			this.globalConfig.generic.timezone,
 			{
-				reportFailure,
-				onStart: () => emitSystemTaskMetric(eventService, 'system-task-timers-started', {}),
-				onStop: () => emitSystemTaskMetric(eventService, 'system-task-timers-stopped', {}),
+				reportFailure: this.reportFailure.bind(this),
+				onStart: () => emitSystemTaskMetric(this.eventService, 'system-task-timers-started', {}),
+				onStop: () => emitSystemTaskMetric(this.eventService, 'system-task-timers-stopped', {}),
 			},
 		);
-		this.instanceTimers = new InMemorySystemTaskRunner(
+	}
+
+	private createInstanceTaskRunner(): InMemorySystemTaskRunner {
+		return new InMemorySystemTaskRunner(
 			'instance_timer',
 			this.logger,
-			eventService,
-			tracing,
-			timezone,
-			{ reportFailure },
+			this.eventService,
+			this.tracing,
+			this.globalConfig.generic.timezone,
+			{ reportFailure: this.reportFailure.bind(this) },
 		);
 	}
 
@@ -108,7 +114,7 @@ export class SystemTaskRunner {
 		}
 		this.initialized = true;
 
-		this.instanceTimers.start(new Date());
+		this.instanceTaskRunner.start(new Date());
 		this.metadata.subscribe((taskClass) => this.route(taskClass));
 
 		if (isMain) {
@@ -127,20 +133,20 @@ export class SystemTaskRunner {
 	@OnLeaderTakeover()
 	startLeaderTimers(): void {
 		if (this.initialized && !this.isShuttingDown) {
-			this.leaderTimers.start(new Date());
+			this.leaderTaskRunner.start(new Date());
 		}
 	}
 
 	@OnLeaderStepdown()
 	async stopLeaderTimers(): Promise<void> {
-		await this.leaderTimers.stop();
+		await this.leaderTaskRunner.stop();
 	}
 
 	@OnShutdown()
 	async shutdown(): Promise<void> {
 		this.isShuttingDown = true;
 		this.shutdownController.abort();
-		await Promise.all([this.leaderTimers.stop(), this.instanceTimers.stop()]);
+		await Promise.all([this.leaderTaskRunner.stop(), this.instanceTaskRunner.stop()]);
 	}
 
 	/**
@@ -156,6 +162,7 @@ export class SystemTaskRunner {
 			});
 		}
 		this.registeredNames.add(task.name);
+		validateSystemTask(task);
 
 		const { placement } = task;
 		if (!runsOn(placement, this.instanceSettings.instanceType)) {
@@ -166,7 +173,6 @@ export class SystemTaskRunner {
 			return;
 		}
 
-		validateSystemTask(task);
 		const schedule = resolveSystemTaskSchedule(task);
 
 		if (placement.scope === 'instance') {
@@ -174,7 +180,7 @@ export class SystemTaskRunner {
 				name: task.name,
 				schedule,
 			});
-			this.instanceTimers.add(task, schedule);
+			this.instanceTaskRunner.add(task, schedule);
 		} else if (this.runsDurably(placement)) {
 			this.handOverToDurableScheduler(task, schedule);
 		} else {
@@ -182,7 +188,7 @@ export class SystemTaskRunner {
 				name: task.name,
 				schedule,
 			});
-			this.leaderTimers.add(task, schedule, {
+			this.leaderTaskRunner.add(task, schedule, {
 				runOnStart: placement.runOnTakeover,
 				// Another main can run this task durably. Skip while its job is stored.
 				shouldSkipRun: placement.durable

@@ -910,6 +910,24 @@ describe('SystemTaskRunner', () => {
 			);
 		});
 
+		it('rejects a task declaring a bad option on an instance kind that does not run it', async () => {
+			dummy.retryDelaySeconds = 0;
+			const { runner, metadata } = setup({
+				isLeader: false,
+				instanceRole: 'unset',
+				instanceType: 'worker',
+			});
+			metadata.register(DummySystemTask);
+
+			await expect(runner.init()).rejects.toThrow(
+				expect.objectContaining({
+					cause: expect.objectContaining({
+						message: expect.stringContaining('out-of-range retry delay'),
+					}),
+				}),
+			);
+		});
+
 		it('rejects two tasks registered under the same name', async () => {
 			const other = new OtherDummySystemTask();
 			other.name = dummy.name;
