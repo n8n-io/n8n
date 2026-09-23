@@ -3,7 +3,9 @@ import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
 
 export type DocumentProperties = {
-	customProperty: Array<{ field: string; value: string }>;
+	// The fixedCollection field this is read from defaults to `{}`, not `{ customProperty: [] }`,
+	// when the user never adds a row - so this is genuinely optional at runtime.
+	customProperty?: Array<{ field: string; value: string }>;
 };
 
 type DocFields = Array<{ name: string; value: string }>;
