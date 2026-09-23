@@ -14,6 +14,7 @@ import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.servi
 import { Telemetry } from '@/telemetry';
 
 import { createTestCaseExecution, createTestRun } from '../shared/db/evaluation';
+import { createExecution } from '../shared/db/executions';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -214,6 +215,20 @@ describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
 		// sanitized: no internal relations/indexes leak
 		expect(testCase).not.toHaveProperty('testRun');
 		expect(testCase).not.toHaveProperty('runIndex');
+	});
+
+	test('should return the execution id of a case as a string', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const testRun = await createTestRun(workflow.id, { status: 'completed' });
+		const execution = await createExecution({ status: 'success' }, workflow);
+		await createTestCaseExecution(testRun.id, { status: 'success', executionId: execution.id });
+
+		const response = await authOwnerAgent.get(
+			`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data[0].executionId).toBe(execution.id);
 	});
 
 	test('should paginate per-case results via cursor', async () => {

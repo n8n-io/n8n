@@ -70,18 +70,24 @@ const toTestRunSummaryPublicDto = (run: TestRunSummarySource): TestRunSummaryPub
 	updatedAt: run.updatedAt.toISOString(),
 });
 
-const toTestCaseExecutionPublicDto = (testCase: TestCaseExecution): TestCaseExecutionPublicDto => ({
-	id: testCase.id,
-	status: testCase.status,
-	runAt: testCase.runAt?.toISOString() ?? null,
-	completedAt: testCase.completedAt?.toISOString() ?? null,
-	metrics: testCase.metrics ?? null,
-	errorCode: testCase.errorCode ?? null,
-	errorDetails: testCase.errorDetails ?? null,
-	inputs: testCase.inputs ?? null,
-	outputs: testCase.outputs ?? null,
-	executionId: testCase.executionId ?? null,
-});
+const toTestCaseExecutionPublicDto = (testCase: TestCaseExecution): TestCaseExecutionPublicDto => {
+	// The entity types executionId as a string, but the column is an integer, so the driver
+	// returns a number. The route publishes the documented string.
+	const executionId = testCase.executionId ?? null;
+
+	return {
+		id: testCase.id,
+		status: testCase.status,
+		runAt: testCase.runAt?.toISOString() ?? null,
+		completedAt: testCase.completedAt?.toISOString() ?? null,
+		metrics: testCase.metrics ?? null,
+		errorCode: testCase.errorCode ?? null,
+		errorDetails: testCase.errorDetails ?? null,
+		inputs: testCase.inputs ?? null,
+		outputs: testCase.outputs ?? null,
+		executionId: executionId === null ? null : String(executionId),
+	};
+};
 
 @PublicApiController('/workflows/:workflowId/test-runs')
 export class EvaluationsPublicController {
