@@ -15,7 +15,6 @@ import {
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nButton,
-	N8nTooltip,
 	type ActionDropdownItem,
 	type ResizeData,
 } from '@n8n/design-system';
@@ -46,6 +45,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useKeybindings } from '@/app/composables/useKeybindings';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
 import { deepCopy } from 'n8n-workflow';
@@ -2683,7 +2683,10 @@ useKeybindings({
 			v-if="!isArtifactMode && instanceAiAvailable && !isAiPanelOpen"
 			:class="$style.aiToggleBar"
 		>
-			<N8nTooltip :content="locale.baseText('agents.builder.header.editWithAi')">
+			<KeyboardShortcutTooltip
+				:label="locale.baseText('agents.builder.header.editWithAi')"
+				:shortcut="{ metaKey: true, keys: ['J'] }"
+			>
 				<N8nButton
 					variant="subtle"
 					size="medium"
@@ -2697,7 +2700,7 @@ useKeybindings({
 						<N8nAssistantIcon size="large" />
 					</template>
 				</N8nButton>
-			</N8nTooltip>
+			</KeyboardShortcutTooltip>
 		</div>
 		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
 			<N8nCanvasPill

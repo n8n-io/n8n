@@ -515,7 +515,7 @@ useKeybindings({
 				</N8nTooltip>
 				<KeyboardShortcutTooltip
 					placement="bottom"
-					:label="i18n.baseText('instanceAi.embed.close')"
+					:label="i18n.baseText('generic.close')"
 					:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 				>
 					<N8nIconButton
@@ -523,7 +523,7 @@ useKeybindings({
 						variant="ghost"
 						size="small"
 						icon-size="large"
-						:aria-label="i18n.baseText('instanceAi.embed.close')"
+						:aria-label="i18n.baseText('generic.close')"
 						data-test-id="instance-ai-embed-close"
 						@click="emit('close')"
 					/>

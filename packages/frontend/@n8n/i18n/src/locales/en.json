@@ -8498,7 +8498,7 @@
 	"agents.builder.header.switcher.ariaLabel": "Switch agent",
 	"agents.builder.header.saving": "Saving…",
 	"agents.builder.header.saved": "Saved",
-	"agents.builder.header.editWithAi": "Edit with n8n Assistant",
+	"agents.builder.header.editWithAi": "n8n Assistant",
 	"agents.builder.preview.button": "Test agent",
 	"agents.builder.preview.showChat": "Show chat",
 	"agents.builder.preview.disabledTooltip": "Can't test agent yet",
