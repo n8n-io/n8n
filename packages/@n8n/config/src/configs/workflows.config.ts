@@ -71,10 +71,11 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
 	autosaveDisabled: boolean = false;
 
-	/**
-	 * Force-enables the flexible canvas groups flag (`117_flexible_groups_canvas`).
-	 * Cannot force-disable: setting this to `false` falls back to PostHog.
-	 */
-	@Env('N8N_WORKFLOWS_FLEXIBLE_GROUPS_ENABLED')
-	flexibleGroupsEnabled: boolean = false;
+	/** Force-enables groups that hold a trigger. `false` falls back to PostHog. */
+	@Env('N8N_WORKFLOWS_GROUPS_WITH_TRIGGERS_ENABLED')
+	groupsWithTriggersEnabled: boolean = false;
+
+	/** Force-enables groups with several entry and exit nodes. `false` falls back to PostHog. */
+	@Env('N8N_WORKFLOWS_GROUPS_WITH_MANY_BOUNDARIES_ENABLED')
+	groupsWithManyBoundariesEnabled: boolean = false;
 }

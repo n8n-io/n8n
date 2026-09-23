@@ -317,7 +317,8 @@ describe('PostHog', () => {
 				globalConfig.evaluation.agentEvalsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
 				globalConfig.instanceAi.folderExplorationEnabled = false;
-				globalConfig.workflows.flexibleGroupsEnabled = false;
+				globalConfig.workflows.groupsWithTriggersEnabled = false;
+				globalConfig.workflows.groupsWithManyBoundariesEnabled = false;
 				globalConfig.featureFlags.override = {};
 			});
 
@@ -368,19 +369,46 @@ describe('PostHog', () => {
 				expect(flags).toMatchObject({ '110_instance_ai_folder_exploration': 'test' });
 			});
 
-			it('force-enables the flexible-groups flag when N8N_WORKFLOWS_FLEXIBLE_GROUPS_ENABLED is set', async () => {
+			it('force-enables the groups-with-triggers flag on its own env var', async () => {
 				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
-					mockEvaluatedFlags({ '117_flexible_groups_canvas': false }),
+					mockEvaluatedFlags({
+						'117_flexible_groups_triggers': false,
+						'122_flexible_groups_multiple_boundaries': false,
+					}),
 				);
 
-				globalConfig.workflows.flexibleGroupsEnabled = true;
+				globalConfig.workflows.groupsWithTriggersEnabled = true;
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
 				await ph.init();
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toMatchObject({ '117_flexible_groups_canvas': true });
+				expect(flags).toMatchObject({
+					'117_flexible_groups_triggers': true,
+					'122_flexible_groups_multiple_boundaries': false,
+				});
+			});
+
+			it('force-enables the groups-with-many-boundaries flag on its own env var', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({
+						'117_flexible_groups_triggers': false,
+						'122_flexible_groups_multiple_boundaries': false,
+					}),
+				);
+
+				globalConfig.workflows.groupsWithManyBoundariesEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({
+					'117_flexible_groups_triggers': false,
+					'122_flexible_groups_multiple_boundaries': true,
+				});
 			});
 
 			it('applies the generic override map on top of resolved flags', async () => {

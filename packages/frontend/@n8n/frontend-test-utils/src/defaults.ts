@@ -137,7 +137,8 @@ export const defaultSettings: FrontendSettings = {
 	excludeNodes: [],
 	workflowTagsDisabled: false,
 	workflowsAutosaveDisabled: false,
-	workflowsFlexibleGroupsEnabled: false,
+	workflowsGroupsWithTriggersEnabled: false,
+	workflowsGroupsWithManyBoundariesEnabled: false,
 	variables: {
 		limit: -1,
 	},

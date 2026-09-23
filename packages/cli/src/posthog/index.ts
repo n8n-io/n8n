@@ -5,7 +5,8 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
-	FLEXIBLE_GROUPS_CANVAS_FLAG,
+	GROUPS_WITH_TRIGGERS_FLAG,
+	GROUPS_WITH_MANY_BOUNDARIES_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 } from '@n8n/api-types';
@@ -268,8 +269,12 @@ export class PostHogClient {
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT;
 		}
 
-		if (this.globalConfig.workflows.flexibleGroupsEnabled) {
-			overrides[FLEXIBLE_GROUPS_CANVAS_FLAG] = true;
+		if (this.globalConfig.workflows.groupsWithTriggersEnabled) {
+			overrides[GROUPS_WITH_TRIGGERS_FLAG] = true;
+		}
+
+		if (this.globalConfig.workflows.groupsWithManyBoundariesEnabled) {
+			overrides[GROUPS_WITH_MANY_BOUNDARIES_FLAG] = true;
 		}
 
 		if (Object.keys(overrides).length === 0) {

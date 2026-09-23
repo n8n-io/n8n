@@ -298,7 +298,9 @@ export class FrontendService {
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
-			workflowsFlexibleGroupsEnabled: this.globalConfig.workflows.flexibleGroupsEnabled,
+			workflowsGroupsWithTriggersEnabled: this.globalConfig.workflows.groupsWithTriggersEnabled,
+			workflowsGroupsWithManyBoundariesEnabled:
+				this.globalConfig.workflows.groupsWithManyBoundariesEnabled,
 			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
