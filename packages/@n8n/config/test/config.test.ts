@@ -78,7 +78,10 @@ describe('GlobalConfig', () => {
 		proxy_hops: 0,
 		ssl_key: '',
 		ssl_cert: '',
-		canvasOnly: false,
+		canvasOnly: {
+			enabled: false,
+			personalSpaceScopeDenyList: [],
+		},
 		editorBaseUrl: '',
 		webhookUrl: '',
 		dataTable: {
@@ -374,7 +377,6 @@ describe('GlobalConfig', () => {
 			confirmationTimeout: 86_400_000,
 			runDebugEnabled: false,
 			thinkingEnabled: true,
-			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
 			instanceAiSetupPanelEnabled: false,
 			nodeUsageEnabled: false,

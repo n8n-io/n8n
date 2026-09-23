@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick, ref } from 'vue';
 
 import {
 	type InputMenuItem,
@@ -23,7 +24,7 @@ const {
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
 	ensureBrowserConnected: vi.fn(),
 	computerUseTelemetry: { trackModalOpened: vi.fn() },
-	featureFlags: { browserUse: true, computerUse: true, mcp: true },
+	featureFlags: { browserUse: true, computerUse: true },
 	ignorePendingConnectResult: vi.fn(),
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
@@ -36,7 +37,7 @@ const {
 	},
 	settingsStore: {
 		fetch: vi.fn(),
-		settings: { mcpAccessEnabled: true },
+		isMcpAvailable: true,
 		isLocalGatewayDisabled: false,
 		isComputerUseAvailable: true,
 		isBrowserUseAvailable: true,
@@ -61,16 +62,6 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => uiStore,
-}));
-
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.mcp;
-			},
-		},
-	}),
 }));
 
 vi.mock('../composables/useBrowserUseConnection', () => ({
@@ -155,9 +146,8 @@ describe('useInstanceAiInputMenuItems', () => {
 		vi.clearAllMocks();
 		featureFlags.browserUse = true;
 		featureFlags.computerUse = true;
-		featureFlags.mcp = true;
 		mcpStore.connections = [];
-		settingsStore.settings.mcpAccessEnabled = true;
+		settingsStore.isMcpAvailable = true;
 		settingsStore.isLocalGatewayDisabled = false;
 		settingsStore.isComputerUseAvailable = true;
 		settingsStore.isBrowserUseAvailable = true;
@@ -167,8 +157,8 @@ describe('useInstanceAiInputMenuItems', () => {
 		settingsStore.gatewayHostIdentifier = null;
 	});
 
-	it('omits connection groups the store reports as unavailable', () => {
-		featureFlags.mcp = false;
+	it('omits connection groups that instance settings report as unavailable', () => {
+		settingsStore.isMcpAvailable = false;
 		settingsStore.isComputerUseAvailable = false;
 		settingsStore.isBrowserUseAvailable = false;
 
@@ -176,6 +166,30 @@ describe('useInstanceAiInputMenuItems', () => {
 
 		expect(menuItems.value.map(({ id }) => id)).toEqual(['attach-files']);
 		expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
+	});
+
+	it('fetches MCP connections when MCP becomes available', async () => {
+		const isMcpAvailable = ref(false);
+		const originalDescriptor = Object.getOwnPropertyDescriptor(settingsStore, 'isMcpAvailable');
+		Object.defineProperty(settingsStore, 'isMcpAvailable', {
+			configurable: true,
+			get: () => isMcpAvailable.value,
+			set: (value: boolean) => {
+				isMcpAvailable.value = value;
+			},
+		});
+
+		try {
+			useInstanceAiInputMenuItems(vi.fn());
+			expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
+
+			settingsStore.isMcpAvailable = true;
+			await nextTick();
+
+			expect(mcpStore.fetchConnectionsLazy).toHaveBeenCalledOnce();
+		} finally {
+			Object.defineProperty(settingsStore, 'isMcpAvailable', originalDescriptor!);
+		}
 	});
 
 	it.each(mcpStatusCases)(

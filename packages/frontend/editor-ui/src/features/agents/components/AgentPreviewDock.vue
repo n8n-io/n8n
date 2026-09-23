@@ -52,13 +52,14 @@ const props = withDefaults(
 		connectedTriggers: string[];
 		isOpen: boolean;
 		effectiveSessionId?: string;
+		newSession?: boolean;
 		initialPrompt?: string;
 		canSendToAssistant?: boolean;
 		canDeleteSession?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		isDeletingSession?: boolean;
 	}>(),
-	{ canDeleteSession: false, isDeletingSession: false },
+	{ newSession: false, canDeleteSession: false, isDeletingSession: false },
 );
 
 const emit = defineEmits<{
@@ -68,8 +69,10 @@ const emit = defineEmits<{
 	'session-select': [sessionId: string];
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'session-created': [sessionId: string];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	'initial-consumed': [];
 }>();
 
 const i18n = useI18n();
@@ -272,12 +275,15 @@ useKeybindings({
 				:local-config="props.localConfig"
 				:connected-triggers="props.connectedTriggers"
 				:effective-session-id="props.effectiveSessionId"
+				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:before-send="props.beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
+				@initial-consumed="emit('initial-consumed')"
 			/>
 		</div>
 	</aside>

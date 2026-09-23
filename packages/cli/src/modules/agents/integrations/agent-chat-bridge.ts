@@ -27,6 +27,7 @@ import type {
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
+import type { AgentSessionMode } from '../utils/agent-thread-access';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
 import type {
 	AgentChatIntegration,
@@ -104,6 +105,8 @@ function stillWaitingNotice(suspendPayload: unknown): string {
 }
 
 interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeForChat'> {
+	getSessionMode?(threadId: string): Promise<AgentSessionMode>;
+
 	executeForChatPublished(
 		config: Omit<ExecuteForChatPublishedConfig, 'memory'> & {
 			memory: { threadId: InternalThread; resourceId: string };
@@ -259,6 +262,7 @@ export class AgentChatBridge {
 		integration: AgentIntegrationConfig,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
+			getSessionMode: async (threadId) => await agentService.getSessionMode(threadId),
 			async *executeForChatPublished({
 				memory,
 				agentId: aid,
@@ -270,6 +274,7 @@ export class AgentChatBridge {
 				sandboxPrincipalHash,
 				messageContext,
 				contextConversation,
+				sessionMode,
 			}) {
 				yield* agentService.executeForChatPublished({
 					agentId: aid,
@@ -289,6 +294,7 @@ export class AgentChatBridge {
 					sandboxPrincipalHash,
 					messageContext,
 					contextConversation,
+					sessionMode,
 				});
 			},
 			async *resumeForChat(config) {
@@ -649,6 +655,9 @@ export class AgentChatBridge {
 		const sessionOrigin = await this.messageContextBridge.resolveSession(this.baseThreadId(thread));
 		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
 		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
+		const sessionMode = sessionOrigin
+			? 'existing'
+			: ((await this.agentService.getSessionMode?.(memoryThreadId.id)) ?? 'new');
 		// The run parks against the session it executes in, which for a bound reply
 		// is the task's thread rather than the platform one — so this has to come
 		// after the binding is resolved, and before anything is stored for a turn
@@ -728,6 +737,7 @@ export class AgentChatBridge {
 					threadId: memoryThreadId,
 					resourceId: memoryResourceId,
 				},
+				sessionMode,
 				integrationType: this.integration.type,
 				sandboxPrincipalHash: hashAgentSandboxPrincipal({
 					type: 'integration-thread',

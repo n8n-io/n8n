@@ -122,7 +122,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Unit (cli, scoped)
-        run: pnpm turbo test:unit:changed --filter=n8n --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=100% --passWithNoTests
+        run: pnpm turbo test:unit:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=100% --passWithNoTests
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -226,7 +226,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Integration (cli, scoped)
-        run: pnpm turbo test:integration:changed --filter=n8n --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50% --passWithNoTests
+        run: pnpm turbo test:integration:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50% --passWithNoTests
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -299,12 +299,12 @@ jobs:
           files: ./packages/**/coverage/lcov.info
 
   unit-test-frontend:
-    name: Frontend (${{ matrix.shard }}/2)
+    name: Frontend (${{ matrix.shard }}/4)
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -320,9 +320,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend:changed --summarize -- --shard=${{ matrix.shard }}/2
-        env:
-          VITEST_SHARD: ${{ matrix.shard }}/2
+        run: pnpm test:ci:frontend:changed --only --summarize -- --shard=${{ matrix.shard }}/4
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}

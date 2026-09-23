@@ -138,7 +138,7 @@ const formatRunAt = (iso: string | null) => {
 				</div>
 			</div>
 			<div :class="$style.col_lastRun">
-				<N8nBadge v-if="!row.version.lastRun" theme="tertiary" size="small">
+				<N8nBadge v-if="!row.version.lastRun" variant="outline">
 					{{ i18n.baseText('evaluation.setup.versions.noRunYet') }}
 				</N8nBadge>
 				<N8nText v-else size="small" color="text-base">
@@ -155,8 +155,7 @@ const formatRunAt = (iso: string | null) => {
 				</N8nText>
 				<N8nBadge
 					v-if="row.version.lastRun?.isBest"
-					theme="success"
-					size="small"
+					variant="success"
 					data-test-id="versions-table-row-best"
 				>
 					<N8nIcon icon="star" size="xsmall" />
@@ -164,8 +163,7 @@ const formatRunAt = (iso: string | null) => {
 				</N8nBadge>
 				<N8nBadge
 					v-else-if="row.version.lastRun?.isCritical"
-					theme="danger"
-					size="small"
+					variant="danger"
 					data-test-id="versions-table-row-low"
 				>
 					<N8nIcon icon="triangle-alert" size="xsmall" />

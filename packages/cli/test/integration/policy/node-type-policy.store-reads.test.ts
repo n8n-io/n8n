@@ -20,6 +20,7 @@ import { clearPolicyCache } from './shared/policy-cache';
  */
 
 const KIND = 'node-types';
+const CREDENTIAL_KIND = 'credential-types';
 const ROOT: OperationContext = {};
 
 const DENY_SLACK: PolicyRule = {
@@ -83,22 +84,23 @@ describe('node type policy store reads', () => {
 		return count;
 	}
 
-	const decide = async (projectId: string | null) =>
-		await service.evaluateComposedTypesFor(KIND, projectId, TYPES);
+	const decide = async (projectId: string | null, kind = KIND) =>
+		await service.evaluateComposedTypesFor(kind, projectId, TYPES);
 
-	async function configureScope(projectId: string | null, withAttachment: boolean) {
+	async function configureScope(projectId: string | null, withAttachment: boolean, kind = KIND) {
 		const { scope } = await scopeRepo.createScopeIfAbsent(
-			{ kind: KIND, projectId, defaultAction: 'allow', updatedBy: 'user-1' },
+			{ kind, projectId, defaultAction: 'allow', updatedBy: 'user-1' },
 			ROOT,
 		);
 
 		const policy = await policyRepo.createPolicy(
-			{ kind: KIND, rules: [DENY_SLACK], updatedBy: 'user-1' },
+			{ kind, rules: [DENY_SLACK], updatedBy: 'user-1' },
 			ROOT,
 		);
 
 		if (withAttachment) {
 			await service.replaceAttachments(
+				kind,
 				scope.id,
 				[{ policyId: policy.id, priority: 1, isFloor: false }],
 				'user-1',
@@ -222,6 +224,7 @@ describe('node type policy store reads', () => {
 			expect(await slackVerdict(null)).toBe('allow');
 
 			await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
 				'user-1',
@@ -235,6 +238,7 @@ describe('node type policy store reads', () => {
 			const { scope, policy } = await configureScope(null, true);
 			const { scope: projectScope } = await configureScope(project.id, false);
 			await service.replaceAttachments(
+				KIND,
 				projectScope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
 				'user-1',
@@ -307,5 +311,44 @@ describe('node type policy store reads', () => {
 
 		expect(reads).not.toHaveBeenCalled();
 		reads.mockRestore();
+	});
+
+	/**
+	 * Two kinds means two checks, and the decision service runs them together — so the cost of
+	 * the second kind is queries, not latency. These pin the queries.
+	 */
+	describe('a decision on both kinds, as two registered checks make', () => {
+		const configureBothKinds = async (projectId: string) => {
+			for (const kind of [KIND, CREDENTIAL_KIND]) {
+				await configureScope(null, true, kind);
+				await configureScope(projectId, true, kind);
+			}
+			await clearPolicyCache();
+		};
+
+		test('costs one cold read set per kind, each independent of the other', async () => {
+			const project = await createTeamProject();
+			await configureBothKinds(project.id);
+
+			const count = await countQueries(
+				async () => await Promise.all([decide(project.id), decide(project.id, CREDENTIAL_KIND)]),
+			);
+
+			// 6 per kind, the same as one kind alone costs: nothing is shared across kinds.
+			expect(count).toBe(12);
+		});
+
+		test('costs no queries warm, so an execution pays the second kind once', async () => {
+			const project = await createTeamProject();
+			await configureBothKinds(project.id);
+
+			await Promise.all([decide(project.id), decide(project.id, CREDENTIAL_KIND)]);
+
+			const count = await countQueries(
+				async () => await Promise.all([decide(project.id), decide(project.id, CREDENTIAL_KIND)]),
+			);
+
+			expect(count).toBe(0);
+		});
 	});
 });

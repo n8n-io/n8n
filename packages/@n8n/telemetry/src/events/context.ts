@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { assistantSurfaceSchema } from '../schemas';
 
 /** The scope decides who edits a preference and who receives it. */
 const scopeType = z
@@ -12,18 +13,10 @@ const textLength = z
 	.number()
 	.describe('Character count of the preference text. The text itself is never reported');
 
-/**
- * Which surface acted, with the same values as the `source` column. `ui` is the settings area,
- * where only a person writes, so an event that only an assistant can fire uses
- * `assistantSurface` instead and a `ui` row can never be counted as assistant activity.
- */
+/** Keep settings UI activity separate from assistant activity. */
 const surface = z
 	.enum(['ui', 'aia', 'mcp'])
 	.describe('Surface the event came from, with the same values as the `source` column');
-
-const assistantSurface = z
-	.enum(['aia', 'mcp'])
-	.describe('Assistant surface that acted. The settings area cannot fire this event');
 
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_PREFERENCE: {
@@ -79,7 +72,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Characters in the rendered block. Reviews the caps: a 95th percentile above 8,000 means the caps need new numbers',
 				),
-			surface: assistantSurface,
+			surface: assistantSurfaceSchema,
 			injected_this_turn: z
 				.boolean()
 				.describe(
@@ -101,7 +94,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		description:
 			'An AI surface created or updated a preference on the user behalf, after the user accepted it. Kept apart from the UI events so an assistant write is never counted as a person writing in settings. CONTEXT-138 fires it.',
 		properties: z.object({
-			surface: assistantSurface,
+			surface: assistantSurfaceSchema,
 			scope_type: scopeType,
 			text_length: textLength,
 			replaced_existing: z
@@ -115,7 +108,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The assistant proposed a preference and the confirmation card was shown. Fires when the card appears, whatever the user does next. CONTEXT-138 fires it.',
 		properties: z.object({
-			surface: assistantSurface,
+			surface: assistantSurfaceSchema,
 			scope_type: scopeType.describe('Scope the assistant offered'),
 			text_length: textLength,
 		}),
@@ -126,7 +119,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The user answered a preference confirmation. A high `rejected` share means the assistant proposes the wrong preferences, and no other number shows that. CONTEXT-138 fires it.',
 		properties: z.object({
-			surface: assistantSurface,
+			surface: assistantSurfaceSchema,
 			outcome: z
 				.enum(['accepted', 'accepted_after_edit', 'rejected'])
 				.describe('`accepted_after_edit` means the user changed the text before accepting'),
@@ -142,7 +135,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The scope the user accepted against the scope the assistant offered. Shows whether the assistant reads the difference between a personal habit and a team rule. Fires only on an accepted write. CONTEXT-138 and the scope ticket fire it.',
 		properties: z.object({
-			surface: assistantSurface,
+			surface: assistantSurfaceSchema,
 			offered_scope: scopeType,
 			accepted_scope: scopeType,
 			scope_changed: z.boolean().describe('Whether the user moved the write to another scope'),

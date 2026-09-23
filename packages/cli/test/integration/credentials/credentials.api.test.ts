@@ -276,6 +276,7 @@ describe('GET /credentials', () => {
 					'credential:shareGlobally',
 					'credential:unshare',
 					'credential:update',
+					'credential:use',
 				].sort(),
 			);
 
@@ -295,6 +296,7 @@ describe('GET /credentials', () => {
 					'credential:shareGlobally',
 					'credential:unshare',
 					'credential:update',
+					'credential:use',
 				].sort(),
 			);
 		}
@@ -431,6 +433,7 @@ describe('GET /credentials', () => {
 				'credential:shareGlobally',
 				'credential:unshare',
 				'credential:update',
+				'credential:use',
 			].sort(),
 		);
 
@@ -450,6 +453,7 @@ describe('GET /credentials', () => {
 				'credential:shareGlobally',
 				'credential:unshare',
 				'credential:update',
+				'credential:use',
 			].sort(),
 		);
 
@@ -472,6 +476,7 @@ describe('GET /credentials', () => {
 				'credential:shareGlobally',
 				'credential:unshare',
 				'credential:update',
+				'credential:use',
 			].sort(),
 		);
 	});
@@ -1340,6 +1345,7 @@ describe('PATCH /credentials/:id', () => {
 				'credential:shareGlobally',
 				'credential:unshare',
 				'credential:update',
+				'credential:use',
 			].sort(),
 		);
 
