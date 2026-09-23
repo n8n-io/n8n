@@ -73,7 +73,7 @@ const makeConnection = (
 	credentialName: overrides.credentialName ?? 'Linear OAuth2',
 	credentialType: overrides.credentialType ?? 'mcpOAuth2Api',
 	toolPermissions: overrides.toolPermissions ?? {
-		categories: { read: 'allow', write: 'ask' },
+		categories: { read: 'always_allow', write: 'require_approval' },
 	},
 	createdAt: '2026-05-01T00:00:00.000Z',
 	updatedAt: '2026-05-01T00:00:00.000Z',
@@ -489,7 +489,7 @@ describe('useInstanceAiMcpStore', () => {
 			mockUpdateMcpConnection.mockResolvedValue(updated);
 
 			const result = await store.updateConnection('conn-1', {
-				toolPermissions: { categories: { read: 'allow', write: 'block' } },
+				toolPermissions: { categories: { read: 'always_allow', write: 'blocked' } },
 			});
 
 			expect(result).toEqual({ ...updated, status: 'connecting' });

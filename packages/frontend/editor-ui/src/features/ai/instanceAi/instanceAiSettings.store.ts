@@ -26,7 +26,7 @@ import {
 	getGatewayStatus,
 } from './instanceAi.api';
 import {
-	DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS,
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	type FrontendModuleSettings,
 	type InstanceAiAdminSettingsResponse,
 	type InstanceAiAdminSettingsUpdateRequest,
@@ -34,8 +34,6 @@ import {
 	type InstanceAiProviderConnection,
 	type InstanceAiPermissions,
 	type InstanceAiPermissionMode,
-	type McpToolCategory,
-	type McpToolPermission,
 	type InstanceAiModelCatalogResponse,
 	type ToolCategory,
 	type InstanceAiVerifyModelRequest,
@@ -369,27 +367,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	function getPermission(key: keyof InstanceAiPermissions): InstanceAiPermissionMode {
 		const draftVal = draft.permissions?.[key];
 		if (draftVal !== undefined) return draftVal;
-		return settings.value?.permissions?.[key] ?? 'require_approval';
-	}
-
-	function setMcpToolCategoryPermission(category: McpToolCategory, value: McpToolPermission): void {
-		const current = draft.mcpToolPermissions ??
-			settings.value?.mcpToolPermissions ?? {
-				...DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS,
-				categories: { ...DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS.categories },
-			};
-		draft.mcpToolPermissions = {
-			...current,
-			categories: { ...current.categories, [category]: value },
-		};
-	}
-
-	function getMcpToolCategoryPermission(category: McpToolCategory): McpToolPermission {
-		return (
-			draft.mcpToolPermissions?.categories[category] ??
-			settings.value?.mcpToolPermissions.categories[category] ??
-			DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS.categories[category]
-		);
+		return settings.value?.permissions?.[key] ?? DEFAULT_INSTANCE_AI_PERMISSIONS[key];
 	}
 
 	// ── Gateway status fetch ──────────────────────────────────────────────
@@ -683,8 +661,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		setField,
 		setPermission,
 		getPermission,
-		setMcpToolCategoryPermission,
-		getMcpToolCategoryPermission,
 		// Gateway / daemon
 		isDaemonConnecting,
 		setupCommand,

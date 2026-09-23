@@ -1,7 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-type Permission = 'allow' | 'ask' | 'block';
-type LegacyExecutionPermission = 'always_allow' | 'require_approval' | 'blocked';
+type Permission = 'always_allow' | 'require_approval' | 'blocked';
 
 interface ToolPermissions {
 	categories: { read: Permission; write: Permission };
@@ -22,26 +21,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function mapExecutionPermission(value: LegacyExecutionPermission): Permission {
-	switch (value) {
-		case 'always_allow':
-			return 'allow';
-		case 'require_approval':
-			return 'ask';
-		case 'blocked':
-			return 'block';
-	}
-}
-
 function policy(permission: Permission): ToolPermissions {
 	return { categories: { read: permission, write: permission } };
 }
 
-function policyForExecutionPermission(value: LegacyExecutionPermission): ToolPermissions {
+function policyForPermission(value: Permission): ToolPermissions {
 	if (value === 'require_approval') {
-		return { categories: { read: 'allow', write: 'ask' } };
+		return { categories: { read: 'always_allow', write: 'require_approval' } };
 	}
-	return policy(mapExecutionPermission(value));
+	return policy(value);
 }
 
 function readToolNames(value: unknown, path: string): string[] {
@@ -76,7 +64,7 @@ function convertConnectionPolicy(
 
 	const tools: Record<string, Permission> = {};
 	if (filter.mode === 'exclude') {
-		for (const tool of filter.tools) tools[tool] = 'block';
+		for (const tool of filter.tools) tools[tool] = 'blocked';
 		return {
 			categories: { ...defaultPolicy.categories },
 			...(Object.keys(tools).length > 0 ? { tools } : {}),
@@ -85,16 +73,16 @@ function convertConnectionPolicy(
 
 	for (const tool of filter.tools) tools[tool] = allowedToolPermission;
 	return {
-		...policy('block'),
+		...policy('blocked'),
 		...(Object.keys(tools).length > 0 ? { tools } : {}),
 	};
 }
 
-function parseExecutionPermission(value: unknown): LegacyExecutionPermission {
+function parsePermission(value: unknown, path: string): Permission {
 	if (value === 'always_allow' || value === 'require_approval' || value === 'blocked') {
 		return value;
 	}
-	throw new Error('instanceAi.settings permissions.executeMcpTool is invalid');
+	throw new Error(`${path} is invalid`);
 }
 
 function parseToolPermissions(value: unknown, path: string): ToolPermissions {
@@ -103,8 +91,8 @@ function parseToolPermissions(value: unknown, path: string): ToolPermissions {
 	}
 	const { read, write } = value.categories;
 	if (
-		(read !== 'allow' && read !== 'ask' && read !== 'block') ||
-		(write !== 'allow' && write !== 'ask' && write !== 'block')
+		(read !== 'always_allow' && read !== 'require_approval' && read !== 'blocked') ||
+		(write !== 'always_allow' && write !== 'require_approval' && write !== 'blocked')
 	) {
 		throw new Error(`${path}.categories contains an invalid permission`);
 	}
@@ -113,7 +101,11 @@ function parseToolPermissions(value: unknown, path: string): ToolPermissions {
 	}
 	const tools: Record<string, Permission> = {};
 	for (const [tool, permission] of Object.entries(value.tools ?? {})) {
-		if (permission !== 'allow' && permission !== 'ask' && permission !== 'block') {
+		if (
+			permission !== 'always_allow' &&
+			permission !== 'require_approval' &&
+			permission !== 'blocked'
+		) {
 			throw new Error(`${path}.tools.${tool} is invalid`);
 		}
 		tools[tool] = permission;
@@ -124,13 +116,11 @@ function parseToolPermissions(value: unknown, path: string): ToolPermissions {
 	};
 }
 
-function toLegacyExecutionPermission(
-	permissions: ToolPermissions | undefined,
-): LegacyExecutionPermission {
+function toExecutionPermission(permissions: ToolPermissions | undefined): Permission {
 	if (!permissions) return 'require_approval';
 	const { read, write } = permissions.categories;
-	if (read === 'allow' && write === 'allow') return 'always_allow';
-	if (read === 'block' && write === 'block') return 'blocked';
+	if (read === 'always_allow' && write === 'always_allow') return 'always_allow';
+	if (read === 'blocked' && write === 'blocked') return 'blocked';
 	return 'require_approval';
 }
 
@@ -138,15 +128,15 @@ function toLegacyFilter(
 	permissions: ToolPermissions,
 ): { mode: 'allow' | 'exclude'; tools: string[] } | null {
 	const tools = Object.entries(permissions.tools ?? {});
-	if (permissions.categories.read === 'block' || permissions.categories.write === 'block') {
+	if (permissions.categories.read === 'blocked' || permissions.categories.write === 'blocked') {
 		return {
 			mode: 'allow',
-			tools: tools.filter(([, permission]) => permission !== 'block').map(([tool]) => tool),
+			tools: tools.filter(([, permission]) => permission !== 'blocked').map(([tool]) => tool),
 		};
 	}
 
 	const blockedTools = tools
-		.filter(([, permission]) => permission === 'block')
+		.filter(([, permission]) => permission === 'blocked')
 		.map(([tool]) => tool);
 	return blockedTools.length > 0 ? { mode: 'exclude', tools: blockedTools } : null;
 }
@@ -192,8 +182,8 @@ export class MigrateMcpToolPermissions1790100563525 implements ReversibleMigrati
 			`SELECT ${settingsValue} AS value FROM ${settingsTable} WHERE ${settingsKey} = :key`,
 			{ key: 'instanceAi.settings' },
 		);
-		let legacyPermission: LegacyExecutionPermission = 'require_approval';
-		let defaultPolicy = policyForExecutionPermission(legacyPermission);
+		let executionPermission: Permission = 'require_approval';
+		let defaultPolicy = policyForPermission(executionPermission);
 		if (settingsRows.length > 0) {
 			const settings = parseJson<unknown>(settingsRows[0].value);
 			if (!isRecord(settings)) throw new Error('instanceAi.settings must be an object');
@@ -202,15 +192,18 @@ export class MigrateMcpToolPermissions1790100563525 implements ReversibleMigrati
 				throw new Error('instanceAi.settings permissions must be an object');
 			}
 			const legacyValue = permissions?.executeMcpTool;
-			legacyPermission =
-				legacyValue === undefined ? 'require_approval' : parseExecutionPermission(legacyValue);
-			defaultPolicy = policyForExecutionPermission(legacyPermission);
-			const nextPermissions = { ...(permissions ?? {}) };
+			executionPermission =
+				legacyValue === undefined
+					? 'require_approval'
+					: parsePermission(legacyValue, 'instanceAi.settings permissions.executeMcpTool');
+			defaultPolicy = policyForPermission(executionPermission);
+			const nextPermissions: Record<string, unknown> = { ...(permissions ?? {}) };
 			delete nextPermissions.executeMcpTool;
+			nextPermissions.mcpRead = defaultPolicy.categories.read;
+			nextPermissions.mcpWrite = defaultPolicy.categories.write;
 			const nextSettings = {
 				...settings,
 				permissions: nextPermissions,
-				mcpToolPermissions: defaultPolicy,
 			};
 			await runQuery(
 				`UPDATE ${settingsTable} SET ${settingsValue} = :value WHERE ${settingsKey} = :key`,
@@ -226,18 +219,13 @@ export class MigrateMcpToolPermissions1790100563525 implements ReversibleMigrati
 					let converted: ToolPermissions;
 					try {
 						const filter = row.toolFilter === null ? undefined : parseJson<unknown>(row.toolFilter);
-						converted = convertConnectionPolicy(
-							filter,
-							defaultPolicy,
-							mapExecutionPermission(legacyPermission),
-							path,
-						);
+						converted = convertConnectionPolicy(filter, defaultPolicy, executionPermission, path);
 					} catch (error) {
 						const message = error instanceof Error ? error.message : String(error);
 						ctx.logger.warn(
 							`[${ctx.migrationName}] Invalid ${path}: ${message}. Using the require approval policy.`,
 						);
-						converted = policyForExecutionPermission('require_approval');
+						converted = policyForPermission('require_approval');
 					}
 					await runQuery(
 						`UPDATE ${connectionTable} SET ${toolPermissions} = :toolPermissions WHERE ${connectionId} = :id`,
@@ -282,18 +270,30 @@ export class MigrateMcpToolPermissions1790100563525 implements ReversibleMigrati
 			if (currentPermissions !== undefined && !isRecord(currentPermissions)) {
 				throw new Error('instanceAi.settings permissions must be an object');
 			}
-			const mcpPermissions =
-				settings.mcpToolPermissions === undefined
+			const mcpRead = currentPermissions?.mcpRead;
+			const mcpWrite = currentPermissions?.mcpWrite;
+			const mcpPermissions: ToolPermissions | undefined =
+				mcpRead === undefined && mcpWrite === undefined
 					? undefined
-					: parseToolPermissions(
-							settings.mcpToolPermissions,
-							'instanceAi.settings.mcpToolPermissions',
-						);
+					: {
+							categories: {
+								read:
+									mcpRead === undefined
+										? 'always_allow'
+										: parsePermission(mcpRead, 'instanceAi.settings permissions.mcpRead'),
+								write:
+									mcpWrite === undefined
+										? 'require_approval'
+										: parsePermission(mcpWrite, 'instanceAi.settings permissions.mcpWrite'),
+							},
+						};
 			const nextSettings = { ...settings };
-			delete nextSettings.mcpToolPermissions;
+			const nextPermissions = { ...(currentPermissions ?? {}) };
+			delete nextPermissions.mcpRead;
+			delete nextPermissions.mcpWrite;
 			nextSettings.permissions = {
-				...(currentPermissions ?? {}),
-				executeMcpTool: toLegacyExecutionPermission(mcpPermissions),
+				...nextPermissions,
+				executeMcpTool: toExecutionPermission(mcpPermissions),
 			};
 			await runQuery(
 				`UPDATE ${settingsTable} SET ${settingsValue} = :value WHERE ${settingsKey} = :key`,

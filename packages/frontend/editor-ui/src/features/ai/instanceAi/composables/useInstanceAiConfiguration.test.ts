@@ -8,7 +8,6 @@ function createSettings(
 	return {
 		enabled: true,
 		permissions: {} as InstanceAiAdminSettingsResponse['permissions'],
-		mcpToolPermissions: { categories: { read: 'allow', write: 'ask' } },
 		mcpAccessEnabled: false,
 		sandboxEnabled: false,
 		sandboxProvider: 'n8n-sandbox',

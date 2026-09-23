@@ -114,7 +114,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		outboundHttp.transport.mockReturnValue(transport);
 		const instanceAiSettingsService = mock<InstanceAiSettingsService>();
 		instanceAiSettingsService.getMcpToolPermissions.mockReturnValue({
-			categories: { read: 'allow', write: 'ask' },
+			categories: { read: 'always_allow', write: 'require_approval' },
 		});
 
 		const service = new InstanceAiMcpRegistryService(
@@ -186,7 +186,9 @@ describe('InstanceAiMcpRegistryService', () => {
 				userId: user.id,
 				serverSlug: 'linear',
 				credentialId: 'cred-2',
-				toolPermissions: { categories: { read: 'allow', write: 'ask' } },
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
 			},
 			{
 				id: '1',
@@ -194,8 +196,8 @@ describe('InstanceAiMcpRegistryService', () => {
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
 				toolPermissions: {
-					categories: { read: 'block', write: 'block' },
-					tools: { issues: 'allow' },
+					categories: { read: 'blocked', write: 'blocked' },
+					tools: { issues: 'always_allow' },
 				},
 			},
 			{
@@ -203,7 +205,9 @@ describe('InstanceAiMcpRegistryService', () => {
 				userId: user.id,
 				serverSlug: 'notion',
 				credentialId: 'cred-3',
-				toolPermissions: { categories: { read: 'allow', write: 'ask' } },
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
 			},
 		] as InstanceAiMcpRegistryConnection[]);
 		mcpRegistryService.getBySlugs.mockResolvedValue([
@@ -232,8 +236,8 @@ describe('InstanceAiMcpRegistryService', () => {
 				transport: 'streamableHttp',
 				cacheKey: 'registry-connection:1:cred-1',
 				toolPermissions: {
-					categories: { read: 'block', write: 'block' },
-					tools: { issues: 'allow' },
+					categories: { read: 'blocked', write: 'blocked' },
+					tools: { issues: 'always_allow' },
 				},
 				fetch: expect.any(Function),
 				metadata: { connectionId: '1', serverSlug: 'linear', userId: user.id },
@@ -245,7 +249,9 @@ describe('InstanceAiMcpRegistryService', () => {
 				url: 'https://linear.example.com/mcp',
 				transport: 'streamableHttp',
 				cacheKey: 'registry-connection:2:cred-2',
-				toolPermissions: { categories: { read: 'allow', write: 'ask' } },
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
 				fetch: expect.any(Function),
 				metadata: { connectionId: '2', serverSlug: 'linear', userId: user.id },
 			}),
@@ -256,7 +262,9 @@ describe('InstanceAiMcpRegistryService', () => {
 				url: 'https://notion.example.com/sse',
 				transport: 'sse',
 				cacheKey: 'registry-connection:3:cred-3',
-				toolPermissions: { categories: { read: 'allow', write: 'ask' } },
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
 				fetch: expect.any(Function),
 				metadata: { connectionId: '3', serverSlug: 'notion', userId: user.id },
 			}),
@@ -897,8 +905,8 @@ describe('InstanceAiMcpRegistryService', () => {
 				instanceAiSettingsService,
 			} = createService();
 			const defaults = {
-				categories: { read: 'block' as const, write: 'allow' as const },
-				tools: { search: 'ask' as const },
+				categories: { read: 'blocked' as const, write: 'always_allow' as const },
+				tools: { search: 'require_approval' as const },
 			};
 			instanceAiSettingsService.getMcpToolPermissions.mockReturnValue(defaults);
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
@@ -1062,14 +1070,16 @@ describe('InstanceAiMcpRegistryService', () => {
 				userId: user.id,
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
-				toolPermissions: { categories: { read: 'allow', write: 'ask' } },
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
 			});
 			connectionRepository.findOneBy.mockResolvedValue(row);
 			connectionRepository.save.mockImplementation(async (entity) => entity as never);
 
 			const toolPermissions = {
-				categories: { read: 'block' as const, write: 'allow' as const },
-				tools: { search: 'ask' as const },
+				categories: { read: 'blocked' as const, write: 'always_allow' as const },
+				tools: { search: 'require_approval' as const },
 			};
 			const result = await service.updateConnection(user, 'conn-1', {
 				toolPermissions,
@@ -1084,8 +1094,11 @@ describe('InstanceAiMcpRegistryService', () => {
 		it('keeps the existing permissions when an update omits them', async () => {
 			const { service, connectionRepository } = createService();
 			const toolPermissions = {
-				categories: { read: 'allow' as const, write: 'ask' as const },
-				tools: { delete: 'block' as const },
+				categories: {
+					read: 'always_allow' as const,
+					write: 'require_approval' as const,
+				},
+				tools: { delete: 'blocked' as const },
 			};
 			const row = mock<InstanceAiMcpRegistryConnection>({
 				id: 'conn-1',

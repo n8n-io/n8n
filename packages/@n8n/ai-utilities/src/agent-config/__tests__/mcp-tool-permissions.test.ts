@@ -36,20 +36,24 @@ describe('MCP tool permissions', () => {
 	describe('resolveMcpToolPermission', () => {
 		it('uses a tool override before its category permission', () => {
 			const policy = {
-				categories: { read: 'allow', write: 'ask' },
-				tools: { search: 'block' },
+				categories: { read: 'always_allow', write: 'require_approval' },
+				tools: { search: 'blocked' },
 			} as const;
 
-			expect(resolveMcpToolPermission(policy, { name: 'search' })).toBe('block');
-			expect(resolveMcpToolPermission(policy, { name: 'create' })).toBe('ask');
+			expect(resolveMcpToolPermission(policy, { name: 'search' })).toBe('blocked');
+			expect(resolveMcpToolPermission(policy, { name: 'create' })).toBe('require_approval');
 		});
 	});
 
 	describe('compileMcpToolPermissions', () => {
 		it('compiles category permissions and overrides into SDK settings', () => {
 			const policy = {
-				categories: { read: 'allow', write: 'ask' },
-				tools: { lookup: 'ask', remove: 'block', create: 'allow' },
+				categories: { read: 'always_allow', write: 'require_approval' },
+				tools: {
+					lookup: 'require_approval',
+					remove: 'blocked',
+					create: 'always_allow',
+				},
 			} as const;
 
 			expect(
@@ -68,7 +72,7 @@ describe('MCP tool permissions', () => {
 
 		it('keeps empty compiled lists explicit', () => {
 			expect(
-				compileMcpToolPermissions({ categories: { read: 'allow', write: 'allow' } }, [
+				compileMcpToolPermissions({ categories: { read: 'always_allow', write: 'always_allow' } }, [
 					{ name: 'search' },
 					{ name: 'create' },
 				]),

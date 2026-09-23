@@ -199,8 +199,8 @@ const linearItem: McpServerConnectionItem = {
 };
 
 const toolSettings: ToolConnectionSettings = {
-	categories: { read: 'allow', write: 'ask' },
-	tools: { search: 'allow' },
+	categories: { read: 'always_allow', write: 'require_approval' },
+	tools: { search: 'always_allow' },
 };
 
 const connectedLinearItem: McpServerConnectionItem = {
@@ -328,8 +328,8 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	it('tracks changed MCP tool permissions after saving', async () => {
 		renderComponent();
 		const changedSettings: ToolConnectionSettings = {
-			categories: { read: 'block', write: 'ask' },
-			tools: { search: 'allow' },
+			categories: { read: 'blocked', write: 'require_approval' },
+			tools: { search: 'always_allow' },
 		};
 
 		emitSave(changedSettings);
@@ -358,8 +358,8 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		renderComponent();
 
 		emitSave({
-			categories: { read: 'block', write: 'ask' },
-			tools: { search: 'allow' },
+			categories: { read: 'blocked', write: 'require_approval' },
+			tools: { search: 'always_allow' },
 		});
 		await flushPromises();
 
@@ -393,7 +393,9 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			serverSlug: 'linear',
 			credentialId: 'cred-1',
 			status: 'disconnected' as const,
-			toolPermissions: { categories: { read: 'allow' as const, write: 'ask' as const } },
+			toolPermissions: {
+				categories: { read: 'always_allow' as const, write: 'require_approval' as const },
+			},
 		};
 		mcpStoreMock.connections = [connection];
 		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
@@ -419,7 +421,9 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			serverSlug: 'linear',
 			credentialId: 'cred-1',
 			status: 'connected' as const,
-			toolPermissions: { categories: { read: 'allow' as const, write: 'ask' as const } },
+			toolPermissions: {
+				categories: { read: 'always_allow' as const, write: 'require_approval' as const },
+			},
 		};
 		mcpStoreMock.connections = [connection];
 		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);

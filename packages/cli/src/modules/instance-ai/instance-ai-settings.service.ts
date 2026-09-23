@@ -2,7 +2,6 @@ import { isDeepStrictEqual } from 'node:util';
 
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
-	DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS,
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
@@ -238,7 +237,6 @@ function validateInstanceAiCredential(
 interface PersistedAdminSettings {
 	enabled?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
-	mcpToolPermissions?: McpToolPermissions;
 	mcpServers?: string;
 	mcpAccessEnabled?: boolean;
 	sandboxEnabled?: boolean;
@@ -296,11 +294,6 @@ export class InstanceAiSettingsService {
 
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
-
-	private mcpToolPermissions: McpToolPermissions = {
-		...DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS,
-		categories: { ...DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS.categories },
-	};
 
 	private adminModelName: string | null = null;
 
@@ -440,7 +433,6 @@ export class InstanceAiSettingsService {
 		return {
 			enabled: this.enabled,
 			permissions: { ...this.permissions },
-			mcpToolPermissions: structuredClone(this.mcpToolPermissions),
 			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider,
@@ -1259,7 +1251,12 @@ export class InstanceAiSettingsService {
 	}
 
 	getMcpToolPermissions(): McpToolPermissions {
-		return structuredClone(this.mcpToolPermissions);
+		return {
+			categories: {
+				read: this.permissions.mcpRead,
+				write: this.permissions.mcpWrite,
+			},
+		};
 	}
 
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
@@ -1751,9 +1748,6 @@ export class InstanceAiSettingsService {
 		if (persisted.permissions) {
 			this.permissions = resolveInstanceAiPermissions(persisted.permissions);
 		}
-		if (persisted.mcpToolPermissions) {
-			this.mcpToolPermissions = structuredClone(persisted.mcpToolPermissions);
-		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
 		if (persisted.mcpAccessEnabled !== undefined)
 			this.mcpAccessEnabled = persisted.mcpAccessEnabled;
@@ -1793,7 +1787,6 @@ export class InstanceAiSettingsService {
 		return {
 			enabled: this.enabled,
 			permissions: this.permissions,
-			mcpToolPermissions: this.mcpToolPermissions,
 			mcpServers: c.mcpServers,
 			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
@@ -1876,7 +1869,8 @@ export class InstanceAiSettingsService {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
 					current.mcpAccessEnabled !== previous.mcpAccessEnabled ||
-					!isDeepStrictEqual(current.mcpToolPermissions, previous.mcpToolPermissions),
+					current.permissions?.mcpRead !== previous.permissions?.mcpRead ||
+					current.permissions?.mcpWrite !== previous.permissions?.mcpWrite,
 				credentialSelections,
 			});
 		} catch (error) {

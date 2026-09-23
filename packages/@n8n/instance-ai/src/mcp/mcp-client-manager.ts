@@ -6,7 +6,7 @@ import {
 	type McpServerConfig as NativeMcpServerConfig,
 } from '@n8n/agents';
 import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
-import { DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS, type McpToolPermissions } from '@n8n/api-types';
+import { DEFAULT_INSTANCE_AI_PERMISSIONS, type McpToolPermissions } from '@n8n/api-types';
 import type { Result } from '@n8n/utils/result';
 import { UserError } from 'n8n-workflow';
 
@@ -192,8 +192,14 @@ export class McpClientManager {
 		if (safeConfigs.length === 0) return { tools: createToolRegistry(), connectionFailures: [] };
 
 		const defaultToolPermissions =
-			this.options.getDefaultToolPermissions?.() ?? DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS;
+			this.options.getDefaultToolPermissions?.() ?? {
+				categories: {
+					read: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpRead,
+					write: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpWrite,
+				},
+			};
 		const key = mcpConfigCacheKey(safeConfigs, defaultToolPermissions);
+		// FIXME: changing mcp settings leaves the old client connected, we need to disconnect it
 		return await this.getOrLoad(
 			this.regularToolsByKey,
 			this.inFlightRegularByKey,

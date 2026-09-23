@@ -8,7 +8,7 @@ import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { clientMintedAgentIdSchema } from '../agents/dto';
-import { mcpToolPermissionsSchema, type McpToolPermissions } from './mcp-tool-permissions.schema';
+import type { McpToolPermissions } from './mcp-tool-permissions.schema';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
@@ -2164,6 +2164,8 @@ const instanceAiPermissionsSchema = z.object({
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeNode: instanceAiPermissionModeSchema,
+	mcpRead: instanceAiPermissionModeSchema,
+	mcpWrite: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -2190,13 +2192,8 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 	executeNode: 'require_approval',
-};
-
-export const DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS: McpToolPermissions = {
-	categories: {
-		read: 'allow',
-		write: 'ask',
-	},
+	mcpRead: 'always_allow',
+	mcpWrite: 'require_approval',
 };
 
 /**
@@ -2216,6 +2213,8 @@ const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions
 	'readFilesystem',
 	'fetchUrl',
 	'webSearch',
+	'mcpRead',
+	'mcpWrite',
 	'publishWorkflow',
 	'createCredential',
 	'deleteCredential',
@@ -2307,7 +2306,6 @@ export interface InstanceAiEnvManagedFields {
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	permissions: InstanceAiPermissions;
-	mcpToolPermissions: McpToolPermissions;
 	mcpAccessEnabled: boolean;
 	sandboxEnabled: boolean;
 	sandboxProvider: InstanceAiSandboxProvider;
@@ -2412,7 +2410,6 @@ export type InstanceAiConnectionUpdate = z.infer<typeof instanceAiConnectionSche
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
-	mcpToolPermissions: mcpToolPermissionsSchema.optional(),
 	mcpServers: z.string().optional(),
 	mcpAccessEnabled: z.boolean().optional(),
 	sandboxEnabled: z.boolean().optional(),

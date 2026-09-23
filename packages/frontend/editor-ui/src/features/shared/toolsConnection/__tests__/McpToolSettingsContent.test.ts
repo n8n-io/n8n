@@ -36,8 +36,8 @@ function item(overrides: Partial<McpServerConnectionItem> = {}): McpServerConnec
 			{ id: 'create', name: 'Create issue', category: 'write' },
 		],
 		settings: {
-			categories: { read: 'allow', write: 'ask' },
-			tools: { search: 'block' },
+			categories: { read: 'always_allow', write: 'require_approval' },
+			tools: { search: 'blocked' },
 		},
 		...overrides,
 	};
@@ -56,8 +56,8 @@ describe('McpToolSettingsContent', () => {
 		expect(emitted().save).toEqual([
 			[
 				{
-					categories: { read: 'allow', write: 'ask' },
-					tools: { search: 'block' },
+					categories: { read: 'always_allow', write: 'require_approval' },
+					tools: { search: 'blocked' },
 				},
 			],
 		]);
@@ -71,13 +71,19 @@ describe('McpToolSettingsContent', () => {
 		await selectPermission(getByTestId('tools-connection-permission-read'), 'Block');
 		await fireEvent.click(getByTestId('tools-connection-settings-save'));
 
-		expect(emitted().save).toEqual([[{ categories: { read: 'block', write: 'ask' } }]]);
+		expect(emitted().save).toEqual([
+			[{ categories: { read: 'blocked', write: 'require_approval' } }],
+		]);
 	});
 
 	it('keeps write tools on ask when allowing them is not confirmed', async () => {
 		confirm.mockResolvedValue(MODAL_CANCEL);
 		const { emitted, getByTestId } = renderComponent({
-			props: { item: item({ settings: { categories: { read: 'allow', write: 'ask' } } }) },
+			props: {
+				item: item({
+					settings: { categories: { read: 'always_allow', write: 'require_approval' } },
+				}),
+			},
 		});
 
 		await selectPermission(getByTestId('tools-connection-permission-write'), 'Allow');
@@ -85,20 +91,28 @@ describe('McpToolSettingsContent', () => {
 		await fireEvent.click(getByTestId('tools-connection-settings-save'));
 
 		expect(confirm).toHaveBeenCalledOnce();
-		expect(emitted().save).toEqual([[{ categories: { read: 'allow', write: 'ask' } }]]);
+		expect(emitted().save).toEqual([
+			[{ categories: { read: 'always_allow', write: 'require_approval' } }],
+		]);
 	});
 
 	it('allows write tools after confirmation', async () => {
 		confirm.mockResolvedValue(MODAL_CONFIRM);
 		const { emitted, getByTestId } = renderComponent({
-			props: { item: item({ settings: { categories: { read: 'allow', write: 'ask' } } }) },
+			props: {
+				item: item({
+					settings: { categories: { read: 'always_allow', write: 'require_approval' } },
+				}),
+			},
 		});
 
 		await selectPermission(getByTestId('tools-connection-permission-write'), 'Allow');
 		await flushPromises();
 		await fireEvent.click(getByTestId('tools-connection-settings-save'));
 
-		expect(emitted().save).toEqual([[{ categories: { read: 'allow', write: 'allow' } }]]);
+		expect(emitted().save).toEqual([
+			[{ categories: { read: 'always_allow', write: 'always_allow' } }],
+		]);
 	});
 
 	it('disables permission changes and offers reconnect for authentication failures', async () => {

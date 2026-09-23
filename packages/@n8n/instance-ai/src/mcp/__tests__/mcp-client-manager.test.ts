@@ -472,7 +472,9 @@ describe('McpClientManager', () => {
 					{
 						name: 'a',
 						url: 'https://a.example.com/',
-						toolPermissions: { categories: { read: 'allow', write: 'ask' } },
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'require_approval' },
+						},
 					},
 				],
 				mockLogger,
@@ -494,7 +496,7 @@ describe('McpClientManager', () => {
 		it('uses instance permissions when a server has no policy', async () => {
 			const manager = new McpClientManager(undefined, {
 				getDefaultToolPermissions: () => ({
-					categories: { read: 'block', write: 'allow' },
+					categories: { read: 'blocked', write: 'always_allow' },
 				}),
 			});
 			await manager.getRegularTools([{ name: 'a', url: 'https://a.example.com/' }], mockLogger);
@@ -513,16 +515,16 @@ describe('McpClientManager', () => {
 		});
 
 		it('reloads tools when instance permissions change', async () => {
-			let writePermission: 'ask' | 'block' = 'ask';
+			let writePermission: 'require_approval' | 'blocked' = 'require_approval';
 			const manager = new McpClientManager(undefined, {
 				getDefaultToolPermissions: () => ({
-					categories: { read: 'allow', write: writePermission },
+					categories: { read: 'always_allow', write: writePermission },
 				}),
 			});
 			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
 
 			await manager.getRegularTools(configs, mockLogger);
-			writePermission = 'block';
+			writePermission = 'blocked';
 			await manager.getRegularTools(configs, mockLogger);
 
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);

@@ -601,14 +601,41 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('shows the MCP tool category permissions when the group is expanded', async () => {
-			const { getByTestId, getByLabelText } = renderComponent();
+			const { getByTestId, getByLabelText, queryByTestId } = renderComponent();
 
 			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
 
 			await waitFor(() => {
-				expect(getByTestId('n8n-agent-mcp-permission-read')).toBeVisible();
-				expect(getByTestId('n8n-agent-mcp-permission-write')).toBeVisible();
+				expect(getByTestId('n8n-agent-permission-mcpRead')).toBeVisible();
+				expect(getByTestId('n8n-agent-permission-mcpWrite')).toBeVisible();
 			});
+			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
+		});
+
+		it.each([
+			{
+				permissions: { mcpRead: 'always_allow' as const, mcpWrite: 'require_approval' as const },
+				summary: 'settings.n8nAgent.permissions.group.default',
+			},
+			{
+				permissions: { mcpRead: 'blocked' as const, mcpWrite: 'require_approval' as const },
+				summary: 'settings.n8nAgent.permissions.group.exception',
+			},
+			{
+				permissions: { mcpRead: 'blocked' as const, mcpWrite: 'always_allow' as const },
+				summary: 'settings.n8nAgent.permissions.group.exceptions',
+			},
+		])('shows $summary for MCP tool category permissions', ({ permissions, summary }) => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					permissions,
+				},
+			});
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-permission-group-mcp').textContent).toContain(summary);
 		});
 
 		it('locks the MCP permission group when MCP access is disabled', () => {
@@ -617,24 +644,24 @@ describe('SettingsInstanceAiView', () => {
 			const { queryByTestId, queryByLabelText } = renderComponent();
 
 			expect(queryByLabelText('Toggle settings.n8nAgent.permissions.group.mcp')).toBeNull();
-			expect(queryByTestId('n8n-agent-mcp-permission-read')).toBeNull();
-			expect(queryByTestId('n8n-agent-mcp-permission-write')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-mcpRead')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-mcpWrite')).toBeNull();
 		});
 
 		it('persists an MCP tool category permission change', async () => {
-			const setPermission = vi.spyOn(store, 'setMcpToolCategoryPermission');
+			const setPermission = vi.spyOn(store, 'setPermission');
 			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
 			const { getByTestId, getByLabelText } = renderComponent();
 
 			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
-			await waitFor(() => expect(getByTestId('n8n-agent-mcp-permission-write')).toBeVisible());
+			await waitFor(() => expect(getByTestId('n8n-agent-permission-mcpWrite')).toBeVisible());
 
 			await selectOption(
-				getByTestId('n8n-agent-mcp-permission-write'),
-				'tools.connection.permissions.block',
+				getByTestId('n8n-agent-permission-mcpWrite'),
+				'settings.n8nAgent.permissions.blocked',
 			);
 
-			expect(setPermission).toHaveBeenCalledWith('write', 'block');
+			expect(setPermission).toHaveBeenCalledWith('mcpWrite', 'blocked');
 			expect(save).toHaveBeenCalled();
 		});
 	});

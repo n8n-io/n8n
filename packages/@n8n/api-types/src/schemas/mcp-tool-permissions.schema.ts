@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const MCP_TOOL_CATEGORIES = ['read', 'write'] as const;
-export const MCP_TOOL_PERMISSIONS = ['allow', 'ask', 'block'] as const;
+export const MCP_TOOL_PERMISSIONS = ['always_allow', 'require_approval', 'blocked'] as const;
 
 export const mcpToolCategorySchema = z.enum(MCP_TOOL_CATEGORIES);
 export const mcpToolPermissionSchema = z.enum(MCP_TOOL_PERMISSIONS);

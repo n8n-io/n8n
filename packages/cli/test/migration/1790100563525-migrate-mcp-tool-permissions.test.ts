@@ -173,20 +173,23 @@ describe('MigrateMcpToolPermissions migration', () => {
 		dataSource = Container.get(DataSource);
 
 		expect(await readSetting()).toEqual({
-			permissions: { createWorkflow: 'blocked' },
-			mcpToolPermissions: { categories: { read: 'allow', write: 'ask' } },
+			permissions: {
+				createWorkflow: 'blocked',
+				mcpRead: 'always_allow',
+				mcpWrite: 'require_approval',
+			},
 		});
 		const connections = await readConnections('toolPermissions');
 		expect(connections.get(noFilterId)).toEqual({
-			categories: { read: 'allow', write: 'ask' },
+			categories: { read: 'always_allow', write: 'require_approval' },
 		});
 		expect(connections.get(allowFilterId)).toEqual({
-			categories: { read: 'block', write: 'block' },
-			tools: { search: 'ask' },
+			categories: { read: 'blocked', write: 'blocked' },
+			tools: { search: 'require_approval' },
 		});
 		expect(connections.get(excludeFilterId)).toEqual({
-			categories: { read: 'allow', write: 'ask' },
-			tools: { delete: 'block' },
+			categories: { read: 'always_allow', write: 'require_approval' },
+			tools: { delete: 'blocked' },
 		});
 		expect(await connectionColumns()).toContain('toolPermissions');
 		expect(await connectionColumns()).not.toContain('toolFilter');
@@ -203,7 +206,7 @@ describe('MigrateMcpToolPermissions migration', () => {
 
 		expect(await readSetting()).toBeUndefined();
 		expect((await readConnections('toolPermissions')).get(connectionId)).toEqual({
-			categories: { read: 'allow', write: 'ask' },
+			categories: { read: 'always_allow', write: 'require_approval' },
 		});
 	});
 

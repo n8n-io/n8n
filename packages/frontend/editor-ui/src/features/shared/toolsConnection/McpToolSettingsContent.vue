@@ -15,7 +15,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import McpDetailBody from './McpDetailBody.vue';
 import type { McpServerConnectionItem, McpToolSettings } from './types';
 import {
-	DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS,
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	type McpToolCategory,
 	type McpToolPermission,
 } from '@n8n/api-types';
@@ -53,7 +53,12 @@ const recoveryActionKey = computed<BaseTextKey>(() =>
 );
 
 const initialSettings = (): McpToolSettings =>
-	props.item.settings ?? DEFAULT_INSTANCE_AI_MCP_TOOL_PERMISSIONS;
+	props.item.settings ?? {
+		categories: {
+			read: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpRead,
+			write: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpWrite,
+		},
+	};
 
 const categories = ref({ ...initialSettings().categories });
 const toolPermissions = ref({ ...initialSettings().tools });
@@ -79,9 +84,15 @@ watch(
 );
 
 const permissionOptions: Array<{ value: McpToolPermission; label: string }> = [
-	{ value: 'allow', label: i18n.baseText('tools.connection.permissions.allow') },
-	{ value: 'ask', label: i18n.baseText('tools.connection.permissions.ask') },
-	{ value: 'block', label: i18n.baseText('tools.connection.permissions.block') },
+	{
+		value: 'always_allow',
+		label: i18n.baseText('tools.connection.permissions.alwaysAllow'),
+	},
+	{
+		value: 'require_approval',
+		label: i18n.baseText('tools.connection.permissions.requireApproval'),
+	},
+	{ value: 'blocked', label: i18n.baseText('tools.connection.permissions.blocked') },
 ];
 
 const categoryContent: Record<McpToolCategory, { title: BaseTextKey; description: BaseTextKey }> = {
@@ -105,7 +116,11 @@ const groups = computed(() =>
 );
 
 async function updateCategory(category: McpToolCategory, permission: McpToolPermission) {
-	if (category === 'write' && permission === 'allow' && categories.value.write !== 'allow') {
+	if (
+		category === 'write' &&
+		permission === 'always_allow' &&
+		categories.value.write !== 'always_allow'
+	) {
 		const writeToolCount = props.item.availableTools.filter(
 			(tool) => (tool.category ?? 'write') === 'write',
 		).length;
@@ -138,7 +153,7 @@ function updateTool(toolId: string, category: McpToolCategory, permission: McpTo
 }
 
 function isPermission(value: unknown): value is McpToolPermission {
-	return value === 'allow' || value === 'ask' || value === 'block';
+	return value === 'always_allow' || value === 'require_approval' || value === 'blocked';
 }
 
 function onCategoryChange(category: McpToolCategory, value: unknown) {

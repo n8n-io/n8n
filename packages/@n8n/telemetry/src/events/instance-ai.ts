@@ -252,8 +252,8 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The user saved changed read, write, or tool-specific permissions for an MCP server.',
 		properties: z.object({
 			server_slug: z.string(),
-			read_permission: z.enum(['allow', 'ask', 'block']),
-			write_permission: z.enum(['allow', 'ask', 'block']),
+			read_permission: z.enum(['always_allow', 'require_approval', 'blocked']),
+			write_permission: z.enum(['always_allow', 'require_approval', 'blocked']),
 			tool_override_count: z.number().int().nonnegative(),
 		}),
 	},

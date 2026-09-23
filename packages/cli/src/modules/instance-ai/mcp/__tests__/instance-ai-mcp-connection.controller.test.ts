@@ -202,8 +202,11 @@ describe('InstanceAiMcpConnectionController', () => {
 			mcpRegistryService.get.mockResolvedValue(linearServer);
 			const payload = {
 				toolPermissions: {
-					categories: { read: 'allow' as const, write: 'ask' as const },
-					tools: { t1: 'block' as const },
+					categories: {
+						read: 'always_allow' as const,
+						write: 'require_approval' as const,
+					},
+					tools: { t1: 'blocked' as const },
 				},
 			};
 

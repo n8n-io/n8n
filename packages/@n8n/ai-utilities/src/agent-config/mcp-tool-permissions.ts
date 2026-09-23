@@ -106,12 +106,12 @@ export function compileMcpToolPermissions(
 	const approvalTools: string[] = [];
 	for (const tool of tools) {
 		const permission = resolveMcpToolPermission(policy, tool);
-		if (permission === 'block') {
+		if (permission === 'blocked') {
 			blockedTools.push(tool.name);
 			continue;
 		}
 
-		if (permission === 'ask') approvalTools.push(tool.name);
+		if (permission === 'require_approval') approvalTools.push(tool.name);
 	}
 
 	return {
