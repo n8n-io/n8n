@@ -84,7 +84,7 @@ export class CredentialTypePoliciesPublicController {
 	}
 
 	@Get('/instance')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary('Retrieve the instance credential type policy')
@@ -106,7 +106,7 @@ export class CredentialTypePoliciesPublicController {
 	}
 
 	@Put('/instance')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary('Replace the instance credential type policy')
@@ -140,7 +140,7 @@ export class CredentialTypePoliciesPublicController {
 	}
 
 	@Get('/projects/:projectId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@ProjectScope('credentialTypePolicy:manage')
 	@ApiSummary("Retrieve a project's credential type policy")
@@ -169,7 +169,7 @@ export class CredentialTypePoliciesPublicController {
 	}
 
 	@Put('/projects/:projectId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@ProjectScope('credentialTypePolicy:manage')
 	@ApiSummary("Replace a project's credential type policy")
@@ -204,7 +204,7 @@ export class CredentialTypePoliciesPublicController {
 	}
 
 	@Get('/policies')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary('List credential type policy documents')
@@ -232,7 +232,7 @@ export class CredentialTypePoliciesPublicController {
 	}
 
 	@Post('/policies')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary('Create a credential type policy document')
@@ -257,7 +257,7 @@ export class CredentialTypePoliciesPublicController {
 	}
 
 	@Get('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary('Retrieve a credential type policy document')
@@ -279,7 +279,7 @@ export class CredentialTypePoliciesPublicController {
 	}
 
 	@Put('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary('Replace the rules of a credential type policy document')
@@ -309,7 +309,7 @@ export class CredentialTypePoliciesPublicController {
 	}
 
 	@Delete('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary('Delete a credential type policy document')
@@ -330,7 +330,7 @@ export class CredentialTypePoliciesPublicController {
 	}
 
 	@Put('/scopes/:scopeId/attachments')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary("Replace a scope's attached policy documents")
