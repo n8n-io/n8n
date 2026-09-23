@@ -51,17 +51,18 @@ import {
  * input, not the value the node returned before pausing, is what the step emits
  * at the deadline.
  *
- * A sentinel means no deadline ends the wait. `WAIT_FOR_SUB_EXECUTION` waits
- * for a child execution, and sub-workflow steps do not exist yet, so the step
- * fails rather than complete as if the child had finished. `WAIT_INDEFINITELY`
- * waits for a resume request, which nothing can deliver yet: the data plane has
- * no resolve endpoint and the control plane no resume route. Until those land,
- * that call stays a no-op and the step completes with the node's outputs.
+ * A sentinel means no deadline ends the wait. `WAIT_INDEFINITELY` waits for a
+ * resume request, which nothing can deliver yet: the data plane has no resolve
+ * endpoint and the control plane no resume route. `WAIT_FOR_SUB_EXECUTION`
+ * waits for a child execution, and sub-workflow steps do not exist yet. Either
+ * step fails rather than complete as if the wait had ended; each turns into a
+ * declaration when its path lands.
  */
 function toStepResult(context: DurableWaitExecuteContext, outputs: StepSlots): StepExecutionResult {
 	const { waitTill } = context.runExecutionData;
-	if (waitTill === undefined || waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
-		return { outputs };
+	if (waitTill === undefined) return { outputs };
+	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
+		throw new UnsupportedWaitError('a resume request');
 	}
 	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
 		throw new UnsupportedWaitError('a sub-execution');

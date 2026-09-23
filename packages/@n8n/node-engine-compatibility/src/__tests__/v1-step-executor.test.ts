@@ -349,7 +349,6 @@ describe('V1StepExecutor', () => {
 
 	describe('a node that puts the execution to wait', () => {
 		const input = items({ keep: 'me' });
-		const returned = items({ keep: 'me', returned: true });
 
 		// v1 passes the node's input through when a timed wait resumes.
 		it('declares a deadline wait that emits the input at the deadline', async () => {
@@ -419,23 +418,16 @@ describe('V1StepExecutor', () => {
 			expect(resumeAt).toBeLessThanOrEqual(after + 2000);
 		});
 
-		// Nothing can deliver a resume request yet, and a year-3000 deadline would
-		// strand the execution, so this sentinel keeps today's no-op behaviour.
-		it('completes with what the node returned for the WAIT_INDEFINITELY sentinel', async () => {
-			const graph = graphWith('test.waitsUntil', { waitTill: WAIT_INDEFINITELY.toISOString() });
-			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
-			expect(result).toEqual({ outputs: returned });
-		});
-
-		// Sub-workflow steps do not exist yet, so completing the step would report
-		// a child that never finished.
-		it('fails the step for the WAIT_FOR_SUB_EXECUTION sentinel', async () => {
-			const graph = graphWith('test.waitsUntil', {
-				waitTill: WAIT_FOR_SUB_EXECUTION.toISOString(),
-			});
+		// Nothing can deliver a resume request yet and sub-workflow steps do not
+		// exist, so completing the step would report a wait that never happened.
+		it.each([
+			['WAIT_INDEFINITELY', WAIT_INDEFINITELY, 'a resume request'],
+			['WAIT_FOR_SUB_EXECUTION', WAIT_FOR_SUB_EXECUTION, 'a sub-execution'],
+		])('fails the step for the %s sentinel', async (_, sentinel, waitsFor) => {
+			const graph = graphWith('test.waitsUntil', { waitTill: sentinel.toISOString() });
 			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
 			await expect(execution).rejects.toThrow(UnsupportedWaitError);
-			await expect(execution).rejects.toThrow('Engine 2.0 cannot wait for a sub-execution yet');
+			await expect(execution).rejects.toThrow(`Engine 2.0 cannot wait for ${waitsFor} yet`);
 		});
 	});
 
