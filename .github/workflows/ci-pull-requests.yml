@@ -45,6 +45,8 @@ jobs:
         with:
           # Use merge_group SHA when in merge queue, otherwise PR merge ref
           ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+          # The PR filter compares HEAD^2 against master.
+          fetch-depth: 2
 
       - name: Capture commit SHA for cache consistency
         id: commit-sha
