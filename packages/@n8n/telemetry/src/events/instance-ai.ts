@@ -7,6 +7,11 @@ import {
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+<<<<<<< HEAD
+=======
+import { assistantSurfaceSchema } from '../schemas';
+import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
+>>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 
 /**
  * How each n8n Assistant setup component is configured. Source (who set it) and
@@ -57,6 +62,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The setup panel observed a new requirement snapshot. Also fires when no setup is needed, including workflows whose credentials were already connected.',
 		properties: z.object({
+			...setupTelemetryProperties,
 			workflow_id: z.string(),
 			thread_id: z.string(),
 			credential_count: z.number(),
@@ -70,11 +76,13 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A setup checklist row became visible. Reopening the same row within the mounted panel does not emit another event.',
 		properties: z.object({
+			...setupTelemetryProperties,
 			workflow_id: z.string(),
 			thread_id: z.string(),
 			kind: z.enum(['credential', 'parameters', 'details']),
 			credential_type: z.string().optional(),
 			parameter_count: z.number(),
+			items: z.array(z.object(setupItemProperties)).optional(),
 		}),
 	},
 	SETUP_PANEL_DISMISSED: {
@@ -82,6 +90,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A visible setup panel closed. The reason separates navigation and removed requirements from a finished execution or an explicit dismissal.',
 		properties: z.object({
+			...setupTelemetryProperties,
 			workflow_id: z.string(),
 			thread_id: z.string(),
 			reason: z.enum([
@@ -421,6 +430,10 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The user sent a message to the n8n Assistant. Fires once per message on the optimistic send, before the request is admitted, so a refused send still counts as an attempt. Carries who wrote the text: a pre-fill is an opener n8n composed (a failed execution, a credential modal, a template card, a suggestion chip) that the user accepted or edited, so pre-fill share must be read from prefill_type rather than matched against the message body.',
 		properties: z.object({
+			...setupTelemetryProperties,
+			workflow_id: z.string().optional(),
+			pending_credential_count: z.number().optional(),
+			pending_parameter_count: z.number().optional(),
 			thread_id: z.string(),
 			instance_id: z.string(),
 			is_first_message: z

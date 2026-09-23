@@ -157,6 +157,12 @@ export class RunStateRegistry<TUser = unknown> {
 
 	/** Build mode captured at user-run entry and reused by follow-up runs. */
 	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
+<<<<<<< HEAD
+=======
+	private readonly threadSetupPanelEnabled = new Map<string, boolean>();
+
+	private readonly threadObserverThresholds = new Map<string, number>();
+>>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 	private readonly threadPromptSelections = new Map<
 		string,
 		{ version: string; metadata?: InstanceAiPromptConfiguration }
@@ -521,6 +527,27 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadBuildModes.get(threadId);
 	}
 
+<<<<<<< HEAD
+=======
+	setSetupPanelEnabled(threadId: string, enabled: boolean): void {
+		this.threadSetupPanelEnabled.set(threadId, enabled);
+	}
+
+	isSetupPanelEnabled(threadId: string): boolean {
+		return this.threadSetupPanelEnabled.get(threadId) === true;
+	}
+
+	/** Per-thread observer threshold; an omitted value clears it. */
+	setObserverThresholdTokens(threadId: string, tokens: number | undefined): void {
+		if (tokens === undefined) this.threadObserverThresholds.delete(threadId);
+		else this.threadObserverThresholds.set(threadId, tokens);
+	}
+
+	getObserverThresholdTokens(threadId: string): number | undefined {
+		return this.threadObserverThresholds.get(threadId);
+	}
+
+>>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 	setPromptVersion(threadId: string, version: string | undefined): void {
 		if (version === undefined) this.threadPromptSelections.delete(threadId);
 		else this.threadPromptSelections.set(threadId, { version });
@@ -690,6 +717,11 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadTimeZones.delete(threadId);
 		this.threadComputerUseChannels.delete(threadId);
 		this.threadBuildModes.delete(threadId);
+<<<<<<< HEAD
+=======
+		this.threadSetupPanelEnabled.delete(threadId);
+		this.threadObserverThresholds.delete(threadId);
+>>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 		this.threadPromptSelections.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
@@ -741,6 +773,11 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadTimeZones.clear();
 		this.threadComputerUseChannels.clear();
 		this.threadBuildModes.clear();
+<<<<<<< HEAD
+=======
+		this.threadSetupPanelEnabled.clear();
+		this.threadObserverThresholds.clear();
+>>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();

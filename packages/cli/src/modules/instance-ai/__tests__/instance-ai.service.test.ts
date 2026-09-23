@@ -729,7 +729,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getSandboxStatus: Mock;
 				isLocalGatewayDisabledForUser: Mock;
 				getPermissions: Mock;
-				isInstanceAiSetupPanelEnabled: Mock;
 			};
 			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
 			aiService: { isProxyEnabled: Mock };
@@ -762,6 +761,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getPromptConfiguration: Mock;
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
+				setSetupPanelEnabled: Mock;
 				setPromptVersion: Mock;
 				getComputerUseChannels: Mock;
 			};
@@ -787,7 +787,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			})),
 			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
-			isInstanceAiSetupPanelEnabled: vi.fn(() => snapshotMode !== 'off'),
 		};
 		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };
@@ -795,6 +794,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			createContext: vi.fn(() => ({})),
 			getNodeDefinitionDirs: vi.fn(() => []),
 			resolveExperimentGates: vi.fn().mockResolvedValue({
+				setupPanelEnabled: snapshotMode !== 'off',
+				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
 				configEvalsEnabled: true,
 				mcpConnectionsEnabled: false,
 				conversationHistoryEnabled: false,
@@ -835,6 +836,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getPromptConfiguration: vi.fn(),
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
+			setSetupPanelEnabled: vi.fn(),
 			setPromptVersion: vi.fn(),
 			getComputerUseChannels: vi.fn(() => undefined),
 		};
@@ -884,9 +886,28 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(environment.instanceContextEnabled).toBe(instanceContextEnabled);
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			fakeUser,
+<<<<<<< HEAD
 			expect.objectContaining({ instanceContextEnabled }),
+=======
+			expect.objectContaining({
+				...expectedGates,
+				configEvalsEnabled: true,
+				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
+			}),
+>>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 		);
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
+<<<<<<< HEAD
+=======
+		expect(service.runState.setSetupPanelEnabled).toHaveBeenCalledWith(
+			'thread-1',
+			snapshotMode !== 'off',
+		);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ mcpConnectionsAvailable: true }),
+		);
+>>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 		if (snapshotMode === 'off') {
 			expect(service.eventLog.getSetupItemsSnapshots).not.toHaveBeenCalled();
 			expect(createSetupItemsEmitter).not.toHaveBeenCalled();
@@ -1055,7 +1076,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getSandboxStatus: Mock;
 				isLocalGatewayDisabledForUser: Mock;
 				getPermissions: Mock;
-				isInstanceAiSetupPanelEnabled: Mock;
 			};
 			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
 			aiService: { isProxyEnabled: Mock };
@@ -1088,6 +1108,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getPromptConfiguration: Mock;
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
+				setSetupPanelEnabled: Mock;
 				setPromptVersion: Mock;
 				getComputerUseChannels: Mock;
 			};
@@ -1113,7 +1134,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			})),
 			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
-			isInstanceAiSetupPanelEnabled: vi.fn(() => false),
 		};
 		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };
@@ -1157,6 +1177,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getPromptConfiguration: vi.fn(),
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
+			setSetupPanelEnabled: vi.fn(),
 			setPromptVersion: vi.fn(),
 			getComputerUseChannels: vi.fn(() => undefined),
 		};
