@@ -1,0 +1,30 @@
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_7d582b41f4f5d6::t_836a9aca4037f3 53,243-247,252-253
+  s_13d0f2e1be0144::t_0cde6475b40be8 248
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_7d582b41f4f5d6::t_b2531bcbcc7801 145-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bde850445ba4f3ffdcd1834a1d81a3f1375a0893",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_7d582b41f4f5d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63bff858-2ef6-4f03-8a08-35f7ca19bbb0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

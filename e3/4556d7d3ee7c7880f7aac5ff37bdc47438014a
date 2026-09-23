@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Zendesk/GenericFunctions.ts
+  s_515860a37f1700::t_11c4d1065a6532 17,24,71-74
+packages/nodes-base/nodes/Zendesk/__tests__/GenericFunctions.test.ts
+  s_515860a37f1700::t_3bfebd44a4fcbb 47,56,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e34556d7d3ee7c7880f7aac5ff37bdc47438014a",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_515860a37f1700": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df835c4f-f17a-4de6-adaf-56e4b69d1e4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
