@@ -252,7 +252,10 @@ const INVOICE_REMINDER_FIXED_CONNECTIONS: IConnections = {
 export interface BuildReviewOptions {
 	id: string;
 	title: string;
+	/** One line for the inbox card. */
 	summary: string;
+	/** The review's description: the outcome first, then impact, cause and change. */
+	description: string;
 	/** Body of the assistant's explanatory comment in the activity feed. */
 	analysis: string;
 	changedNode: string;
@@ -308,7 +311,7 @@ export function buildSelfHealingReview(
 		requester: item.requester,
 		authors: item.authors,
 		reviewers: item.reviewers,
-		description: options.summary,
+		description: options.description,
 		workflows: [
 			{
 				workflowId: options.workflowId,
@@ -403,7 +406,10 @@ export const SEED_WORKFLOWS = {
 export interface BuildOutcomeOptions {
 	id: string;
 	title: string;
+	/** One line for the inbox card. */
 	summary: string;
+	/** The item's description: the outcome and the user's next step first. */
+	description: string;
 	/** Body of the assistant's report in the activity feed. */
 	analysis: string;
 	outcome: SelfHealingOutcome;
@@ -461,7 +467,7 @@ export function buildSelfHealingOutcome(
 		requester: item.requester,
 		authors: item.authors,
 		reviewers: item.reviewers,
-		description: options.summary,
+		description: options.description,
 		workflows: [
 			{
 				workflowId: options.workflowId,
@@ -559,6 +565,8 @@ export function createSeedReviews(
 		buildSelfHealingReview(
 			{
 				id: `${SELF_HEALING_REVIEW_ID_PREFIX}seed-lead-enrichment`,
+				description:
+					'Fix ready for review. Approving publishes it.\n\nImpact: 14 of 100 new leads were not enriched or updated in the last run.\nCause: Clearbit rate-limited "Enrich with Clearbit" with 429 Too Many Requests.\nChange: turned on Retry On Fail (3 tries, 5 s apart) and batched requests 10 per second. Nothing else changed.\nChecked: replayed the failed execution against the fix. All 100 leads went through.',
 				title: 'Auto-fix: Retry Clearbit requests on 429 in Lead enrichment sync',
 				summary:
 					'Failed: "Enrich with Clearbit" hit 429 Too Many Requests on 14 of 100 items. Changed: enabled Retry On Fail (3 tries, 5 s) and batched requests 10 at a time.',
@@ -592,6 +600,8 @@ export function createSeedReviews(
 		buildSelfHealingReview(
 			{
 				id: `${SELF_HEALING_REVIEW_ID_PREFIX}seed-invoice-reminders`,
+				description:
+					'Fix published after review. Reminders now skip days with no overdue invoices.\n\nImpact: the weekday run failed on every day without overdue invoices.\nCause: "Send reminder" received no items and threw "Cannot read properties of undefined (reading \'customer_email\')".\nChange: added an IF node, "Has overdue invoices?", before "Send reminder".\nChecked: ran the fix with no overdue invoices and with three. Both runs completed.',
 				title: 'Auto-fix: Skip sending when no invoices are overdue in Invoice reminder emails',
 				summary:
 					'Failed: "Send reminder" threw "Cannot read properties of undefined (reading \'customer_email\')" when the query returned no rows. Changed: added a "Has overdue invoices?" guard before sending.',
@@ -628,6 +638,8 @@ export function createSeedReviews(
 		buildSelfHealingOutcome(
 			{
 				id: `${SELF_HEALING_REVIEW_ID_PREFIX}seed-deal-alerts`,
+				description:
+					'Action needed: reconnect the credential "HubSpot – Sales". No fix was attempted because nothing in the workflow has to change.\n\nImpact: every hourly run fails, so no new deals reach #sales in Slack.\nCause: the credential\'s OAuth token expired, so "Get new deals" is refused with 401 Unauthorized.\nNext: reconnect the credential, then run the failed execution again or wait for the next run.',
 				title: 'Reconnect the HubSpot credential in Deal alerts to Slack',
 				summary:
 					'Failed: "Get new deals" was refused with 401 Unauthorized. The credential "HubSpot – Sales" has expired; reconnect it to resume.',
@@ -651,6 +663,8 @@ export function createSeedReviews(
 		buildSelfHealingOutcome(
 			{
 				id: `${SELF_HEALING_REVIEW_ID_PREFIX}seed-order-sync`,
+				description:
+					'No fix prepared. The Assistant could not work out what replaced the field "shipping_method_v1" and stopped rather than guess.\n\nImpact: paid orders since yesterday at 22:10 have no shipment in the warehouse.\nCause: the warehouse API now rejects "shipping_method_v1" in "Create shipment" with HTTP 400. The workflow did not change.\nNext: find the new field in the vendor\'s API changelog and update "Create shipment", or continue in chat with the changelog link.',
 				title: 'Could not fix "Create shipment" in Order sync to warehouse',
 				summary:
 					'Failed: the warehouse API rejected "shipping_method_v1", a field this workflow has always sent. The Assistant could not find the replacement.',
@@ -718,10 +732,16 @@ export function createLiveReviewCopy(input: {
 	changedNode: string;
 	workflowName: string;
 	errorMessage: string | null;
-}): { title: string; summary: string; analysis: string } {
+	/** Under "deploy fixes automatically" the fix is live before anyone reviews it. */
+	autoDeployed: boolean;
+}): { title: string; summary: string; description: string; analysis: string } {
 	const error = input.errorMessage ?? 'an unhandled error';
+	const lead = input.autoDeployed
+		? 'Fix published automatically, without a review.'
+		: 'Fix ready for review. Approving publishes it.';
 	return {
 		title: `Auto-fix: Retry "${input.changedNode}" on failure in ${input.workflowName}`,
+		description: `${lead}\n\nCause: "${input.changedNode}" stopped execution #${input.executionId} with ${error}.\nChange: turned on Retry On Fail (3 tries, 5 s apart) on "${input.changedNode}". Nothing else changed.\nChecked: replayed the failed execution against the fix. The run completed.`,
 		summary: `Failed: "${input.changedNode}" stopped execution #${input.executionId} with ${error}. Changed: enabled Retry On Fail (3 tries, 5 s) on "${input.changedNode}".`,
 		analysis: `What failed: execution #${input.executionId} stopped at "${input.changedNode}" with "${error}".\n\nWhat I changed: turned on Retry On Fail for "${input.changedNode}" with 3 attempts, 5 seconds apart. No other node or parameter changed.\n\nHow I checked: replayed the failed execution against the fixed version with pinned input data. The run completed.`,
 	};

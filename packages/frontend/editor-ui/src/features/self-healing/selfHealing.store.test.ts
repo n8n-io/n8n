@@ -245,6 +245,16 @@ describe('useSelfHealingStore', () => {
 			expect(needsYou && store.getOutcome(needsYou.id)?.action?.type).toBe('open_credential');
 		});
 
+		it('opens each description with the outcome for its kind', () => {
+			const leadOf = (kind: string) => {
+				const item = store.getInboxItems('open').find((i) => store.getInboxKind(i.id) === kind);
+				return store.getDetail(item?.id ?? '')?.description?.split('\n')[0] ?? '';
+			};
+			expect(leadOf('fix')).toMatch(/^Fix ready for review/);
+			expect(leadOf('needs_you')).toMatch(/^Action needed:/);
+			expect(leadOf('could_not_fix')).toMatch(/^No fix prepared/);
+		});
+
 		it('reports what each investigation cost', () => {
 			const items = store.getInboxItems('open');
 			const kindOf = (kind: string) => items.find((item) => store.getInboxKind(item.id) === kind);

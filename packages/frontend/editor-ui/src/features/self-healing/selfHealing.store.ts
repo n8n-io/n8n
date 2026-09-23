@@ -333,14 +333,15 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 			failedNodeName: execution.lastNodeExecuted ?? null,
 		});
 		const workflowName = context.workflowName || execution.workflowName || 'workflow';
+		const autoDeploy = config?.autonomy === 'deploy';
 		const copy = createLiveReviewCopy({
 			executionId,
 			changedNode,
 			workflowName,
 			errorMessage: execution.executionError?.message?.trim() || null,
+			autoDeployed: autoDeploy,
 		});
 		const createdAt = nowIso();
-		const autoDeploy = config?.autonomy === 'deploy';
 		const reviewId = `${SELF_HEALING_REVIEW_ID_PREFIX}${executionId}-${Date.now()}`;
 
 		const review = buildSelfHealingReview(
