@@ -208,7 +208,8 @@ function nonMainChildren(
  *
  * Normal nodes are their own root, so this returns `[targetName]` for them.
  * A sub-node on several roots returns all of them: `rewireGraph` picks one, and
- * covering every candidate keeps the plan correct whichever it picks.
+ * covering every candidate keeps the plan correct whichever it picks — unless
+ * one root sits above another, which `findRootsAboveOtherRoots` detects.
  */
 export function resolveStepRunRoots(
 	nodes: INode[],
@@ -341,6 +342,34 @@ export function collectAncestorNames(
 	}
 
 	return [...ancestors];
+}
+
+/**
+ * The roots of a shared sub-node that sit above another of its roots.
+ *
+ * `rewireGraph` stands in for one root only. When it picks a lower one, a root
+ * above it stays in the run with its edge to the sub-node, so `cleanRunData`
+ * treats that root as a child of the dirty target. It then drops the run data
+ * of that root and of every node between it and the chosen root, and the
+ * engine runs them for real. Roots on parallel branches never enter the run,
+ * so this returns nothing for them.
+ */
+export function findRootsAboveOtherRoots(
+	nodes: INode[],
+	connections: IConnections,
+	rootNames: string[],
+): string[] {
+	if (rootNames.length < 2) return [];
+
+	const above = new Set<string>();
+	for (const rootName of rootNames) {
+		const ancestors = new Set(collectAncestorNames(nodes, connections, rootName));
+		for (const other of rootNames) {
+			if (other !== rootName && ancestors.has(other)) above.add(other);
+		}
+	}
+
+	return rootNames.filter((name) => above.has(name));
 }
 
 /**

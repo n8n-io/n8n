@@ -205,6 +205,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
 	buildToolAgentRequest,
 	declaredToolArguments,
+	findRootsAboveOtherRoots,
 	isToolkitNode,
 	pinDataForStepRun,
 	planStepRun,
@@ -2185,6 +2186,21 @@ export class InstanceAiAdapterService {
 						throw new UserError(
 							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
 								`Run ${roots} instead, then read this node with ` +
+								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'tool call returned.',
+						);
+					}
+
+					// The engine runs the tool through one of its Agents only. When it picks
+					// a lower one, the Agent above it and the nodes in between run for
+					// real, whatever mocked or replayed data the plan gave them.
+					const upperRoots = findRootsAboveOtherRoots(nodes, connections, plan.rootNodeNames);
+					if (upperRoots.length > 0) {
+						const upper = upperRoots.map((name) => `"${name}"`).join(' or ');
+						throw new UserError(
+							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
+								`so a step run would run ${upper} and the nodes after it again. ` +
+								`Run ${upper} instead, then read this node with ` +
 								'executions(action="get-node-output") on that execution: it holds what every ' +
 								'tool call returned.',
 						);

@@ -6047,6 +6047,87 @@ describe('createExecutionAdapter runStep()', () => {
 			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
 		});
 
+		describe('a tool shared by two Agents', () => {
+			const agentNode = (name: string, x: number) => ({
+				name,
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [x, 0],
+			});
+			const sharedToolWorkflow = (main: Record<string, unknown>) => ({
+				id: 'wf-1',
+				versionId: 'v-current',
+				nodes: [
+					{
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					agentNode('Agent A', 1),
+					{ name: 'POST', type: 'n8n-nodes-base.httpRequest', typeVersion: 1, position: [2, 0] },
+					agentNode('Agent B', 3),
+					{
+						name: 'Calculator',
+						type: '@n8n/n8n-nodes-langchain.toolCalculator',
+						typeVersion: 1,
+						position: [2, 1],
+					},
+				],
+				connections: {
+					...main,
+					Calculator: {
+						ai_tool: [
+							[
+								{ node: 'Agent B', type: 'ai_tool', index: 0 },
+								{ node: 'Agent A', type: 'ai_tool', index: 0 },
+							],
+						],
+					},
+				},
+			});
+
+			it('refuses the run when one Agent runs above the other', async () => {
+				// Trigger -> Agent A -> POST -> Agent B. The engine can pick Agent B,
+				// and then Agent A and "POST" run for real.
+				const harness = createRunAdapterForTests(
+					sharedToolWorkflow({
+						Trigger: { main: [[{ node: 'Agent A', type: 'main', index: 0 }]] },
+						'Agent A': { main: [[{ node: 'POST', type: 'main', index: 0 }]] },
+						POST: { main: [[{ node: 'Agent B', type: 'main', index: 0 }]] },
+					}),
+					{ execution: makeExecution({ status: 'success' }) },
+				);
+				const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+				await expect(runStep('wf-1', 'Calculator', { mockInput: [{}] })).rejects.toThrow(
+					'"Agent A" runs above another of them, so a step run would run "Agent A" and the nodes after it again',
+				);
+				expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			it('runs the tool when the Agents sit on parallel branches', async () => {
+				const { result } = await runStepOn(
+					sharedToolWorkflow({
+						Trigger: {
+							main: [
+								[
+									{ node: 'Agent A', type: 'main', index: 0 },
+									{ node: 'POST', type: 'main', index: 0 },
+								],
+							],
+						},
+						POST: { main: [[{ node: 'Agent B', type: 'main', index: 0 }]] },
+					}),
+					'Calculator',
+					{ mockInput: [{}] },
+				);
+
+				expect(result.inputMode).toBe('mocked');
+				expect(result.ranThroughNodeNames?.sort()).toEqual(['Agent A', 'Agent B']);
+			});
+		});
+
 		// The engine records a tool's run under `ai_tool`, and the node that
 		// carries the run — `PartialExecutionToolExecutor` — is not in the
 		// workflow. Reported as-is, the result hid the tool and named a node the

@@ -156,6 +156,8 @@ that Agent:
   that ran it. A tool on several agents lists them all: the engine picks one,
   and it does not report which. Do not name a single Agent to the user when
   this field holds more than one.
+- A tool on two Agents where one runs above the other is refused. Run the
+  upper Agent, then read the tool with `executions(action="get-node-output")`.
 
 The tool's own arguments come from `toolArguments` — the values the agent would
 normally decide:

@@ -215,6 +215,7 @@ export interface StepExecutionResult extends ExecutionResult {
 	 *
 	 * A tool wired to several agents lists them all: n8n runs the step through
 	 * one of them, and which one is the engine's choice, not this caller's.
+	 * A step run refuses a tool when one of its agents runs above another.
 	 */
 	ranThroughNodeNames?: string[];
 }

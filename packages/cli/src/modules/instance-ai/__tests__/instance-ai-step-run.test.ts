@@ -1,5 +1,5 @@
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import { DirectedGraph, findStartNodes, findSubgraph, rewireGraph } from 'n8n-core';
+import { cleanRunData, DirectedGraph, findStartNodes, findSubgraph, rewireGraph } from 'n8n-core';
 import type { IConnections, INode, IRunData, ITaskData, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -8,6 +8,7 @@ import {
 	buildToolAgentRequest,
 	collectAncestorNames,
 	declaredToolArguments,
+	findRootsAboveOtherRoots,
 	isToolkitNode,
 	pinDataForStepRun,
 	planStepRun,
@@ -567,6 +568,51 @@ describe('sub-node targets', () => {
 		expect(plan.dirtyNodeNames).toEqual(['Calculator']);
 	});
 
+	describe('findRootsAboveOtherRoots', () => {
+		const stacked = [node('Trigger'), node('Agent A'), node('POST'), node('Agent B')];
+
+		it('names the root that runs above another root', () => {
+			const stackedConnections = connect(
+				['Trigger', 'Agent A'],
+				['Agent A', 'POST'],
+				['POST', 'Agent B'],
+			);
+
+			expect(findRootsAboveOtherRoots(stacked, stackedConnections, ['Agent B', 'Agent A'])).toEqual(
+				['Agent A'],
+			);
+		});
+
+		it('names nothing for roots on parallel branches', () => {
+			const parallelConnections = connect(
+				['Trigger', 'Agent A'],
+				['Trigger', 'POST'],
+				['POST', 'Agent B'],
+			);
+
+			expect(
+				findRootsAboveOtherRoots(stacked, parallelConnections, ['Agent A', 'Agent B']),
+			).toEqual([]);
+		});
+
+		it('names every root on a loop, where none is the topmost', () => {
+			const loopConnections = connect(
+				['Trigger', 'Agent A'],
+				['Agent A', 'Agent B'],
+				['Agent B', 'Agent A'],
+			);
+
+			expect(findRootsAboveOtherRoots(stacked, loopConnections, ['Agent A', 'Agent B'])).toEqual([
+				'Agent A',
+				'Agent B',
+			]);
+		});
+
+		it('names nothing for a single root', () => {
+			expect(findRootsAboveOtherRoots(nodes, connections, ['Agent'])).toEqual([]);
+		});
+	});
+
 	it('runs the chain for a tool with no node to run it', () => {
 		const orphan = [node('Trigger'), node('Calculator')];
 
@@ -712,6 +758,69 @@ describe('the plan against the engine rules', () => {
 		// Neither node below the Agent is even part of the run.
 		expect([...subgraph.getNodes().keys()]).not.toContain('Notify');
 		expect([...subgraph.getNodes().keys()]).not.toContain('Summarize');
+	});
+
+	// Proof that refusing a tool on stacked Agents is not over-caution. The plan
+	// covers both Agents, yet the engine drops that data when it picks the
+	// lower one, and the upper Agent and "POST" run for real.
+	describe('a tool shared by an Agent and an Agent below it', () => {
+		const agentA = node('Agent A');
+		const post = node('POST');
+		const agentB = node('Agent B');
+		const tool = node('Calculator');
+		const stacked = [trigger, agentA, post, agentB, tool];
+		const stackedConnections = connect(
+			['Trigger', 'Agent A'],
+			['Agent A', 'POST'],
+			['POST', 'Agent B'],
+		);
+		stackedConnections.Calculator = {
+			[NodeConnectionTypes.AiTool]: [
+				[
+					{ node: 'Agent A', type: NodeConnectionTypes.AiTool, index: 0 },
+					{ node: 'Agent B', type: NodeConnectionTypes.AiTool, index: 0 },
+				],
+			],
+		};
+
+		/** Runs the engine's partial-run steps, with the tool's edges in `order`. */
+		function startNodesFor(order: INode[]) {
+			const plan = planStepRun({
+				nodes: stacked,
+				connections: stackedConnections,
+				targetName: 'Calculator',
+				mockItems: toExecutionItems([{ id: 1 }]),
+			});
+
+			const graph = new DirectedGraph()
+				.addNodes(...stacked)
+				.addConnections(
+					{ from: trigger, to: agentA },
+					{ from: agentA, to: post },
+					{ from: post, to: agentB },
+					...order.map((agent) => ({ from: tool, to: agent, type: NodeConnectionTypes.AiTool })),
+				);
+			const rewired = rewireGraph(tool, graph);
+			const destination = rewired.getNodes().get(TOOL_EXECUTOR_NODE_NAME)!;
+			const subgraph = findSubgraph({ graph: rewired, destination, trigger });
+			const runData = cleanRunData(
+				plan.runData!,
+				subgraph,
+				subgraph.getNodesByNames(['Calculator']),
+			);
+
+			return [
+				...findStartNodes({ graph: subgraph, trigger, destination, runData, pinData: {} }),
+			].map((startNode) => startNode.name);
+		}
+
+		it('runs the upper Agent again when the engine picks the lower one', () => {
+			expect(startNodesFor([agentB, agentA])).toEqual(['Agent A']);
+		});
+
+		it('starts at the Tool Executor when the engine picks the upper one', () => {
+			expect(startNodesFor([agentA, agentB])).toEqual([TOOL_EXECUTOR_NODE_NAME]);
+		});
 	});
 });
 

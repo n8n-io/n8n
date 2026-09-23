@@ -658,6 +658,12 @@ one and reports no choice, so any single name here would be a guess. The plan
 covers every candidate's ancestry, so the run is right whichever one the engine
 takes.
 
+The action refuses a tool when one of its agents runs above another. If the
+engine picks the lower agent, it drops the data the plan gave the upper agent
+and the nodes between them, and runs those nodes for real. The error tells the
+caller to run the upper agent instead and read the tool with
+`get-node-output`. Agents on parallel branches are not affected.
+
 `toolArguments` supplies what the agent would normally decide — the values
 behind the tool's `$fromAI` calls, keyed by argument name, or a bare string for
 a tool that takes one free-text input (Wikipedia, Code Tool, a vector store used
