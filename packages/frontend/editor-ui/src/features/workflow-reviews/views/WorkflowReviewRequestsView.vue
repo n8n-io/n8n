@@ -26,6 +26,7 @@ import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import SelfHealingOutcomeActions from '@/features/self-healing/components/SelfHealingOutcomeActions.vue';
 import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
+import { getSelfHealingStatusDisplay } from '@/features/self-healing/selfHealingStatus';
 
 import { useReviewActivityStore } from '../reviewActivity.store';
 import { useReviewInboxStore, type ReviewInboxSectionKey } from '../reviewInbox.store';
@@ -122,6 +123,13 @@ const selectedItem = computed(() => detail.value ?? selectedListItem.value);
 // step sits in the description.
 const selectedOutcome = computed(() =>
 	selectedReviewId.value ? selfHealingStore.getOutcome(selectedReviewId.value) : null,
+);
+
+const selectedStatusDisplay = computed(() =>
+	selectedItem.value && selectedOutcome.value
+		? (getSelfHealingStatusDisplay(i18n, selectedOutcome.value.kind, selectedItem.value.state) ??
+			undefined)
+		: undefined,
 );
 
 const i18n = useI18n();
@@ -364,6 +372,7 @@ onUnmounted(() => {
 						<WorkflowReviewStatusDot
 							:state="selectedItem.state"
 							:decision="selectedItem.decision"
+							:display="selectedStatusDisplay"
 						/>
 						<N8nHeading bold tag="h2" size="xlarge" data-test-id="workflow-review-request-title">
 							{{ selectedItem.title }}

@@ -3,7 +3,10 @@ import type { WorkflowReviewRequestDecision, WorkflowReviewRequestState } from '
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-import { getWorkflowReviewStatusDisplay } from '../workflowReviewStatus.utils';
+import {
+	getWorkflowReviewStatusDisplay,
+	type WorkflowReviewStatusDisplay,
+} from '../workflowReviewStatus.utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -15,13 +18,17 @@ const props = withDefaults(
 		 * carries no accessible name, so the status is announced once, not twice.
 		 */
 		decorative?: boolean;
+		/** Replaces the status derived from state and decision. */
+		display?: WorkflowReviewStatusDisplay;
 	}>(),
 	{ size: 'medium', decorative: false },
 );
 
 const i18n = useI18n();
 
-const status = computed(() => getWorkflowReviewStatusDisplay(i18n, props.state, props.decision));
+const status = computed(
+	() => props.display ?? getWorkflowReviewStatusDisplay(i18n, props.state, props.decision),
+);
 </script>
 
 <template>

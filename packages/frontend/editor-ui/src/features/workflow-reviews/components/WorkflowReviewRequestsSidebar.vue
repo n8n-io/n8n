@@ -16,6 +16,7 @@ import {
 import { useUsersStore } from '@n8n/stores/users.store';
 import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
 import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
+import { getSelfHealingStatusDisplay } from '@/features/self-healing/selfHealingStatus';
 import SelfHealingInboxKindBadge from '@/features/self-healing/components/SelfHealingInboxKindBadge.vue';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -66,6 +67,10 @@ function autoFixSummary(item: WorkflowReviewInboxItem): string | null {
 
 function inboxKind(item: WorkflowReviewInboxItem) {
 	return isSelfHealingAssistant(item.requester) ? selfHealingStore.getInboxKind(item.id) : null;
+}
+
+function statusDisplay(item: WorkflowReviewInboxItem) {
+	return getSelfHealingStatusDisplay(i18n, inboxKind(item), item.state) ?? undefined;
 }
 
 /**
@@ -263,7 +268,11 @@ function onListBackgroundClick() {
 									<N8nText bold tag="h3" :class="$style.cardTitle">
 										{{ item.title }}
 									</N8nText>
-									<WorkflowReviewStatusDot :state="item.state" :decision="item.decision" />
+									<WorkflowReviewStatusDot
+										:state="item.state"
+										:decision="item.decision"
+										:display="statusDisplay(item)"
+									/>
 								</div>
 								<N8nText
 									v-if="autoFixSummary(item)"

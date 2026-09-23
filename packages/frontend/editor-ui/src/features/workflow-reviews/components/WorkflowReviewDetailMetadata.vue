@@ -14,6 +14,7 @@ import { computed } from 'vue';
 import { VIEWS } from '@/app/constants';
 import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
 import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
+import { getSelfHealingStatusDisplay } from '@/features/self-healing/selfHealingStatus';
 import { formatUserDisplayName } from '../workflowReviews.utils';
 import { getWorkflowReviewStatusDisplay } from '../workflowReviewStatus.utils';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
@@ -61,8 +62,15 @@ const otherAuthors = computed(() =>
 	props.review.authors.filter((author) => author.id !== props.review.requester?.id),
 );
 
-const statusSummary = computed(() =>
-	getWorkflowReviewStatusDisplay(i18n, props.review.state, props.review.decision),
+const statusSummary = computed(
+	() =>
+		getSelfHealingStatusDisplay(
+			i18n,
+			isSelfHealingAssistant(props.review.requester)
+				? selfHealingStore.getInboxKind(props.review.id)
+				: null,
+			props.review.state,
+		) ?? getWorkflowReviewStatusDisplay(i18n, props.review.state, props.review.decision),
 );
 </script>
 
@@ -75,7 +83,12 @@ const statusSummary = computed(() =>
 				</N8nText>
 			</template>
 			<div :class="$style.status">
-				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" decorative />
+				<WorkflowReviewStatusDot
+					:state="review.state"
+					:decision="review.decision"
+					:display="statusSummary"
+					decorative
+				/>
 				<N8nText size="medium">
 					{{ statusSummary.stateLabel }}
 					<span aria-hidden="true" :class="$style.statusSeparator">|</span>
