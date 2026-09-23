@@ -48,6 +48,7 @@ function createService() {
 		progressiveBuildingEnabled: false,
 		setupPanelEnabled: false,
 		nodeUsageEnabled: false,
+		nodeContextEnabled: false,
 		folderExplorationEnabled: false,
 		aiPreferencesEnabled: false,
 		instanceContextEnabled: false,

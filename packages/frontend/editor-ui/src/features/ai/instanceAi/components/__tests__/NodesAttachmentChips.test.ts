@@ -288,4 +288,16 @@ describe('NodesAttachmentChips', () => {
 		await fireEvent.keyDown(chip, { key: 'Escape' });
 		expect(queryByTestId('nodes-chip-panel')).toBeNull();
 	});
+
+	it('Escape on the remove button closes an already-open panel', async () => {
+		const { getByTestId, queryByTestId } = renderComponent(NodesAttachmentChips, {
+			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },
+		});
+		await fireEvent.click(getByTestId('nodes-chip-bundle'));
+		expect(getByTestId('nodes-chip-panel')).toBeTruthy();
+
+		await fireEvent.keyDown(getByTestId('nodes-chip-remove'), { key: 'Escape' });
+
+		expect(queryByTestId('nodes-chip-panel')).toBeNull();
+	});
 });

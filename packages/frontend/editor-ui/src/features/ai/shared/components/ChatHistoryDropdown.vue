@@ -64,7 +64,11 @@ const slots = defineSlots<{
 const i18n = useI18n();
 const generatedContentId = useId();
 const contentId = computed(() => props.contentId ?? generatedContentId);
-const dropdownRef = ref<{ close: () => void; highlightFirstItem: () => void } | null>(null);
+const dropdownRef = ref<{
+	close: () => void;
+	highlightFirstItem: () => void;
+	focusTrigger: () => void;
+} | null>(null);
 let pendingItemClick: ReturnType<typeof setTimeout> | undefined;
 const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'] as const;
 const groupLabels = {
@@ -160,7 +164,11 @@ const highlightFirstItem = () => {
 	dropdownRef.value?.highlightFirstItem();
 };
 
-defineExpose({ highlightFirstItem });
+const focusTrigger = () => {
+	dropdownRef.value?.focusTrigger();
+};
+
+defineExpose({ highlightFirstItem, focusTrigger });
 </script>
 
 <template>

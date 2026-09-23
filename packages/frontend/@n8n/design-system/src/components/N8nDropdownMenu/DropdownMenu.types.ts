@@ -76,6 +76,8 @@ export interface DropdownMenuExposed {
 	highlightFirstItem: () => void;
 	/** Handles menu navigation from an external text control. */
 	handleExternalKeydown: (event: KeyboardEvent) => boolean;
+	/** Moves focus to the rendered trigger element. */
+	focusTrigger: () => void;
 }
 
 export type DropdownMenuItemProps<T = string, D = never> = {
@@ -194,7 +196,7 @@ export interface DropdownMenuEmits<T = string, D = never> {
 type SlotUiProps = { class: string };
 
 export interface DropdownMenuSlots<T = string, D = never> {
-	/** Custom trigger element (replaces default button) */
+	/** Replaces the default button with one focusable root that forwards attributes and listeners. */
 	trigger?: () => void;
 	/** Complete custom dropdown content (replaces item list) */
 	content?: () => void;

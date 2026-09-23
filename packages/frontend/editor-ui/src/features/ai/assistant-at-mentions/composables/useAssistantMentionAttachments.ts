@@ -6,6 +6,7 @@ import { onScopeDispose, toValue, watch, type MaybeRefOrGetter, type Ref } from 
 
 import type {
 	AssistantMentionArtifactReference,
+	AssistantMentionCounts,
 	AssistantMentionItem,
 	AssistantMentionSelection,
 } from '../assistantAtMentions.types';
@@ -37,6 +38,7 @@ export function useAssistantMentionAttachments(options: {
 	reservedAttachmentCount: MaybeRefOrGetter<number>;
 	onReferenceAdded: (reference: AssistantMentionArtifactReference) => void;
 	onReferenceRemoved: (referenceId: string) => void;
+	onMentionRemoved?: (kind: AssistantMentionItem['kind']) => void;
 	onCleared?: () => void;
 }) {
 	let referenceSequence = 0;
@@ -89,6 +91,7 @@ export function useAssistantMentionAttachments(options: {
 		for (const [mentionKey, record] of selectedRecords) {
 			if (attachmentContainsMention(record.item)) continue;
 			selectedRecords.delete(mentionKey);
+			options.onMentionRemoved?.(record.item.kind);
 			releaseReference(record);
 		}
 	}
@@ -210,6 +213,23 @@ export function useAssistantMentionAttachments(options: {
 		return [...selectedRecords.values()].map(({ referenceId }) => referenceId);
 	}
 
+	function snapshotCounts(): AssistantMentionCounts {
+		let workflowMentionCount = 0;
+		let nodeMentionCount = 0;
+		let groupMentionCount = 0;
+		for (const { item } of selectedRecords.values()) {
+			if (item.kind === 'workflow') workflowMentionCount++;
+			if (item.kind === 'node') nodeMentionCount++;
+			if (item.kind === 'group') groupMentionCount++;
+		}
+		return {
+			mentionCount: workflowMentionCount + nodeMentionCount + groupMentionCount,
+			workflowMentionCount,
+			nodeMentionCount,
+			groupMentionCount,
+		};
+	}
+
 	function detachSubmission(
 		referenceIds: AssistantMentionAttachmentSubmissionSnapshot = snapshotSubmission(),
 	): AssistantMentionAttachmentSubmission {
@@ -266,6 +286,7 @@ export function useAssistantMentionAttachments(options: {
 		removeResource,
 		clearForProjectChange,
 		snapshotSubmission,
+		snapshotCounts,
 		detachSubmission,
 	};
 }
