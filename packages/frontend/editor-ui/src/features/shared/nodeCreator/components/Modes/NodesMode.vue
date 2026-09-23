@@ -361,7 +361,8 @@ function onKeySelect(activeItemId: string) {
 
 registerKeyHook('MainViewArrowRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
-	condition: (type) => ['subcategory', 'node', 'link', 'view', 'openTemplate'].includes(type),
+	condition: (type) =>
+		['subcategory', 'node', 'link', 'view', 'openTemplate', 'command'].includes(type),
 	handler: onKeySelect,
 });
 

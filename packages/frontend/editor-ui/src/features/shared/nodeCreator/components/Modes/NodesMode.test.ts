@@ -85,6 +85,18 @@ function mcpClientElement(): NodeCreateElement {
 	};
 }
 
+function groupCommandElement(): CommandCreateElement {
+	return {
+		key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
+		type: 'command',
+		properties: {
+			title: 'Group',
+			description: 'Add an organisational container to your workflow',
+			icon: 'group',
+		},
+	};
+}
+
 describe('NodesMode', () => {
 	let pinia: Pinia;
 
@@ -247,17 +259,7 @@ describe('NodesMode', () => {
 			mode: 'nodes',
 			rootView: REGULAR_NODE_CREATOR_VIEW,
 			hasSearch: true,
-			items: [
-				{
-					key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
-					type: 'command',
-					properties: {
-						title: 'Group',
-						description: 'Add an organisational container to your workflow',
-						icon: 'group',
-					},
-				},
-			],
+			items: [groupCommandElement()],
 		});
 
 		const { emitted } = render({ pinia });
@@ -269,18 +271,33 @@ describe('NodesMode', () => {
 		expect(emitted('nodeTypeSelected')).toBeUndefined();
 	});
 
+	it.each(['Enter', 'ArrowRight'])('activates the Group command with %s', async (key) => {
+		useViewStacks().pushViewStack({
+			title: 'What happens next?',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			hasSearch: true,
+			items: [groupCommandElement()],
+		});
+
+		const { emitted } = render({ pinia });
+		await nextTick();
+
+		const keyboardNavigation = useKeyboardNavigation();
+		keyboardNavigation.attachKeydownEvent();
+		await keyboardNavigation.setActiveItemIndex(0);
+		document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+		await waitAllPromises();
+		await nextTick();
+
+		expect(emitted('emptyGroupSelected')).toEqual([[]]);
+		expect(emitted('nodeTypeSelected')).toBeUndefined();
+	});
+
 	it.each(['group', 'organisational', 'container'])(
 		'shows the Group item when searching for %s',
 		async (search) => {
-			const groupItem: CommandCreateElement = {
-				key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
-				type: 'command',
-				properties: {
-					title: 'Group',
-					description: 'Add an organisational container to your workflow',
-					icon: 'group',
-				},
-			};
+			const groupItem = groupCommandElement();
 
 			useViewStacks().pushViewStack({
 				title: 'What happens next?',
