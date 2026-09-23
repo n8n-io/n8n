@@ -97,8 +97,7 @@ export class InstanceReportingService {
 	 */
 	async sendReport(): Promise<void> {
 		const now = new Date();
-		const latest = await this.reportRepository.findLatest();
-		let report = latest?.status === 'pending' ? latest : null;
+		let report = await this.reportRepository.findPending();
 
 		// A crash between recording a failure and skipping the report leaves an
 		// exhausted row pending, so the budget is re-checked before sending rather
@@ -195,8 +194,7 @@ export class InstanceReportingService {
 	 * seconds.
 	 */
 	async msUntilRetryAllowed(now: Date): Promise<number> {
-		const latest = await this.reportRepository.findLatest();
-		const pending = latest?.status === 'pending' ? latest : null;
+		const pending = await this.reportRepository.findPending();
 		if (!pending?.lastAttemptAt) return 0;
 
 		const elapsed = now.getTime() - pending.lastAttemptAt.getTime();

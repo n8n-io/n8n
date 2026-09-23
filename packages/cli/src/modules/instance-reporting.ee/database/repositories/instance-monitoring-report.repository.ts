@@ -12,16 +12,25 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	}
 
 	/**
-	 * Return the newest report, of any status, or `null` when the table is empty.
+	 * The report a retry may resume, or `null` when there is nothing to resume.
+	 * It is the newest row, and only if that row is still `pending`.
 	 *
-	 * The caller resends this report only while its status is `pending`. Read the
-	 * newest row, not the newest `pending` row. An old `pending` row below a newer
-	 * `delivered` row is an orphan. The newer report covers its day. A resend of
-	 * the orphan sends that day two times.
+	 * At most one report is genuinely pending: the scheduler settles a stale row
+	 * before it creates the next one. But earlier versions left a failed report
+	 * pending for good, so an instance can still hold an old `pending` row below
+	 * a newer `delivered` one. That row is an orphan — the newer report already
+	 * covers its days, and a resend would report those days two times.
+	 *
+	 * So this reads the newest row of any status and then checks that status. It
+	 * must not filter on `status` in the query.
+	 *
+	 * `id` breaks a `createdAt` tie so the result is stable. A tie needs two
+	 * reports in the same millisecond, which the once-a-day cadence never makes.
 	 */
-	async findLatest(): Promise<InstanceMonitoringReport | null> {
+	async findPending(): Promise<InstanceMonitoringReport | null> {
 		const [latest] = await this.find({ order: { createdAt: 'DESC', id: 'DESC' }, take: 1 });
-		return latest ?? null;
+
+		return latest?.status === 'pending' ? latest : null;
 	}
 
 	/**

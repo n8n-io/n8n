@@ -153,11 +153,11 @@ export class InstanceReportingScheduler {
 	 */
 	private async reportIfDue(reportTime: string): Promise<'sent' | 'skipped' | 'failed'> {
 		const now = new Date();
-		const latest = await this.reportRepository.findLatest();
+		const pending = await this.reportRepository.findPending();
 
-		if (latest?.status === 'pending') {
-			if (pendingIsStale(latest, reportTime, now)) {
-				await this.reportingService.skip(latest.id, latest.attempts, 'slot-passed');
+		if (pending) {
+			if (pendingIsStale(pending, reportTime, now)) {
+				await this.reportingService.skip(pending.id, pending.attempts, 'slot-passed');
 			} else {
 				return await this.trySend();
 			}
@@ -176,11 +176,11 @@ export class InstanceReportingScheduler {
 	 * slot near the end of the UTC day would defer the next report by almost a day.
 	 */
 	private async msUntilNextSlot(reportTime: string): Promise<number> {
-		const latest = await this.reportRepository.findLatest();
-		if (latest?.status !== 'pending') return Number.POSITIVE_INFINITY;
+		const pending = await this.reportRepository.findPending();
+		if (!pending) return Number.POSITIVE_INFINITY;
 
 		const nextSlot =
-			slotOn(reportTime, latest.createdAt) + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
+			slotOn(reportTime, pending.createdAt) + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
 
 		return nextSlot - Date.now();
 	}

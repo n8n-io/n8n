@@ -17,15 +17,16 @@ takes over and delivers that row.
 
 `start()` fires the first `tick()` (on `server-started`, or on leader takeover).
 Every pass then re-arms the next with `setTimeout`, so the loop drives itself.
-Each pass makes one choice, from `findLatest()` — the newest row:
+Each pass makes one choice, from `findPending()` — the newest row, and only if
+that row is still pending:
 
 ```mermaid
 flowchart TD
     S(["start(): server-started / leader takeover"]) --> T
     T["tick()"] --> P{"waiting between retries?<br/>(up to 5 min, but not past its slot)"}
     P -- yes --> ARM
-    P -- no --> L["report = findLatest()"]
-    L --> Q1{"report?.status === 'pending'?"}
+    P -- no --> L["report = findPending()"]
+    L --> Q1{"is there a report to resume?"}
     Q1 -- yes --> Q1b{"too old to still send?"}
     Q1b -- no --> R["resend it — retry, even past midnight"]
     Q1b -- yes --> SK["mark it skipped"] --> Q2

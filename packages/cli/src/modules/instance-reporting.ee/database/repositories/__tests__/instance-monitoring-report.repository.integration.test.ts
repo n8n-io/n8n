@@ -42,46 +42,52 @@ describe('InstanceMonitoringReportRepository', () => {
 		});
 	});
 
-	describe('findLatest', () => {
+	describe('findPending', () => {
+		async function createdOn(date: string) {
+			const report = await repository.createPending(DATA_POINTS);
+			await repository.update({ id: report.id }, { createdAt: new Date(date) });
+
+			return report;
+		}
+
 		test('returns nothing when no report was generated yet', async () => {
-			await expect(repository.findLatest()).resolves.toBeNull();
+			await expect(repository.findPending()).resolves.toBeNull();
 		});
 
 		test('returns the pending report with the numbers it measured', async () => {
 			const created = await repository.createPending(DATA_POINTS);
 
-			const latest = await repository.findLatest();
+			const pending = await repository.findPending();
 
-			expect(latest?.id).toBe(created.id);
-			expect(latest?.status).toBe('pending');
-			expect(latest?.dataPoints).toEqual(DATA_POINTS);
+			expect(pending?.id).toBe(created.id);
+			expect(pending?.status).toBe('pending');
+			expect(pending?.dataPoints).toEqual(DATA_POINTS);
 		});
 
-		test('returns the latest row whatever its status', async () => {
+		test('returns nothing once the newest report is delivered', async () => {
 			const created = await repository.createPending(DATA_POINTS);
 			await repository.markDelivered(created.id, new Date());
 
-			// The repository returns the newest row. The caller decides what to do.
-			await expect(repository.findLatest()).resolves.toMatchObject({
-				id: created.id,
-				status: 'delivered',
-			});
+			await expect(repository.findPending()).resolves.toBeNull();
 		});
 
-		test('returns the newest row, not an older one beneath it', async () => {
-			const older = await repository.createPending(DATA_POINTS);
-			await repository.update(
-				{ id: older.id },
-				{ createdAt: new Date('2026-03-20T07:42:00.000Z') },
-			);
-			await repository.markDelivered(older.id, new Date());
-			const newer = await repository.createPending(DATA_POINTS);
-			await repository.update(
-				{ id: newer.id },
-				{ createdAt: new Date('2026-03-25T07:42:00.000Z') },
-			);
+		test('returns nothing when an older pending row sits under a newer delivered one', async () => {
+			// Earlier versions left a failed report pending for good. The newer report
+			// already covers that orphan's days, so a resend would report them two
+			// times. Filtering on `status` in the query would return the orphan here.
+			await createdOn('2026-03-20T07:42:00.000Z');
+			const newer = await createdOn('2026-03-25T07:42:00.000Z');
+			await repository.markDelivered(newer.id, new Date());
 
-			await expect(repository.findLatest()).resolves.toMatchObject({ id: newer.id });
+			await expect(repository.findPending()).resolves.toBeNull();
+		});
+
+		test('returns the newest row when it is pending, ignoring an older delivered one', async () => {
+			const older = await createdOn('2026-03-20T07:42:00.000Z');
+			await repository.markDelivered(older.id, new Date());
+			const newer = await createdOn('2026-03-25T07:42:00.000Z');
+
+			await expect(repository.findPending()).resolves.toMatchObject({ id: newer.id });
 		});
 
 		test('carries the last attempt time, so the wait between attempts survives a restart', async () => {
@@ -89,9 +95,9 @@ describe('InstanceMonitoringReportRepository', () => {
 			const failedAt = new Date('2026-03-26T07:42:00.000Z');
 			await repository.recordFailure(created.id, 'Network error', failedAt);
 
-			const latest = await repository.findLatest();
+			const pending = await repository.findPending();
 
-			expect(latest?.lastAttemptAt?.toISOString()).toBe(failedAt.toISOString());
+			expect(pending?.lastAttemptAt?.toISOString()).toBe(failedAt.toISOString());
 		});
 	});
 
