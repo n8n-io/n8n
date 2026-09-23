@@ -92,8 +92,9 @@ const reviewFormSchema = z.object({
 
 /**
  * Saves a personal preference with no confirmation gate, then, on a client that declares
- * elicitation, follows the write with one form that offers edit and undo. Rejected and cancelled
- * forms keep the row: the write already happened, and silence must not delete data.
+ * elicitation, follows the write with one form that offers edit and undo. Decline removes the row,
+ * like the remove box. A cancelled form keeps it: the write already happened, and silence must
+ * not delete data.
  *
  * The form is the second round of one `tools/call` (multi-round-trip elicitation, protocol
  * revision 2026-07-28): the client answers and retries the same call, and the row id travels in
@@ -174,16 +175,18 @@ export const createSaveUserPreferenceTool = (
 		): Promise<ToolHandlerResult> => {
 			const keep = `Tell the user the preference stays as saved and that they can review it at ${url}.`;
 
-			// Decline and cancel mean keep. The row is already there; a dismissed form removes nothing.
-			if (answer.action !== 'accept') {
+			// Cancel means keep: the row is already there, and a dismissed form removes nothing.
+			if (answer.action === 'cancel') {
 				return done(
 					{ saved: true, preference: { id, scope: 'user', text: content, url } },
 					`The user closed the review without changing the preference. Saved text: "${content}". ${keep}`,
 				);
 			}
 
+			// Decline removes, like the remove box: clients label the button "Decline", and a user
+			// who presses it after a write means "not this one". Only an explicit press gets here.
 			const form = reviewFormSchema.safeParse(answer.content ?? {});
-			const wantsRemoval = form.success && form.data.remove === true;
+			const wantsRemoval = answer.action === 'decline' || (form.success && form.data.remove === true);
 			const editedText = form.success ? form.data.text?.trim() : undefined;
 
 			if (wantsRemoval) {
@@ -287,7 +290,7 @@ export const createSaveUserPreferenceTool = (
 				[REVIEW_KEY]: inputRequired.elicit({
 					// Clients may show only the first lines of the message, so the state comes first:
 					// the row is already saved, and closing the form keeps it.
-					message: `Already saved to your n8n preferences. Closing this keeps it as saved.\n\n"${preference.content}"\n\nThe n8n assistant and connected AI tools apply it from now on. Edit the text to change it, or tick "Remove this preference" to take it back.`,
+					message: `Already saved to your n8n preferences. Accept keeps it, Decline removes it.\n\n"${preference.content}"\n\nThe n8n assistant and connected AI tools apply it from now on. Edit the text to change it. Closing this without an answer keeps it as saved.`,
 					requestedSchema: {
 						type: 'object',
 						properties: {

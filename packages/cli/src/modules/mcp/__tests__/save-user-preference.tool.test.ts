@@ -367,33 +367,46 @@ describe('save_user_preference MCP tool', () => {
 			);
 		});
 
-		test.each(['decline', 'cancel'] as const)(
-			'keeps the row and resolves nothing when the form is %s',
-			async (action) => {
-				const { aiPreferenceService, telemetry, tool } = createMocks();
+		// Clients label the button "Decline", so a press after the write means "not this one".
+		test('removes the row when the form is declined, like the remove box', async () => {
+			const { aiPreferenceService, tool } = createMocks();
+			aiPreferenceService.undoWrite.mockResolvedValue(dto());
 
-				const result = await tool.handler(
-					{ content: TEXT },
-					ctx({ elicitation: true, review: { action } }),
-				);
+			const result = await tool.handler(
+				{ content: TEXT },
+				ctx({ elicitation: true, review: { action: 'decline' } }),
+			);
 
-				expect(aiPreferenceService.undoWrite).not.toHaveBeenCalled();
-				expect(aiPreferenceService.updateContent).not.toHaveBeenCalled();
-				expect(aiPreferenceService.create).not.toHaveBeenCalled();
-				expect(structured(result)).toEqual({
-					saved: true,
-					preference: { id: ID, scope: 'user', text: TEXT, url: URL },
-				});
-				expect(text(result)).toContain('stays as saved');
-				expect(telemetry.track).toHaveBeenCalledTimes(1);
-				expect(telemetry.track).toHaveBeenCalledWith(
-					USER_CALLED_MCP_TOOL_EVENT,
-					expect.objectContaining({
-						results: { success: true, data: { saved: true, removed: false, review: action } },
-					}),
-				);
-			},
-		);
+			expect(aiPreferenceService.undoWrite).toHaveBeenCalledWith(user, ID, 'mcp');
+			expect(aiPreferenceService.create).not.toHaveBeenCalled();
+			expect(structured(result)).toEqual({ saved: false, removed: true });
+		});
+
+		// A closed form is silence, and silence must not delete data.
+		test('keeps the row and resolves nothing when the form is cancelled', async () => {
+			const { aiPreferenceService, telemetry, tool } = createMocks();
+
+			const result = await tool.handler(
+				{ content: TEXT },
+				ctx({ elicitation: true, review: { action: 'cancel' } }),
+			);
+
+			expect(aiPreferenceService.undoWrite).not.toHaveBeenCalled();
+			expect(aiPreferenceService.updateContent).not.toHaveBeenCalled();
+			expect(aiPreferenceService.create).not.toHaveBeenCalled();
+			expect(structured(result)).toEqual({
+				saved: true,
+				preference: { id: ID, scope: 'user', text: TEXT, url: URL },
+			});
+			expect(text(result)).toContain('stays as saved');
+			expect(telemetry.track).toHaveBeenCalledTimes(1);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				USER_CALLED_MCP_TOOL_EVENT,
+				expect.objectContaining({
+					results: { success: true, data: { saved: true, removed: false, review: 'cancel' } },
+				}),
+			);
+		});
 
 		test('reports a refused edit and states that the original text stands', async () => {
 			const { aiPreferenceService, tool } = createMocks();

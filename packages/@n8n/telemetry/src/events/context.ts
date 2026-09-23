@@ -54,7 +54,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			source: z
 				.enum(['row', 'bulk', 'rejected'])
 				.describe(
-					'`row` is the per-row Delete button and `bulk` the selection toolbar on the settings page. `rejected` is the Undo on the chat card, the remove box on the MCP review form, or the MCP undo tool: the user did not accept a preference the assistant saved, a late refusal of one they first let stand',
+					'`row` is the per-row Delete button and `bulk` the selection toolbar on the settings page. `rejected` is the Undo on the chat card, Decline or the remove box on the MCP review form, or the MCP undo tool: the user did not accept a preference the assistant saved, a late refusal of one they first let stand',
 				),
 			scope_types: z.array(scopeType).describe('Distinct scopes the deleted preferences covered'),
 			surface: surface

@@ -70,8 +70,9 @@ On a client that declares the elicitation capability, the save follows the write
 form: the saved text, editable, and a "remove" box. It is the second round of the same
 `tools/call` (multi-round-trip elicitation, revision 2026-07-28); the row id travels in
 `requestState`, and the retry re-authorizes through the service. Accept applies the edit or
-the removal. Decline and cancel keep the row: the write already happened, and a dismissed
-form must not delete data.
+the removal. Decline removes the row too, because clients label that button "Decline" and a
+press after the write means "not this one". A cancelled form keeps the row: the write already
+happened, and silence must not delete data.
 
 ## Who may read and write
 
@@ -179,7 +180,8 @@ and the scopes it returned on the existing tool event.
 The MCP write tools fire the same events with `surface` set to `mcp`, through the shared
 write. A removal from the review form, or through the undo tool, is `User deleted
 preferences` with `source` set to `rejected`, as the chat card reports its Undo, and carries
-`seconds_since_saved`. An edit from the form is `accepted_after_edit`. A dismissed form fires
+`seconds_since_saved`; a declined form counts as a removal. An edit from the form is
+`accepted_after_edit`. A cancelled form fires
 no event of its own; the tool event records it, along with whether the client declared
 elicitation at all.
 
