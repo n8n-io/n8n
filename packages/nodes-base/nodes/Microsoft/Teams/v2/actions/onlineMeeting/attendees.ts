@@ -69,8 +69,9 @@ export const createOrGetAttendeesField: INodeProperties = {
 };
 
 /**
- * Update: inside Update Fields. An empty list clears the attendees, but the two editor UIs save an
- * emptied list differently (one drops it, one keeps it), so the copy does not promise the clear.
+ * Update: inside Update Fields. Rows replace the current attendees; an empty list leaves them
+ * unchanged, because the two editor UIs save an emptied list differently (one drops it, one keeps
+ * it). Remove All Attendees is the explicit way to clear them.
  */
 export const updateAttendeesField: INodeProperties = {
 	...attendeesField,
@@ -118,8 +119,8 @@ export async function resolveAttendees(
 	field: unknown,
 ): Promise<MeetingAttendee[]> {
 	const node = this.getNode();
-	// An unknown shape is rejected before any request instead of being read as an empty list,
-	// which on Update would clear the roster.
+	// An unknown shape is rejected before any request instead of being read as an empty list and
+	// dropped without a word.
 	if (!isSet(field)) return [];
 	if (!isAttendeeRows(field)) {
 		throw new NodeOperationError(node, 'The Attendees field is not valid', {

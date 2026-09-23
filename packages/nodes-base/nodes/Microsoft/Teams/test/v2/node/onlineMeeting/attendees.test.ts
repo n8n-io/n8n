@@ -425,14 +425,33 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 			]);
 		});
 
-		it.each<[string, IDataObject]>([
+		const emptyLists: Array<[string, IDataObject]> = [
 			['an empty field', {}],
 			['a field with no rows', { attendee: [] }],
-		])('clears the attendees when %s is set', async (_label, attendees) => {
+		];
+
+		it.each(emptyLists)('rejects %s alone as nothing to update', async (_label, attendees) => {
+			await expect(runUpdate({ attendees })).rejects.toThrow('No fields are set to update');
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it.each(emptyLists)(
+			'leaves the attendees alone when %s comes with a subject',
+			async (_label, attendees) => {
+				apiRequest.mockResolvedValue({ id: MEETING });
+
+				await runUpdate({ attendees, subject: 'Renamed' });
+
+				expect(bodyOf('PATCH')).toEqual({ subject: 'Renamed' });
+			},
+		);
+
+		it('clears the attendees when Remove All Attendees is on', async () => {
 			apiRequest.mockResolvedValue({ id: MEETING });
 
-			await runUpdate({ attendees });
+			await runUpdate({ removeAllAttendees: true });
 
+			expect(apiRequest).toHaveBeenCalledTimes(1);
 			expect(apiRequest).toHaveBeenCalledWith(
 				'PATCH',
 				`${MEETINGS}/${MEETING}`,
@@ -441,6 +460,31 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 				undefined,
 				meetingHeaders,
 			);
+		});
+
+		it('sends Remove All Attendees together with a subject', async () => {
+			apiRequest.mockResolvedValue({ id: MEETING });
+
+			await runUpdate({ removeAllAttendees: true, subject: 'Renamed' });
+
+			expect(bodyOf('PATCH')).toEqual({ subject: 'Renamed', participants: { attendees: [] } });
+		});
+
+		it('rejects Remove All Attendees together with attendee rows before any request', async () => {
+			await expect(
+				runUpdate({ removeAllAttendees: true, attendees: { attendee: [{ userId: JANE }] } }),
+			).rejects.toThrow('Remove All Attendees cannot be combined with Attendees');
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it('replaces the attendees when Remove All Attendees is off', async () => {
+			graph(USERS);
+
+			await runUpdate({ removeAllAttendees: false, attendees: { attendee: [{ userId: JANE }] } });
+
+			expect(bodyOf('PATCH')).toEqual({
+				participants: { attendees: [entry(JANE, 'jane@example.com', 'attendee')] },
+			});
 		});
 
 		it('patches only the attendees when nothing else is set', async () => {

@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	type IDataObject,
 	type INodeProperties,
@@ -10,7 +11,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 import { resolveAttendees, updateAttendeesField } from './attendees';
 import { resolveMeetingId } from './meetingLocator';
 import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
-import { isSet, meetingHint, meetingRequest, meetingsPath, toGraphUtc } from './shared';
+import { meetingHint, meetingRequest, meetingsPath, toGraphUtc } from './shared';
 import { meetingRLC } from '../../descriptions';
 import { optionalText } from '../../helpers/parameters';
 import { rewriteNotFound } from '../../transport';
@@ -48,9 +49,19 @@ const properties: INodeProperties[] = [
 				description: 'The subject of the meeting',
 			},
 			updateAttendeesField,
+			{
+				displayName: 'Remove All Attendees',
+				name: 'removeAllAttendees',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to remove every attendee from the meeting. The organizer stays.',
+			},
 		]),
 	},
 ];
+
+const hasAttendeeRows = (field: unknown) =>
+	isRecord(field) && Array.isArray(field.attendee) && field.attendee.length > 0;
 
 const displayOptions = {
 	show: {
@@ -87,10 +98,27 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		body.endDateTime = toGraphUtc.call(this, updateFields.endDateTime, 'End Time');
 	}
 	applyMeetingSettings(body, updateFields);
-	// Key presence, not row count: `{}` and `{ attendee: [] }` both clear the list, which Graph
-	// documents as a valid state. An unset field leaves the attendees unchanged.
-	if (isSet(updateFields.attendees)) {
-		body.participants = { attendees: await resolveAttendees.call(this, i, updateFields.attendees) };
+
+	// The two collection editors disagree on what deleting the last row leaves behind (`{}` or
+	// `{ attendee: [] }`), so an empty list must not be a destructive signal: only rows replace the
+	// roster, and Remove All Attendees is the explicit way to clear it. The conflict is checked
+	// before the lookups so it costs no request.
+	const removeAll = updateFields.removeAllAttendees === true;
+	if (removeAll && hasAttendeeRows(updateFields.attendees)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Remove All Attendees cannot be combined with Attendees',
+			{
+				description:
+					'Turn off Remove All Attendees to send a new list, or remove the Attendees field to clear the meeting.',
+			},
+		);
+	}
+	const attendees = await resolveAttendees.call(this, i, updateFields.attendees);
+	if (removeAll) {
+		body.participants = { attendees: [] };
+	} else if (attendees.length) {
+		body.participants = { attendees };
 	}
 
 	if (Object.keys(body).length === 0) {

@@ -178,6 +178,7 @@ describe('Microsoft Teams V2 — onlineMeeting:update', () => {
 			'endDateTime',
 			'lobbyBypassScope',
 			'recordAutomatically',
+			'removeAllAttendees',
 			'startDateTime',
 			'subject',
 		]);
