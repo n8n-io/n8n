@@ -26,15 +26,8 @@ function stubWorkflow(id: string): IWorkflowBase {
 }
 
 /**
- * Lets a v1 node answer the caller that started the execution.
- *
- * `sendResponse` and `sendChunk` are how a v1 node reaches past its own output
- * — the Respond to Webhook node calls them from inside `execute()`. They run
- * through `additionalData.hooks`, so this is where that v1 concept meets the
- * engine's response channel.
- *
- * Attached for every step. A step whose node never calls them costs two empty
- * arrays, and the emitter reaches nobody unless the host supplied a channel.
+ * Glues the v1 `sendResponse` hook to the v2 execution response channel.
+ * Allows the node execution to send a response to the control plane.
  */
 export function attachResponseHooks(
 	additionalData: IWorkflowExecuteAdditionalData,

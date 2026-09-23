@@ -44,9 +44,8 @@ export interface StepExecutionRequest {
 	inputs: StepSlots;
 	context: StepExecutionContext;
 	/**
-	 * Where the step sends an answer for whoever started the execution, while it
-	 * still runs. Always present, so an executor never has to branch; it reaches
-	 * nobody unless the host supplied a channel.
+	 * Response emitter allows the step executor to send messages to the control
+	 * plane side via the execution response channel.
 	 */
 	respond: ResponseEmitter;
 }

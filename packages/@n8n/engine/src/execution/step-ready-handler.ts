@@ -181,8 +181,6 @@ export class StepReadyHandler {
 				iteration: step.iteration,
 				callerContext: execution.callerContext,
 			},
-			// A step answers the caller while it runs, so it needs this before it
-			// settles. The channel stamps the execution id.
 			respond: this.responseSender.emitterFor(execution.id),
 		});
 

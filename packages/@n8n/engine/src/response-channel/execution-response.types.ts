@@ -29,13 +29,10 @@ export type UndeliverableMessage = Extract<ExecutionResponse, { type: 'undeliver
  */
 export type EndedMessage = Extract<ExecutionResponse, { type: 'ended' }>;
 
-/** The one answer the caller waits for, produced while the run is still going. */
+/** A message that a step produced a response */
 export type ResponseMessage = Extract<ExecutionResponse, { type: 'response' }>;
 
-/**
- * One step's view of the channel. The channel fills in the execution id, so a
- * step executor carries no routing state.
- */
+/** An emitter that allows the step execution to produce a response */
 export interface ResponseEmitter {
 	send(payload: unknown): Error | null;
 }
