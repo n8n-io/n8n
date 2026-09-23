@@ -10,7 +10,7 @@ import { BackendModule } from '@n8n/decorators';
  */
 @BackendModule({
 	name: 'type-availability-policies',
-	licenseFlag: LICENSE_FEATURES.NODE_TYPE_POLICIES,
+	licenseFlag: LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES,
 })
 export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 	async init() {

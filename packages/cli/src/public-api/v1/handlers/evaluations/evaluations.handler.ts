@@ -1,8 +1,6 @@
-import type { TestRunCancelDto, TestRunDto } from '@n8n/api-types';
+import type { TestRunCancelDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { ErrorReporter } from 'n8n-core';
-import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { toTestCaseExecutionDto, toTestRunSummaryDto } from './evaluations.mapper';
 import type { TestRunRequest } from '../../../types';
@@ -19,13 +17,10 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EvaluationTestRunService } from '@/evaluation.ee/evaluation-test-run.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 type EvaluationsHandlers = {
-	getTestRuns: PublicAPIEndpoint<TestRunRequest.GetMany>;
 	getTestRun: PublicAPIEndpoint<TestRunRequest.GetOne>;
 	getTestCases: PublicAPIEndpoint<TestRunRequest.GetCases>;
-	createTestRun: PublicAPIEndpoint<TestRunRequest.Create>;
 	cancelTestRun: PublicAPIEndpoint<TestRunRequest.Cancel>;
 };
 
@@ -37,26 +32,6 @@ function assertEvaluationsEnabled() {
 }
 
 const evaluationsHandlers: EvaluationsHandlers = {
-	getTestRuns: [
-		publicApiScope('testRun:list'),
-		projectScope('workflow:read', 'workflow'),
-		validCursor,
-		async (req, res) => {
-			const { id: workflowId } = req.params;
-			const { offset = 0, limit = 100, status } = req.query;
-
-			const { testRuns, count } = await Container.get(EvaluationTestRunService).findManyAndCount(
-				workflowId,
-				{ offset, limit },
-				status,
-			);
-
-			return res.json({
-				data: testRuns.map(toTestRunSummaryDto),
-				nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
-			});
-		},
-	],
 	getTestRun: [
 		publicApiScope('testRun:read'),
 		projectScope('workflow:read', 'workflow'),
@@ -101,48 +76,6 @@ const evaluationsHandlers: EvaluationsHandlers = {
 				data: testCases.map(toTestCaseExecutionDto),
 				nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
 			});
-		},
-	],
-	createTestRun: [
-		publicApiScope('testRun:create'),
-		// Starting a run triggers real executions — require workflow:execute.
-		projectScope('workflow:execute', 'workflow'),
-		async (req, res) => {
-			const { id: workflowId } = req.params;
-			const testRunnerService = Container.get(TestRunnerService);
-
-			assertEvaluationsEnabled();
-
-			// Reject a workflow with no evaluation trigger up-front (409). Deeper
-			// validation still happens async in the run, matching the internal path.
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				workflowId,
-				req.user,
-				['workflow:execute'],
-			);
-			if (!workflow) throw new NotFoundError('Workflow not found');
-
-			const hasTrigger = workflow.nodes.some((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
-			if (!hasTrigger) {
-				throw new ConflictError('Workflow has no evaluation trigger');
-			}
-
-			// Count query runs last, after the cheaper 403/404/409 checks.
-			await Container.get(EvaluationTestRunService).assertEvaluationQuotaAvailable(workflowId);
-
-			// Case execution runs detached; guard `finished` so an unexpected
-			// rejection isn't left unhandled (the server has no global handler).
-			const { testRun, finished } = await testRunnerService.startTestRun(req.user, workflowId, 1, {
-				via: 'public-api',
-			});
-			void finished.catch((error) => Container.get(ErrorReporter).error(error));
-
-			const body: TestRunDto = {
-				id: testRun.id,
-				status: testRun.status,
-				createdAt: testRun.createdAt.toISOString(),
-			};
-			return res.status(201).json(body);
 		},
 	],
 	cancelTestRun: [

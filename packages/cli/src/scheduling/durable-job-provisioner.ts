@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
+import { MAX_INTEGER_32BITS_SIGNED, type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
 import type {
 	EntityManager,
 	NewScheduledJob,
@@ -47,7 +47,7 @@ const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
  * anything above it outright, so it is checked here for both dialects to behave the
  * same.
  */
-const MAX_CONCURRENCY_LIMIT = 2_147_483_647;
+const MAX_CONCURRENCY_LIMIT = MAX_INTEGER_32BITS_SIGNED;
 
 /** One provisioning call: whose jobs to reconcile, and what to stamp on new rows. */
 export interface ProvisionRequest {

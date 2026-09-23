@@ -1,5 +1,6 @@
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
@@ -22,14 +23,18 @@ type AgentExecutionFinalizationValues = Pick<
 	>;
 
 @Service()
-export class AgentExecutionRepository extends Repository<AgentExecution> {
-	constructor(dataSource: DataSource) {
-		super(AgentExecution, dataSource.manager);
+export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentExecution, dataSource.manager, transactionRunner);
+	}
+
+	async saveInContext(execution: AgentExecution, ctx: OperationContext): Promise<AgentExecution> {
+		return await this.managerFor(ctx).save(execution);
 	}
 
 	/** All executions in a thread, oldest first — used by the timeline view. */
 	async findByThreadIdOrdered(threadId: string): Promise<AgentExecution[]> {
-		return await this.find({ where: { threadId }, order: { createdAt: 'ASC' } });
+		return await this.find({ where: { threadId }, order: { createdAt: 'ASC', id: 'ASC' } });
 	}
 
 	async findRunning(): Promise<RunningAgentExecution[]> {

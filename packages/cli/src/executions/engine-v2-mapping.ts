@@ -1,5 +1,10 @@
-import type { ExecutionMode, ExecutionStatus } from '@n8n/engine';
-import type { ExecutionStatus as ExecutionStatusV1, WorkflowExecuteMode } from 'n8n-workflow';
+import type { ExecutionStatus } from '@n8n/engine';
+import assert from 'node:assert';
+import {
+	WorkflowExecuteModeList,
+	type ExecutionStatus as ExecutionStatusV1,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 /** A status added later reads as `unknown` rather than being guessed at. */
 const V1_STATUS_BY_V2_STATUS = new Map<ExecutionStatus, ExecutionStatusV1>([
@@ -10,18 +15,18 @@ const V1_STATUS_BY_V2_STATUS = new Map<ExecutionStatus, ExecutionStatusV1>([
 	['cancelled', 'canceled'],
 ]);
 
-/** Anything not manual is a production run. */
-const V1_MODE_BY_V2_MODE = new Map<ExecutionMode, WorkflowExecuteMode>([
-	['manual', 'manual'],
-	['production', 'trigger'],
-]);
+const V1_MODE_BY_REPORTED_MODE = new Map<string, WorkflowExecuteMode>(
+	WorkflowExecuteModeList.map((mode) => [mode, mode]),
+);
 
 export function toV1Status(status: ExecutionStatus): ExecutionStatusV1 {
 	return V1_STATUS_BY_V2_STATUS.get(status) ?? 'unknown';
 }
 
-export function toV1Mode(mode: ExecutionMode): WorkflowExecuteMode {
-	return V1_MODE_BY_V2_MODE.get(mode) ?? 'trigger';
+export function toV1Mode(hostMode: string): WorkflowExecuteMode {
+	const v1Mode = V1_MODE_BY_REPORTED_MODE.get(hostMode);
+	assert(v1Mode, `Unknown v1 mode ${hostMode}`);
+	return v1Mode;
 }
 
 /**

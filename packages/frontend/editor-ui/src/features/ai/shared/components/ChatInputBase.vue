@@ -124,6 +124,11 @@ function focusInput(options?: FocusOptions) {
 	inputRef.value?.focusInput(options);
 }
 
+/** Returns the native textarea while the component is mounted. */
+function getInputElement(): HTMLTextAreaElement | undefined {
+	return inputRef.value?.getInputElement();
+}
+
 /**
  * Keep the files the backend will accept and warn about the rest.
  *
@@ -217,6 +222,7 @@ function handleSubmit() {
 
 defineExpose({
 	focus: focusInput,
+	getInputElement,
 	openFilePicker: handleAttach,
 });
 </script>
@@ -279,6 +285,7 @@ defineExpose({
 				<slot name="footer-start" />
 			</template>
 			<template #right-actions>
+				<slot name="right-actions" />
 				<N8nTooltip
 					v-if="showAttach && showAttachButton"
 					:content="i18n.baseText('chatInputBase.button.attach')"
