@@ -22,7 +22,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, matchesGlob, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -140,7 +140,7 @@ function resolvedNativeRules() {
 async function declaredJsPluginRules() {
 	const mod = await import(pathToFileURL(join(root, pkgDir, 'oxlint.config.mts')).href);
 	const declared = new Map();
-	const overrideOnly = new Set();
+	const overrideOnly = new Map();
 	const plugins = new Set();
 
 	const visit = (config) => {
@@ -153,7 +153,11 @@ async function declaredJsPluginRules() {
 				// An override that turns a rule off still leaves it enforced elsewhere
 				// in the package, and this comparison is a union.
 				if (!isEnabled(severity)) continue;
-				if (!declared.has(id)) overrideOnly.add(id);
+				if (!declared.has(id) || overrideOnly.has(id)) {
+					const patterns = overrideOnly.get(id) ?? [];
+					patterns.push(...(override.files ?? []));
+					overrideOnly.set(id, patterns);
+				}
 				declared.set(id, severity);
 			}
 		}
@@ -166,10 +170,6 @@ async function declaredJsPluginRules() {
 	return { ids, overrideOnly, plugins: [...plugins] };
 }
 
-// A JavaScript-plugin test override is only comparable when a test was sampled.
-// Without a test sample, an override-only rule would read as unrequested.
-const isTestSample = (key) => /(\.test\.ts|\/__tests__\/|^test\/)/.test(key.split('|')[1] ?? '');
-
 const native = oxlintRuleIds();
 const gap = JSON.parse(readFileSync(gapFile, 'utf8'));
 
@@ -177,11 +177,11 @@ const gap = JSON.parse(readFileSync(gapFile, 'utf8'));
 const snapshot = JSON.parse(readFileSync(resolve(eslintFile), 'utf8'));
 const eslintRules = new Set();
 let sampled = 0;
-let sampledTestFile = false;
+const sampledFiles = [];
 for (const [key, entry] of Object.entries(snapshot)) {
 	if (!key.startsWith(`${pkgDir}|`) || !entry.rules) continue;
 	sampled++;
-	if (isTestSample(key)) sampledTestFile = true;
+	sampledFiles.push(key.split('|')[1]);
 	for (const id of Object.keys(entry.rules)) eslintRules.add(id);
 }
 if (sampled === 0) {
@@ -191,7 +191,15 @@ if (sampled === 0) {
 
 const { ids: jsPluginIds, overrideOnly, plugins } = await declaredJsPluginRules();
 
-const comparable = (id) => !overrideOnly.has(id) || sampledTestFile;
+const comparable = (id) => {
+	const patterns = overrideOnly.get(id);
+	return (
+		!patterns ||
+		patterns.some((pattern) =>
+			sampledFiles.some((file) => matchesGlob(file, pattern.replace(/^\.\//, ''))),
+		)
+	);
+};
 
 const oxlintRules = new Set(
 	[...resolvedNativeRules(), ...jsPluginIds].filter(comparable).map((id) => canonical(id, native)),
