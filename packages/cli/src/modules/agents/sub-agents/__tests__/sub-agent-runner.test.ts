@@ -34,6 +34,11 @@ import type {
 	SubAgentSourceResolver,
 } from '../sub-agent-source-resolver';
 
+/** A recorded start whose session lease is never lost. */
+function startedExecution(executionId: string) {
+	return { executionId, leaseSignal: new AbortController().signal };
+}
+
 const aiConfigMock = mock<AiConfig>();
 
 const projectId = 'project-1';
@@ -132,7 +137,9 @@ describe('SubAgentRunner', () => {
 		reconstructionService = mock<AgentRuntimeReconstructionService>();
 		Container.set(AgentRuntimeReconstructionService, reconstructionService);
 		agentExecutionService = mock<AgentExecutionService>();
-		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		agentExecutionService.startExecutionRecording.mockResolvedValue(
+			startedExecution('agent-execution-1'),
+		);
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
@@ -176,7 +183,9 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
-		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		agentExecutionService.startExecutionRecording.mockResolvedValue(
+			startedExecution('agent-execution-1'),
+		);
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		const result = await runner.run(spawnRequest, {
 			parentAgentId,

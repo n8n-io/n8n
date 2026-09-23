@@ -87,6 +87,8 @@ interface WorkflowAgentStreamParams {
 	recordingParams?: StartExecutionParams;
 	streamObserver?: WorkflowAgentStreamObserver;
 	sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
+	/** Aborts the run when its session lease is lost. Only recorded runs have one. */
+	leaseSignal?: AbortSignal;
 }
 
 interface WorkflowAgentStreamConsumption {
@@ -428,6 +430,7 @@ export class AgentWorkflowExecutionService {
 			}),
 			...modelStreamStallOptions(this.aiConfig),
 			...(telemetry ? { telemetry } : {}),
+			...(params.leaseSignal ? { abortSignal: params.leaseSignal } : {}),
 		};
 	}
 
@@ -472,20 +475,19 @@ export class AgentWorkflowExecutionService {
 		const { recordingParams } = params;
 		const streamAdapter = new WorkflowAgentStreamAdapter(params.streamObserver);
 		let agentExecutionId: string | undefined;
+		let leaseSignal: AbortSignal | undefined;
 		const recorder = this.turnExecutionService.createRecorder(
 			undefined,
 			() => agentExecutionId,
 			recordingParams,
 		);
 		if (recordingParams) {
-			agentExecutionId = await this.turnExecutionService.startExecution(
-				recordingParams,
-				recorder.startedAt,
-			);
+			({ executionId: agentExecutionId, leaseSignal } =
+				await this.turnExecutionService.startExecution(recordingParams, recorder.startedAt));
 		}
 
 		const { structuredOutput, toolCalls, streamError, executionError, executionStarted } =
-			await this.consumeWorkflowAgentStream(params, recorder, streamAdapter);
+			await this.consumeWorkflowAgentStream({ ...params, leaseSignal }, recorder, streamAdapter);
 
 		const messageRecord = recorder.getMessageRecord();
 		if (recordingParams && agentExecutionId) {

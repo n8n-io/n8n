@@ -31,6 +31,11 @@ import type { IntegrationMessageContext } from '../integrations/integration-tool
 import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
 
+/** A recorded start whose session lease is never lost. */
+function startedExecution(executionId: string) {
+	return { executionId, leaseSignal: new AbortController().signal };
+}
+
 const aiConfigMock = mock<AiConfig>();
 
 const agentId = 'agent-1';
@@ -130,7 +135,7 @@ function makeService() {
 	const integrationMessageContextService = mock<IntegrationMessageContextService>();
 	integrationMessageContextService.getLatest.mockResolvedValue(null);
 
-	executionService.startExecutionRecording.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockResolvedValue(startedExecution('execution-1'));
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 	executionLevelTracer.getActiveContext.mockReturnValue(undefined);
@@ -201,7 +206,9 @@ describe('AgentWorkflowExecutionService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-		executionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		executionService.startExecutionRecording.mockResolvedValue(
+			startedExecution('agent-execution-1'),
+		);
 		executionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 
 		const result = await service.executeForWorkflow(
@@ -337,7 +344,9 @@ describe('AgentWorkflowExecutionService', () => {
 		else integrationMessageContextService.getLatest.mockRejectedValue(error);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-		executionService.startExecutionRecording.mockResolvedValue('fallback-execution-1');
+		executionService.startExecutionRecording.mockResolvedValue(
+			startedExecution('fallback-execution-1'),
+		);
 
 		await expect(
 			service.executeForWorkflow(
@@ -429,7 +438,7 @@ describe('AgentWorkflowExecutionService', () => {
 			});
 			executionService.startExecutionRecording.mockImplementation(async ({ sessionMode }) => {
 				if (sessionMode === 'existing') throw cause;
-				return 'execution-1';
+				return startedExecution('execution-1');
 			});
 			if (compilation === 'successful') {
 				reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);

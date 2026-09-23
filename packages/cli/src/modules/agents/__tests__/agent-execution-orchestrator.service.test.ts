@@ -61,6 +61,11 @@ import {
 } from '../integrations/integration-message-context';
 import type { ToolRegistry } from '../tool-registry';
 
+/** A recorded start whose session lease is never lost. */
+function startedExecution(executionId: string) {
+	return { executionId, leaseSignal: new AbortController().signal };
+}
+
 const aiConfigMock = mock<AiConfig>({
 	modelStreamIdleTimeoutMs: 90_000,
 	modelStreamFirstOutputTimeoutMs: 180_000,
@@ -223,7 +228,7 @@ function makeService(sandboxEnabled = false) {
 		accessScope: 'project',
 		ownerId: null,
 	} as never);
-	executionService.startExecutionRecording.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockResolvedValue(startedExecution('execution-1'));
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
@@ -592,7 +597,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				} else {
 					executionService.startExecutionRecording.mockImplementation(async () => {
 						controller.abort();
-						return 'execution-1';
+						return startedExecution('execution-1');
 					});
 				}
 
@@ -813,7 +818,9 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockResolvedValue(
+			startedExecution('execution-running'),
+		);
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime([
 			{ type: 'text-delta', id: 'text-1', delta: 'Working' },
@@ -862,6 +869,57 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 	});
 
+	describe('session lease', () => {
+		const streamChat = (
+			service: AgentExecutionOrchestratorService,
+			runtime: ReturnType<typeof makeRuntime>,
+		) =>
+			service.streamChatResponse({
+				access: { accessScope: 'user', ownerId: userId },
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				sandboxPrincipalHash: userPrincipalHash,
+			});
+
+		it('passes a busy session through without recording a failed execution', async () => {
+			const { service, executionService } = makeService();
+			executionService.startExecutionRecording.mockRejectedValue(
+				new AgentTurnAlreadyRunningError(),
+			);
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+
+			await expect(collect(streamChat(service, runtime))).rejects.toBeInstanceOf(
+				AgentTurnAlreadyRunningError,
+			);
+
+			expect(runtime.agent.stream).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+		});
+
+		it('aborts the run when its session lease is lost', async () => {
+			const { service, executionService } = makeService();
+			const lease = new AbortController();
+			executionService.startExecutionRecording.mockResolvedValue({
+				executionId: 'execution-1',
+				leaseSignal: lease.signal,
+			});
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+
+			await collect(streamChat(service, runtime));
+			const [, streamOptions] = runtime.agent.stream.mock.calls[0];
+			lease.abort();
+
+			expect(streamOptions.abortSignal?.aborted).toBe(true);
+		});
+	});
+
 	const genieResult: StreamChunk = {
 		type: 'tool-result',
 		toolCallId: 'tc-1',
@@ -873,7 +931,9 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends the MCP registry attribution on its own line when a tool of that server returned', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockResolvedValue(
+			startedExecution('execution-running'),
+		);
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -916,7 +976,9 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends no attribution when the reply is reasoning only, with no text', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockResolvedValue(
+			startedExecution('execution-running'),
+		);
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -950,7 +1012,9 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends no attribution when no tool of that server returned a result', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockResolvedValue(
+			startedExecution('execution-running'),
+		);
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -990,7 +1054,9 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('skips the attribution the model already echoed into its reply', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockResolvedValue(
+			startedExecution('execution-running'),
+		);
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -1023,7 +1089,9 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('attributes an approval-gated tool on the resumed segment, not on the suspended one', async () => {
 		const { service, executionService, checkpointStorage, runtimeCacheService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockResolvedValue(
+			startedExecution('execution-running'),
+		);
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const suspended = makeRuntime(
 			[
@@ -1135,11 +1203,15 @@ describe('AgentExecutionOrchestratorService', () => {
 					),
 				},
 				executionCounter: expect.any(Object),
-				abortSignal: abortController.signal,
+				abortSignal: expect.any(AbortSignal),
 				modelStreamIdleTimeoutMs: 90_000,
 				modelStreamFirstOutputTimeoutMs: 180_000,
 			}),
 		);
+		// The run gets the caller's signal combined with the session lease signal.
+		const [, streamOptions] = runtime.agent.stream.mock.calls[0];
+		abortController.abort();
+		expect(streamOptions.abortSignal?.aborted).toBe(true);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({
@@ -1891,7 +1963,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			{ type: 'finish', finishReason: 'stop' },
 		]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
-		const abortSignal = new AbortController().signal;
+		const abortController = new AbortController();
+		const abortSignal = abortController.signal;
 
 		await service.executeForWake({
 			backgroundJobSignal,
@@ -1913,8 +1986,11 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
 			'<background-jobs-settled>[]</background-jobs-settled>',
-			expect.objectContaining({ abortSignal }),
+			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
 		);
+		const [, streamOptions] = runtime.agent.stream.mock.calls[0];
+		abortController.abort();
+		expect(streamOptions.abortSignal?.aborted).toBe(true);
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
 			expect.objectContaining({ userMessage: null, sessionMode: 'existing' }),
 			expect.any(Date),
@@ -2315,9 +2391,12 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({
 				runId: 'run-1',
 				toolCallId: 'tc-1',
-				abortSignal: abortController.signal,
+				abortSignal: expect.any(AbortSignal),
 			}),
 		);
+		const [, , resumeOptions] = runtime.agent.resume.mock.calls[0];
+		abortController.abort();
+		expect(resumeOptions.abortSignal?.aborted).toBe(true);
 		expect(externalHooks.run).not.toHaveBeenCalled();
 		// After the resumed turn, request any job results that arrived during the approval wait.
 		expect(wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
