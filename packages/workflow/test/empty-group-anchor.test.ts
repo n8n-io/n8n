@@ -7,30 +7,38 @@ import {
 	isEmptyGroupAnchor,
 } from '../src';
 
-function makeNode(overrides: Partial<INode> = {}): INode {
+function makeNode({
+	emptyGroupAnchor,
+	...overrides
+}: Partial<INode> & { emptyGroupAnchor: boolean }): INode {
 	return {
 		id: overrides.id ?? 'anchor-id',
 		name: overrides.name ?? 'Empty group anchor',
 		type: overrides.type ?? NO_OP_NODE_TYPE,
 		typeVersion: overrides.typeVersion ?? 1,
 		position: overrides.position ?? [0, 0],
-		parameters: overrides.parameters ?? { emptyGroupAnchor: true },
+		parameters: overrides.parameters ?? { emptyGroupAnchor },
 		...overrides,
 	};
 }
 
-const group = (overrides: Partial<IWorkflowGroup> = {}): IWorkflowGroup => ({
-	id: overrides.id ?? 'group-id',
-	name: overrides.name ?? 'Empty group',
-	nodeIds: overrides.nodeIds ?? ['anchor-id'],
-	...overrides,
-});
+function makeGroup(overrides: Partial<IWorkflowGroup> = {}): IWorkflowGroup {
+	return {
+		id: overrides.id ?? 'group-id',
+		name: overrides.name ?? 'Empty group',
+		nodeIds: overrides.nodeIds ?? ['anchor-id'],
+		...overrides,
+	};
+}
 
 describe('empty-group anchor helpers', () => {
 	it('identifies only a marked NoOp as an empty-group anchor', () => {
-		const anchor = makeNode();
-		const ordinaryNoOp = makeNode({ parameters: {} });
-		const markedOtherNode = makeNode({ type: 'n8n-nodes-base.set' });
+		const anchor = makeNode({ emptyGroupAnchor: true });
+		const ordinaryNoOp = makeNode({ emptyGroupAnchor: false });
+		const markedOtherNode = makeNode({
+			emptyGroupAnchor: true,
+			type: 'n8n-nodes-base.set',
+		});
 
 		expect(hasEmptyGroupAnchorMarker(anchor)).toBe(true);
 		expect(isEmptyGroupAnchor(anchor)).toBe(true);
@@ -40,14 +48,14 @@ describe('empty-group anchor helpers', () => {
 	});
 
 	it('models the empty and populated group lifecycle', () => {
-		const anchor = makeNode();
+		const anchor = makeNode({ emptyGroupAnchor: true });
 		const realNode = makeNode({
+			emptyGroupAnchor: false,
 			id: 'real-node',
 			name: 'Real node',
-			parameters: {},
 		});
-		const emptyGroup = group();
-		const populatedGroup = group({ nodeIds: [anchor.id, realNode.id] });
+		const emptyGroup = makeGroup();
+		const populatedGroup = makeGroup({ nodeIds: [anchor.id, realNode.id] });
 
 		expect(getEmptyGroupAnchor(emptyGroup, [anchor])).toBe(anchor);
 		expect(getEmptyGroupAnchor(populatedGroup, [anchor, realNode])).toBeUndefined();
