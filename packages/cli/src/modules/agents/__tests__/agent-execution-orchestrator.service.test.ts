@@ -28,10 +28,8 @@ import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import {
-	AgentChatExecutionService,
-	AgentTurnAlreadyRunningError,
-} from '../agent-chat-execution.service';
+import { AgentChatExecutionService } from '../agent-chat-execution.service';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecutionService } from '../agent-execution.service';

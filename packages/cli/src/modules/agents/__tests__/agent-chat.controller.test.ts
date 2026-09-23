@@ -14,7 +14,7 @@ import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import type { AgentExecutionService } from '../agent-execution.service';
-import { AgentTurnAlreadyRunningError } from '../agent-chat-execution.service';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
