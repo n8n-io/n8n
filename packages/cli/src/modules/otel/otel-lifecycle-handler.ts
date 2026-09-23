@@ -62,7 +62,6 @@ export class OtelLifecycleHandler {
 	@OnPubSubEvent('reload-otel-config')
 	async onReloadOtelConfig(): Promise<void> {
 		await this.otelService.restart();
-		this.tracer.refreshTracer();
 	}
 
 	private shouldTrace(ctx: { type: string; mode: WorkflowExecuteMode }): boolean {

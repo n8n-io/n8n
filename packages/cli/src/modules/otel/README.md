@@ -12,72 +12,114 @@ Given OTEL often involves events triggered from elsewhere within the n8n system 
 ### Attributes
 All attributes are listed in `otel.constants.ts`
 
+### Global API ownership
+
+`OtelService` starts a `NodeTracerProvider` and hands out tracers through `getTracer()`.
+The module's own spans never depend on the global `@opentelemetry/api` registry.
+
+At start, the service checks whether another library already registered a global tracer
+provider. Sentry does this in `ErrorReporter.init`. A user SDK loaded with `--require` does
+it too.
+
+- The slot is free: the service registers its provider, an `AsyncLocalStorageContextManager`
+  and the default W3C propagators. A restart swaps only the tracer provider. Shutdown leaves
+  the globals in place.
+- The slot is taken: the service keeps its provider private and logs one info line. It never
+  disables or replaces the other library's globals.
+
+Consequences:
+
+- Workflow spans go to the module exporter only. To get them into Sentry, point the OTel
+  settings at Sentry's OTLP endpoint.
+- Workflow root spans start on `ROOT_CONTEXT`. They never join a trace that is active in the
+  process, such as a Sentry request span or an HTTP server span from a user SDK. An inbound
+  `traceparent` header still sets the parent.
+- Persisted trace context and outbound headers always use the W3C `traceparent` and
+  `tracestate` format, whoever owns the global propagator. `OTEL_PROPAGATORS` has no effect
+  on them.
+- The resource uses the env, process and host detectors. `OTEL_NODE_RESOURCE_DETECTORS` has
+  no effect.
+
 ### Module architecture
 ```mermaid
- graph TD
-      subgraph Module Layer
-          MOD["OtelModule
-          @BackendModule"]
-      end
+graph TD
+    subgraph Module Layer
+        MOD["OtelModule
+        @BackendModule on main, worker and webhook"]
+    end
 
-      subgraph Configuration
-          CFG["OtelConfig
-          env vars to typed config"]
-      end
+    subgraph Configuration
+        CFG["OtelConfig
+        env vars to typed config"]
+        SET["OtelSettingsService
+        DB row merged with config, env vars win"]
+        CTRL["OtelSettingsController
+        main only: GET and PUT settings, POST test trace"]
+    end
 
-      subgraph SDK Layer
-          SVC["OtelService
-          owns NodeSDK lifecycle"]
-          SDK["OpenTelemetry NodeSDK
-          exporter, sampler, resource"]
-      end
+    subgraph SDK Layer
+        SVC["OtelService
+        owns the NodeTracerProvider, getTracer()"]
+        SDK["NodeTracerProvider
+        OTLP exporter, sampler, resource"]
+        API["Global @opentelemetry/api
+        registered only when the slot is free"]
+    end
 
-      subgraph Instrumentation Layer
-          INST["N8nWorkflowInstrumentation
-          @OnLifecycleEvent listeners"]
-          REG["SpanRegistry
-          Map of executionId to Span"]
-      end
+    subgraph Instrumentation Layer
+        LCH["OtelLifecycleHandler
+        @OnLifecycleEvent and @OnPubSubEvent"]
+        ELT["ExecutionLevelTracer
+        span maps by execution id, W3C propagator"]
+        TCS["TraceContextService
+        traceparent on the execution row"]
+    end
 
-      subgraph Handler Layer
-          IFC{{"SpanHandler interface"}}
-          WS["WorkflowStartHandler"]
-          WE["WorkflowEndHandler"]
-      end
+    subgraph n8n Core
+        LC(("Lifecycle events
+        workflowExecuteBefore, Resume, After
+        nodeExecuteBefore, After"))
+        PUB(("Pub/Sub
+        reload-otel-config"))
+        REQ["Request helpers
+        module context injectTraceHeaders"]
+        AGT["AgentRunTracingService
+        AgentWorkflowExecutionService"]
+    end
 
-      subgraph n8n Core
-          LC(("Lifecycle Events
-          workflowExecuteBefore
-          workflowExecuteAfter"))
-      end
+    COL[("OTLP collector")]
 
-      MOD -- "1. check enabled" --> CFG
-      MOD -- "2. init SDK" --> SVC
-      SVC -- "creates" --> SDK
-      MOD -- "3. register listeners" --> INST
+    MOD -- "1. load settings" --> SET
+    SET --> CFG
+    MOD -- "2. start provider" --> SVC
+    SVC -- "creates" --> SDK
+    SVC -. "registers when free" .-> API
+    MOD -- "3. import handler" --> LCH
+    MOD -- "4. main only" --> CTRL
+    CTRL -- "save, then publish" --> PUB
+    PUB -. "fires" .-> LCH
+    LCH -- "restart()" --> SVC
 
-      LC -. "fires event" .-> INST
-      INST -- "dispatches to" --> IFC
-      IFC -. "implemented by" .-> WS
-      IFC -. "implemented by" .-> WE
+    LC -. "fires" .-> LCH
+    LCH -- "start and end workflow and node spans" --> ELT
+    LCH -- "persist and read" --> TCS
+    ELT -- "getTracer()" --> SVC
+    REQ -- "outbound traceparent" --> ELT
+    AGT -- "getActiveContext()" --> ELT
+    AGT -- "getTracer()" --> SVC
+    SDK -. "exports spans" .-> COL
 
-      WS -- "startSpan, store" --> REG
-      WE -- "retrieve, enrich, end" --> REG
-      REG -. "spans exported via" .-> SDK
+    classDef module fill:#4a9eff,color:#fff
+    classDef config fill:#f5a623,color:#fff
+    classDef sdk fill:#7b68ee,color:#fff
+    classDef inst fill:#50c878,color:#fff
+    classDef core fill:#888,color:#fff
 
-      classDef module fill:#4a9eff,color:#fff
-      classDef config fill:#f5a623,color:#fff
-      classDef sdk fill:#7b68ee,color:#fff
-      classDef inst fill:#50c878,color:#fff
-      classDef handler fill:#ff6b6b,color:#fff
-      classDef core fill:#888,color:#fff
-
-      class MOD module
-      class CFG config
-      class SVC,SDK sdk
-      class INST,REG inst
-      class IFC,WS,WE handler
-      class LC core
+    class MOD module
+    class CFG,SET,CTRL config
+    class SVC,SDK,API sdk
+    class LCH,ELT,TCS inst
+    class LC,PUB,REQ,AGT,COL core
 ```
 
 #### Manual validation
