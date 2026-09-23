@@ -1,0 +1,182 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { EngineConfig } from '@n8n/config';
+import { DbConnection } from '@n8n/db';
+import { ErrorReporter } from 'n8n-core';
+
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
+import { NodeTypes } from '@/node-types';
+import { OtelService } from '@/modules/otel/otel.service';
+import { PostHogClient } from '@/posthog';
+import { ShutdownService } from '@/shutdown/shutdown.service';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+
+import { Engine } from '../engine';
+
+vi.mock('@/crash-journal');
+
+const dbConnection = mockInstance(DbConnection);
+const encryptionBootstrap = mockInstance(EncryptionBootstrapService);
+const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+loadNodesAndCredentials.init.mockResolvedValue(undefined);
+loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+const runtime = mockInstance(EngineV2Runtime);
+const taskRunnerModule = mockInstance(TaskRunnerModule);
+
+// Services the base `init()` reaches, as in worker.test.ts.
+const errorReporter = mockInstance(ErrorReporter);
+mockInstance(NodeTypes);
+mockInstance(ShutdownService);
+mockInstance(MessageEventBus);
+mockInstance(PostHogClient);
+mockInstance(OtelService);
+mockInstance(TelemetryEventRelay);
+mockInstance(ActivityEventRelay);
+mockInstance(WorkflowFailureNotificationEventRelay);
+
+describe('Engine', () => {
+	const originalEnv = process.env;
+	let engineConfig: EngineConfig;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		// The package test script sets `DB_TYPE`, which the command refuses. Start
+		// from an env with no control plane database and no encryption key.
+		process.env = Object.fromEntries(
+			Object.entries(originalEnv).filter(
+				([key]) => !key.startsWith('DB_') && key !== 'N8N_ENCRYPTION_KEY',
+			),
+		);
+		engineConfig = mockInstance(EngineConfig, {
+			authSecret: 'a'.repeat(32),
+			controlPlaneBaseUrl: 'http://n8n-main:3001',
+		});
+	});
+
+	afterEach(() => {
+		process.env = originalEnv;
+	});
+
+	const createEngine = () => {
+		const engine = new Engine();
+		// @ts-expect-error - Overriding readonly property for testing
+		engine.globalConfig = {
+			executions: { mode: 'regular' },
+			multiMainSetup: { enabled: false },
+			endpoints: {
+				metrics: { enable: false },
+				health: '/health',
+				webhook: 'webhook',
+				rest: 'rest',
+			},
+			database: { type: 'sqlite' },
+			sentry: { backendDsn: '' },
+			cache: { backend: 'memory' },
+			taskRunners: {},
+			outboundProxy: { mode: 'main-only' },
+			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+			generic: { gracefulShutdownTimeout: 30 },
+		};
+		// @ts-expect-error - Accessing protected method for testing
+		engine.initCrashJournal = vi.fn().mockResolvedValue(undefined);
+		return engine;
+	};
+
+	describe('init', () => {
+		it('refuses to boot with control plane database access', async () => {
+			process.env.DB_POSTGRESDB_HOST = 'postgres';
+
+			await expect(createEngine().init()).rejects.toThrow('DB_POSTGRESDB_HOST');
+			expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
+		});
+
+		it('refuses to boot with the control plane encryption key', async () => {
+			process.env.N8N_ENCRYPTION_KEY = 'secret';
+
+			await expect(createEngine().init()).rejects.toThrow('N8N_ENCRYPTION_KEY');
+			expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
+		});
+
+		it('reports a refusal through the crash path, which the base init has not wired yet', async () => {
+			process.env.DB_POSTGRESDB_HOST = 'postgres';
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			vi.useFakeTimers();
+			try {
+				const engine = createEngine();
+				const error = await engine.init().catch((e: unknown) => e);
+
+				const caught = engine.catch(error as Error);
+				await vi.runAllTimersAsync();
+				await caught;
+
+				expect(errorReporter.error).toHaveBeenCalledWith(expect.any(Error), { level: 'fatal' });
+				expect(exit).toHaveBeenCalledWith(1);
+			} finally {
+				vi.useRealTimers();
+				exit.mockRestore();
+			}
+		});
+
+		it('refuses to boot without the shared secret', async () => {
+			engineConfig.authSecret = '';
+
+			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_AUTH_SECRET');
+		});
+
+		it('refuses to boot without the control plane address', async () => {
+			engineConfig.controlPlaneBaseUrl = '';
+
+			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_CONTROL_PLANE_BASE_URL');
+		});
+
+		it('never opens, migrates or reads the control plane database', async () => {
+			await createEngine().init();
+
+			expect(dbConnection.init).not.toHaveBeenCalled();
+			expect(dbConnection.migrate).not.toHaveBeenCalled();
+			expect(encryptionBootstrap.run).not.toHaveBeenCalled();
+		});
+
+		it('loads the nodes and starts no task runner', async () => {
+			await createEngine().init();
+
+			expect(loadNodesAndCredentials.init).toHaveBeenCalled();
+			expect(taskRunnerModule.start).not.toHaveBeenCalled();
+		});
+
+		it('starts the data plane after the base init and finishes loading the nodes', async () => {
+			await createEngine().init();
+
+			expect(runtime.init).toHaveBeenCalled();
+			expect(vi.mocked(runtime.init).mock.invocationCallOrder[0]).toBeGreaterThan(
+				vi.mocked(loadNodesAndCredentials.init).mock.invocationCallOrder[0],
+			);
+			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
+		});
+	});
+
+	describe('stopProcess', () => {
+		it('shuts the data plane down before exiting', async () => {
+			const engine = createEngine();
+			await engine.init();
+			// @ts-expect-error - Accessing protected method for testing
+			engine.exitSuccessFully = vi.fn().mockResolvedValue(undefined);
+
+			// @ts-expect-error - Accessing protected method for testing
+			await engine.stopProcess();
+
+			expect(runtime.shutdown).toHaveBeenCalled();
+			// @ts-expect-error - Accessing protected method for testing
+			expect(engine.exitSuccessFully).toHaveBeenCalled();
+			expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
+				// @ts-expect-error - Accessing protected method for testing
+				vi.mocked(engine.exitSuccessFully).mock.invocationCallOrder[0],
+			);
+		});
+	});
+});
