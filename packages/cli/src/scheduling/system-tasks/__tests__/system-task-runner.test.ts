@@ -453,6 +453,36 @@ describe('SystemTaskRunner', () => {
 			expect(dummy.runCount).toBe(0);
 		});
 
+		it('does not run a task whose store check settles after stepdown and takeover', async () => {
+			const { runner, metadata, jobRegistrar, eventService } = setup();
+			dummy.placement = { scope: 'cluster', durable: true };
+			let settleCheck!: (exists: boolean) => void;
+			jobRegistrar.isProvisioned.mockReturnValueOnce(
+				new Promise<boolean>((resolve) => {
+					settleCheck = resolve;
+				}),
+			);
+			jobRegistrar.isProvisioned.mockResolvedValue(false);
+			metadata.register(DummySystemTask);
+			await initRunner(runner);
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			const stepdown = runner.stopLeaderTimers();
+			runner.startLeaderTimers();
+			settleCheck(false);
+			await stepdown;
+
+			expect(dummy.runCount).toBe(0);
+			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-skipped', {
+				name: 'dummy',
+				reason: 'aborted',
+			});
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(1);
+		});
+
 		it('does not ask for a task that never runs durably', async () => {
 			const { runner, metadata, jobRegistrar } = setup();
 			jobRegistrar.isProvisioned.mockResolvedValue(true);
