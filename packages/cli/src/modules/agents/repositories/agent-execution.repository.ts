@@ -94,6 +94,21 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return entities.map((execution) => ({ ...execution, stale: staleIds.has(execution.id) }));
 	}
 
+	/**
+	 * Checks in the caller's transaction that the execution still runs. On
+	 * PostgreSQL the check holds a share lock on the row until the transaction
+	 * ends, so a takeover waits for the write in progress. SQLite serializes
+	 * writers with `BEGIN IMMEDIATE`.
+	 */
+	async isRunning(executionId: string, ctx: OperationContext): Promise<boolean> {
+		const execution = await this.managerFor(ctx).findOne(AgentExecution, {
+			select: ['id'],
+			where: { id: executionId, status: 'running' },
+			lock: this.isPostgres ? { mode: 'pessimistic_read' } : undefined,
+		});
+		return execution !== null;
+	}
+
 	// TODO(AGENT-1031): Remove with the message queue flag. The session lease replaces this check.
 	async existsRunningByThread(threadId: string): Promise<boolean> {
 		return await this.existsBy({ threadId, status: 'running' });

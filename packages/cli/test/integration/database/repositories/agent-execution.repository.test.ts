@@ -144,7 +144,7 @@ describe('AgentExecutionRepository', () => {
 			: threadRepo;
 		const memory = mock<N8nMemory>();
 		memory.getImplementation.mockReturnValue(memoryBackend);
-		const sessionLeases = new AgentSessionLeaseService(mockLogger(), executions);
+		const sessionLeases = new AgentSessionLeaseService(mockLogger(), executions, txRunner);
 		const attachmentService = mock<AgentChatAttachmentService>();
 		const executionLogStore = mock<AgentExecutionLogStore>();
 		const executionService = new AgentExecutionService(
@@ -1053,6 +1053,93 @@ describe('AgentExecutionRepository', () => {
 				record: finishedRecord(),
 			});
 		});
+
+		it('rejects the fenced writes of a turn whose session another main took over', async () => {
+			const thread = await createThread();
+			const params = startParams(thread.id);
+			const local = recordingServices();
+			const remote = recordingServices(mock(), peer);
+			const stale = await local.executionService.startExecutionRecording(params, new Date());
+			await makeStale(stale.executionId);
+			const current = await remote.executionService.startExecutionRecording(params, new Date());
+			const write = vi.fn(async () => 'written');
+			const writeInTurn = async (
+				{ sessionLeases }: ReturnType<typeof recordingServices>,
+				executionId: string,
+			) =>
+				await sessionLeases.runInTurn(
+					executionId,
+					async () => await sessionLeases.fencedWrite({}, write),
+				);
+
+			await expect(writeInTurn(local, stale.executionId)).rejects.toBeInstanceOf(
+				AgentSessionLeaseLostError,
+			);
+			expect(stale.leaseSignal?.aborted).toBe(true);
+			expect(write).not.toHaveBeenCalled();
+
+			await expect(writeInTurn(remote, current.executionId)).resolves.toBe('written');
+			await expect(local.sessionLeases.fencedWrite({}, write)).resolves.toBe('written');
+			await expect(
+				local.executionService.finalizeExecution(stale.executionId, {
+					...params,
+					record: finishedRecord(),
+				}),
+			).rejects.toBeInstanceOf(AgentSessionLeaseLostError);
+			await remote.executionService.finalizeExecution(current.executionId, {
+				...params,
+				record: finishedRecord(),
+			});
+		});
+
+		it.skipIf(!isPostgres)(
+			'makes a takeover wait until a fenced write in progress commits',
+			async () => {
+				const thread = await createThread();
+				const params = startParams(thread.id);
+				const local = recordingServices(mock(), peer);
+				const remote = recordingServices();
+				const stale = await local.executionService.startExecutionRecording(params, new Date());
+				await makeStale(stale.executionId);
+				const writing = createDeferredPromise<OperationContext>();
+				const commitWrite = createDeferredPromise();
+				const write = local.sessionLeases.runInTurn(
+					stale.executionId,
+					async () =>
+						await local.sessionLeases.fencedWrite({}, async (ctx) => {
+							writing.resolve(ctx);
+							await commitWrite.promise;
+						}),
+				);
+				const writeCtx = await writing.promise;
+
+				const takeover = remote.executionService.startExecutionRecording(params, new Date());
+				await waitForPeerLock(writeCtx);
+				commitWrite.resolve();
+				await write;
+				const current = await takeover;
+
+				expect(await repository.findOneByOrFail({ id: stale.executionId })).toMatchObject({
+					status: 'interrupted',
+				});
+				await expect(
+					local.sessionLeases.runInTurn(
+						stale.executionId,
+						async () => await local.sessionLeases.fencedWrite({}, async () => 'late'),
+					),
+				).rejects.toBeInstanceOf(AgentSessionLeaseLostError);
+				await expect(
+					local.executionService.finalizeExecution(stale.executionId, {
+						...params,
+						record: finishedRecord(),
+					}),
+				).rejects.toBeInstanceOf(AgentSessionLeaseLostError);
+				await remote.executionService.finalizeExecution(current.executionId, {
+					...params,
+					record: finishedRecord(),
+				});
+			},
+		);
 
 		it.skipIf(!isPostgres)(
 			'admits a start that waits for the terminal write of a stale-looking turn',
