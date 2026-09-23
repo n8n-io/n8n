@@ -124,7 +124,6 @@ describe('GET /workflows/:workflowId/test-runs', () => {
 	});
 
 	test('should return 404 for an unknown workflow', async () => {
-		// A member holds no global workflow scope, so the scope check has to look the workflow up.
 		const member = await createMemberWithApiKey();
 		const memberAgent = testServer.publicApiAgentFor(member);
 
@@ -279,7 +278,6 @@ describe('scope enforcement on read endpoints', () => {
 	});
 
 	test('should return 404 on single-run and cases for an unknown workflow', async () => {
-		// A member holds no global workflow scope, so the scope check has to look the workflow up.
 		const member = await createMemberWithApiKey();
 		const memberAgent = testServer.publicApiAgentFor(member);
 
