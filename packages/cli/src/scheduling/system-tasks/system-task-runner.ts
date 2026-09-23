@@ -264,7 +264,7 @@ export class SystemTaskRunner {
 			});
 			emitSystemTaskMetric(this.eventService, 'system-task-routed', {
 				name: task.name,
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				intervalSeconds,
 			});
 
@@ -306,7 +306,7 @@ export class SystemTaskRunner {
 				);
 				emitSystemTaskMetric(this.eventService, 'system-task-scheduling-failed', {
 					name: task.name,
-					mode: 'in_memory',
+					mode: 'leader_timer',
 				});
 			},
 			(fireAt) => {
@@ -372,7 +372,7 @@ export class SystemTaskRunner {
 			this.eventService,
 			this.tracing,
 			task,
-			'in_memory',
+			'leader_timer',
 			signal,
 		);
 		if (outcome.result === 'failure') {

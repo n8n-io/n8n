@@ -52,14 +52,14 @@ describe('observeSystemTaskRun', () => {
 			eventService,
 			setupTracing().tracing,
 			task,
-			'in_memory',
+			'leader_timer',
 			new AbortController().signal,
 		);
 
 		expect(outcome).toEqual({ result: 'failure', rejected: true, error });
 		expect(eventService.emit).toHaveBeenCalledWith(
 			'system-task-run-settled',
-			expect.objectContaining({ name: 'dummy', mode: 'in_memory', result: 'failure' }),
+			expect.objectContaining({ name: 'dummy', mode: 'leader_timer', result: 'failure' }),
 		);
 	});
 
@@ -94,7 +94,7 @@ describe('observeSystemTaskRun', () => {
 			mock<EventService>(),
 			inMemory.tracing,
 			taskThat(resolves),
-			'in_memory',
+			'leader_timer',
 			new AbortController().signal,
 		);
 		await observeSystemTaskRun(
@@ -116,7 +116,7 @@ describe('observeSystemTaskRun', () => {
 			mock<EventService>(),
 			tracing,
 			taskThat(resolves),
-			'in_memory',
+			'leader_timer',
 			new AbortController().signal,
 		);
 
@@ -131,7 +131,7 @@ describe('observeSystemTaskRun', () => {
 			mock<EventService>(),
 			tracing,
 			taskThat(rejects(new Error('boom'))),
-			'in_memory',
+			'leader_timer',
 			new AbortController().signal,
 		);
 
@@ -148,7 +148,13 @@ describe('observeSystemTaskRun', () => {
 			throw new Error('stopped');
 		});
 
-		await observeSystemTaskRun(mock<EventService>(), tracing, task, 'in_memory', controller.signal);
+		await observeSystemTaskRun(
+			mock<EventService>(),
+			tracing,
+			task,
+			'leader_timer',
+			controller.signal,
+		);
 
 		expect(span.setAttribute).toHaveBeenCalledWith('n8n.system_task.result', 'aborted');
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
