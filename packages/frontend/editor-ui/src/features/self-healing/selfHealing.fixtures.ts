@@ -11,7 +11,12 @@ import type { IConnections, INode } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import { SELF_HEALING_ASSISTANT, SELF_HEALING_REVIEW_ID_PREFIX } from './selfHealing.constants';
-import type { SelfHealingConfig, SelfHealingOutcome, SelfHealingReview } from './selfHealing.types';
+import type {
+	SelfHealingConfig,
+	SelfHealingOutcome,
+	SelfHealingReview,
+	SelfHealingUsage,
+} from './selfHealing.types';
 
 /*
  * Everything in this file is demo data. The prototype has no backend, so the
@@ -259,6 +264,7 @@ export interface BuildReviewOptions {
 	pinned: WorkflowReviewVersionSnapshot;
 	reviewers: WorkflowReviewEligibleReviewer[];
 	createdAt: string;
+	usage: SelfHealingUsage;
 	state?: WorkflowReviewRequestState;
 	decision?: WorkflowReviewRequestDecision;
 	/** When set, appends the approval and the publish to the feed. */
@@ -372,6 +378,7 @@ export function buildSelfHealingReview(
 
 	return {
 		kind: 'fix',
+		usage: options.usage,
 		outcome: null,
 		item,
 		detail,
@@ -399,7 +406,8 @@ export interface BuildOutcomeOptions {
 	summary: string;
 	/** Body of the assistant's report in the activity feed. */
 	analysis: string;
-	outcome: Omit<SelfHealingOutcome, 'dismissedAt'>;
+	outcome: SelfHealingOutcome;
+	usage: SelfHealingUsage | null;
 	executionId: string;
 	workflowId: string;
 	workflowName: string;
@@ -504,7 +512,8 @@ export function buildSelfHealingOutcome(
 
 	return {
 		kind: options.outcome.kind,
-		outcome: { ...options.outcome, dismissedAt: null },
+		usage: options.usage,
+		outcome: options.outcome,
 		item,
 		detail,
 		activity,
@@ -576,6 +585,7 @@ export function createSeedReviews(
 				),
 				reviewers,
 				createdAt: openedAt,
+				usage: { credits: 14, turns: 8, durationSeconds: 240 },
 			},
 			nextEntryId,
 		),
@@ -608,6 +618,7 @@ export function createSeedReviews(
 				),
 				reviewers,
 				createdAt: invoiceOpenedAt,
+				usage: { credits: 11, turns: 7, durationSeconds: 180 },
 				state: 'closed',
 				decision: 'approved',
 				approval: { by: reviewer, at: invoiceApprovedAt, note: 'Looks good, thanks.' },
@@ -628,11 +639,12 @@ export function createSeedReviews(
 				reviewers,
 				createdAt: hoursAgo(0.7, now),
 				analysis:
-					'What failed: execution #48377 stopped at "Get new deals" with "Authorization failed. Please check your credentials (401 Unauthorized)".\n\nWhat I found: the pre-check matched this error to an expired OAuth token on the credential "HubSpot – Sales". The workflow has not changed since its last successful run, so there is nothing in it to fix.\n\nWhat to do next:\n1. Reconnect the credential "HubSpot – Sales" under Credentials.\n2. Run the failed execution again, or wait for the next hourly run.\n\nCredits used: none. The pre-check caught this before I ran.',
+					'What failed: execution #48377 stopped at "Get new deals" with "Authorization failed. Please check your credentials (401 Unauthorized)".\n\nWhat I found: the pre-check matched this error to an expired OAuth token on the credential "HubSpot – Sales". The workflow has not changed since its last successful run, so there is nothing in it to fix.\n\nWhat to do next:\n1. Reconnect the credential "HubSpot – Sales" under Credentials.\n2. Run the failed execution again, or wait for the next hourly run.',
 				outcome: {
 					kind: 'needs_you',
 					action: { type: 'open_credential', credentialName: 'HubSpot – Sales' },
 				},
+				usage: null,
 			},
 			nextEntryId,
 		),
@@ -650,11 +662,12 @@ export function createSeedReviews(
 				reviewers,
 				createdAt: hoursAgo(5, now),
 				analysis:
-					'What failed: execution #48311 stopped at "Create shipment" with HTTP 400 "Unknown field shipping_method_v1".\n\nWhat I found: the same request succeeded until yesterday at 22:10 and nothing in the workflow changed since, so the warehouse API has renamed or removed the field.\n\nWhy I stopped: the error does not say what replaced the field, and the API reference I can reach still lists the old name. Guessing a field name could create shipments with wrong data.\n\nWhat to do next:\n1. Check the warehouse vendor\'s API changelog for the new shipping method field.\n2. Update the field mapping in "Create shipment", then run the failed execution again.\n3. Or continue in chat with the changelog link and I will prepare the fix.\n\nCredits used: 9 credits over 6 turns in 3 min.',
+					'What failed: execution #48311 stopped at "Create shipment" with HTTP 400 "Unknown field shipping_method_v1".\n\nWhat I found: the same request succeeded until yesterday at 22:10 and nothing in the workflow changed since, so the warehouse API has renamed or removed the field.\n\nWhy I stopped: the error does not say what replaced the field, and the API reference I can reach still lists the old name. Guessing a field name could create shipments with wrong data.\n\nWhat to do next:\n1. Check the warehouse vendor\'s API changelog for the new shipping method field.\n2. Update the field mapping in "Create shipment", then run the failed execution again.\n3. Or continue in chat with the changelog link and I will prepare the fix.',
 				outcome: {
 					kind: 'could_not_fix',
 					action: null,
 				},
+				usage: { credits: 9, turns: 6, durationSeconds: 170 },
 			},
 			nextEntryId,
 		),

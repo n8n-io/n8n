@@ -11,15 +11,11 @@ import { useSelfHealingStore } from '../selfHealing.store';
 
 /**
  * Replaces the approve/request-changes popover for the two inbox kinds that
- * are not reviews. Dismiss closes the item; the second button takes the user
- * to where the next step happens.
+ * are not reviews: one button that takes the user to where the next step
+ * happens.
  */
 const props = defineProps<{
 	reviewId: string;
-}>();
-
-const emit = defineEmits<{
-	dismiss: [];
 }>();
 
 const i18n = useI18n();
@@ -39,13 +35,6 @@ async function onContinueInChat() {
 
 <template>
 	<div v-if="outcome" :class="$style.actions" data-test-id="self-healing-outcome-actions">
-		<N8nButton
-			variant="outline"
-			size="small"
-			:label="i18n.baseText('selfHealing.outcome.action.dismiss')"
-			data-test-id="self-healing-outcome-dismiss"
-			@click="emit('dismiss')"
-		/>
 		<N8nButton
 			v-if="outcome.action?.type === 'open_credential'"
 			size="small"

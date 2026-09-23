@@ -118,18 +118,10 @@ const selectedListItem = computed(() =>
 const selectedItem = computed(() => detail.value ?? selectedListItem.value);
 
 // Self-healing prototype: "needs you" and "could not fix" items share the review
-// layout but carry no diff and take Dismiss instead of a decision.
+// layout but carry no diff and offer a next step instead of a decision.
 const selectedOutcome = computed(() =>
 	selectedReviewId.value ? selfHealingStore.getOutcome(selectedReviewId.value) : null,
 );
-
-async function onDismissOutcome(id: string) {
-	selfHealingStore.dismiss(id);
-	// The item leaves the open list but stays selected through the detail.
-	await Promise.all([store.fetchSummary(), store.fetchActiveTab(), store.fetchDetail(id)]).catch(
-		handleLoadError,
-	);
-}
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -406,10 +398,7 @@ onUnmounted(() => {
 						@decide="onDecide(selectedItem.id, $event)"
 					>
 						<template v-if="selectedOutcome" #actions>
-							<SelfHealingOutcomeActions
-								:review-id="selectedItem.id"
-								@dismiss="onDismissOutcome(selectedItem.id)"
-							/>
+							<SelfHealingOutcomeActions :review-id="selectedItem.id" />
 						</template>
 					</WorkflowReviewDetailTabs>
 					<N8nLoading v-else-if="isLoadingActiveTab" :loading="true" :rows="3" />

@@ -43,6 +43,7 @@ import type {
 	SelfHealingInboxKind,
 	SelfHealingOutcome,
 	SelfHealingReview,
+	SelfHealingUsage,
 	WorkflowHealingStatus,
 } from './selfHealing.types';
 
@@ -355,6 +356,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 				pinned,
 				reviewers: resolveReviewers(config),
 				createdAt,
+				usage: { credits: 12, turns: 7, durationSeconds: 150 },
 				...(autoDeploy
 					? {
 							state: 'closed' as const,
@@ -428,16 +430,9 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		return findReview(reviewId)?.outcome ?? null;
 	}
 
-	/** Closes a "needs you" or "could not fix" item. Nothing else changes. */
-	function dismiss(reviewId: string) {
-		const review = findReview(reviewId);
-		if (!review?.outcome) throw new Error(`Not a dismissible self-healing item: ${reviewId}`);
-		const dismissedAt = nowIso();
-		review.outcome.dismissedAt = dismissedAt;
-		review.item.state = 'closed';
-		review.detail.state = 'closed';
-		review.item.updatedAt = dismissedAt;
-		review.detail.updatedAt = dismissedAt;
+	/** `undefined` for an unknown item, `null` when no AI ran. */
+	function getUsage(reviewId: string): SelfHealingUsage | null | undefined {
+		return findReview(reviewId)?.usage;
 	}
 
 	function decide(
@@ -579,7 +574,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		getReviewSummary,
 		getInboxKind,
 		getOutcome,
-		dismiss,
+		getUsage,
 		decide,
 		addComment,
 		reset,

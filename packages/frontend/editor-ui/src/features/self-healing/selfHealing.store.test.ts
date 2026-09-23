@@ -245,20 +245,13 @@ describe('useSelfHealingStore', () => {
 			expect(needsYou && store.getOutcome(needsYou.id)?.action?.type).toBe('open_credential');
 		});
 
-		it('dismiss closes an outcome item and leaves reviews alone', () => {
-			const openBefore = store.countByState('open');
-			const couldNotFix = store
-				.getInboxItems('open')
-				.find((item) => store.getInboxKind(item.id) === 'could_not_fix');
-			if (!couldNotFix) throw new Error('missing seed');
-
-			store.dismiss(couldNotFix.id);
-
-			expect(store.countByState('open')).toBe(openBefore - 1);
-			expect(store.getDetail(couldNotFix.id)?.state).toBe('closed');
-			expect(store.getOutcome(couldNotFix.id)?.dismissedAt).not.toBeNull();
-			const fix = store.getInboxItems('open').find((item) => store.getInboxKind(item.id) === 'fix');
-			expect(() => store.dismiss(fix?.id ?? '')).toThrow();
+		it('reports what each investigation cost', () => {
+			const items = store.getInboxItems('open');
+			const kindOf = (kind: string) => items.find((item) => store.getInboxKind(item.id) === kind);
+			expect(store.getUsage(kindOf('fix')?.id ?? '')?.credits).toBeGreaterThan(0);
+			expect(store.getUsage(kindOf('could_not_fix')?.id ?? '')?.credits).toBeGreaterThan(0);
+			expect(store.getUsage(kindOf('needs_you')?.id ?? '')).toBeNull();
+			expect(store.getUsage('unknown')).toBeUndefined();
 		});
 	});
 

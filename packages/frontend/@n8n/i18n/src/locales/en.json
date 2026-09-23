@@ -8772,7 +8772,11 @@
 	"selfHealing.inbox.kind.fix": "Fix ready",
 	"selfHealing.inbox.kind.needs_you": "Needs you",
 	"selfHealing.inbox.kind.could_not_fix": "Could not fix",
-	"selfHealing.outcome.action.dismiss": "Dismiss",
 	"selfHealing.outcome.action.openCredential": "Open credentials",
-	"selfHealing.outcome.action.continueInChat": "Continue in chat"
+	"selfHealing.outcome.action.continueInChat": "Continue in chat",
+	"selfHealing.usage.title": "Credits used",
+	"selfHealing.usage.credits": "1 credit | {count} credits",
+	"selfHealing.usage.detail": "{turns} turns · {minutes} min",
+	"selfHealing.usage.none": "None",
+	"selfHealing.usage.noneHint": "The pre-check caught this before the Assistant ran."
 }

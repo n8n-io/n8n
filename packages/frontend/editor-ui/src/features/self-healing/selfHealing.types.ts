@@ -88,13 +88,20 @@ export type SelfHealingInboxKind = 'fix' | 'needs_you' | 'could_not_fix';
 
 export interface SelfHealingOutcome {
 	kind: Exclude<SelfHealingInboxKind, 'fix'>;
-	/** Deep link offered next to Dismiss. `null` falls back to "Continue in chat". */
+	/** Where the next step happens. `null` falls back to "Continue in chat". */
 	action: { type: 'open_credential'; credentialName: string } | null;
-	dismissedAt: string | null;
+}
+
+/** What an investigation cost. `null` when the pre-check stopped it before any AI ran. */
+export interface SelfHealingUsage {
+	credits: number;
+	turns: number;
+	durationSeconds: number;
 }
 
 export interface SelfHealingReview {
 	kind: SelfHealingInboxKind;
+	usage: SelfHealingUsage | null;
 	/** Set for `needs_you` and `could_not_fix`; `null` for a fix review. */
 	outcome: SelfHealingOutcome | null;
 	item: WorkflowReviewInboxItem;

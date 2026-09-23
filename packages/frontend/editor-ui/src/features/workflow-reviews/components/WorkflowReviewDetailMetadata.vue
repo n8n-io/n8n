@@ -13,6 +13,7 @@ import { computed } from 'vue';
 
 import { VIEWS } from '@/app/constants';
 import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
+import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 import { formatUserDisplayName } from '../workflowReviews.utils';
 import { getWorkflowReviewStatusDisplay } from '../workflowReviewStatus.utils';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
@@ -22,9 +23,37 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const selfHealingStore = useSelfHealingStore();
 
 const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
+);
+
+// Self-healing prototype: what the investigation cost. `undefined` hides the card.
+const usage = computed(() =>
+	isSelfHealingAssistant(props.review.requester)
+		? selfHealingStore.getUsage(props.review.id)
+		: undefined,
+);
+
+const usageCredits = computed(() =>
+	usage.value
+		? i18n.baseText('selfHealing.usage.credits', {
+				adjustToNumber: usage.value.credits,
+				interpolate: { count: String(usage.value.credits) },
+			})
+		: i18n.baseText('selfHealing.usage.none'),
+);
+
+const usageDetail = computed(() =>
+	usage.value
+		? i18n.baseText('selfHealing.usage.detail', {
+				interpolate: {
+					turns: String(usage.value.turns),
+					minutes: String(Math.max(1, Math.round(usage.value.durationSeconds / 60))),
+				},
+			})
+		: i18n.baseText('selfHealing.usage.noneHint'),
 );
 
 // Authors include the requester, who already has their own section above.
@@ -149,6 +178,24 @@ const statusSummary = computed(() =>
 				</N8nLink>
 			</div>
 		</N8nCard>
+
+		<N8nCard
+			v-if="usage !== undefined"
+			:class="$style.card"
+			data-test-id="workflow-review-detail-usage-card"
+		>
+			<template #header>
+				<N8nText bold color="text-light" size="medium">
+					{{ i18n.baseText('selfHealing.usage.title') }}
+				</N8nText>
+			</template>
+			<div :class="$style.usage">
+				<N8nText size="medium" data-test-id="workflow-review-detail-usage-credits">
+					{{ usageCredits }}
+				</N8nText>
+				<N8nText size="small" color="text-light">{{ usageDetail }}</N8nText>
+			</div>
+		</N8nCard>
 	</aside>
 </template>
 
@@ -187,6 +234,12 @@ const statusSummary = computed(() =>
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.usage {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .statusSeparator {
