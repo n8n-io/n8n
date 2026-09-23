@@ -91,9 +91,9 @@ or do both. When it does both, the first of the two ends the wait.
 6. **The execution stores a `waiting` status.** An execution reports `waiting`
    when every step it still owes is suspended. It reports `running` when one of
    its steps can still run. The step rows decide the status, and the execution
-   row records it. After a step changes state, the engine calculates the status
-   from the steps again. A new `step:waiting` lifecycle event shows the paused
-   step in the UI.
+   row records it. After a step suspends or settles, the engine calculates the
+   status from the steps again. A new `step:waiting` lifecycle event shows the
+   paused step in the UI.
 7. **The executor request carries the workflow settings.** A node resolves its
    parameters with them. The `specificTime` mode of the Wait node resolves its
    target time in the timezone of the workflow. The node converts the time and
