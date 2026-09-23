@@ -242,7 +242,7 @@ describe('domain tool construction', () => {
 		expect(without.has('save_user_preference')).toBe(false);
 
 		const context = makeContext();
-		context.aiPreferenceService = { create: vi.fn() };
+		context.aiPreferenceService = { create: vi.fn(), recordRejection: vi.fn() };
 		const withService = getActiveOrchestratorDomainToolNames(context);
 		expect(withService.has('save_user_preference')).toBe(true);
 	});

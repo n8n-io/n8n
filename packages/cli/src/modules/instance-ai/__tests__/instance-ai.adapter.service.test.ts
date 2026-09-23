@@ -1570,6 +1570,7 @@ import type {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UserError, UnexpectedError } from 'n8n-workflow';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -6675,8 +6676,13 @@ describe('createContext: aiPreferenceService', () => {
 	function buildService() {
 		const aiPreferenceService = mock<AiPreferenceService>();
 		const logger = { error: vi.fn(), warn: vi.fn(), scoped: vi.fn().mockReturnThis() };
-		const service = createAdapterWithGatewayMock(vi.fn(), { aiPreferenceService, logger });
-		return { service, aiPreferenceService, logger };
+		const telemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), {
+			aiPreferenceService,
+			logger,
+			telemetry,
+		});
+		return { service, aiPreferenceService, logger, telemetry };
 	}
 
 	it('is absent when the preferences gate is closed', () => {
@@ -6740,6 +6746,110 @@ describe('createContext: aiPreferenceService', () => {
 			expect(logger.error).not.toHaveBeenCalled();
 		}
 	});
+
+	// The row is committed before any event fires, so a telemetry fault must not turn
+	// a saved preference into a failed one that the model retries into a duplicate.
+	it('still reports the write as saved when telemetry throws afterwards', async () => {
+		const { service, aiPreferenceService, telemetry } = buildService();
+		aiPreferenceService.create.mockResolvedValue({
+			id: 'pref-1',
+			content: 'Keep replies short.',
+		} as never);
+		telemetry.track.mockImplementation(() => {
+			throw new Error('telemetry down');
+		});
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		const result = await context.aiPreferenceService!.create({
+			content: 'Keep replies short.',
+			scope: 'user',
+		});
+
+		expect(result).toEqual({
+			ok: true,
+			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		});
+		expect(aiPreferenceService.create).toHaveBeenCalledTimes(1);
+	});
+
+	it('fires shown, resolved(accepted), scope_accepted and saved on a successful write', async () => {
+		const { service, aiPreferenceService, telemetry } = buildService();
+		aiPreferenceService.create.mockResolvedValue({
+			id: 'pref-1',
+			content: 'Keep replies short.',
+		} as never);
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		await context.aiPreferenceService!.create({ content: 'Keep replies short.', scope: 'user' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
+			{ surface: 'aia', scope_type: 'user', text_length: 19 },
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
+			{ surface: 'aia', outcome: 'accepted', scope_type: 'user', text_length: 19 },
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			{
+				surface: 'aia',
+				offered_scope: 'user',
+				accepted_scope: 'user',
+				scope_changed: false,
+			},
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE,
+			{
+				surface: 'aia',
+				scope_type: 'user',
+				text_length: 19,
+				replaced_existing: false,
+			},
+		);
+	});
+
+	it('fires write_rejected with the mapped reason, and nothing else, on a refused write', async () => {
+		const { service, aiPreferenceService, telemetry } = buildService();
+		aiPreferenceService.create.mockRejectedValue(new ConflictError('dup'));
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		await context.aiPreferenceService!.create({ content: 'Keep replies short.', scope: 'user' });
+
+		expect(telemetry.track).toHaveBeenCalledTimes(1);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+			{
+				surface: 'aia',
+				reason: 'duplicate',
+				scope_type: 'user',
+				text_length: 19,
+			},
+		);
+	});
+
+	it.each(['blocked_by_admin', 'too_long', 'failed'] as const)(
+		'recordRejection(%s) fires write_rejected directly, without calling create',
+		(reason) => {
+			const { service, aiPreferenceService, telemetry } = buildService();
+			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+			context.aiPreferenceService!.recordRejection(reason, 19);
+
+			expect(telemetry.track).toHaveBeenCalledTimes(1);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+				{
+					surface: 'aia',
+					reason,
+					scope_type: 'user',
+					text_length: 19,
+				},
+			);
+			expect(aiPreferenceService.create).not.toHaveBeenCalled();
+		},
+	);
 });
 
 describe('createCredentialAdapter', () => {

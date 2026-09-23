@@ -45,7 +45,7 @@ import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/typ
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import type { ComputerUseChannel } from '@n8n/api-types';
+import { DEFAULT_INSTANCE_AI_PERMISSIONS, type ComputerUseChannel } from '@n8n/api-types';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -366,7 +366,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	function getPermission(key: keyof InstanceAiPermissions): InstanceAiPermissionMode {
 		const draftVal = draft.permissions?.[key];
 		if (draftVal !== undefined) return draftVal;
-		return settings.value?.permissions?.[key] ?? 'require_approval';
+		// A key the server did not send falls back to its own default, not to
+		// `require_approval`: not every permission defaults to approval.
+		return settings.value?.permissions?.[key] ?? DEFAULT_INSTANCE_AI_PERMISSIONS[key];
 	}
 
 	// ── Gateway status fetch ──────────────────────────────────────────────

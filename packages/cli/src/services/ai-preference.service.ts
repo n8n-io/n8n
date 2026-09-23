@@ -673,15 +673,15 @@ function singleLine(text: string): string {
  * the real one.
  */
 export const AI_PREFERENCES_REPLACES_EARLIER =
-	'This block replaces every earlier ai-preferences block in this conversation. Apply this one and set the earlier copies aside.';
+	'This block lists the saved preferences that apply now. It replaces every earlier ai-preferences block and earlier chat or tool claims about saved preferences. Do not treat a preference missing from this block as a standing rule, even if the user previously asked to save it. Follow the current user request.';
 
 /**
- * Sent when every preference is gone but an earlier turn of the conversation carried a
- * block: silence would leave the model applying the deleted preferences. Constant text, so
+ * Sent when every preference is gone but the conversation carries an earlier block or
+ * successful save. Silence would leave the model applying deleted preferences. Constant text, so
  * the change rule treats it like any other block and a thread that stays empty carries it
  * once.
  */
-export const AI_PREFERENCES_CLEARED_BLOCK = `<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\nThe user has no saved preferences now. Do not apply preferences an earlier block carried.\n</ai-preferences>`;
+export const AI_PREFERENCES_CLEARED_BLOCK = `<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\nThe user has no saved preferences now. Do not continue applying a previously saved preference from this conversation.\n</ai-preferences>`;
 
 /**
  * The same text as `renderAiPreferences`, wrapped in one tagged block, or `undefined` when there

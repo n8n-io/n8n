@@ -7,8 +7,10 @@ import type {
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { orchestratorAgentId } from '@n8n/instance-ai';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { AiPreferenceService } from '@/services/ai-preference.service';
+import { Telemetry } from '@/telemetry';
 
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 
@@ -30,6 +32,7 @@ export class InstanceAiPreferenceCardService {
 	constructor(
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly eventBus: InProcessEventBus,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	async undo(
@@ -64,6 +67,12 @@ export class InstanceAiPreferenceCardService {
 			runId,
 			agentId: orchestratorAgentId(runId),
 			payload: { toolCallId, preferenceId, state: 'edited', content: preference.content },
+		});
+		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+			surface: 'aia',
+			outcome: 'accepted_after_edit',
+			scope_type: 'user',
+			text_length: preference.content.length,
 		});
 		return { preference, event };
 	}
