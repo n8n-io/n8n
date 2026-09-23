@@ -95,8 +95,8 @@ describe('McpToolSettingsContent', () => {
 		]);
 	});
 
-	it('keeps write tools on ask when allowing them is not confirmed', async () => {
-		confirm.mockResolvedValue(MODAL_CANCEL);
+	it('keeps write tools on ask when the primary action is selected', async () => {
+		confirm.mockResolvedValue(MODAL_CONFIRM);
 		const { emitted, getByTestId } = renderComponent({
 			props: {
 				item: item({
@@ -109,14 +109,20 @@ describe('McpToolSettingsContent', () => {
 		await flushPromises();
 		await fireEvent.click(getByTestId('tools-connection-settings-save'));
 
-		expect(confirm).toHaveBeenCalledOnce();
+		expect(confirm).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				confirmButtonText: 'Keep Ask first',
+				cancelButtonText: 'Allow anyway',
+			}),
+		);
 		expect(emitted().save).toEqual([
 			[{ categories: { read: 'always_allow', write: 'require_approval' } }],
 		]);
 	});
 
-	it('allows write tools after confirmation', async () => {
-		confirm.mockResolvedValue(MODAL_CONFIRM);
+	it('allows write tools after choosing Allow anyway', async () => {
+		confirm.mockResolvedValue(MODAL_CANCEL);
 		const { emitted, getByTestId } = renderComponent({
 			props: {
 				item: item({
@@ -146,6 +152,8 @@ describe('McpToolSettingsContent', () => {
 		expect(getByTestId('tools-connection-failure')).toBeVisible();
 		expect(getByText(/credential expired/i)).toBeVisible();
 		expect(getByLabelText('Read-only tools')).toBeDisabled();
+		expect(getByTestId('tools-connection-count-read')).toHaveTextContent('—');
+		expect(getByTestId('tools-connection-count-write')).toHaveTextContent('—');
 		expect(getByTestId('tools-connection-permission-read').querySelector('input')).toBeDisabled();
 		expect(getByTestId('tools-connection-settings-save')).toBeDisabled();
 

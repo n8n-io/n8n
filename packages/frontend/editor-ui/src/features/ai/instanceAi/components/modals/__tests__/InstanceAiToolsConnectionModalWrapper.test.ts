@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { defineComponent, nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import InstanceAiToolsConnectionModalWrapper from '../InstanceAiToolsConnectionModalWrapper.vue';
 import type {
@@ -13,6 +14,7 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 
 const featureFlags = vi.hoisted(() => ({ browserUse: false, computerUse: false }));
+const confirmRemoveMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -45,17 +47,20 @@ const {
 	mockConnectWithCredential,
 	mockIgnorePendingConnectResult,
 	mockUpdateConnection,
+	mockDisconnect,
 	mockIsConnectLocked,
 	mcpStoreMock,
 } = vi.hoisted(() => {
 	const mockConnect = vi.fn();
 	const mockUpdateConnection = vi.fn();
+	const mockDisconnect = vi.fn();
 	return {
 		mockConnect,
 		mockConnectServer: vi.fn(),
 		mockConnectWithCredential: vi.fn(),
 		mockIgnorePendingConnectResult: vi.fn(),
 		mockUpdateConnection,
+		mockDisconnect,
 		mockIsConnectLocked: vi.fn(),
 		mcpStoreMock: {
 			connections: [] as Array<{
@@ -88,7 +93,7 @@ const {
 			fetchConnectionToolsLazy: vi.fn(),
 			connect: mockConnect,
 			updateConnection: mockUpdateConnection,
-			disconnect: vi.fn(),
+			disconnect: mockDisconnect,
 		},
 	};
 });
@@ -189,6 +194,10 @@ vi.mock('@n8n/composables/useToast', () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: confirmRemoveMock }),
+}));
+
 const linearItem: McpServerConnectionItem = {
 	id: 'linear',
 	kind: 'mcp-server',
@@ -244,6 +253,10 @@ function emitModalEvent<Args extends unknown[]>(eventName: string, ...args: Args
 
 function emitSave(settings: ToolConnectionSettings): void {
 	emitModalEvent('onSave', connectedLinearItem, settings);
+}
+
+function emitDisconnect(): void {
+	emitModalEvent('onDisconnect', connectedLinearItem);
 }
 
 function emitSelectCredential(): void {
@@ -303,6 +316,8 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		mockConnectServer.mockResolvedValue(null);
 		mockConnectWithCredential.mockResolvedValue(null);
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
+		mockDisconnect.mockResolvedValue(true);
+		confirmRemoveMock.mockResolvedValue(MODAL_CONFIRM);
 		mockIsConnectLocked.mockReturnValue(false);
 	});
 
@@ -364,6 +379,32 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		await flushPromises();
 
 		expect(telemetryMock.trackToolPermissionsUpdated).not.toHaveBeenCalled();
+	});
+
+	it('keeps the connector when removal is cancelled', async () => {
+		confirmRemoveMock.mockResolvedValue(MODAL_CANCEL);
+		renderComponent();
+
+		emitDisconnect();
+		await flushPromises();
+
+		expect(confirmRemoveMock).toHaveBeenCalledWith(
+			'tools.connection.settings.removeConfirm.description',
+			expect.objectContaining({
+				title: 'tools.connection.settings.removeConfirm.title',
+				confirmButtonText: 'tools.connection.settings.removeConfirm.confirmButton',
+			}),
+		);
+		expect(mockDisconnect).not.toHaveBeenCalled();
+	});
+
+	it('removes the connector after confirmation', async () => {
+		renderComponent();
+
+		emitDisconnect();
+		await flushPromises();
+
+		expect(mockDisconnect).toHaveBeenCalledWith('conn-1');
 	});
 
 	it('closes the modal after saving settings opened directly', async () => {

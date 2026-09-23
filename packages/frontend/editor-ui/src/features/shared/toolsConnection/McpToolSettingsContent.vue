@@ -11,7 +11,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CANCEL } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import McpDetailBody from './McpDetailBody.vue';
 import type { McpServerConnectionItem, McpToolSettings } from './types';
@@ -131,11 +131,11 @@ async function updateCategory(category: McpToolCategory, permission: McpToolPerm
 			}),
 			{
 				title: i18n.baseText('tools.connection.permissions.write.confirm.title'),
-				confirmButtonText: i18n.baseText('tools.connection.permissions.write.confirm.allow'),
-				cancelButtonText: i18n.baseText('tools.connection.permissions.write.confirm.keepAsk'),
+				confirmButtonText: i18n.baseText('tools.connection.permissions.write.confirm.keepAsk'),
+				cancelButtonText: i18n.baseText('tools.connection.permissions.write.confirm.allow'),
 			},
 		);
-		if (confirmed !== MODAL_CONFIRM) return;
+		if (confirmed !== MODAL_CANCEL) return;
 	}
 
 	categories.value[category] = permission;
@@ -257,7 +257,7 @@ function handleRecovery() {
 								theme="tertiary"
 								size="xsmall"
 							>
-								{{ group.tools.length }}
+								{{ arePermissionsDisabled ? '—' : group.tools.length }}
 							</N8nBadge>
 						</div>
 						<N8nText size="small" color="text-light">{{ group.description }}</N8nText>
@@ -265,15 +265,19 @@ function handleRecovery() {
 					<N8nSelect
 						:class="$style.permissionSelect"
 						:model-value="
-							hasCategoryOverrides(group.category)
-								? i18n.baseText('tools.connection.permissions.custom')
-								: categories[group.category]
+							hasCategoryOverrides(group.category) ? undefined : categories[group.category]
 						"
+						:placeholder="hasCategoryOverrides(group.category) ? ' ' : undefined"
 						size="small"
 						:disabled="arePermissionsDisabled"
 						:data-test-id="`tools-connection-permission-${group.category}`"
 						@update:model-value="onCategoryChange(group.category, $event)"
 					>
+						<template v-if="hasCategoryOverrides(group.category)" #prefix>
+							<N8nText size="small">
+								{{ i18n.baseText('tools.connection.permissions.custom') }}
+							</N8nText>
+						</template>
 						<N8nOption
 							v-for="option in permissionOptions"
 							:key="option.value"

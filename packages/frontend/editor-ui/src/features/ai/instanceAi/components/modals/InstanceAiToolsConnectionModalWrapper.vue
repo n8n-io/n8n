@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, provide, ref, watch, type Component } from 'vue';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
@@ -63,6 +65,7 @@ const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
 const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
+const message = useMessage();
 
 // The store owns Computer Use availability, so every entry point and the message
 // payload report the same thing.
@@ -376,6 +379,19 @@ async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSet
 
 async function handleDisconnect(item: ToolConnectionItem) {
 	if (item.kind === 'mcp-server') {
+		const confirmed = await message.confirm(
+			i18n.baseText('tools.connection.settings.removeConfirm.description', {
+				interpolate: { service: item.title },
+			}),
+			{
+				title: i18n.baseText('tools.connection.settings.removeConfirm.title', {
+					interpolate: { name: item.title },
+				}),
+				confirmButtonText: i18n.baseText('tools.connection.settings.removeConfirm.confirmButton'),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+			},
+		);
+		if (confirmed !== MODAL_CONFIRM) return;
 		ignorePendingConnectResult(serverSlugForItem(item));
 	}
 	const disconnected = await mcpStore.disconnect(item.id);
