@@ -1,0 +1,20 @@
+packages/@n8n/engine/docs/adr/ADR-20260904-resume-urls-carry-a-derived-token.md
+  s_13d0f2e1be0144::t_77ea7495d097b0 31-36,42-49,95-101
+  s_13d0f2e1be0144::t_9613c236d13bcd 121-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c562adc1f6cd615632d1b4907eeee1c356ae8276",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
