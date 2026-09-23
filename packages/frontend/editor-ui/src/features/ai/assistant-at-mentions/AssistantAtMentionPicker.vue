@@ -39,6 +39,7 @@ const props = withDefaults(
 		projectId?: string;
 		artifacts?: readonly WorkflowArtifactReference[];
 		activeWorkflowId?: string;
+		excludedKeys?: readonly string[];
 		inputElement?: HTMLTextAreaElement | null;
 		reference?: HTMLElement | null;
 		disabled?: boolean;
@@ -47,6 +48,7 @@ const props = withDefaults(
 		projectId: undefined,
 		artifacts: () => [],
 		activeWorkflowId: undefined,
+		excludedKeys: () => [],
 		inputElement: null,
 		reference: null,
 		disabled: false,
@@ -75,15 +77,25 @@ const workflowProvider = createWorkflowMentionSourceProvider({
 const sources = useAssistantMentionSources([artifactProvider, workflowProvider]);
 const searchPending = ref(false);
 let highlightedForCurrentOpen = false;
+const excludedKeys = computed(() => new Set(props.excludedKeys));
 
-function toMenuItem(item: AssistantMentionItem, searchMode: boolean): MentionMenuItem {
+function isMenuItem(item: MentionMenuItem | undefined): item is MentionMenuItem {
+	return item !== undefined;
+}
+
+function toMenuItem(item: AssistantMentionItem, searchMode: boolean): MentionMenuItem | undefined {
 	const indexEntry = artifactIndex.getEntry(item.workflowId);
+	const isExcluded = excludedKeys.value.has(item.key);
+	const children = item.children?.map((child) => toMenuItem(child, false)).filter(isMenuItem);
+	if (isExcluded && children?.length === 0) return undefined;
+	if (isExcluded && !item.hasChildren) return undefined;
+
 	return {
 		id: item.key,
 		label: searchMode ? item.breadcrumbs.join(' > ') : item.label,
 		data: { item },
-		selectable: item.hasChildren || undefined,
-		children: item.children?.map((child) => toMenuItem(child, false)),
+		selectable: item.hasChildren && !isExcluded ? true : undefined,
+		children,
 		loading:
 			item.hasChildren === true && item.children === undefined && indexEntry?.status !== 'error',
 		loadingItemCount: 3,
@@ -92,10 +104,14 @@ function toMenuItem(item: AssistantMentionItem, searchMode: boolean): MentionMen
 
 const menuItems = computed<MentionMenuItem[]>(() => {
 	if (props.query.trim()) {
-		return sources.searchResults.value.map((item) => toMenuItem(item, true));
+		return sources.searchResults.value.map((item) => toMenuItem(item, true)).filter(isMenuItem);
 	}
+	const sections = sources.browseSections.value.map((section) => ({
+		...section,
+		items: section.items.map((item) => toMenuItem(item, false)).filter(isMenuItem),
+	}));
 
-	return sources.browseSections.value.flatMap((section) => {
+	return sections.flatMap((section) => {
 		if (section.items.length === 0) return [];
 		return [
 			{
@@ -107,7 +123,7 @@ const menuItems = computed<MentionMenuItem[]>(() => {
 				),
 				header: true,
 			},
-			...section.items.map((item) => toMenuItem(item, false)),
+			...section.items,
 		];
 	});
 });
