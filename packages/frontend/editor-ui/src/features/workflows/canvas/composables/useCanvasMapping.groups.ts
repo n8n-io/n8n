@@ -9,8 +9,8 @@ import type {
 	NodeExecutionSnapshot,
 } from '../canvas.types';
 import {
-	CANVAS_NODE_GROUP_HANDLE_LEFT,
-	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CANVAS_NODE_GROUP_INPUT_HANDLE,
+	CANVAS_NODE_GROUP_OUTPUT_HANDLE,
 	CANVAS_NODE_GROUP_TYPE,
 	createCanvasGroupNodeId,
 } from '../canvas.types';
@@ -296,8 +296,8 @@ export function buildCollapsedGroupByNodeId(
 }
 
 /**
- * Visually remap collapsed-group connections to the group header handles
- * (left / right) so VueFlow can draw them while the member nodes are hidden.
+ * Visually remap collapsed-group connections to the group header input/output
+ * handles so VueFlow can draw them while the member nodes are hidden.
  * Connections fully inside a collapsed group are dropped.
  * External-only connections pass through unchanged.
  *
@@ -333,9 +333,9 @@ export function remapCollapsedGroupConnections(
 
 		const remapped = {
 			source: sourceGroup ? createCanvasGroupNodeId(sourceGroup.id) : conn.source,
-			sourceHandle: sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle,
+			sourceHandle: sourceGroup ? CANVAS_NODE_GROUP_OUTPUT_HANDLE : conn.sourceHandle,
 			target: targetGroup ? createCanvasGroupNodeId(targetGroup.id) : conn.target,
-			targetHandle: targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle,
+			targetHandle: targetGroup ? CANVAS_NODE_GROUP_INPUT_HANDLE : conn.targetHandle,
 		};
 
 		const id = createCanvasConnectionId(remapped);

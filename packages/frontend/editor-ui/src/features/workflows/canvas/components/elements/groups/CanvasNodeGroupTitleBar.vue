@@ -26,8 +26,8 @@ import {
 import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.groups';
 import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
 import {
-	CANVAS_NODE_GROUP_HANDLE_LEFT,
-	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CANVAS_NODE_GROUP_INPUT_HANDLE,
+	CANVAS_NODE_GROUP_OUTPUT_HANDLE,
 	CanvasConnectionMode,
 	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
@@ -432,7 +432,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	>
 		<div :class="$style.titleBar">
 			<Handle
-				:id="CANVAS_NODE_GROUP_HANDLE_LEFT"
+				:id="CANVAS_NODE_GROUP_INPUT_HANDLE"
 				type="target"
 				:position="Position.Left"
 				:class="[$style.handle, { [$style.connectableHandle]: isConnectable }]"
@@ -444,7 +444,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 				<CanvasHandleDot v-if="isConnectable" handle-classes="target" />
 			</Handle>
 			<Handle
-				:id="CANVAS_NODE_GROUP_HANDLE_RIGHT"
+				:id="CANVAS_NODE_GROUP_OUTPUT_HANDLE"
 				type="source"
 				:position="Position.Right"
 				:class="[$style.handle, { [$style.connectableHandle]: isConnectable }]"

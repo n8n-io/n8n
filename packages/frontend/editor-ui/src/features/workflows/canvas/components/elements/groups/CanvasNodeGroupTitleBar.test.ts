@@ -46,7 +46,11 @@ import CanvasNodeGroupTitleBar from './CanvasNodeGroupTitleBar.vue';
 import { GROUP_HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
 import { useCanvasNodeGroupDescriptionVisibility } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
 import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
-import type { CanvasGroupNodeData } from '../../../canvas.types';
+import {
+	CANVAS_NODE_GROUP_INPUT_HANDLE,
+	CANVAS_NODE_GROUP_OUTPUT_HANDLE,
+	type CanvasGroupNodeData,
+} from '../../../canvas.types';
 
 const baseGroup: IWorkflowGroup = {
 	id: 'g1',
@@ -677,10 +681,15 @@ describe('CanvasNodeGroupTitleBar', () => {
 	});
 
 	describe('handles', () => {
-		it('renders left and right handles for re-anchored edges', () => {
+		it('renders semantic input and output handles for re-anchored edges', () => {
 			const wrapper = render();
 			const root = wrapper.getByTestId('canvas-node-group');
-			expect(root.querySelectorAll('.vue-flow__handle').length).toBeGreaterThanOrEqual(2);
+			const handles = root.querySelectorAll('.vue-flow__handle');
+
+			expect([...handles].map((handle) => handle.getAttribute('data-handle-id'))).toEqual([
+				CANVAS_NODE_GROUP_INPUT_HANDLE,
+				CANVAS_NODE_GROUP_OUTPUT_HANDLE,
+			]);
 		});
 	});
 
