@@ -33,10 +33,12 @@ import { useInstallNode } from '@/features/settings/communityNodes/composables/u
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
+	getNodeItemRestriction,
 	isAiGatewayEligibleNode,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
@@ -120,6 +122,7 @@ const toast = useToast();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const {
 	availableToolTypes,
@@ -234,6 +237,10 @@ onMounted(() => {
 	if (settingsStore.isAiGatewayEnabled) {
 		void aiGatewayStore.fetchConfig();
 		void aiGatewayStore.fetchWallet();
+	}
+	// The policy store is passive and per project; the agent's tools run in this project.
+	if (props.data.projectId) {
+		void typeAvailabilityPoliciesStore.fetchForProject(props.data.projectId);
 	}
 });
 
@@ -400,6 +407,8 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 }
 
 async function handleAddTool(nodeType: INodeTypeDescription) {
+	if (getNodeItemRestriction(nodeType.name)) return;
+
 	if (isMcpRelatedNodeType(nodeType.name)) {
 		handleAddMcpServer(nodeType);
 		return;
@@ -443,6 +452,8 @@ function addNodeTool(nodeType: INodeTypeDescription) {
  * the n8n Connect managed credential is pre-selected, so no credential setup.
  */
 function addManagedNodeTool(nodeType: INodeTypeDescription) {
+	if (getNodeItemRestriction(nodeType.name)) return;
+
 	toolTelemetry.trackAddStarted('node');
 	const newRef = nodeTypeToNewToolRef(nodeType);
 
@@ -678,6 +689,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		communityPreview,
 		installing: installingToolName.value === nodeType.name,
 		installDisabled: communityPreview && !usersStore.isAdminOrOwner,
+		restriction: getNodeItemRestriction(nodeType.name) ?? undefined,
 	};
 }
 
@@ -824,6 +836,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
 	// the row's own tooltip already explains why, so activating does nothing.
 	if (item.disabled) return;
+	if (item.kind === 'node' && item.restriction) return;
 	if (item.status === 'connecting') return;
 	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {

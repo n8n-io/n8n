@@ -11,6 +11,7 @@ import {
 import type { DialogSize, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
+import { partitionLast } from '@n8n/utils/sort/partition-last';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
@@ -151,7 +152,16 @@ function allSortRank(item: ToolConnectionItem): number {
 	return 2;
 }
 
+function isRestrictedItem(item: ToolConnectionItem): boolean {
+	return item.kind === 'node' && item.restriction !== undefined;
+}
+
+/** Restricted tools stay findable but sit after every usable tool, on every tab. */
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
+	return partitionLast(unrankedItemsForCategory(category), isRestrictedItem);
+}
+
+function unrankedItemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
 	// Stable sort keeps each bucket in its original order (Array.sort is stable).
 	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
 	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));

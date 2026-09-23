@@ -1,3 +1,4 @@
+import type { NodeTypeAvailability } from '@n8n/api-types';
 import type { InjectionKey, Ref } from 'vue';
 
 export type ConnectionItemKind =
@@ -62,6 +63,11 @@ export interface BaseConnectionItem {
 export interface NodeConnectionItem extends BaseConnectionItem {
 	kind: 'node';
 	nodeTypeName: string;
+	/**
+	 * Set when a node type policy blocks this type. The row greys out, shows a lock with the
+	 * explanation, and ignores activation. The consumer decides; the row only renders.
+	 */
+	restriction?: NodeTypeAvailability;
 }
 
 export interface WorkflowConnectionItem extends BaseConnectionItem {
