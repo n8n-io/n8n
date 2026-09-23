@@ -123,6 +123,18 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/** The ids among `ids` that still have a row, regardless of usage scope. */
+	async findExistingIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const rows = await this.find({
+			where: { id: In(ids) },
+			select: ['id'],
+		});
+
+		return rows.map((row) => row.id);
+	}
+
 	/** Filters `ids` down to the global credentials, which every project can use. */
 	async findGlobalProjectCredentialIds(ids: string[]): Promise<string[]> {
 		if (ids.length === 0) return [];

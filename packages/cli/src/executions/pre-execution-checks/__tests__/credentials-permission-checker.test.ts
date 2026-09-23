@@ -73,6 +73,8 @@ describe('CredentialsPermissionChecker', () => {
 		projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce([personalProject.id]);
 		credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 		credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([]);
+		// Default: every id passed in still exists. Override per test to simulate a deleted one.
+		credentialsRepository.findExistingIds.mockImplementation(async (ids) => ids);
 		ownershipService.getPersonalProjectOwnersCached.mockResolvedValue(new Map());
 	});
 
@@ -806,6 +808,18 @@ describe('CredentialsPermissionChecker', () => {
 			expect(credentialsRepository.findNamesByIds).not.toHaveBeenCalled();
 		});
 
+		it('still blocks a deleted credential even for a user who may use any credential', async () => {
+			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
+			// The credential row is gone entirely — not just a different usage scope.
+			credentialsRepository.findExistingIds.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([]);
+
+			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([
+				{ id: credentialId, name: 'Test Credential', exists: false },
+			]);
+			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
+		});
+
 		it('returns an empty array when the user has access to every credential', async () => {
 			userRepository.findOne.mockResolvedValueOnce(
 				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
@@ -828,9 +842,22 @@ describe('CredentialsPermissionChecker', () => {
 			]);
 
 			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([
-				{ id: credentialId, name: 'Test Credential' },
+				{ id: credentialId, name: 'Test Credential', exists: true },
 			]);
 			expect(credentialsRepository.findNamesByIds).toHaveBeenCalledWith([credentialId]);
+		});
+
+		it('still reports a deleted credential, naming it from the node when the database has no row', async () => {
+			userRepository.findOne.mockResolvedValueOnce(
+				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
+			);
+			credentialsFinderService.findCredentialsForUser.mockResolvedValueOnce([]);
+			// The credential row is gone — the database lookup finds nothing to name it with.
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([]);
+
+			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([
+				{ id: credentialId, name: 'Test Credential', exists: false },
+			]);
 		});
 
 		it('reports every inaccessible credential, not just the unavailable ones', async () => {
@@ -856,8 +883,8 @@ describe('CredentialsPermissionChecker', () => {
 			await expect(
 				permissionChecker.findInaccessibleForUser(userId, [node, otherNode]),
 			).resolves.toEqual([
-				{ id: credentialId, name: 'Test Credential' },
-				{ id: otherCredentialId, name: 'Other Credential' },
+				{ id: credentialId, name: 'Test Credential', exists: true },
+				{ id: otherCredentialId, name: 'Other Credential', exists: true },
 			]);
 
 			// The unavailable credential must not short-circuit the check for the remaining one.
@@ -875,7 +902,7 @@ describe('CredentialsPermissionChecker', () => {
 			]);
 
 			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([
-				{ id: credentialId, name: 'Test Credential' },
+				{ id: credentialId, name: 'Test Credential', exists: true },
 			]);
 			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
 			expect(credentialsRepository.findNamesByIds).toHaveBeenCalledWith([credentialId]);

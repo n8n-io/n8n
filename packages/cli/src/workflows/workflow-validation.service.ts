@@ -397,11 +397,27 @@ export class WorkflowValidationService {
 		);
 		if (inaccessible.length === 0) return { isValid: true };
 
-		const plural = inaccessible.length > 1;
-		const credNames = formatCredentialNames(inaccessible);
-		const error = `Cannot publish workflow: you do not have access to credential${plural ? 's' : ''} ${credNames}. Ask ${plural ? 'their owners' : 'its owner'} to share ${plural ? 'them' : 'it'} with you.`;
+		const unshared = inaccessible.filter((c) => c.exists);
+		const missing = inaccessible.filter((c) => !c.exists);
+		const sentences: string[] = [];
 
-		return { isValid: false, error };
+		if (unshared.length > 0) {
+			const plural = unshared.length > 1;
+			const credNames = formatCredentialNames(unshared);
+			sentences.push(
+				`You do not have access to credential${plural ? 's' : ''} ${credNames}. Ask ${plural ? 'their owners' : 'its owner'} to share ${plural ? 'them' : 'it'} with you.`,
+			);
+		}
+
+		if (missing.length > 0) {
+			const plural = missing.length > 1;
+			const credNames = formatCredentialNames(missing);
+			sentences.push(
+				`Credential${plural ? 's' : ''} ${credNames} no longer exist${plural ? '' : 's'}. Update the node to use a different credential.`,
+			);
+		}
+
+		return { isValid: false, error: `Cannot publish workflow: ${sentences.join(' ')}` };
 	}
 
 	/**

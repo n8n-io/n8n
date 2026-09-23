@@ -1424,7 +1424,7 @@ describe('WorkflowValidationService', () => {
 
 		it('names the credential the publisher cannot use', async () => {
 			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
-				{ id: 'cred-1', name: 'Cred One' },
+				{ id: 'cred-1', name: 'Cred One', exists: true },
 			]);
 
 			const result = await service.validatePublisherCredentialAccess(user, nodes);
@@ -1432,14 +1432,43 @@ describe('WorkflowValidationService', () => {
 			expect(result).toEqual({
 				isValid: false,
 				error:
-					'Cannot publish workflow: you do not have access to credential "Cred One". Ask its owner to share it with you.',
+					'Cannot publish workflow: You do not have access to credential "Cred One". Ask its owner to share it with you.',
+			});
+		});
+
+		it('gives a different message for a credential that no longer exists', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: false },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: Credential "Cred One" no longer exists. Update the node to use a different credential.',
+			});
+		});
+
+		it('combines both messages when some credentials are unshared and others no longer exist', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+				{ id: 'cred-2', name: 'Cred Two', exists: false },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: You do not have access to credential "Cred One". Ask its owner to share it with you. Credential "Cred Two" no longer exists. Update the node to use a different credential.',
 			});
 		});
 
 		it('pluralizes the message when the publisher cannot use several credentials', async () => {
 			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
-				{ id: 'cred-1', name: 'Cred One' },
-				{ id: 'cred-2', name: 'Cred Two' },
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+				{ id: 'cred-2', name: 'Cred Two', exists: true },
 			]);
 
 			const result = await service.validatePublisherCredentialAccess(user, nodes);
@@ -1447,7 +1476,7 @@ describe('WorkflowValidationService', () => {
 			expect(result).toEqual({
 				isValid: false,
 				error:
-					'Cannot publish workflow: you do not have access to credentials "Cred One", "Cred Two". Ask their owners to share them with you.',
+					'Cannot publish workflow: You do not have access to credentials "Cred One", "Cred Two". Ask their owners to share them with you.',
 			});
 		});
 	});

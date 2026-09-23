@@ -70,6 +70,26 @@ describe('CredentialsRepository', () => {
 		});
 	});
 
+	describe('findExistingIds', () => {
+		it('returns only the ids that still have a row', async () => {
+			entityManager.find.mockResolvedValueOnce([mock<CredentialsEntity>({ id: 'cred-1' })]);
+
+			const result = await credentialsRepository.findExistingIds(['cred-1', 'deleted-cred']);
+
+			expect(result).toEqual(['cred-1']);
+			expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { id: In(['cred-1', 'deleted-cred']) },
+				select: ['id'],
+			});
+		});
+
+		it('does not query for an empty id list', async () => {
+			await expect(credentialsRepository.findExistingIds([])).resolves.toEqual([]);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
 	it('loads only binding metadata and preserves credential and project pairs', async () => {
 		entityManager.find
 			.mockResolvedValueOnce([
