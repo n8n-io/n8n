@@ -817,6 +817,32 @@ describe('buildTimelineBlocks', () => {
 		const completed = blocksOf([reasoning('r1')], [], 'completed');
 		expect(completed[0].type === 'thinking' && completed[0].active).toBe(false);
 	});
+
+	describe('save_user_preference', () => {
+		const base: Partial<InstanceAiToolCallState> = {
+			toolCallId: 'tc-1',
+			toolName: 'save_user_preference',
+		};
+
+		test('renders a preference block once the result is a saved preference', () => {
+			const tc = makeToolCall({
+				...base,
+				result: { ok: true, preference: { id: 'p', content: 'x', scope: 'user' } },
+			});
+			const blocks = blocksOf([toolEntry('tc-1', 'r1')], [tc]);
+
+			expect(blocks).toEqual([{ type: 'preference', key: 'preference-0', toolCall: tc }]);
+		});
+
+		test('hides the call while loading and when the write was rejected', () => {
+			for (const tc of [
+				makeToolCall({ ...base, isLoading: true }),
+				makeToolCall({ ...base, result: { ok: false, reason: 'duplicate', message: 'dup' } }),
+			]) {
+				expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([]);
+			}
+		});
+	});
 });
 
 describe('isStreamingTimelineEntry', () => {
