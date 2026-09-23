@@ -5,9 +5,14 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 import type { InstanceAiSetupItem } from '@n8n/api-types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { SetupPanelGroup } from '../setupPanelGroups';
-import type { SetupPanelRow } from './useSetupPanelState';
-import type { SetupCredentialItem, SetupPanelApplyResult } from './useSetupPanelActions';
+import type { SetupPanelRow, SetupPanelThreadSource } from './useSetupPanelState';
+import {
+	resolveSetupCredentialItem,
+	type SetupCredentialItem,
+	type SetupPanelApplyResult,
+} from './useSetupPanelActions';
 
 export type SetupPanelConnectionMethod = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CREDENTIALS.USER_STARTED_CREDENTIAL_CONNECTION
@@ -37,7 +42,7 @@ const states = new WeakMap<object, ReturnType<typeof createTelemetryState>>();
 
 export function useSetupPanelTelemetry(options: {
 	workflowId: MaybeRefOrGetter<string>;
-	thread: { id: string };
+	thread: { id: string } & Pick<SetupPanelThreadSource, 'setupItemsByWorkflowId'>;
 	rows: MaybeRefOrGetter<SetupPanelRow[]>;
 	groups: MaybeRefOrGetter<SetupPanelGroup[]>;
 	shownItemIds: MaybeRefOrGetter<string[]>;
@@ -51,6 +56,7 @@ export function useSetupPanelTelemetry(options: {
 }) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
+	const nodeTypesStore = useNodeTypesStore();
 	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
 	const state = states.get(options.thread) ?? createTelemetryState();
 	states.set(options.thread, state);
@@ -65,8 +71,11 @@ export function useSetupPanelTelemetry(options: {
 		thread_id: options.thread.id,
 	});
 
-	function getItems(rows: SetupPanelRow[], readNode = options.getNodeByName): SavedSetupItem[] {
-		return rows.flatMap<SavedSetupItem>(({ item }) => {
+	function getItems(
+		setupItems: InstanceAiSetupItem[],
+		readNode = options.getNodeByName,
+	): SavedSetupItem[] {
+		return setupItems.flatMap<SavedSetupItem>((item) => {
 			if (item.kind === 'credential') {
 				return (item.nodeBindings ?? []).flatMap((binding) => {
 					const node = readNode(binding.nodeName);
@@ -99,7 +108,21 @@ export function useSetupPanelTelemetry(options: {
 	function trackSaved(workflow: IWorkflowDb) {
 		if (!state.owners.has(owner) || workflow.id !== toValue(options.workflowId)) return;
 		const nodes = new Map(workflow.nodes.map((node) => [node.name, node]));
-		const items = getItems(toValue(options.rows), (name) => nodes.get(name));
+		// The preview can still contain the pre-build graph when the save completes.
+		const announced = Object.hasOwn(options.thread.setupItemsByWorkflowId, workflow.id)
+			? options.thread.setupItemsByWorkflowId[workflow.id]
+			: [];
+		const requirements = new Map([
+			...announced.map((item) => [item.id, item] as const),
+			...toValue(options.rows).map(({ item }) => [item.id, item] as const),
+		]);
+		const savedRequirements = [...requirements.values()].map((item) =>
+			item.kind === 'credential'
+				? resolveSetupCredentialItem(item, workflow.nodes, nodeTypesStore)
+				: item,
+		);
+		const readNode = (name: string) => nodes.get(name);
+		const items = getItems(savedRequirements, readNode);
 		if (items.length === 0) return;
 		telemetry.track(TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED, {
 			...context(),
@@ -199,8 +222,8 @@ export function useSetupPanelTelemetry(options: {
 						0,
 					),
 					items: getItems([
-						...(group.credential ? [group.credential] : []),
-						...group.parameters,
+						...(group.credential ? [group.credential.item] : []),
+						...group.parameters.map(({ item }) => item),
 					]).map(({ completed, ...item }) => item),
 				});
 			}
