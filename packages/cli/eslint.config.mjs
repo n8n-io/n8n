@@ -275,6 +275,17 @@ export default defineConfig(
 		},
 	},
 	{
+		// engine-v2 tests reach for `@n8n/engine` the same way the module does, and
+		// the tests block above would reinstate the restriction they are exempt from.
+		files: ['./src/modules/engine-v2/**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION] },
+			],
+		},
+	},
+	{
 		// Only the PEP may import the clearance minter.
 		files: ['./src/policy/policy-enforcement.service.ts'],
 		rules: { '@typescript-eslint/no-restricted-imports': 'off' },
