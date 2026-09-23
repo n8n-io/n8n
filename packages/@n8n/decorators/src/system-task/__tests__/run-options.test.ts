@@ -58,7 +58,12 @@ it.each([
 ])('should reject the nonsensical override %o', (override) => {
 	expect(() =>
 		resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override })),
-	).toThrowError('test-task');
+	).toThrowError(
+		expect.objectContaining({
+			message: 'A system task declares an out-of-range option',
+			extra: expect.objectContaining({ name: 'test-task', field: Object.keys(override)[0] }),
+		}),
+	);
 });
 
 it('should keep the defaults for the fields a task does not override', () => {

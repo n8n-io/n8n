@@ -45,21 +45,15 @@ type Entry = InMemorySystemTaskOptions & {
 };
 
 /**
- * Runs system tasks on in-memory timers, not on the durable scheduler.
- * Its tasks start and stop together, and a stop aborts the runs in flight.
- * Each task runs one occurrence at a time.
- * A failed run is retried while the timers run.
+ * Runs system tasks on in-memory timers. Its tasks start and stop together,
+ * and a stop aborts the runs in flight.
  */
 export class InMemorySystemTaskRunner {
 	private readonly entries: Entry[] = [];
 
 	private started = false;
 
-	/**
-	 * Counts the starts and the stops.
-	 * A stop waits for the runs in flight, so a start can happen before the stop ends.
-	 * The stop compares this count to find out that it is out of date.
-	 */
+	/** Lets a stop detect a start that came in while it waited for its runs. */
 	private generation = 0;
 
 	private controller = new AbortController();
@@ -73,10 +67,7 @@ export class InMemorySystemTaskRunner {
 		private readonly hooks: InMemorySystemTaskHooks,
 	) {}
 
-	/**
-	 * Adds a task and creates its timer.
-	 * The timer starts at once if the other timers already run.
-	 */
+	/** Starts the timer of the task at once if the runner is started. */
 	add(
 		task: SystemTask,
 		schedule: SystemTaskSchedule,
@@ -145,8 +136,7 @@ export class InMemorySystemTaskRunner {
 
 	private stopTimer(entry: Entry): void {
 		entry.timer.stop();
-		clearTimeout(entry.retryTimer);
-		entry.retryTimer = undefined;
+		this.cancelRetry(entry);
 	}
 
 	private createTimer(
@@ -183,10 +173,7 @@ export class InMemorySystemTaskRunner {
 		);
 	}
 
-	/**
-	 * Runs one occurrence. A task runs one occurrence at a time: if a run takes
-	 * longer than the interval, the next occurrence is skipped.
-	 */
+	/** Skips the occurrence if the previous run of the task is still going. */
 	private async run(entry: Entry): Promise<void> {
 		if (entry.inFlightRun) {
 			if (!entry.inFlightRun.skipWarned) {
@@ -197,9 +184,8 @@ export class InMemorySystemTaskRunner {
 			}
 			this.emitSkipped(entry.task, 'overlap');
 		} else {
-			// The new run does the same work as the retry, so drop the retry.
-			clearTimeout(entry.retryTimer);
-			entry.retryTimer = undefined;
+			// This run does the work the retry would do.
+			this.cancelRetry(entry);
 
 			const inFlightRun: InFlightRun = {
 				promise: this.runOnce(entry).finally(() => {
@@ -240,7 +226,7 @@ export class InMemorySystemTaskRunner {
 	private scheduleRetry(entry: Entry): void {
 		const { retryDelaySeconds, effects } = entry.task;
 		if (retryDelaySeconds !== undefined && effects !== 'non-idempotent' && this.started) {
-			clearTimeout(entry.retryTimer);
+			this.cancelRetry(entry);
 			entry.retryTimer = setTimeout(() => {
 				void this.run(entry);
 			}, retryDelaySeconds * Time.seconds.toMilliseconds);
@@ -249,6 +235,11 @@ export class InMemorySystemTaskRunner {
 				name: entry.task.name,
 			});
 		}
+	}
+
+	private cancelRetry(entry: Entry): void {
+		clearTimeout(entry.retryTimer);
+		entry.retryTimer = undefined;
 	}
 
 	private emitSkipped(

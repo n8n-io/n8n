@@ -144,7 +144,7 @@ describe('SystemTaskRunner', () => {
 			metadata.register(DummySystemTask);
 			await initRunner(runner);
 
-			runner.startTimers();
+			runner.startLeaderTimers();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(1);
@@ -156,7 +156,7 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS / 2);
-			runner.startTimers();
+			runner.startLeaderTimers();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS / 2);
 
 			expect(dummy.runCount).toBe(1);
@@ -201,8 +201,8 @@ describe('SystemTaskRunner', () => {
 			metadata.register(DummySystemTask);
 			await initRunner(runner);
 
-			await runner.stopTimers();
-			runner.startTimers();
+			await runner.stopLeaderTimers();
+			runner.startLeaderTimers();
 
 			expect(dummy.runCount).toBe(2);
 		});
@@ -446,7 +446,7 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			const stepdown = runner.stopTimers();
+			const stepdown = runner.stopLeaderTimers();
 			settleCheck(false);
 			await stepdown;
 
@@ -502,7 +502,7 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			const stopping = runner.stopTimers();
+			const stopping = runner.stopLeaderTimers();
 			let stopped = false;
 			void stopping.then(() => {
 				stopped = true;
@@ -533,7 +533,7 @@ describe('SystemTaskRunner', () => {
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 			expect(runSignal?.aborted).toBe(false);
 
-			const stopping = runner.stopTimers();
+			const stopping = runner.stopLeaderTimers();
 
 			expect(runSignal?.aborted).toBe(true);
 			releaseRun();
@@ -550,7 +550,7 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			await runner.stopTimers();
+			await runner.stopLeaderTimers();
 
 			expect(errorReporter.error).not.toHaveBeenCalled();
 			expect(logger.error).not.toHaveBeenCalled();
@@ -566,8 +566,8 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			await runner.stopTimers();
-			runner.startTimers();
+			await runner.stopLeaderTimers();
+			runner.startLeaderTimers();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			expect(runSignals).toHaveLength(2);
@@ -585,7 +585,7 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			await runner.stopTimers();
+			await runner.stopLeaderTimers();
 			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(1);
@@ -596,11 +596,11 @@ describe('SystemTaskRunner', () => {
 			metadata.register(DummySystemTask);
 			await initRunner(runner);
 
-			await runner.stopTimers();
+			await runner.stopLeaderTimers();
 			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
 			expect(dummy.runCount).toBe(0);
 
-			runner.startTimers();
+			runner.startLeaderTimers();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(1);
@@ -612,7 +612,7 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 
 			await runner.shutdown();
-			runner.startTimers();
+			runner.startLeaderTimers();
 			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(0);
@@ -872,7 +872,10 @@ describe('SystemTaskRunner', () => {
 
 			await expect(initRunner(runner)).rejects.toThrow(
 				expect.objectContaining({
-					cause: expect.objectContaining({ message: expect.stringContaining(field) }),
+					cause: expect.objectContaining({
+						message: 'A system task declares an out-of-range option',
+						extra: expect.objectContaining({ field }),
+					}),
 				}),
 			);
 		});
@@ -1033,10 +1036,10 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 			expect(emitted(eventService, 'system-task-timers-started')).toHaveLength(0);
 
-			runner.startTimers();
+			runner.startLeaderTimers();
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-timers-started', {});
 
-			await runner.stopTimers();
+			await runner.stopLeaderTimers();
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-timers-stopped', {});
 		});
 
@@ -1046,7 +1049,7 @@ describe('SystemTaskRunner', () => {
 
 			// A leader check can win leadership before the runner owns the registry,
 			// while the metrics collector is not listening yet.
-			runner.startTimers();
+			runner.startLeaderTimers();
 			expect(emitted(eventService, 'system-task-timers-started')).toHaveLength(0);
 
 			await initRunner(runner);
@@ -1061,9 +1064,9 @@ describe('SystemTaskRunner', () => {
 			dummy.placement = { scope: 'cluster', durable: false, runOnTakeover: true };
 			metadata.register(DummySystemTask);
 
-			runner.startTimers();
+			runner.startLeaderTimers();
 			Object.assign(instanceSettings, { isLeader: false, instanceRole: 'follower' });
-			await runner.stopTimers();
+			await runner.stopLeaderTimers();
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
@@ -1071,7 +1074,7 @@ describe('SystemTaskRunner', () => {
 			expect(dummy.runCount).toBe(0);
 
 			Object.assign(instanceSettings, { isLeader: true, instanceRole: 'leader' });
-			runner.startTimers();
+			runner.startLeaderTimers();
 
 			expect(emitted(eventService, 'system-task-timers-started')).toHaveLength(1);
 			expect(dummy.runCount).toBe(1);
@@ -1091,8 +1094,8 @@ describe('SystemTaskRunner', () => {
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 			expect(dummy.runCount).toBe(1);
 
-			const stopping = runner.stopTimers();
-			runner.startTimers();
+			const stopping = runner.stopLeaderTimers();
+			runner.startLeaderTimers();
 			release();
 			await stopping;
 
@@ -1157,7 +1160,7 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			await runner.stopTimers();
+			await runner.stopLeaderTimers();
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'system-task-run-settled',
@@ -1209,7 +1212,7 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			const stepdown = runner.stopTimers();
+			const stepdown = runner.stopLeaderTimers();
 			settleCheck(false);
 			await stepdown;
 
@@ -1314,7 +1317,7 @@ describe('SystemTaskRunner', () => {
 			metadata.register(PerInstanceDummySystemTask);
 			await initRunner(runner);
 
-			await runner.stopTimers();
+			await runner.stopLeaderTimers();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(0);
@@ -1336,7 +1339,7 @@ describe('SystemTaskRunner', () => {
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 			expect(runSignal?.aborted).toBe(false);
 
-			await runner.stopTimers();
+			await runner.stopLeaderTimers();
 
 			expect(runSignal?.aborted).toBe(false);
 			expect(perInstance.runCount).toBe(1);

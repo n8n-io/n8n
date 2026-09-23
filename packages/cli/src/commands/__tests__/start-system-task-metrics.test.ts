@@ -152,7 +152,7 @@ describe('Start system task metrics', () => {
 		// A multi-main leader check can win leadership at this point, before the
 		// boot reaches the collector. Regular mode never takes that path, so the
 		// takeover is applied directly.
-		runner.startTimers();
+		runner.startLeaderTimers();
 
 		await runStart();
 
