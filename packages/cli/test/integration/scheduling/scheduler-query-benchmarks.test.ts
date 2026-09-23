@@ -54,8 +54,8 @@ const READ_ITERS = envInt('N8N_SCHEDULER_QUERY_ITERS', 50);
 // enough to skew later iterations.
 const WRITE_ITERS = envInt('N8N_SCHEDULER_QUERY_WRITE_ITERS', 25);
 const BATCH = envInt('N8N_SCHEDULER_QUERY_BATCH', 100);
-// One seeded job in this many carries a concurrencyLimit, with a due occurrence and,
-// for every other one, a running occurrence that fills its single slot.
+// One job in this many has a concurrencyLimit of 1 and a due task. Every other one
+// also has a running task that uses its place.
 const LIMITED_JOB_EVERY = envInt('N8N_SCHEDULER_QUERY_LIMITED_JOB_EVERY', 10);
 const WRITE_BATCH = envInt('N8N_SCHEDULER_QUERY_WRITE_BATCH', 10_000);
 
@@ -176,7 +176,6 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 		await bulkInsert(ScheduledJob, rows);
 	}
 
-	/** Give every limited job a due occurrence, and every other limited job a running one that fills its slot. */
 	async function seedLimitedTasks(): Promise<{ limitedJobs: number; busyJobs: number }> {
 		const limitedJobs = await dataSource
 			.createQueryBuilder(ScheduledJob, 'j')
@@ -241,8 +240,7 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 		await seedTasks(anchorJob.id);
 		await seedJobs();
 		const limited = await seedLimitedTasks();
-		// Fresh planner statistics, so the plans below are the ones a live instance
-		// gets after autovacuum has seen the corpus, not default-estimate plans.
+		// Refresh planner statistics so the plans match a live instance.
 		await dataSource.query('ANALYZE');
 		report('corpus seeded', {
 			'scheduled_task rows': commas(TASK_ROWS + limited.limitedJobs + limited.busyJobs),
@@ -356,8 +354,8 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 			);
 
 			// ScheduledTaskRepository.claimDueTasks — the claim's candidate select
-			// (pending + due, ordered by runAt, minus the rows of limited jobs). Backed
-			// by the partial index on runAt plus the partial index on limited jobs.
+			// (pending + due, ordered by runAt, without limited jobs). Backed by the
+			// partial indexes on runAt and on limited jobs.
 			const claimCandidateSelect = dataSource
 				.createQueryBuilder(ScheduledTask, 't')
 				.where('t.status = :s', { s: 'pending' })
@@ -385,10 +383,8 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 				claimCandidateSelect[1],
 			);
 
-			// The other half of the claim's candidate select: the slot ranking that
-			// decides which of a limited job's pending rows may be claimed. It ranks
-			// claimable pending rows and counts all running rows. Its cost tracks the
-			// limited backlog rather than the batch. Kept in step by hand with
+			// The other half of the claim: which pending tasks of a limited job fit its
+			// limit. Its cost grows with the limited backlog. Keep in step with
 			// `ScheduledTaskRepository.allowedByConcurrencyLimitSql`.
 			const jobTable = dataSource.getMetadata(ScheduledJob).tablePath;
 			const limitedSlotSelect = `SELECT ranked."id"

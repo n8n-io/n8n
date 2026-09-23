@@ -42,8 +42,8 @@ export interface ExecutorTaskStore {
 	 * Atomically claim up to `batchSize` due tasks of the given types: mark them
 	 * `running`, owned by `host`, with a lease of `leaseMs` and a bumped epoch.
 	 *
-	 * A job's `concurrencyLimit` caps how many of its occurrences may be `running` at once.
-	 * The store keeps the rest `pending` for a later claim.
+	 * A job's `concurrencyLimit` caps how many of its tasks run at once. Extra tasks
+	 * stay `pending`.
 	 */
 	claimDueTasks(batch: ClaimDueTasksBatch): Promise<ClaimedTask[]>;
 

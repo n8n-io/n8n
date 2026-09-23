@@ -24,8 +24,7 @@ describe('scheduler execution over the storage bindings', () => {
 	let taskRepo: ScheduledTaskRepository;
 	let scheduler: Scheduler & SchedulerPasses;
 	const executed: ClaimedTask[] = [];
-	// When set, the handler waits on it after being entered, so a test can hold an
-	// occurrence in `running` and observe what the scheduler does meanwhile.
+	// When set, the handler waits for it, so a test can keep a task `running`.
 	let holdHandler: Promise<void> | null = null;
 
 	beforeAll(async () => {
@@ -193,7 +192,7 @@ describe('scheduler execution over the storage bindings', () => {
 			expect(await scheduler.execute()).toHaveLength(1);
 			await waitFor(async () => executed.length === 1);
 
-			// The second occurrence stays pending while the first holds the only slot.
+			// The second task stays pending while the first runs.
 			expect(await scheduler.execute()).toHaveLength(0);
 			expect(await countWithStatus('running')).toBe(1);
 			expect(await countWithStatus('pending')).toBe(1);
@@ -203,7 +202,7 @@ describe('scheduler execution over the storage bindings', () => {
 		}
 		await waitFor(async () => (await countWithStatus('succeeded')) === 1);
 
-		// The freed slot lets the held occurrence run on the next pass.
+		// Once the first task finishes, the second one runs.
 		expect(await scheduler.execute()).toHaveLength(1);
 		await waitFor(async () => (await countWithStatus('succeeded')) === 2);
 		expect(executed).toHaveLength(2);
