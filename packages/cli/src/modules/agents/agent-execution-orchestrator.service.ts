@@ -6,7 +6,7 @@ import {
 import type {
 	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
-	AgentPersistedMessageDto,
+	AgentChatMessagesResponse,
 } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -20,6 +20,7 @@ import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } fr
 import { Telemetry } from '@/telemetry';
 
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
+import { AgentChatExecutionService } from './agent-chat-execution.service';
 import type { AgentThreadAccess } from './entities/agent-execution-thread.entity';
 import type { AgentSessionMode } from './utils/agent-thread-access';
 import {
@@ -27,7 +28,6 @@ import {
 	isTaskRunMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
-import { threadBelongsTo } from './utils/agent-thread-access';
 import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import {
 	AgentRuntimeCacheService,
@@ -61,7 +61,6 @@ import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
-import { getDelegatedChildCheckpoints } from './utils/delegated-child-checkpoints';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
@@ -94,6 +93,7 @@ export interface ExecuteForChatConfig {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	onExecutionStarted?: (executionId: string, sessionId: string) => void;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -159,6 +159,9 @@ export interface ResumeForChatConfig {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
+	automaticPreviewContinuation?: boolean;
+	onExecutionStarted?: (executionId: string, sessionId: string) => void;
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -235,6 +238,8 @@ export interface StreamChatResponseConfig {
 		runType: AgentRunTelemetryType;
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
+	previewChat?: boolean;
+	onExecutionStarted?: (executionId: string, sessionId: string) => void;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -271,6 +276,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentRepository: AgentRepository,
 		private readonly aiConfig: AiConfig,
+		private readonly chatExecutionService: AgentChatExecutionService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -289,7 +295,7 @@ export class AgentExecutionOrchestratorService {
 		projectId: string;
 		agentId: string;
 		userId: string;
-	}): Promise<AgentPersistedMessageDto[] | null> {
+	}): Promise<Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId'> | null> {
 		const { threadId, projectId, agentId, userId } = params;
 		const detail = await this.agentExecutionService.getThreadDetail(
 			threadId,
@@ -298,7 +304,11 @@ export class AgentExecutionOrchestratorService {
 			userId,
 		);
 		if (!detail) return null;
-		return executionsToMessagesDto(detail.executions);
+		return {
+			messages: executionsToMessagesDto(detail.executions),
+			activeExecutionId:
+				detail.executions.findLast((execution) => execution.status === 'running')?.id ?? null,
+		};
 	}
 
 	async cancelChatRun(params: {
@@ -306,45 +316,7 @@ export class AgentExecutionOrchestratorService {
 		runId: string;
 		resourceId: string;
 	}): Promise<boolean> {
-		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(
-			params.runId,
-			params.agentId,
-		);
-		if (checkpointStatus.status === 'not-found' || checkpointStatus.checkpoint === undefined) {
-			return false;
-		}
-
-		const { checkpoint } = checkpointStatus;
-		if (
-			checkpoint.status !== 'suspended' ||
-			checkpoint.persistence?.delegated === true ||
-			checkpoint.persistence?.resourceId !== params.resourceId
-		) {
-			return false;
-		}
-		const thread = await this.agentExecutionService.findThreadById(checkpoint.persistence.threadId);
-		const userId = userIdFromDraftChatMemoryResourceId(params.resourceId);
-		if (thread && (!userId || !threadBelongsTo(thread, thread.projectId, params.agentId, userId))) {
-			return false;
-		}
-
-		const childCheckpoints = getDelegatedChildCheckpoints(checkpoint, params.agentId);
-		if (checkpointStatus.status === 'active') {
-			const cancelled = await this.n8nCheckpointStorage.cancelSuspended(
-				params.runId,
-				checkpoint,
-				params.agentId,
-			);
-			if (!cancelled) return false;
-		}
-
-		await Promise.all(
-			childCheckpoints.map(
-				async ({ runId, agentId }) => await this.n8nCheckpointStorage.delete(runId, agentId),
-			),
-		);
-		await this.n8nCheckpointStorage.delete(params.runId, params.agentId);
-		return true;
+		return await this.chatExecutionService.cancelSuspended(params);
 	}
 
 	private async loadResumeCheckpoint(params: {
@@ -486,6 +458,8 @@ export class AgentExecutionOrchestratorService {
 						onExecutionRecorded,
 						abortSignal,
 						access,
+						automaticContinuationRunId:
+							config.previewChat && config.automaticPreviewContinuation ? runId : undefined,
 						sessionMode: 'existing',
 					},
 				),
@@ -496,6 +470,9 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					context: { projectId, agentId, threadId },
 					includeHitlToolDetails: !usePublishedVersion,
+					previewChat: config.previewChat,
+					automaticPreviewContinuation: config.automaticPreviewContinuation,
+					onExecutionStarted: config.onExecutionStarted,
 					onExecutionRecorded,
 					onSettled: async (suspended) => {
 						if (!suspended) await this.requestPendingBackgroundWake(threadId);
@@ -669,6 +646,8 @@ export class AgentExecutionOrchestratorService {
 					onExecutionRecorded,
 					abortSignal,
 					includeHitlToolDetails: true,
+					previewChat,
+					onExecutionStarted: config.onExecutionStarted,
 					sandboxPrincipalHash,
 					sessionMode,
 				});
@@ -1038,6 +1017,8 @@ export class AgentExecutionOrchestratorService {
 			backgroundJobSignal,
 			includeHitlToolDetails,
 			onExecutionRecorded,
+			previewChat: config.previewChat,
+			onExecutionStarted: config.onExecutionStarted,
 			onSettled: isWakeRun
 				? undefined
 				: async () => await this.requestPendingBackgroundWake(threadId),
@@ -1139,9 +1120,10 @@ export class AgentExecutionOrchestratorService {
 		> & {
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;
+			automaticContinuationRunId?: string;
 		},
 	): Promise<AgentRuntime> {
-		const { onExecutionRecorded, abortSignal, ...recording } = session;
+		const { onExecutionRecorded, abortSignal, automaticContinuationRunId, ...recording } = session;
 		abortSignal?.throwIfAborted();
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
@@ -1174,6 +1156,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					error,
 					onExecutionRecorded,
+					{ previewChat: params.previewChat, automaticContinuationRunId },
 				);
 			}
 			throw error;
