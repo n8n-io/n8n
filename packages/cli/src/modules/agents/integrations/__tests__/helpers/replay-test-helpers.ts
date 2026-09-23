@@ -17,6 +17,7 @@ import type {
 	IntegrationMessageContextStore,
 } from '../../integration-tools';
 import { getIntegrationToolConnectionDescriptors } from '../../integration-tools';
+import { AgentResourceRepository } from '../../../repositories/agent-resource.repository';
 
 export type ReplayWebhookOptions = { waitUntil?: (task: Promise<unknown>) => void };
 
@@ -206,6 +207,9 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(params.integrationImpl);
 	Container.set(ChatIntegrationRegistry, registry);
+	const resources = mock<AgentResourceRepository>();
+	resources.findChatSessionGeneration.mockResolvedValue(null);
+	Container.set(AgentResourceRepository, resources);
 
 	let stream = params.stream ?? [
 		{ type: 'text-delta', id: 'text-1', delta: 'Got it' },
