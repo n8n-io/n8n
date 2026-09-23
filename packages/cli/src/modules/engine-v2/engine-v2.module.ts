@@ -82,14 +82,15 @@ export class EngineV2Module implements ModuleInterface {
 		const redisClientService = Container.get(RedisClientService);
 		const globalConfig = Container.get(GlobalConfig);
 		const channelPrefix = `${redisClientService.toValidPrefix(globalConfig.redis.prefix)}:engine-v2-responses`;
+		const getChannelName = (executionId: string) => `${channelPrefix}:${executionId}`;
 		const responseSender = new RedisExecutionResponseSender(
 			redisClientService.createClient({ type: 'publisher(n8n)' }),
-			channelPrefix,
+			getChannelName,
 			logger,
 		);
 		const responseReceiver = new RedisExecutionResponseReceiver(
 			redisClientService.createClient({ type: 'subscriber(n8n)' }),
-			channelPrefix,
+			getChannelName,
 			logger,
 		);
 		try {

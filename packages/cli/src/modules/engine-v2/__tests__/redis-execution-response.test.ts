@@ -12,6 +12,7 @@ import {
 } from '../response-channel/redis-execution-response-sender';
 
 const channelPrefix = 'n8n:engine-v2-responses';
+const getChannelName = (executionId: string) => `${channelPrefix}:${executionId}`;
 const executionChannel = `${channelPrefix}:exec-1`;
 
 const ended = (executionId = 'exec-1', outputs: unknown = null): ExecutionResponse => ({
@@ -26,7 +27,7 @@ describe('Redis execution response sender', () => {
 	it('serializes and publishes a response to its execution channel', () => {
 		const publisher = mock<RedisResponsePublisher>();
 		publisher.publish.mockResolvedValue(1);
-		const sender = new RedisExecutionResponseSender(publisher, channelPrefix, mockLogger());
+		const sender = new RedisExecutionResponseSender(publisher, getChannelName, mockLogger());
 
 		sender.send(ended('exec-1', [[{ at: new Date(0) }]]));
 
@@ -40,7 +41,7 @@ describe('Redis execution response sender', () => {
 		const publisher = mock<RedisResponsePublisher>();
 		const logger = mockLogger();
 		publisher.publish.mockRejectedValue(new Error('Redis is unavailable'));
-		const sender = new RedisExecutionResponseSender(publisher, channelPrefix, logger);
+		const sender = new RedisExecutionResponseSender(publisher, getChannelName, logger);
 
 		expect(() => sender.send(ended())).not.toThrow();
 		await vi.waitFor(() => expect(logger.error).toHaveBeenCalled());
@@ -48,7 +49,7 @@ describe('Redis execution response sender', () => {
 
 	it('disconnects and stops publishing after shutdown', async () => {
 		const publisher = mock<RedisResponsePublisher>();
-		const sender = new RedisExecutionResponseSender(publisher, channelPrefix, mockLogger());
+		const sender = new RedisExecutionResponseSender(publisher, getChannelName, mockLogger());
 
 		await sender.stop();
 		sender.send(ended());
@@ -74,7 +75,7 @@ describe('Redis execution response receiver', () => {
 				finishSubscription = () => resolve(1);
 			}),
 		);
-		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
 		await receiver.start();
 		let registered = false;
 
@@ -93,7 +94,7 @@ describe('Redis execution response receiver', () => {
 	it('routes a valid response to its execution subscriber', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
 		subscriber.subscribe.mockResolvedValue(1);
-		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
 		const handler = vi.fn();
 		await receiver.start();
 		await receiver.receive('exec-1', handler);
@@ -107,7 +108,7 @@ describe('Redis execution response receiver', () => {
 	it('refuses a second subscriber for the same execution', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
 		subscriber.subscribe.mockResolvedValue(1);
-		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
 		await receiver.start();
 		await receiver.receive('exec-1', vi.fn());
 
@@ -118,7 +119,7 @@ describe('Redis execution response receiver', () => {
 	it('does not route responses from another channel or execution', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
 		subscriber.subscribe.mockResolvedValue(1);
-		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
 		const handler = vi.fn();
 		await receiver.start();
 		await receiver.receive('exec-1', handler);
@@ -134,7 +135,7 @@ describe('Redis execution response receiver', () => {
 		const subscriber = mock<RedisResponseSubscriber>();
 		subscriber.subscribe.mockResolvedValue(1);
 		const logger = mockLogger();
-		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, logger);
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, logger);
 		await receiver.start();
 		await receiver.receive('exec-1', () => {
 			throw new Error('Handler failed');
@@ -152,7 +153,7 @@ describe('Redis execution response receiver', () => {
 		const subscriber = mock<RedisResponseSubscriber>();
 		subscriber.subscribe.mockResolvedValue(1);
 		subscriber.unsubscribe.mockResolvedValue(1);
-		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
 		await receiver.start();
 		const unsubscribe = await receiver.receive('exec-1', vi.fn());
 
@@ -165,7 +166,7 @@ describe('Redis execution response receiver', () => {
 		const subscriber = mock<RedisResponseSubscriber>();
 		subscriber.subscribe.mockResolvedValue(1);
 		subscriber.unsubscribe.mockResolvedValue(1);
-		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
 		const handler = vi.fn();
 		await receiver.start();
 		await receiver.receive('exec-1', handler);
@@ -184,7 +185,7 @@ describe('Redis execution response receiver', () => {
 	it('removes the execution after its subscription fails', async () => {
 		const subscriber = mock<RedisResponseSubscriber>();
 		subscriber.subscribe.mockRejectedValue(new Error('Redis is unavailable'));
-		const receiver = new RedisExecutionResponseReceiver(subscriber, channelPrefix, mockLogger());
+		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
 		const handler = vi.fn();
 		await receiver.start();
 

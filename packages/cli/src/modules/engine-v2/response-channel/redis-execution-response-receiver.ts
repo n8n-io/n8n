@@ -1,16 +1,18 @@
 import type { Logger } from '@n8n/backend-common';
-import { executionResponseSchema, type ExecutionResponse } from '@n8n/engine';
+import type { ExecutionResponse } from '@n8n/engine';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { deserializeExecutionResponse } from './execution-response-frame';
 import type {
 	ExecutionResponseReceiver,
 	UnsubscribeExecutionResponse,
 } from './execution-response-receiver';
-import { getRedisExecutionResponseChannel } from './redis-execution-response-channel';
+import type { RedisExecutionResponseChannelNameGenerator } from './redis-execution-response-channel';
 
 type RedisMessageHandler = (channel: string, message: string) => void;
 
 type ExecutionSubscription = {
+	executionId: string;
 	handler: (response: ExecutionResponse) => void;
 	ready: Promise<void>;
 };
@@ -24,7 +26,7 @@ export interface RedisResponseSubscriber {
 }
 
 export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver {
-	private readonly subscriptionsByExecutionId = new Map<string, ExecutionSubscription>();
+	private readonly subscriptionsByChannel = new Map<string, ExecutionSubscription>();
 
 	private started = false;
 
@@ -32,7 +34,7 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 
 	constructor(
 		private readonly subscriber: RedisResponseSubscriber,
-		private readonly channelPrefix: string,
+		private readonly getChannelName: RedisExecutionResponseChannelNameGenerator,
 		private readonly logger: Logger,
 	) {}
 
@@ -49,47 +51,45 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 	): Promise<UnsubscribeExecutionResponse> {
 		if (this.stopped) return () => {};
 
-		if (this.subscriptionsByExecutionId.has(executionId)) {
+		const channel = this.getChannelName(executionId);
+		if (this.subscriptionsByChannel.has(channel)) {
 			throw new UnexpectedError(
 				`Execution response receiver already has a subscriber for execution "${executionId}"`,
 			);
 		}
 
 		const subscription: ExecutionSubscription = {
+			executionId,
 			handler,
-			ready: this.subscriber
-				.subscribe(getRedisExecutionResponseChannel(this.channelPrefix, executionId))
-				.then(() => {}),
+			ready: this.subscriber.subscribe(channel).then(() => {}),
 		};
-		this.subscriptionsByExecutionId.set(executionId, subscription);
+		this.subscriptionsByChannel.set(channel, subscription);
 		try {
 			await subscription.ready;
 		} catch (error) {
-			this.subscriptionsByExecutionId.delete(executionId);
+			this.subscriptionsByChannel.delete(channel);
 			throw error;
 		}
 
-		return this.unsubscribeHandler(executionId, subscription);
+		return this.unsubscribeHandler(channel, subscription);
 	}
 
 	private unsubscribeHandler(
-		executionId: string,
+		channel: string,
 		subscription: ExecutionSubscription,
 	): UnsubscribeExecutionResponse {
 		return () => {
-			if (this.stopped || this.subscriptionsByExecutionId.get(executionId) !== subscription) {
+			if (this.stopped || this.subscriptionsByChannel.get(channel) !== subscription) {
 				return;
 			}
 
-			this.subscriptionsByExecutionId.delete(executionId);
-			void this.subscriber
-				.unsubscribe(getRedisExecutionResponseChannel(this.channelPrefix, executionId))
-				.catch((error: unknown) => {
-					this.logger.error('Failed to unsubscribe from execution responses', {
-						executionId,
-						error,
-					});
+			this.subscriptionsByChannel.delete(channel);
+			void this.subscriber.unsubscribe(channel).catch((error: unknown) => {
+				this.logger.error('Failed to unsubscribe from execution responses', {
+					executionId: subscription.executionId,
+					error,
 				});
+			});
 		};
 	}
 
@@ -97,20 +97,15 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 		if (this.stopped) return;
 
 		this.stopped = true;
-		const subscriptions = [...this.subscriptionsByExecutionId.entries()];
-		this.subscriptionsByExecutionId.clear();
+		const subscriptions = [...this.subscriptionsByChannel.entries()];
+		this.subscriptionsByChannel.clear();
 		this.subscriber.off('message', this.handleMessage);
 		try {
 			await Promise.allSettled(
 				subscriptions.map(async ([, subscription]) => await subscription.ready),
 			);
 			await Promise.all(
-				subscriptions.map(
-					async ([executionId]) =>
-						await this.subscriber.unsubscribe(
-							getRedisExecutionResponseChannel(this.channelPrefix, executionId),
-						),
-				),
+				subscriptions.map(async ([channel]) => await this.subscriber.unsubscribe(channel)),
 			);
 		} finally {
 			this.subscriber.disconnect();
@@ -118,13 +113,10 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 	}
 
 	private readonly handleMessage: RedisMessageHandler = (channel, frame) => {
-		const executionId = this.executionIdFrom(channel);
-		if (executionId === undefined) return;
-
-		const subscription = this.subscriptionsByExecutionId.get(executionId);
+		const subscription = this.subscriptionsByChannel.get(channel);
 		if (subscription === undefined) return;
 
-		const response = this.fromFrame(frame);
+		const response = deserializeExecutionResponse(frame, this.logger);
 		if (response === undefined) return;
 
 		try {
@@ -137,25 +129,4 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 			});
 		}
 	};
-	private executionIdFrom(channel: string): string | undefined {
-		const prefix = `${this.channelPrefix}:`;
-		return channel.startsWith(prefix) ? channel.slice(prefix.length) : undefined;
-	}
-
-	private fromFrame(frame: string): ExecutionResponse | undefined {
-		try {
-			const parsed = executionResponseSchema.safeParse(JSON.parse(frame));
-			if (!parsed.success) {
-				this.logger.error('Discarding a malformed execution response', {
-					details: parsed.error.flatten(),
-				});
-				return undefined;
-			}
-
-			return parsed.data;
-		} catch (error) {
-			this.logger.error('Discarding an unreadable execution response', { error });
-			return undefined;
-		}
-	}
 }
