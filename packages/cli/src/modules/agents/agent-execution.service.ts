@@ -7,6 +7,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
+import { AgentsConfig } from '@n8n/config';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
@@ -90,15 +91,18 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 
 export interface StartedExecution {
 	executionId: string;
-	/** Aborts when the session lease is lost, so the turn must stop. */
-	leaseSignal: AbortSignal;
+	/**
+	 * Aborts when the session lease is lost, so the turn must stop. Undefined
+	 * when the message queue flag is off, because the turn takes no lease then.
+	 */
+	leaseSignal?: AbortSignal;
 }
 
 interface RecordedStart {
 	executionId: string;
 	created: boolean;
 	needsTitleSync: boolean;
-	lease: SessionLeaseGrant;
+	lease: SessionLeaseGrant | null;
 }
 
 interface TimelineSnapshotParams extends AgentExecutionLogRef {
@@ -158,12 +162,14 @@ export class AgentExecutionService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly txRunner: TransactionRunner,
 		private readonly sessionLeases: AgentSessionLeaseService,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	/**
 	 * Records a `running` execution and takes the session lease in one
 	 * transaction. Throws `AgentTurnAlreadyRunningError` when another turn holds
-	 * the session; nothing is recorded then.
+	 * the session; nothing is recorded then. With the message queue flag off,
+	 * the execution takes no lease.
 	 */
 	async startExecutionRecording(
 		params: StartExecutionParams,
@@ -173,10 +179,11 @@ export class AgentExecutionService {
 			{},
 			async (ctx) => await this.recordRunningExecution(params, startedAt, ctx),
 		);
-		const { executionId } = recorded;
-		const leaseSignal = this.sessionLeases.hold(recorded.lease);
+		const { executionId, lease } = recorded;
+		let leaseSignal: AbortSignal | undefined;
+		if (lease) leaseSignal = this.sessionLeases.hold(lease);
 		this.startHeartbeat(executionId, params.threadId);
-		await this.interruptSupersededExecution(recorded.lease.previousExecutionId);
+		await this.interruptSupersededExecution(lease?.previousExecutionId ?? null);
 		if (recorded.created) this.executionsNeedingTitleSync.add(executionId);
 		if (recorded.needsTitleSync) await this.syncTitleFromMemory(params.threadId, params.agentId);
 		this.executionUpdateBroadcaster.notify({
@@ -196,16 +203,26 @@ export class AgentExecutionService {
 		const prepared = await this.prepareThread(params, ctx);
 		const execution = this.createRunningExecution(params, startedAt, prepared.userMessage);
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
-		const lease = await this.sessionLeases.acquire(
-			{ threadId: params.threadId, agentId: params.agentId, executionId: inserted.id },
-			ctx,
-		);
+		const lease = await this.acquireSessionLease(params, inserted.id, ctx);
 		return {
 			executionId: inserted.id,
 			created: prepared.created,
 			needsTitleSync: !prepared.created && !prepared.thread.title,
 			lease,
 		};
+	}
+
+	// TODO(AGENT-1031): Always take the lease when the message queue flag is removed.
+	private async acquireSessionLease(
+		params: StartExecutionParams,
+		executionId: string,
+		ctx: OperationContext,
+	): Promise<SessionLeaseGrant | null> {
+		if (!this.agentsConfig.messageQueueEnabled) return null;
+		return await this.sessionLeases.acquire(
+			{ threadId: params.threadId, agentId: params.agentId, executionId },
+			ctx,
+		);
 	}
 
 	private createRunningExecution(

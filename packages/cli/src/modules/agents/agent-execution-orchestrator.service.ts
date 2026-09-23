@@ -10,7 +10,7 @@ import type {
 } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AiConfig } from '@n8n/config';
+import { AgentsConfig, AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -165,6 +165,9 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	// TODO(AGENT-1031): Remove with the message queue flag. The session lease admits resumes.
+	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
+	automaticPreviewContinuation?: boolean;
 	/** How long to wait while another turn holds the session. Defaults to no wait. */
 	sessionWaitMs?: number;
 	abortSignal?: AbortSignal;
@@ -265,6 +268,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentRepository: AgentRepository,
 		private readonly aiConfig: AiConfig,
 		private readonly chatExecutionService: AgentChatExecutionService,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -478,9 +482,9 @@ export class AgentExecutionOrchestratorService {
 						messageContext,
 						await this.integrationMessageContextService.getLatestForIncoming(memory.threadId),
 					);
-					// TODO: Write the context after the turn takes the session lease when integration
-					// messages go through the message queue. Until then, a message that is rejected
-					// as busy can overwrite the context of the running turn.
+					// TODO(AGENT-1029): Write the context after the turn takes the session lease.
+					// Until then, a message that is rejected as busy can overwrite the context of
+					// the running turn.
 					await this.integrationMessageContextService.installIncoming(
 						messageContext,
 						memory,
@@ -765,9 +769,11 @@ export class AgentExecutionOrchestratorService {
 		> & {
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;
+			// TODO(AGENT-1031): Remove with the message queue flag.
+			automaticContinuationRunId?: string;
 		},
 	): Promise<AgentRuntime> {
-		const { onExecutionRecorded, abortSignal, ...recording } = session;
+		const { onExecutionRecorded, abortSignal, automaticContinuationRunId, ...recording } = session;
 		abortSignal?.throwIfAborted();
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
@@ -800,6 +806,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					error,
 					onExecutionRecorded,
+					{ previewChat: params.previewChat, automaticContinuationRunId },
 				);
 			}
 			throw error;
@@ -810,6 +817,7 @@ export class AgentExecutionOrchestratorService {
 		const {
 			agentId,
 			projectId,
+			runId,
 			source,
 			integrationType,
 			user,
@@ -836,6 +844,8 @@ export class AgentExecutionOrchestratorService {
 				onExecutionRecorded,
 				abortSignal,
 				access,
+				automaticContinuationRunId:
+					previewChat && config.automaticPreviewContinuation ? runId : undefined,
 				sessionMode: 'existing',
 			},
 		);
@@ -854,8 +864,12 @@ export class AgentExecutionOrchestratorService {
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
 			includeHitlToolDetails: !config.usePublishedVersion,
 			previewChat: config.previewChat,
+			automaticPreviewContinuation: config.automaticPreviewContinuation,
 			sessionWaitMs: config.sessionWaitMs,
-			assertCanStart: async () => await this.assertResumePending(config),
+			// TODO(AGENT-1031): Always check when the message queue flag is removed.
+			assertCanStart: this.agentsConfig.messageQueueEnabled
+				? async () => await this.assertResumePending(config)
+				: undefined,
 			onExecutionStarted: config.onExecutionStarted,
 			onExecutionRecorded: config.onExecutionRecorded,
 			onSettled: async (suspended) => {
@@ -1082,9 +1096,9 @@ export class AgentExecutionOrchestratorService {
 			previewChat,
 			sessionMode,
 		} = config;
-		// TODO: Write the context after the turn takes the session lease when Preview messages
-		// go through the message queue. Until then, a Preview message that is rejected as busy
-		// can overwrite the context of the running turn.
+		// TODO(AGENT-1032): Write the context after the turn takes the session lease. Until
+		// then, a Preview message that is rejected as busy can overwrite the context of the
+		// running turn.
 		const messageContext = await this.installDraftMessageContext(memory, user.id);
 		return this.streamChatResponse({
 			access,

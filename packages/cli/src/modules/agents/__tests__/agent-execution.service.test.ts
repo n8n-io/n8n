@@ -1,5 +1,6 @@
 import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AgentsConfig } from '@n8n/config';
 import type { TransactionRunner } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
@@ -80,6 +81,7 @@ describe('AgentExecutionService', () => {
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const sessionLeases = mock<AgentSessionLeaseService>();
+	const agentsConfig = mock<AgentsConfig>({ messageQueueEnabled: true });
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
 	const txRunner = mock<TransactionRunner>();
 
@@ -108,6 +110,7 @@ describe('AgentExecutionService', () => {
 		}));
 		sessionLeases.hold.mockReturnValue(new AbortController().signal);
 		sessionLeases.isLost.mockReturnValue(false);
+		agentsConfig.messageQueueEnabled = true;
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -123,6 +126,7 @@ describe('AgentExecutionService', () => {
 			checkpointStorage,
 			txRunner,
 			sessionLeases,
+			agentsConfig,
 		);
 	});
 
@@ -258,6 +262,36 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('session lease', () => {
+		it('records every turn without a lease when the message queue flag is off', async () => {
+			agentsConfig.messageQueueEnabled = false;
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.saveInContext
+				.mockResolvedValueOnce(mock<AgentExecution>({ id: 'execution-1' }))
+				.mockResolvedValueOnce(mock<AgentExecution>({ id: 'execution-2' }));
+			const params = {
+				access: previewAccess,
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+			};
+
+			const first = await service.startExecutionRecording(params, new Date());
+			const second = await service.startExecutionRecording(params, new Date());
+
+			expect(first).toEqual({ executionId: 'execution-1', leaseSignal: undefined });
+			expect(second).toEqual({ executionId: 'execution-2', leaseSignal: undefined });
+			expect(sessionLeases.acquire).not.toHaveBeenCalled();
+			expect(sessionLeases.hold).not.toHaveBeenCalled();
+			for (const { executionId } of [first, second]) {
+				await service.finalizeExecution(executionId, { ...params, record: makeMessageRecord() });
+			}
+		});
+
 		it('rejects the turn inside the recording transaction when another turn holds the session', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 				thread: makeThread(),
@@ -565,6 +599,7 @@ describe('AgentExecutionService', () => {
 				checkpointStorage,
 				txRunner,
 				sessionLeases,
+				agentsConfig,
 			);
 
 			const record = makeMessageRecord({
@@ -657,6 +692,7 @@ describe('AgentExecutionService', () => {
 					checkpointStorage,
 					txRunner,
 					sessionLeases,
+					agentsConfig,
 				);
 
 				const record = makeMessageRecord({
@@ -1123,6 +1159,7 @@ describe('AgentExecutionService', () => {
 				checkpointStorage,
 				txRunner,
 				sessionLeases,
+				agentsConfig,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);

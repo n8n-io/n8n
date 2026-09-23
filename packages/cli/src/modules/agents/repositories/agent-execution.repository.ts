@@ -45,6 +45,11 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		});
 	}
 
+	// TODO(AGENT-1031): Remove with the message queue flag. The session lease replaces this check.
+	async existsRunningByThread(threadId: string): Promise<boolean> {
+		return await this.existsBy({ threadId, status: 'running' });
+	}
+
 	async findRunningById(executionId: string): Promise<RunningAgentExecution | null> {
 		return await this.findOne({
 			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],

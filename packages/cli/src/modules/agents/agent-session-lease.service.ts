@@ -174,8 +174,9 @@ export class AgentSessionLeaseService {
 /** Combines a turn's abort signal with the signal that fires when its session lease is lost. */
 export function withLeaseSignal(
 	signal: AbortSignal | undefined,
-	leaseSignal: AbortSignal,
-): AbortSignal {
+	leaseSignal: AbortSignal | undefined,
+): AbortSignal | undefined {
+	if (!leaseSignal) return signal;
 	if (!signal) return leaseSignal;
 	return AbortSignal.any([signal, leaseSignal]);
 }

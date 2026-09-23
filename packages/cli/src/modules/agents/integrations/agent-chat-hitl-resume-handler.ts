@@ -46,9 +46,16 @@ interface AgentChatHitlResumeHandlerOptions {
 	createResumeExecutionContext: (
 		thread: Thread<unknown, unknown>,
 	) => Promise<BridgeResumeExecutionContext>;
+	// TODO(AGENT-1031): Remove with the message queue flag.
+	/** Without the flag, the turn takes no session lease, so the handler guards resumes itself. */
+	messageQueueEnabled: boolean;
 }
 
 export class AgentChatHitlResumeHandler {
+	// TODO(AGENT-1031): Remove with the message queue flag. The session lease replaces this guard.
+	/** Run IDs this process resumes. Without the message queue flag, it keeps out a second resume. */
+	private readonly activeResumedRuns = new Set<string>();
+
 	constructor(private readonly options: AgentChatHitlResumeHandlerOptions) {}
 
 	/**
@@ -231,6 +238,9 @@ export class AgentChatHitlResumeHandler {
 		resumeData: unknown,
 		options: ResumeContext & { notifyOnDuplicate?: boolean } = {},
 	): Promise<void> {
+		if (!this.options.messageQueueEnabled) {
+			return await this.executeResumeOncePerProcess(thread, runId, toolCallId, resumeData, options);
+		}
 		const { notifyOnDuplicate = true, ...context } = options;
 		try {
 			await this.streamResume(thread, runId, toolCallId, resumeData, context);
@@ -238,6 +248,29 @@ export class AgentChatHitlResumeHandler {
 			if (!notifyOnDuplicate || !isDuplicateResume(error)) throw error;
 			this.options.logger.warn('[AgentChatBridge] Run is already handled', { runId, toolCallId });
 			await thread.post('This action has already been handled');
+		}
+	}
+
+	// TODO(AGENT-1031): Remove with the message queue flag. The session lease replaces this guard.
+	/** Without the session lease, a guard in this process keeps a second resume of a run out. */
+	private async executeResumeOncePerProcess(
+		thread: Thread<unknown, unknown>,
+		runId: string,
+		toolCallId: string,
+		resumeData: unknown,
+		options: ResumeContext & { notifyOnDuplicate?: boolean },
+	): Promise<void> {
+		const { notifyOnDuplicate = true, ...context } = options;
+		if (this.activeResumedRuns.has(runId)) {
+			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
+			if (notifyOnDuplicate) await thread.post('This action has already been handled');
+			return;
+		}
+		this.activeResumedRuns.add(runId);
+		try {
+			await this.streamResume(thread, runId, toolCallId, resumeData, context);
+		} finally {
+			this.activeResumedRuns.delete(runId);
 		}
 	}
 

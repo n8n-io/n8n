@@ -145,12 +145,19 @@ describe('withLeaseSignal', () => {
 		expect(withLeaseSignal(undefined, lease.signal)).toBe(lease.signal);
 	});
 
+	it('keeps the turn signal when the turn has no lease', () => {
+		const turn = new AbortController();
+
+		expect(withLeaseSignal(turn.signal, undefined)).toBe(turn.signal);
+		expect(withLeaseSignal(undefined, undefined)).toBeUndefined();
+	});
+
 	it.each(['turn', 'lease'] as const)('aborts when the %s signal aborts', (source) => {
 		const controllers = { turn: new AbortController(), lease: new AbortController() };
 		const combined = withLeaseSignal(controllers.turn.signal, controllers.lease.signal);
 
 		controllers[source].abort();
 
-		expect(combined.aborted).toBe(true);
+		expect(combined?.aborted).toBe(true);
 	});
 });

@@ -79,6 +79,14 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
 	backgroundTasksEnabled: boolean = false;
 
+	/**
+	 * Enable the agent message queue, which is still in development: a
+	 * database lease allows one agent turn at a time per session. Must be set
+	 * to the same value on mains and workers — workers run agent workflow nodes.
+	 */
+	@Env('N8N_AGENTS_MESSAGE_QUEUE_ENABLED')
+	messageQueueEnabled: boolean = false;
+
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;

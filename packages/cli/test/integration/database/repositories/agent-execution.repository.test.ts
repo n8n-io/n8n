@@ -127,6 +127,7 @@ describe('AgentExecutionRepository', () => {
 	function recordingServices(
 		memoryBackend: ReturnType<N8nMemory['getImplementation']> = mock(),
 		connection?: DataSource,
+		messageQueueEnabled = true,
 	) {
 		const txRunner = new TypeOrmTransactionRunner(
 			connection ?? repository.manager.connection,
@@ -158,6 +159,7 @@ describe('AgentExecutionRepository', () => {
 				new AgentSessionLeaseRepository(connection ?? repository.manager.connection, txRunner),
 				mock<InstanceSettings>({ hostId: 'main-test' }),
 			),
+			Object.assign(new AgentsConfig(), { messageQueueEnabled }),
 		);
 		return {
 			txRunner,
@@ -336,8 +338,12 @@ describe('AgentExecutionRepository', () => {
 		return { action, makeAgent };
 	}
 
-	async function startSuspendedApprovalRun(user?: User, approvals = 1) {
-		const { turns, executionService } = recordingServices();
+	async function startSuspendedApprovalRun(user?: User, approvals = 1, messageQueueEnabled = true) {
+		const { turns, executionService } = recordingServices(
+			undefined,
+			undefined,
+			messageQueueEnabled,
+		);
 		const threadId = uuid();
 		const recording = {
 			access: user
@@ -454,6 +460,69 @@ describe('AgentExecutionRepository', () => {
 					);
 				} catch (error) {
 					oneRejected.resolve();
+					throw error;
+				} finally {
+					await agent?.close();
+				}
+			});
+
+			return { outcomes: await Promise.allSettled(attempts), onResumeClaimed };
+		} finally {
+			await secondConnection.destroy();
+		}
+	}
+
+	// TODO(AGENT-1031): Remove with the message queue flag.
+	async function resumeApprovalWithoutLeaseFromSeparateConnections(
+		fixture: Awaited<ReturnType<typeof startSuspendedApprovalRun>>,
+	) {
+		const { common, makeAgent, recording, storage, suspension, turns } = fixture;
+		const secondConnection = await new DataSource({
+			...repository.manager.connection.options,
+			name: uuid(),
+		}).initialize();
+		try {
+			const otherStorage = new N8NCheckpointStorage(
+				new AgentCheckpointRepository(secondConnection),
+				mockLogger(),
+				new AgentsConfig(),
+			);
+			const bothLoaded = createDeferredPromise<boolean>();
+			let loaded = 0;
+			const onResumeClaimed = vi.fn();
+			const attempts = [storage, otherStorage].map(async (checkpointStorage) => {
+				let agent: ReturnType<typeof makeAgent> | undefined;
+				try {
+					const store = checkpointStorage.getStorage(agentId);
+					agent = makeAgent({
+						...store,
+						load: async (key) => {
+							const state = await store.load(key);
+							if (++loaded === 2) bothLoaded.resolve(true);
+							if (!(await bothLoaded.promise)) {
+								throw new Error('A resume attempt failed before both checkpoints loaded');
+							}
+							return state;
+						},
+					});
+					return await collect(
+						turns.execute({
+							...common,
+							agentInstance: agent,
+							prepare: async () => ({
+								type: 'resume',
+								resumeData: { approved: true },
+								options: {
+									runId: suspension.runId,
+									toolCallId: suspension.toolCallId,
+									onResumeClaimed,
+								},
+								recording: { ...recording, userMessage: null, sessionMode: 'existing' },
+							}),
+						}),
+					);
+				} catch (error) {
+					bothLoaded.resolve(false);
 					throw error;
 				} finally {
 					await agent?.close();
@@ -841,6 +910,32 @@ describe('AgentExecutionRepository', () => {
 		});
 	});
 
+	// TODO(AGENT-1031): Remove with the message queue flag.
+	it('records one accepted resume and one failed attempt without the message queue flag', async () => {
+		const fixture = await startSuspendedApprovalRun(undefined, 1, false);
+		const { outcomes, onResumeClaimed } =
+			await resumeApprovalWithoutLeaseFromSeparateConnections(fixture);
+
+		expect(outcomes.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+		expect(onResumeClaimed).toHaveBeenCalledOnce();
+		expect(fixture.action).toHaveBeenCalledOnce();
+		const executions = await repository.findByThreadIdOrdered(fixture.threadId);
+		expect(executions).toHaveLength(3);
+		expect(executions.map(({ status }) => status).sort()).toEqual(['error', 'success', 'success']);
+		const resumed = executions.find(({ hitlStatus }) => hitlStatus === 'resumed');
+		expect(resumed).toMatchObject({ userMessage: null, status: 'success' });
+		expect(resumed?.timeline).toContainEqual(expect.objectContaining({ type: 'hitl-response' }));
+		const rejected = executions.find(({ status }) => status === 'error');
+		expect(rejected).toMatchObject({ userMessage: null, hitlStatus: null });
+		expect(rejected?.timeline ?? []).not.toContainEqual(
+			expect.objectContaining({ type: 'hitl-response' }),
+		);
+		expect(await fixture.checkpointRepo.findByRunId(fixture.suspension.runId)).toMatchObject({
+			expired: true,
+			state: null,
+		});
+	});
+
 	describe('session lease', () => {
 		const finishedRecord = () => {
 			const recorder = new ExecutionRecorder();
@@ -956,6 +1051,7 @@ describe('AgentExecutionRepository', () => {
 				agentRepo,
 				new AiConfig(),
 				mock<AgentChatExecutionService>(),
+				Object.assign(new AgentsConfig(), { messageQueueEnabled: true }),
 			);
 			const resume = async (
 				user: User,

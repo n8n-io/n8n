@@ -1,6 +1,7 @@
 import type { ToolContext } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { OnLifecycleEvent, OnPubSubEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -52,6 +53,7 @@ export class AgentWorkflowToolResumeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly agentsConfig: AgentsConfig,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -163,7 +165,10 @@ export class AgentWorkflowToolResumeService {
 	/** Logs a failed resume. Returns true when the session is busy and a retry is due. */
 	private handleResumeError(agentRun: RelatedAgentRun, error: unknown): boolean {
 		const { agentId, runId } = agentRun;
-		if (error instanceof AgentTurnAlreadyRunningError) return true;
+		// TODO(AGENT-1031): Always retry a busy session when the message queue flag is removed.
+		if (error instanceof AgentTurnAlreadyRunningError && this.agentsConfig.messageQueueEnabled) {
+			return true;
+		}
 		if (error instanceof AgentResumeAlreadyHandledError) {
 			this.logger.debug('Agent run was already resumed', { agentId, runId });
 			return false;
@@ -260,6 +265,8 @@ export class AgentWorkflowToolResumeService {
 			resumeData,
 			user,
 			previewChat: agentRun.previewChat,
+			// TODO(AGENT-1031): Remove with the message queue flag.
+			automaticPreviewContinuation: true,
 			response: '',
 		});
 

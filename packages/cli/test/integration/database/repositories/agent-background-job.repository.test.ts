@@ -210,6 +210,7 @@ describe('AgentBackgroundJobRepository', () => {
 			});
 
 			const executionRepository = mock<AgentExecutionRepository>();
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
 			const checkpointStorage = mock<N8NCheckpointStorage>();
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 			const orchestrator = mock<AgentExecutionOrchestratorService>();
@@ -245,7 +246,7 @@ describe('AgentBackgroundJobRepository', () => {
 			);
 			const wakeService = new AgentWakeService(
 				repository,
-				new AgentConversationStateService(checkpointStorage),
+				new AgentConversationStateService(executionRepository, checkpointStorage),
 				agentRepository,
 				userRepository,
 				mock<ChatIntegrationRegistry>(),

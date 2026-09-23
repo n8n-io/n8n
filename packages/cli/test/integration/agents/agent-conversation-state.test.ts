@@ -115,12 +115,14 @@ describe('Agent conversation state', () => {
 		expect(await storage.findSuspendedForThread(agent.id, 'thread-1')).toEqual(parent);
 	});
 
-	it('keeps the suspension fact independent of historical suspensions and running executions', async () => {
+	it('keeps running and suspension facts independent of historical suspension', async () => {
 		expect(await inspector.inspect(agent.id, 'thread-1')).toEqual({
+			running: false,
 			suspendedCheckpoint: null,
 		});
 		await storage.save('run-1', suspended, agent.id);
 		expect(await inspector.inspect(agent.id, 'thread-1')).toEqual({
+			running: false,
 			suspendedCheckpoint: suspended,
 		});
 
@@ -143,6 +145,7 @@ describe('Agent conversation state', () => {
 		);
 		await storage.claimForResume('run-1', suspended, agent.id);
 		expect(await inspector.inspect(agent.id, 'thread-1')).toEqual({
+			running: false,
 			suspendedCheckpoint: null,
 		});
 
@@ -154,20 +157,24 @@ describe('Agent conversation state', () => {
 			}),
 		);
 		expect(await inspector.inspect(agent.id, 'thread-1')).toEqual({
+			running: true,
 			suspendedCheckpoint: null,
 		});
 		const resuspended = { ...suspended, iterationCount: 2 };
 		await storage.save('run-1', resuspended, agent.id);
 		expect(await inspector.inspect(agent.id, 'thread-1')).toEqual({
+			running: true,
 			suspendedCheckpoint: resuspended,
 		});
 		await executions.update(running.id, { status: 'success' });
 		expect(await inspector.inspect(agent.id, 'thread-1')).toEqual({
+			running: false,
 			suspendedCheckpoint: resuspended,
 		});
 
 		await storage.cancelSuspended('run-1', resuspended, agent.id);
 		expect(await inspector.inspect(agent.id, 'thread-1')).toEqual({
+			running: false,
 			suspendedCheckpoint: null,
 		});
 		expect(await storage.getStatus('run-1', agent.id)).toEqual({

@@ -10,6 +10,7 @@ import { UserError, type Logger } from 'n8n-workflow';
 import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import {
 	AgentResourceRepository,
 	type ChatSessionGeneration,
@@ -3123,6 +3124,8 @@ describe('AgentChatBridge — consumeStream', () => {
 			agentExecutor.executeForChatPublished.mockImplementation(() =>
 				toStream([{ type: 'finish', finishReason: 'stop' }]),
 			);
+			const executionRepository = mock<AgentExecutionRepository>();
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
 			const checkpointStorage = mock<N8NCheckpointStorage>();
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(
 				suspendPayload === null
@@ -3143,7 +3146,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 			Container.set(
 				AgentConversationStateService,
-				new AgentConversationStateService(checkpointStorage),
+				new AgentConversationStateService(executionRepository, checkpointStorage),
 			);
 			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
 			Container.set(AgentChatAttachmentService, mock<AgentChatAttachmentService>());
@@ -3158,7 +3161,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				streamingIntegration,
 			);
 
-			return { handlers, thread, agentExecutor, checkpointStorage };
+			return { handlers, thread, agentExecutor, executionRepository, checkpointStorage };
 		}
 
 		// Starting a second run strips the pending tool call from the model's
@@ -3220,8 +3223,10 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenLastCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
-		it('runs when nothing is parked', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension(null);
+		it.each([false, true])('runs when nothing is parked and running is %s', async (running) => {
+			const { handlers, thread, agentExecutor, executionRepository } =
+				bridgeWithOpenSuspension(null);
+			executionRepository.existsRunningByThread.mockResolvedValue(running);
 
 			await handlers.subscribed!(thread, {
 				text: 'hello',
@@ -3231,9 +3236,14 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
 		});
 
-		it('stops when the suspension query fails', async () => {
-			const { handlers, thread, agentExecutor, checkpointStorage } = bridgeWithOpenSuspension(null);
-			checkpointStorage.findSuspendedForThread.mockRejectedValue(new Error('Database unavailable'));
+		it.each(['running', 'suspension'])('stops when the %s query fails', async (query) => {
+			const { handlers, thread, agentExecutor, executionRepository, checkpointStorage } =
+				bridgeWithOpenSuspension(null);
+			const lookup =
+				query === 'running'
+					? executionRepository.existsRunningByThread
+					: checkpointStorage.findSuspendedForThread;
+			lookup.mockRejectedValue(new Error('Database unavailable'));
 
 			await handlers.subscribed!(thread, {
 				text: 'hello',

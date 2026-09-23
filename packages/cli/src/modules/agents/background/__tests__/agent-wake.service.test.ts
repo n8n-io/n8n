@@ -16,6 +16,7 @@ import type { AgentBackgroundJob } from '../../entities/agent-background-job.ent
 import type { ChatIntegrationRegistry } from '../../integrations/agent-chat-integration';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
+import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentWakeService,
@@ -59,12 +60,15 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 	} as AgentBackgroundJob;
 }
 
-function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
+function setup(
+	options: { worker?: boolean; enabled?: boolean; messageQueueEnabled?: boolean } = {},
+) {
 	const jobRepository = mock<AgentBackgroundJobRepository>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
 	backgroundJobService.markMailConsumed.mockImplementation(
 		async (...args) => await jobRepository.markMailConsumed(...args),
 	);
+	const executionRepository = mock<AgentExecutionRepository>();
 	const agentRepository = mock<AgentRepository>();
 	const userRepository = mock<UserRepository>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
@@ -73,11 +77,15 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	const lockService = mock<LockService>();
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>({ isWorker: options.worker ?? false });
-	const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: options.enabled ?? true });
+	const agentsConfig = mock<AgentsConfig>({
+		backgroundTasksEnabled: options.enabled ?? true,
+		messageQueueEnabled: options.messageQueueEnabled ?? true,
+	});
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
 	jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([makeJob()]);
+	executionRepository.existsRunningByThread.mockResolvedValue(false);
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
 	userRepository.findByIdWithRole.mockResolvedValue(user as never);
@@ -88,7 +96,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 
 	const service = new AgentWakeService(
 		jobRepository,
-		new AgentConversationStateService(checkpointStorage),
+		new AgentConversationStateService(executionRepository, checkpointStorage),
 		agentRepository,
 		userRepository,
 		integrationRegistry,
@@ -105,6 +113,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		service,
 		backgroundJobService,
 		jobRepository,
+		executionRepository,
 		agentRepository,
 		userRepository,
 		checkpointStorage,
@@ -403,6 +412,16 @@ describe('AgentWakeService', () => {
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
+	it('wakes a parent with a running execution, because the session lease decides', async () => {
+		const { service, executionRepository, orchestrator } = setup();
+		executionRepository.existsRunningByThread.mockResolvedValue(true);
+
+		await service.attemptWake('thread-1');
+
+		expect(orchestrator.executeForWake).toHaveBeenCalledOnce();
+		expect(executionRepository.existsRunningByThread).toHaveBeenCalled();
+	});
+
 	it('allows a wake after the suspension ends', async () => {
 		const resumed = setup();
 		resumed.checkpointStorage.findSuspendedForThread.mockResolvedValueOnce({} as never);
@@ -425,6 +444,52 @@ describe('AgentWakeService', () => {
 
 		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+	});
+
+	// TODO(AGENT-1031): Remove with the message queue flag.
+	describe('with the message queue flag off', () => {
+		it('does not wake a running or suspended parent', async () => {
+			const running = setup({ messageQueueEnabled: false });
+			running.executionRepository.existsRunningByThread.mockResolvedValue(true);
+			await running.service.attemptWake('thread-1');
+			expect(running.orchestrator.executeForWake).not.toHaveBeenCalled();
+
+			const suspended = setup({ messageQueueEnabled: false });
+			suspended.checkpointStorage.findSuspendedForThread.mockResolvedValue({} as never);
+			await suspended.service.attemptWake('thread-1');
+			expect(suspended.orchestrator.executeForWake).not.toHaveBeenCalled();
+			expect(suspended.jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+
+		it.each(['running', 'suspension'])('does not wake when the %s lookup fails', async (lookup) => {
+			const { service, executionRepository, checkpointStorage, orchestrator, jobRepository } =
+				setup({ messageQueueEnabled: false });
+			const query =
+				lookup === 'running'
+					? executionRepository.existsRunningByThread
+					: checkpointStorage.findSuspendedForThread;
+			query.mockRejectedValue(new Error('Database unavailable'));
+
+			await service.attemptWake('thread-1');
+
+			expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+
+		it('counts a busy admission as a failed wake', async () => {
+			const { service, orchestrator, jobRepository, logger } = setup({
+				messageQueueEnabled: false,
+			});
+			orchestrator.executeForWake.mockRejectedValue(new AgentTurnAlreadyRunningError());
+
+			for (let attempt = 0; attempt < MAX_CONSECUTIVE_FAILED_WAKES + 1; attempt++) {
+				await service.attemptWake('thread-1');
+			}
+
+			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(MAX_CONSECUTIVE_FAILED_WAKES);
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalled();
+		});
 	});
 
 	it('does not mark results as delivered after the wake loses its lease', async () => {

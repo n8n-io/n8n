@@ -52,6 +52,9 @@ interface ExecuteTurnConfig {
 	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	previewChat?: boolean;
+	// TODO(AGENT-1031): Remove with the message queue flag. The session lease admits resumes.
+	/** Admits an automatic Preview resume under the Preview lock while the flag is off. */
+	automaticPreviewContinuation?: boolean;
 	/** How long to wait while another turn holds the session. Defaults to no wait. */
 	sessionWaitMs?: number;
 	/** Runs before each start attempt. Throws when the turn must not start anymore. */
@@ -337,26 +340,47 @@ export class AgentTurnExecutionService {
 		onExecutionRecorded?.(recordedId);
 	}
 
-	/** Records a turn that failed before it could start. Takes the session lease like a turn. */
+	/**
+	 * Records a turn that failed before it could start. Takes the session lease
+	 * like a turn. With the message queue flag off, Preview admission applies.
+	 */
 	async recordFailedStart(
 		params: StartExecutionParams,
 		executionError: unknown,
 		onExecutionRecorded?: (executionId: string) => void,
+		options: { previewChat?: boolean; automaticContinuationRunId?: string } = {},
 	): Promise<void> {
 		const recorder = this.createRecorder();
 		recorder.record({ type: 'error', error: executionError });
 		recorder.record({ type: 'finish', finishReason: 'error' });
-		const { executionId } = await this.startExecution(params, recorder.startedAt, executionError);
-		await this.finalizeExecution({
-			executionId,
-			executionStarted: false,
-			executionError,
-			onExecutionRecorded,
-			params: { ...params, record: recorder.getMessageRecord() },
-		});
+		const recordStart = async () =>
+			(await this.startExecution(params, recorder.startedAt, executionError)).executionId;
+		const recordFailure = async (executionId: string) => {
+			await this.finalizeExecution({
+				executionId,
+				executionStarted: false,
+				executionError,
+				onExecutionRecorded,
+				params: { ...params, record: recorder.getMessageRecord() },
+			});
+		};
+		// TODO(AGENT-1031): Remove with the message queue flag, with the `options` parameter.
+		if (options.previewChat && options.automaticContinuationRunId) {
+			await this.chatExecutionService.admitAutomaticContinuation(
+				params.threadId,
+				params.agentId,
+				options.automaticContinuationRunId,
+				async () => await recordFailure(await recordStart()),
+			);
+			return;
+		}
+		await recordFailure(await this.admitStart(options.previewChat, params.threadId, recordStart));
 	}
 
-	/** The session lease admits the turn when its execution is recorded. */
+	/**
+	 * The session lease admits the turn when its execution is recorded. With the
+	 * message queue flag off, the Preview lock admits Preview turns.
+	 */
 	private async admitTurn(
 		turn: AgentTurnRequest,
 		config: ExecuteTurnConfig,
@@ -364,8 +388,31 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 		previewControl?: PreviewExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
-		const executionId = await this.recordTurnStart(turn, config, recorder, state);
-		return await this.startAcceptedTurn(executionId, turn, config, recorder, state, previewControl);
+		const recordStart = async () => await this.recordTurnStart(turn, config, recorder, state);
+		const startAccepted = async (id: string) =>
+			await this.startAcceptedTurn(id, turn, config, recorder, state, previewControl);
+		// TODO(AGENT-1031): Remove with the message queue flag. The session lease admits resumes.
+		if (previewControl && config.automaticPreviewContinuation && turn.type === 'resume') {
+			return await this.chatExecutionService.admitAutomaticContinuation(
+				config.context.threadId,
+				config.context.agentId,
+				turn.options.runId,
+				async () => await startAccepted(await recordStart()),
+			);
+		}
+		return await startAccepted(
+			await this.admitStart(previewControl !== undefined, config.context.threadId, recordStart),
+		);
+	}
+
+	// TODO(AGENT-1031): Remove with the message queue flag. The session lease admits Preview turns.
+	private async admitStart(
+		previewChat: boolean | undefined,
+		threadId: string,
+		recordStart: () => Promise<string>,
+	): Promise<string> {
+		if (!previewChat) return await recordStart();
+		return await this.chatExecutionService.admit(threadId, recordStart);
 	}
 
 	private async recordTurnStart(
@@ -385,7 +432,7 @@ export class AgentTurnExecutionService {
 		);
 		state.executionId = executionId;
 		turn.options.abortSignal = withLeaseSignal(turn.options.abortSignal, leaseSignal);
-		turn.options.abortSignal.throwIfAborted();
+		turn.options.abortSignal?.throwIfAborted();
 		return executionId;
 	}
 

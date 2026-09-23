@@ -9,6 +9,7 @@ import {
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
@@ -285,6 +286,7 @@ export class AgentChatBridge {
 				if (resumeExecutionContext) return resumeExecutionContext;
 				return {};
 			},
+			messageQueueEnabled: Container.get(AgentsConfig).messageQueueEnabled,
 		});
 		this.registerHandlers();
 	}
@@ -686,8 +688,8 @@ export class AgentChatBridge {
 		// is the task's thread rather than the platform one — so this has to come
 		// after the binding is resolved, and before anything is stored for a turn
 		// that is not going to run.
-		// TODO: Store the message and run it after the approval when the message queue
-		// holds messages during open approvals. Until then, the message is not run.
+		// TODO(AGENT-1030): Store the message and run it after the approval. Until then,
+		// the message is not run.
 		if (await this.postStillWaitingReply(thread, session.memory.threadId.id)) return;
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inbound.attachments,
@@ -827,8 +829,8 @@ export class AgentChatBridge {
 				statusHandle,
 			});
 		} catch (error) {
-			// TODO: Remove when integration messages go through the message queue. Until
-			// then, a message that arrives while another turn runs on the session is not run.
+			// TODO(AGENT-1029): Queue the message instead. Until then, a message that arrives
+			// while another turn runs on the session is not run.
 			if (error instanceof AgentTurnAlreadyRunningError) {
 				await statusHandle?.clearBeforeResponse();
 				await this.rejectBusyTurn(thread, attachments);

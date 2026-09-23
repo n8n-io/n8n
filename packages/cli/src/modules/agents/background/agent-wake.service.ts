@@ -167,10 +167,12 @@ export class AgentWakeService {
 			return;
 		}
 
-		const { suspendedCheckpoint } = await this.conversationState.inspect(
+		const { running, suspendedCheckpoint } = await this.conversationState.inspect(
 			first.parentAgentId,
 			threadId,
 		);
+		// TODO(AGENT-1031): Remove the running check with the message queue flag.
+		if (running && !this.agentsConfig.messageQueueEnabled) return;
 		if (suspendedCheckpoint !== null) return;
 
 		const target = await this.resolveWakeTarget(first, threadId, generation);
@@ -192,7 +194,10 @@ export class AgentWakeService {
 		} catch (error) {
 			if (signal.aborted) return;
 			// Another turn holds the session. That turn requests a new wake when it settles.
-			if (error instanceof AgentTurnAlreadyRunningError) return;
+			// TODO(AGENT-1031): Drop the flag condition with the message queue flag.
+			if (error instanceof AgentTurnAlreadyRunningError && this.agentsConfig.messageQueueEnabled) {
+				return;
+			}
 			// Keep provider and tool error details in the execution record.
 			// Log only that the wake failed.
 			this.recordFailure(threadId, generation, 'Wake run failed');

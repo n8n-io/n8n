@@ -13,7 +13,8 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { AiConfig } from '@n8n/config';
+import { LockService } from '@n8n/backend-common';
+import type { AgentsConfig, AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -176,17 +177,25 @@ function makeRuntime(
 	};
 }
 
-function makeService(sandboxEnabled = false) {
+function makeService(sandboxEnabled = false, messageQueueEnabled = true) {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const executionService = mock<AgentExecutionService>();
 	const executionRepository = mock<AgentExecutionRepository>();
+	const agentsConfig = mock<AgentsConfig>({ messageQueueEnabled });
 	const chatExecutionService = new AgentChatExecutionService(
+		Container.get(LockService),
 		executionRepository,
 		executionService,
 		checkpointStorage,
 		mock<Publisher>(),
 		mock<InstanceSettings>(),
 		mock<AgentExecutionUpdateBroadcaster>(),
+		agentsConfig,
+	);
+	const turnExecutionService = new AgentTurnExecutionService(
+		mockLogger(),
+		executionService,
+		chatExecutionService,
 	);
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
@@ -235,7 +244,7 @@ function makeService(sandboxEnabled = false) {
 		mockLogger(),
 		checkpointStorage,
 		executionService,
-		new AgentTurnExecutionService(mockLogger(), executionService, chatExecutionService),
+		turnExecutionService,
 		telemetry,
 		runtimeCacheService,
 		integrationMessageContextService,
@@ -245,11 +254,13 @@ function makeService(sandboxEnabled = false) {
 		agentRepository,
 		aiConfigMock,
 		chatExecutionService,
+		agentsConfig,
 	);
 
 	return {
 		service,
 		chatExecutionService,
+		turnExecutionService,
 		executionRepository,
 		checkpointStorage,
 		executionService,
@@ -316,13 +327,17 @@ describe('AgentExecutionOrchestratorService', () => {
 		function makeTurn({
 			abortSignal,
 			previewChat = false,
+			automaticPreviewContinuation = false,
 			announceExecution = true,
+			messageQueueEnabled = true,
 		}: {
 			abortSignal?: AbortSignal;
 			previewChat?: boolean;
+			automaticPreviewContinuation?: boolean;
 			announceExecution?: boolean;
+			messageQueueEnabled?: boolean;
 		} = {}) {
-			const fixtures = makeService();
+			const fixtures = makeService(false, messageQueueEnabled);
 			const runtime = makeRuntime();
 			fixtures.runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 			fixtures.checkpointStorage.getStatus.mockResolvedValue({
@@ -356,6 +371,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							onExecutionRecorded,
 							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
+							automaticPreviewContinuation,
 							abortSignal,
 						});
 			return {
@@ -461,6 +477,131 @@ describe('AgentExecutionOrchestratorService', () => {
 					}),
 				);
 			});
+		}
+
+		// TODO(AGENT-1031): Remove with the message queue flag.
+		describe('with the message queue flag off', () => {
+			it('rejects a competing preview without creating an execution or claiming a resume', async () => {
+				const {
+					stream,
+					onExecutionStarted,
+					sdkStart,
+					executionService,
+					executionRepository,
+					runtimeCacheService,
+				} = makeTurn({ previewChat: true, messageQueueEnabled: false });
+				executionRepository.existsRunningByThread.mockResolvedValue(true);
+				await expect(collect(stream)).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+				expect(onExecutionStarted).not.toHaveBeenCalled();
+				expect(sdkStart).not.toHaveBeenCalled();
+				expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+				expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledOnce();
+			});
+
+			if (operation === 'resume') {
+				it('admits one automatic preview continuation for a suspended run', async () => {
+					const started = createDeferredPromise<AbortSignal>();
+					const release = createDeferredPromise();
+					const {
+						service,
+						stream,
+						runtime,
+						chatExecutionService,
+						checkpointStorage,
+						executionService,
+						executionRepository,
+						onExecutionStarted,
+					} = makeTurn({
+						previewChat: true,
+						automaticPreviewContinuation: true,
+						announceExecution: false,
+						messageQueueEnabled: false,
+					});
+					executionRepository.existsRunningByThread.mockResolvedValue(true);
+					runtime.agent.resume.mockImplementation(
+						async (_method, _data, options: ResumeOptions & ExecutionOptions) => {
+							await options.onResumeClaimed?.();
+							checkpointStorage.getStatus.mockResolvedValue({
+								status: 'active',
+								checkpoint: { ...makeCheckpoint(), status: 'running' },
+							});
+							if (!options.abortSignal) throw new Error('Expected an execution abort signal.');
+							started.resolve(options.abortSignal);
+							await release.promise;
+							return {
+								runId: 'runtime-run-1',
+								stream: makeReadableStream([{ type: 'finish', finishReason: 'stop' }]),
+							};
+						},
+					);
+					const result = collect(stream);
+					const signal = await started.promise;
+					const resumeAgain = async () =>
+						await collect(
+							service.resumeForChat({
+								user,
+								usePublishedVersion: false,
+								agentId,
+								projectId,
+								runId: 'run-1',
+								toolCallId: 'tc-1',
+								resumeData: { approved: true },
+								previewChat: true,
+								automaticPreviewContinuation: true,
+							}),
+						);
+
+					await expect(resumeAgain()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+
+					await chatExecutionService.handleCancel({
+						projectId,
+						agentId,
+						threadId: 'thread-1',
+						executionId: 'execution-1',
+						userId,
+					});
+
+					expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+					expect(runtime.agent.resume).toHaveBeenCalledOnce();
+					expect(onExecutionStarted).not.toHaveBeenCalled();
+					expect(signal.aborted).toBe(true);
+					release.resolve();
+					await result;
+					await expect(resumeAgain()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+					expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+					expect(runtime.agent.resume).toHaveBeenCalledOnce();
+					expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+						'execution-1',
+						expect.objectContaining({
+							record: expect.objectContaining({ finishReason: 'cancelled', error: null }),
+						}),
+					);
+				});
+			}
+		});
+
+		if (operation === 'resume') {
+			it.each([
+				{ messageQueueEnabled: true, starts: false },
+				{ messageQueueEnabled: false, starts: true },
+			])(
+				'checks for a claimed checkpoint before the resume starts only with the flag on, flag=$messageQueueEnabled',
+				async ({ messageQueueEnabled, starts }) => {
+					const { stream, checkpointStorage, executionService } = makeTurn({
+						previewChat: true,
+						messageQueueEnabled,
+					});
+					checkpointStorage.getStatus.mockResolvedValue({
+						status: 'active',
+						checkpoint: { ...makeCheckpoint(), status: 'running' },
+					});
+
+					if (starts) await collect(stream);
+					else await expect(collect(stream)).rejects.toBeInstanceOf(AgentResumeAlreadyHandledError);
+
+					expect(executionService.startExecutionRecording).toHaveBeenCalledTimes(starts ? 1 : 0);
+				},
+			);
 		}
 
 		it('records cancellation when Stop follows acceptance before the SDK starts', async () => {

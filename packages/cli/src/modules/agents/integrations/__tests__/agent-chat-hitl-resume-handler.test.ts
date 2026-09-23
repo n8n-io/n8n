@@ -1,3 +1,5 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import { AgentResumeAlreadyHandledError } from '../../agent-resume-already-handled.error';
 import { INTERACTIVE_RESUME_SESSION_WAIT_MS } from '../../agent-session-lease.service';
@@ -49,6 +51,7 @@ it.each([
 		messageContextBridge: { capture: vi.fn().mockReturnValue(undefined) } as never,
 		streamConsumer: { consume: vi.fn().mockResolvedValue(undefined) } as never,
 		createResumeExecutionContext: async () => ({}),
+		messageQueueEnabled: true,
 	});
 
 	await handler.handleAction({
@@ -82,7 +85,10 @@ describe('duplicate resumes', () => {
 		});
 	}
 
-	function createHandler(resumeForChat: AgentExecutionOrchestratorService['resumeForChat']) {
+	function createHandler(
+		resumeForChat: AgentExecutionOrchestratorService['resumeForChat'],
+		{ messageQueueEnabled = true } = {},
+	) {
 		return new AgentChatHitlResumeHandler({
 			agentId: 'agent-1',
 			projectId: 'project-1',
@@ -102,6 +108,7 @@ describe('duplicate resumes', () => {
 				}),
 			} as never,
 			createResumeExecutionContext: async () => ({}),
+			messageQueueEnabled,
 		});
 	}
 
@@ -117,6 +124,46 @@ describe('duplicate resumes', () => {
 			raw: {},
 		} as never);
 	}
+
+	/** Starts a resume that runs until `release` resolves, then clicks the button again. */
+	async function clickTwiceDuringResume(messageQueueEnabled: boolean) {
+		const release = createDeferredPromise();
+		const resumeForChat = vi.fn(() =>
+			// eslint-disable-next-line require-yield
+			(async function* () {
+				await release.promise;
+			})(),
+		);
+		const handler = createHandler(resumeForChat, { messageQueueEnabled });
+		const firstThread = { post: vi.fn() };
+		const secondThread = { post: vi.fn() };
+
+		const first = clickResumeButton(handler, firstThread);
+		await vi.waitFor(() => expect(resumeForChat).toHaveBeenCalledOnce());
+		const second = clickResumeButton(handler, secondThread);
+		await vi.waitFor(() =>
+			expect(resumeForChat.mock.calls.length + secondThread.post.mock.calls.length).toBe(2),
+		);
+		release.resolve();
+		await Promise.all([first, second]);
+		return { resumeForChat, secondThread };
+	}
+
+	it('keeps a second click out in this process when the message queue flag is off', async () => {
+		const { resumeForChat, secondThread } = await clickTwiceDuringResume(false);
+
+		expect(resumeForChat).toHaveBeenCalledOnce();
+		expect(secondThread.post).toHaveBeenCalledExactlyOnceWith(
+			'This action has already been handled',
+		);
+	});
+
+	it('leaves a second click to the session lease when the message queue flag is on', async () => {
+		const { resumeForChat, secondThread } = await clickTwiceDuringResume(true);
+
+		expect(resumeForChat).toHaveBeenCalledTimes(2);
+		expect(secondThread.post).not.toHaveBeenCalled();
+	});
 
 	it('waits for the session before a button resume starts', async () => {
 		const resumeForChat = vi.fn(() => (async function* () {})());

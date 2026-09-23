@@ -1,5 +1,6 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { AgentsConfig } from '@n8n/config';
 import type { User, UserRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -38,7 +39,7 @@ const previewRun: RelatedAgentRun = {
 	userId: 'user-1',
 };
 
-function setup() {
+function setup({ messageQueueEnabled = true } = {}) {
 	const logger = mock<Logger>();
 	(logger.scoped as Mock).mockReturnValue(logger);
 	const bridge = mock<AgentChatBridge>();
@@ -71,6 +72,7 @@ function setup() {
 		instanceSettings,
 		publisher,
 		backgroundJobService,
+		mock<AgentsConfig>({ messageQueueEnabled }),
 	);
 	return {
 		service,
@@ -366,6 +368,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 				runId: 'run-1',
 				toolCallId: 'call-1',
 				resumeData: { type: 'workflow_finished', value: 'success' },
+				automaticPreviewContinuation: true,
 			}),
 		);
 	});
@@ -513,6 +516,24 @@ describe('AgentWorkflowToolResumeService → busy session', () => {
 		expect(checkpointStorage.getStatus).toHaveBeenCalledTimes(2);
 		expect(bridge.resumeInAgentThread).toHaveBeenCalledTimes(1);
 		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('logs a busy resume once and does not retry when the message queue flag is off', async () => {
+		const { service, logger, bridge, chatIntegrationService } = setup({
+			messageQueueEnabled: false,
+		});
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+		bridge.resumeInAgentThread.mockRejectedValue(new AgentTurnAlreadyRunningError());
+
+		await service.handleResumeRelay({ agentRun, status: 'success' });
+		await vi.advanceTimersByTimeAsync(30_000);
+
+		expect(bridge.resumeInAgentThread).toHaveBeenCalledOnce();
+		expect(vi.getTimerCount()).toBe(0);
+		expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+			'Failed to resume agent run after sub-workflow completed',
+			expect.objectContaining({ agentId: 'agent-1', runId: 'run-1' }),
+		);
 	});
 
 	it('stops without an error when another attempt already resumed the run', async () => {

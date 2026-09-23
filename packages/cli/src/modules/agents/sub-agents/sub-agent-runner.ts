@@ -246,7 +246,7 @@ export class SubAgentRunner {
 		let executionError: unknown;
 		let agent: BuiltAgent | undefined;
 		try {
-			abortSignal.throwIfAborted();
+			abortSignal?.throwIfAborted();
 			const reconstructed = await reconstructionService.reconstructFromResolvedSource({
 				config: childConfig,
 				memoryOwnerAgentId: runtimeSource.source.sourceId,
@@ -273,9 +273,9 @@ export class SubAgentRunner {
 			});
 
 			agent = reconstructed.agent;
-			abortSignal.throwIfAborted();
+			abortSignal?.throwIfAborted();
 			const executionOptions = {
-				abortSignal,
+				...(abortSignal !== undefined ? { abortSignal } : {}),
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...modelStreamStallOptions(this.aiConfig),
 				executionCounter: context.executionCounter,
@@ -346,7 +346,7 @@ export class SubAgentRunner {
 					executionError,
 					params: {
 						...recording,
-						record: abortSignal.aborted
+						record: abortSignal?.aborted
 							? { ...record, finishReason: 'cancelled', error: null }
 							: record,
 						hitlStatus: recorder.suspended
