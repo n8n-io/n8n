@@ -2502,6 +2502,7 @@ export class InstanceAiService {
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 		} = gates;
 		// Resumed segments use the gates bound to the original turn.
@@ -2533,6 +2534,7 @@ export class InstanceAiService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
 			modelId,
 		});
 

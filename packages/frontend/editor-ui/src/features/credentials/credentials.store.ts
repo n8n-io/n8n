@@ -1,6 +1,8 @@
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import type { INodeUi } from '@/Interface';
 import type {
 	CredentialFetchScope,
+	CredentialPayload,
 	ICredentialMap,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
@@ -45,6 +47,7 @@ const scopeKey = (scope: CredentialFetchScope): string =>
 	'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`;
 
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
+	const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
 	const state = ref<ICredentialsState>({ credentialTypes: {}, credentials: {} });
 
 	/**
@@ -438,7 +441,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const createNewCredential = async (
-		data: ICredentialsDecrypted,
+		data: CredentialPayload,
 		projectId?: string,
 		uiContext?: string,
 		options?: { skipStoreUpdate?: boolean },
@@ -446,6 +449,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
 			name: data.name,
+			...(credentialDescriptionsEnabled.value && data.description !== undefined
+				? { description: data.description }
+				: {}),
 			type: data.type,
 			data: data.data ?? {},
 			projectId,
@@ -476,12 +482,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const updateCredential = async (params: {
-		data: ICredentialsDecrypted;
+		data: CredentialPayload;
 		id: string;
 	}): Promise<ICredentialsResponse> => {
-		const { id, data } = params;
+		const { id } = params;
+		const { description, ...data } = params.data;
+		const payload = {
+			...data,
+			...(credentialDescriptionsEnabled.value && description !== undefined ? { description } : {}),
+		};
 		credentialTestResults.value.delete(id);
-		const credential = await credentialsApi.updateCredential(rootStore.restApiContext, id, data);
+		const credential = await credentialsApi.updateCredential(rootStore.restApiContext, id, payload);
 
 		upsertCredential(credential);
 
