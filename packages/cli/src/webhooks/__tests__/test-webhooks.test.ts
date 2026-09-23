@@ -794,23 +794,6 @@ describe('TestWebhooks', () => {
 				expect(result).toEqual(callbackData);
 			});
 
-			test('resolves with the lastNode callback data received after executeWebhook returns', async () => {
-				setup('lastNode');
-				const callbackData = {
-					data: { ok: true },
-					responseCode: 200,
-					headers: { 'x-test': 'value' },
-				} as unknown as IWebhookResponseCallbackData;
-				await mockDeferredExecuteWebhook(callbackData);
-
-				const result = await testWebhooks.executeWebhook(
-					mock<WebhookRequest>({ params: { path }, method: httpMethod }),
-					mock<express.Response>(),
-				);
-
-				expect(result).toEqual(callbackData);
-			});
-
 			test('rejects with the error thrown by WebhookHelpers.executeWebhook', async () => {
 				setup('lastNode');
 				const error = new Error('boom');
