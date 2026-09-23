@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import SsoSigninCard from './SsoSigninCard.vue';
 import type { IFormBoxConfig } from '@/Interface';
 
@@ -49,28 +49,65 @@ describe('SsoSigninCard', () => {
 			'aria-expanded',
 			'false',
 		);
-		expect(getEmailInput(container)).not.toBeInTheDocument();
+		expect(getEmailInput(container)).not.toBeVisible();
 	});
 
 	it('should reveal the password form when the disclosure is clicked', async () => {
 		const { getByRole, getByText, container } = renderComponent();
 
-		await userEvent.click(getByRole('button', { name: /sign in with email and password/i }));
+		const disclosure = getByRole('button', { name: /sign in with email and password/i });
+		await userEvent.click(disclosure);
 
-		expect(getByRole('button', { name: /sign in with email and password/i })).toHaveAttribute(
-			'aria-expanded',
-			'true',
+		expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+		const controlledContent = document.getElementById(
+			disclosure.getAttribute('aria-controls') ?? '',
 		);
+		expect(controlledContent).toContainElement(getEmailInput(container));
 		expect(getEmailInput(container)).toBeVisible();
 		expect(container.querySelector('input[type="password"]')).toBeVisible();
 		expect(getByRole('button', { name: 'Sign in' })).toBeVisible();
 		expect(getByText('Forgot my password')).toBeVisible();
 	});
 
-	it('should start with the password form revealed when defaultExpanded is set', () => {
+	it('should focus the email field when the disclosure opens', async () => {
+		const { getByRole, container } = renderComponent();
+
+		await userEvent.click(getByRole('button', { name: /sign in with email and password/i }));
+
+		await waitFor(() => expect(getEmailInput(container)).toHaveFocus());
+	});
+
+	it('should keep the entered credentials when the disclosure is closed and reopened', async () => {
+		const { getByRole, emitted, container } = renderComponent({
+			props: { defaultExpanded: true },
+		});
+		const disclosure = getByRole('button', { name: /sign in with email and password/i });
+		const emailInput = getEmailInput(container);
+		const passwordInput = container.querySelector('input[type="password"]');
+		if (!emailInput || !passwordInput) {
+			throw new Error('Inputs not found');
+		}
+
+		await userEvent.type(emailInput, 'test@n8n.io');
+		await userEvent.type(passwordInput, 'password');
+		await userEvent.click(disclosure);
+		expect(emailInput).not.toBeVisible();
+		await userEvent.click(disclosure);
+		expect(emailInput).toBeVisible();
+		expect(emailInput).toHaveValue('test@n8n.io');
+
+		await userEvent.click(getByRole('button', { name: 'Sign in' }));
+
+		expect(emitted('submit')).toEqual([
+			[{ emailOrLdapLoginId: 'test@n8n.io', password: 'password' }],
+		]);
+	});
+
+	it('should start with the password form revealed and focused when defaultExpanded is set', async () => {
 		const { container } = renderComponent({ props: { defaultExpanded: true } });
 
 		expect(getEmailInput(container)).toBeVisible();
+		await waitFor(() => expect(getEmailInput(container)).toHaveFocus());
 	});
 
 	it('should emit ssoLogin from the primary button', async () => {
@@ -110,6 +147,7 @@ describe('SsoSigninCard', () => {
 
 		const callout = getByTestId('sso-required-callout');
 		expect(callout).toBeVisible();
+		await waitFor(() => expect(callout).toHaveFocus());
 		expect(within(callout).getByText('Your account uses single sign-on (SSO)')).toBeVisible();
 		expect(
 			within(callout).getByText("Password sign-in isn't available for this account."),

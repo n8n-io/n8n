@@ -173,14 +173,14 @@ const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => 
 };
 
 const onSsoLogin = async () => {
+	// The user acted, so an error about the SSO URL must be visible even after a
+	// session-expiry redirect suppressed notifications.
+	notificationsStore.setNotificationsSuppressed(false);
 	ssoLoading.value = true;
 	try {
-		const redirectUrl = ssoStore.isDefaultAuthenticationSaml
-			? await ssoStore.getSSORedirectUrl(
-					typeof route.query?.redirect === 'string' ? route.query.redirect : '',
-				)
-			: ssoStore.oidc.loginUrl;
-		window.location.href = redirectUrl ?? '';
+		window.location.href = await ssoStore.getSsoLoginUrl(
+			typeof route.query?.redirect === 'string' ? route.query.redirect : '',
+		);
 	} catch (error) {
 		ssoLoading.value = false;
 		toast.showError(error, locale.baseText('auth.signin.error'));

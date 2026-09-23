@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 
 import {
@@ -24,8 +24,6 @@ import type { EmailOrLdapLoginIdAndPassword } from '../views/SigninView.vue';
  * behind a disclosure so it stays one click away without inviting users to
  * type credentials that SSO would reject.
  */
-const PASSWORD_FORM_ID = 'signin-password-form';
-
 const props = withDefaults(
 	defineProps<{
 		form: IFormBoxConfig;
@@ -53,7 +51,45 @@ const i18n = useI18n();
 const formBus = createFormEventBus();
 
 const isPasswordFormOpen = ref(props.defaultExpanded);
+const passwordFormRef = ref<HTMLElement | null>(null);
 const calloutRef = ref<{ $el?: unknown } | null>(null);
+
+// Reka assigns the collapsible content id when the content mounts, after the
+// trigger has already rendered an empty `aria-controls`, so read the id from the
+// rendered content element and bind it explicitly.
+const passwordFormContentId = ref<string>();
+
+// The form stays mounted while collapsed so typed credentials survive a
+// close/reopen, so the card decides when the first field gets focus instead of
+// the inputs focusing themselves on mount.
+const inputs = computed(() =>
+	props.form.inputs.map((input) => ({
+		...input,
+		properties: { ...input.properties, focusInitially: false },
+	})),
+);
+
+const nextFrame = async () =>
+	await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+// Reka drops the `hidden` attribute one render after the open state flips, and
+// a field inside hidden content cannot take focus, so wait for it to show.
+const focusFirstInput = async () => {
+	await nextTick();
+	for (let frame = 0; frame < 10 && passwordFormRef.value?.parentElement?.hidden; frame++) {
+		await nextFrame();
+	}
+	passwordFormRef.value?.querySelector('input')?.focus({ preventScroll: true });
+};
+
+onMounted(async () => {
+	passwordFormContentId.value = passwordFormRef.value?.parentElement?.id || undefined;
+	if (props.defaultExpanded) await focusFirstInput();
+});
+
+watch(isPasswordFormOpen, async (isOpen) => {
+	if (isOpen) await focusFirstInput();
+});
 
 // Focus the callout when it appears so keyboard and screen-reader users land on
 // the explanation right after a refused password sign-in.
@@ -94,13 +130,17 @@ const onSubmit = (values: unknown) => {
 			<span>{{ i18n.baseText('sso.login.divider') }}</span>
 		</div>
 
-		<CollapsibleRoot v-model:open="isPasswordFormOpen" :class="$style.passwordSection">
+		<CollapsibleRoot
+			v-model:open="isPasswordFormOpen"
+			:unmount-on-hide="false"
+			:class="$style.passwordSection"
+		>
 			<CollapsibleTrigger as-child>
 				<N8nButton
 					variant="ghost"
 					size="large"
 					:class="$style.revealTrigger"
-					:aria-controls="PASSWORD_FORM_ID"
+					:aria-controls="passwordFormContentId"
 					data-test-id="reveal-password-login"
 				>
 					{{ i18n.baseText('auth.signin.passwordDisclosure') }}
@@ -112,12 +152,8 @@ const onSubmit = (values: unknown) => {
 				</N8nButton>
 			</CollapsibleTrigger>
 
-			<N8nAnimatedCollapsibleContent
-				:id="PASSWORD_FORM_ID"
-				:class="$style.passwordFormContent"
-				blur
-			>
-				<div :class="$style.passwordForm">
+			<N8nAnimatedCollapsibleContent :class="$style.passwordFormContent" blur>
+				<div ref="passwordFormRef" :class="$style.passwordForm">
 					<N8nCallout
 						v-if="ssoRequired"
 						ref="calloutRef"
@@ -147,7 +183,7 @@ const onSubmit = (values: unknown) => {
 
 					<div :class="$style.inputsContainer">
 						<N8nFormInputs
-							:inputs="form.inputs"
+							:inputs="inputs"
 							:event-bus="formBus"
 							:column-view="true"
 							@submit="onSubmit"

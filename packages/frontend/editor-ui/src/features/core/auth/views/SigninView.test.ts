@@ -323,7 +323,7 @@ describe('SigninView', () => {
 			expect(getByTestId('sso-signin-card')).toBeInTheDocument();
 			expect(queryByTestId('auth-form')).not.toBeInTheDocument();
 			expect(getByRole('button', { name: 'Continue with SSO' })).toBeVisible();
-			expect(getEmailInput(container)).not.toBeInTheDocument();
+			expect(getEmailInput(container)).not.toBeVisible();
 		});
 
 		it('should reveal the password form when internalAuth=true is in the URL', () => {
@@ -334,37 +334,25 @@ describe('SigninView', () => {
 			expect(getEmailInput(container)).toBeVisible();
 		});
 
-		it('should redirect to the SAML identity provider from the SSO button', async () => {
-			ssoStore.isDefaultAuthenticationSaml = true;
-			ssoStore.getSSORedirectUrl.mockResolvedValue('https://idp.example.com/saml');
+		it('should redirect to the SSO login URL for the requested destination', async () => {
+			ssoStore.getSsoLoginUrl.mockResolvedValue('https://idp.example.com/saml');
 			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
 
 			const { getByRole } = renderComponent();
 			await userEvent.click(getByRole('button', { name: 'Continue with SSO' }));
 
-			expect(ssoStore.getSSORedirectUrl).toHaveBeenCalledWith('/home/workflows');
+			expect(ssoStore.getSsoLoginUrl).toHaveBeenCalledWith('/home/workflows');
 			expect(hrefSpy).toHaveBeenCalledWith('https://idp.example.com/saml');
 		});
 
-		it('should redirect to the OIDC login URL from the SSO button', async () => {
-			ssoStore.isDefaultAuthenticationSaml = false;
-			ssoStore.oidc = { loginEnabled: true, loginUrl: '/rest/sso/oidc/login', callbackUrl: '' };
-			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+		it('should show a toast when the SSO login URL cannot be resolved', async () => {
+			ssoStore.getSsoLoginUrl.mockRejectedValue(new Error('SAML is not configured'));
 
 			const { getByRole } = renderComponent();
 			await userEvent.click(getByRole('button', { name: 'Continue with SSO' }));
 
-			expect(ssoStore.getSSORedirectUrl).not.toHaveBeenCalled();
-			expect(hrefSpy).toHaveBeenCalledWith('/rest/sso/oidc/login');
-		});
-
-		it('should show a toast when the SSO redirect URL cannot be resolved', async () => {
-			ssoStore.isDefaultAuthenticationSaml = true;
-			ssoStore.getSSORedirectUrl.mockRejectedValue(new Error('SAML is not configured'));
-
-			const { getByRole } = renderComponent();
-			await userEvent.click(getByRole('button', { name: 'Continue with SSO' }));
-
+			// Lifted so the error is not swallowed after a session-expiry redirect.
+			expect(notificationsStore.setNotificationsSuppressed).toHaveBeenCalledWith(false);
 			expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Problem logging in');
 		});
 
