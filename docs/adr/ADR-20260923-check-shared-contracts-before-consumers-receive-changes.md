@@ -1,0 +1,54 @@
+# Check shared contracts before consumers receive changes
+
+Date: 2026-09-23
+
+Status: Active
+
+Decision Owner: Catalysts
+
+Source: https://github.com/n8n-io/n8n/pull/36252
+
+## Context
+
+Some consumers keep data or use an older n8n version after a shared contract changes. A current
+build can pass even when these consumers cannot use the new contract. Different contracts need
+different checks. A schema comparison cannot show whether an existing guarantee still holds.
+
+We need to detect incompatible changes before they reach existing consumers. The check must use
+the contract and the output it verifies, without making an unrelated release job responsible.
+
+## Decision
+
+We check changes to shared contracts before consumers receive them. The contract owner defines
+which consumers must remain compatible. The check compares the proposed output with a protected
+prior contract or a supported consumer. A change in the same pull request cannot replace its own
+baseline.
+
+We run the check where its required output exists. A build check runs after the build. A check of
+independently published data runs before publication. We use code health for rules it can evaluate
+and a dedicated check when the contract needs other inputs. We do not add unrelated checks to the
+SBOM release job.
+
+## Alternatives Considered
+
+- **Use one schema check for every contract.** A schema check cannot detect every change in meaning
+  or behaviour.
+- **Compare only with the proposed contract.** A change could remove a guarantee and its baseline
+  in the same pull request.
+- **Check only at release time.** An incompatible change could merge before the check runs.
+
+## Consequences
+
+- Contract owners must name the consumers and prior contract that each check protects.
+- Checks run at different stages. Each check must block the change before consumers receive it.
+- Some checks need a build or a supported client version. Code health alone cannot verify every
+  contract.
+- An intentional incompatible change needs a migration or a reviewed exception.
+
+## Links
+
+RFC: -
+
+Documentation: -
+
+Related ADRs: -
