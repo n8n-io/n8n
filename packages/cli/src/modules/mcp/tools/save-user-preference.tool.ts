@@ -285,21 +285,23 @@ export const createSaveUserPreferenceTool = (
 		return inputRequired({
 			inputRequests: {
 				[REVIEW_KEY]: inputRequired.elicit({
-					message: `Saved to your n8n preferences:\n\n"${preference.content}"\n\nThe n8n assistant and connected AI tools apply it from now on. Edit the text to change it, or tick "Remove" to take it back. Closing this keeps it as saved.`,
+					// Clients may show only the first lines of the message, so the state comes first:
+					// the row is already saved, and closing the form keeps it.
+					message: `Already saved to your n8n preferences. Closing this keeps it as saved.\n\n"${preference.content}"\n\nThe n8n assistant and connected AI tools apply it from now on. Edit the text to change it, or tick "Remove this preference" to take it back.`,
 					requestedSchema: {
 						type: 'object',
 						properties: {
 							text: {
 								type: 'string',
-								title: 'Preference',
-								description: 'Edit the text to change what was saved.',
+								title: 'Preference (already saved)',
+								description: 'Edit the text to change what is saved. Leave it as it is to keep it.',
 								default: preference.content,
 								maxLength: AI_PREFERENCE_CONTENT_MAX_LENGTH,
 							},
 							remove: {
 								type: 'boolean',
 								title: 'Remove this preference',
-								description: 'Tick to delete it again.',
+								description: 'It is already saved. Tick this box to delete it.',
 								default: false,
 							},
 						},
