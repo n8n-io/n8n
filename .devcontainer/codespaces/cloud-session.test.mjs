@@ -79,7 +79,7 @@ for (const { name, supportedTerm, expectedTerm } of [
 	},
 ]) {
 	test(name, () => {
-		const result = spawnSync('/bin/sh', ['-c', remoteCommand(['--opencode'])], {
+		const result = spawnSync('/bin/sh', ['-c', remoteCommand(['--opencode', '--legacy'])], {
 			encoding: 'utf8',
 			env: {
 				...process.env,
