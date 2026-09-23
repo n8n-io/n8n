@@ -6,8 +6,9 @@ import type {
 	AzureEntraCognitiveServicesOAuth2ApiCredential,
 	AzureOpenAIOAuth2ModelConfig,
 } from '../types';
+import { AZURE_OPENAI_INFERENCE_AUDIENCE } from '../types';
 
-const AZURE_OPENAI_SCOPE = 'https://cognitiveservices.azure.com/.default';
+const AZURE_OPENAI_SCOPE = `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`;
 /**
  * Creates Entra ID (OAuth2) authentication for Azure OpenAI
  */
@@ -18,7 +19,8 @@ export async function setupOAuth2Authentication(
 	try {
 		const credential =
 			await this.getCredentials<AzureEntraCognitiveServicesOAuth2ApiCredential>(credentialName);
-		// Create a TokenCredential
+		// Create a TokenCredential. No audience override: inference keeps requesting
+		// the audience every existing tenant has already consented to.
 		const entraTokenCredential = new N8nOAuth2TokenCredential(this.getNode(), credential);
 		const deploymentDetails = await entraTokenCredential.getDeploymentDetails();
 

@@ -94,6 +94,28 @@ describe('N8nOAuth2TokenCredential', () => {
 			);
 		});
 
+		it('requests the cognitiveservices audience by default, unchanged for existing tenants', async () => {
+			await credential.getToken();
+
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: 'https://cognitiveservices.azure.com/' },
+				}),
+			);
+		});
+
+		it('requests the audience passed to the constructor, when one is given', async () => {
+			credential = new N8nOAuth2TokenCredential(mockNode, mockCredential, 'https://ai.azure.com');
+
+			await credential.getToken();
+
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: 'https://ai.azure.com/' },
+				}),
+			);
+		});
+
 		it('should throw NodeOperationError when credentials do not contain token', async () => {
 			// Arrange - remove the token
 			mockCredential.oauthTokenData.access_token = '';
