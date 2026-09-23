@@ -347,9 +347,6 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * table alias. A row past its `missedAfter` is left alone, unless it has no
 	 * deadline at all, or has already been attempted: a retry's backoff pushes it past
 	 * its deadline by design, and the attempt count decides its fate from then on.
-	 *
-	 * Shared by both dialects' claims and by the metric snapshot, so what the snapshot
-	 * calls due cannot drift from what the claim would take.
 	 */
 	private claimableSql(alias = ''): string {
 		const deadline = `${alias}"missedAfter"`;
