@@ -2160,7 +2160,7 @@ export class InstanceAiAdapterService {
 					throw new UserError(
 						`Execution ${options?.reuseExecutionId} does not cover every node above "${nodeName}", ` +
 							`so the run would execute them for real (${upstream}). ` +
-							'Pick an execution that reached those nodes, or omit both options to run the chain on purpose.',
+							'Pick an execution where those nodes ran to completion, or omit both options to run the chain on purpose.',
 					);
 				}
 

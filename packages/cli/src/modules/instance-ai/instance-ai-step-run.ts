@@ -384,6 +384,31 @@ function outputCarriedItems(runData: IRunData, nodeName: string, outputIndex: nu
 	);
 }
 
+/** Loop Over Items. The engine's `findStartNodes` matches the same literal. */
+const SPLIT_IN_BATCHES_NODE_TYPE = 'n8n-nodes-base.splitInBatches';
+
+/** Whether `nodeName` can reach itself through main connections. */
+function reachesItself(
+	connections: IConnections,
+	nodesByName: Map<string, INode>,
+	nodeName: string,
+): boolean {
+	const seen = new Set<string>();
+	const queue = [nodeName];
+
+	while (queue.length > 0) {
+		const current = queue.shift() as string;
+		for (const edge of directChildren(connections, nodesByName, current)) {
+			if (edge.node.name === nodeName) return true;
+			if (seen.has(edge.node.name)) continue;
+			seen.add(edge.node.name);
+			queue.push(edge.node.name);
+		}
+	}
+
+	return false;
+}
+
 /**
  * The nodes above the target that a replay of `runData` would still execute
  * for real.
@@ -393,12 +418,18 @@ function outputCarriedItems(runData: IRunData, nodeName: string, outputIndex: nu
  * a gap anywhere on the path puts that node and everything after it back in
  * the run. A gap at the trigger is the worst case: the whole chain runs again.
  *
- * This walk answers the same question the engine asks, with the same two
- * rules: a node with run data or pin data is clean, and only an output that
- * carried items leads anywhere. It therefore accepts the replays the engine
- * can honour — an untaken branch above the target needs no data, and a second
- * trigger the earlier run never fired needs none either, because the engine
- * prefers the trigger that has run data.
+ * This walk answers the same question the engine asks, with the same rules
+ * as `findStartNodes`:
+ * - A node with run data or pin data is clean, unless one of its runs failed.
+ *   The engine retries a failed node, even a pinned one.
+ * - A Loop Over Items node whose last run left its `done` output empty did not
+ *   finish, so the engine restarts the loop.
+ * - Only an output that carried items leads anywhere.
+ *
+ * It therefore accepts the replays the engine can honour — an untaken branch
+ * above the target needs no data, and a second trigger the earlier run never
+ * fired needs none either, because the engine prefers the trigger that has run
+ * data.
  */
 export function findUncoveredAncestors(args: {
 	nodes: INode[];
@@ -416,7 +447,18 @@ export function findUncoveredAncestors(args: {
 	const ancestors = new Set(collectAncestorNames(nodes, connections, targetName, rootNames));
 	if (ancestors.size === 0) return [];
 
-	const isClean = (name: string) => runData[name] !== undefined || pinned.has(name);
+	const failed = (name: string) => (runData[name] ?? []).some((task) => task.error !== undefined);
+	const isClean = (name: string) =>
+		!failed(name) && (runData[name] !== undefined || pinned.has(name));
+
+	// Mirrors the engine's `isALoop`: without a cycle back to the node, the Loop
+	// Over Items node is a plain node and its first output leads on.
+	const isUnfinishedLoop = (name: string) => {
+		if (nodesByName.get(name)?.type !== SPLIT_IN_BATCHES_NODE_TYPE) return false;
+		const doneOutput = reachesItself(connections, nodesByName, name) ? 0 : 1;
+		const lastRun = runData[name]?.at(-1);
+		return (lastRun?.data?.[NodeConnectionTypes.Main]?.[doneOutput] ?? []).length === 0;
+	};
 
 	// A run starts at a trigger. When the one the engine would pick has no data
 	// of its own it re-runs, and takes every node under it along.
@@ -442,7 +484,7 @@ export function findUncoveredAncestors(args: {
 			// A pinned node feeds every output, so the engine always walks on.
 			if (!pinned.has(current) && !outputCarriedItems(runData, current, edge.outputIndex)) continue;
 
-			if (!isClean(child)) {
+			if (!isClean(child) || isUnfinishedLoop(child)) {
 				uncovered.add(child);
 				continue;
 			}

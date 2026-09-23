@@ -374,6 +374,133 @@ describe('planStepRun', () => {
 
 			expect(plan.inputMode).toBe('reused-execution');
 		});
+
+		/** Where `findStartNodes` starts a run to `Target` on this graph. */
+		function engineStartNodes(
+			graphNodes: INode[],
+			edges: Array<[string, string, number?]>,
+			runData: IRunData,
+		) {
+			const byName = new Map(graphNodes.map((graphNode) => [graphNode.name, graphNode]));
+			const graph = new DirectedGraph().addNodes(...graphNodes).addConnections(
+				...edges.map(([from, to, outputIndex]) => ({
+					from: byName.get(from)!,
+					to: byName.get(to)!,
+					outputIndex: outputIndex ?? 0,
+				})),
+			);
+			return [
+				...findStartNodes({
+					graph,
+					trigger: byName.get('Trigger')!,
+					destination: byName.get('Target')!,
+					runData,
+					pinData: {},
+				}),
+			].map((startNode) => startNode.name);
+		}
+
+		const failedTask = (): ITaskData => ({
+			...taskData([{ json: {} }]),
+			error: new Error('timed out') as ITaskData['error'],
+		});
+
+		it('refuses a replay whose node failed, because the engine retries it', () => {
+			const priorRunData: IRunData = {
+				Trigger: [taskData([{ json: {} }])],
+				Fetch: [failedTask()],
+			};
+
+			const plan = planStepRun({ nodes, connections, targetName: 'Target', priorRunData });
+
+			expect(plan.inputMode).toBe('chain');
+			expect(plan.unhonoredInput?.upstreamNodeNames).toEqual(['Fetch']);
+			expect(
+				engineStartNodes(
+					nodes,
+					[
+						['Trigger', 'Fetch'],
+						['Fetch', 'Target'],
+					],
+					priorRunData,
+				),
+			).toEqual(['Fetch']);
+		});
+
+		it('refuses a replay whose pinned node failed, because the error outranks the pin', () => {
+			const priorRunData: IRunData = {
+				Trigger: [taskData([{ json: {} }])],
+				Fetch: [failedTask()],
+			};
+
+			const plan = planStepRun({
+				nodes,
+				connections,
+				targetName: 'Target',
+				priorRunData,
+				pinnedNodeNames: ['Fetch'],
+			});
+
+			expect(plan.unhonoredInput?.upstreamNodeNames).toEqual(['Fetch']);
+		});
+
+		describe('a Loop Over Items node above the target', () => {
+			// Trigger -> Loop; Loop "loop" output -> Body -> Loop; Loop "done" -> Target.
+			const loopNodes = [
+				node('Trigger'),
+				node('Loop', { type: 'n8n-nodes-base.splitInBatches' }),
+				node('Body'),
+				node('Target'),
+			];
+			const loopConnections = connect(
+				['Trigger', 'Loop'],
+				['Loop:1', 'Body'],
+				['Body', 'Loop'],
+				['Loop:0', 'Target'],
+			);
+			const loopEdges: Array<[string, string, number?]> = [
+				['Trigger', 'Loop'],
+				['Loop', 'Body', 1],
+				['Body', 'Loop'],
+				['Loop', 'Target', 0],
+			];
+
+			it('refuses a replay of a loop that stopped before its done output', () => {
+				const priorRunData: IRunData = {
+					Trigger: [taskData([{ json: {} }])],
+					Loop: [taskDataOnOutputs([[], [{ json: {} }]])],
+					Body: [taskData([{ json: {} }])],
+				};
+
+				const plan = planStepRun({
+					nodes: loopNodes,
+					connections: loopConnections,
+					targetName: 'Target',
+					priorRunData,
+				});
+
+				expect(plan.unhonoredInput?.upstreamNodeNames).toEqual(['Loop']);
+				expect(engineStartNodes(loopNodes, loopEdges, priorRunData)).toEqual(['Loop']);
+			});
+
+			it('accepts a replay of a loop that finished', () => {
+				const priorRunData: IRunData = {
+					Trigger: [taskData([{ json: {} }])],
+					Loop: [taskDataOnOutputs([[], [{ json: {} }]]), taskDataOnOutputs([[{ json: {} }], []])],
+					Body: [taskData([{ json: {} }])],
+				};
+
+				const plan = planStepRun({
+					nodes: loopNodes,
+					connections: loopConnections,
+					targetName: 'Target',
+					priorRunData,
+				});
+
+				expect(plan.inputMode).toBe('reused-execution');
+				expect(engineStartNodes(loopNodes, loopEdges, priorRunData)).toEqual(['Target']);
+			});
+		});
 	});
 
 	it('refuses the run when the reused execution stored no run data at all', () => {

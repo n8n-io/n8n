@@ -5970,6 +5970,26 @@ describe('createExecutionAdapter runStep()', () => {
 			expect(result.ranThroughNodeNames).toEqual(['Agent']);
 		});
 
+		it('refuses to replay an execution where a node above the Agent failed', async () => {
+			// The engine retries a failed node instead of reusing it, so "Create
+			// Ticket" would send its request again.
+			const harness = createRunAdapterForTests(agentWorkflow, {
+				execution: makeExecution({
+					status: 'error',
+					runData: {
+						Trigger: [makeTaskData([{}])],
+						'Create Ticket': [makeTaskData([], { error: new Error('timed out') })],
+					},
+				}),
+			});
+			const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+			await expect(
+				runStep('wf-1', 'Calculator', { reuseExecutionId: 'exec-past' }),
+			).rejects.toThrow('so the run would execute them for real (Create Ticket)');
+			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
 		it('omits the root node list for a node that is its own root', async () => {
 			const { result } = await runStepOn(agentWorkflow, 'Agent', { mockInput: [{ a: 1 }] });
 
