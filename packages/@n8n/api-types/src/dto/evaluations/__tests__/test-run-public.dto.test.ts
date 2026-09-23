@@ -141,7 +141,7 @@ const testCase = {
 	errorDetails: null,
 	inputs: { question: 'What is n8n?' },
 	outputs: { answer: 'A workflow automation platform.' },
-	executionId: '12345',
+	executionId: 12345,
 };
 
 describe('TestCaseExecutionPublicDto', () => {
@@ -180,7 +180,7 @@ describe('TestCaseExecutionPublicDto', () => {
 		['inputs that are not an object', { inputs: ['a', 'b'] }],
 		['outputs that are not an object', { outputs: 'text' }],
 		['a Date for runAt', { runAt: new Date() }],
-		['a numeric executionId', { executionId: 12345 }],
+		['a string executionId', { executionId: '12345' }],
 	])('rejects %s', (_label, override) => {
 		expect(TestCaseExecutionPublicDto.safeParse({ ...testCase, ...override }).success).toBe(false);
 	});

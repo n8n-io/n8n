@@ -71,8 +71,8 @@ const toTestRunSummaryPublicDto = (run: TestRunSummarySource): TestRunSummaryPub
 });
 
 const toTestCaseExecutionPublicDto = (testCase: TestCaseExecution): TestCaseExecutionPublicDto => {
-	// The entity types executionId as a string, but the column is an integer, so the driver
-	// returns a number. The route publishes the documented string.
+	// The entity types executionId as a string, but the column is an integer and the route has
+	// always published the number the driver returns.
 	const executionId = testCase.executionId ?? null;
 
 	return {
@@ -85,7 +85,7 @@ const toTestCaseExecutionPublicDto = (testCase: TestCaseExecution): TestCaseExec
 		errorDetails: testCase.errorDetails ?? null,
 		inputs: testCase.inputs ?? null,
 		outputs: testCase.outputs ?? null,
-		executionId: executionId === null ? null : String(executionId),
+		executionId: executionId === null ? null : Number(executionId),
 	};
 };
 

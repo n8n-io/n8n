@@ -209,15 +209,27 @@ describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
 		expect(response.body.data).toHaveLength(1);
 
 		const [testCase] = response.body.data;
-		expect(testCase).toMatchObject({ status: 'success', metrics: { accuracy: 1 } });
-		expect(testCase).toHaveProperty('inputs');
-		expect(testCase).toHaveProperty('outputs');
-		// sanitized: no internal relations/indexes leak
-		expect(testCase).not.toHaveProperty('testRun');
-		expect(testCase).not.toHaveProperty('runIndex');
+		expect(Object.keys(testCase).sort()).toEqual([
+			'completedAt',
+			'errorCode',
+			'errorDetails',
+			'executionId',
+			'id',
+			'inputs',
+			'metrics',
+			'outputs',
+			'runAt',
+			'status',
+		]);
+		expect(testCase).toMatchObject({
+			id: expect.any(String),
+			status: 'success',
+			metrics: { accuracy: 1 },
+			executionId: null,
+		});
 	});
 
-	test('should return the execution id of a case as a string', async () => {
+	test('should return the execution id of a case as a number', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const testRun = await createTestRun(workflow.id, { status: 'completed' });
 		const execution = await createExecution({ status: 'success' }, workflow);
@@ -228,7 +240,7 @@ describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
 		);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data[0].executionId).toBe(execution.id);
+		expect(response.body.data[0].executionId).toBe(Number(execution.id));
 	});
 
 	test('should paginate per-case results via cursor', async () => {

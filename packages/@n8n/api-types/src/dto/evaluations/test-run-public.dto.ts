@@ -86,7 +86,7 @@ export const testCaseExecutionPublicSchema = z.object({
 	outputs: nullableObjectGuardSchema<Record<string, unknown>>().openapi(
 		testCaseExecutionFieldDocs.outputs,
 	),
-	executionId: z.string().nullable().openapi(testCaseExecutionFieldDocs.executionId),
+	executionId: z.number().int().nullable().openapi(testCaseExecutionFieldDocs.executionId),
 });
 
 export type TestCaseExecutionPublic = z.infer<typeof testCaseExecutionPublicSchema>;

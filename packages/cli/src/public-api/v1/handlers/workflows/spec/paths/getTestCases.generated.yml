@@ -79,7 +79,7 @@ responses:
                     additionalProperties: true
                     nullable: true
                   executionId:
-                    type: string
+                    type: integer
                     nullable: true
                     description: ID of the underlying workflow execution, if still retained.
                 required:
