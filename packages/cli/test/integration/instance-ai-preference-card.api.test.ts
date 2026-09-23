@@ -334,6 +334,9 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit', (
 				scope: 'instance',
 			})
 			.expect(403);
+
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row).toMatchObject({ userId: owner.id, projectId: null });
 	});
 
 	test('refuses a user-scope edit that names no owner', async () => {
