@@ -5,6 +5,7 @@ import {
 	type SecretCompletionsResponse,
 	type SecretProviderConnection,
 	type SecretProviderConnectionListItem,
+	type SecretsProviderConnectionManagedBy,
 	type SecretsProviderType,
 	type TestSecretProviderConnectionResponse,
 	testSecretProviderConnectionResponseSchema,
@@ -315,6 +316,7 @@ export class SecretsProvidersConnectionsService {
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			isEnabled: connection.isEnabled,
+			managedBy: connection.managedBy as SecretsProviderConnectionManagedBy,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -343,6 +345,7 @@ export class SecretsProvidersConnectionsService {
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			isEnabled: connection.isEnabled,
+			managedBy: connection.managedBy as SecretsProviderConnectionManagedBy,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.

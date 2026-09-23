@@ -1,5 +1,6 @@
 import { SecretsProviderConnectionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Cipher } from 'n8n-core';
 
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -20,10 +21,12 @@ beforeAll(async () => {
 
 async function seedConfigFileManagedConnection(providerKey: string) {
 	const repository = Container.get(SecretsProviderConnectionRepository);
+	const cipher = Container.get(Cipher);
+	const encryptedSettings = cipher.encryptWithInstanceKey(JSON.stringify({}));
 	const connection = repository.create({
 		providerKey,
 		type: 'vault',
-		encryptedSettings: '{}',
+		encryptedSettings,
 		isEnabled: true,
 		managedBy: 'config-file',
 	});
@@ -47,5 +50,14 @@ describe('config-file-managed connections are read-only', () => {
 		const resp = await authOwnerAgent.delete('/secret-providers/connections/readonlyDeleteTest');
 
 		expect(resp.status).toBe(403);
+	});
+
+	test('GET /secret-providers/connections/:providerKey reports managedBy', async () => {
+		await seedConfigFileManagedConnection('managedByVisibleTest');
+
+		const resp = await authOwnerAgent.get('/secret-providers/connections/managedByVisibleTest');
+
+		expect(resp.status).toBe(200);
+		expect(resp.body.data.managedBy).toBe('config-file');
 	});
 });
