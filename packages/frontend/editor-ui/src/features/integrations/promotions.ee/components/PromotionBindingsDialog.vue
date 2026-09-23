@@ -30,6 +30,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:open': [value: boolean];
 	applied: [result: AppliedResult];
+	'preflight-updated': [preflight: BlockedApplyResult['preflight']];
 	'source-changed': [result: SourceChangedResult];
 	'close-requested': [resources: CreatedPromotionBinding[]];
 }>();
@@ -57,6 +58,13 @@ watch(
 		else bindings.end();
 	},
 	{ immediate: true },
+);
+watch(
+	preflight,
+	(value) => {
+		if (value) emit('preflight-updated', value);
+	},
+	{ immediate: true, flush: 'sync' },
 );
 onBeforeUnmount(bindings.end);
 

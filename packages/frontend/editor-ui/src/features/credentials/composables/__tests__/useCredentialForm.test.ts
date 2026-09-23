@@ -113,6 +113,11 @@ const betaApi: ICredentialType = {
 };
 
 const typesByName: Record<string, ICredentialType> = {
+	jsonAuth: {
+		name: 'jsonAuth',
+		displayName: 'JSON Auth',
+		properties: [{ displayName: 'JSON', name: 'json', type: 'json', required: true, default: '' }],
+	},
 	httpBasicAuth,
 	acmeOAuth2Api: managedOAuth,
 	privateOAuth2Api: privateOAuth,
@@ -176,6 +181,20 @@ describe('useCredentialForm', () => {
 	});
 
 	describe('initialize', () => {
+		it('accepts a JSON prefill with nested expressions', async () => {
+			const json = { headers: { Authorization: '={{ $vars.API_KEY }}' } };
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'jsonAuth',
+				initialData: { json },
+			});
+
+			await form.initialize();
+
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+			expect(form.credentialData.value.json).toBe(JSON.stringify(json));
+		});
+
 		it('copies initial expressions and keeps the exact name', async () => {
 			const initialData = { user: '={{ $vars.USER }}', nested: { values: ['={{ $vars.KEY }}'] } };
 			const form = useCredentialForm({

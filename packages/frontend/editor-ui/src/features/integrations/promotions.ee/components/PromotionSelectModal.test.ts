@@ -454,9 +454,9 @@ describe('PromotionSelectModal', () => {
 			await findByText('Payment Handler');
 			await userEvent.click(await findByTestId('promotion-apply-all'));
 			await findByText('Resolve bindings');
-			expect((await findAllByText(credential.name)).length).toBeGreaterThan(0);
-			expect((await findAllByText(variable.name)).length).toBeGreaterThan(0);
-			expect((await findAllByText('Team B')).length).toBeGreaterThan(0);
+			await findAllByText(credential.name);
+			await findAllByText(variable.name);
+			await findAllByText('Team B');
 			expect(useUIStore().closeModal).not.toHaveBeenCalled();
 			expect(applied).not.toHaveBeenCalled();
 			expect(showMessage).not.toHaveBeenCalled();

@@ -38,6 +38,12 @@ export function usePromotionBindingCreation(
 	const createdProjects = shallowRef(new Map<string, CreatedPromotionProject>());
 	// Projects that exist on this instance. They are not created again.
 	const knownProjectIds = new Set<string>();
+	let preflight = result.preflight;
+
+	function updatePreflight(value: BlockedApplyResult['preflight']) {
+		preflight = value;
+		for (const project of value.missingProjects) knownProjectIds.delete(project.id);
+	}
 	let active = false;
 	let disposed = false;
 	let finish: (() => void) | undefined;
@@ -49,7 +55,7 @@ export function usePromotionBindingCreation(
 	}
 
 	async function ensureProject(id: string, resource: 'credential' | 'projectVariable') {
-		const missing = result.preflight.missingProjects.find((project) => project.id === id);
+		const missing = preflight.missingProjects.find((project) => project.id === id);
 		if (missing && !knownProjectIds.has(id)) {
 			try {
 				const project = await createPublicProject(rootStore.publicApiContext, missing);
@@ -89,7 +95,7 @@ export function usePromotionBindingCreation(
 			let destination: ResourceEditorDestination | undefined;
 			let notice: (() => string) | undefined;
 			if (project) {
-				const missing = result.preflight.missingProjects.find((item) => item.id === project.id);
+				const missing = preflight.missingProjects.find((item) => item.id === project.id);
 				if (missing && !knownProjectIds.has(project.id)) {
 					destination = {
 						kind: 'pending',
@@ -186,6 +192,7 @@ export function usePromotionBindingCreation(
 										projectId,
 										isResolvable: false,
 									});
+									checkActive();
 									saved = {
 										kind: 'credential',
 										sourceId: binding.sourceId,
@@ -216,6 +223,7 @@ export function usePromotionBindingCreation(
 									value: values.value,
 									projectId: project?.id ?? null,
 								});
+								checkActive();
 								saved = {
 									kind: 'variable',
 									id: variable.id,
@@ -254,6 +262,7 @@ export function usePromotionBindingCreation(
 
 	return {
 		createBinding,
+		updatePreflight,
 		createdProjects: computed(() => Array.from(createdProjects.value.values())),
 	};
 }

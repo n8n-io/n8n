@@ -552,7 +552,14 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		if (setupHint) seedFromSetupHint(setupHint);
 		const initialData = toValue(options.initialData);
 		if (initialData) {
-			Object.assign(credentialData.value, deepCopy(initialData));
+			const data = deepCopy(initialData);
+			for (const property of mergedProperties.value) {
+				const value = data[property.name];
+				if (property.type === 'json' && typeof value === 'object' && value !== null) {
+					data[property.name] = JSON.stringify(value);
+				}
+			}
+			Object.assign(credentialData.value, data);
 			// Client fields that the instance overwrites only show in custom OAuth mode.
 			if (credentialType.value?.__overwrittenProperties?.some((name) => name in initialData)) {
 				useCustomOAuth.value = true;
