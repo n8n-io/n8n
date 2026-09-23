@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nDialogFooter,
@@ -248,17 +249,26 @@ function handleRecovery() {
 						/>
 					</N8nButton>
 					<div :class="$style.groupSummary">
-						<N8nText bold>{{ group.title }}</N8nText>
-						<N8nText size="small" color="text-light">
-							{{ group.description }} · {{ group.tools.length }}
-						</N8nText>
+						<div :class="$style.groupTitle">
+							<N8nText bold>{{ group.title }}</N8nText>
+							<N8nBadge
+								:show-border="false"
+								:data-test-id="`tools-connection-count-${group.category}`"
+								theme="tertiary"
+								size="xsmall"
+							>
+								{{ group.tools.length }}
+							</N8nBadge>
+						</div>
+						<N8nText size="small" color="text-light">{{ group.description }}</N8nText>
 					</div>
-					<N8nText v-if="hasCategoryOverrides(group.category)" size="small" color="text-light">
-						{{ i18n.baseText('tools.connection.permissions.custom') }}
-					</N8nText>
 					<N8nSelect
 						:class="$style.permissionSelect"
-						:model-value="categories[group.category]"
+						:model-value="
+							hasCategoryOverrides(group.category)
+								? i18n.baseText('tools.connection.permissions.custom')
+								: categories[group.category]
+						"
 						size="small"
 						:disabled="arePermissionsDisabled"
 						:data-test-id="`tools-connection-permission-${group.category}`"
@@ -387,6 +397,12 @@ function handleRecovery() {
 	flex-direction: column;
 	gap: var(--spacing--5xs);
 	min-width: 0;
+}
+
+.groupTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .toolList {

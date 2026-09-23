@@ -63,6 +63,25 @@ describe('McpToolSettingsContent', () => {
 		]);
 	});
 
+	it('shows Custom in the category selector without adding a dropdown option', async () => {
+		const { getByTestId, getByText, queryByRole } = renderComponent({ props: { item: item() } });
+		const select = getByTestId('tools-connection-permission-read');
+		const input = select.querySelector('input');
+
+		expect(getByText('Custom')).toBeVisible();
+
+		await fireEvent.click(input!);
+
+		expect(queryByRole('option', { name: 'Custom' })).not.toBeInTheDocument();
+	});
+
+	it('shows the tool count as a badge beside the group title', () => {
+		const { getByTestId, getByText } = renderComponent({ props: { item: item() } });
+
+		expect(getByTestId('tools-connection-count-read')).toHaveTextContent('1');
+		expect(getByText('Can look things up')).toHaveTextContent(/^Can look things up$/);
+	});
+
 	it('clears category overrides when the category permission changes', async () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: { item: item() },

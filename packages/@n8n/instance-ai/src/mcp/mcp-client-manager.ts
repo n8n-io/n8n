@@ -191,13 +191,12 @@ export class McpClientManager {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
 		if (safeConfigs.length === 0) return { tools: createToolRegistry(), connectionFailures: [] };
 
-		const defaultToolPermissions =
-			this.options.getDefaultToolPermissions?.() ?? {
-				categories: {
-					read: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpRead,
-					write: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpWrite,
-				},
-			};
+		const defaultToolPermissions = this.options.getDefaultToolPermissions?.() ?? {
+			categories: {
+				read: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpRead,
+				write: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpWrite,
+			},
+		};
 		const key = mcpConfigCacheKey(safeConfigs, defaultToolPermissions);
 		// FIXME: changing mcp settings leaves the old client connected, we need to disconnect it
 		return await this.getOrLoad(
