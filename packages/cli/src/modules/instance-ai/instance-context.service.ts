@@ -16,6 +16,11 @@ import type {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { InstanceAiActivityEntry, InstanceAiActivityExpansion } from '@n8n/instance-ai';
+import type {
+	InstanceContextAbsenceReason,
+	InstanceContextInjection,
+	InstanceContextLegs,
+} from '@n8n/api-types';
 import { hasGlobalScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject } from 'n8n-workflow';
@@ -198,11 +203,41 @@ type RunSummary = {
 
 type Inventory = { total: number; workflows: Array<{ id: string; name: string; active: boolean }> };
 
-export type InstanceContextBlock = {
-	block: string;
-	/** What the caller should store on the thread, so the next turn sends only what is new. */
-	cursor: InstanceContextCursor;
+/** Keep the absence reason so the trace can distinguish a failed read. */
+export type InstanceContextResult =
+	| {
+			state: 'injected';
+			block: string;
+			cursor: InstanceContextCursor;
+			legs: InstanceContextLegs;
+			/** An addition to a block this thread already saw, rather than a full window. */
+			isUpdate: boolean;
+	  }
+	| { state: 'absent'; reason: InstanceContextAbsenceReason };
+
+/** Share one injection summary with the trace and telemetry. */
+export function toContextInjection(result: InstanceContextResult): InstanceContextInjection {
+	if (result.state === 'absent') return { state: 'absent', reason: result.reason };
+
+	return {
+		state: 'injected',
+		isUpdate: result.isUpdate,
+		legs: result.legs,
+		chars: result.block.length,
+	};
+}
+
+/** Show injected blocks and failed reads. Require a decision for each absence reason. */
+const TRACED_ABSENCE_REASONS: Record<InstanceContextAbsenceReason, boolean> = {
+	failed: true,
+	empty: false,
+	disabled: false,
+	'machine-follow-up': false,
 };
+
+export function shouldTraceContextInjection(injection: InstanceContextInjection): boolean {
+	return injection.state === 'injected' || TRACED_ABSENCE_REASONS[injection.reason];
+}
 
 /**
  * Renders what is going on in this instance as a context block for the agent: what exists, what
@@ -255,9 +290,9 @@ export class InstanceContextService {
 		/** Instance gate result shared with the activity tool for this turn. */
 		enabled: boolean;
 		now?: Date;
-	}): Promise<InstanceContextBlock | null> {
-		if (!input.enabled) return null;
-		if (input.isMachineFollowUp) return null;
+	}): Promise<InstanceContextResult> {
+		if (!input.enabled) return { state: 'absent', reason: 'disabled' };
+		if (input.isMachineFollowUp) return { state: 'absent', reason: 'machine-follow-up' };
 
 		try {
 			const now = input.now ?? new Date();
@@ -265,7 +300,7 @@ export class InstanceContextService {
 			const resolved = await this.resolveScope(input.user, input.scope);
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
-			if (resolved === null) return null;
+			if (resolved === null) return { state: 'absent', reason: 'empty' };
 
 			const projectIds = resolved.projectIds;
 			// Withheld and archived workflows are excluded inside each query, not after it. The
@@ -293,9 +328,13 @@ export class InstanceContextService {
 			// An instance can hold plenty of work and have had nothing happen to it lately — a fresh
 			// clone, or a quiet fortnight. That is exactly the case that most needs "here is what
 			// exists", so the block stands on any one leg and only genuine emptiness suppresses it.
-			if (entries.rows.length === 0 && runs.length === 0 && !inventory?.total) return null;
+			if (entries.rows.length === 0 && runs.length === 0 && !inventory?.total) {
+				return { state: 'absent', reason: 'empty' };
+			}
 
 			return {
+				state: 'injected',
+				isUpdate,
 				block: renderBlock({
 					surface: resolved.surface,
 					entries: entries.rows.map((row) => toFeedEntry(row, input.user.id, now)),
@@ -313,16 +352,18 @@ export class InstanceContextService {
 					activitySeenFloor: entries.seenFloor,
 					runsThrough: now.toISOString(),
 				},
+				// Count rendered rows. Query totals can include rows removed by the limits.
+				legs: {
+					inventory: inventory?.workflows.length ?? 0,
+					events: entries.rows.length,
+					runs: runs.length,
+				},
 			};
 		} catch (error) {
 			this.logger.warn('Failed to build the instance-context block', { error });
-
-			// A chat turn has no error channel, and the block is an enhancement, so a failed read
-			// must not fail the turn. A tool call does have one, and an MCP caller is told to read
-			// an empty answer as "nothing exists here yet" — so returning null on failure would
-			// send it off to rebuild work that is already there.
+			// MCP must report a failed read, not an empty instance.
 			if (input.scope.surface === 'mcp') throw error;
-			return null;
+			return { state: 'absent', reason: 'failed' };
 		}
 	}
 

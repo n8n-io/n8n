@@ -370,6 +370,7 @@ export type FrontendModuleSettings = {
 	 */
 	'instance-ai'?: {
 		enabled: boolean;
+		mcpConnectionsAvailable: boolean;
 		localGatewayDisabled: boolean;
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;

@@ -11,7 +11,10 @@ import {
 	serializedCredentialSchema,
 	type SerializedCredential,
 } from '../../spec/serialized/credential.schema';
-import { serializedProjectSchema } from '../../spec/serialized/project.schema';
+import {
+	serializedProjectSchema,
+	type SerializedProject,
+} from '../../spec/serialized/project.schema';
 import {
 	serializedVariableSchema,
 	type SerializedVariable,
@@ -23,11 +26,9 @@ import type { PackageReader } from '../package-reader';
 /** Listing and reads only. The inventory never needs a manifest. */
 export type PackageFileSource = Pick<PackageReader, 'listEntries' | 'readFile'>;
 
-export interface InventoryProject {
+export interface InventoryProject extends SerializedProject {
 	/** Directory that holds `project.json`. */
 	path: string;
-	id: string;
-	name: string;
 }
 
 export interface InventoryWorkflow {
@@ -132,7 +133,7 @@ export class PackageDirectoryInventoryReader {
 			}
 			const project = await this.readEntity(source, file, serializedProjectSchema);
 			assertUnseen(seenIds, project.id, 'project id');
-			projects.push({ path: file.projectDir, id: project.id, name: project.name });
+			projects.push({ path: file.projectDir, ...project });
 		}
 
 		return projects;

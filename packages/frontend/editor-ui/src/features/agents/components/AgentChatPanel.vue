@@ -52,6 +52,7 @@ const props = withDefaults(
 		agentId: string;
 		mode?: 'panel' | 'inline';
 		continueSessionId?: string;
+		newSession?: boolean;
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
@@ -65,6 +66,7 @@ const props = withDefaults(
 		visible: true,
 		mode: 'panel',
 		continueSessionId: undefined,
+		newSession: false,
 		canEditAgent: true,
 		canSendToAssistant: false,
 		beforeSend: undefined,
@@ -77,6 +79,7 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'session-created': [sessionId: string];
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
@@ -106,11 +109,13 @@ const {
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
 	continueSessionId: toRef(props, 'continueSessionId'),
+	newSession: toRef(props, 'newSession'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) {
 			emit('continue-loaded', { sessionId: props.continueSessionId, count });
 		}
 	},
+	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 });
 
 const { jobs: backgroundJobs } = useAgentBackgroundJobs({

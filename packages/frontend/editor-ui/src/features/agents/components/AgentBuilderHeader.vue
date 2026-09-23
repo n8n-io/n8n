@@ -242,7 +242,6 @@ function onMenuSelect(id: string) {
 				:is-runnable="props.agent?.isRunnable === true"
 				:is-preview-open="props.isPreviewOpen"
 				:validation-issues="props.configValidationIssues ?? []"
-				icon-only
 				test-id="agent-header-preview-btn"
 				@open-preview="emit('open-preview')"
 				@close-preview="emit('close-preview')"

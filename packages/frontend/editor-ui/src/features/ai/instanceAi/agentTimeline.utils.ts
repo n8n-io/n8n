@@ -191,6 +191,12 @@ export function buildTimelineBlocks(
 			return;
 		}
 
+		// Keep the context summary inside the trace, not in a separate message.
+		if (entry.type === 'instance-context') {
+			pushTrace(entry, idx);
+			return;
+		}
+
 		if (entry.type === 'text') {
 			if (isIntermediateText(entry, idx)) pushTrace(entry, idx);
 			else pushStandalone({ type: 'text', key: `text-${idx}`, entry });
