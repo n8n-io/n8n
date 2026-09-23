@@ -663,6 +663,14 @@ export type {
 	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';
 
+export {
+	instanceAiSetupCredentialSelectionSchema,
+	instanceAiSetupCredentialSelectionKey,
+	instanceAiSetupCredentialAppliedKey,
+	readPendingInstanceAiSetupCredentialSelections,
+	type InstanceAiSetupCredentialSelection,
+} from './schemas/instance-ai-setup-credential-selection';
+
 export type {
 	McpRegistryServerStatus,
 	McpRegistryServerIconResponse,

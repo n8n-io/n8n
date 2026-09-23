@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { computed, defineComponent, h, reactive, type PropType } from 'vue';
+import { computed, defineComponent, h, reactive, ref, type PropType } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { getActivePinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
@@ -46,6 +46,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import type { SetupPanelThreadSource } from '../../../composables/useSetupPanelState';
 import type { ThreadRuntime } from '../../../instanceAi.store';
+import { fetchThread, updateThreadMetadata } from '../../../instanceAi.memory.api';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
 
 const { showMessage, testCredentialInBackground, authorize } = vi.hoisted(() => ({
@@ -84,7 +85,20 @@ vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
 
 let thread: SetupPanelThreadSource &
 	Pick<ThreadRuntime, 'id' | 'sendMessage' | 'rememberManualExecution'>;
-vi.mock('../../../instanceAi.store', () => ({ useThread: () => thread }));
+let threadMetadata = ref<Record<string, unknown>>({});
+vi.mock('../../../instanceAi.store', () => ({
+	useThread: () => thread,
+	useInstanceAiStore: () => ({
+		getThreadMetadata: () => threadMetadata.value,
+		setThreadMetadata: (_id: string, metadata: Record<string, unknown>) => {
+			threadMetadata.value = metadata;
+		},
+	}),
+}));
+vi.mock('../../../instanceAi.memory.api', () => ({
+	fetchThread: vi.fn(),
+	updateThreadMetadata: vi.fn(),
+}));
 
 const accounts = [
 	mock<ICredentialsResponse>({
@@ -241,6 +255,19 @@ describe('InstanceAiSetupPanel interactions', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		threadMetadata = ref({});
+		vi.mocked(updateThreadMetadata).mockResolvedValue({
+			thread: { id: 'thread-1', resourceId: 'user-1', createdAt: '', updatedAt: '' },
+		});
+		vi.mocked(fetchThread).mockImplementation(async () => ({
+			thread: {
+				id: 'thread-1',
+				resourceId: 'user-1',
+				createdAt: '',
+				updatedAt: '',
+				metadata: threadMetadata.value,
+			},
+		}));
 		localStorage.clear();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mockedStore(useProjectsStore).myProjects = [mock<ProjectListItem>({ id: 'project-1' })];
@@ -495,7 +522,9 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(updateWorkflow).not.toHaveBeenCalled();
 		await fireEvent.change(picker, { target: { value: 'cred-2' } });
 		expect(updateWorkflow).not.toHaveBeenCalled();
-		expect(getByTestId('selected-account')).toHaveTextContent('Second account');
+		await waitFor(() =>
+			expect(getByTestId('selected-account')).toHaveTextContent('Second account'),
+		);
 		await fireEvent.click(getByRole('button', { name: 'Back to setup checklist' }));
 		await fireEvent.click(getByRole('button', { name: 'Slack Complete' }));
 		expect(getByRole('combobox')).toHaveValue('cred-2');
@@ -649,6 +678,39 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(restored.getByRole('button', { name: /Slack/ })).toBeVisible();
 		expect(restored.queryByRole('button', { name: 'Execute' })).toBeNull();
 	});
+
+	it.each([
+		{ count: 1, preferNew: false },
+		{ count: 2, preferNew: false },
+		{ count: 1, preferNew: true },
+	])(
+		'selects an early account only when its scoped choice is unique: %s',
+		async ({ count, preferNew }) => {
+			startBuild();
+			saved.nodes = [];
+			thread.setupItemsByWorkflowId['wf-1'] = [
+				{
+					id: 'wf-1:credential:slackApi',
+					kind: 'credential',
+					credentialType: 'slackApi',
+					preferNew,
+				},
+			];
+			mockedStore(useCredentialsStore).usableCredentials = Object.fromEntries(
+				accounts.slice(0, count).map((account) => [account.id, account]),
+			);
+			const view = renderPanel(false);
+			await flushPromises();
+			if (count === 1 && !preferNew) {
+				expect(updateThreadMetadata).toHaveBeenCalledTimes(1);
+				expect(view.getByRole('button', { name: 'Slack Complete' })).toBeVisible();
+			} else {
+				expect(updateThreadMetadata).not.toHaveBeenCalled();
+				expect(view.getByRole('button', { name: /Slack/ })).toBeVisible();
+			}
+			expect(updateWorkflow).not.toHaveBeenCalled();
+		},
+	);
 
 	it('opens a remaining bound node and passes its recipe to the picker', async () => {
 		startBuild();

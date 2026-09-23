@@ -1,4 +1,9 @@
 import { isZodSchema } from '@n8n/agents';
+import {
+	instanceAiSetupCredentialAppliedKey,
+	instanceAiSetupCredentialSelectionKey,
+	type InstanceAiSetupCredentialSelection,
+} from '@n8n/api-types';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
@@ -8,6 +13,7 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
 } from '../../../skills/runtime-skills';
+import type { ThreadRecord } from '../../../storage/thread-patch';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
@@ -18,7 +24,7 @@ import {
 } from '../build-workflow.tool';
 import { buildCredentialMap, resolveCredentials } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
-import { analyzeWorkflow } from '../setup-workflow.service';
+import { analyzeWorkflow, getValidCredentialTypes } from '../setup-workflow.service';
 import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
 import { ensureWebhookIds } from '../workflow-json-utils';
 import { compileWorkflowSource } from '../workflow-source-compiler';
@@ -89,6 +95,7 @@ vi.mock('../resolve-credentials', () => ({
 
 vi.mock('../setup-workflow.service', () => ({
 	analyzeWorkflow: vi.fn(async () => await Promise.resolve([])),
+	getValidCredentialTypes: vi.fn(async () => new Set<string>()),
 	stripStaleCredentialsFromWorkflow: vi.fn(async () => await Promise.resolve()),
 }));
 
@@ -1495,6 +1502,139 @@ describe('createBuildWorkflowTool', () => {
 				save_operation: 'update',
 			}),
 		);
+	});
+
+	it('builds into the early setup workflow and saves the user-selected account', async () => {
+		const filePath = 'src/workflows/main.workflow.ts';
+		const setupItemId = 'wf-early:credential:slackApi';
+		const selection: InstanceAiSetupCredentialSelection = {
+			selectionId: 'selected-1',
+			credentialType: 'slackApi',
+			credentialId: 'selected-account',
+		};
+		const appliedKey = instanceAiSetupCredentialAppliedKey(setupItemId, selection.selectionId);
+		let thread: ThreadRecord = {
+			id: 'thread-1',
+			resourceId: 'user-1',
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			metadata: {
+				instanceAiWorkflowSourceFiles: {
+					[filePath]: {
+						filePath,
+						workflowId: 'wf-early',
+						workflowVersionId: 'v-current',
+						workflowChecksum: 'checksum-current',
+						setupPending: true,
+						setupPreferences: {
+							runId: 'early-run',
+							satisfiedCredentialTypes: [],
+							preferNewCredentialTypes: ['slackApi'],
+						},
+					},
+				},
+				[instanceAiSetupCredentialSelectionKey(setupItemId)]: selection,
+			},
+		};
+		const { context } = makeContext({
+			filePath,
+			overrides: {
+				threadId: thread.id,
+				runId: 'early-run',
+				threadMemory: {
+					getThread: vi.fn(async () => thread),
+					saveThread: vi.fn(async (updated: ThreadRecord) => (thread = updated)),
+				},
+				setupItemsEmitter: {
+					emit: vi.fn(() => true),
+					announce: vi.fn().mockResolvedValue(undefined),
+					merge: vi.fn(() => true),
+					lastWorkflowId: vi.fn(),
+					workflowIds: vi.fn(() => []),
+				},
+			},
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			compiler: 'sandbox-tsx',
+			warnings: [],
+			workflow: {
+				name: 'Slack updates',
+				connections: {},
+				nodes: [
+					{
+						id: 'slack-1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: { id: 'source-account', name: 'Source account' } },
+					},
+				],
+			},
+		});
+		vi.mocked(buildCredentialMap).mockResolvedValueOnce(
+			new Map([
+				[
+					'slackApi',
+					[
+						{ id: 'source-account', name: 'Source account', type: 'slackApi' },
+						{ id: 'selected-account', name: 'Selected account', type: 'slackApi' },
+					],
+				],
+			]),
+		);
+		vi.mocked(getValidCredentialTypes).mockResolvedValue(new Set(['slackApi']));
+		const actualResolver =
+			await vi.importActual<typeof import('../resolve-credentials')>('../resolve-credentials');
+		vi.mocked(resolveCredentials).mockImplementationOnce(actualResolver.resolveCredentials);
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockImplementationOnce(
+			async (workflowId) => {
+				expect(thread.metadata?.[appliedKey]).toBeUndefined();
+				return {
+					id: workflowId,
+					name: 'Slack updates',
+					versionId: 'v-saved',
+					activeVersionId: null,
+					isArchived: false,
+					createdAt: '2026-01-01T00:00:00.000Z',
+					updatedAt: '2026-01-01T00:00:00.000Z',
+					nodes: [],
+					connections: {},
+					checksum: 'checksum-saved',
+				};
+			},
+		);
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			preferNewCredentials: ['slackApi'],
+		});
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-early' });
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+			'wf-early',
+			expect.objectContaining({
+				nodes: [
+					expect.objectContaining({
+						credentials: { slackApi: { id: 'selected-account', name: 'Selected account' } },
+					}),
+				],
+			}),
+			{ expectedChecksum: 'checksum-current' },
+		);
+		expect(thread.metadata?.[appliedKey]).toBe(true);
+		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+			workflowId: 'wf-early',
+			workflowChecksum: 'checksum-saved',
+			setupPending: undefined,
+			setupPreferences: {
+				runId: 'early-run',
+				satisfiedCredentialTypes: ['slackApi'],
+				preferNewCredentialTypes: [],
+			},
+		});
 	});
 
 	it('updates a workflow created earlier in the run without requesting approval', async () => {

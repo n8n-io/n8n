@@ -9,6 +9,7 @@ import {
 	buildSetupItemsFromCredentialRequests,
 	buildSetupItemsFromSetupRequests,
 	createSetupItemsEmitter,
+	requestsCredentialReplacement,
 } from '../setup-items';
 import type { SetupRequest } from '../setup-workflow.schema';
 
@@ -65,6 +66,23 @@ function setupRequest(overrides: {
 		...(overrides.parameterIssues ? { parameterIssues: overrides.parameterIssues } : {}),
 	};
 }
+
+describe('requestsCredentialReplacement', () => {
+	it.each([
+		{ boundCredential: undefined, replacement: false },
+		{ boundCredential: { id: '', name: 'Unconnected' }, replacement: false },
+		{ boundCredential: { id: 'existing', name: 'Existing' }, replacement: true },
+		{ boundCredential: { id: null, name: 'Gateway credits' }, replacement: true },
+	])('requires an existing account for replacement: %j', ({ boundCredential, replacement }) => {
+		const request = setupRequest({
+			nodeName: 'Slack',
+			credentialType: 'slackApi',
+			boundCredential,
+		});
+		expect(requestsCredentialReplacement([request], ['slackApi'])).toBe(replacement);
+		expect(requestsCredentialReplacement([request], ['gmailOAuth2'])).toBe(false);
+	});
+});
 
 describe('createSetupItemsEmitter', () => {
 	it('waits for persisted state before it completes the final announcement', async () => {

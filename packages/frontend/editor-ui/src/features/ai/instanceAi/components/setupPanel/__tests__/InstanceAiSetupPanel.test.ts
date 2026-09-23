@@ -62,6 +62,7 @@ const stateMock = reactive({
 	nodesByName: {} as Record<string, INodeUi>,
 	credentialsAvailable: true,
 	isAgentBuilding: false,
+	isAwaitingFirstBuild: false,
 	isApplying: false,
 	pendingApplyCount: 0,
 	refreshWorkflow: vi.fn().mockResolvedValue(undefined),
@@ -88,6 +89,7 @@ vi.mock('../../../composables/useSetupPanelState', async () => {
 			isRefreshingWorkflow: computed(() => false),
 			workflowProjectId: computed(() => undefined),
 			isAgentBuilding: computed(() => stateMock.isAgentBuilding),
+			isAwaitingFirstBuild: computed(() => stateMock.isAwaitingFirstBuild),
 			getNodeByName: (name: string) => stateMock.nodesByName[name],
 			refreshWorkflow: stateMock.refreshWorkflow,
 		}),
@@ -383,6 +385,7 @@ describe('InstanceAiSetupPanel', () => {
 		stateMock.credentialsAvailable = true;
 		stateMock.rows = [];
 		stateMock.isAgentBuilding = false;
+		stateMock.isAwaitingFirstBuild = false;
 		stateMock.isApplying = false;
 		stateMock.pendingApplyCount = 0;
 		threadMock.messages = [];
@@ -433,6 +436,13 @@ describe('InstanceAiSetupPanel', () => {
 		stateMock.isAgentBuilding = false;
 		await flushPromises();
 		expect(view.getByRole('button', { name: 'Execute' })).toBeEnabled();
+	});
+
+	it('keeps Execute hidden when a stopped build has not saved its first workflow', async () => {
+		stateMock.isAwaitingFirstBuild = true;
+		const view = await completeSetup();
+		expect(view.getByRole('button', { name: 'Notion Complete' })).toBeVisible();
+		expect(view.queryByRole('button', { name: 'Execute' })).toBeNull();
 	});
 
 	it.each(['success', 'error', 'canceled'] as const)(

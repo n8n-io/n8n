@@ -59,6 +59,20 @@ first action turn (each extra sequential turn resends the whole context). When
 unsure which nodes to use, load this skill first and follow its research
 process below.
 
+## Early service connections
+
+When the `credentials(action="setup")` schema offers `filePath`, announce
+known service credentials immediately after the first node definitions or
+credential type search. Do this before detailed planning, SDK research, or
+source generation. Do not wait for every service to be resolved.
+
+Pick the source `filePath` and call credential setup with the complete list
+of types known so far. Make it the only tool call in that response. Wait for
+its successful `preBuild: true` result before continuing. Add later discoveries
+with another complete list. Do not batch setup with source writing.
+
+When early setup is unavailable, keep the post-build setup flow below.
+
 ## Repair Strategy
 
 When the edit is to fix a node the user reports as erroring or showing a red

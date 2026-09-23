@@ -19,6 +19,7 @@ import {
 	type SetupPanelItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { GENERIC_AUTH_CREDENTIAL_TYPES } from '@n8n/api-types';
 import { NodeHelpers } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import type { INodeUi } from '@/Interface';
@@ -95,6 +96,7 @@ const {
 	credentialsAvailable,
 	isRefreshingWorkflow,
 	isAgentBuilding,
+	isAwaitingFirstBuild,
 	getNodeByName: getSavedNodeByName,
 	refreshWorkflow,
 	workflowProjectId,
@@ -143,6 +145,7 @@ watch(
 );
 
 const actions = useSetupPanelActions({
+	threadId: thread.id,
 	workflowId: () => props.workflowId,
 	isAgentBuilding,
 	onFlushResult: notifyApplyResult,
@@ -176,12 +179,15 @@ function getNodeByName(name: string, includePendingParameters = true): INodeUi |
 const displayedRows = computed(() =>
 	rows.value.map((row) => {
 		if (row.item.kind === 'credential') {
-			const pending =
-				actions.getPendingCredential(row.item.id) ||
+			const pending = actions.getPendingCredential(row.item.id);
+			if (pending && !row.item.nodeBindings?.length)
+				return { ...row, isDone: isCredentialConfigured(pending) };
+			const hasPending =
+				pending ||
 				row.item.nodeBindings?.some(({ nodeName }) =>
 					actions.getPendingCredential(row.item.id, nodeName),
 				);
-			return pending ? { ...row, isDone: isItemDone(row.item, getNodeByName) } : row;
+			return hasPending ? { ...row, isDone: isItemDone(row.item, getNodeByName) } : row;
 		}
 		return actions.getPendingParameterChanges(row.item.nodeName).length
 			? { ...row, isDone: isItemDone(row.item, getNodeByName) }
@@ -227,6 +233,35 @@ const shownItemIds = useLocalStorage<string[]>(
 	{ writeDefaults: false, flush: 'sync' },
 );
 const credentialsReady = computed(() => credentialsAvailable.value && !isRefreshingWorkflow.value);
+const selectingExisting = new Set<string>();
+watch(
+	[rows, credentialsReady, () => credentialsStore.usableCredentials],
+	async ([currentRows, ready]) => {
+		if (!ready) return;
+		const workflowId = props.workflowId;
+		for (const { item } of currentRows) {
+			if (props.workflowId !== workflowId) return;
+			if (
+				item.kind !== 'credential' ||
+				item.nodeBindings?.length ||
+				item.preferNew ||
+				GENERIC_AUTH_CREDENTIAL_TYPES.has(item.credentialType) ||
+				actions.getPendingCredential(item.id) ||
+				selectingExisting.has(item.id)
+			)
+				continue;
+			const credentials = credentialsStore.getUsableCredentialByType(item.credentialType);
+			if (credentials.length !== 1) continue;
+			selectingExisting.add(item.id);
+			try {
+				await actions.bindCredential(item, { id: credentials[0].id, name: credentials[0].name });
+			} finally {
+				selectingExisting.delete(item.id);
+			}
+		}
+	},
+	{ immediate: true },
+);
 watch(
 	[rows, credentialsReady],
 	([currentRows, ready]) => {
@@ -554,7 +589,7 @@ function finishSubmission(
 const terminalStatus = computed(() => {
 	if (!allRowsDone.value || hasChanges.value) return 'incomplete';
 	if (requestingExecution.value) return 'executing';
-	if (isAgentBuilding.value) return 'incomplete';
+	if (isAgentBuilding.value || isAwaitingFirstBuild.value) return 'incomplete';
 	if (
 		rowSource.value !== 'derived' ||
 		!credentialsReady.value ||

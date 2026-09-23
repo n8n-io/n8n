@@ -12,6 +12,7 @@ import {
 } from '@n8n/api-types';
 import { OperationalError } from 'n8n-workflow';
 
+import { isAiGatewayManagedCredential } from './credential-utils';
 import type { SetupRequest } from './setup-workflow.schema';
 import type { InstanceAiEventBus } from '../../event-bus/event-bus.interface';
 import type { InstanceAiContext, SetupItemsEmitter } from '../../types';
@@ -149,6 +150,7 @@ export function parametersSetupItemId(workflowId: string, nodeName: string): str
 export interface AnnouncedCredentialRequest {
 	credentialType: string;
 	reason?: string;
+	preferNew?: boolean;
 	setupHint?: InstanceAiCredentialSetupHint;
 }
 
@@ -171,6 +173,7 @@ export function buildSetupItemsFromCredentialRequests(
 			id,
 			kind: 'credential',
 			credentialType: request.credentialType,
+			...(request.preferNew !== undefined ? { preferNew: request.preferNew } : {}),
 			...(request.reason ? { reason: request.reason } : {}),
 			...(request.setupHint ? { setupHint: request.setupHint } : {}),
 		});
@@ -204,6 +207,7 @@ export function buildSetupItemsFromAnnouncement(
 		coveredTypes.add(item.credentialType);
 		return {
 			...item,
+			...(request.preferNew !== undefined ? { preferNew: request.preferNew } : {}),
 			...(request.reason ? { reason: request.reason } : {}),
 			...(request.setupHint ? { setupHint: request.setupHint } : {}),
 		};
@@ -221,6 +225,20 @@ function isBoundToStoredCredential(request: SetupRequest): boolean {
 	if (!request.credentialType) return false;
 	const bound = request.node.credentials?.[request.credentialType];
 	return typeof bound?.id === 'string' && bound.id.length > 0;
+}
+
+/** A request for a first account does not replace an existing binding. */
+export function requestsCredentialReplacement(
+	requests: readonly SetupRequest[],
+	credentialTypes: readonly string[] = [],
+): boolean {
+	return requests.some(
+		(request) =>
+			request.credentialType !== undefined &&
+			credentialTypes.includes(request.credentialType) &&
+			(isBoundToStoredCredential(request) ||
+				isAiGatewayManagedCredential(request.node.credentials?.[request.credentialType])),
+	);
 }
 
 /**
@@ -250,11 +268,13 @@ export function buildSetupItemsFromSetupRequests(
 					existing.nodeBindings = [...(existing.nodeBindings ?? []), { nodeName }];
 				}
 				if (!existing.setupHint && request.setupHint) existing.setupHint = request.setupHint;
+				if (request.preferNewCredential) existing.preferNew = true;
 			} else {
 				credentialItems.set(id, {
 					id,
 					kind: 'credential',
 					credentialType,
+					...(request.preferNewCredential ? { preferNew: true } : {}),
 					nodeBindings: [{ nodeName }],
 					...(request.setupHint ? { setupHint: request.setupHint } : {}),
 				});

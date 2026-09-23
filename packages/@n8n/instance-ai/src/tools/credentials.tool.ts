@@ -23,10 +23,13 @@ import {
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	N8N_CONNECT_DISPLAY_NAME,
 } from './workflows/credential-utils';
+import { prepareWorkflowSetup } from './workflows/prepare-workflow-setup';
+import { filterSatisfiedSetupCredentialTypes } from './workflows/setup-credential-selections';
 import {
 	buildSetupItemsFromCredentialRequests,
 	buildSetupItemsFromAnnouncement,
 	isSetupPanelEnabled,
+	requestsCredentialReplacement,
 } from './workflows/setup-items';
 import { analyzeWorkflow } from './workflows/setup-workflow.service';
 
@@ -434,6 +437,33 @@ const setupAction = z.object({
 		),
 });
 
+const earlySetupAction = setupAction.extend({
+	action: z
+		.literal('setup')
+		.describe(
+			'Announce workflow credential requirements without waiting by passing filePath before generating source. Omit filePath for existing workflow or standalone setup. Follow the returned guidance: announced means continue working, while a resumed card reports the completed interaction.',
+		),
+	filePath: z
+		.string()
+		.optional()
+		.describe(
+			'Before writing workflow source, announce known service credentials with its planned workspace filePath. This creates or reuses the workflow context and returns without waiting for setup. Pass the complete current requirement list, including an empty list when a plan drops all services. Omit for standalone credential setup.',
+		),
+	workflowName: z
+		.string()
+		.optional()
+		.describe('Name of the new workflow, required on its first early setup call.'),
+});
+
+const earlySetupActionWithFolder = earlySetupAction.extend({
+	folderPath: z
+		.string()
+		.optional()
+		.describe(
+			'Folder for the new workflow. Pass the intended folder here before building; omit it on the later build-workflow call.',
+		),
+});
+
 const testAction = z.object({
 	action: z
 		.literal('test')
@@ -484,9 +514,16 @@ function getCredentialActions(options: CredentialsToolOptions): CredentialAction
 	return CREDENTIAL_ACTION_ORDER.filter((action) => allowedActions.has(action));
 }
 
-function createCredentialInputSchema(actions: readonly CredentialAction[]) {
-	const actionSchemas: CredentialActionSchema[] = actions.map(
-		(action) => CREDENTIAL_ACTION_SCHEMAS[action],
+function createCredentialInputSchema(
+	actions: readonly CredentialAction[],
+	context: InstanceAiContext,
+) {
+	const actionSchemas: CredentialActionSchema[] = actions.map((action) =>
+		action === 'setup' && isSetupPanelEnabled(context)
+			? context.folderExplorationEnabled
+				? earlySetupActionWithFolder
+				: earlySetupAction
+			: CREDENTIAL_ACTION_SCHEMAS[action],
 	);
 
 	if (actionSchemas.length === 0) {
@@ -514,11 +551,11 @@ type Input =
 	| z.infer<typeof getAction>
 	| z.infer<typeof deleteAction>
 	| z.infer<typeof searchTypesAction>
-	| z.infer<typeof setupAction>
+	| z.infer<typeof earlySetupActionWithFolder>
 	| z.infer<typeof testAction>;
 
-function buildInputSchema(options: CredentialsToolOptions) {
-	return createCredentialInputSchema(getCredentialActions(options));
+function buildInputSchema(options: CredentialsToolOptions, context: InstanceAiContext) {
+	return createCredentialInputSchema(getCredentialActions(options), context);
 }
 
 function formatActionList(actions: readonly CredentialAction[]): string {
@@ -750,6 +787,7 @@ async function announceSetupItems(
 	context: InstanceAiContext & { setupItemsEmitter: SetupItemsEmitter },
 	input: Extract<Input, { action: 'setup' }>,
 	workflowId: string,
+	analyzedRequests?: Awaited<ReturnType<typeof analyzeWorkflow>>,
 ) {
 	const credentials = input.credentials ?? [];
 	// Best-effort, like the build's emission: the panel is a side channel.
@@ -757,9 +795,11 @@ async function announceSetupItems(
 		// Announce against the saved workflow's analysis so generic auth types
 		// land on their per-node rows and the snapshot stays whole. A merge, not
 		// a replace: earlier announcements may list types no saved node uses yet.
-		const analyzed = await analyzeWorkflow(context, workflowId, undefined, {
-			includeSettled: true,
-		});
+		const analyzed =
+			analyzedRequests ??
+			(await analyzeWorkflow(context, workflowId, undefined, {
+				includeSettled: true,
+			}));
 		context.setupItemsEmitter.merge(
 			workflowId,
 			buildSetupItemsFromAnnouncement(workflowId, credentials, analyzed),
@@ -820,7 +860,7 @@ async function handleSetup(
 	const resumeData = ctx.resumeData;
 	const isFinalize = input.credentialFlow?.stage === 'finalize';
 
-	if (!input.credentials || input.credentials.length === 0) {
+	if (!input.credentials || (input.credentials.length === 0 && !input.filePath)) {
 		return {
 			error: 'missing_credentials',
 			message:
@@ -868,21 +908,56 @@ async function handleSetup(
 				problems: hintProblems,
 			};
 		}
+		if (isSetupPanelEnabled(context) && input.filePath) {
+			if (isFinalize || input.requireUserSelection) {
+				return {
+					success: false,
+					message:
+						'Use early setup for known service requirements. Explicit credential replacement keeps the existing setup flow.',
+				};
+			}
+			try {
+				return await prepareWorkflowSetup(context, { ...input, filePath: input.filePath });
+			} catch (error) {
+				return {
+					success: false,
+					announced: false,
+					message: error instanceof Error ? error.message : String(error),
+				};
+			}
+		}
 
-		// Setup panel v2: a workflow's credential needs are announced to the
-		// persistent panel and the turn continues — no card, no suspension. The
-		// finalize stage, standalone setup (no workflow), and an explicit user
-		// choice — the picker (`requireUserSelection`) or a fresh credential
-		// (`preferNew`) — keep the card: the panel has no way to express "replace
-		// the bound one", so the next save would silently re-attach it.
-		const keepsCard =
-			isFinalize ||
-			input.requireUserSelection === true ||
-			input.credentials.some((req: { preferNew?: boolean }) => req.preferNew === true);
+		// Finalization and explicit selection keep their card. Workflow requirements
+		// use the panel unless the request replaces an account already bound there.
+		const keepsCard = isFinalize || input.requireUserSelection === true;
 		if (isSetupPanelEnabled(context) && !keepsCard) {
 			const panelWorkflowId = resolveSetupPanelWorkflowId(context, input);
 			if (panelWorkflowId !== undefined) {
-				return await announceSetupItems(context, input, panelWorkflowId);
+				const preferNewTypes = await filterSatisfiedSetupCredentialTypes(
+					context,
+					panelWorkflowId,
+					input.credentials
+						.filter((request) => request.preferNew)
+						.map((request) => request.credentialType),
+				);
+				const analyzed = preferNewTypes?.length
+					? await analyzeWorkflow(context, panelWorkflowId, undefined, { includeSettled: true })
+					: undefined;
+				if (!analyzed || !requestsCredentialReplacement(analyzed, preferNewTypes)) {
+					return await announceSetupItems(
+						context,
+						{
+							...input,
+							credentials: input.credentials.map((request) =>
+								request.preferNew
+									? { ...request, preferNew: preferNewTypes?.includes(request.credentialType) }
+									: request,
+							),
+						},
+						panelWorkflowId,
+						analyzed,
+					);
+				}
 			}
 		}
 
@@ -1110,7 +1185,7 @@ export function createCredentialsTool(
 	context: InstanceAiContext,
 	options: CredentialsToolOptions = {},
 ) {
-	const inputSchema = buildInputSchema(options);
+	const inputSchema = buildInputSchema(options, context);
 
 	return new Tool(CREDENTIALS_TOOL_ID)
 		.description(getToolDescription(options))

@@ -87,7 +87,13 @@ const initialized = ref(false);
 const initializationFailed = ref(false);
 const busy = ref(false);
 const reopenAuthorization = ref<() => void>();
-const createNew = ref(false);
+const createNew = ref(
+	Boolean(
+		props.item.preferNew &&
+			!props.pendingCredential &&
+			!props.node?.credentials?.[props.item.credentialType],
+	),
+);
 const hasDraft = ref(false);
 watch(busy, (value) => emit('update:busy', value));
 watch(
@@ -245,7 +251,10 @@ watch(
 	[gatewayAvailable, gateway.balance, usableCredentials],
 	([available, balance, credentials]) => {
 		if (available && !modeChanged.value && !connected.value)
-			mode.value = (balance ?? 0) > 0 || credentials.length === 0 ? 'credits' : 'own';
+			mode.value =
+				!props.item.preferNew && ((balance ?? 0) > 0 || credentials.length === 0)
+					? 'credits'
+					: 'own';
 	},
 	{ immediate: true },
 );

@@ -972,6 +972,17 @@ describe('InstanceAiSetupCredential', () => {
 		expect(rendered.getByRole('button', { name: 'Save' })).toBeEnabled();
 	});
 
+	it('starts a requested new account on the own-key form', async () => {
+		gateway.isEnabled.value = true;
+		const rendered = renderComponent({
+			props: { item: { ...item, nodeBindings: [], preferNew: true } },
+		});
+		await flushPromises();
+		expect(rendered.getByLabelText('API key')).toBeVisible();
+		expect(rendered.queryByRole('button', { name: 'Use credits' })).toBeNull();
+		expect(mockedStore(useCredentialsStore).createNewCredential).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		{ reason: 'version', reverse: false },
 		{ reason: 'version', reverse: true },

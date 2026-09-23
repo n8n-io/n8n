@@ -3,6 +3,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
+import { instanceAiSetupCredentialSelectionKey } from '@n8n/api-types';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 
@@ -12,6 +13,8 @@ import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { getWorkflow } from '@/app/api/workflows';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { fetchThread, updateThreadMetadata } from '../instanceAi.memory.api';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -27,6 +30,20 @@ import {
 vi.mock('@/app/api/workflows', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	getWorkflow: vi.fn(),
+}));
+
+let threadMetadata = ref<Record<string, unknown>>({});
+vi.mock('../instanceAi.store', () => ({
+	useInstanceAiStore: () => ({
+		getThreadMetadata: () => threadMetadata.value,
+		setThreadMetadata: (_id: string, metadata: Record<string, unknown>) => {
+			threadMetadata.value = metadata;
+		},
+	}),
+}));
+vi.mock('../instanceAi.memory.api', () => ({
+	fetchThread: vi.fn(),
+	updateThreadMetadata: vi.fn(),
 }));
 
 // useNodeHelpers injects the host's document store at init, which needs a
@@ -82,6 +99,7 @@ function createHarness(
 	vi.mocked(getWorkflow).mockImplementation(async () => makeWorkflow());
 
 	const actions = useSetupPanelActions({
+		threadId: 'thread-1',
 		workflowId: () => workflowId.value,
 		isAgentBuilding: () => building.value,
 		onFlushResult: options.onFlushResult,
@@ -124,7 +142,7 @@ describe('useSetupPanelActions', () => {
 		const { actions, building } = createHarness({ agentBuilding: true });
 		await actions.bindCredential(credentialItem, credential);
 		vi.mocked(getWorkflow).mockImplementation(async () => {
-			expect(actions.pendingApplyCount.value).toBe(0);
+			expect(actions.pendingApplyCount.value).toBe(1);
 			expect(actions.isApplying.value).toBe(true);
 			expect(actions.getPendingCredential(credentialItem.id)).toEqual(credential);
 			if (failed) throw new Error('Unavailable');
@@ -133,11 +151,27 @@ describe('useSetupPanelActions', () => {
 		building.value = false;
 		await expect(actions.flushPendingApplies()).resolves.toBe(failed ? 'error' : 'applied');
 		expect(actions.isApplying.value).toBe(false);
-		expect(actions.getPendingCredential(credentialItem.id)).toBeUndefined();
+		expect(actions.getPendingCredential(credentialItem.id)).toEqual(
+			failed ? credential : undefined,
+		);
 	});
 
 	beforeEach(() => {
+		threadMetadata = ref({});
 		setActivePinia(createTestingPinia({ stubActions: false }));
+		vi.mocked(updateThreadMetadata).mockReset();
+		vi.mocked(updateThreadMetadata).mockResolvedValue({
+			thread: { id: 'thread-1', resourceId: 'user-1', createdAt: '', updatedAt: '' },
+		});
+		vi.mocked(fetchThread).mockImplementation(async () => ({
+			thread: {
+				id: 'thread-1',
+				resourceId: 'user-1',
+				createdAt: '',
+				updatedAt: '',
+				metadata: threadMetadata.value,
+			},
+		}));
 		vi.mocked(getWorkflow).mockReset();
 		getNodeCredentialIssues.mockReset();
 		getNodeCredentialIssues.mockReturnValue(null);
@@ -450,6 +484,66 @@ describe('useSetupPanelActions', () => {
 		building.value = false;
 		await actions.flushPendingApplies();
 		expect(updateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('restores an early selection after a remount and an artifact switch', async () => {
+		const { actions, workflowId } = createHarness({ agentBuilding: true });
+		await actions.bindCredential({ ...credentialItem, nodeBindings: undefined }, credential);
+		workflowId.value = 'wf-2';
+		await nextTick();
+		expect(actions.pendingApplyCount.value).toBe(0);
+		mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(credential);
+		const restored = createHarness({ agentBuilding: true });
+		expect(restored.actions.getPendingCredential(credentialItem.id)).toEqual(credential);
+		vi.mocked(getWorkflow).mockResolvedValue(makeWorkflow({ nodes: [] }));
+		restored.building.value = false;
+		await expect(restored.actions.flushPendingApplies()).resolves.toBe('queued');
+		expect(restored.actions.pendingApplyCount.value).toBe(1);
+	});
+
+	it('does not queue a selection when its metadata save fails', async () => {
+		const { actions, updateWorkflow } = createHarness({ agentBuilding: true });
+		vi.mocked(updateThreadMetadata).mockRejectedValueOnce(new Error('Unavailable'));
+		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('error');
+		expect(actions.getPendingCredential(credentialItem.id)).toBeUndefined();
+		expect(updateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('waits for durable selection writes and preserves their order', async () => {
+		const { actions } = createHarness({ agentBuilding: true });
+		const firstSave = Promise.withResolvers<Awaited<ReturnType<typeof updateThreadMetadata>>>();
+		vi.mocked(updateThreadMetadata).mockReturnValueOnce(firstSave.promise);
+		const first = actions.bindCredential(credentialItem, credential);
+		const newer = { id: 'cred-2', name: 'Second account' };
+		const second = actions.bindCredential(credentialItem, newer);
+		await vi.waitFor(() => expect(updateThreadMetadata).toHaveBeenCalledTimes(1));
+		expect(actions.getPendingCredential(credentialItem.id)).toBeUndefined();
+		firstSave.resolve({
+			thread: { id: 'thread-1', resourceId: 'user-1', createdAt: '', updatedAt: '' },
+		});
+		await Promise.all([first, second]);
+		expect(actions.getPendingCredential(credentialItem.id)).toEqual(newer);
+	});
+
+	it('keeps a newer account choice when an earlier binding finishes', async () => {
+		const { actions, building, updateWorkflow } = createHarness({ agentBuilding: true });
+		await actions.bindCredential(credentialItem, credential);
+		const saved = Promise.withResolvers<IWorkflowDb>();
+		updateWorkflow.mockReturnValueOnce(saved.promise);
+		building.value = false;
+		const flush = actions.flushPendingApplies();
+		await vi.waitFor(() => expect(updateWorkflow).toHaveBeenCalledTimes(1));
+		building.value = true;
+		const newer = { id: 'cred-2', name: 'Second account' };
+		await actions.bindCredential(credentialItem, newer);
+		saved.resolve(makeWorkflow());
+		await flush;
+		expect(actions.getPendingCredential(credentialItem.id)).toEqual(newer);
+		expect(
+			threadMetadata.value[instanceAiSetupCredentialSelectionKey(credentialItem.id)],
+		).toMatchObject({
+			credentialId: newer.id,
+		});
 	});
 
 	it('reports a conflicted settle flush through onFlushResult', async () => {

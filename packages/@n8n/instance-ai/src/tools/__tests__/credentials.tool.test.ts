@@ -6,6 +6,7 @@ import type { Mock } from 'vitest';
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
 import { createCredentialsTool, type CredentialAction } from '../credentials.tool';
+import { prepareWorkflowSetup } from '../workflows/prepare-workflow-setup';
 import type { SetupRequest } from '../workflows/setup-workflow.schema';
 import { analyzeWorkflow } from '../workflows/setup-workflow.service';
 
@@ -13,6 +14,8 @@ vi.mock('../workflows/setup-workflow.service', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../workflows/setup-workflow.service')>()),
 	analyzeWorkflow: vi.fn(async () => await Promise.resolve([])),
 }));
+
+vi.mock('../workflows/prepare-workflow-setup', () => ({ prepareWorkflowSetup: vi.fn() }));
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -845,6 +848,7 @@ describe('credentials tool', () => {
 	describe('setup action — setup panel announcement', () => {
 		beforeEach(() => {
 			vi.mocked(analyzeWorkflow).mockReset().mockResolvedValue([]);
+			vi.mocked(prepareWorkflowSetup).mockReset();
 		});
 
 		function panelContext(overrides: Parameters<typeof createMockContext>[0] = {}) {
@@ -872,6 +876,113 @@ describe('credentials tool', () => {
 					workflowId: 'wf-1',
 				}).success,
 			).toBe(true);
+		});
+
+		it('exposes early setup fields only when the panel is enabled', () => {
+			const control = inputJsonSchema(createCredentialsTool(createMockContext()));
+			const { context } = panelContext();
+			const panel = inputJsonSchema(createCredentialsTool(context));
+			const withFolders = inputJsonSchema(
+				createCredentialsTool({
+					...context,
+					folderExplorationEnabled: true,
+				}),
+			);
+
+			expect(control.properties).not.toHaveProperty('filePath');
+			expect(control.properties).not.toHaveProperty('workflowName');
+			expect(control.properties).not.toHaveProperty('folderPath');
+			expect(panel.properties).toHaveProperty('filePath');
+			expect(panel.properties).toHaveProperty('workflowName');
+			expect(panel.properties).not.toHaveProperty('folderPath');
+			expect(withFolders.properties).toHaveProperty('folderPath');
+		});
+
+		it.each([
+			{ credentials: [{ credentialType: 'slackApi', reason: 'Send daily updates' }] },
+			{
+				credentials: [
+					{ credentialType: 'googleSheetsOAuth2Api' },
+					{ credentialType: 'openAiApi', preferNew: true },
+					{ credentialType: 'gmailOAuth2' },
+					{ credentialType: 'slackApi', preferNew: true },
+				],
+			},
+			{ credentials: [] },
+		])(
+			'prepares source-bound setup without suspending for requirements %j',
+			async ({ credentials }) => {
+				const { context, emitter } = panelContext({ folderExplorationEnabled: true });
+				const suspend = vi.fn();
+				const prepared = {
+					success: true,
+					announced: true,
+					preBuild: true,
+					workflowId: 'wf-early',
+					filePath: 'src/workflows/main.ts',
+					message: 'Continue the build',
+				};
+				vi.mocked(prepareWorkflowSetup).mockResolvedValue(prepared);
+				const input = {
+					action: 'setup',
+					filePath: prepared.filePath,
+					workflowName: 'Daily update',
+					folderPath: 'Notifications',
+					credentials,
+				};
+				const tool = createCredentialsTool(context);
+
+				expect(getInputSchema(tool).safeParse(input).success).toBe(true);
+				const result = await executeTool(tool, input, suspendCtx(suspend));
+
+				expect(result).toEqual(prepared);
+				expect(prepareWorkflowSetup).toHaveBeenCalledWith(context, input);
+				expect(suspend).not.toHaveBeenCalled();
+				expect(emitter.merge).not.toHaveBeenCalled();
+			},
+		);
+
+		it('does not report early setup as announced when persistence fails', async () => {
+			const { context } = panelContext();
+			const suspend = vi.fn();
+			vi.mocked(prepareWorkflowSetup).mockRejectedValue(new Error('Could not persist setup'));
+
+			const result = await executeTool(
+				createCredentialsTool(context),
+				{
+					action: 'setup',
+					filePath: 'src/workflows/main.ts',
+					workflowName: 'Daily update',
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				suspendCtx(suspend),
+			);
+
+			expect(result).toEqual({
+				success: false,
+				announced: false,
+				message: 'Could not persist setup',
+			});
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('validates registered credential types before creating early workflow context', async () => {
+			const { context } = panelContext();
+			context.credentialService.credentialTypeExists = vi.fn().mockResolvedValue(false);
+
+			const result = await executeTool(
+				createCredentialsTool(context),
+				{
+					action: 'setup',
+					filePath: 'src/workflows/main.ts',
+					workflowName: 'Daily update',
+					credentials: [{ credentialType: 'slackApiTypo' }],
+				},
+				suspendCtx(),
+			);
+
+			expect(result).toMatchObject({ error: 'unknown_credential_type' });
+			expect(prepareWorkflowSetup).not.toHaveBeenCalled();
 		});
 
 		it('should announce the credentials to the setup panel and return without suspending', async () => {
@@ -1058,8 +1169,25 @@ describe('credentials tool', () => {
 			expect(emitter.merge).not.toHaveBeenCalled();
 		});
 
-		it('should keep the card when an entry asks for a new credential', async () => {
+		it('should keep the card when an entry replaces a bound credential', async () => {
 			const { context, emitter } = panelContext();
+			vi.mocked(analyzeWorkflow).mockResolvedValue([
+				{
+					node: {
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						id: 'slack-node',
+						position: [0, 0],
+						parameters: {},
+						credentials: { slackApi: { id: 'old-account', name: 'Old account' } },
+					},
+					credentialType: 'slackApi',
+					needsAction: false,
+					credentialNeedsAction: false,
+					isTrigger: false,
+				},
+			]);
 			const suspendFn = vi.fn();
 
 			await executeTool(
@@ -1081,6 +1209,25 @@ describe('credentials tool', () => {
 					],
 				}),
 			);
+		});
+
+		it('announces a first account requested through the credential tool without a card', async () => {
+			const { context, emitter } = panelContext();
+			const suspend = vi.fn();
+			const result = await executeTool(
+				createCredentialsTool(context),
+				{
+					action: 'setup',
+					workflowId: 'wf-1',
+					credentials: [{ credentialType: 'slackApi', preferNew: true }],
+				},
+				suspendCtx(suspend),
+			);
+			expect(result).toMatchObject({ success: true, announced: true });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(emitter.merge).toHaveBeenCalledWith('wf-1', [
+				expect.objectContaining({ credentialType: 'slackApi', preferNew: true }),
+			]);
 		});
 
 		it('should still announce when the emitter fails', async () => {

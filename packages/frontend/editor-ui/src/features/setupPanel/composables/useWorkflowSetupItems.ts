@@ -61,6 +61,11 @@ export function useWorkflowSetupItems(
 	const credentialsStore = useCredentialsStore();
 	const oauth = useCredentialOAuth();
 	const oauthConnections = shallowReactive(new Map<string, boolean | undefined>());
+	const checkedCredentialIds = shallowReactive(new Set<string>());
+	watch(
+		() => toValue(workflowId),
+		() => checkedCredentialIds.clear(),
+	);
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowsStore = useWorkflowsStore();
 	const credentialsLoadedForWorkflow = ref<string>();
@@ -196,6 +201,7 @@ export function useWorkflowSetupItems(
 				Object.values(node.credentials ?? {}).map((credential) => credential.id),
 			),
 		);
+		for (const id of checkedCredentialIds) ids.add(id);
 		return [...ids].flatMap((id) => {
 			const credential = getBoundCredential(id);
 			return credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)
@@ -386,6 +392,7 @@ export function useWorkflowSetupItems(
 		if (!isBoundCredential(assigned)) return false;
 		const credential = getBoundCredential(typeof assigned !== 'string' ? assigned?.id : undefined);
 		if (credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)) {
+			checkedCredentialIds.add(credential.id);
 			// Wait for the redacted token flag. Missing data remains unknown for shared credentials.
 			return oauthConnections.has(credential.id) && oauthConnections.get(credential.id) !== false;
 		}
@@ -424,6 +431,7 @@ export function useWorkflowSetupItems(
 	return {
 		credentialsAvailable,
 		isWorkflowAvailable,
+		hasWorkflowNodes: computed(() => (workflowNodes.value?.length ?? 0) > 0),
 		workflowProjectId,
 		derivedItems,
 		derivedCredentialItems,

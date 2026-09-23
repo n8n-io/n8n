@@ -619,6 +619,26 @@ describe('useWorkflowSetupItems', () => {
 		).toBe(false);
 	});
 
+	it.each([false, true])(
+		'checks an OAuth selection before its nodes exist: %s',
+		async (connected) => {
+			const credential = { id: 'gmail-early', name: 'Gmail', type: 'gmailOAuth2' };
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			credentialsStore.getCredentialTypeByName = vi
+				.fn()
+				.mockReturnValue({ extends: ['oAuth2Api'] });
+			credentialsStore.getCredentialData.mockResolvedValue({
+				...credential,
+				data: connected ? { oauthTokenData: { access_token: 'test-token' } } : {},
+			} as ICredentialsDecryptedResponse);
+			hydrateWorkflow([]);
+			const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+			expect(state.isCredentialConfigured(credential)).toBe(false);
+			await flushPromises();
+			expect(state.isCredentialConfigured(credential)).toBe(connected);
+		},
+	);
+
 	it.each([
 		'connected',
 		'disconnected',
