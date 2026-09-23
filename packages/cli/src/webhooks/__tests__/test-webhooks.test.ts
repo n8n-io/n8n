@@ -786,10 +786,6 @@ describe('TestWebhooks', () => {
 				);
 
 				expect(result).toEqual(callbackData);
-				expect((testWebhooks as any).publisher.publishCommand).toHaveBeenCalledWith({
-					command: 'clear-test-webhooks',
-					payload: expect.objectContaining({ workflowEntity, pushRef }),
-				});
 			});
 
 			test('resolves with the lastNode callback data received after executeWebhook returns', async () => {

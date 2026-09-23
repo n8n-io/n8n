@@ -299,7 +299,6 @@ test.describe(
 				expect(response.status()).toBe(200);
 
 				const body = await response.text();
-				expect(body).not.toBe('');
 				expect(JSON.parse(body)).toEqual({ MyValue: 1234 });
 			});
 
@@ -323,7 +322,6 @@ test.describe(
 				expect(response.status()).toBe(200);
 
 				const body = await response.text();
-				expect(body).not.toBe('');
 				expect(JSON.parse(body)).toEqual({ MyValue: 1234 });
 			});
 		});
