@@ -1,9 +1,9 @@
-operationId: updateFolder
+operationId: createFolder
 tags:
   - Folders
-summary: Update a folder
-description: Update folder name or parent folder.
-x-required-scope: folder:update
+summary: Create a folder
+description: Create a folder within a project.
+x-required-scope: folder:create
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
@@ -11,14 +11,8 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the project.
+    description: The ID of the project, or `personal` to create the folder in the calling user's own personal project.
     name: projectId
-    in: path
-  - schema:
-      type: string
-    required: true
-    description: The ID of the folder.
-    name: folderId
     in: path
 requestBody:
   required: true
@@ -29,16 +23,17 @@ requestBody:
         properties:
           name:
             type: string
-            example: Renamed Folder
             maxLength: 128
+            example: My Folder
           parentFolderId:
             type: string
-            description: ID of the parent folder to move this folder into. Set to "0" to move the folder to the project root.
-            example: abc123
+            maxLength: 36
+            example: kRZ0ewrAEAhCkTBd
+        required:
+          - name
         additionalProperties: false
-        minProperties: 1
 responses:
-  '200':
+  '201':
     description: Operation successful.
     content:
       application/json:
