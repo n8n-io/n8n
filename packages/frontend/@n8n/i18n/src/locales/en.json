@@ -7219,6 +7219,7 @@
 	"instanceAi.setupPanel.helpFindAccessToken": "Help me find my access token",
 	"instanceAi.setupPanel.helpSetUp": "Help me set this up",
 	"instanceAi.setupPanel.helpVisibleFields": "The OAuth form asks for: {fields}.",
+	"instanceAi.setupPanel.helpOAuthState": "Selected OAuth mode: {mode}. Connection state: {state}.",
 	"instanceAi.setupPanel.helpManagedOAuthAvailable": "Managed OAuth is available on this instance.",
 	"instanceAi.setupPanel.helpManagedOAuthUnavailable": "Managed OAuth isn't available on this instance. Help me configure my own OAuth app.",
 	"instanceAi.setupPanel.setCredentialsPerNode": "Set credentials per node",

@@ -36,7 +36,7 @@ import { modelStreamStallOptions } from '../model-stream-stall-options';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import { AgentsBuilderToolsService, type BuilderTools } from './agents-builder-tools.service';
 import { BuilderCheckpointUnavailableError } from './errors';
 import {
 	BUILDER_PLANNER_TODOS_DESCRIPTION,
@@ -242,14 +242,7 @@ export class AgentsBuilderService {
 		// always runs on it directly.
 		const modelConfig = session.modelConfig;
 
-		const modelRecommendationsSection = await getModelRecommendationsSection();
-		const instructions = buildBuilderPrompt({
-			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
-			modelRecommendationsSection,
-		});
-		const finalInstructions = session.instructionsAddendum
-			? `${instructions}\n\n${session.instructionsAddendum}`
-			: instructions;
+		const finalInstructions = await this.createBuilderInstructions(projectId, agentId, session);
 		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
@@ -265,36 +258,8 @@ export class AgentsBuilderService {
 			},
 		);
 
-		const { Agent, Memory, Tool, createPlannerTodosTool } = await import('@n8n/agents');
-
-		const onMemoryUsage = async (report: MemoryTaskUsageReport) => {
-			try {
-				const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
-				if (items.length === 0) return;
-				await this.instanceAiCreditService.claimRunUsage(
-					user,
-					session.hostThreadId,
-					`${session.runId}:agent-builder:${agentId}:memory:${report.task}:${report.reportId}`,
-					items,
-					'completed',
-				);
-			} catch (error) {
-				this.logger.warn('Failed to claim agent-builder observational-memory usage', {
-					agentId,
-					hostThreadId: session.hostThreadId,
-					runId: session.runId,
-					task: report.task,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-		};
-
-		const builderMemory = new Memory()
-			.storage(this.n8nMemory.getImplementation(agentId))
-			.observationalMemory({
-				observe: createObservationLogObserveFn(modelConfig, { onUsage: onMemoryUsage }),
-				reflect: createObservationLogReflectFn(modelConfig, { onUsage: onMemoryUsage }),
-			});
+		const { Agent } = await import('@n8n/agents');
+		const builderMemory = await this.createBuilderMemory(agentId, user, session);
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
@@ -311,46 +276,7 @@ export class AgentsBuilderService {
 		if (session.telemetry) builder.telemetry(session.telemetry);
 		if (session.memoryTaskObserver) builder.memoryTaskObserver(session.memoryTaskObserver);
 
-		const plannerTodosTool = createPlannerTodosTool({
-			description: BUILDER_PLANNER_TODOS_DESCRIPTION,
-			systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
-		});
-		const reportRequiredArtifactTool = session.onRequiredArtifact
-			? new Tool(REPORT_REQUIRED_ARTIFACT_TOOL_NAME)
-					.description(
-						'Report a workflow or data table that Instance AI must create outside the target Agent. ' +
-							'Use relationship "agent-entrypoint" for a channel bridge that invokes the Agent; it will not be attached as an Agent tool.',
-					)
-					.input(reportRequiredArtifactInputSchema)
-					.handler(async (input: ReportRequiredArtifactInput) => {
-						session.onRequiredArtifact?.(input.artifact);
-						return { ok: true };
-					})
-					.build()
-			: undefined;
-		const builderTools = [
-			...tools.json,
-			...tools.shared,
-			plannerTodosTool,
-			...(reportRequiredArtifactTool ? [reportRequiredArtifactTool] : []),
-		];
-		const claimedToolNames = new Set(builderTools.map((tool) => tool.name));
-
-		for (const tool of builderTools) {
-			builder.tool(tool);
-		}
-
-		for (const [toolName, tool] of session.mcpTools ?? []) {
-			if (claimedToolNames.has(toolName)) {
-				this.logger.warn('Skipped MCP tool that conflicts with an agent builder tool', {
-					toolName,
-					agentId,
-				});
-				continue;
-			}
-			claimedToolNames.add(toolName);
-			builder.tool(tool);
-		}
+		await this.registerBuilderTools(builder, tools, agentId, session);
 
 		builder.reasoning(resolveAIAReasoning(modelConfig));
 
@@ -381,5 +307,116 @@ export class AgentsBuilderService {
 		threadId: string,
 	): Promise<SerializableAgentState | null> {
 		return await this.n8nCheckpointStorage.findSuspendedForThread(agentId, threadId);
+	}
+
+	private async claimMemoryUsage(
+		report: MemoryTaskUsageReport,
+		agentId: string,
+		user: User,
+		session: InstanceAiBuilderSessionOptions,
+	): Promise<void> {
+		try {
+			const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
+			if (items.length === 0) return;
+			await this.instanceAiCreditService.claimRunUsage(
+				user,
+				session.hostThreadId,
+				`${session.runId}:agent-builder:${agentId}:memory:${report.task}:${report.reportId}`,
+				items,
+				'completed',
+			);
+		} catch (error) {
+			this.logger.warn('Failed to claim agent-builder observational-memory usage', {
+				agentId,
+				hostThreadId: session.hostThreadId,
+				runId: session.runId,
+				task: report.task,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async createBuilderInstructions(
+		projectId: string,
+		agentId: string,
+		session: InstanceAiBuilderSessionOptions,
+	): Promise<string> {
+		const modelRecommendationsSection = await getModelRecommendationsSection();
+		const instructions = buildBuilderPrompt({
+			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
+			modelRecommendationsSection,
+		});
+		return session.instructionsAddendum
+			? `${instructions}\n\n${session.instructionsAddendum}`
+			: instructions;
+	}
+
+	private async createBuilderMemory(
+		agentId: string,
+		user: User,
+		session: InstanceAiBuilderSessionOptions,
+	) {
+		const { Memory } = await import('@n8n/agents');
+
+		const onMemoryUsage = async (report: MemoryTaskUsageReport) =>
+			await this.claimMemoryUsage(report, agentId, user, session);
+
+		return new Memory().storage(this.n8nMemory.getImplementation(agentId)).observationalMemory({
+			observe: createObservationLogObserveFn(session.modelConfig, { onUsage: onMemoryUsage }),
+			reflect: createObservationLogReflectFn(session.modelConfig, { onUsage: onMemoryUsage }),
+		});
+	}
+
+	private async registerBuilderTools(
+		builder: RuntimeAgent,
+		tools: BuilderTools,
+		agentId: string,
+		session: InstanceAiBuilderSessionOptions,
+	): Promise<void> {
+		const { createPlannerTodosTool } = await import('@n8n/agents');
+		const plannerTodosTool = createPlannerTodosTool({
+			description: BUILDER_PLANNER_TODOS_DESCRIPTION,
+			systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+		});
+		const reportRequiredArtifactTool = await this.createRequiredArtifactTool(session);
+		const builderTools = [
+			...tools.json,
+			...tools.shared,
+			plannerTodosTool,
+			...(reportRequiredArtifactTool ? [reportRequiredArtifactTool] : []),
+		];
+		const claimedToolNames = new Set(builderTools.map((tool) => tool.name));
+
+		for (const tool of builderTools) {
+			builder.tool(tool);
+		}
+
+		for (const [toolName, tool] of session.mcpTools ?? []) {
+			if (claimedToolNames.has(toolName)) {
+				this.logger.warn('Skipped MCP tool that conflicts with an agent builder tool', {
+					toolName,
+					agentId,
+				});
+				continue;
+			}
+			claimedToolNames.add(toolName);
+			builder.tool(tool);
+		}
+	}
+
+	private async createRequiredArtifactTool(session: InstanceAiBuilderSessionOptions) {
+		if (!session.onRequiredArtifact) return undefined;
+		const { Tool } = await import('@n8n/agents');
+		return new Tool(REPORT_REQUIRED_ARTIFACT_TOOL_NAME)
+			.description(
+				'Report a workflow or data table that Instance AI must create outside the target Agent. ' +
+					'Use relationship "agent-entrypoint" for a channel bridge that invokes the Agent; it will not be attached as an Agent tool.',
+			)
+			.input(reportRequiredArtifactInputSchema)
+			.handler(async (input: ReportRequiredArtifactInput) => {
+				session.onRequiredArtifact?.(input.artifact);
+				return { ok: true };
+			})
+			.build();
 	}
 }

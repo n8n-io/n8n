@@ -63,7 +63,7 @@ const { t } = useI18n();
 						<template #trigger>
 							<N8nButton
 								size="small"
-								variant="subtle"
+								variant="ghost"
 								icon-only
 								:disabled="disabled || loading"
 								:aria-label="t('setupPanel.moreOptions')"
