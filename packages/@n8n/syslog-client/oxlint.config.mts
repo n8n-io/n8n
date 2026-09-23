@@ -6,12 +6,6 @@ export default defineConfig({
 	options: { typeAware: true },
 	overrides: [
 		{
-			files: ['src/constants.ts'],
-			rules: {
-				'typescript/no-duplicate-enum-values': 'off',
-			},
-		},
-		{
 			files: ['**/*.config.ts'],
 			jsPlugins: ['@n8n/eslint-config/plugin'],
 			rules: {

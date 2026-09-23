@@ -113,6 +113,16 @@ function isEnabled(severity) {
 	return value === 'deny' || value === 'error' || value === 2;
 }
 
+const matchesPattern = (file, pattern) => matchesGlob(file, pattern.replace(/^\.\//, ''));
+
+function overrideMatchesSample({ files = [], excludeFiles = [], ignores = [] }) {
+	return sampledFiles.some(
+		(file) =>
+			(files.length === 0 || files.some((pattern) => matchesPattern(file, pattern))) &&
+			![...excludeFiles, ...ignores].some((pattern) => matchesPattern(file, pattern)),
+	);
+}
+
 /** Native rules oxlint actually resolved for this package. */
 function resolvedNativeRules() {
 	const out = spawnSync('pnpm', ['exec', 'oxlint', '--print-config'], {
@@ -127,7 +137,9 @@ function resolvedNativeRules() {
 	const parsed = JSON.parse(out.stdout.slice(start));
 	return [
 		...Object.entries(parsed.rules ?? {}),
-		...(parsed.overrides ?? []).flatMap(({ rules }) => Object.entries(rules ?? {})),
+		...(parsed.overrides ?? [])
+			.filter(overrideMatchesSample)
+			.flatMap(({ rules }) => Object.entries(rules ?? {})),
 	]
 		.filter(([, severity]) => isEnabled(severity))
 		.map(([id]) => id);
@@ -153,10 +165,10 @@ async function declaredJsPluginRules() {
 				// An override that turns a rule off still leaves it enforced elsewhere
 				// in the package, and this comparison is a union.
 				if (!isEnabled(severity)) continue;
-				if (!declared.has(id) || overrideOnly.has(id)) {
-					const patterns = overrideOnly.get(id) ?? [];
-					patterns.push(...(override.files ?? []));
-					overrideOnly.set(id, patterns);
+				if (!isEnabled(declared.get(id)) || overrideOnly.has(id)) {
+					const overrides = overrideOnly.get(id) ?? [];
+					overrides.push(override);
+					overrideOnly.set(id, overrides);
 				}
 				declared.set(id, severity);
 			}
@@ -192,13 +204,8 @@ if (sampled === 0) {
 const { ids: jsPluginIds, overrideOnly, plugins } = await declaredJsPluginRules();
 
 const comparable = (id) => {
-	const patterns = overrideOnly.get(id);
-	return (
-		!patterns ||
-		patterns.some((pattern) =>
-			sampledFiles.some((file) => matchesGlob(file, pattern.replace(/^\.\//, ''))),
-		)
-	);
+	const overrides = overrideOnly.get(id);
+	return !overrides || overrides.some(overrideMatchesSample);
 };
 
 const oxlintRules = new Set(
