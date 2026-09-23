@@ -28,6 +28,7 @@ import {
 	AgentModificationTelemetryService,
 	diffAgentConfigParts,
 	type AgentActor,
+	type AgentSidecarChanges,
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
@@ -458,7 +459,7 @@ export class AgentPublishService {
 		user: User,
 		modifiedBy: AgentActor,
 		previousSchema: AgentJsonConfig | null,
-		sidecarChanges: Partial<Record<'tools' | 'skills' | 'tasks', boolean>>,
+		sidecarChanges: AgentSidecarChanges,
 	): Promise<void> {
 		const integrations = agent.integrations ?? [];
 		this.modificationTelemetry.record({

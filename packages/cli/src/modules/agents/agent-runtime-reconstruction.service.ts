@@ -1,10 +1,10 @@
 import {
 	createWriteTodosTool,
 	type Agent as RuntimeAgent,
+	type CreateDelegateSubAgentToolOptions,
 	BuiltTool,
 	CredentialProvider,
 	ModelConfig,
-	ToolDescriptor,
 } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
@@ -19,7 +19,6 @@ import {
 	type AgentJsonMcpServerConfig,
 	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
-	type AgentSkill,
 	type SubAgentRunPolicy,
 	type SubAgentSource,
 	type SubAgentTaskDifficulty,
@@ -82,13 +81,13 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentRunner } from './sub-agents/sub-agent-runner';
-import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { buildToolRegistry, type ReferencedToolKind, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
-import { getAgentRuntimeAssets } from './utils/agent-runtime-assets';
+import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
@@ -97,19 +96,23 @@ import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
  */
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent' | 'inline';
 
-export interface SubAgentDelegationConfig {
-	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
+export interface ReconstructedAgentRuntime {
+	agent: RuntimeAgent;
+	toolRegistry: ToolRegistry;
+	/** Maps MCP server names to attribution for replies that use their tools. */
+	mcpServerAttributions: Map<string, string>;
 }
 
-export interface ReconstructAgentRuntimeParams {
+export interface SubAgentDelegationConfig {
+	sourcesById: Record<string, SubAgentSource>;
+	availableSubAgents: NonNullable<CreateDelegateSubAgentToolOptions['availableSubAgents']>;
+}
+
+export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	config: AgentJsonConfig;
 	memoryOwnerAgentId: string;
 	projectId: string;
 	credentialProvider: CredentialProvider;
-	toolDescriptors: Record<string, ToolDescriptor>;
-	toolCodeByName: Record<string, string>;
-	skills: Record<string, AgentSkill>;
 	runtimeProfile: AgentRuntimeProfile;
 	/**
 	 * Telemetry classification of the run this runtime serves. Baked in at build
@@ -149,55 +152,36 @@ export interface ReconstructAgentRuntimeParams {
 	parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 }
 
-interface RuntimeReconstructionOptions {
-	config: AgentJsonConfig;
-	memoryOwnerAgentId: string;
-	projectId: string;
-	credentialProvider: CredentialProvider;
-	toolDescriptors: Record<string, ToolDescriptor>;
-	toolCodeByName: Record<string, string>;
-	skills: Record<string, AgentSkill>;
-	runtimeProfile: AgentRuntimeProfile;
+interface RuntimeReconstructionOptions extends ReconstructAgentRuntimeParams {
 	/**
 	 * Whether the caller can resume a suspended tool. False for workflow-driven
 	 * runs, where HITL tools report status instead of parking forever.
 	 */
 	supportsHitl?: boolean;
-	runType: AgentRunTelemetryType;
-	workflowToolExecutionMode?: WorkflowToolExecutionMode;
-	parentAgentIdForDelegation?: string;
-	integrationType?: string;
 	credentialIntegrations: AgentIntegrationConfig[];
 	subAgentDelegation: SubAgentDelegationConfig;
-	user?: User;
-	instrumentation?: AgentRuntimeInstrumentation;
-	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	allowBackgroundTasks?: boolean;
-	parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 	/** Tools the access filter already dropped; reported together with build-time stubs. */
 	unavailableTools?: UnavailableTool[];
 	/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
 	previewChat?: boolean;
 }
 
-interface RuntimeDependencies {
+interface RuntimeDependencies
+	extends Omit<
+		RuntimeReconstructionOptions,
+		| keyof AgentRuntimeAssets
+		| 'memoryOwnerAgentId'
+		| 'supportsHitl'
+		| 'allowBackgroundTasks'
+		| 'unavailableTools'
+		| 'previewChat'
+	> {
 	agent: RuntimeAgent;
 	agentId: string;
-	projectId: string;
-	credentialProvider: CredentialProvider;
-	runtimeProfile: AgentRuntimeProfile;
-	runType: AgentRunTelemetryType;
 	workflowToolExecutionMode: WorkflowToolExecutionMode;
-	config: AgentJsonConfig;
-	subAgentDelegation: SubAgentDelegationConfig;
 	parentAgentIdForDelegation: string;
-	integrationType?: string;
-	credentialIntegrations: AgentIntegrationConfig[];
-	user?: User;
-	instrumentation?: AgentRuntimeInstrumentation;
-	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	backgroundTasksEnabled: boolean;
-	parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 }
 
 interface ToolRunIdentity {
@@ -256,7 +240,7 @@ export interface UserToolAccessSnapshot {
  */
 export interface UnavailableTool {
 	toolName: string;
-	toolType: 'workflow' | 'node';
+	toolType: ReferencedToolKind;
 	reason: 'not_found' | 'not_published' | 'incompatible' | 'no_access';
 	message: string;
 }
@@ -311,12 +295,7 @@ export class AgentRuntimeReconstructionService {
 			/** Disable background jobs for task-triggered runtimes. */
 			allowBackgroundTasks?: boolean;
 		} = {},
-	): Promise<{
-		agent: RuntimeAgent;
-		toolRegistry: ToolRegistry;
-		mcpServerAttributions: Map<string, string>;
-		userToolAccessSnapshot?: UserToolAccessSnapshot;
-	}> {
+	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
 		let config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
@@ -515,11 +494,9 @@ export class AgentRuntimeReconstructionService {
 	 * when the parent had a user), so raw credential access stays gated there
 	 * regardless.
 	 */
-	async reconstructFromResolvedSource(params: ReconstructAgentRuntimeParams): Promise<{
-		agent: RuntimeAgent;
-		toolRegistry: ToolRegistry;
-		mcpServerAttributions: Map<string, string>;
-	}> {
+	async reconstructFromResolvedSource(
+		params: ReconstructAgentRuntimeParams,
+	): Promise<ReconstructedAgentRuntime> {
 		let config = params.config;
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
@@ -541,11 +518,9 @@ export class AgentRuntimeReconstructionService {
 		});
 	}
 
-	private async reconstructRuntime(options: RuntimeReconstructionOptions): Promise<{
-		agent: RuntimeAgent;
-		toolRegistry: ToolRegistry;
-		mcpServerAttributions: Map<string, string>;
-	}> {
+	private async reconstructRuntime(
+		options: RuntimeReconstructionOptions,
+	): Promise<ReconstructedAgentRuntime> {
 		const unavailable = [...(options.unavailableTools ?? [])];
 		const backgroundTasksEnabled =
 			options.runtimeProfile === 'top-level' &&

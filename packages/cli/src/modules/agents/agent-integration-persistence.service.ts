@@ -24,16 +24,11 @@ import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
+import type { IntegrationRef } from './utils/agent-channel';
 
 export interface CredentialIntegrationMutationContext {
 	user: User;
 	modifiedBy: AgentActor;
-}
-
-/** Reference to a persisted entry; `credentialId: ''` targets a builder draft entry. */
-export interface IntegrationRef {
-	type: string;
-	credentialId: string;
 }
 
 /**
@@ -62,10 +57,7 @@ export interface IntegrationDeltaResult {
 /** Retries cover a lost compare-and-set, which needs a fresh read to resolve. */
 const MAX_WRITE_ATTEMPTS = 3;
 
-export function matchesIntegrationRef(
-	integration: { type: string; credentialId: string },
-	ref: IntegrationRef,
-): boolean {
+export function matchesIntegrationRef(integration: IntegrationRef, ref: IntegrationRef): boolean {
 	return integration.type === ref.type && integration.credentialId === ref.credentialId;
 }
 
@@ -75,7 +67,7 @@ export function matchesIntegrationRef(
  */
 function projectIntegrations(
 	current: AgentIntegrationConfig[],
-	delta: { add?: AgentIntegrationConfig; remove?: IntegrationRef },
+	delta: IntegrationDelta,
 ): AgentIntegrationConfig[] {
 	let next = delta.remove
 		? current.filter((entry) => !matchesIntegrationRef(entry, delta.remove!))

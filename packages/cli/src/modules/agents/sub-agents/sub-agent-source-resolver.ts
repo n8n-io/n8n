@@ -1,6 +1,4 @@
-import type { ToolDescriptor } from '@n8n/agents';
 import {
-	type AgentSkill,
 	RunnableAgentJsonConfigSchema,
 	type AgentJsonConfig,
 	type ResolvedSubAgentSource,
@@ -14,7 +12,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getAgentOrThrow } from '../utils/get-agent-or-throw';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentRepository } from '../repositories/agent.repository';
-import { getAgentRuntimeAssets } from '../utils/agent-runtime-assets';
+import { getAgentRuntimeAssets, type AgentRuntimeAssets } from '../utils/agent-runtime-assets';
 
 export interface ResolveSubAgentSourceContext {
 	projectId: string;
@@ -26,11 +24,8 @@ export interface ResolveSubAgentSourceContext {
 	usePublishedVersion?: boolean;
 }
 
-export interface ResolvedSubAgentRuntimeSource {
+export interface ResolvedSubAgentRuntimeSource extends AgentRuntimeAssets {
 	source: ResolvedSubAgentSource;
-	toolDescriptors: Record<string, ToolDescriptor>;
-	toolCodeByName: Record<string, string>;
-	skills: Record<string, AgentSkill>;
 }
 
 @Service()

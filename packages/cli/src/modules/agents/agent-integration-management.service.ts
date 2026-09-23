@@ -16,7 +16,7 @@ import {
 	AgentIntegrationPersistenceService,
 	matchesIntegrationRef,
 	type IntegrationDeltaResult,
-	type IntegrationRef,
+	type IntegrationDelta,
 } from './agent-integration-persistence.service';
 import type { AgentActor } from './agent-modification-telemetry.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
@@ -24,12 +24,11 @@ import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+import type { IntegrationRef } from './utils/agent-channel';
 
-interface IntegrationChangeOptions {
+interface IntegrationChangeOptions extends IntegrationDelta {
 	agent: Agent;
 	user: User;
-	add?: AgentIntegrationConfig;
-	remove?: IntegrationRef;
 	cleanupRemovedIntegration?: boolean;
 	deleteExternalResource?: boolean;
 	modifiedBy: AgentActor;

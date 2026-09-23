@@ -14,6 +14,7 @@ import {
 	BuilderModelLiveLookupService,
 	type LiveModelLookupResult,
 } from './builder/builder-model-live-lookup.service';
+import type { ModelChoice } from './builder/model-lookup.types';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
 import { stripSnapshotSuffix } from './utils/model-snapshot-alias';
 import { normalizeProviderModelId } from './utils/provider-model-id';
@@ -130,7 +131,7 @@ export class AgentModelCatalogService {
 
 	private enrichManagedModels(
 		provider: string,
-		liveModels: Array<{ name: string; value: string }>,
+		liveModels: ModelChoice[],
 		catalogModels: Record<string, AgentCatalogModel>,
 	): AgentCatalogModel[] {
 		// Keep exact gateway IDs. Catalog aliases supply display metadata only.
@@ -149,7 +150,7 @@ export class AgentModelCatalogService {
 
 	private verifyCuratedModels(
 		provider: string,
-		liveModels: Array<{ name: string; value: string }>,
+		liveModels: ModelChoice[],
 		catalogModels: Record<string, AgentCatalogModel>,
 	): AgentCatalogModel[] {
 		const liveModelIds = new Set(

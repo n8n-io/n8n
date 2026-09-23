@@ -7,6 +7,7 @@ import {
 	type AgentCapabilityTool,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
+	type AgentModelCredentialConfig,
 	type AgentSkill,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
@@ -38,6 +39,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
 	type AgentSummary,
+	type AgentListResult,
 	type AgentSummaryFilters,
 } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
@@ -47,7 +49,7 @@ type CreateAgentOptions = {
 	availableInMCP?: boolean;
 	id?: string;
 	adoptOnCollision?: boolean;
-	defaultModel?: { model: string; credential: string };
+	defaultModel?: AgentModelCredentialConfig;
 	/** Create with this config instead of the empty draft, so eval thread seeding
 	 *  can recreate an already-built agent in one insert. */
 	schema?: AgentJsonConfig;
@@ -207,7 +209,7 @@ export class AgentsService {
 	async findByProjectIdPaginated(
 		projectId: string,
 		options: ListAgentsQueryDto,
-	): Promise<{ count: number; data: Agent[] }> {
+	): Promise<AgentListResult> {
 		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
 	}
 
@@ -302,10 +304,7 @@ export class AgentsService {
 		return await this.agentRepository.findByIdInProjects(agentId, projectIds);
 	}
 
-	async findByUserPaginated(
-		userId: string,
-		options: ListAgentsQueryDto,
-	): Promise<{ count: number; data: Agent[] }> {
+	async findByUserPaginated(userId: string, options: ListAgentsQueryDto): Promise<AgentListResult> {
 		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
 		const projectIds = projectRelations.map((pr) => pr.projectId);
 		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);

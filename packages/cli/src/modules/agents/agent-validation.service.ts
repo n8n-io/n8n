@@ -1,4 +1,4 @@
-import { type CredentialProvider, type ToolDescriptor } from '@n8n/agents';
+import type { CredentialProvider } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
@@ -51,7 +51,7 @@ type FindCredential = (
 	credentialId: string,
 ) => Promise<Awaited<ReturnType<CredentialProvider['list']>>[number] | undefined>;
 
-type CustomToolEntries = Record<string, { code: string; descriptor: ToolDescriptor }>;
+type CustomToolEntries = Agent['tools'];
 type TaskBody = AgentTaskConfig;
 
 interface ConfigurationValidationContext {

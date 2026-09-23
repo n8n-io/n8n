@@ -16,10 +16,8 @@ import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-import {
-	AgentChatAttachmentService,
-	type StoredAttachmentRef,
-} from '../agent-chat-attachment.service';
+import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import { AgentConversationStateService } from '../agent-conversation-state.service';
 import type {
 	AgentExecutionOrchestratorService,
