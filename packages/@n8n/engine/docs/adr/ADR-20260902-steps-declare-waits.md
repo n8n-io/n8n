@@ -1,7 +1,9 @@
-# Steps declare waits; the engine owns suspension and resume
+# Steps declare waits
 
 Date: 2026-09-02
+
 Status: Active
+
 Decision Owner: Catalysts
 
 ## Context
@@ -29,18 +31,18 @@ authentication on the resume request. A time wait needs none.
 
 In engine v2, an execution is a set of step rows. Events move each row from one
 status to the next. A step is one call that returns output
-(ADR-20260828-trigger-settlement-before-execution). Therefore a step executor
-cannot stay blocked for the length of a wait that reaches the engine. A pause
-must be a status of the step row. It must not be a state of a process. A wait
-that the Wait node sleeps through never reaches the engine, and stays a state of
-a process for that reason.
+(ADR-20260828-obtain-trigger-output-before-creating-the-execution). Therefore a
+step executor cannot stay blocked for the length of a wait that reaches the
+engine. A pause must be a status of the step row. It must not be a state of a
+process. A wait that the Wait node sleeps through never reaches the engine, and
+stays a state of a process for that reason.
 
 ## Decision
 
-A step execution can return a **wait declaration** in place of outputs. The
-declaration tells the engine when to resume the step. A declaration can name a
-deadline, or accept a resume request, or do both. When it does both, the first
-of the two ends the wait.
+The engine owns suspension and resume. A step execution can return a **wait
+declaration** in place of outputs. The declaration tells the engine when to
+resume the step. A declaration can name a deadline, or accept a resume request,
+or do both. When it does both, the first of the two ends the wait.
 
 1. **The shim produces the declaration.** The v1 node code does not change. The
    shim's execution context receives the node's `putExecutionToWait` call. The
@@ -89,11 +91,11 @@ of the two ends the wait.
 7. **The executor request carries the workflow settings.** A node resolves its
    parameters with them. The `specificTime` mode of the Wait node resolves its
    target time in the timezone of the workflow. The node converts the time and
-   hands over an absolute instant, so nothing in the data plane converts a
-   time, and durations are not affected. The execution row holds a workflow
-   snapshot (ADR-20260904-store-the-workflow-with-the-execution), but the
-   execution path does not read that document, so the settings travel as their
-   own field.
+   hands over an absolute instant, so nothing in the data plane converts a time,
+   and durations are not affected. The execution row holds a workflow snapshot
+   (ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution), but
+   the execution path does not read that document, so the settings travel as
+   their own field.
 
 ## Alternatives Considered
 
@@ -205,6 +207,7 @@ of the two ends the wait.
 ## Links
 
 RFC: -
-Documentation: Engine 2.0 — Detailed Design, §3.3 https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc
-Tickets: CAT-2881, CAT-2927, CAT-2928, CAT-2929
-Related ADRs: ADR-20260828-trigger-settlement-before-execution, ADR-20260904-store-the-workflow-with-the-execution
+
+Documentation: https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc
+
+Related ADRs: ADR-20260828-obtain-trigger-output-before-creating-the-execution, ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution
