@@ -195,10 +195,9 @@ describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
 	test('should return per-case results with sanitized fields', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const testRun = await createTestRun(workflow.id, { status: 'completed' });
-		await createTestCaseExecution(testRun.id, {
+		const testCase = await createTestCaseExecution(testRun.id, {
 			status: 'success',
 			metrics: { accuracy: 1 },
-			executionId: undefined,
 		});
 
 		const response = await authOwnerAgent.get(
@@ -206,27 +205,20 @@ describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
 		);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toHaveLength(1);
-
-		const [testCase] = response.body.data;
-		expect(Object.keys(testCase).sort()).toEqual([
-			'completedAt',
-			'errorCode',
-			'errorDetails',
-			'executionId',
-			'id',
-			'inputs',
-			'metrics',
-			'outputs',
-			'runAt',
-			'status',
+		expect(response.body.data).toStrictEqual([
+			{
+				id: testCase.id,
+				status: 'success',
+				runAt: null,
+				completedAt: null,
+				metrics: { accuracy: 1 },
+				errorCode: null,
+				errorDetails: null,
+				inputs: null,
+				outputs: null,
+				executionId: null,
+			},
 		]);
-		expect(testCase).toMatchObject({
-			id: expect.any(String),
-			status: 'success',
-			metrics: { accuracy: 1 },
-			executionId: null,
-		});
 	});
 
 	test('should return the execution id of a case as a number', async () => {

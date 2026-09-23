@@ -180,7 +180,7 @@ describe('TestCaseExecutionPublicDto', () => {
 		['inputs that are not an object', { inputs: ['a', 'b'] }],
 		['outputs that are not an object', { outputs: 'text' }],
 		['a Date for runAt', { runAt: new Date() }],
-		['a string executionId', { executionId: '12345' }],
+		['an executionId that is not a number', { executionId: '12345' }],
 	])('rejects %s', (_label, override) => {
 		expect(TestCaseExecutionPublicDto.safeParse({ ...testCase, ...override }).success).toBe(false);
 	});
