@@ -1,0 +1,21 @@
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_77655ca8fe3a59::t_e53e290c84bba4 25,906-907,938-941,973,975,977
+packages/nodes-base/nodes/Wait/test/Wait.node.test.ts
+  s_77655ca8fe3a59::t_fe2dbd8b7ecdd5 78,95,97,99-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "573eeb5e9f09a32bb599af528f6c18327087a6cc",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
