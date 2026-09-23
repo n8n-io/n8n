@@ -121,6 +121,9 @@ export const bucketRLC: INodeProperties = {
 	description: 'The bucket for the task to belong to',
 };
 
+// No `required` on purpose: task:create and task:update spread memberRLC into a `collection`
+// (as "Assigned To"), and `required` on a collection child raises a permanent node issue,
+// because the issue check reads the child at the top level, where it is never set.
 export const memberRLC: INodeProperties = {
 	displayName: 'Member',
 	name: 'memberId',
