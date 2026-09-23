@@ -531,6 +531,7 @@ export class Ftp implements INodeType {
 						port: credentials.port as number,
 						user: credentials.username as string,
 						password: credentials.password as string,
+						forcePasv: credentials.forcePasv as boolean,
 					});
 				} catch (error) {
 					await ftp.end();
@@ -641,6 +642,7 @@ export class Ftp implements INodeType {
 						user: credentials.username as string,
 						password: credentials.password as string,
 						connTimeout: connectionTimeout,
+						forcePasv: credentials.forcePasv as boolean,
 					});
 				}
 			} catch (error) {
