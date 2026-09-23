@@ -564,7 +564,7 @@ describe('setupResponseNodePromise', () => {
 			cause: rejection,
 		});
 		expect(logger.error).toHaveBeenCalledWith(
-			`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
+			`Error with Webhook-Response for execution "${executionId}": "Error that was not an instance of Error was thrown"`,
 			{ executionId, workflowId },
 		);
 		expect(responseCallback).toHaveBeenCalledWith(error, {});
