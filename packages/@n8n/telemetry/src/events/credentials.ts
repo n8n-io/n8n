@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { setupTelemetryProperties } from '../setup-properties';
 
 const descriptionProperties = {
 	has_description: z.boolean().describe('Whether the saved credential has a nonempty description.'),
@@ -62,6 +63,7 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The user started a connection attempt or selected an existing credential in the setup panel. Includes retries.',
 		properties: z.object({
+			...setupTelemetryProperties,
 			source: z.literal('instance_ai_setup_panel'),
 			workflow_id: z.string(),
 			thread_id: z.string(),
@@ -74,6 +76,7 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A setup-panel credential was selected or connected and its workflow binding was applied or queued. This does not report workflow validation.',
 		properties: z.object({
+			...setupTelemetryProperties,
 			source: z.literal('instance_ai_setup_panel'),
 			workflow_id: z.string(),
 			thread_id: z.string(),

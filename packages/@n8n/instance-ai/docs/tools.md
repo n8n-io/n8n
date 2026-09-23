@@ -474,7 +474,7 @@ confirmation card.
 `nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
 actively dismissed and the agent must not re-open (see `reopenSkipped`).
 
-**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): the normal setup call
+**Setup panel** (`118_instance_ai_setup_overhaul: variant`): the normal setup call
 analyzes the whole workflow, including bound slots. It publishes the `setup-items`
 snapshot and confirms that it reached storage. It then saves the build's setup
 routing marker. Only after both steps succeed does it return
@@ -839,7 +839,7 @@ a service. When `needsBrowserSetup=true`, the orchestrator should load the
 directly, then call `credentials(action="setup")` again to select the created
 credential.
 
-**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): when the call belongs
+**Setup panel** (`118_instance_ai_setup_overhaul: variant`): when the call belongs
 to a workflow (`workflowId`, or the workflow this run last saved) and the stage
 is not `finalize`, the tool does not suspend. It merges the credential types
 into the workflow's durable `setup-items` snapshot and returns

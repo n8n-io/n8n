@@ -157,6 +157,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 	/** Build mode captured at user-run entry and reused by follow-up runs. */
 	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
+	private readonly threadSetupPanelEnabled = new Map<string, boolean>();
 	private readonly threadPromptSelections = new Map<
 		string,
 		{ version: string; metadata?: InstanceAiPromptConfiguration }
@@ -521,6 +522,14 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadBuildModes.get(threadId);
 	}
 
+	setSetupPanelEnabled(threadId: string, enabled: boolean): void {
+		this.threadSetupPanelEnabled.set(threadId, enabled);
+	}
+
+	isSetupPanelEnabled(threadId: string): boolean {
+		return this.threadSetupPanelEnabled.get(threadId) === true;
+	}
+
 	setPromptVersion(threadId: string, version: string | undefined): void {
 		if (version === undefined) this.threadPromptSelections.delete(threadId);
 		else this.threadPromptSelections.set(threadId, { version });
@@ -690,6 +699,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadTimeZones.delete(threadId);
 		this.threadComputerUseChannels.delete(threadId);
 		this.threadBuildModes.delete(threadId);
+		this.threadSetupPanelEnabled.delete(threadId);
 		this.threadPromptSelections.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
@@ -741,6 +751,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadTimeZones.clear();
 		this.threadComputerUseChannels.clear();
 		this.threadBuildModes.clear();
+		this.threadSetupPanelEnabled.clear();
 		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();

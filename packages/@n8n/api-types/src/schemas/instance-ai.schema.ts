@@ -2556,6 +2556,9 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
 
+export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
+export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
+
 /** Enables the node-usage context surface for Instance AI: the `node-usage`
 
  *  action and the `nodeTypes` filter on `workflows(action="list")`. */

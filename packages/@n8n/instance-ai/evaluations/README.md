@@ -310,12 +310,13 @@ The harness remaps that ID and sends the normal chat request with the workflow
 attachment and structured handoff context. The transcript records the Execute
 action so process expectations can check the response.
 
-Start each panel eval instance with `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED=true`.
+Start each panel eval instance with
+`N8N_FEATURE_FLAG_OVERRIDES='{"118_instance_ai_setup_overhaul":"variant"}'`.
 Set this variable on the n8n server process or in the lane's environment file.
 Setting it only on the eval client does not enable the server feature.
-Run the normal PR tier with the flag on and off. For panel cases, load the
+Run the normal PR tier with `control` and `variant`. For panel cases, load the
 external suite with `--source langtracer --suite <suite-id>`, or stage a local
-case and select it with `--filter <case-slug>`. Run those cases with the flag on.
+case and select it with `--filter <case-slug>`. Run those cases with `variant`.
 The repository does not include a `setup-panel-v2` tier.
 
 Remote Execute cases require LangTracer to preserve `attach.source` when it

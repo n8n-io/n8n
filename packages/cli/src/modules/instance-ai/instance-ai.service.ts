@@ -772,8 +772,9 @@ export class InstanceAiService {
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
-		this.workflowObligations = new WorkflowVerificationObligationService(this.agentMemory, () =>
-			this.settingsService.isInstanceAiSetupPanelEnabled(),
+		this.workflowObligations = new WorkflowVerificationObligationService(
+			this.agentMemory,
+			(threadId) => this.runState.isSetupPanelEnabled(threadId),
 		);
 		this.taskProjector = new WorkflowVerificationTaskProjector(
 			this.agentMemory,
@@ -2417,11 +2418,14 @@ export class InstanceAiService {
 			mcpConnectionsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
+			setupPanelEnabled,
+			setupPanelVariant,
 			nodeUsageEnabled,
 			folderExplorationEnabled,
 			aiPreferencesEnabled,
 			instanceContextEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
+		this.runState.setSetupPanelEnabled(threadId, setupPanelEnabled);
 		// One scoped reader backs both the tool and the first-turn hint.
 		const conversationHistory = conversationHistoryEnabled
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
@@ -2444,6 +2448,7 @@ export class InstanceAiService {
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
+			setupPanelVariant,
 			mcpConnectionsEnabled,
 			nodeUsageEnabled,
 			instanceContextEnabled,
@@ -2482,7 +2487,7 @@ export class InstanceAiService {
 		// Setup panel v2: wire the durable `setup-items` sink only while the flag
 		// is on — its presence is the package-side gate. Seeded with the thread's
 		// persisted snapshots so a recomputed, unchanged list publishes nothing.
-		if (this.settingsService.isInstanceAiSetupPanelEnabled()) {
+		if (setupPanelEnabled) {
 			context.setupItemsEmitter = createSetupItemsEmitter({
 				eventBus: this.eventBus,
 				threadId,
