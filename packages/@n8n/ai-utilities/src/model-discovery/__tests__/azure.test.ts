@@ -110,6 +110,20 @@ describe('listAzureOpenAiModels', () => {
 		expect(models).toEqual([]);
 	});
 
+	it('falls back to globalThis.fetch when no fetch option is given', async () => {
+		const fetch = mockFetch({ value: [] });
+		vi.stubGlobal('fetch', fetch);
+
+		await listAzureOpenAiModels({
+			baseURL: 'https://my-resource.services.ai.azure.com',
+			project: 'my-project',
+			headers: {},
+		});
+
+		expect(fetch).toHaveBeenCalled();
+		vi.unstubAllGlobals();
+	});
+
 	describe('error handling', () => {
 		it.each([401, 403])(
 			'throws a non-reportable user error on an authentication response with status %s',
@@ -163,6 +177,26 @@ describe('listAzureOpenAiModels', () => {
 			expect(error).not.toBeInstanceOf(UserError);
 			expect(error).toMatchObject({
 				message: 'Failed to list Azure OpenAI deployments (status 500): {"error":"boom"}',
+			});
+		});
+
+		it('omits the trailing colon when the error body is empty', async () => {
+			const fetch = vi.fn().mockResolvedValue({
+				ok: false,
+				status: 500,
+				text: async () => '',
+				json: async () => ({}),
+			}) as unknown as typeof globalThis.fetch;
+
+			const error = await listAzureOpenAiModels({
+				baseURL: 'https://my-resource.services.ai.azure.com',
+				project: 'my-project',
+				headers: {},
+				fetch,
+			}).catch((error: unknown) => error);
+
+			expect(error).toMatchObject({
+				message: 'Failed to list Azure OpenAI deployments (status 500)',
 			});
 		});
 	});
