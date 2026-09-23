@@ -241,6 +241,7 @@ vi.mock('@/permissions.ee/check-access', () => ({
 }));
 
 import type {
+	AgentDbMessage,
 	MemoryTaskUsageReport,
 	ScopedMemoryTaskEvent,
 	SerializableAgentState,
@@ -6551,6 +6552,93 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 	): StoredMessage => ({
 		role: 'user',
 		content: [buildThreadContextBlock(['Ambient context.', block]), text].join('\n\n'),
+	});
+
+	const storedSave = (ok = true, toolName = 'save_user_preference'): AgentDbMessage => ({
+		id: 'save-message',
+		createdAt: new Date('2026-09-01T00:00:00.000Z'),
+		role: 'assistant',
+		content: [
+			{
+				type: 'tool-call',
+				toolCallId: 'save-call',
+				toolName,
+				input: { content: 'Use minimal node names.', scope: 'user' },
+				state: 'resolved',
+				output: ok
+					? {
+							ok: true,
+							preference: { id: 'removed-pref', content: 'Use minimal node names.', scope: 'user' },
+						}
+					: { ok: false, reason: 'failed' },
+			},
+		],
+	});
+
+	it('clears a chat save removed before any preference block carried it', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(none);
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(undefined, 'Always use minimal node names.'),
+			storedSave(),
+		]);
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
+
+		expect(turn.block).toBe(AI_PREFERENCES_CLEARED_BLOCK);
+		expect(turn.payload).toEqual({
+			preferences: [],
+			renderedLength: AI_PREFERENCES_CLEARED_BLOCK.length,
+			injectedThisTurn: true,
+		});
+	});
+
+	it.each([
+		['other preferences remain', applicable],
+		['no preferences remain', none],
+	])(
+		'refreshes after a removed save when %s, then reuses the refreshed block',
+		async (_, preferences) => {
+			const service = createService();
+			service.aiPreferenceService.getApplicable.mockResolvedValue(preferences);
+			const block = renderAiPreferencesBlock(preferences) ?? AI_PREFERENCES_CLEARED_BLOCK;
+			const history = [storedUserTurn(block), storedSave()];
+			service.agentMemory.getMessages.mockResolvedValue(history);
+
+			const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
+
+			expect(turn.block).toBe(block);
+			expect(turn.payload.injectedThisTurn).toBe(true);
+			expect(turn.payload.preferences.map(({ id }) => id)).not.toContain('removed-pref');
+			expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
+
+			service.agentMemory.getMessages.mockResolvedValue([...history, storedUserTurn(turn.block)]);
+			service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('refresh-run');
+			const nextTurn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
+
+			expect(nextTurn.block).toBeUndefined();
+			expect(nextTurn.payload).toMatchObject({
+				injectedThisTurn: false,
+				carriedFromRunId: 'refresh-run',
+			});
+		},
+	);
+
+	it.each([
+		['failed save', false, 'save_user_preference'],
+		['unrelated tool', true, 'get_workflow'],
+	] as const)('does not refresh for a %s', async (_, ok, toolName) => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(none);
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(undefined),
+			storedSave(ok, toolName),
+		]);
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
+
+		expect(turn.block).toBeUndefined();
+		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
 	});
 
 	it('injects the block and reports it when the conversation never carried one', async () => {

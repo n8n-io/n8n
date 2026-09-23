@@ -1057,6 +1057,8 @@ export type InstanceAiPreferenceWriteResult =
 
 export interface InstanceAiPreferenceService {
 	create(input: { content: string; scope: 'user' }): Promise<InstanceAiPreferenceWriteResult>;
+	/** Record a rejection the tool decided before calling `create` (blocked, too long, blank). */
+	recordRejection(reason: InstanceAiPreferenceWriteRejection, textLength: number): void;
 }
 
 export interface InstanceAiDataTableService {

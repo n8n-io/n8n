@@ -25,7 +25,10 @@ const saved: InstanceAiPreferenceWriteResult = {
 
 function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
 	const context = mock<InstanceAiContext>();
-	context.aiPreferenceService = { create: vi.fn().mockResolvedValue(saved) };
+	context.aiPreferenceService = {
+		create: vi.fn().mockResolvedValue(saved),
+		recordRejection: vi.fn(),
+	};
 	context.permissions = undefined;
 	Object.assign(context, overrides);
 	return context;
@@ -60,6 +63,10 @@ describe('save_user_preference tool', () => {
 		});
 		expect(result).toMatchObject({ ok: false, reason: 'blocked_by_admin' });
 		expect(context.aiPreferenceService?.create).not.toHaveBeenCalled();
+		expect(context.aiPreferenceService?.recordRejection).toHaveBeenCalledWith(
+			'blocked_by_admin',
+			'Keep replies short.'.length,
+		);
 	});
 
 	it('returns too_long for text over the cap without calling the service', async () => {
@@ -70,6 +77,7 @@ describe('save_user_preference tool', () => {
 		});
 		expect(result).toMatchObject({ ok: false, reason: 'too_long' });
 		expect(context.aiPreferenceService?.create).not.toHaveBeenCalled();
+		expect(context.aiPreferenceService?.recordRejection).toHaveBeenCalledWith('too_long', 2001);
 	});
 
 	it('returns failed for blank text without calling the service', async () => {
@@ -80,6 +88,7 @@ describe('save_user_preference tool', () => {
 		});
 		expect(result).toMatchObject({ ok: false, reason: 'failed' });
 		expect(context.aiPreferenceService?.create).not.toHaveBeenCalled();
+		expect(context.aiPreferenceService?.recordRejection).toHaveBeenCalledWith('failed', 3);
 	});
 
 	it('writes the trimmed text and returns the service result', async () => {
@@ -101,7 +110,10 @@ describe('save_user_preference tool', () => {
 			reason: 'duplicate',
 			message: 'This user already has a preference with the same text',
 		};
-		const service: InstanceAiPreferenceService = { create: vi.fn().mockResolvedValue(rejected) };
+		const service: InstanceAiPreferenceService = {
+			create: vi.fn().mockResolvedValue(rejected),
+			recordRejection: vi.fn(),
+		};
 		const result = await executeTool(
 			createSaveUserPreferenceTool(makeContext({ aiPreferenceService: service })),
 			{

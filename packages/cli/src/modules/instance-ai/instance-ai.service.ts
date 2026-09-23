@@ -142,6 +142,7 @@ import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmati
 import type { Scope } from '@n8n/permissions';
 import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -5327,17 +5328,19 @@ export class InstanceAiService {
 			};
 		}
 
-		const lastBlock = await this.bestEffort(
+		const history = await this.bestEffort(
 			'Instance AI failed to read the last AI preferences block of this thread',
 			{ threadId },
-			async () => await this.findLastAiPreferencesBlock(threadId),
+			async () => await this.findAiPreferencesHistory(threadId),
 		);
+		const lastBlock = history?.block;
+		const savedSinceLastBlock = history?.savedSinceLastBlock === true;
 
-		// When every preference is gone but the conversation still carries a block, inject the
-		// cleared block once; without it the model keeps applying the deleted preferences.
+		// A save can be removed before any block carries it. Correct the saved tool result too.
 		const { preferences, rendered } = resolved;
 		const freshBlock =
-			rendered ?? (lastBlock !== undefined ? AI_PREFERENCES_CLEARED_BLOCK : undefined);
+			rendered ??
+			(lastBlock !== undefined || savedSinceLastBlock ? AI_PREFERENCES_CLEARED_BLOCK : undefined);
 		if (freshBlock === undefined) {
 			return {
 				block: undefined,
@@ -5349,7 +5352,11 @@ export class InstanceAiService {
 			};
 		}
 
-		if (lastBlock !== undefined && asStoredThreadContextSection(freshBlock) === lastBlock) {
+		if (
+			!savedSinceLastBlock &&
+			lastBlock !== undefined &&
+			asStoredThreadContextSection(freshBlock) === lastBlock
+		) {
 			// A lookup failure only costs the run attribution, never the skip itself.
 			const carriedFromRunId = await this.bestEffort(
 				'Instance AI failed to resolve which run sent the AI preferences block',
@@ -5378,22 +5385,33 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * The ai-preferences block the model can still see this turn, from the newest replayed
-	 * user message that carries one. Scanned over the replay window, not the whole table:
-	 * a message the observation cursor has compacted survives only as lossy observation
-	 * bullets, so a block behind the cursor is gone from the model's context and must
-	 * count as absent — re-injection is what brings the preferences back. This also bounds
-	 * the scan to the same messages the runtime is about to load for the turn anyway.
+	 * Find the latest visible block and successful saves after it.
+	 * Scan the runtime's replay window. A compacted block is no longer visible, so
+	 * current preferences must be injected again when the window has no block.
 	 */
-	private async findLastAiPreferencesBlock(threadId: string): Promise<string | undefined> {
+	private async findAiPreferencesHistory(
+		threadId: string,
+	): Promise<{ block?: string; savedSinceLastBlock: boolean }> {
 		const history = await this.getReplayedMessages(threadId);
+		let savedSinceLastBlock = false;
 		for (let i = history.length - 1; i >= 0; i--) {
 			const m = history[i];
-			if (!('role' in m) || m.role !== 'user') continue;
+			if (!('role' in m)) continue;
+			if (m.role === 'assistant' && Array.isArray(m.content)) {
+				savedSinceLastBlock ||= m.content.some(
+					(part) =>
+						part.type === 'tool-call' &&
+						part.toolName === 'save_user_preference' &&
+						part.state === 'resolved' &&
+						isRecord(part.output) &&
+						part.output.ok === true,
+				);
+			}
+			if (m.role !== 'user') continue;
 			const block = extractAiPreferencesBlock(this.extractStoredMessageText(m.content));
-			if (block !== undefined) return block;
+			if (block !== undefined) return { block, savedSinceLastBlock };
 		}
-		return undefined;
+		return { savedSinceLastBlock };
 	}
 
 	/**

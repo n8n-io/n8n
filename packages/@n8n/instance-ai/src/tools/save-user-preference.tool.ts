@@ -49,11 +49,16 @@ export function createSaveUserPreferenceTool(context: InstanceAiContext) {
 				throw new UnexpectedError('Saved preferences are not enabled on this instance.');
 			}
 
+			const textLength = input.content.length;
+
 			if (context.permissions?.createPreference === 'blocked') {
+				service.recordRejection('blocked_by_admin', textLength);
 				return {
 					ok: false,
 					reason: 'blocked_by_admin',
-					message: 'An administrator has blocked the assistant from saving preferences.',
+					// A read-only source-control branch also sets `blocked`, so do not
+					// name an administrator as the cause.
+					message: 'Saving preferences is blocked on this instance.',
 				};
 			}
 
@@ -62,9 +67,11 @@ export function createSaveUserPreferenceTool(context: InstanceAiContext) {
 			const parsed = aiPreferenceContentSchema.safeParse(input.content);
 			if (!parsed.success) {
 				const tooLong = input.content.trim().length > AI_PREFERENCE_CONTENT_MAX_LENGTH;
+				const reason = tooLong ? 'too_long' : 'failed';
+				service.recordRejection(reason, textLength);
 				return {
 					ok: false,
-					reason: tooLong ? 'too_long' : 'failed',
+					reason,
 					message: tooLong
 						? `A preference is at most ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters.`
 						: 'A preference must not be empty.',
