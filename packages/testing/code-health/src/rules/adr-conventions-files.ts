@@ -8,6 +8,7 @@ import { parseMarkdown } from './adr-conventions-markdown.js';
 import type { ParsedMarkdown } from './adr-conventions-markdown.js';
 
 const ADR_FILENAME = /^ADR-(\d{8})-([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/;
+const ADR_FILE_PATTERNS = ['**/ADR-*.md', 'docs/ADR_TEMPLATE.md'];
 const GENERATED_DIRS = [
 	'**/node_modules/**',
 	'**/dist/**',
@@ -54,7 +55,7 @@ export async function findAdrFiles(
 	rootDir: string,
 	fileAccess: AdrFileAccess = defaultFileAccess,
 ): Promise<AdrFile[]> {
-	const filePaths = await fileAccess.glob('**/ADR-*.md', {
+	const filePaths = await fileAccess.glob(ADR_FILE_PATTERNS, {
 		cwd: rootDir,
 		absolute: true,
 		onlyFiles: true,

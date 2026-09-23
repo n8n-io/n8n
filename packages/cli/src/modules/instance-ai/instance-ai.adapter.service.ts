@@ -1,6 +1,7 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
@@ -14,6 +15,8 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
@@ -442,6 +445,7 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
 			/** Resolved MCP registry availability. Falsy → mcp service/tool not wired. */
 			mcpConnectionsAvailable?: boolean;
 			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
@@ -456,6 +460,7 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			credentialDescriptionsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -470,11 +475,13 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
+			setupPanelVariant,
 			mcpConnectionsAvailable,
 			nodeUsageEnabled,
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -493,10 +500,12 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
+				setupPanelVariant,
 			}),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService,
@@ -592,7 +601,7 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/** Resolves user experience flags and the shared activity gate. Unreadable flags stay off. */
+	/** Resolves experiment assignments. */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */
 		configEvalsEnabled: boolean;
@@ -600,6 +609,8 @@ export class InstanceAiAdapterService {
 		conversationHistoryEnabled: boolean;
 		/** Progressive workflow policy and planning-tool selection. */
 		progressiveBuildingEnabled: boolean;
+		setupPanelEnabled: boolean;
+		setupPanelVariant?: 'control' | 'variant';
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
@@ -608,6 +619,7 @@ export class InstanceAiAdapterService {
 		folderExplorationEnabled: boolean;
 		/** Saved AI preferences on every user turn. */
 		aiPreferencesEnabled: boolean;
+		credentialDescriptionsEnabled: boolean;
 		/** Shared activity recording and retrieval use the same instance gate. */
 		instanceContextEnabled: boolean;
 	}> {
@@ -622,9 +634,11 @@ export class InstanceAiAdapterService {
 			if (userFlags.status === 'fulfilled') flags = userFlags.value;
 			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
 		} catch {
-			// Keep the gates closed if the client cannot start an evaluation.
+			// Leave unreadable flags unassigned.
 		}
+		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
 		return {
+			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
@@ -632,6 +646,10 @@ export class InstanceAiAdapterService {
 			progressiveBuildingEnabled:
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
+			...(setupPanelVariant === 'control' || setupPanelVariant === 'variant'
+				? { setupPanelVariant }
+				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
@@ -873,8 +891,18 @@ export class InstanceAiAdapterService {
 		user: User,
 		threadId?: string,
 		boundProjectId?: string,
-		options: { nodeUsageGateOpen?: boolean; folderExploration?: boolean } = {},
+		options: {
+			nodeUsageGateOpen?: boolean;
+			folderExploration?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
+		} = {},
 	): InstanceAiWorkflowService {
+		const setupExperimentProperties = options.setupPanelVariant
+			? {
+					variant: options.setupPanelVariant,
+					[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: options.setupPanelVariant,
+				}
+			: {};
 		const foldersOn = options.folderExploration === true;
 		// Attribution reveals folder ids, names and paths on every row, so it needs
 		// the licence as well as the flag. Resolution stays on the flag alone so an
@@ -1375,6 +1403,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
@@ -1608,6 +1637,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: updated.id,
@@ -1699,6 +1729,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
@@ -2455,7 +2486,7 @@ export class InstanceAiAdapterService {
 							id: c.id,
 							name: c.name,
 							type: c.type,
-							description: c.description,
+							...(c.description !== undefined && { description: c.description }),
 						}),
 					);
 				}
@@ -2479,7 +2510,7 @@ export class InstanceAiAdapterService {
 							id: c.id,
 							name: c.name,
 							type: c.type,
-							description: c.description,
+							...(c.description !== undefined && { description: c.description }),
 						}),
 					);
 				}
@@ -2496,7 +2527,7 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
-						description: c.description,
+						...(c.description !== undefined && { description: c.description }),
 					}),
 				);
 			},
@@ -2507,7 +2538,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					description: credential.description,
+					...(credential.description !== undefined && { description: credential.description }),
 				} satisfies CredentialDetail;
 			},
 

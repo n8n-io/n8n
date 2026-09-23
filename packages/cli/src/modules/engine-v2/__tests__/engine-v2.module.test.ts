@@ -3,6 +3,7 @@ import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
@@ -25,6 +26,7 @@ describe('EngineV2Module', () => {
 		runtime = mockInstance(EngineV2Runtime);
 		client = mockInstance(EngineDataPlaneClient);
 		controlPlaneServer = mockInstance(EngineControlPlaneServer);
+		mockInstance(EngineV2WebhookResponder);
 		Container.set(EngineDataPlaneProxyService, new EngineDataPlaneProxyService());
 
 		module = new EngineV2Module();

@@ -30,6 +30,7 @@ const newJob = (name: string): NewScheduledJob => ({
 	maxAttempts: 5,
 	misfirePolicy: 'coalesce',
 	misfireGraceSeconds: 60,
+	concurrencyLimit: null,
 });
 
 /** A row as the post-insert read-back returns it: id, name and the owner it belongs to. */
@@ -418,6 +419,7 @@ describe('ScheduledJobRepository', () => {
 				maxAttempts: 3,
 				misfirePolicy: 'skip',
 				misfireGraceSeconds: 120,
+				concurrencyLimit: 2,
 			};
 
 			await repository.updateDefinition(entityManager, 10, update);

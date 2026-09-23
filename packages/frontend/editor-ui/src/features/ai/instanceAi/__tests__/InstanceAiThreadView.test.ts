@@ -13,6 +13,8 @@ import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
 import {
@@ -543,9 +545,10 @@ describe('InstanceAiThreadView', () => {
 
 	describe('setup panel', () => {
 		function seedSetupArtifacts(enabled = true) {
-			useSettingsStore().moduleSettings = {
-				'instance-ai': { ...defaultModuleSettings, instanceAiSetupPanelEnabled: enabled },
-			};
+			const variant = enabled ? 'variant' : 'control';
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name ? variant : undefined,
+			);
 			thread.hasMessages = true;
 			thread.messages = [
 				{
