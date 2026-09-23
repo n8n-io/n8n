@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '../../../__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
 import DefaultDetailBody from '../DefaultDetailBody.vue';
@@ -13,7 +13,7 @@ import type {
 const renderBody = createComponentRenderer(DefaultDetailBody);
 
 function render(item: ToolConnectionItem) {
-	return renderBody({ props: { item }, pinia: createTestingPinia() });
+	return renderBody({ props: { item }, global: { plugins: [createTestingPinia()] } });
 }
 
 const workflowItem: WorkflowConnectionItem = {

@@ -5412,6 +5412,9 @@ importers:
       '@n8n/frontend-utils':
         specifier: workspace:*
         version: link:../frontend-utils
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
@@ -5533,6 +5536,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@pinia/testing':
+        specifier: ^0.1.6
+        version: 0.1.6(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
       '@storybook/addon-docs':
         specifier: catalog:storybook
         version: 10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -6331,9 +6337,6 @@ importers:
       '@sentry/vue':
         specifier: catalog:frontend
         version: 10.70.0(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
-      '@storybook/vue3-vite':
-        specifier: catalog:storybook
-        version: 10.5.10(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@testing-library/dom':
         specifier: catalog:frontend
         version: 10.4.1
@@ -6559,9 +6562,6 @@ importers:
       semver:
         specifier: 7.7.3
         version: 7.7.3
-      storybook:
-        specifier: catalog:storybook
-        version: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
       stream-browserify:
         specifier: ^3.0.0
         version: 3.0.0

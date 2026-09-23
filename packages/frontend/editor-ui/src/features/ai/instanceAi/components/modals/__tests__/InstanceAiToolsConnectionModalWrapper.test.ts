@@ -10,7 +10,7 @@ import type {
 	ServiceConnectionItem,
 	ToolConnectionCredentialAdapter,
 	ToolConnectionSettings,
-} from '@/features/shared/toolsConnection/types';
+} from '@n8n/design-system';
 
 const featureFlags = vi.hoisted(() => ({ browserUse: false, computerUse: false }));
 
