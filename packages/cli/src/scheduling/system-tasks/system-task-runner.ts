@@ -174,7 +174,7 @@ export class SystemTaskRunner {
 			this.inMemoryRunsController = new AbortController();
 			emitSystemTaskMetric(this.eventService, 'system-task-timers-started', {});
 			const from = new Date();
-			const clusterTimers = this.clusterTimers();
+			const clusterTimers = this.getClusterTimerTasks();
 			for (const routed of clusterTimers) {
 				routed.timer.start(from);
 				if (routed.placement.runOnTakeover) {
@@ -192,20 +192,20 @@ export class SystemTaskRunner {
 		const generation = ++this.timerGeneration;
 		this.timersStarted = false;
 		this.inMemoryRunsController.abort();
-		for (const routed of this.clusterTimers()) {
+		for (const routed of this.getClusterTimerTasks()) {
 			routed.timer.stop();
 			clearTimeout(routed.retryTimer);
 			routed.retryTimer = undefined;
 		}
 		this.logger.debug('Stopped the in-memory system task timers');
-		await Promise.all(this.inFlightRuns(this.clusterTimers()));
+		await Promise.all(this.inFlightRuns(this.getClusterTimerTasks()));
 		if (generation === this.timerGeneration) {
 			emitSystemTaskMetric(this.eventService, 'system-task-timers-stopped', {});
 		}
 	}
 
 	/** The leader-gated timers, which a leadership change starts and stops. */
-	private clusterTimers(): ClusterTimerTask[] {
+	private getClusterTimerTasks(): ClusterTimerTask[] {
 		return this.timers().filter(
 			(routed): routed is ClusterTimerTask => routed.placement.scope === 'cluster',
 		);
