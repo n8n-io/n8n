@@ -1,0 +1,46 @@
+operationId: updatePackage
+tags:
+  - CommunityPackage
+summary: Update a community package
+description: Update an installed community package to a new version.
+x-required-scope: communityPackage:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The npm package name of the community package.
+    name: packageName
+    in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          version:
+            type: string
+            description: Specific semver version to update to
+          verify:
+            type: boolean
+            description: Whether to verify the package against the n8n-vetted package list. Setting to false allows an update to an unverified version. Default is true.
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/communityPackagePublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

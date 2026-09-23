@@ -14,9 +14,9 @@ properties:
     description: Package author email
   installedNodes:
     type: array
-    description: Nodes included in this package
     items:
       type: object
+      description: A node included in this package.
       properties:
         name:
           type: string
@@ -24,6 +24,7 @@ properties:
           type: string
         latestVersion:
           type: number
+    description: Nodes included in this package
   createdAt:
     type: string
     format: date-time
@@ -36,3 +37,9 @@ properties:
   failedLoading:
     type: boolean
     description: Whether the package failed to load
+required:
+  - packageName
+  - installedVersion
+  - installedNodes
+  - createdAt
+  - updatedAt
