@@ -142,17 +142,6 @@ export class EngineV2Runtime {
 		// id to cancel them. `$execution.id` also reads it.
 		additionalData.executionId = context.executionId;
 
-		// `putExecutionToWait` calls this hook. The one `getBase` installs looks the
-		// execution up in `ActiveExecutions`, which never registers a data-plane
-		// run, so it would throw and fail the step before the shim reads the
-		// deadline. The engine records the wait from the step's declaration instead.
-		additionalData.setExecutionStatus = (status) => {
-			this.logger.debug(`Step reports execution status "${status}"`, {
-				executionId: context.executionId,
-				workflowId: context.workflowId,
-			});
-		};
-
 		additionalData.credentialsHelper = new RemoteCredentialsHelper(
 			this.credentialsClient,
 			this.credentialsHelper,

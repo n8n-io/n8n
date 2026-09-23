@@ -370,6 +370,27 @@ describe('V1StepExecutor', () => {
 			await expect(execution).rejects.toThrow(InvalidWaitDateError);
 		});
 
+		// The v1 hook marks the execution waiting in the host's registry, where a
+		// data-plane run is never registered, so it would throw. The engine owns
+		// the wait, so the host hook is never called.
+		it('does not call the host execution status hook', async () => {
+			const graph = graphWith('test.waitsUntil', { waitTill: '2026-10-01T12:00:00.000Z' });
+			const setExecutionStatus = vi.fn();
+			const executor = new V1StepExecutor({
+				nodeTypes: testNodeTypes,
+				additionalDataFactory: async (context) => ({
+					...(await testAdditionalDataFactory(context)),
+					setExecutionStatus,
+				}),
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			});
+
+			const result = await executor.execute(stepRequest(graph, 'n', input));
+
+			expect(result.wait).toBeDefined();
+			expect(setExecutionStatus).not.toHaveBeenCalled();
+		});
+
 		it('declares a deadline-only wait when the node says only the deadline ends it', async () => {
 			const graph = graphWith('test.waitsUntil', {
 				waitTill: '2026-10-01T12:00:00.000Z',
