@@ -40,6 +40,7 @@ import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-c
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import type { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
+import { AgentTurnAlreadyRunningError } from '@/modules/agents/agent-turn-already-running.error';
 import {
 	AgentTestRunService,
 	InvalidAgentTestRunCheckpointError,
@@ -1471,6 +1472,23 @@ describe('McpAgentToolsService', () => {
 				status: 'error',
 				code: 'invalid_checkpoint',
 				message: 'This test run can no longer be resumed.',
+			});
+		});
+
+		it('reports a busy session as a failed execution', async () => {
+			agentTestRunService.executeDraftRun.mockRejectedValue(new AgentTurnAlreadyRunningError());
+
+			const result = await callTool('call_agent', {
+				agentId: 'agent-1',
+				request: { type: 'message', message: 'Continue', sessionId: 'session-1' },
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({
+				ok: false,
+				status: 'error',
+				code: 'execution_failed',
+				message: 'A turn is already running in this conversation.',
 			});
 		});
 	});

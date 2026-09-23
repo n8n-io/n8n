@@ -14,6 +14,7 @@ import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import type { AgentExecutionService } from '../agent-execution.service';
+import { INTERACTIVE_RESUME_SESSION_WAIT_MS } from '../agent-session-lease.service';
 import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentValidationService } from '../agent-validation.service';
@@ -651,6 +652,26 @@ describe('AgentChatController SSE done payload', () => {
 			expect(writes.join('')).not.toContain('"execution-started"');
 		},
 	);
+
+	it('waits for the session before it reports a preview resume as busy', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(() => {
+			throw new AgentTurnAlreadyRunningError();
+		});
+		const writes: string[] = [];
+
+		await controller.chatResume(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse(writes),
+			'agent-1',
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+		);
+
+		expect(agentExecutionOrchestratorService.resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({ sessionWaitMs: INTERACTIVE_RESUME_SESSION_WAIT_MS }),
+		);
+		expect(writes.join('')).toContain('"errorCode":"turn_already_running"');
+	});
 });
 
 describe('AgentChatController HITL cancellation', () => {

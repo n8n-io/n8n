@@ -10,7 +10,6 @@ import { UserError, type Logger } from 'n8n-workflow';
 import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
-import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import {
 	AgentResourceRepository,
 	type ChatSessionGeneration,
@@ -31,6 +30,7 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.error';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
@@ -1797,6 +1797,36 @@ describe('AgentChatBridge — consumeStream', () => {
 			}
 		});
 
+		it('deletes stored attachments and posts a notice while another turn holds the session', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			// eslint-disable-next-line require-yield
+			agentExecutor.executeForChatPublished.mockImplementation(async function* () {
+				throw new AgentTurnAlreadyRunningError();
+			});
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, {
+				text: 'look at this',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+			// The notice is the only reply: the busy session is not reported as an error.
+			expect(thread.post).toHaveBeenCalledExactlyOnceWith(
+				"⏳ I'm still working on your previous message. Send this one again after my reply.",
+			);
+		});
+
 		it('truncates a platform file name to the fileName column width', async () => {
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			const attachmentService = makeAttachmentService();
@@ -3093,8 +3123,6 @@ describe('AgentChatBridge — consumeStream', () => {
 			agentExecutor.executeForChatPublished.mockImplementation(() =>
 				toStream([{ type: 'finish', finishReason: 'stop' }]),
 			);
-			const executionRepository = mock<AgentExecutionRepository>();
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
 			const checkpointStorage = mock<N8NCheckpointStorage>();
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(
 				suspendPayload === null
@@ -3115,7 +3143,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 			Container.set(
 				AgentConversationStateService,
-				new AgentConversationStateService(executionRepository, checkpointStorage),
+				new AgentConversationStateService(checkpointStorage),
 			);
 			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
 			Container.set(AgentChatAttachmentService, mock<AgentChatAttachmentService>());
@@ -3130,7 +3158,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				streamingIntegration,
 			);
 
-			return { handlers, thread, agentExecutor, executionRepository, checkpointStorage };
+			return { handlers, thread, agentExecutor, checkpointStorage };
 		}
 
 		// Starting a second run strips the pending tool call from the model's
@@ -3192,10 +3220,8 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenLastCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
-		it.each([false, true])('runs when nothing is parked and running is %s', async (running) => {
-			const { handlers, thread, agentExecutor, executionRepository } =
-				bridgeWithOpenSuspension(null);
-			executionRepository.existsRunningByThread.mockResolvedValue(running);
+		it('runs when nothing is parked', async () => {
+			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension(null);
 
 			await handlers.subscribed!(thread, {
 				text: 'hello',
@@ -3205,14 +3231,9 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
 		});
 
-		it.each(['running', 'suspension'])('stops when the %s query fails', async (query) => {
-			const { handlers, thread, agentExecutor, executionRepository, checkpointStorage } =
-				bridgeWithOpenSuspension(null);
-			const lookup =
-				query === 'running'
-					? executionRepository.existsRunningByThread
-					: checkpointStorage.findSuspendedForThread;
-			lookup.mockRejectedValue(new Error('Database unavailable'));
+		it('stops when the suspension query fails', async () => {
+			const { handlers, thread, agentExecutor, checkpointStorage } = bridgeWithOpenSuspension(null);
+			checkpointStorage.findSuspendedForThread.mockRejectedValue(new Error('Database unavailable'));
 
 			await handlers.subscribed!(thread, {
 				text: 'hello',

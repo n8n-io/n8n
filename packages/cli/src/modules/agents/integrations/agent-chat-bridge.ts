@@ -23,6 +23,7 @@ import type {
 	ExecuteForChatPublishedConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentSessionMode } from '../utils/agent-thread-access';
@@ -139,6 +140,10 @@ function stillWaitingNotice(suspendPayload: unknown): string {
 			: "I'm still waiting on the previous step";
 	return `⏳ ${title} — use the buttons on that card and I'll continue from there.`;
 }
+
+/** Reply sent when a message arrives while another turn runs on the session. */
+const SESSION_BUSY_NOTICE =
+	"⏳ I'm still working on your previous message. Send this one again after my reply.";
 
 interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeForChat'> {
 	getSessionMode?(threadId: string): Promise<AgentSessionMode>;
@@ -820,12 +825,15 @@ export class AgentChatBridge {
 				statusHandle,
 			});
 		} catch (error) {
+			if (error instanceof AgentTurnAlreadyRunningError) {
+				await statusHandle?.clearBeforeResponse();
+				await this.rejectBusyTurn(thread, attachments);
+				return;
+			}
 			// The execution generator is lazy: a throw before consumption started means
 			// nothing ran and nothing references this turn's attachments — remove them
 			// (best-effort). Once consumption starts, the turn may be persisted.
-			if (!consumeStarted && attachments.length > 0) {
-				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
-			}
+			if (!consumeStarted) await this.deleteTurnAttachments(attachments);
 			throw error;
 		} finally {
 			statusRetry.abort();
@@ -836,6 +844,21 @@ export class AgentChatBridge {
 			// no-op await of the consumer's clear when that already ran.
 			await statusHandle?.clearBeforeResponse();
 		}
+	}
+
+	/**
+	 * Another turn holds the session, so this message did not run and nothing
+	 * references its attachments. Tell the user instead of reporting an error.
+	 */
+	private async rejectBusyTurn(thread: Thread, attachments: StoredAttachmentRef[]): Promise<void> {
+		await this.deleteTurnAttachments(attachments);
+		await thread.post(SESSION_BUSY_NOTICE);
+	}
+
+	/** Best effort: an attachment that is not deleted only wastes storage. */
+	private async deleteTurnAttachments(attachments: StoredAttachmentRef[]): Promise<void> {
+		if (attachments.length === 0) return;
+		await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
 	}
 
 	/**

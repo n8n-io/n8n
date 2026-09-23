@@ -27,6 +27,7 @@ import { AgentExecutionOrchestratorService } from './agent-execution-orchestrato
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentExecutionService } from './agent-execution.service';
+import { INTERACTIVE_RESUME_SESSION_WAIT_MS } from './agent-session-lease.service';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { threadBelongsTo } from './utils/agent-thread-access';
 import { messagesToDto } from './agent-message-mapper';
@@ -259,6 +260,7 @@ export class AgentChatController {
 				resumeData,
 				user: req.user,
 				previewChat: true,
+				sessionWaitMs: INTERACTIVE_RESUME_SESSION_WAIT_MS,
 				errorMode: 'forward',
 				onChunk,
 				onExecutionStarted,

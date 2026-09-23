@@ -17,8 +17,16 @@ import type {
 	ResumeForChatConfig,
 	AgentExecutionOrchestratorService,
 } from '../agent-execution-orchestrator.service';
+import { AgentResumeAlreadyHandledError } from '../agent-resume-already-handled.error';
+import { INTERACTIVE_RESUME_SESSION_WAIT_MS } from '../agent-session-lease.service';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 
 type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'>;
+
+type ResumeContext = Pick<
+	ResumeForChatConfig,
+	'messageContext' | 'contextConversation' | 'sessionWaitMs'
+>;
 
 interface AgentChatHitlResumeHandlerOptions {
 	agentId: string;
@@ -41,9 +49,6 @@ interface AgentChatHitlResumeHandlerOptions {
 }
 
 export class AgentChatHitlResumeHandler {
-	/** Short-lived set of run IDs that have been resumed to prevent double resumption */
-	private readonly activeResumedRuns = new Set<string>();
-
 	constructor(private readonly options: AgentChatHitlResumeHandlerOptions) {}
 
 	/**
@@ -80,6 +85,7 @@ export class AgentChatHitlResumeHandler {
 		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData, {
 			messageContext,
 			contextConversation: { threadId: threadId.id, resourceId: event.user.userId },
+			sessionWaitMs: INTERACTIVE_RESUME_SESSION_WAIT_MS,
 		});
 	}
 
@@ -210,55 +216,69 @@ export class AgentChatHitlResumeHandler {
 	}
 
 	/**
-	 * Guard against double resumption, then resume the agent and stream the
-	 * response back into the thread.
+	 * Resumes the agent and streams the response back into the thread. The
+	 * session lease keeps a second resume out, and each start attempt rejects a
+	 * resume that another one already handled.
 	 *
 	 * Public because a resume is not always user-driven — `AgentChatBridge` also
-	 * calls this when a sub-workflow finishing wakes a suspended run. Note the
-	 * `activeResumedRuns` guard is per instance, so it only covers this process.
+	 * calls this when a sub-workflow finishing wakes a suspended run. That caller
+	 * sets `notifyOnDuplicate: false` and gets the busy or handled error back.
 	 */
 	async executeResume(
 		thread: Thread<unknown, unknown>,
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
-		options: Pick<ResumeForChatConfig, 'messageContext' | 'contextConversation'> & {
-			notifyOnDuplicate?: boolean;
-		} = {},
+		options: ResumeContext & { notifyOnDuplicate?: boolean } = {},
 	): Promise<void> {
 		const { notifyOnDuplicate = true, ...context } = options;
-		if (this.activeResumedRuns.has(runId)) {
-			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
-			if (notifyOnDuplicate) await thread.post('This action has already been handled');
-			return;
-		}
-
-		this.activeResumedRuns.add(runId);
 		try {
-			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
-			const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
-			try {
-				const stream = this.options.agentService.resumeForChat({
-					...context,
-					agentId: this.options.agentId,
-					projectId: this.options.projectId,
-					runId,
-					toolCallId,
-					resumeData,
-					integrationType: this.options.integration.type,
-				});
-				await this.options.streamConsumer.consume(stream, thread, {
-					...resumeExecutionContext,
-					statusHandle,
-				});
-			} finally {
-				// The stream consumer clears the status right before the first response;
-				// this clear covers failures before/outside consumption. The
-				// once-wrapped handle makes it a no-op await when that already ran.
-				await statusHandle?.clearBeforeResponse();
-			}
-		} finally {
-			this.activeResumedRuns.delete(runId);
+			await this.streamResume(thread, runId, toolCallId, resumeData, context);
+		} catch (error) {
+			if (!notifyOnDuplicate || !isDuplicateResume(error)) throw error;
+			this.options.logger.warn('[AgentChatBridge] Run is already handled', { runId, toolCallId });
+			await thread.post('This action has already been handled');
 		}
 	}
+
+	private async streamResume(
+		thread: Thread<unknown, unknown>,
+		runId: string,
+		toolCallId: string,
+		resumeData: unknown,
+		context: ResumeContext,
+	): Promise<void> {
+		const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
+		const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
+		try {
+			const stream = this.options.agentService.resumeForChat({
+				...context,
+				agentId: this.options.agentId,
+				projectId: this.options.projectId,
+				runId,
+				toolCallId,
+				resumeData,
+				integrationType: this.options.integration.type,
+			});
+			await this.options.streamConsumer.consume(stream, thread, {
+				...resumeExecutionContext,
+				statusHandle,
+			});
+		} finally {
+			// The stream consumer clears the status right before the first response;
+			// this clear covers failures before/outside consumption. The
+			// once-wrapped handle makes it a no-op await when that already ran.
+			await statusHandle?.clearBeforeResponse();
+		}
+	}
+}
+
+/**
+ * A second click on the same card: the first resume still holds the session
+ * after the wait, or it already handled the checkpoint.
+ */
+function isDuplicateResume(error: unknown): boolean {
+	return (
+		error instanceof AgentTurnAlreadyRunningError || error instanceof AgentResumeAlreadyHandledError
+	);
 }

@@ -17,6 +17,7 @@ import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
+import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.error';
 import { createN8nDelegateSubAgentTool } from '../delegate-sub-agent-tool';
 import { formatSubAgentToolOutput } from '../format-sub-agent-tool-output';
 import type { SubAgentRunResult, SubAgentRunner } from '../sub-agent-runner';
@@ -90,6 +91,9 @@ describe('createN8nDelegateSubAgentTool', () => {
 			true,
 		);
 		expect(inlineOptions?.shouldRetrySubAgentResumeError?.(new UserError('terminal'))).toBe(false);
+		expect(
+			inlineOptions?.shouldRetrySubAgentResumeError?.(new AgentTurnAlreadyRunningError()),
+		).toBe(true);
 		expect(
 			inlineOptions?.shouldRetrySubAgentResumeError?.(
 				new AgentExecutionRecordingError({
@@ -483,6 +487,43 @@ describe('createN8nDelegateSubAgentTool', () => {
 				error: error.message,
 			}),
 		);
+	});
+
+	it('keeps the parent suspended when another turn holds the child session', async () => {
+		runner.resumeForeground.mockRejectedValue(new AgentTurnAlreadyRunningError());
+		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+		const suspendPayload = { type: 'approval', toolName: 'http_request', args: {} };
+		const suspend = vi.fn().mockResolvedValue(undefined);
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				resumeData: { approved: true },
+				suspendPayload,
+				continuation: {
+					runId: 'child-run-1',
+					toolCallId: 'child-tool-call-1',
+					taskPath: '/root/research_api_0',
+					subAgentId: 'agent-2',
+					childCount: 0,
+					threadId: 'child-thread-1',
+					resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+				},
+				suspend,
+				emitEvent: vi.fn(),
+			},
+		);
+
+		expect(suspend).toHaveBeenCalledWith(suspendPayload);
 	});
 
 	it('routes configured child cancellation without resuming the child', async () => {

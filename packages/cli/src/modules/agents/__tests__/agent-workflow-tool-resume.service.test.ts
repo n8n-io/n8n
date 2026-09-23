@@ -12,7 +12,9 @@ import { mock } from 'vitest-mock-extended';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import { AgentResumeAlreadyHandledError } from '../agent-resume-already-handled.error';
 import type { AgentTestRunService } from '../agent-test-run.service';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
@@ -440,6 +442,91 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Cannot resume preview chat run without its user',
 			expect.objectContaining({ runId: 'run-1' }),
+		);
+	});
+});
+
+describe('AgentWorkflowToolResumeService → busy session', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('retries a busy resume with a delay that grows to at most 30 s', async () => {
+		const { service, logger, bridge, chatIntegrationService } = setup();
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+		bridge.resumeInAgentThread.mockRejectedValue(new AgentTurnAlreadyRunningError());
+
+		await service.handleResumeRelay({ agentRun, status: 'success' });
+		expect(bridge.resumeInAgentThread).toHaveBeenCalledTimes(1);
+
+		const delays = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000, 30_000];
+		for (const [index, delay] of delays.entries()) {
+			await vi.advanceTimersByTimeAsync(delay - 1);
+			expect(bridge.resumeInAgentThread).toHaveBeenCalledTimes(index + 1);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(bridge.resumeInAgentThread).toHaveBeenCalledTimes(index + 2);
+		}
+
+		bridge.resumeInAgentThread.mockResolvedValue(undefined);
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(bridge.resumeInAgentThread).toHaveBeenCalledTimes(delays.length + 2);
+		expect(vi.getTimerCount()).toBe(0);
+		expect(logger.error).not.toHaveBeenCalled();
+	});
+
+	it('retries a busy preview resume and pushes the recorded execution', async () => {
+		const { service, userRepository, agentTestRunService, broadcaster } = setup();
+		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		agentTestRunService.resumeDraftRun
+			.mockRejectedValueOnce(new AgentTurnAlreadyRunningError())
+			.mockResolvedValueOnce({
+				status: 'completed',
+				response: '',
+				sessionId: 's',
+				executionId: 'exec-42',
+			});
+
+		await service.handleResumeRelay({ agentRun: previewRun, status: 'success' });
+		expect(broadcaster.notify).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(1_000);
+
+		expect(agentTestRunService.resumeDraftRun).toHaveBeenCalledTimes(2);
+		expect(broadcaster.notify).toHaveBeenCalledWith(
+			expect.objectContaining({ executionId: 'exec-42' }),
+		);
+	});
+
+	it('stops retrying once the run is no longer suspended', async () => {
+		const { service, bridge, chatIntegrationService, checkpointStorage } = setup();
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+		bridge.resumeInAgentThread.mockRejectedValue(new AgentTurnAlreadyRunningError());
+
+		await service.handleResumeRelay({ agentRun, status: 'success' });
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'not-found' } as never);
+		await vi.advanceTimersByTimeAsync(1_000);
+
+		expect(checkpointStorage.getStatus).toHaveBeenCalledTimes(2);
+		expect(bridge.resumeInAgentThread).toHaveBeenCalledTimes(1);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('stops without an error when another attempt already resumed the run', async () => {
+		const { service, logger, bridge, chatIntegrationService } = setup();
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+		bridge.resumeInAgentThread.mockRejectedValue(new AgentResumeAlreadyHandledError());
+
+		await service.handleResumeRelay({ agentRun, status: 'success' });
+
+		expect(vi.getTimerCount()).toBe(0);
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Agent run was already resumed',
+			expect.objectContaining({ agentId: 'agent-1', runId: 'run-1' }),
 		);
 	});
 });
