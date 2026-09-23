@@ -1,4 +1,5 @@
 import '../openapi-extend';
+import validator from 'validator';
 import { z } from 'zod';
 
 import { promotionDirectionSchema } from '../dto/promotions/promotion-config.dto';
@@ -19,10 +20,21 @@ export const executionIdParamSchema = numericIdParamSchema('The ID of the execut
 
 export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow.');
 export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the workflow version.');
+export const testRunIdParamSchema = stringIdParamSchema('The ID of the test run.');
 export const projectIdParamSchema = stringIdParamSchema('The ID of the project.');
 export const tagIdParamSchema = stringIdParamSchema('The ID of the tag.');
 export const folderIdParamSchema = stringIdParamSchema('The ID of the folder.');
 export const userIdParamSchema = stringIdParamSchema('The ID of the user.');
+export const userIdentifierParamSchema = z
+	.string()
+	.refine((value) => validator.isUUID(value) || validator.isEmail(value), {
+		message: 'must be a valid ID or email',
+	})
+	.openapi({ param: { description: 'The ID or email of the user.' } });
+export const userUuidParamSchema = z
+	.string()
+	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
+	.openapi({ param: { description: 'The ID of the user.' } });
 export const roleSlugParamSchema = stringIdParamSchema('The slug of the role.');
 export const roleMappingRuleIdParamSchema = stringIdParamSchema('The ID of the role mapping rule.');
 export const promotionConnectionIdParamSchema = stringIdParamSchema(
@@ -46,4 +58,10 @@ export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 );
 export const nodeTypePolicyScopeIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy scope.',
+);
+export const credentialTypePolicyIdParamSchema = stringIdParamSchema(
+	'The ID of the credential type policy document.',
+);
+export const credentialTypePolicyScopeIdParamSchema = stringIdParamSchema(
+	'The ID of the credential type policy scope.',
 );

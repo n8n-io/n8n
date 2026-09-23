@@ -69,12 +69,13 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
@@ -86,9 +87,9 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { PostHogClient } from '@/posthog';
 
 import { InstanceAiMcpRegistryService } from '../mcp';
+import type { InstanceContextService } from '../instance-context.service';
 
 import {
 	extractExecutionResult,
@@ -1571,6 +1572,7 @@ import type {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UserError, UnexpectedError } from 'n8n-workflow';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -1581,10 +1583,13 @@ import { WorkflowEditorLockedError } from '../../../../../@n8n/instance-ai/src/e
 import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { License } from '@/license';
+import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { RoleService } from '@/services/role.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
@@ -2285,8 +2290,10 @@ describe('createDataTableAdapter', () => {
 // ---------------------------------------------------------------------------
 
 function createWorkflowAdapterForTests(overrides?: {
+	setupPanelVariant?: 'control' | 'variant';
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
+	teamProjectsLicensed?: boolean;
 	branchReadOnly?: boolean;
 	sharingEnabled?: boolean;
 	folderExploration?: boolean;
@@ -2372,6 +2379,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 	const mockProjectService = {
 		getAccessibleProjects: vi.fn().mockResolvedValue([{ id: 'team-project-id' }, { id: 'p2' }]),
+		getPersonalProject: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
 	};
 	const mockLogger = {
 		error: vi.fn(),
@@ -2455,6 +2463,11 @@ function createWorkflowAdapterForTests(overrides?: {
 			: (mockFolderFinderService as unknown as ConstructorParameters<
 					typeof InstanceAiAdapterService
 				>[41]),
+		undefined,
+		undefined,
+		{
+			isTeamProjectsLicensed: vi.fn().mockReturnValue(overrides?.teamProjectsLicensed ?? true),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[44],
 	);
 
 	const boundProjectId =
@@ -2463,6 +2476,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		threadId: 'thread-1',
 		projectId: boundProjectId,
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
+		setupPanelVariant: overrides?.setupPanelVariant,
 	});
 	const adapter = context.workflowService;
 
@@ -3582,6 +3596,38 @@ describe('createWorkflowAdapter', () => {
 		});
 	});
 
+	it.each(['control', 'variant', undefined] as const)(
+		'carries setup assignment %s on workflow creation, updates, and publishing',
+		async (setupPanelVariant) => {
+			const { adapter, mockTelemetry } = createWorkflowAdapterForTests({ setupPanelVariant });
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+			await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+			await adapter.publish('wf-new');
+
+			for (const event of [
+				'Builder created workflow',
+				'Builder modified workflow',
+				'Builder published workflow',
+			]) {
+				const properties = mockTelemetry.track.mock.calls.find(([name]) => name === event)?.[1];
+				expect(properties).toMatchObject({
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					workflow_id: 'wf-new',
+				});
+				if (setupPanelVariant) {
+					expect(properties).toMatchObject({
+						variant: setupPanelVariant,
+						[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: setupPanelVariant,
+					});
+				} else {
+					expect(properties).not.toHaveProperty('variant');
+					expect(properties).not.toHaveProperty(`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`);
+				}
+			}
+		},
+	);
+
 	it('marks the workflow as AI-builder temporary when markAsAiTemporary is true', async () => {
 		const {
 			adapter,
@@ -4254,6 +4300,49 @@ describe('license-gated features', () => {
 		});
 	});
 
+	describe('projects (quota:maxTeamProjects)', () => {
+		// An admin reads every project on the instance, peer personal ones included.
+		const accessibleProjects = [
+			{ id: 'personal-project-id', name: 'Personal', type: 'personal' },
+			{ id: 'team-project-id', name: 'Team', type: 'team' },
+			{ id: 'p2', name: 'Other team', type: 'team' },
+			{ id: 'peer-personal-id', name: 'Peer', type: 'personal' },
+		];
+
+		it('lists every accessible project when team projects are licensed', async () => {
+			const { context, mockProjectService } = createWorkflowAdapterForTests({
+				teamProjectsLicensed: true,
+			});
+			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
+
+			await expect(context.workspaceService!.listProjects()).resolves.toEqual(accessibleProjects);
+		});
+
+		it('lists only the personal and the bound project when team projects are not licensed', async () => {
+			const { context, mockProjectService } = createWorkflowAdapterForTests({
+				teamProjectsLicensed: false,
+			});
+			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
+
+			await expect(context.workspaceService!.listProjects()).resolves.toEqual([
+				{ id: 'personal-project-id', name: 'Personal', type: 'personal' },
+				{ id: 'team-project-id', name: 'Team', type: 'team' },
+			]);
+		});
+
+		it('lists only the personal project when team projects are not licensed and no project is bound', async () => {
+			const { context, mockProjectService } = createWorkflowAdapterForTests({
+				teamProjectsLicensed: false,
+				projectId: null,
+			});
+			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
+
+			await expect(context.workspaceService!.listProjects()).resolves.toEqual([
+				{ id: 'personal-project-id', name: 'Personal', type: 'personal' },
+			]);
+		});
+	});
+
 	describe('licenseHints', () => {
 		it('includes hints for unlicensed features', () => {
 			const { context } = createWorkflowAdapterForTests({
@@ -4288,6 +4377,16 @@ describe('license-gated features', () => {
 			expect(context.licenseHints).not.toEqual(
 				expect.arrayContaining([expect.stringContaining('Named workflow versions')]),
 			);
+		});
+
+		it('includes a hint when team projects are not licensed', () => {
+			const { context } = createWorkflowAdapterForTests({
+				namedVersionsLicensed: true,
+				foldersLicensed: true,
+				teamProjectsLicensed: false,
+			});
+
+			expect(context.licenseHints).toEqual([expect.stringContaining('Team projects')]);
 		});
 	});
 });
@@ -5319,6 +5418,9 @@ function createAdapterWithGatewayMock(
 		enabled?: boolean;
 		settingsService?: unknown;
 		getWallet?: Mock;
+		instanceContext?: InstanceContextService;
+		aiPreferenceService?: unknown;
+		logger?: unknown;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -5333,11 +5435,11 @@ function createAdapterWithGatewayMock(
 		{ length: 34 },
 		() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
 	);
-	args[0] = {
+	args[0] = (overrides?.logger ?? {
 		error: vi.fn(),
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
-	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
+	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
 	args[1] = globalConfigStub();
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
@@ -5368,10 +5470,31 @@ function createAdapterWithGatewayMock(
 	args[32] = aiGatewayService as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
+	args[42] = overrides?.instanceContext;
+	if (overrides?.aiPreferenceService) {
+		// Last constructor parameter — extending the array beyond index 33 leaves
+		// every index in between as an unassigned (undefined) hole, same as when
+		// this override is not given.
+		args[45] = overrides.aiPreferenceService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[45];
+	}
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
 }
+
+describe('createContext activity gate', () => {
+	const user = mock<User>({ id: 'user-1' });
+	const instanceContext = mock<InstanceContextService>();
+
+	it.each([true, false, undefined])('uses the shared instance gate: %s', (enabled) => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { instanceContext });
+		const context = service.createContext(user, { instanceContextEnabled: enabled });
+
+		expect(context.activityService !== undefined).toBe(enabled === true);
+	});
+});
 
 describe('createExecutionAdapter runStep()', () => {
 	beforeEach(() => {
@@ -5995,70 +6118,136 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 
 describe('resolveExperimentGates', () => {
 	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
+	const secondUser = mock<User>({ id: 'user-2', createdAt: new Date() });
+	const getFeatureFlagForInstance = vi.fn();
 
-	/** Route `Container.get` by token: PostHog for the flags, ModuleRegistry for the MCP precondition. */
-	function stubContainer(flags: Record<string, string | boolean>, mcpModuleActive = true) {
+	function stubContainer(flags: Record<string, string | boolean>, instanceFlag = false) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(flags);
-		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
-			if (token === PostHogClient) return { getFeatureFlags };
-			return { isActive: (name: string) => mcpModuleActive && name === 'mcp-registry' };
-		});
+		getFeatureFlagForInstance.mockReset().mockResolvedValue(instanceFlag);
+		vi.spyOn(Container, 'get').mockReturnValue({ getFeatureFlags, getFeatureFlagForInstance });
 		return getFeatureFlags;
 	}
 
-	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
-		return createAdapterWithGatewayMock(vi.fn(), {
-			settingsService: { isMcpAccessEnabled: vi.fn().mockReturnValue(mcpAccessEnabled) },
-		});
+	function createAdapter(): InstanceAiAdapterService {
+		return createAdapterWithGatewayMock(vi.fn());
 	}
 
 	const allEnabled = {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
-		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
 
-	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
+	it('resolves per-user gates with one user flag fetch', async () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: true,
-			mcpConnectionsEnabled: true,
 			conversationHistoryEnabled: true,
 			progressiveBuildingEnabled: true,
+			setupPanelEnabled: true,
+			setupPanelVariant: 'variant',
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
+			instanceContextEnabled: false,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
 	});
 
-	it('is off for flags on the control variant', async () => {
+	it.each([true, false])(
+		'returns instance activity %s for users with different user flags',
+		async (instanceFlag) => {
+			const getFeatureFlags = stubContainer({}, instanceFlag);
+			getFeatureFlags
+				.mockResolvedValueOnce({
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+				})
+				.mockResolvedValueOnce({
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+				});
+			const adapter = createAdapter();
+
+			const [first, second] = await Promise.all([
+				adapter.resolveExperimentGates(user),
+				adapter.resolveExperimentGates(secondUser),
+			]);
+
+			expect(first.instanceContextEnabled).toBe(instanceFlag);
+			expect(second.instanceContextEnabled).toBe(instanceFlag);
+			expect(first.nodeUsageEnabled).toBe(true);
+			expect(second.nodeUsageEnabled).toBe(false);
+			expect(getFeatureFlagForInstance.mock.calls).toEqual([
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+			]);
+		},
+	);
+
+	it('keeps instance activity off when its evaluation fails', async () => {
+		stubContainer(allEnabled, true);
+		getFeatureFlagForInstance.mockRejectedValue(new Error('PostHog failed'));
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: false,
+			nodeUsageEnabled: true,
+		});
+	});
+
+	it('keeps the instance answer when user flag evaluation fails', async () => {
+		const getFeatureFlags = stubContainer(allEnabled, true);
+		getFeatureFlags.mockRejectedValue(new Error('PostHog failed'));
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: true,
+			nodeUsageEnabled: false,
+		});
+	});
+
+	it('disables experiment gates for control variants', async () => {
 		stubContainer({
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
-			[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
+			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
-			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			setupPanelEnabled: false,
+			setupPanelVariant: 'control',
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
+
+	it.each([true, 'unexpected'])(
+		'keeps setup disabled for invalid assignment %s',
+		async (assignment) => {
+			stubContainer({ [INSTANCE_AI_SETUP_PANEL_FLAG]: assignment });
+
+			const gates = await createAdapter().resolveExperimentGates(user);
+
+			expect(gates.setupPanelEnabled).toBe(false);
+			expect(gates).not.toHaveProperty('setupPanelVariant');
+		},
+	);
 
 	// Regression guard for the shipped bug: the flag is multivariate, so a
 	// boolean `true` is not a value PostHog can return for it. Reading it as one
@@ -6081,52 +6270,37 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
-	it('fails closed when no flags resolve (PostHog outage returns {})', async () => {
+	it('fails experiment gates closed when no flags resolve', async () => {
 		stubContainer({});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
-			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
 
-	it('fails every gate closed, rather than rejecting, if getFeatureFlags rejects unexpectedly', async () => {
+	it('fails experiment gates closed if flag resolution rejects unexpectedly', async () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 		getFeatureFlags.mockRejectedValueOnce(new Error('PostHog unreachable'));
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
-			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
-	});
-
-	it('keeps MCP connections off when the mcp-registry module is disabled', async () => {
-		// With the module off the registry entity is never registered, so a
-		// search would throw rather than return nothing.
-		stubContainer(allEnabled, false);
-
-		const gates = await createAdapter().resolveExperimentGates(user);
-
-		expect(gates.mcpConnectionsEnabled).toBe(false);
-		expect(gates.conversationHistoryEnabled).toBe(true);
-	});
-
-	it('keeps MCP connections off when the admin disabled MCP access', async () => {
-		stubContainer(allEnabled);
-
-		const gates = await createAdapter(false).resolveExperimentGates(user);
-
-		expect(gates.mcpConnectionsEnabled).toBe(false);
 	});
 });
 
@@ -6134,38 +6308,29 @@ describe('MCP registry discovery', () => {
 	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
 
 	interface McpStubs {
-		moduleActive?: boolean;
-		featureFlags?: Record<string, string>;
 		registrySearch?: Mock;
 		registryGetBySlugs?: Mock;
 		listConnectionsForUser?: Mock;
 	}
 
-	/** Route `Container.get` by token — the adapter resolves PostHog and both MCP
-	 *  services lazily, so each needs its own stub. */
+	/** Route `Container.get` by token for services that the adapter resolves lazily. */
 	function stubContainer(stubs: McpStubs = {}) {
-		const getFeatureFlags = vi.fn().mockResolvedValue(stubs.featureFlags ?? {});
 		const search = stubs.registrySearch ?? vi.fn().mockResolvedValue([]);
 		const getBySlugs = stubs.registryGetBySlugs ?? vi.fn().mockResolvedValue([]);
 		const listConnectionsForUser = stubs.listConnectionsForUser ?? vi.fn().mockResolvedValue([]);
 
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
-			if (token === PostHogClient) return { getFeatureFlags };
 			if (token === McpRegistryService) return { search, getBySlugs };
 			if (token === InstanceAiMcpRegistryService) return { listConnectionsForUser };
-			// Stands in for ModuleRegistry: `mcp-registry` active, `agents` not.
-			return {
-				isActive: (name: string) => (stubs.moduleActive ?? true) && name === 'mcp-registry',
-			};
+			if (token === ModuleRegistry) return { isActive: () => false };
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 
-		return { getFeatureFlags, search, getBySlugs, listConnectionsForUser };
+		return { search, getBySlugs, listConnectionsForUser };
 	}
 
-	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
-		return createAdapterWithGatewayMock(vi.fn(), {
-			settingsService: { isMcpAccessEnabled: vi.fn().mockReturnValue(mcpAccessEnabled) },
-		});
+	function createAdapter(): InstanceAiAdapterService {
+		return createAdapterWithGatewayMock(vi.fn());
 	}
 
 	describe('mcpService', () => {
@@ -6222,7 +6387,7 @@ describe('MCP registry discovery', () => {
 			],
 		};
 
-		it('is absent from the context unless the gate passed', () => {
+		it('is absent from the context when MCP connections are unavailable', () => {
 			stubContainer();
 
 			expect(createAdapter().createContext(user).mcpService).toBeUndefined();
@@ -6232,7 +6397,7 @@ describe('MCP registry discovery', () => {
 			const { search } = stubContainer({
 				registrySearch: vi.fn().mockResolvedValue([registryHit]),
 			});
-			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
 			const results = await context.mcpService!.search(['drive']);
 
@@ -6255,7 +6420,7 @@ describe('MCP registry discovery', () => {
 					.mockResolvedValue([registryHit, { ...registryHit, slug: 'notion', title: 'Notion' }]),
 				listConnectionsForUser: vi.fn().mockResolvedValue([{ serverSlug: 'google-drive' }]),
 			});
-			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
 			const results = await context.mcpService!.search(['drive', 'notion']);
 
@@ -6268,7 +6433,7 @@ describe('MCP registry discovery', () => {
 			stubContainer({
 				registrySearch: vi.fn().mockResolvedValue([registryHit, templatedHit]),
 			});
-			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
 			const results = await context.mcpService!.search(['drive', 'genie']);
 
@@ -6279,7 +6444,7 @@ describe('MCP registry discovery', () => {
 			stubContainer({
 				registryGetBySlugs: vi.fn().mockResolvedValue([templatedRegistryServer]),
 			});
-			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
 			expect(await context.mcpService!.getServers(['databricks-genie'])).toEqual([]);
 		});
@@ -6288,7 +6453,7 @@ describe('MCP registry discovery', () => {
 			stubContainer({
 				registryGetBySlugs: vi.fn().mockResolvedValue([{ ...registryServer, remotes: [] }]),
 			});
-			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
 			expect(await context.mcpService!.getServers(['google-drive'])).toEqual([]);
 		});
@@ -6297,7 +6462,7 @@ describe('MCP registry discovery', () => {
 			const { getBySlugs } = stubContainer({
 				registryGetBySlugs: vi.fn().mockResolvedValue([registryServer]),
 			});
-			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
 			const results = await context.mcpService!.getServers(['google-drive', 'made-up']);
 
@@ -6312,7 +6477,7 @@ describe('MCP registry discovery', () => {
 					.fn()
 					.mockResolvedValue([{ serverSlug: 'google-drive' }, { serverSlug: 'retired' }]),
 			});
-			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
 			expect(await context.mcpService!.listConnections()).toEqual([
 				{ slug: 'google-drive' },
@@ -6326,7 +6491,7 @@ describe('MCP registry discovery', () => {
 					.fn()
 					.mockResolvedValue([{ serverSlug: 'google-drive' }, { serverSlug: 'google-drive' }]),
 			});
-			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
 			expect(await context.mcpService!.listConnections()).toEqual([{ slug: 'google-drive' }]);
 		});
@@ -6335,7 +6500,7 @@ describe('MCP registry discovery', () => {
 			stubContainer({
 				listConnectionsForUser: vi.fn().mockRejectedValue(new Error('query failed')),
 			});
-			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+			const context = createAdapter().createContext(user, { mcpConnectionsAvailable: true });
 
 			await expect(context.mcpService!.listConnections()).rejects.toThrow('query failed');
 		});
@@ -6470,7 +6635,7 @@ describe('createContext — builder delegate wiring', () => {
 		service.createContext(mockUser, {
 			threadId: 'thread-1',
 			projectId: 'proj-1',
-			credentialIdAllowlist: [],
+			getCredentialIdAllowlist: () => [],
 		});
 
 		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(
@@ -6559,6 +6724,192 @@ describe('createContext — run model wiring', () => {
 
 		expect(service.createContext(mockUser).modelId).toBeUndefined();
 	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — aiPreferenceService
+// ---------------------------------------------------------------------------
+
+describe('createContext: aiPreferenceService', () => {
+	const user = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	function buildService() {
+		const aiPreferenceService = mock<AiPreferenceService>();
+		const logger = { error: vi.fn(), warn: vi.fn(), scoped: vi.fn().mockReturnThis() };
+		const telemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), {
+			aiPreferenceService,
+			logger,
+			telemetry,
+		});
+		return { service, aiPreferenceService, logger, telemetry };
+	}
+
+	it('is absent when the preferences gate is closed', () => {
+		const { service } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+		expect(context.aiPreferenceService).toBeUndefined();
+	});
+
+	it('is present when the gate is open', () => {
+		const { service } = buildService();
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		expect(context.aiPreferenceService).toBeDefined();
+	});
+
+	it('writes with source aia and returns the saved row', async () => {
+		const { service, aiPreferenceService } = buildService();
+		aiPreferenceService.create.mockResolvedValue({
+			id: 'pref-1',
+			content: 'Keep replies short.',
+		} as never);
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		const result = await context.aiPreferenceService!.create({
+			content: 'Keep replies short.',
+			scope: 'user',
+		});
+
+		expect(aiPreferenceService.create).toHaveBeenCalledWith(
+			user,
+			{ content: 'Keep replies short.', scope: 'user' },
+			'aia',
+		);
+		expect(result).toEqual({
+			ok: true,
+			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		});
+	});
+
+	it.each([
+		[new ConflictError('dup'), 'duplicate', 'dup'],
+		[new BadRequestError('cap'), 'scope_full', 'cap'],
+		[new ForbiddenError('no'), 'not_permitted', 'no'],
+		[new Error('boom'), 'failed', 'The preference could not be saved.'],
+	])('maps %s to reason %s without throwing', async (error, reason, message) => {
+		const { service, aiPreferenceService, logger } = buildService();
+		aiPreferenceService.create.mockRejectedValue(error);
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		const result = await context.aiPreferenceService!.create({ content: 'x', scope: 'user' });
+
+		// The three mapped classes carry their own user-facing text; anything
+		// else keeps its message internal and gets logged instead.
+		expect(result).toEqual({ ok: false, reason, message });
+		if (reason === 'failed') {
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Saving an AI preference from the assistant failed',
+				{ error },
+			);
+		} else {
+			expect(logger.error).not.toHaveBeenCalled();
+		}
+	});
+
+	// The row is committed before any event fires, so a telemetry fault must not turn
+	// a saved preference into a failed one that the model retries into a duplicate.
+	it('still reports the write as saved when telemetry throws afterwards', async () => {
+		const { service, aiPreferenceService, telemetry } = buildService();
+		aiPreferenceService.create.mockResolvedValue({
+			id: 'pref-1',
+			content: 'Keep replies short.',
+		} as never);
+		telemetry.track.mockImplementation(() => {
+			throw new Error('telemetry down');
+		});
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		const result = await context.aiPreferenceService!.create({
+			content: 'Keep replies short.',
+			scope: 'user',
+		});
+
+		expect(result).toEqual({
+			ok: true,
+			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		});
+		expect(aiPreferenceService.create).toHaveBeenCalledTimes(1);
+	});
+
+	it('fires shown, resolved(accepted), scope_accepted and saved on a successful write', async () => {
+		const { service, aiPreferenceService, telemetry } = buildService();
+		aiPreferenceService.create.mockResolvedValue({
+			id: 'pref-1',
+			content: 'Keep replies short.',
+		} as never);
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		await context.aiPreferenceService!.create({ content: 'Keep replies short.', scope: 'user' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
+			{ surface: 'aia', scope_type: 'user', text_length: 19 },
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
+			{ surface: 'aia', outcome: 'accepted', scope_type: 'user', text_length: 19 },
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			{
+				surface: 'aia',
+				offered_scope: 'user',
+				accepted_scope: 'user',
+				scope_changed: false,
+			},
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE,
+			{
+				surface: 'aia',
+				scope_type: 'user',
+				text_length: 19,
+				replaced_existing: false,
+			},
+		);
+	});
+
+	it('fires write_rejected with the mapped reason, and nothing else, on a refused write', async () => {
+		const { service, aiPreferenceService, telemetry } = buildService();
+		aiPreferenceService.create.mockRejectedValue(new ConflictError('dup'));
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		await context.aiPreferenceService!.create({ content: 'Keep replies short.', scope: 'user' });
+
+		expect(telemetry.track).toHaveBeenCalledTimes(1);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+			{
+				surface: 'aia',
+				reason: 'duplicate',
+				scope_type: 'user',
+				text_length: 19,
+			},
+		);
+	});
+
+	it.each(['blocked_by_admin', 'too_long', 'failed'] as const)(
+		'recordRejection(%s) fires write_rejected directly, without calling create',
+		(reason) => {
+			const { service, aiPreferenceService, telemetry } = buildService();
+			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+			context.aiPreferenceService!.recordRejection(reason, 19);
+
+			expect(telemetry.track).toHaveBeenCalledTimes(1);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+				{
+					surface: 'aia',
+					reason,
+					scope_type: 'user',
+					text_length: 19,
+				},
+			);
+			expect(aiPreferenceService.create).not.toHaveBeenCalled();
+		},
+	);
 });
 
 describe('createCredentialAdapter', () => {

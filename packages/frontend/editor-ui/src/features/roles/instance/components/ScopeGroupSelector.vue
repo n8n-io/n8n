@@ -5,8 +5,8 @@ import { I18nT } from 'vue-i18n';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 import {
 	INSTANCE_SCOPE_GROUP_LIST,
-	SUPERSEDED_BY,
 	getEscalationWarningKey,
+	impliedByOption,
 	isOptionImplied,
 	isOptionMandatory,
 	mandatoryOptionTooltipKey,
@@ -15,6 +15,7 @@ import {
 	type InstanceResource,
 	type InstanceScopeOption,
 } from '../instanceRoleScopes';
+import PersonalSpacePermissions from './PersonalSpacePermissions.vue';
 
 const i18n = useI18n();
 
@@ -39,9 +40,7 @@ function optionTestId(resource: string, option: InstanceScopeOption): string {
 }
 
 function impliedTooltip(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]): string {
-	const supersededByKey = SUPERSEDED_BY[option.key];
-	if (!supersededByKey) return '';
-	const superseding = groupOptions.find((o) => o.key === supersededByKey);
+	const superseding = impliedByOption(option, groupOptions, props.modelValue);
 	if (!superseding) return '';
 	return i18n.baseText('instanceRoles.option.includedIn', {
 		interpolate: { option: i18n.baseText(superseding.labelKey) },
@@ -79,6 +78,16 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 
 <template>
 	<div :class="$style.cardContainer">
+		<!-- Every user owns a personal project whatever the role grants. Shown first so
+		     nobody reads an empty role as "no access at all". -->
+		<div :class="$style.card" data-test-id="personal-space-card">
+			<div :class="$style.cardTitle">
+				{{ i18n.baseText('instanceRoles.personalSpace.title') }}
+			</div>
+			<div :class="$style.optionList">
+				<PersonalSpacePermissions />
+			</div>
+		</div>
 		<div v-for="group in groups" :key="group.resource" :class="$style.card">
 			<div :class="$style.cardTitle">
 				{{ i18n.baseText(group.labelKey) }}

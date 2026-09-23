@@ -21,6 +21,7 @@ import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
 import PlanReviewPanel, { type PlanReviewStatus } from './PlanReviewPanel.vue';
+import PreferenceCard from './PreferenceCard.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
 import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
@@ -87,11 +88,29 @@ const props = withDefaults(
 		compact?: boolean;
 		/** When provided, renders only these entries instead of the full timeline. */
 		visibleEntries?: InstanceAiTimelineEntry[];
+		/** The message this timeline belongs to — cards act only on the latest turn. */
+		messageId?: string;
+		/** The run this timeline belongs to — cards append their facts to it. */
+		runId?: string;
 	}>(),
 	{
 		compact: false,
 		visibleEntries: undefined,
+		messageId: undefined,
+		runId: undefined,
 	},
+);
+
+/**
+ * A preference card acts only from the transcript tail, and only when the
+ * message carries the run the endpoints must append the card fact to. A later
+ * turn strands the card (same rule as pendingPlanReview).
+ */
+const canActOnPreferenceCard = computed(
+	() =>
+		props.runId !== undefined &&
+		props.messageId !== undefined &&
+		props.messageId === thread.messages.at(-1)?.id,
 );
 
 const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
@@ -279,6 +298,15 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 
 			<!-- Answered questions (read-only after resolution) -->
 			<AnsweredQuestions v-else-if="block.type === 'questions'" :tool-call="block.toolCall" />
+
+			<!-- A preference the assistant saved: edit or undo it from the latest turn -->
+			<PreferenceCard
+				v-else-if="block.type === 'preference'"
+				:tool-call="block.toolCall"
+				:run-id="props.runId ?? ''"
+				:read-only="!canActOnPreferenceCard"
+				:class="$style.timelineItem"
+			/>
 
 			<!-- The run is live but a committed answer settled the block behind it -->
 			<TimelineActivityIndicator

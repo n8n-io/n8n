@@ -338,6 +338,7 @@ export interface CredentialSummary {
 	id: string;
 	name: string;
 	type: string;
+	description?: string | null;
 }
 
 export interface CredentialDetail extends CredentialSummary {
@@ -1036,6 +1037,30 @@ export interface DataTableIdOptions {
 
 export type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
 
+export type InstanceAiPreferenceWriteRejection =
+	| 'too_long'
+	| 'scope_full'
+	| 'duplicate'
+	| 'not_permitted'
+	| 'blocked_by_admin'
+	| 'failed';
+
+export interface InstanceAiSavedPreference {
+	id: string;
+	content: string;
+	scope: 'user';
+}
+
+export type InstanceAiPreferenceWriteResult =
+	| { ok: true; preference: InstanceAiSavedPreference }
+	| { ok: false; reason: InstanceAiPreferenceWriteRejection; message: string };
+
+export interface InstanceAiPreferenceService {
+	create(input: { content: string; scope: 'user' }): Promise<InstanceAiPreferenceWriteResult>;
+	/** Record a rejection the tool decided before calling `create` (blocked, too long, blank). */
+	recordRejection(reason: InstanceAiPreferenceWriteRejection, textLength: number): void;
+}
+
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
@@ -1469,6 +1494,8 @@ export interface InstanceAiConversationHistoryReader {
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
+	/** Instance-wide gate for credential description output and guidance. */
+	credentialDescriptionsEnabled?: boolean;
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration
@@ -1509,6 +1536,9 @@ export interface InstanceAiContext {
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
 	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
 	activityService?: InstanceAiActivityService;
+	/** Present only when saved preferences are enabled for this user; its
+	 *  absence hides the `save_user_preference` tool. */
+	aiPreferenceService?: InstanceAiPreferenceService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

@@ -17,11 +17,12 @@ import {
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
+	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
-	IntegrationMessageContext,
-	IntegrationToolConnectionDescriptor,
+	IntegrationContextQueryParams,
+	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
 
@@ -104,6 +105,8 @@ export function onceStatusHandle(
 
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
+	/** Allow-listed metadata from the current platform message. */
+	platformMessage?: IntegrationPlatformMessageContext;
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
 	/**
@@ -511,22 +514,17 @@ export abstract class AgentChatIntegration {
 }
 
 /** Per-platform context-query execution params. */
-export interface PlatformContextQueryParams {
+export interface PlatformContextQueryParams
+	extends Omit<IntegrationContextQueryParams, 'persistence'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
-	descriptor: IntegrationToolConnectionDescriptor;
-	query: IntegrationContextQuery;
-	input: Record<string, unknown>;
 }
 
 /** Per-platform action-execution params. */
-export interface PlatformActionParams {
+export interface PlatformActionParams
+	extends Omit<IntegrationActionParams, 'awaitResponse' | 'runId' | 'toolCallId'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	currentMessageContext?: IntegrationMessageContext;
 }
 
 /**
