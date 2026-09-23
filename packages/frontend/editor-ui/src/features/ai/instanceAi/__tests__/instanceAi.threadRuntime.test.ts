@@ -1205,6 +1205,102 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		warnSpy.mockRestore();
 	});
 
+	describe('setup context on message telemetry', () => {
+		type SetupReader = Parameters<ThreadRuntime['registerSetupChatTelemetryContext']>[0];
+		const setupContext: ReturnType<SetupReader> = {
+			workflow_id: 'workflow-1',
+			pending_credential_count: 1,
+			pending_parameter_count: 2,
+			session_id: 'setup-session',
+			variant: 'variant',
+			'$feature/118_instance_ai_setup_overhaul': 'variant',
+		};
+
+		test('reads current setup context for human sends, including a refused send', async () => {
+			const runtime = activeRuntime(registry);
+			const nextContext = {
+				...setupContext,
+				workflow_id: 'workflow-2',
+				pending_parameter_count: 0,
+			};
+			const reader = vi
+				.fn<SetupReader>()
+				.mockReturnValueOnce(setupContext)
+				.mockReturnValueOnce(nextContext);
+			runtime.registerSetupChatTelemetryContext(reader);
+			mockPostMessage
+				.mockRejectedValueOnce(new Error('post failed'))
+				.mockResolvedValue({ runId: 'run-1' });
+			expect(reader).not.toHaveBeenCalled();
+
+			await expect(runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE })).resolves.toBe(
+				false,
+			);
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ ...setupContext, thread_id: activeThreadId, prefill_type: null }),
+			);
+
+			await runtime.sendMessage('Use this suggestion', {
+				authorship: { kind: 'prefill', prefillType: 'suggestion_catalog' },
+			});
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ ...nextContext, prefill_type: 'suggestion_catalog' }),
+			);
+			expect(reader).toHaveBeenCalledTimes(2);
+		});
+
+		test('omits setup context from the automatic Execute notification', async () => {
+			const runtime = activeRuntime(registry);
+			const reader = vi.fn<SetupReader>().mockReturnValue(setupContext);
+			runtime.registerSetupChatTelemetryContext(reader);
+			mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+			await runtime.sendMessage('Workflow execution finished.', {
+				authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
+			});
+
+			expect(reader).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				{
+					thread_id: activeThreadId,
+					instance_id: 'instance-1',
+					is_first_message: true,
+					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+					prefill_type: 'handoff_setup_panel_execute',
+					prefill_id: null,
+					prompt_modified: false,
+				},
+			);
+		});
+
+		test('keeps the replacement reader when the older reader unregisters and clears it on release', async () => {
+			const runtime = activeRuntime(registry);
+			const olderReader = vi.fn<SetupReader>().mockReturnValue({ workflow_id: 'old-workflow' });
+			const reader = vi.fn<SetupReader>().mockReturnValue(setupContext);
+			const releaseOlder = runtime.registerSetupChatTelemetryContext(olderReader);
+			const release = runtime.registerSetupChatTelemetryContext(reader);
+			mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+			releaseOlder();
+			await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+			expect(olderReader).not.toHaveBeenCalled();
+			expect(reader).toHaveBeenCalledOnce();
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining(setupContext),
+			);
+
+			release();
+			await runtime.sendMessage('after closing setup', { authorship: USER_TYPED_MESSAGE });
+			expect(reader).toHaveBeenCalledOnce();
+			for (const property of Object.keys(setupContext))
+				expect(mockTelemetryTrack.mock.lastCall?.[1]).not.toHaveProperty(property);
+		});
+	});
+
 	test('sendMessage includes action_source from thread metadata', async () => {
 		const hooks = {
 			onTitleUpdated: vi.fn(),

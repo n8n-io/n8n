@@ -1,6 +1,7 @@
 import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
 } from '@n8n/api-types';
 
 function createExperiment<
@@ -147,6 +148,8 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 );
 
+export const INSTANCE_AI_SETUP_PANEL_EXPERIMENT = createExperiment(INSTANCE_AI_SETUP_PANEL_FLAG);
+
 /**
  * Multivariate: the enabled arm is the variant string `variant`, not a boolean,
  * so the check goes through `isVariantEnabled` rather than `isFeatureEnabled`.
@@ -157,6 +160,7 @@ export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_o
 export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
 
 export const EXPERIMENTS_TO_TRACK = [
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
