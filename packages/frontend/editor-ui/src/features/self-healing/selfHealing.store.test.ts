@@ -148,17 +148,17 @@ describe('useSelfHealingStore', () => {
 	});
 
 	describe('reviews', () => {
-		it('seeds one open and one closed assistant-authored review', () => {
+		it('seeds one open fix review, two open outcomes and one closed review', () => {
 			const open = store.getInboxItems('open', 'waiting');
 			const closed = store.getInboxItems('closed');
 
-			expect(open).toHaveLength(1);
+			expect(open).toHaveLength(3);
 			expect(closed).toHaveLength(1);
 			expect(open[0].title).toMatch(/^Auto-fix:/);
-			expect(open[0].requester).toEqual(SELF_HEALING_ASSISTANT);
-			// Seeded reviews are reviewed by the signed-in user.
+			expect(open.every((item) => item.requester?.id === SELF_HEALING_ASSISTANT.id)).toBe(true);
+			// Seeded items are reviewed by the signed-in user.
 			expect(open[0].reviewers[0].id).toBe('user-1');
-			expect(store.countByState('open')).toBe(1);
+			expect(store.countByState('open')).toBe(3);
 		});
 
 		it('puts nothing in the authored group', () => {
@@ -228,6 +228,37 @@ describe('useSelfHealingStore', () => {
 			expect(entry.createdBy?.id).toBe('user-1');
 			// The store keeps a reactive proxy of the entry, so compare by id.
 			expect(store.getActivity(item.id).at(-1)?.id).toBe(entry.id);
+		});
+	});
+
+	describe('inbox kinds', () => {
+		it('seeds one item of each kind into the open inbox', () => {
+			const kinds = store.getInboxItems('open').map((item) => store.getInboxKind(item.id));
+			expect(kinds).toEqual(expect.arrayContaining(['fix', 'needs_you', 'could_not_fix']));
+		});
+
+		it('exposes the outcome only for items that are not reviews', () => {
+			const items = store.getInboxItems('open');
+			const fix = items.find((item) => store.getInboxKind(item.id) === 'fix');
+			const needsYou = items.find((item) => store.getInboxKind(item.id) === 'needs_you');
+			expect(fix && store.getOutcome(fix.id)).toBeNull();
+			expect(needsYou && store.getOutcome(needsYou.id)?.usage).toBeNull();
+		});
+
+		it('dismiss closes an outcome item and leaves reviews alone', () => {
+			const openBefore = store.countByState('open');
+			const couldNotFix = store
+				.getInboxItems('open')
+				.find((item) => store.getInboxKind(item.id) === 'could_not_fix');
+			if (!couldNotFix) throw new Error('missing seed');
+
+			store.dismiss(couldNotFix.id);
+
+			expect(store.countByState('open')).toBe(openBefore - 1);
+			expect(store.getDetail(couldNotFix.id)?.state).toBe('closed');
+			expect(store.getOutcome(couldNotFix.id)?.dismissedAt).not.toBeNull();
+			const fix = store.getInboxItems('open').find((item) => store.getInboxKind(item.id) === 'fix');
+			expect(() => store.dismiss(fix?.id ?? '')).toThrow();
 		});
 	});
 

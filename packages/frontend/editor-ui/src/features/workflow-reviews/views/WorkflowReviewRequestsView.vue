@@ -24,6 +24,7 @@ import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsS
 import type { ReviewInboxSidebarSection } from '../components/WorkflowReviewRequestsSidebar.vue';
 import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
+import SelfHealingOutcomeDetail from '@/features/self-healing/components/SelfHealingOutcomeDetail.vue';
 import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 
 import { useReviewActivityStore } from '../reviewActivity.store';
@@ -115,6 +116,20 @@ const selectedListItem = computed(() =>
 	selectedReviewId.value ? store.findItemById(selectedReviewId.value) : null,
 );
 const selectedItem = computed(() => detail.value ?? selectedListItem.value);
+
+// Self-healing prototype: "needs you" and "could not fix" items are not reviews
+// and get their own detail pane instead of the diff and decision tabs.
+const selectedOutcome = computed(() =>
+	selectedReviewId.value ? selfHealingStore.getOutcome(selectedReviewId.value) : null,
+);
+
+async function onDismissOutcome(id: string) {
+	selfHealingStore.dismiss(id);
+	// The item leaves the open list but stays selected through the detail.
+	await Promise.all([store.fetchSummary(), store.fetchActiveTab(), store.fetchDetail(id)]).catch(
+		handleLoadError,
+	);
+}
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -381,6 +396,11 @@ onUnmounted(() => {
 					<div v-else-if="selectedReviewId && detailLoading" :class="$style.detailSkeleton">
 						<N8nLoading :loading="true" :rows="3" />
 					</div>
+					<SelfHealingOutcomeDetail
+						v-else-if="selectedItem && selectedOutcome"
+						:review-id="selectedItem.id"
+						@dismiss="onDismissOutcome(selectedItem.id)"
+					/>
 					<WorkflowReviewDetailTabs
 						v-else-if="selectedItem"
 						:review="selectedItem"

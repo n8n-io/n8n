@@ -11,7 +11,7 @@ import type { IConnections, INode } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import { SELF_HEALING_ASSISTANT, SELF_HEALING_REVIEW_ID_PREFIX } from './selfHealing.constants';
-import type { SelfHealingConfig, SelfHealingReview } from './selfHealing.types';
+import type { SelfHealingConfig, SelfHealingOutcome, SelfHealingReview } from './selfHealing.types';
 
 /*
  * Everything in this file is demo data. The prototype has no backend, so the
@@ -371,6 +371,8 @@ export function buildSelfHealingReview(
 	}
 
 	return {
+		kind: 'fix',
+		outcome: null,
 		item,
 		detail,
 		activity,
@@ -383,12 +385,135 @@ export function buildSelfHealingReview(
 export const SEED_WORKFLOWS = {
 	leadEnrichment: { id: 'self-healing-demo-lead-enrichment', name: 'Lead enrichment sync' },
 	invoiceReminders: { id: 'self-healing-demo-invoice-reminders', name: 'Invoice reminder emails' },
+	dealAlerts: { id: 'self-healing-demo-deal-alerts', name: 'Deal alerts to Slack' },
+	orderSync: { id: 'self-healing-demo-order-sync', name: 'Order sync to warehouse' },
 } as const;
 
 /**
  * Two reviews the assistant "already submitted": one waiting for the viewer,
  * one approved and published. Both point at fixture workflows.
  */
+export interface BuildOutcomeOptions {
+	id: string;
+	title: string;
+	summary: string;
+	outcome: Omit<SelfHealingOutcome, 'dismissedAt'>;
+	executionId: string;
+	workflowId: string;
+	workflowName: string;
+	projectId: string;
+	nodes: INode[];
+	reviewers: WorkflowReviewEligibleReviewer[];
+	createdAt: string;
+}
+
+/**
+ * An inbox item that is not a review: the assistant either needs the user to
+ * act or gave up. It reuses the review item shape so the inbox lists it, but
+ * carries no diff and nobody can decide on it.
+ */
+export function buildSelfHealingOutcome(
+	options: BuildOutcomeOptions,
+	nextEntryId: () => string,
+): SelfHealingReview {
+	const version = snapshot(
+		`${options.workflowId}-published`,
+		'Published',
+		options.nodes,
+		{},
+		options.createdAt,
+	);
+
+	const item: WorkflowReviewInboxItem = {
+		id: options.id,
+		state: 'open',
+		decision: 'pending',
+		workflowVersionId: version.versionId,
+		createdAt: options.createdAt,
+		updatedAt: options.createdAt,
+		projectId: options.projectId,
+		title: options.title,
+		workflowName: options.workflowName,
+		requester: SELF_HEALING_ASSISTANT,
+		authors: [SELF_HEALING_ASSISTANT],
+		reviewers: [...options.reviewers],
+	};
+
+	const detail: WorkflowReviewRequestDetail = {
+		id: item.id,
+		state: 'open',
+		decision: 'pending',
+		createdAt: item.createdAt,
+		updatedAt: item.updatedAt,
+		projectId: item.projectId,
+		title: item.title,
+		requester: item.requester,
+		authors: item.authors,
+		reviewers: item.reviewers,
+		description: options.summary,
+		workflows: [
+			{
+				workflowId: options.workflowId,
+				workflowName: options.workflowName,
+				workflowVersionId: version.versionId,
+				pinnedVersion: version,
+				publishedVersionId: version.versionId,
+				baselineVersion: version,
+			},
+		],
+		viewerCanDecide: false,
+		viewerDecisionIneligibilityReason: null,
+		viewerCanComment: false,
+	};
+
+	const activity: WorkflowReviewActivityEntry[] = [
+		{
+			id: nextEntryId(),
+			typeVersion: 1,
+			type: 'review.opened',
+			createdBy: SELF_HEALING_ASSISTANT,
+			createdAt: options.createdAt,
+			data: {
+				workflowVersions: [
+					{ workflowId: options.workflowId, workflowVersionId: version.versionId },
+				],
+			},
+		},
+	];
+
+	return {
+		kind: options.outcome.kind,
+		outcome: { ...options.outcome, dismissedAt: null },
+		item,
+		detail,
+		activity,
+		summary: options.summary,
+		changedNode: '',
+		executionId: options.executionId,
+	};
+}
+
+function seedNodes(names: string[], types: string[]): INode[] {
+	return names.map((name, index) => ({
+		id: `seed-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+		name,
+		type: types[index] ?? 'n8n-nodes-base.noOp',
+		typeVersion: 1,
+		position: [240 * index, 0],
+		parameters: {},
+	}));
+}
+
+const DEAL_ALERTS_NODES = seedNodes(
+	['Every hour', 'Get new deals', 'Post to #sales'],
+	['n8n-nodes-base.scheduleTrigger', 'n8n-nodes-base.hubspot', 'n8n-nodes-base.slack'],
+);
+
+const ORDER_SYNC_NODES = seedNodes(
+	['New paid order', 'Map shipment', 'Create shipment'],
+	['n8n-nodes-base.shopifyTrigger', 'n8n-nodes-base.set', 'n8n-nodes-base.httpRequest'],
+);
+
 export function createSeedReviews(
 	reviewer: WorkflowReviewEligibleReviewer | null,
 	projectId: string,
@@ -465,6 +590,72 @@ export function createSeedReviews(
 				state: 'closed',
 				decision: 'approved',
 				approval: { by: reviewer, at: invoiceApprovedAt, note: 'Looks good, thanks.' },
+			},
+			nextEntryId,
+		),
+		buildSelfHealingOutcome(
+			{
+				id: `${SELF_HEALING_REVIEW_ID_PREFIX}seed-deal-alerts`,
+				title: 'Reconnect the HubSpot credential in Deal alerts to Slack',
+				summary:
+					'Failed: "Get new deals" was refused with 401 Unauthorized. The credential "HubSpot – Sales" has expired; reconnect it to resume.',
+				executionId: '48377',
+				workflowId: SEED_WORKFLOWS.dealAlerts.id,
+				workflowName: SEED_WORKFLOWS.dealAlerts.name,
+				projectId,
+				nodes: DEAL_ALERTS_NODES,
+				reviewers,
+				createdAt: hoursAgo(0.7, now),
+				outcome: {
+					kind: 'needs_you',
+					failure: {
+						node: 'Get new deals',
+						message: 'Authorization failed. Please check your credentials (401 Unauthorized).',
+					},
+					findings:
+						'The pre-check matched this error to an expired OAuth token on the credential "HubSpot – Sales". The workflow has not changed since its last successful run, so there is nothing in it to fix.',
+					reason: null,
+					nextSteps: [
+						'Reconnect the credential "HubSpot – Sales" under Credentials.',
+						'Run the failed execution again, or wait for the next hourly run.',
+					],
+					action: { type: 'open_credential', credentialName: 'HubSpot – Sales' },
+					usage: null,
+				},
+			},
+			nextEntryId,
+		),
+		buildSelfHealingOutcome(
+			{
+				id: `${SELF_HEALING_REVIEW_ID_PREFIX}seed-order-sync`,
+				title: 'Could not fix "Create shipment" in Order sync to warehouse',
+				summary:
+					'Failed: the warehouse API rejected "shipping_method_v1", a field this workflow has always sent. The Assistant could not find the replacement.',
+				executionId: '48311',
+				workflowId: SEED_WORKFLOWS.orderSync.id,
+				workflowName: SEED_WORKFLOWS.orderSync.name,
+				projectId,
+				nodes: ORDER_SYNC_NODES,
+				reviewers,
+				createdAt: hoursAgo(5, now),
+				outcome: {
+					kind: 'could_not_fix',
+					failure: {
+						node: 'Create shipment',
+						message: 'HTTP 400 Bad Request: Unknown field "shipping_method_v1".',
+					},
+					findings:
+						'Execution #48311 stopped at "Create shipment" with HTTP 400 "Unknown field shipping_method_v1". The same request succeeded until yesterday at 22:10 and nothing in the workflow changed since, so the warehouse API has renamed or removed the field.',
+					reason:
+						'The error does not say what replaced the field, and the API reference the Assistant can reach still lists the old name. Guessing a field name could create shipments with wrong data, so it stopped.',
+					nextSteps: [
+						"Check the warehouse vendor's API changelog for the new shipping method field.",
+						'Update the field mapping in "Create shipment", then run the failed execution again.',
+						'Or continue in chat with the changelog link, and the Assistant prepares the fix.',
+					],
+					action: null,
+					usage: { credits: 9, turns: 6, durationSeconds: 170 },
+				},
 			},
 			nextEntryId,
 		),

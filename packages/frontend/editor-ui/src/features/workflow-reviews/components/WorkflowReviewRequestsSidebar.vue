@@ -16,6 +16,7 @@ import {
 import { useUsersStore } from '@n8n/stores/users.store';
 import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
 import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
+import SelfHealingInboxKindBadge from '@/features/self-healing/components/SelfHealingInboxKindBadge.vue';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
@@ -61,6 +62,10 @@ const { isCollapsed, toggleSection } = useReviewInboxSectionCollapse();
 /** Reviews the assistant submitted carry a one-line "what failed → what changed". */
 function autoFixSummary(item: WorkflowReviewInboxItem): string | null {
 	return isSelfHealingAssistant(item.requester) ? selfHealingStore.getReviewSummary(item.id) : null;
+}
+
+function inboxKind(item: WorkflowReviewInboxItem) {
+	return isSelfHealingAssistant(item.requester) ? selfHealingStore.getInboxKind(item.id) : null;
 }
 
 /**
@@ -270,6 +275,7 @@ function onListBackgroundClick() {
 									{{ autoFixSummary(item) }}
 								</N8nText>
 								<div :class="$style.cardMeta">
+									<SelfHealingInboxKindBadge v-if="inboxKind(item)" :kind="inboxKind(item)!" />
 									<N8nBadge
 										v-if="item.workflowName"
 										theme="tertiary"

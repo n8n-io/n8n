@@ -40,6 +40,8 @@ import type {
 	SelfHealingConfigInput,
 	SelfHealingConfigStatus,
 	SelfHealingFixJob,
+	SelfHealingInboxKind,
+	SelfHealingOutcome,
 	SelfHealingReview,
 	WorkflowHealingStatus,
 } from './selfHealing.types';
@@ -418,6 +420,26 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		return findReview(reviewId)?.summary ?? null;
 	}
 
+	function getInboxKind(reviewId: string): SelfHealingInboxKind | null {
+		return findReview(reviewId)?.kind ?? null;
+	}
+
+	function getOutcome(reviewId: string): SelfHealingOutcome | null {
+		return findReview(reviewId)?.outcome ?? null;
+	}
+
+	/** Closes a "needs you" or "could not fix" item. Nothing else changes. */
+	function dismiss(reviewId: string) {
+		const review = findReview(reviewId);
+		if (!review?.outcome) throw new Error(`Not a dismissible self-healing item: ${reviewId}`);
+		const dismissedAt = nowIso();
+		review.outcome.dismissedAt = dismissedAt;
+		review.item.state = 'closed';
+		review.detail.state = 'closed';
+		review.item.updatedAt = dismissedAt;
+		review.detail.updatedAt = dismissedAt;
+	}
+
 	function decide(
 		reviewId: string,
 		input: SelfHealingDecisionInput,
@@ -555,6 +577,9 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		getDetail,
 		getActivity,
 		getReviewSummary,
+		getInboxKind,
+		getOutcome,
+		dismiss,
 		decide,
 		addComment,
 		reset,
