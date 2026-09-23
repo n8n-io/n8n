@@ -204,6 +204,6 @@ function isApiLevel(value: unknown): boolean {
 	if (typeof value === 'number') return Number.isInteger(value) && value > 0;
 	if (typeof value !== 'string') return false;
 
-	const match = /^(\d+)(?:\.(\d+))?$/.exec(value);
+	const match = /^(\d+)(?:\.(\d+))?$/.exec(value.trim());
 	return match !== null && Number(match[1]) > 0;
 }
