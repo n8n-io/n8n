@@ -4,6 +4,7 @@ import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
 import merge from 'lodash/merge';
@@ -417,6 +418,78 @@ export const handleFormRedirectionCase = (
 const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
 const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 
+function isHttpFullResponse(response: unknown): response is IN8nHttpFullResponse {
+	return (
+		isRecord(response) &&
+		'body' in response &&
+		isRecord(response.headers) &&
+		typeof response.statusCode === 'number'
+	);
+}
+
+async function sendResponseNodeResponse(
+	response: IN8nHttpFullResponse,
+	res: express.Response,
+	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
+	workflowStartNode: INode,
+	executionId: string | undefined,
+	workflow: Workflow,
+): Promise<void> {
+	try {
+		const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
+		if (binaryData?.id) {
+			if (response.statusCode) {
+				res.status(response.statusCode);
+			}
+			WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+			applySandboxCSP(res);
+			try {
+				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
+				res.once('close', () => stream.destroy());
+				stream.pipe(res, { end: false });
+				await finished(stream);
+			} finally {
+				void Container.get(WebhookResponseRelay).deleteOffloadedBody(response, {
+					workflowId: workflow.id,
+					executionId,
+				});
+			}
+			responseCallback(null, { noWebhookResponse: true });
+		} else if (Buffer.isBuffer(response.body)) {
+			if (response.statusCode) {
+				res.status(response.statusCode);
+			}
+			WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+			applySandboxCSP(res);
+			res.end(response.body);
+			responseCallback(null, { noWebhookResponse: true });
+		} else {
+			// TODO: This probably needs some more changes depending on the options on the
+			//       Webhook Response node
+
+			let data: IWebhookResponseCallbackData = {
+				data: response.body as IDataObject,
+				headers: response.headers,
+				responseCode: response.statusCode,
+			};
+
+			data = handleFormRedirectionCase(data, workflowStartNode);
+
+			responseCallback(null, data);
+		}
+
+		process.nextTick(() => res.end());
+	} catch (e: unknown) {
+		const error = ensureError(e);
+		Container.get(ErrorReporter).error(error);
+		Container.get(Logger).error(
+			`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
+			{ executionId, workflowId: workflow.id },
+		);
+		responseCallback(error, {});
+	}
+}
+
 export function setupResponseNodePromise(
 	responsePromise: IDeferredPromise<IN8nHttpFullResponse>,
 	res: express.Response,
@@ -426,7 +499,7 @@ export function setupResponseNodePromise(
 	workflow: Workflow,
 ): void {
 	void responsePromise.promise
-		.then(async (response: IN8nHttpFullResponse) => {
+		.then(async (response) => {
 			if (response === EXECUTION_ENDED_WITHOUT_RESPONSE) {
 				// The execution ended without the Respond to Webhook node running. The
 				// post-execute handler answers instead, because only it knows whether the
@@ -434,49 +507,14 @@ export function setupResponseNodePromise(
 				return;
 			}
 
-			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
-			if (binaryData?.id) {
-				if (response.statusCode) {
-					res.status(response.statusCode);
-				}
-				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
-				applySandboxCSP(res);
-				try {
-					const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-					res.once('close', () => stream.destroy());
-					stream.pipe(res, { end: false });
-					await finished(stream);
-				} finally {
-					void Container.get(WebhookResponseRelay).deleteOffloadedBody(response, {
-						workflowId: workflow.id,
-						executionId,
-					});
-				}
-				responseCallback(null, { noWebhookResponse: true });
-			} else if (Buffer.isBuffer(response.body)) {
-				if (response.statusCode) {
-					res.status(response.statusCode);
-				}
-				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
-				applySandboxCSP(res);
-				res.end(response.body);
-				responseCallback(null, { noWebhookResponse: true });
-			} else {
-				// TODO: This probably needs some more changes depending on the options on the
-				//       Webhook Response node
-
-				let data: IWebhookResponseCallbackData = {
-					data: response.body as IDataObject,
-					headers: response.headers,
-					responseCode: response.statusCode,
-				};
-
-				data = handleFormRedirectionCase(data, workflowStartNode);
-
-				responseCallback(null, data);
-			}
-
-			process.nextTick(() => res.end());
+			await sendResponseNodeResponse(
+				response,
+				res,
+				responseCallback,
+				workflowStartNode,
+				executionId,
+				workflow,
+			);
 		})
 		.catch(async (e: unknown) => {
 			const error = ensureError(e);
@@ -1076,7 +1114,7 @@ export async function executeWebhook(
 		if (didPublishMcpRelay) return undefined;
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
-		if (responseMode === 'responseNode') {
+		if (responseMode === 'responseNode' && !routesToEngineV2) {
 			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
 			// Mark the request as answered as soon as the node produces a response, before
 			// `setupResponseNodePromise` starts writing it. Streaming offloaded binary data
@@ -1123,7 +1161,7 @@ export async function executeWebhook(
 			const engineExecutionId = createExecutionIdV2();
 			pendingEngineV2Response = Container.get(EngineV2WebhookResponder).waitForResponse(
 				engineExecutionId,
-				responsePromise,
+				responseMode === 'responseNode',
 			);
 			runData.engineExecutionId = engineExecutionId;
 		}
@@ -1231,7 +1269,30 @@ export async function executeWebhook(
 		const waitForDataPlaneRun = async (waiting: PendingWebhookResponse) => {
 			try {
 				const outcome = await waiting.settled;
+				if (outcome.status === 'response') {
+					if (!isHttpFullResponse(outcome.response)) {
+						throw new UnexpectedError('Engine 2.0 produced an invalid webhook response');
+					}
+
+					didSendResponse = true;
+					await sendResponseNodeResponse(
+						outcome.response,
+						res,
+						responseCallback,
+						workflowStartNode,
+						executionId,
+						workflow,
+					);
+					return undefined;
+				}
+
 				if (outcome.status === 'completed' || outcome.status === 'failed') {
+					if (outcome.status === 'completed' && responseMode === 'responseNode') {
+						responseCallback(null, { data: undefined, responseCode });
+						didSendResponse = true;
+						return undefined;
+					}
+
 					return await engineV2Webhooks.toRun(outcome, executionMode);
 				}
 
@@ -1327,7 +1388,7 @@ export async function executeWebhook(
 						return runData;
 					}
 
-					// in `responseNode` mode `responseCallback` is called by `responsePromise`
+					// In v1 `responseNode` mode, `responsePromise` calls `responseCallback`.
 					if (responseMode === 'responseNode' && responsePromise) {
 						await Promise.allSettled([responsePromise.promise]);
 						if (!didSendResponse) {

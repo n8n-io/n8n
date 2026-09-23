@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
-import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -11,7 +10,6 @@ import type {
 	UnsubscribeExecutionResponse,
 } from '@/modules/engine-v2/response-channel/execution-response-receiver';
 import { PendingWebhookResponse } from '@/services/pending-webhook-response';
-import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 
 /** A request that is still open, and the subscription that feeds its answer. */
 type PendingWebhook = {
@@ -62,11 +60,7 @@ export class EngineV2WebhookResponder {
 	 * @throws {UnexpectedError} If the execution response receiver is not set.
 	 * @throws {OperationalError} If the service is at capacity.
 	 */
-	waitForResponse(
-		executionId: ExecutionIdV2,
-		/** Set for `responseNode`: what the Respond node's answer resolves. */
-		responsePromise?: IDeferredPromise<unknown>,
-	): PendingWebhookResponse {
+	waitForResponse(executionId: ExecutionIdV2, acceptsResponse = false): PendingWebhookResponse {
 		const { receiver } = this;
 		if (!receiver) {
 			throw new UnexpectedError('Engine 2.0 cannot wait for a response without a receiver');
@@ -80,24 +74,21 @@ export class EngineV2WebhookResponder {
 
 		const response = new PendingWebhookResponse({
 			executionId,
+			acceptsResponse,
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});
 		const unsubscribe = receiver.receive(executionId, (received) =>
-			this.handle(received, response, responsePromise),
+			this.handle(received, response),
 		);
 		this.pendingWebhooks.set(executionId, { response, unsubscribe });
 
 		return response;
 	}
 
-	private handle(
-		received: ExecutionResponse,
-		response: PendingWebhookResponse,
-		responsePromise?: IDeferredPromise<unknown>,
-	): void {
+	private handle(received: ExecutionResponse, response: PendingWebhookResponse): void {
 		try {
-			this.route(received, response, responsePromise);
+			this.route(received, response);
 		} catch (error) {
 			this.logger.error('Failed to relay an engine 2.0 response', {
 				executionId: received.executionId,
@@ -107,14 +98,9 @@ export class EngineV2WebhookResponder {
 		}
 	}
 
-	private route(
-		received: ExecutionResponse,
-		response: PendingWebhookResponse,
-		responsePromise?: IDeferredPromise<unknown>,
-	): void {
+	private route(received: ExecutionResponse, response: PendingWebhookResponse): void {
 		switch (received.type) {
 			case 'undeliverable':
-				responsePromise?.reject(new Error(received.error.message));
 				response.resolve({
 					status: 'undeliverable',
 					error: { name: received.error.code, message: received.error.message },
@@ -122,15 +108,10 @@ export class EngineV2WebhookResponder {
 				return;
 
 			case 'response':
-				// Opaque on the channel by design: only this plane knows a v1 response.
-				responsePromise?.resolve(received.payload);
+				response.resolveResponse(received.payload);
 				return;
 
 			case 'ended':
-				// A run that never reached the Respond node still has to answer. The
-				// sentinel tells `setupResponseNodePromise` to stand down, so the
-				// handler decides instead. Resolving a settled promise is a no-op.
-				responsePromise?.resolve(EXECUTION_ENDED_WITHOUT_RESPONSE);
 				this.onEnded(received, response);
 				return;
 		}

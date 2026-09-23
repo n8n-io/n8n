@@ -2392,6 +2392,38 @@ describe('executeWebhook on engine 2.0', () => {
 				responseCode: 200,
 			});
 		});
+
+		it('answers with the channel error when the response is undeliverable', async () => {
+			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
+			const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
+
+			dataPlane.get(executionId)?.({
+				type: 'undeliverable',
+				executionId,
+				error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+			});
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback).toHaveBeenCalledWith(null, {
+				data: { message: 'The response is too large.' },
+				responseCode: 500,
+			});
+		});
+
+		it('answers with a timeout when no terminal outcome arrives', async () => {
+			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
+			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
+			const pending = waitForResponse.mock.results[0]?.value;
+
+			expect(pending).toBeDefined();
+			pending?.resolve({ status: 'timeout' });
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback).toHaveBeenCalledWith(null, {
+				data: { message: 'The workflow did not answer in time' },
+				responseCode: 504,
+			});
+		});
 	});
 
 	describe('rejections', () => {
