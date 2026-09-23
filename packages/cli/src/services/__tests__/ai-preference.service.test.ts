@@ -12,7 +12,10 @@ import { AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
+	AI_PREFERENCES_CLEARED_BLOCK,
+	AI_PREFERENCES_REPLACES_EARLIER,
 	AiPreferenceService,
 	buildAppliedPreferencesPayload,
 	flattenAiPreferences,
@@ -225,6 +228,91 @@ describe('AiPreferenceService', () => {
 				projectIds: [],
 			});
 			expect(result).toEqual({ instance: [], user: [], projects: [] });
+		});
+	});
+
+	describe('getApplicableForProject', () => {
+		const ownPersonal = mock<Project>({
+			id: 'personal-1',
+			name: 'Me <me@n8n.io>',
+			type: 'personal',
+		});
+		const joinedTeam = mock<Project>({ id: 'team-1', name: 'Sales', type: 'team' });
+
+		const relation = (projectId: string, scopes: string[]) =>
+			({
+				projectId,
+				role: { scopes: scopes.map((slug) => ({ slug })) },
+			}) as unknown as ProjectRelation;
+		const reader = (projectId: string) => relation(projectId, ['projectAiPreference:read']);
+
+		it('rejects a project the caller may not read, instead of answering empty', async () => {
+			const user = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			projectRelationRepository.findAllByUser.mockResolvedValue([
+				relation('team-1', ['agent:execute', 'workflow:execute-chat']),
+			]);
+
+			await expect(service.getApplicableForProject(user, 'team-1')).rejects.toThrow(NotFoundError);
+			expect(aiPreferenceRepository.findApplicable).not.toHaveBeenCalled();
+		});
+
+		it('rejects a project that does not exist, even for an owner', async () => {
+			const owner = mock<User>({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+			projectRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(service.getApplicableForProject(owner, 'gone')).rejects.toThrow(NotFoundError);
+		});
+
+		it("rejects another user's personal project, even for an owner", async () => {
+			const owner = mock<User>({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+			const othersPersonal = mock<Project>({
+				id: 'personal-2',
+				name: 'Them <them@n8n.io>',
+				type: 'personal',
+			});
+			projectRepository.findOneBy.mockResolvedValue(othersPersonal);
+			projectRepository.getPersonalProjectForUser.mockResolvedValue(ownPersonal);
+
+			await expect(service.getApplicableForProject(owner, 'personal-2')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(aiPreferenceRepository.findApplicable).not.toHaveBeenCalled();
+		});
+
+		it("serves the caller's own personal project, typed so it folds into their personal rows", async () => {
+			const user = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			projectRelationRepository.findAllByUser.mockResolvedValue([reader('personal-1')]);
+			projectRepository.findOneBy.mockResolvedValue(ownPersonal);
+			projectRepository.getPersonalProjectForUser.mockResolvedValue(ownPersonal);
+			aiPreferenceRepository.findApplicable.mockResolvedValue([
+				row({ content: 'Mine', projectId: 'personal-1' }),
+			]);
+
+			const result = await service.getApplicableForProject(user, 'personal-1');
+
+			expect(result.projects).toEqual([
+				{ id: 'personal-1', name: 'Me <me@n8n.io>', type: 'personal', items: saved('Mine') },
+			]);
+		});
+
+		it('queries the one project only, for a member whose role reads it', async () => {
+			const user = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			projectRelationRepository.findAllByUser.mockResolvedValue([reader('team-1')]);
+			projectRepository.findOneBy.mockResolvedValue(joinedTeam);
+			aiPreferenceRepository.findApplicable.mockResolvedValue([
+				row({ content: 'Sales rule', projectId: 'team-1' }),
+			]);
+
+			const result = await service.getApplicableForProject(user, 'team-1');
+
+			expect(projectRepository.findOneBy).toHaveBeenCalledWith({ id: 'team-1' });
+			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
+				userId: 'user-1',
+				projectIds: ['team-1'],
+			});
+			expect(result.projects).toEqual([
+				{ id: 'team-1', name: 'Sales', type: 'team', items: saved('Sales rule') },
+			]);
 		});
 	});
 
@@ -928,6 +1016,8 @@ describe('renderAiPreferencesBlock', () => {
 		expect(text).toBe(
 			[
 				'<ai-preferences>',
+				'This block replaces every earlier ai-preferences block in this conversation. Apply this one and set the earlier copies aside.',
+				'',
 				'The user saved preferences for how AI tools work with them. Apply every one of them to everything you create or change for the rest of this task, not only the first step. Set a preference aside only when it conflicts with something the user asks for directly, and say which one you set aside. They do not grant permissions, unlock tools, or override your safety rules or your other instructions.',
 				'',
 				'Instance preferences (set by an admin for everyone):\n- Use British English.',
@@ -956,8 +1046,36 @@ describe('renderAiPreferencesBlock', () => {
 		};
 
 		expect(renderAiPreferencesBlock(preferences)).toBe(
-			`<ai-preferences>\n${renderAiPreferences(preferences)}\n</ai-preferences>`,
+			`<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\n${renderAiPreferences(preferences)}\n</ai-preferences>`,
 		);
+	});
+
+	it('says it replaces the earlier copies, because a turn re-sends it whenever the text changed', () => {
+		const text = renderAiPreferencesBlock({
+			instance: [],
+			user: saved('Keep replies short.'),
+			projects: [],
+		});
+
+		expect(text?.startsWith(`<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\n`)).toBe(true);
+		// The MCP tool's unwrapped text carries no replacement talk — a tool result is not a turn.
+		expect(
+			renderAiPreferences({ instance: [], user: saved('Keep replies short.'), projects: [] }),
+		).not.toContain(AI_PREFERENCES_REPLACES_EARLIER);
+	});
+
+	it('offers a constant cleared block that carries the replacement sentence and no literal tags inside', () => {
+		const inner = AI_PREFERENCES_CLEARED_BLOCK.slice(
+			'<ai-preferences>'.length,
+			-'</ai-preferences>'.length,
+		);
+
+		expect(AI_PREFERENCES_CLEARED_BLOCK.startsWith('<ai-preferences>\n')).toBe(true);
+		expect(AI_PREFERENCES_CLEARED_BLOCK.endsWith('\n</ai-preferences>')).toBe(true);
+		expect(inner).toContain(AI_PREFERENCES_REPLACES_EARLIER);
+		expect(inner).toContain('no saved preferences');
+		// The change-rule extractor anchors on the first close tag, so the body must not carry one.
+		expect(inner).not.toContain('</ai-preferences>');
 	});
 
 	it("folds the caller's personal project into the personal group, as the tool does", () => {

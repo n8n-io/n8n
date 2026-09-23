@@ -8,7 +8,7 @@ The module holds no policy of its own. A policy feature adds a check class and a
 store for its rules. It does not add an enforcement path, an error shape, or an
 audit gap.
 
-Why these six points, why every check must pass, and why a check that does not
+Why these seven points, why every check must pass, and why a check that does not
 answer blocks: read the policy infrastructure RFC in Notion. This README is the
 working reference for writing a check. It does not restate the RFC.
 
@@ -25,7 +25,7 @@ flowchart LR
         save["workflowSave<br/>WorkflowCreationService, WorkflowService,<br/>chat hub, instance AI, public API"]
         publish["workflowPublish<br/>WorkflowService.activateWorkflow,<br/>WorkflowPublicationApplier, ActiveWorkflowManager"]
         start["workflowStart<br/>PolicyLifecycleHandler on<br/>workflowExecuteBefore"]
-        other["workflowTransfer<br/>contentImport<br/>credentialDecrypt"]
+        other["workflowTransfer<br/>credentialSave<br/>contentImport<br/>credentialDecrypt"]
     end
 
     subgraph pep["Enforcement point · src/policy (always loaded)"]
@@ -96,6 +96,7 @@ request. A check can compare it with `workflow` to judge only what the save adds
 | `workflowPublish`   | 1000 ms  | row id                            | activate, publication applier, activation on startup                  |
 | `workflowStart`     | 250 ms   | row id                            | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
 | `workflowTransfer`  | 1000 ms  | row id                            | move to another project                                               |
+| `credentialSave`    | 1000 ms  | row id, or type hash for a create | editor, public API, package import stubs, provider connections        |
 | `contentImport`     | 1000 ms  | row id                            | CLI import, source control import, package and git-connection import  |
 | `credentialDecrypt` | 250 ms   | credential id                     | credential resolution during a run or a test                          |
 
@@ -113,11 +114,14 @@ Each point hands its check a different context. The types are in
 | `workflowPublish`   | `WorkflowPublishContext`   | `workflow`, `projectId`                                                                  |
 | `workflowStart`     | `WorkflowStartContext`     | `workflow`, `projectId`                                                                  |
 | `workflowTransfer`  | `WorkflowTransferContext`  | `workflow`, `targetProjectId` — the project it moves _into_, whose policy applies        |
+| `credentialSave`    | `CredentialSaveContext`    | `credential`, `storedCredential` (`null` for a create), `projectId`                      |
 | `contentImport`     | `ContentImportContext`     | `workflow`, `projectId`, `transport`                                                     |
 | `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
 
 `workflow` is a `PolicedWorkflow`: `id` (`null` before the first save), `name`,
 `nodes`. Nothing else, so a check cannot start to depend on unrelated fields.
+`credential` is a `PolicedCredential`: `id` (`null` before the first save) and
+`type`. The name and the data never reach a check.
 Every field is `readonly` — a check reads, it never writes.
 
 `transport` is `cli`, `source-control`, `package`, or `git-connection`. Read it
@@ -193,11 +197,11 @@ checks that the token exists, was minted for this point, and binds to this
 subject. Only `PolicyEnforcementService` may import the minter; a lint rule
 enforces that.
 
-A second lint rule, `no-unsealed-workflow-entity-write`, flags direct
-`save`/`insert`/`update`/`upsert` calls on `WorkflowEntity` in runtime code. It is
-syntactic. It catches `save({ id, nodes })` and `update(id, { nodes })`, not a
-payload built off-site or an aliased receiver. The runtime check is the enforcing
-half.
+The workflow entity subscriber rejects inserts and node-bearing updates outside
+the repository's scoped write context. Policy-cleared repository methods open
+that context after they validate the matching token. Standalone node execution
+is the documented exception: it opens the context without a save token, then
+enforces the policy before the temporary workflow starts.
 
 ## Add a check
 

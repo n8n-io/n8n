@@ -274,7 +274,7 @@ watch(
 		<ul v-if="selectedProjects" :class="$style.selectedProjects">
 			<li v-if="props.homeProject" :class="$style.project" data-test-id="project-sharing-owner">
 				<ProjectSharingInfo :project="props.homeProject">
-					<N8nBadge theme="tertiary" bold>
+					<N8nBadge variant="outline">
 						{{ locale.baseText('auth.roles.owner') }}
 					</N8nBadge></ProjectSharingInfo
 				>

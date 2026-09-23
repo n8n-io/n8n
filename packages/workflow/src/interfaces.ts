@@ -1348,7 +1348,14 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
 		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
-		putExecutionToWait(waitTill: Date): Promise<void>;
+		/**
+		 * Pauses the execution until `waitTill`.
+		 *
+		 * Set `acceptsResumeRequest` to `false` when only the deadline can end the wait.
+		 * The engine then keeps a short wait in the process, so the wait does not survive
+		 * a restart. Without the option the engine suspends and persists the execution.
+		 */
+		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
 		sendMessageToUI(message: any): void;
 		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
 		isConsoleOutputRedacted(): boolean;
@@ -2057,6 +2064,12 @@ export interface ResourceMapperTypeOptionsBase {
 		hint?: string;
 	};
 	showTypeConversionOptions?: boolean;
+	// When true, values mapped to string-typed schema fields are always cast to
+	// string during validation, and the `convertFieldsToString` field stored in the
+	// resource mapper value is ignored. That stored field predates this option and
+	// was never user-editable: the UI wrote it unconditionally, so only
+	// programmatic authors could produce a differing value.
+	alwaysConvertFieldsToString?: boolean;
 	allowEmptyValues?: boolean;
 	// When true, a cached schema that is detected to be structurally incomplete
 	// (e.g. authored by an AI builder rather than loaded from the source) is
@@ -3761,6 +3774,12 @@ export interface IWorkflowExecutionDataProcess {
 	agentRequest?: AiAgentRequest;
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
+	/**
+	 * Only engine 2.0 reads this. The caller mints the data-plane execution id
+	 * when it has to wait for the run's answer, so it can subscribe before the
+	 * run starts.
+	 */
+	engineExecutionId?: string;
 	startedAt?: Date;
 
 	// MCP-specific fields for queue mode support

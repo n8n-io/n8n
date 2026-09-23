@@ -15,6 +15,7 @@ import type {
 	InstanceAiEvent,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
+	InstanceContextReach,
 } from '../instance-ai.schema';
 
 // ---------------------------------------------------------------------------
@@ -36,6 +37,23 @@ function makeRunFinish(
 ): Extract<InstanceAiEvent, { type: 'run-finish' }> {
 	return { type: 'run-finish', runId, agentId, payload: { status, ...(reason ? { reason } : {}) } };
 }
+
+function makeInstanceContext(
+	runId: string,
+	agentId: string,
+	payload: Extract<InstanceAiEvent, { type: 'instance-context' }>['payload'],
+): Extract<InstanceAiEvent, { type: 'instance-context' }> {
+	return { type: 'instance-context', runId, agentId, payload };
+}
+
+const INJECTED_PAYLOAD = {
+	injection: {
+		state: 'injected' as const,
+		isUpdate: false,
+		legs: { inventory: 3, events: 2, runs: 1 },
+		chars: 420,
+	},
+};
 
 function makeTextDelta(
 	runId: string,
@@ -205,6 +223,135 @@ function expectStateMapsNotPolluted(state: AgentRunState): void {
 // ---------------------------------------------------------------------------
 
 describe('agent-run-reducer', () => {
+	describe('instance context', () => {
+		it('appends what the turn was handed to the root timeline', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			// The event carries a summary, not the raw block.
+			expect(state.agentsById.root.timeline).toEqual([
+				{
+					type: 'instance-context',
+					runId: 'run-1',
+					injection: INJECTED_PAYLOAD.injection,
+				},
+			]);
+		});
+
+		it('records an absent block, so a turn told nothing stays distinguishable', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(
+				state,
+				makeInstanceContext('run-1', 'root', {
+					injection: { state: 'absent', reason: 'empty' },
+				}),
+			);
+
+			expect(state.agentsById.root.timeline).toEqual([
+				{
+					type: 'instance-context',
+					runId: 'run-1',
+					injection: { state: 'absent', reason: 'empty' },
+				},
+			]);
+		});
+
+		/** Replay re-delivers persisted events, and the entry describes the turn, not each delivery. */
+		it('appends only once when the event is delivered twice', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			expect(state.agentsById.root.timeline).toHaveLength(1);
+		});
+
+		/**
+		 * A message group accumulates several runs, so two turns can fold into one state.
+		 * Deduping by type alone dropped the second turn's entry entirely.
+		 */
+		it('keeps an entry for each turn in a group that holds more than one run', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-2', 'root', INJECTED_PAYLOAD));
+
+			expect(
+				state.agentsById.root.timeline.filter((e) => e.type === 'instance-context'),
+			).toHaveLength(2);
+		});
+
+		it("attaches each turn's reach to its own entry", () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-2', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, {
+				type: 'run-finish',
+				runId: 'run-2',
+				agentId: 'root',
+				payload: { status: 'completed', contextReach: { surfaces: ['workflow-read'] } },
+			});
+
+			const entries = state.agentsById.root.timeline.filter(
+				(e): e is Extract<typeof e, { type: 'instance-context' }> => e.type === 'instance-context',
+			);
+			expect(entries.find((e) => e.runId === 'run-1')?.reach).toBeUndefined();
+			expect(entries.find((e) => e.runId === 'run-2')?.reach).toEqual({
+				surfaces: ['workflow-read'],
+			});
+		});
+
+		it('folds onto the root even when a sub-agent emitted it', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+
+			reduceEvent(state, makeInstanceContext('run-1', 'sub-1', INJECTED_PAYLOAD));
+
+			// The root timeline also carries the spawn's own `child` entry, so count only these.
+			expect(
+				state.agentsById.root.timeline.filter((e) => e.type === 'instance-context'),
+			).toHaveLength(1);
+			expect(state.agentsById['sub-1'].timeline).toEqual([]);
+		});
+
+		// The terminal event contains the combined reads from all segments.
+		it.each<InstanceContextReach>([
+			{ surfaces: ['activity-expand'] },
+			{ surfaces: ['activity-list', 'workflow-read'] },
+		])('completes the entry on run-finish: %j', ({ surfaces }) => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					status: 'completed',
+					contextReach: { surfaces },
+				},
+			});
+
+			const entry = state.agentsById.root.timeline[0];
+			expect(entry.type).toBe('instance-context');
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toEqual({ surfaces });
+		});
+
+		it('leaves the reach unset when the run reported none', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			const entry = state.agentsById.root.timeline[0];
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toBeUndefined();
+		});
+	});
+
 	describe('createInitialState', () => {
 		it('creates state with default root agent', () => {
 			const state = createInitialState();
@@ -904,6 +1051,11 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'notionApi'));
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-2', 'gmailOAuth2'));
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'notionApi'));
+			expect(state.agentsById['root'].latestSetupAnnouncement).toMatchObject({
+				workflowId: 'wf-1',
+				agentId: 'root',
+			});
 
 			const byWorkflowId = state.agentsById['root'].setupItemsByWorkflowId!;
 			expect(byWorkflowId['wf-1']).toHaveLength(1);
@@ -918,6 +1070,25 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
 			expect(state.agentsById['sub-1'].setupItemsByWorkflowId).toBeUndefined();
+			expect(state.agentsById['root'].latestSetupAnnouncement?.agentId).toBe('sub-1');
+		});
+
+		it('preserves the emitting agent identity across an aliased follow-up run', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+			reduceEvent(state, makeRunStart('run-2', 'follow-up-root'));
+			reduceEvent(state, makeToolCall('run-2', 'follow-up-root', 'build-2', 'build-workflow'));
+			reduceEvent(state, makeSetupItems('run-2', 'follow-up-root', 'wf-2', 'notionApi'));
+
+			const root = toAgentTree(state);
+			expect(root.latestSetupAnnouncement).toMatchObject({
+				workflowId: 'wf-2',
+				agentId: root.agentId,
+			});
+			expect(root.toolCalls).toContainEqual(
+				expect.objectContaining({ toolCallId: 'build-2', isLoading: true }),
+			);
 		});
 
 		it('survives a tree snapshot round trip (history restore)', () => {
@@ -932,6 +1103,9 @@ describe('agent-run-reducer', () => {
 			expect(restored?.agentsById['root'].setupItemsByWorkflowId?.['wf-1'][0]).toMatchObject({
 				credentialType: 'slackApi',
 			});
+			expect(restored?.agentsById['root'].latestSetupAnnouncement).toEqual(
+				state.agentsById['root'].latestSetupAnnouncement,
+			);
 		});
 
 		it('is preserved across a follow-up run-start when it is the only content', () => {

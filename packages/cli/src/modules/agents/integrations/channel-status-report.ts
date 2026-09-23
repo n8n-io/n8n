@@ -59,6 +59,7 @@ export function buildChannelStatusReport(
 				type: integration.type,
 				credentialId: integration.credentialId,
 				...('settings' in integration ? { settings: integration.settings } : {}),
+				...(integration.approval ? { approval: integration.approval } : {}),
 				status,
 				...(failure?.errorMessage ? { errorMessage: failure.errorMessage } : {}),
 			};

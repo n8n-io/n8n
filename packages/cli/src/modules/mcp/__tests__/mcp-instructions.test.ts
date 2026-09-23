@@ -1,6 +1,20 @@
 import { getMcpInstructions } from '../tools/workflow-builder/mcp-instructions';
 
 describe('getMcpInstructions', () => {
+	test.each([true, false, undefined])(
+		'gates credential description guidance when the flag is %s',
+		(credentialDescriptionsEnabled) => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: true,
+				credentialDescriptionsEnabled,
+			});
+			expect(instructions).toContain('list_credentials');
+			expect(instructions.includes('read their descriptions')).toBe(
+				credentialDescriptionsEnabled === true,
+			);
+		},
+	);
+
 	test('returns intro-only string when builder is disabled', () => {
 		const instructions = getMcpInstructions({ isBuilderEnabled: false });
 		expect(instructions).toContain('official MCP server for n8n');
@@ -118,5 +132,44 @@ describe('getMcpInstructions', () => {
 				getMcpInstructions({ isBuilderEnabled: false, isUserPreferencesEnabled: true }),
 			).toContain(HINT);
 		});
+	});
+});
+
+describe('instance context', () => {
+	it('names the resource and the tool when the surface is on', () => {
+		const instructions = getMcpInstructions({
+			isBuilderEnabled: false,
+			isInstanceContextEnabled: true,
+		});
+
+		expect(instructions).toContain('n8n://instance/context');
+		expect(instructions).toContain('get_instance_context');
+	});
+
+	/** Every word here is paid for on every session, so an off surface costs nothing. */
+	it('says nothing about it when the surface is off', () => {
+		const instructions = getMcpInstructions({ isBuilderEnabled: false });
+
+		expect(instructions).not.toContain('n8n://instance/context');
+		expect(instructions).not.toContain('get_instance_context');
+	});
+
+	/**
+	 * A client may keep only the opening of these instructions — Claude Code truncates at 2048
+	 * characters — so a pointer below the cut never arrives and the surface goes undiscovered.
+	 * The full text is well past the budget, which is what makes the position matter.
+	 */
+	it('keeps the pointer inside the 2048 characters a client may truncate to', () => {
+		const instructions = getMcpInstructions({
+			isBuilderEnabled: true,
+			isInstanceContextEnabled: true,
+		});
+
+		const start = instructions.indexOf('Start with the instance');
+		expect(start).toBeGreaterThan(-1);
+
+		const end = instructions.indexOf('\n\n', start);
+		expect(instructions.length).toBeGreaterThan(2048);
+		expect(end).toBeLessThan(2048);
 	});
 });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
@@ -12,7 +12,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import ProjectCreateResource from './ProjectCreateResource.vue';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
@@ -23,19 +22,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
-import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
-import { PROMOTION_SELECT_MODAL_KEY } from '@/features/integrations/promotions.ee/promotions.constants';
-import { getPromotableChanges } from '@/features/integrations/promotions.ee/promotions.api';
+import PromotionBanners from '@/features/integrations/promotions.ee/components/PromotionBanners.vue';
 
-import {
-	N8nButton,
-	N8nHeading,
-	N8nIcon,
-	N8nIconButton,
-	N8nLink,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
@@ -53,39 +42,10 @@ const telemetry = useTelemetry();
 const { createAgent } = useCreateAgent();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
-const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
-const rootStore = useRootStore();
 
 const currentProjectId = computed(() => projectsStore.currentProject?.id);
 
 const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
-
-const promotableChangeCount = ref(0);
-const showPromoteButton = computed(
-	() =>
-		isTeamProject.value &&
-		isPromotionsEnabled.value &&
-		!!projectPermissions.value.export &&
-		!!getResourcePermissions(usersStore.currentUser?.globalScopes).gitConnection.push,
-);
-
-async function fetchPromotableChangeCount() {
-	// Capture the project this request is for, so a slow response for a project the
-	// user already navigated away from cannot overwrite the current count.
-	const requestedProjectId = currentProjectId.value;
-	promotableChangeCount.value = 0;
-	if (!showPromoteButton.value || !requestedProjectId) {
-		return;
-	}
-	try {
-		const changes = await getPromotableChanges(rootStore.restApiContext, requestedProjectId);
-		if (currentProjectId.value !== requestedProjectId) return;
-		promotableChangeCount.value = changes.length;
-	} catch {
-		if (currentProjectId.value !== requestedProjectId) return;
-		promotableChangeCount.value = 0;
-	}
-}
 
 const isProjectFavorited = computed(() =>
 	currentProjectId.value ? favoritesStore.isFavorite(currentProjectId.value, 'project') : false,
@@ -176,21 +136,21 @@ const showFolders = computed(() => {
 	);
 });
 
-const customProjectTabs = computed((): Array<TabOptions<string>> => {
-	// Determine the type of tab based on the current project page
-	let tabType: 'shared' | 'overview' | 'project';
+const pageType = computed(() => {
 	if (projectPages.isSharedSubPage) {
-		tabType = 'shared';
+		return 'shared';
 	} else if (projectPages.isOverviewSubPage) {
-		tabType = 'overview';
+		return 'overview';
 	} else {
-		tabType = 'project';
+		return 'project';
 	}
+});
+
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	// Only pick up tabs from active modules
-	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
-		settingsStore.isModuleActive,
-	);
-	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+	const moduleTabs = uiStore.moduleTabs[pageType.value];
+	const activeModules = Object.keys(moduleTabs).filter(settingsStore.isModuleActive);
+	return activeModules.flatMap((module) => moduleTabs[module]);
 });
 
 const ACTION_TYPES = {
@@ -430,16 +390,6 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	},
 } as const;
 
-const pageType = computed(() => {
-	if (projectPages.isSharedSubPage) {
-		return 'shared';
-	} else if (projectPages.isOverviewSubPage) {
-		return 'overview';
-	} else {
-		return 'project';
-	}
-});
-
 const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
@@ -502,25 +452,6 @@ const projectDescriptionTruncated = computed(() => {
 	const fontSizeInPixels = projectSubtitleFontSizeInPxs.value ?? 14;
 	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
-
-const promotionBannerText = computed(() => {
-	if (promotableChangeCount.value === 1) {
-		return i18n.baseText('promotions.banner.singleChangeAvailable');
-	}
-	return i18n.baseText('promotions.banner.changesAvailable', {
-		interpolate: { count: String(promotableChangeCount.value) },
-	});
-});
-
-watch([currentProjectId, showPromoteButton], fetchPromotableChangeCount, { immediate: true });
-
-function onOpenPromotionModal() {
-	if (!currentProjectId.value) return;
-	uiStore.openModalWithData({
-		name: PROMOTION_SELECT_MODAL_KEY,
-		data: { projectId: currentProjectId.value },
-	});
-}
 
 const onSelect = (action: string, source: CreateSource) => {
 	const executableAction = actions[action as ActionTypes];
@@ -603,19 +534,7 @@ const onSelect = (action: string, source: CreateSource) => {
 				:additional-tabs="customProjectTabs"
 			/>
 		</div>
-		<div
-			v-if="showPromoteButton && promotableChangeCount > 0"
-			:class="$style.promotionBanner"
-			data-test-id="promotion-banner"
-		>
-			<N8nIcon icon="upload" size="small" />
-			<N8nText size="small">
-				{{ promotionBannerText }}
-			</N8nText>
-			<N8nLink size="small" data-test-id="promotion-banner-link" @click="onOpenPromotionModal">
-				{{ i18n.baseText('promotions.banner.viewChanges') }}
-			</N8nLink>
-		</div>
+		<PromotionBanners />
 	</div>
 </template>
 
@@ -636,17 +555,6 @@ const onSelect = (action: string, source: CreateSource) => {
 
 .actions {
 	padding: var(--spacing--2xs) 0 var(--spacing--xs);
-}
-
-.promotionBanner {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	background-color: var(--background--hover);
-	border: var(--border);
-	border-radius: var(--radius--2xs);
-	margin-bottom: var(--spacing--xs);
 }
 
 .projectDescriptionWrapper {

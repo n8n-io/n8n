@@ -1,7 +1,8 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { DeploymentKeyRepository } from '@n8n/db';
+import { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import jsonwebtoken from 'jsonwebtoken';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -28,21 +29,23 @@ afterAll(async () => {
 // real database and the real cipher.
 describe('deployment signing secrets (integration)', () => {
 	let repo: DeploymentKeyRepository;
+	let keyStore: Repository<DeploymentKey>;
 	let cipher: Cipher;
 
 	beforeAll(() => {
 		repo = Container.get(DeploymentKeyRepository);
+		keyStore = Container.get(DataSource).getRepository(DeploymentKey);
 		cipher = Container.get(Cipher);
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['DeploymentKey']);
+		await testDb.resetDeploymentKeys();
 	});
 
 	it('seeds a secret in wrapped form and reads it back in usable form', async () => {
 		await repo.seedSigningSecret('signing.hmac', 'the-hmac-secret');
 
-		const row = await repo.findActiveByType('signing.hmac');
+		const row = await keyStore.findOne({ where: { type: 'signing.hmac', status: 'active' } });
 		expect(row).not.toBeNull();
 		expect(row!.algorithm).toBe('aes-256-gcm');
 		expect(row!.value).not.toContain('the-hmac-secret');
@@ -52,33 +55,37 @@ describe('deployment signing secrets (integration)', () => {
 	});
 
 	it('returns a row in the original stored form as-is without rewriting it', async () => {
-		await repo.insertOrIgnore({
-			type: 'signing.jwt',
-			value: 'stored-plain-secret',
-			status: 'active',
-			algorithm: null,
-		});
+		await keyStore.save(
+			keyStore.create({
+				type: 'signing.jwt',
+				value: 'stored-plain-secret',
+				status: 'active',
+				algorithm: null,
+			}),
+		);
 
 		await expect(repo.findActiveSigningSecret('signing.jwt')).resolves.toBe('stored-plain-secret');
 
-		const row = await repo.findActiveByType('signing.jwt');
+		const row = await keyStore.findOne({ where: { type: 'signing.jwt', status: 'active' } });
 		expect(row!.algorithm).toBeNull();
 		expect(row!.value).toBe('stored-plain-secret');
 	});
 
 	it('upgrades a row in the original stored form when rewrapLegacy is set', async () => {
-		await repo.insertOrIgnore({
-			type: 'signing.jwt',
-			value: 'stored-plain-secret',
-			status: 'active',
-			algorithm: null,
-		});
+		await keyStore.save(
+			keyStore.create({
+				type: 'signing.jwt',
+				value: 'stored-plain-secret',
+				status: 'active',
+				algorithm: null,
+			}),
+		);
 
 		await expect(repo.findActiveSigningSecret('signing.jwt', { rewrapLegacy: true })).resolves.toBe(
 			'stored-plain-secret',
 		);
 
-		const row = await repo.findActiveByType('signing.jwt');
+		const row = await keyStore.findOne({ where: { type: 'signing.jwt', status: 'active' } });
 		expect(row!.algorithm).toBe('aes-256-gcm');
 		expect(row!.value).not.toBe('stored-plain-secret');
 
@@ -89,12 +96,14 @@ describe('deployment signing secrets (integration)', () => {
 	});
 
 	it('throws on a storage format this version cannot read', async () => {
-		await repo.insertOrIgnore({
-			type: 'signing.jwt',
-			value: 'value-in-some-future-format',
-			status: 'active',
-			algorithm: 'aes-256-cbc',
-		});
+		await keyStore.save(
+			keyStore.create({
+				type: 'signing.jwt',
+				value: 'value-in-some-future-format',
+				status: 'active',
+				algorithm: 'aes-256-cbc',
+			}),
+		);
 
 		await expect(repo.findActiveSigningSecret('signing.jwt')).rejects.toThrow(
 			"unsupported storage format 'aes-256-cbc'",
@@ -103,9 +112,11 @@ describe('deployment signing secrets (integration)', () => {
 
 	it('throws a usable error when a wrapped value cannot be read', async () => {
 		await repo.seedSigningSecret('signing.binary_data', 'the-binary-secret');
-		const row = await repo.findActiveByType('signing.binary_data');
+		const row = await keyStore.findOne({
+			where: { type: 'signing.binary_data', status: 'active' },
+		});
 		// Simulate a value written under a different instance encryption key.
-		await repo.update({ id: row!.id }, { value: `${row!.value.slice(0, -4)}AAAA` });
+		await keyStore.update({ id: row!.id }, { value: `${row!.value.slice(0, -4)}AAAA` });
 
 		await expect(repo.findActiveSigningSecret('signing.binary_data')).rejects.toThrow(
 			'cannot be read with this instance encryption key',

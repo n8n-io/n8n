@@ -40,6 +40,7 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
@@ -182,6 +183,7 @@ describe('InstanceAiController', () => {
 
 	describe('chat', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
+			observerThresholdTokens: undefined,
 			message: 'hello',
 			timeZone: 'Europe/Helsinki',
 			attachments: undefined,
@@ -210,7 +212,80 @@ describe('InstanceAiController', () => {
 				payload.mode,
 				payload.promptVersion,
 				payload.computerUseChannels,
+				payload.threadArtifacts,
+				payload.observerThresholdTokens,
 			);
+		});
+
+		it('should forward thread artifacts to startRun', async () => {
+			const payloadWithArtifacts = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
+				message: 'Change this',
+				timeZone: 'UTC',
+				attachments: undefined,
+				threadArtifacts: {
+					artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+					activeId: 'wf-1',
+				},
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-6');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithArtifacts);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithArtifacts.message,
+				payloadWithArtifacts.attachments,
+				payloadWithArtifacts.context,
+				payloadWithArtifacts.timeZone,
+				payloadWithArtifacts.pushRef,
+				payloadWithArtifacts.mode,
+				payloadWithArtifacts.promptVersion,
+				payloadWithArtifacts.computerUseChannels,
+				payloadWithArtifacts.threadArtifacts,
+				payloadWithArtifacts.observerThresholdTokens,
+			);
+		});
+
+		it('forwards the observer threshold override for a caller with the eval scope', async () => {
+			const evalPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'build',
+				attachments: undefined,
+				observerThresholdTokens: 1000,
+			});
+			const evalReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:eval' }] } },
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-7');
+
+			await controller.chat(evalReq, res, THREAD_ID, evalPayload);
+
+			const args = instanceAiService.startRun.mock.calls[0];
+			expect(args[args.length - 1]).toBe(1000);
+		});
+
+		it('rejects the observer threshold override from a caller without the eval scope', async () => {
+			// The override changes how often the observer runs, so it stays an eval-only knob.
+			const chatPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'build',
+				attachments: undefined,
+				observerThresholdTokens: 1000,
+			});
+			const chatReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:message' }] } },
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+
+			await expect(controller.chat(chatReq, res, THREAD_ID, chatPayload)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 
 		it('should allow new threads', async () => {
@@ -225,6 +300,7 @@ describe('InstanceAiController', () => {
 
 		it('should forward pushRef to startRun', async () => {
 			const payloadWithPushRef = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				pushRef: 'iframe-push-ref-123',
 				timeZone: 'UTC',
@@ -247,11 +323,14 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.mode,
 				payloadWithPushRef.promptVersion,
 				payloadWithPushRef.computerUseChannels,
+				payloadWithPushRef.threadArtifacts,
+				payloadWithPushRef.observerThresholdTokens,
 			);
 		});
 
 		it('should forward the build mode and prompt version to startRun', async () => {
 			const payloadWithMode = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				timeZone: 'UTC',
 				attachments: undefined,
@@ -275,11 +354,14 @@ describe('InstanceAiController', () => {
 				'progressive',
 				'progressive@1',
 				payloadWithMode.computerUseChannels,
+				payloadWithMode.threadArtifacts,
+				payloadWithMode.observerThresholdTokens,
 			);
 		});
 
 		it('should forward handoff context to startRun', async () => {
 			const payloadWithContext = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'How do I set up Gmail OAuth?',
 				context: {
 					source: 'credential-modal',
@@ -310,6 +392,8 @@ describe('InstanceAiController', () => {
 				payloadWithContext.mode,
 				payloadWithContext.promptVersion,
 				payloadWithContext.computerUseChannels,
+				payloadWithContext.threadArtifacts,
+				payloadWithContext.observerThresholdTokens,
 			);
 		});
 
@@ -341,6 +425,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const badPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see attached',
 				attachments: [
 					{ type: 'file', data: '', mimeType: 'application/zip', fileName: 'archive.zip' },
@@ -359,6 +444,7 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			instanceAiService.startRun.mockReturnValue('run-3');
 			const goodPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see attached',
 				attachments: [
 					{ type: 'file', data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
@@ -389,6 +475,7 @@ describe('InstanceAiController', () => {
 				},
 			];
 			const nodesPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'what do these nodes do?',
 				timeZone: 'UTC',
 			});
@@ -411,6 +498,8 @@ describe('InstanceAiController', () => {
 				nodesPayload.mode,
 				nodesPayload.promptVersion,
 				nodesPayload.computerUseChannels,
+				nodesPayload.threadArtifacts,
+				nodesPayload.observerThresholdTokens,
 			);
 		});
 
@@ -418,6 +507,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const oversizedPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see screenshot',
 				attachments: [
 					{
@@ -441,6 +531,7 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const halfBudget = Math.floor(MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 2) + 1;
 			const payloadOverBudget = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'two screenshots',
 				attachments: [
 					{
@@ -944,6 +1035,47 @@ describe('InstanceAiController', () => {
 					payload as InstanceAiEvalCredentialAllowlistRequest,
 				),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('getEvalThreadMemory', () => {
+		const memory: InstanceAiEvalThreadMemoryResponse = {
+			observations: [{ marker: 'critical', text: 'Posting via HTTP Request', tokenCount: 7 }],
+			cursor: { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' },
+		};
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('getEvalThreadMemory')).toEqual({
+				scope: 'instanceAi:eval',
+				globalOnly: true,
+			});
+		});
+
+		it('should return the memory of an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadMemory.mockResolvedValue(memory);
+
+			const result = await controller.getEvalThreadMemory(req, res, THREAD_ID);
+
+			expect(result).toEqual(memory);
+			expect(instanceAiService.getThreadMemory).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+		});
+
+		it("should reject another user's thread", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.getEvalThreadMemory(req, res, THREAD_ID)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(instanceAiService.getThreadMemory).not.toHaveBeenCalled();
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.getEvalThreadMemory(req, res, THREAD_ID)).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 	});
 

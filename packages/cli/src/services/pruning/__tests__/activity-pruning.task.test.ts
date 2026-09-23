@@ -15,7 +15,7 @@ describe('ActivityPruningTask', () => {
 		new ActivityPruningTask(
 			logger,
 			activityEventRepository,
-			mock<ActivityLogConfig>({ enabled: true, retentionDays: 14, maxEntries: 1_000, ...config }),
+			mock<ActivityLogConfig>({ retentionDays: 14, maxEntries: 1_000, ...config }),
 		);
 
 	beforeEach(() => {
@@ -37,13 +37,6 @@ describe('ActivityPruningTask', () => {
 			expect.any(AbortSignal),
 		);
 		expect(scopedLogger.debug).toHaveBeenCalledWith('Pruned 5 activity entries');
-	});
-
-	it('keeps draining the backlog after the flag is turned off', async () => {
-		await taskWith({ enabled: false }).run(new AbortController().signal);
-
-		expect(activityEventRepository.deleteOlderThan).toHaveBeenCalled();
-		expect(activityEventRepository.deleteBeyondNewest).toHaveBeenCalled();
 	});
 
 	it.each([

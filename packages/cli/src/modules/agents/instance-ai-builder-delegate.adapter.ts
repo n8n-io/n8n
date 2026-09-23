@@ -34,6 +34,8 @@ You are running as a sub-agent inside n8n's instance AI chat; the user sees your
 
 Preview links work in this chat. Include a markdown Preview link after a successful build and when \`call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from "When To Build vs When To Converse" (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
 
+When you mention the agent editor, say Sessions tab for history and Preview for live chat. Never say Runs, Executions, or Activity History for agents.
+
 You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.
 
 The Instance AI orchestrator can create workflows and data tables — never ask the user to create them manually. For each missing artifact, call \`report_required_artifact\` with its concrete requirements before your final reply; the orchestrator will provision them and call you again when the Agent needs the result.
@@ -125,7 +127,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 	createDelegate(
 		user: User,
 		projectId: string,
-		credentialProvider: CredentialProvider,
+		// Built per build/resume turn from the concrete target agent id, not once
+		// up front: in the build-new-agent flow the agent does not exist when the
+		// delegate is created, so a provider captured here would tag Gateway spend
+		// with an undefined agent id.
+		credentialProviderFor: (agentId: string) => CredentialProvider,
 		credentialService: InstanceAiCredentialService,
 		options: { useEvalModelCatalog?: boolean } = {},
 	): InstanceAiBuilderDelegate {
@@ -164,7 +170,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						agentId,
 						projectId,
 						message,
-						credentialProvider,
+						credentialProviderFor(agentId),
 						credentialService,
 						user,
 						this.buildSubAgentSession(
@@ -187,7 +193,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						resume.runId,
 						resume.toolCallId,
 						resume.resumeData,
-						credentialProvider,
+						credentialProviderFor(agentId),
 						credentialService,
 						user,
 						this.buildSubAgentSession(

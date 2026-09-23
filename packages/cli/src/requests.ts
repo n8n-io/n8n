@@ -74,6 +74,7 @@ export declare namespace CredentialRequest {
 	type CredentialProperties = Partial<{
 		id: string; // deleted if sent
 		name: string;
+		description: string | null;
 		type: string;
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
@@ -146,13 +147,6 @@ export declare namespace UserRequest {
 		{},
 		{},
 		{ transferId?: string; includeRole: boolean }
-	>;
-
-	export type Get = AuthenticatedRequest<
-		{ id: string; email: string; identifier: string },
-		{},
-		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean; projectId?: string }
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;

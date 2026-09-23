@@ -152,6 +152,7 @@ export { passwordSchema, createPasswordSchema } from './schemas/password.schema'
 export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
+	credentialTypeNameParamSchema,
 	executionIdParamSchema,
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
@@ -163,7 +164,10 @@ export {
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
 	tagIdParamSchema,
+	testRunIdParamSchema,
 	userIdParamSchema,
+	userIdentifierParamSchema,
+	userUuidParamSchema,
 	variableIdParamSchema,
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
@@ -184,6 +188,11 @@ export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
 } from './schemas/workflow-version.schema';
+export {
+	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
+	credentialDescriptionSchema,
+} from './schemas/credential-description.schema';
+export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
 export type {
 	DependencyType,
 	DependencyResourceType,
@@ -353,6 +362,7 @@ export {
 
 export {
 	buildRunWorkflowSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
@@ -361,6 +371,7 @@ export {
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
+	NODE_RESOURCE_GRANT_FALLBACK_KEYS,
 	WEB_SEARCH_GRANT_KEY,
 	parseDomainAccessGrants,
 	instanceAiEventTypeSchema,
@@ -412,17 +423,23 @@ export {
 	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	CANVAS_NODE_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	computerUseChannelSchema,
+	INSTANCE_CONTEXT_SURFACE_DEPTH,
+	instanceContextSurfaceSchema,
+	instanceContextReachSchema,
+	instanceContextAbsenceReasonSchema,
+	instanceContextInjectionSchema,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
@@ -433,6 +450,8 @@ export {
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
+	instanceAiThreadArtifactSchema,
+	instanceAiThreadArtifactsContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -491,6 +510,7 @@ export {
 	findUnbackedSeedWorkflowTools,
 	findSeedFolderIssues,
 	applyBranchReadOnlyOverrides,
+	resolveInstanceAiPermissions,
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -575,6 +595,11 @@ export type {
 	InstanceAiToolCallState,
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
+	InstanceContextSurface,
+	InstanceContextReach,
+	InstanceContextLegs,
+	InstanceContextAbsenceReason,
+	InstanceContextInjection,
 	InstanceAiMessage,
 	InstanceAiThreadSummary,
 	InstanceAiSSEConnectionState,
@@ -588,6 +613,8 @@ export type {
 	InstanceAiRunDebugStep,
 	InstanceAiRunDebugWorkflowCodeSnapshot,
 	InstanceAiRunDebugResponse,
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiEvalObservation,
 	InstanceAiThreadDebugRunsResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiMemoryTaskKind,
@@ -625,6 +652,8 @@ export type {
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
+	InstanceAiThreadArtifact,
+	InstanceAiThreadArtifactsContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
 	InstanceGatewayResourceDecision,
@@ -673,6 +702,7 @@ export type { AgentRunState } from './schemas/agent-run-reducer';
 export {
 	formatDebugJson,
 	summarizeJsonValue,
+	stepInstructions,
 	parseSystemPromptForDisplay,
 	parseMessageBlocks,
 	parseUsageSummary,
@@ -694,7 +724,6 @@ export {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_INSTANCE_CONTEXT_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,
@@ -826,6 +855,7 @@ export {
 	SSO_ERROR_QUERY_PARAM,
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
+export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
 
 export {
 	instanceAiApprovalDetailsSchema,

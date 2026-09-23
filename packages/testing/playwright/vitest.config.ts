@@ -8,6 +8,7 @@ export default defineConfig({
 			'scripts/**/*.test.{ts,mjs}',
 			'fixtures/**/*.test.ts',
 			'reporters/**/*.test.ts',
+			'services/**/*.test.ts',
 			'utils/**/*.test.ts',
 			'*.test.ts',
 		],

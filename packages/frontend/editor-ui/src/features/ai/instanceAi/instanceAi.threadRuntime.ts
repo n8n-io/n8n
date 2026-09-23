@@ -1,8 +1,9 @@
-import { computed, reactive, ref, triggerRef, watch } from 'vue';
+import { computed, nextTick, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildDataTablesSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
@@ -22,14 +23,21 @@ import {
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
 	type InstanceAiHandoffContext,
+	type InstanceAiThreadSourcePersisted,
 	type InstanceAiSetupItem,
+	type InstanceAiWorkflowAttachment,
 	type TaskList,
 	type AgentRunState,
 	type InstanceAiRunLimitReason,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
+import {
+	redactTelemetryProperties,
+	TELEMETRY_EVENT,
+	type InferTelemetryProps,
+} from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -51,6 +59,7 @@ import type { InstanceAiMessageAuthorship } from './prefills';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
+import { buildThreadArtifactsContext } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
@@ -68,6 +77,7 @@ import {
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
+import { instanceAiResponseNow } from './instanceAi.responseTiming';
 import { resolvePlanTasks } from './planReview.utils';
 
 /** The plan review the composer is currently collecting feedback for. */
@@ -96,12 +106,39 @@ export interface PendingConfirmationItem {
 
 export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
+type SetupChatTelemetryContext = Pick<
+	InferTelemetryProps<typeof TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE>,
+	| 'workflow_id'
+	| 'pending_credential_count'
+	| 'pending_parameter_count'
+	| 'session_id'
+	| 'variant'
+	| '$feature/118_instance_ai_setup_overhaul'
+>;
+
 const MAX_DEBUG_EVENTS = 1000;
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
 
 /** Silence window after which an active run with no stream traffic counts as stalled. */
 const GENERATION_STALL_TIMEOUT_MS = 60_000;
+
+type ResponseKind = 'completed' | 'awaiting_input';
+
+type ResponseSignal =
+	| {
+			kind: 'received';
+			responseKind: ResponseKind;
+			rendered: Promise<{ atEpochMs: number; tabVisible: boolean }>;
+	  }
+	| { kind: 'discard' };
+
+interface PendingResponseMetric {
+	startedAtEpochMs: number;
+	isFirstUserMessage: boolean;
+	actionSource: InstanceAiThreadSourcePersisted;
+	generation: number;
+}
 
 /**
  * Cross-runtime hooks the store wires up at creation time.
@@ -416,6 +453,14 @@ export function createThreadRuntime(
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
+	let readSetupChatTelemetryContext: (() => SetupChatTelemetryContext | undefined) | undefined;
+
+	function registerSetupChatTelemetryContext(reader: () => SetupChatTelemetryContext | undefined) {
+		readSetupChatTelemetryContext = reader;
+		return () => {
+			if (readSetupChatTelemetryContext === reader) readSetupChatTelemetryContext = undefined;
+		};
+	}
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
@@ -432,6 +477,8 @@ export function createThreadRuntime(
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
+	/** Focused preview tab id while the artifacts preview is open. */
+	const activeArtifactId = ref<string>();
 	// Event ids already applied on this thread — guards against replay overlap,
 	// e.g. an auto-reconnect replaying an id that already arrived just before
 	// the disconnect. Not reactive: only consulted inside onSSEMessage.
@@ -456,6 +503,15 @@ export function createThreadRuntime(
 		if (pending?.workflowId !== workflowId) return undefined;
 		pendingHandoff.value = null;
 		return { workflow: pending.workflow, execution: pending.execution };
+	}
+
+	/** Workflow stashed by a no-message hand-off; cleared after the first send. */
+	const pendingWorkflowAttachment = ref<InstanceAiWorkflowAttachment | null>(null);
+	function setPendingWorkflowAttachment(value: InstanceAiWorkflowAttachment | null): void {
+		pendingWorkflowAttachment.value = value;
+	}
+	function clearPendingWorkflowAttachment(): void {
+		pendingWorkflowAttachment.value = null;
 	}
 
 	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
@@ -484,6 +540,10 @@ export function createThreadRuntime(
 	// is the run state's own root node.
 	const runStateByGroupId = new Map<string, AgentRunState>();
 	const groupIdByRunId = new Map<string, string>();
+	const pendingResponseMetrics = new Map<string, PendingResponseMetric>();
+	const earlyResponseSignals = new Map<string, ResponseSignal>();
+	const earlyTerminalRunIds = new Set<string>();
+	let responseMetricGeneration = 0;
 	let eventSource: EventSource | null = null;
 	let sseGeneration = 0;
 	let hydrationGeneration = 0;
@@ -504,6 +564,7 @@ export function createThreadRuntime(
 			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
+		() => pendingWorkflowAttachment.value ?? undefined,
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -528,6 +589,21 @@ export function createThreadRuntime(
 		...findLatestSetupItemsFromMessages(messages.value),
 		...latestSetupItems.value,
 	}));
+	const latestSetupWorkflowId = computed(() => {
+		let latest: InstanceAiAgentNode['latestSetupAnnouncement'];
+		for (const message of messages.value) {
+			const announcement = message.agentTree?.latestSetupAnnouncement;
+			if (announcement && (!latest || announcement.timestamp >= latest.timestamp))
+				latest = announcement;
+		}
+		if (latest) return latest.workflowId;
+		// Legacy snapshots lack update order. Only select an unambiguous workflow.
+		for (const message of messages.value.toReversed()) {
+			const workflowIds = Object.keys(message.agentTree?.setupItemsByWorkflowId ?? {});
+			if (workflowIds.length > 0) return workflowIds.length === 1 ? workflowIds[0] : undefined;
+		}
+		return undefined;
+	});
 
 	// --- Telemetry: 'User viewed new builder workflow' ---
 	// FE counterpart of the backend 'Builder created workflow' event, which carries
@@ -566,6 +642,88 @@ export function createThreadRuntime(
 		},
 		{ flush: 'sync' },
 	);
+
+	function responseKindForEvent(event: InstanceAiEvent): ResponseKind | null | undefined {
+		if (event.type === 'confirmation-request') {
+			const confirmation = pendingConfirmations.value.find(
+				(item) => item.toolCall.confirmation.requestId === event.payload.requestId,
+			);
+			return confirmation && hasSessionAlwaysAllowGrant(confirmation)
+				? undefined
+				: 'awaiting_input';
+		}
+		if (event.type !== 'run-finish') return undefined;
+		return event.payload.status === 'completed' ? 'completed' : null;
+	}
+
+	async function observeResponseRender(): Promise<{ atEpochMs: number; tabVisible: boolean }> {
+		await nextTick();
+		const tabVisible = document.visibilityState === 'visible';
+		if (tabVisible) {
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+		}
+		return { atEpochMs: instanceAiResponseNow(), tabVisible };
+	}
+
+	function createResponseSignal(responseKind: ResponseKind | null): ResponseSignal {
+		if (responseKind === null) return { kind: 'discard' };
+		return {
+			kind: 'received',
+			responseKind,
+			rendered: observeResponseRender(),
+		};
+	}
+
+	function settleResponseMetric(
+		runId: string,
+		metric: PendingResponseMetric,
+		signal: ResponseSignal,
+	): void {
+		pendingResponseMetrics.delete(runId);
+		if (signal.kind === 'discard') return;
+
+		void signal.rendered.then(({ atEpochMs, tabVisible }) => {
+			if (metric.generation !== responseMetricGeneration) return;
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE, {
+				instance_id: rootStore.instanceId,
+				thread_id: threadId,
+				run_id: runId,
+				latency_ms: Math.max(0, Math.round(atEpochMs - metric.startedAtEpochMs)),
+				is_first_user_message: metric.isFirstUserMessage,
+				response_kind: signal.responseKind,
+				action_source: metric.actionSource,
+				tab_visible: tabVisible,
+			});
+		});
+	}
+
+	function handleResponseMetricEvent(event: InstanceAiEvent): void {
+		const responseKind = responseKindForEvent(event);
+		if (responseKind === undefined) return;
+
+		const isTerminal = event.type === 'run-finish';
+		if (isTerminal && pendingMessageCount.value > 0) {
+			earlyTerminalRunIds.add(event.runId);
+		}
+
+		const pendingMetric = pendingResponseMetrics.get(event.runId);
+		if (!pendingMetric && pendingMessageCount.value === 0) return;
+
+		const signal = createResponseSignal(responseKind);
+		if (pendingMetric) {
+			settleResponseMetric(event.runId, pendingMetric, signal);
+		} else if (!earlyResponseSignals.has(event.runId)) {
+			earlyResponseSignals.set(event.runId, signal);
+		}
+	}
+
+	function registerResponseMetric(runId: string, metric: PendingResponseMetric): void {
+		pendingResponseMetrics.set(runId, metric);
+		const earlySignal = earlyResponseSignals.get(runId);
+		if (!earlySignal) return;
+		earlyResponseSignals.delete(runId);
+		settleResponseMetric(runId, metric, earlySignal);
+	}
 
 	// --- Telemetry: 'Builder generation stalled' ---
 	// Fires when the active run has produced nothing on the stream for a minute.
@@ -765,6 +923,15 @@ export function createThreadRuntime(
 		if (toolName === 'data-tables') {
 			return buildDataTablesSessionGrantKey(action);
 		}
+		// Executing a node grants "always allow" per node type + resource + operation,
+		// mirroring the backend thread grant. Without a type, fail closed.
+		if (toolName === 'nodes' && action === 'execute') {
+			const nodeType = typeof args.type === 'string' ? args.type : '';
+			if (!nodeType) return null;
+			const config = isRecord(args.config) ? args.config : undefined;
+			const parameters = isRecord(config?.parameters) ? config.parameters : undefined;
+			return buildExecuteNodeSessionGrantKey(nodeType, parameters);
+		}
 		return `${toolName}:${action}`;
 	}
 
@@ -804,6 +971,17 @@ export function createThreadRuntime(
 		return true;
 	}
 
+	function hasSessionAlwaysAllowGrant(item: PendingConfirmationItem): boolean {
+		if (!isGenericApprovalEligible(item)) return false;
+		const confirmation = item.toolCall.confirmation;
+		const key = buildAlwaysAllowKey(
+			item.toolCall.toolName,
+			item.toolCall.args ?? {},
+			confirmation.workflowId,
+		);
+		return key !== null && sessionAlwaysAllowKeys.value.has(key);
+	}
+
 	// In-flight guard for the auto-approve watcher. We can't rely on
 	// `resolvedConfirmationIds` to skip duplicates here because we only mark
 	// resolved *after* `confirmAction` succeeds — otherwise a failed request
@@ -818,13 +996,7 @@ export function createThreadRuntime(
 				const conf = item.toolCall.confirmation;
 				if (resolvedConfirmationIds.has(conf.requestId)) continue;
 				if (autoApproveInFlight.has(conf.requestId)) continue;
-				if (!isGenericApprovalEligible(item)) continue;
-				const key = buildAlwaysAllowKey(
-					item.toolCall.toolName,
-					item.toolCall.args ?? {},
-					conf.workflowId,
-				);
-				if (key === null || !sessionAlwaysAllowKeys.value.has(key)) continue;
+				if (!hasSessionAlwaysAllowGrant(item)) continue;
 
 				autoApproveInFlight.add(conf.requestId);
 				try {
@@ -954,6 +1126,7 @@ export function createThreadRuntime(
 			if (parsed.data.type === 'run-start' || parsed.data.type === 'run-finish') {
 				triggerRef(messages);
 			}
+			handleResponseMetricEvent(parsed.data);
 			// When a run finishes, refresh thread list to pick up auto-generated titles
 			if (previousRunId && activeRunId.value === null) {
 				hooks.onRunFinish();
@@ -1111,6 +1284,10 @@ export function createThreadRuntime(
 		sseState.value = 'disconnected';
 	}
 
+	function setActiveArtifactId(id?: string): void {
+		activeArtifactId.value = id;
+	}
+
 	/** Reset all state owned by this runtime. */
 	function resetState(): void {
 		hydrationGeneration += 1;
@@ -1127,14 +1304,22 @@ export function createThreadRuntime(
 		sessionAlwaysAllowKeys.value = new Set();
 		runStateByGroupId.clear();
 		groupIdByRunId.clear();
+		pendingResponseMetrics.clear();
+		earlyResponseSignals.clear();
+		earlyTerminalRunIds.clear();
+		responseMetricGeneration += 1;
 		lastEventId.value = undefined;
 		seenEventIds.clear();
+		activeArtifactId.value = undefined;
+		pendingWorkflowAttachment.value = null;
+		pendingHandoff.value = null;
 		disarmGenerationStallWatchdog();
 	}
 
 	function dispose(): void {
 		closeSSE();
 		resetState();
+		readSetupChatTelemetryContext = undefined;
 	}
 
 	async function loadHistoricalMessages(): Promise<HistoricalHydrationStatus> {
@@ -1260,10 +1445,7 @@ export function createThreadRuntime(
 		}
 	}
 
-	function trackUserMessageSent(
-		isFirstMessage: boolean,
-		authorship: InstanceAiMessageAuthorship,
-	): void {
+	function resolveActionSource(): InstanceAiThreadSourcePersisted {
 		const rawSource = hooks.getThreadMetadata?.(threadId)?.source;
 		const actionSource = isInstanceAiThreadSource(rawSource)
 			? rawSource
@@ -1279,9 +1461,21 @@ export function createThreadRuntime(
 					'Pass launch metadata through syncThread so action_source is attributed.',
 			);
 		}
+		return actionSource;
+	}
 
+	function trackUserMessageSent(
+		isFirstMessage: boolean,
+		authorship: InstanceAiMessageAuthorship,
+		actionSource: InstanceAiThreadSourcePersisted,
+	): void {
 		const isPrefill = authorship.kind === 'prefill';
+		const setupContext =
+			isPrefill && authorship.prefillType === 'handoff_setup_panel_execute'
+				? undefined
+				: readSetupChatTelemetryContext?.();
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
+			...setupContext,
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,
@@ -1299,7 +1493,7 @@ export function createThreadRuntime(
 		attachments?: InstanceAiAttachment[],
 		handoffContext?: InstanceAiHandoffContext,
 		pushRef?: string,
-	): Promise<boolean> {
+	): Promise<string | null> {
 		try {
 			const { runId } = await postMessage(
 				rootStore.restApiContext,
@@ -1310,12 +1504,10 @@ export function createThreadRuntime(
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
 				instanceAiSettingsStore.computerUseChannels,
+				buildThreadArtifactsContext(producedArtifacts.values(), activeArtifactId.value),
 			);
 
-			if (runId) {
-				activeRunId.value = runId;
-			}
-			return true;
+			return runId;
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
 			if (status === 409) {
@@ -1345,7 +1537,7 @@ export function createThreadRuntime(
 			} else {
 				toast.showError(new Error('Failed to send message. Try again.'), 'Send failed');
 			}
-			return false;
+			return null;
 		}
 	}
 
@@ -1360,24 +1552,46 @@ export function createThreadRuntime(
 			attachments?: InstanceAiAttachment[];
 			pushRef?: string;
 			handoffContext?: InstanceAiHandoffContext;
+			responseStartedAtEpochMs?: number;
 		},
 	): Promise<boolean> {
-		const { authorship, attachments, pushRef, handoffContext } = opts;
+		const {
+			authorship,
+			attachments,
+			pushRef,
+			handoffContext,
+			responseStartedAtEpochMs = instanceAiResponseNow(),
+		} = opts;
+		const metricGeneration = responseMetricGeneration;
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
+			const actionSource = resolveActionSource();
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
-			trackUserMessageSent(isFirstMessage, authorship);
+			trackUserMessageSent(isFirstMessage, authorship, actionSource);
 
-			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
+			const runId = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
+			if (!runId) {
 				removeOptimisticMessage(optimistic);
 				return false;
 			}
+			if (metricGeneration !== responseMetricGeneration) return true;
+			if (!earlyTerminalRunIds.has(runId)) activeRunId.value = runId;
+			registerResponseMetric(runId, {
+				startedAtEpochMs: responseStartedAtEpochMs,
+				isFirstUserMessage: isFirstMessage,
+				actionSource,
+				generation: metricGeneration,
+			});
 			return true;
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
+			if (pendingMessageCount.value === 0) {
+				earlyResponseSignals.clear();
+				earlyTerminalRunIds.clear();
+			}
 		}
 	}
 
@@ -1575,10 +1789,13 @@ export function createThreadRuntime(
 		producedArtifacts,
 		resourceNameIndex,
 		linkableResourceNameIndex,
+		activeArtifactId,
+		setActiveArtifactId,
 		feedbackByResponseId,
 		rateableResponseId,
 		currentTasks,
 		setupItemsByWorkflowId,
+		latestSetupWorkflowId,
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,
@@ -1586,6 +1803,9 @@ export function createThreadRuntime(
 		// actions
 		setPendingHandoff,
 		consumePendingHandoff,
+		pendingWorkflowAttachment,
+		setPendingWorkflowAttachment,
+		clearPendingWorkflowAttachment,
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,
@@ -1595,6 +1815,7 @@ export function createThreadRuntime(
 		closeSSE,
 		loadHistoricalMessages,
 		loadThreadStatus,
+		registerSetupChatTelemetryContext,
 		sendMessage,
 		cancelRun,
 		cancelBackgroundTask,

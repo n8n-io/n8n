@@ -19,10 +19,11 @@ import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
 import {
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity, type CredentialUsageScope } from './credentials-entity';
-import { DeploymentKey } from './deployment-key';
+import { DeploymentKey, OAUTH_JWE_PRIVATE_KEY_TYPE } from './deployment-key';
 import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
 import { ExecutionAnnotation } from './execution-annotation.ee';
@@ -136,8 +137,10 @@ export {
 	CredentialsEntity,
 	type CredentialUsageScope,
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 	DeploymentKey,
+	OAUTH_JWE_PRIVATE_KEY_TYPE,
 	EvaluationCollection,
 	EvaluationConfig,
 	Folder,

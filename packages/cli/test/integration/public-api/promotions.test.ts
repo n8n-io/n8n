@@ -11,6 +11,7 @@ import { PromotionConfigRepository } from '@/modules/promotions.ee/database/repo
 import { PromotionConnectionProjectRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
+import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
@@ -694,6 +695,62 @@ describe('Promotions in Public API', () => {
 		});
 	});
 
+	describe('change preview', () => {
+		it('checks the scope of the requested direction and forwards the query', async () => {
+			const getChanges = vi
+				.spyOn(Container.get(PromotionChangeService), 'getChanges')
+				.mockResolvedValue({ commitSha: 'a'.repeat(40), changes: [] });
+			try {
+				const pushOnly = testServer.publicApiAgentFor(
+					await createOwnerWithApiKey({ scopes: ['gitConnection:push'] }),
+				);
+				const pullOnly = testServer.publicApiAgentFor(
+					await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] }),
+				);
+
+				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
+				expect(promote.status, JSON.stringify(promote.body)).toBe(200);
+				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), changes: [] });
+				expect(getChanges).toHaveBeenLastCalledWith(
+					expect.objectContaining({ id: expect.any(String) }),
+					'proj1',
+					'promote',
+					expect.anything(),
+				);
+
+				expect((await pushOnly.get('/promotions/projects/proj1/changes/apply')).status).toBe(403);
+				expect((await pullOnly.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
+
+				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply?search=order');
+				expect(apply.status, JSON.stringify(apply.body)).toBe(200);
+				expect(getChanges).toHaveBeenLastCalledWith(
+					expect.anything(),
+					'proj1',
+					'apply',
+					expect.objectContaining({ search: 'order' }),
+				);
+
+				expect((await pullOnly.get('/promotions/projects/proj1/changes/sideways')).status).toBe(
+					404,
+				);
+				expect(getChanges).toHaveBeenCalledTimes(2);
+			} finally {
+				getChanges.mockRestore();
+			}
+		});
+
+		it('explains that the direction needs a clone first', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			await createConnection(agent);
+			const project = await createTeamProject('Team project', owner);
+
+			const response = await agent.get(`/promotions/projects/${project.id}/changes/apply`);
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('not cloned');
+		});
+	});
+
 	describe('package operations', () => {
 		const continueBody: ContinueApplyPackageDto = {
 			expectedSource: { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) },
@@ -755,6 +812,37 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
+		it('validates the optional Apply source like Continue and applies the tip without one', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			for (const body of [
+				{ ...continueBody, force: true },
+				{ expectedSource: { ...continueBody.expectedSource, commitSha: 'HEAD' } },
+				{ expectedSource: { ...continueBody.expectedSource, resolved: true } },
+			]) {
+				const response = await agent.post('/promotions/connections/someId/apply').send(body);
+				expect(response.status).toBe(400);
+			}
+
+			const id = await createConnection(agent);
+			const initial = vi.spyOn(Container.get(PromotionsService), 'apply').mockResolvedValue({
+				status: 'source-changed',
+				connectionId: id,
+				configId: continueBody.expectedSource.configId,
+				git: { branchName: 'main', commitSha: continueBody.expectedSource.commitSha },
+			});
+			try {
+				const response = await agent.post(`/promotions/connections/${id}/apply`);
+				expect(response.status, JSON.stringify(response.body)).toBe(200);
+				expect(initial).toHaveBeenCalledWith(
+					id,
+					expect.objectContaining({ id: owner.id }),
+					undefined,
+				);
+			} finally {
+				initial.mockRestore();
+			}
+		});
+
 		it.each(['blocked', 'applied', 'source-changed'] as const)(
 			'returns the %s contract through both Apply routes with only the pull API-key scope',
 			async (status) => {
@@ -782,6 +870,7 @@ describe('Promotions in Public API', () => {
 					configId: continueBody.expectedSource.configId,
 					git: { branchName: 'main', commitSha: continueBody.expectedSource.commitSha },
 					preflight: {
+						missingProjects: [],
 						missingBindings: [
 							{
 								kind: 'variable',
@@ -828,6 +917,7 @@ describe('Promotions in Public API', () => {
 					expect(initial).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
+						continueBody.expectedSource,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						id,

@@ -20,6 +20,7 @@ import type {
 } from '@/services/oauth-token-verifier-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
@@ -50,6 +51,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly txRunner: TransactionRunner,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly urlService: UrlService,
 	) {}
 
 	getAccessTokenExpirySeconds(): number {
@@ -78,6 +80,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 		const accessToken = this.jwtService.signForResource(
 			{
+				iss: this.urlService.getInstanceBaseUrl(),
 				sub: userId,
 				client_id: clientId,
 				jti: randomUUID(),
@@ -92,6 +95,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				},
 			},
 			audience,
+			{
+				header: {
+					typ: 'at+jwt',
+					alg: 'HS256',
+				},
+			},
 		);
 
 		const refreshToken = randomBytes(32).toString('hex');

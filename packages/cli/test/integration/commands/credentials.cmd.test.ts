@@ -1,3 +1,5 @@
+import { GlobalConfig } from '@n8n/config';
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsEntity, DbLock, DbLockService, InstanceCredentialAssignment } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -47,6 +49,7 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+	Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = true;
 	await testDb.truncate([
 		'InstanceCredentialAssignment',
 		'CredentialsEntity',
@@ -194,6 +197,117 @@ test('import:credentials should include only selected credential properties', as
 	expect(after.credentials[0].createdAt.toISOString()).not.toBe(credentialsFixture.createdAt);
 	expect(after.credentials[0].updatedAt.toISOString()).not.toBe(credentialsFixture.updatedAt);
 });
+
+test('import:credentials should trim a description and store a blank one as null', async () => {
+	await createOwner();
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description.json',
+	]);
+
+	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
+
+	expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	expect(byId.get('desc-blank')).toBeNull();
+});
+
+test('import:credentials should keep a stored description when the file omits it', async () => {
+	await createOwner();
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description.json',
+	]);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description-omitted.json',
+	]);
+
+	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c]));
+	expect(byId.get('desc-untrimmed')?.name).toBe('cred-untrimmed-description-reimported');
+	expect(byId.get('desc-untrimmed')?.description).toBe('Read-only key for reporting.');
+});
+
+test.each([
+	['a non-string', 42],
+	['an over-cap', 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1)],
+])(
+	'import:credentials should reject %s description and keep the stored one',
+	async (_label, description) => {
+		await createOwner();
+		await command.run([
+			'--input=./test/integration/commands/import-credentials/credentials-description.json',
+		]);
+
+		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+		const inputPath = path.join(temporaryDirectory, 'credentials.json');
+		fs.writeFileSync(
+			inputPath,
+			JSON.stringify([
+				{
+					id: 'desc-untrimmed',
+					name: 'cred-untrimmed-description',
+					type: 'aws',
+					data: { region: 'eu-west-1' },
+					description,
+				},
+			]),
+		);
+
+		try {
+			await expect(command.run([`--input=${inputPath}`])).rejects.toThrow(
+				'Credential "desc-untrimmed"',
+			);
+		} finally {
+			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+		}
+
+		const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
+		expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	},
+);
+
+test.each([false, undefined])(
+	'import:credentials ignores descriptions and preserves stored values when the flag is %s',
+	async (enabled) => {
+		await createOwner();
+		await command.run([
+			'--input=./test/integration/commands/import-credentials/credentials-description.json',
+		]);
+		if (enabled === undefined) {
+			delete Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG];
+		} else {
+			Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = enabled;
+		}
+		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+		const inputPath = path.join(temporaryDirectory, 'credentials.json');
+		fs.writeFileSync(
+			inputPath,
+			JSON.stringify(
+				['desc-untrimmed', 'desc-new'].map((id) => ({
+					id,
+					name: 'Reporting account',
+					type: 'aws',
+					data: { region: 'eu-west-1' },
+					description: 42,
+				})),
+			),
+		);
+
+		try {
+			await command.run([`--input=${inputPath}`]);
+		} finally {
+			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+		}
+
+		const byId = new Map(
+			(await getAllCredentials()).map((credential) => [credential.id, credential]),
+		);
+		expect(byId.get('desc-untrimmed')).toMatchObject({
+			name: 'Reporting account',
+			description: 'Read-only key for reporting.',
+		});
+		expect(byId.get('desc-new')?.description).toBeNull();
+	},
+);
 
 test('import:credentials should exclude selected credential properties', async () => {
 	const owner = await createOwner();
@@ -691,4 +805,8 @@ test('`import:credential --projectId ... --userId ...` fails explaining that onl
 	).rejects.toThrowError(
 		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 	);
+});
+
+afterEach(() => {
+	delete Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG];
 });

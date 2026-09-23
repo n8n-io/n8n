@@ -13,14 +13,14 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
 | [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
-| [public.agent_checkpoints](public.agent_checkpoints.md) | 6 |  | BASE TABLE |
+| [public.agent_checkpoints](public.agent_checkpoints.md) | 7 |  | BASE TABLE |
 | [public.agent_credential_dependency](public.agent_credential_dependency.md) | 3 |  | BASE TABLE |
 | [public.agent_eval_dataset](public.agent_eval_dataset.md) | 10 |  | BASE TABLE |
 | [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
 | [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 22 |  | BASE TABLE |
-| [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
+| [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
@@ -51,7 +51,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.chat_hub_sessions](public.chat_hub_sessions.md) | 13 |  | BASE TABLE |
 | [public.chat_hub_tools](public.chat_hub_tools.md) | 9 |  | BASE TABLE |
 | [public.credential_dependency](public.credential_dependency.md) | 5 |  | BASE TABLE |
-| [public.credentials_entity](public.credentials_entity.md) | 12 |  | BASE TABLE |
+| [public.credentials_entity](public.credentials_entity.md) | 13 |  | BASE TABLE |
 | [public.data_table](public.data_table.md) | 5 |  | BASE TABLE |
 | [public.data_table_column](public.data_table_column.md) | 7 |  | BASE TABLE |
 | [public.deployment_key](public.deployment_key.md) | 7 |  | BASE TABLE |
@@ -111,7 +111,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
-| [public.scheduled_job](public.scheduled_job.md) | 23 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 24 |  | BASE TABLE |
 | [public.scheduled_task](public.scheduled_task.md) | 18 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
@@ -155,6 +155,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | ReturnType | Arguments | Type |
 | ---- | ------- | ------- | ---- |
 | public.increment_workflow_version | trigger |  | FUNCTION |
+| public.prevent_deployment_key_delete | trigger |  | FUNCTION |
 | public.uuid_generate_v1 | uuid |  | FUNCTION |
 | public.uuid_generate_v1mc | uuid |  | FUNCTION |
 | public.uuid_generate_v3 | uuid | namespace uuid, name text | FUNCTION |
@@ -189,6 +190,7 @@ erDiagram
 "public.agent_eval_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_eval_run" }o--|| "public.agent_eval_dataset" : "FOREIGN KEY (#quot;datasetId#quot;) REFERENCES agent_eval_dataset(id) ON DELETE CASCADE"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_execution_threads" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
@@ -449,6 +451,7 @@ erDiagram
   boolean expired
   varchar_255_ runId
   text state
+  text threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_credential_dependency" {
@@ -536,11 +539,13 @@ erDiagram
   text userMessage
 }
 "public.agent_execution_threads" {
+  varchar_16_ accessScope
   varchar_36_ agentId FK
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
   varchar_128_ id
+  uuid ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK
@@ -863,6 +868,7 @@ erDiagram
 "public.credentials_entity" {
   timestamp_3__with_time_zone createdAt
   text data
+  text description
   varchar_36_ id
   boolean isGlobal
   boolean isManaged
@@ -1395,6 +1401,7 @@ erDiagram
   varchar_128_ scopeSlug FK
 }
 "public.scheduled_job" {
+  integer concurrencyLimit
   timestamp_3__with_time_zone createdAt
   varchar_255_ cronExpression
   boolean enabled
