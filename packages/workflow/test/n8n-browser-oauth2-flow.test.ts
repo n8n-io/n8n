@@ -68,123 +68,46 @@ describe('n8nBrowserOAuth2Flow', () => {
 		expect(response.writeHead).toHaveBeenCalledWith(302, { Location: AUTHORIZE_URL });
 	});
 
+	// The gate: only a top-level browser navigation on a GET enters the flow. Everything
+	// else stays with bearer-token auth, whatever it carries. A redirect can never carry
+	// a POST body; SameSite=Lax still sends the one-hop cookie on a same-origin fetch();
+	// and a hidden <iframe> reports `navigate` too, so `Sec-Fetch-Dest` tells it apart
+	// from the address bar changing. `force` skips the heuristic, never the GET rule.
+	const COOKIE = 'n8n-webhook-oauth=fresh-token';
+	const CALLBACK = { code: 'c1', state: 's1' };
+	const NAV = { 'sec-fetch-mode': 'navigate' };
+	const CORS = { 'sec-fetch-mode': 'cors' };
+	const JSON_ACCEPT = { accept: 'application/json' };
 	it.each([
-		['a non-browser GET', { accept: 'application/json' }],
-		['a POST', { method: 'POST', accept: '*/*' }],
-	])('leaves %s to bearer-token auth', async (_label, req) => {
+		['a non-browser GET', JSON_ACCEPT, false],
+		['a POST', { method: 'POST', accept: '*/*' }, false],
+		['a POST with the one-hop cookie', { method: 'POST', cookie: COOKIE }, false],
+		['a POST with callback code/state', { method: 'POST', query: CALLBACK }, false],
+		['Sec-Fetch-Mode: cors with an HTML Accept', { headers: CORS }, false],
+		['Sec-Fetch-Dest: iframe', { headers: { ...NAV, 'sec-fetch-dest': 'iframe' } }, false],
+		['Sec-Fetch-Dest: iframe, Accept fallback', { headers: { 'sec-fetch-dest': 'iframe' } }, false],
+		['a non-navigation GET with the one-hop cookie', { cookie: COOKIE, headers: CORS }, false],
+		['a non-navigation GET with callback code/state', { query: CALLBACK, headers: CORS }, false],
+		['a POST, even when forced', { method: 'POST', accept: '*/*' }, true],
+	])('leaves %s to bearer-token auth', async (_label, req, force) => {
 		const { context, response } = buildContext(req);
 
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('not-applicable');
-		expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
-		expect(response.writeHead).not.toHaveBeenCalled();
-	});
-
-	// The whole flow is GET-only, not just the initial heuristic: a redirect can never
-	// carry a POST body, so nothing downstream of the heuristic (callback exchange,
-	// cookie consumption) may run for another method either — even if the request
-	// happens to carry a stray cookie or spoofed callback params.
-	it('leaves a POST carrying the one-hop cookie to bearer-token auth, instead of consuming it', async () => {
-		const { context, response } = buildContext({
-			method: 'POST',
-			cookie: 'n8n-webhook-oauth=fresh-token',
-		});
-
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('not-applicable');
+		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL, force)).toBe('not-applicable');
+		expect(context.completeN8nOAuth2Flow).not.toHaveBeenCalled();
 		expect(context.validateN8nOAuth2Token).not.toHaveBeenCalled();
 		expect(response.clearCookie).not.toHaveBeenCalled();
-	});
-
-	it('leaves a POST carrying callback code/state to bearer-token auth, instead of exchanging it', async () => {
-		const { context, response } = buildContext({
-			method: 'POST',
-			query: { code: 'c1', state: 's1' },
-		});
-
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('not-applicable');
-		expect(context.completeN8nOAuth2Flow).not.toHaveBeenCalled();
 		expect(response.writeHead).not.toHaveBeenCalled();
 	});
 
-	// SameSite=Lax only restricts cross-site requests, so a same-origin fetch() still
-	// carries the one-hop cookie; only a top-level navigation may spend it or the
-	// callback code.
 	it.each([
-		['the one-hop cookie', { cookie: 'n8n-webhook-oauth=fresh-token' }],
-		['callback code/state', { query: { code: 'c1', state: 's1' } }],
-	])('leaves a non-navigation GET carrying %s to bearer-token auth', async (_label, req) => {
-		const { context, response } = buildContext({ ...req, headers: { 'sec-fetch-mode': 'cors' } });
+		['Sec-Fetch-Mode: navigate without an HTML Accept', { ...JSON_ACCEPT, headers: NAV }, false],
+		['Sec-Fetch-Dest: document', { headers: { ...NAV, 'sec-fetch-dest': 'document' } }, false],
+		['no browser signal at all, when forced', JSON_ACCEPT, true],
+	])('redirects a GET carrying %s', async (_label, req, force) => {
+		const { context, response } = buildContext(req);
 
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('not-applicable');
-		expect(context.validateN8nOAuth2Token).not.toHaveBeenCalled();
-		expect(context.completeN8nOAuth2Flow).not.toHaveBeenCalled();
-		expect(response.clearCookie).not.toHaveBeenCalled();
-		expect(response.writeHead).not.toHaveBeenCalled();
-	});
-
-	it('redirects a GET carrying Sec-Fetch-Mode: navigate, even without an HTML Accept', async () => {
-		const { context, response } = buildContext({
-			accept: 'application/json',
-			headers: { 'sec-fetch-mode': 'navigate' },
-		});
-
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('handled');
+		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL, force)).toBe('handled');
 		expect(response.writeHead).toHaveBeenCalledWith(302, { Location: AUTHORIZE_URL });
-	});
-
-	it('leaves a GET carrying Sec-Fetch-Mode: cors to bearer-token auth, even with an HTML Accept', async () => {
-		const { context, response } = buildContext({
-			accept: 'text/html',
-			headers: { 'sec-fetch-mode': 'cors' },
-		});
-
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('not-applicable');
-		expect(response.writeHead).not.toHaveBeenCalled();
-	});
-
-	// Sec-Fetch-Mode: navigate is reported by an <iframe src="..."> on someone else's
-	// page too, not just a top-level navigation — Sec-Fetch-Dest is what tells the two
-	// apart, so a victim's session can't be silently ridden into the flow via a hidden
-	// iframe embedding a webhook URL the victim previously consented to.
-	it('leaves a GET carrying Sec-Fetch-Dest: iframe to bearer-token auth, even with Sec-Fetch-Mode: navigate', async () => {
-		const { context, response } = buildContext({
-			headers: { 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'iframe' },
-		});
-
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('not-applicable');
-		expect(response.writeHead).not.toHaveBeenCalled();
-	});
-
-	it('redirects a GET carrying Sec-Fetch-Dest: document alongside Sec-Fetch-Mode: navigate', async () => {
-		const { context, response } = buildContext({
-			headers: { 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document' },
-		});
-
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('handled');
-		expect(response.writeHead).toHaveBeenCalledWith(302, { Location: AUTHORIZE_URL });
-	});
-
-	it('also rejects an iframe embed on the Accept fallback path, when Fetch Metadata is otherwise absent', async () => {
-		const { context, response } = buildContext({
-			accept: 'text/html',
-			headers: { 'sec-fetch-dest': 'iframe' },
-		});
-
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('not-applicable');
-		expect(response.writeHead).not.toHaveBeenCalled();
-	});
-
-	it('forces the redirect on a GET with no browser signal at all when force is set', async () => {
-		const { context, response } = buildContext({ accept: 'application/json' });
-
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL, true)).toBe('handled');
-		expect(response.writeHead).toHaveBeenCalledWith(302, { Location: AUTHORIZE_URL });
-	});
-
-	it('still leaves a POST to bearer-token auth even when force is set', async () => {
-		const { context, response } = buildContext({ method: 'POST', accept: '*/*' });
-
-		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL, true)).toBe('not-applicable');
-		expect(response.writeHead).not.toHaveBeenCalled();
 	});
 
 	it('exchanges the callback code, then bounces to the clean URL with a one-hop cookie', async () => {

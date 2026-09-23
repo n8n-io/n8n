@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { REDACTED, redactedHeaders } from '../src/auth-redaction';
 import type { IWebhookFunctions, N8nOAuth2ValidationResult } from '../src/interfaces';
+import type { N8nOAuth2BrowserFlowMode } from '../src/n8n-oauth2-auth';
 import { n8nOAuth2Auth, resolveOAuthClientMode } from '../src/n8n-oauth2-auth';
 
 const WEBHOOK_URL = 'https://n8n.example.com/webhook/protected-path';
@@ -179,53 +180,32 @@ describe('n8nOAuth2Auth', () => {
 	});
 
 	describe('browser flow', () => {
-		it('redirects a tokenless browser navigation instead of 401ing, under auto-detect', async () => {
-			const { context, response } = buildContext({
-				otherHeaders: { accept: 'text/html' },
-			});
+		// Only the dispatch is tested here: which modes enter the flow and with what
+		// `force`. The navigation heuristics live on `n8nBrowserOAuth2Flow` and are
+		// covered there.
+		it.each<[string, N8nOAuth2BrowserFlowMode | undefined]>([
+			['bearer', 'bearer'],
+			['omitted (e.g. the MCP trigger)', undefined],
+		])(
+			'never enters the flow for a browser navigation when browserFlow is %s',
+			async (_label, browserFlow) => {
+				const { context, response } = buildContext({ otherHeaders: { accept: 'text/html' } });
 
-			const result = await n8nOAuth2Auth(context, {
-				realm: 'n8n Webhook',
-				method: 'GET',
-				browserFlow: 'auto',
-			});
+				const result = await n8nOAuth2Auth(context, {
+					realm: 'n8n Webhook',
+					method: 'GET',
+					browserFlow,
+				});
 
-			expect(result).toBe('handled');
-			expect(context.beginN8nOAuth2Flow).toHaveBeenCalled();
-			expect(response.writeHead).toHaveBeenCalledWith(302, { Location: AUTHORIZE_URL });
-		});
+				expect(result).toBe('handled');
+				expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+				expect(response.writeHead).toHaveBeenCalledWith(401, {
+					'WWW-Authenticate': expect.stringContaining('realm="n8n Webhook"'),
+				});
+			},
+		);
 
-		it('still 401s a tokenless machine GET under auto-detect', async () => {
-			const { context, response } = buildContext({ otherHeaders: { accept: 'application/json' } });
-
-			const result = await n8nOAuth2Auth(context, {
-				realm: 'n8n Webhook',
-				method: 'GET',
-				browserFlow: 'auto',
-			});
-
-			expect(result).toBe('handled');
-			expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
-			expect(response.writeHead).toHaveBeenCalledWith(401, {
-				'WWW-Authenticate': expect.stringContaining('realm="n8n Webhook"'),
-			});
-		});
-
-		it('never redirects when forced to bearer-only, even for a browser navigation', async () => {
-			const { context, response } = buildContext({ otherHeaders: { accept: 'text/html' } });
-
-			const result = await n8nOAuth2Auth(context, {
-				realm: 'n8n Webhook',
-				method: 'GET',
-				browserFlow: 'bearer',
-			});
-
-			expect(result).toBe('handled');
-			expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
-			expect(response.writeHead).toHaveBeenCalledWith(401, expect.any(Object));
-		});
-
-		it('redirects a plain tokenless GET when forced to browser, without any browser signal', async () => {
+		it('forces the flow on a plain tokenless GET under browser mode, without any browser signal', async () => {
 			const { context, response } = buildContext({ otherHeaders: { accept: 'application/json' } });
 
 			const result = await n8nOAuth2Auth(context, {
@@ -235,32 +215,7 @@ describe('n8nOAuth2Auth', () => {
 			});
 
 			expect(result).toBe('handled');
-			expect(context.beginN8nOAuth2Flow).toHaveBeenCalled();
 			expect(response.writeHead).toHaveBeenCalledWith(302, { Location: AUTHORIZE_URL });
-		});
-
-		it('still 401s a tokenless POST when forced to browser: a redirect cannot carry a body', async () => {
-			const { context, response } = buildContext({ method: 'POST' });
-
-			const result = await n8nOAuth2Auth(context, {
-				realm: 'n8n Webhook',
-				method: 'POST',
-				browserFlow: 'browser',
-			});
-
-			expect(result).toBe('handled');
-			expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
-			expect(response.writeHead).toHaveBeenCalledWith(401, expect.any(Object));
-		});
-
-		it('leaves the 401 path unchanged when browserFlow is omitted (e.g. the MCP trigger)', async () => {
-			const { context, response } = buildContext({ otherHeaders: { accept: 'text/html' } });
-
-			const result = await n8nOAuth2Auth(context, { realm: 'n8n MCP Server', method: 'GET' });
-
-			expect(result).toBe('handled');
-			expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
-			expect(response.writeHead).toHaveBeenCalledWith(401, expect.any(Object));
 		});
 
 		it('resolves ok from the one-hop cookie once the browser flow completes', async () => {

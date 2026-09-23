@@ -263,13 +263,8 @@ export class Webhook extends Node {
 				const authResult = await n8nOAuth2Auth(context, {
 					realm: 'n8n Webhook',
 					method: req.method,
-					// A tokenless browser GET is bounced through this instance's own
-					// authorization server instead of being 401'd, so a human can just
-					// click the link. Machine callers still need a bearer token up front.
-					// Defaults to `auto` for a node created at `nodeVersion` 2.2 or newer;
-					// a workflow saved before `oauthClient` existed keeps its original
-					// bearer-only behavior instead (see `resolveOAuthClientMode`), matching
-					// the resolvers' same version-gated default for `isFirstParty`.
+					// Same version-gated default as the resolvers' `isFirstParty`, so the
+					// runtime redirect and the AS's virtual client can't disagree.
 					browserFlow: resolveOAuthClientMode(options.oauthClient, nodeVersion),
 				});
 				if (authResult === 'handled') {

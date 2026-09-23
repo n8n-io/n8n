@@ -28,17 +28,13 @@ function pathOf(url: string): string {
 }
 
 /**
- * `path` must be where the browser will *read* the cookie, which is not always where
- * it is set: a dynamic webhook's resource URL — and therefore its `redirect_uri` —
- * is the templated path (`/webhook/<id>/user/:id`), so the callback hop lands on that
- * literal path while the hop that consumes the cookie sits on the resolved one
- * (`/webhook/<id>/user/42`). Scoping to the redirect target is what makes it
- * round-trip; scoping to either request's own path does not.
+ * `path` must be where the browser will *read* the cookie: a dynamic webhook's
+ * `redirect_uri` is the templated path (`/webhook/<id>/user/:id`), but the hop that
+ * consumes the cookie sits on the resolved one (`/webhook/<id>/user/42`).
  */
 function cookieOptions(req: Request, path: string) {
-	// Derive `secure` from the request scheme (honouring x-forwarded-proto) rather than
-	// config, so the cookie is actually sent back on the follow-up GET over http in dev
-	// while staying Secure over https.
+	// `secure` follows the request scheme (honouring x-forwarded-proto), so the cookie
+	// still comes back over plain http in dev.
 	const forwardedProto = req.headers['x-forwarded-proto'];
 	const proto = (typeof forwardedProto === 'string' ? forwardedProto.trim() : '') || req.protocol;
 	return {
@@ -63,10 +59,9 @@ function readCookie(req: Request): string | null {
 }
 
 /**
- * Drops the one-hop cookie from the request header once it has been read, so the
- * access token it carries never reaches the workflow's `headers` data. Unrelated
- * cookies stay. The cli-side webhook sanitizer cannot do this: it runs before the
- * node, and the flow still has to read the cookie back on the redirect hop.
+ * Drops the one-hop cookie from the request so its token never reaches the workflow's
+ * `headers` data; unrelated cookies stay. The cli sanitizer runs before the node and
+ * must leave it in place for the flow to read.
  */
 function stripCookie(req: Request): void {
 	const rest = (req.headers.cookie ?? '')
@@ -78,17 +73,11 @@ function stripCookie(req: Request): void {
 }
 
 /**
- * True for a request that only a *top-level* browser navigation can produce —
- * the address bar changing, not a page embedding the URL in a frame. `Sec-Fetch-Mode:
- * navigate` alone doesn't distinguish those: an `<iframe src="...">` on someone
- * else's page reports `navigate` too, so a hidden iframe could otherwise ride the
- * victim's own session into a silent, no-click redirect through `/oauth/authorize`.
- * `Sec-Fetch-Dest` closes that: only `document` (or its absence, for the
- * Fetch-Metadata-less fallback below) is a real top-level load; `iframe`/`frame` is
- * rejected outright before the `Sec-Fetch-Mode`/`Accept` checks even run.
- *
- * `force` skips this check entirely for the "always redirect" node setting. Callers
- * must check the request method separately: this function assumes it is already GET.
+ * True only for a *top-level* browser navigation. `Sec-Fetch-Mode: navigate` alone is
+ * not enough: a hidden `<iframe>` on someone else's page reports it too and could ride
+ * the victim's session through `/oauth/authorize` without a click, so `Sec-Fetch-Dest`
+ * must be `document` (or absent, for the Accept fallback). `force` skips the check for
+ * the "always redirect" node setting; the caller has already ruled out non-GETs.
  */
 function isBrowserNavigation(req: Request, force: boolean): boolean {
 	if (force) return true;
@@ -100,13 +89,9 @@ function isBrowserNavigation(req: Request, force: boolean): boolean {
 }
 
 /**
- * Where to send the browser once it is authenticated: the URL it originally asked
- * for, minus the callback's own params. Path-relative so dynamic webhook paths
- * (`/webhook/<id>/user/42`) and the caller's own query survive the round trip.
- *
- * Server-side only — it is stashed against the flow `state` and never travels
- * through the browser, but it is still normalized to a single-slash path so it can
- * never become a protocol-relative (off-instance) redirect.
+ * Where to send the browser once authenticated: the URL it asked for, minus the
+ * callback's own params. Stashed server-side against `state`, yet still normalized to
+ * a single-slash path so it can never become a protocol-relative redirect.
  */
 function returnToUrl(req: Request): string {
 	const [, query] = req.originalUrl.split('?');
@@ -124,28 +109,18 @@ function redirect(res: Response, location: string): 'handled' {
 }
 
 /**
- * Authenticates a *browser* hitting an `n8nOAuth2` webhook, with zero setup on the
- * caller's side: no client registration, no token handling, just a link someone can
- * click. Reuses the authorization server this instance already runs — the webhook is
- * its own protected resource, and its URL doubles as the virtual first-party
- * client_id and redirect_uri, so PKCE + `state` are generated server-side.
+ * Authenticates a *browser* hitting an `n8nOAuth2` webhook with no client setup: the
+ * webhook URL doubles as virtual first-party client_id and redirect_uri against this
+ * instance's own AS, with PKCE and `state` generated server-side. Three GET shapes:
  *
- * Three shapes of GET reach this helper, and it tells them apart by query and cookie:
- *
- * 1. **Fresh GET** (no bearer token, browser navigation) → 302 to `/oauth/authorize`.
+ * 1. **Fresh GET** (browser navigation) → 302 to `/oauth/authorize`.
  * 2. **Callback** (`code` + `state`) → exchange server-to-server, stash the token in a
  *    one-hop cookie, 302 back to the URL originally asked for.
  * 3. **Clean GET** (cookie present) → validate, consume the cookie, run the workflow.
  *
- * Everything but the last step is just getting a human authenticated. Only a
- * redirect-driven GET can work this way: a redirect carries a URL and nothing else,
- * so a system POSTing a payload has no browser to bounce and must still present a
- * bearer token up front. Hence `'not-applicable'` for anything that isn't a browser
- * navigation — the caller falls back to the existing 401 + `WWW-Authenticate` path.
- *
- * `force` mirrors the Webhook node's "Browser (Virtual Client)" setting: skip the
- * navigation heuristic on a GET and always run the flow, for callers who know their
- * traffic is browser-driven even without Fetch Metadata or an HTML `Accept`.
+ * Anything that isn't a browser navigation on a GET is `'not-applicable'` and the
+ * caller falls back to the 401 + `WWW-Authenticate` path. `force` (the node's
+ * "Browser (Virtual Client)" setting) skips the navigation heuristic, never the GET rule.
  */
 export const n8nBrowserOAuth2Flow = async (
 	context: IWebhookFunctions,
@@ -155,19 +130,10 @@ export const n8nBrowserOAuth2Flow = async (
 	const req = context.getRequestObject();
 	const res = context.getResponseObject();
 
-	// GET-only for the whole flow, not just the navigation heuristic below: a redirect
-	// carries a URL and nothing else, so nothing here — the AS callback, the one-hop
-	// cookie — can legitimately arrive on another method. Checked first so a POST
-	// carrying a stray cookie or spoofed `code`/`state` can't reach either branch.
-	if (req.method !== 'GET') {
-		return 'not-applicable';
-	}
-
-	// Every shape below is a top-level navigation: the AS callback and the follow-up
-	// GET are redirects the browser follows. A same-origin `fetch()` carries the
-	// one-hop cookie too (SameSite=Lax only restricts cross-site), so it must not be
-	// able to spend it — it keeps the bearer-token path.
-	if (!isBrowserNavigation(req, force)) {
+	// The whole flow is GET-only and navigation-only, callback and cookie hops included:
+	// a redirect can't carry a POST body, and a same-origin fetch() still sends the
+	// Lax cookie, so neither may spend it.
+	if (req.method !== 'GET' || !isBrowserNavigation(req, force)) {
 		return 'not-applicable';
 	}
 
@@ -191,10 +157,8 @@ export const n8nBrowserOAuth2Flow = async (
 		try {
 			const result = await context.completeN8nOAuth2Flow(code, state);
 			if (result.valid) {
-				// Don't run the workflow on the callback URL itself: it still carries
-				// `code`/`state`, which would land in the webhook's query data. Stash the
-				// token in a one-hop cookie and bounce to the clean URL — the follow-up GET
-				// picks the cookie up below.
+				// Not on the callback URL itself: `code`/`state` would land in the webhook's
+				// query data. One-hop cookie, then bounce to the clean URL.
 				const location = result.metadata?.returnTo ?? returnToUrl(req);
 				res.cookie(BROWSER_OAUTH_COOKIE_NAME, result.token, {
 					...cookieOptions(req, pathOf(location)),

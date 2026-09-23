@@ -7,30 +7,20 @@ import { n8nBrowserOAuth2Flow } from './n8n-browser-oauth2-flow';
  * How a tokenless request is handled:
  * - `auto`: redirect a browser navigation, 401 everything else.
  * - `browser`: always redirect a GET, skipping the navigation heuristic.
- * - `bearer`: never redirect, always 401 — the resource is also not first-party
- *   (see the webhook resolvers), so the AS refuses its URL as a virtual client too.
- *
- * An unset value resolves to `auto` or `bearer` depending on node version — see
- * {@link resolveOAuthClientMode}.
+ * - `bearer`: never redirect, always 401; the resource is not first-party either,
+ *   so the AS refuses its URL as a virtual client too.
  */
 export type N8nOAuth2BrowserFlowMode = 'auto' | 'browser' | 'bearer';
 
 /**
- * The Webhook node's `typeVersion` at which an unset `oauthClient` starts
- * defaulting to `'auto'` instead of `'bearer'`. Below this version the option
- * didn't exist yet, so a workflow saved before it did must keep its original,
- * narrower (bearer-only, non-first-party) behavior on upgrade; only a node
- * created — or explicitly re-saved — at this version or newer opts in
- * automatically.
+ * Webhook node `typeVersion` from which an unset `oauthClient` defaults to `auto`.
+ * Below it the option didn't exist, so those workflows keep bearer-only on upgrade.
  */
 export const WEBHOOK_OAUTH_CLIENT_DEFAULT_VERSION = 2.2;
 
 /**
- * Resolves the effective `oauthClient` mode: an explicit value always wins; an
- * unset one defaults to `'auto'` for nodes at or above
- * `WEBHOOK_OAUTH_CLIENT_DEFAULT_VERSION` and to `'bearer'` below it. Shared by the
- * Webhook node (the runtime redirect decision) and its protected-resource
- * resolvers (the static `isFirstParty` grant) so the two can't diverge.
+ * Explicit value wins; unset resolves by node version. Shared by the Webhook node
+ * (runtime redirect) and its resolvers (static `isFirstParty`) so they can't diverge.
  */
 export function resolveOAuthClientMode(
 	oauthClient: N8nOAuth2BrowserFlowMode | undefined,
@@ -84,11 +74,8 @@ function sendUnauthorizedResponse(
  * parsing, protected-resource-metadata URL, error-code mapping — is identical and
  * kept here so the two auth modes can't drift.
  *
- * With `browserFlow` set to anything but `'bearer'`, a tokenless request that
- * looks like a browser navigation is redirected through this instance's own
- * authorization server instead of being 401'd (see {@link n8nBrowserOAuth2Flow}).
- * Machine callers are unaffected: anything that isn't a browser navigation still
- * gets the 401.
+ * With `browserFlow` set to anything but `'bearer'`, a tokenless browser navigation
+ * is redirected through this instance's own AS instead (see {@link n8nBrowserOAuth2Flow}).
  */
 export const n8nOAuth2Auth = async (
 	context: IWebhookFunctions,

@@ -61,26 +61,17 @@ describe('Test Webhook Node', () => {
 			});
 		});
 
-		it('exposes the oauthClient option under Options, defaulting to auto-detect and scoped to the n8nOAuth2 mode', () => {
-			const node = new Webhook();
-			const optionsParam = node.description.properties.find(
-				(property) => property.name === 'options',
-			);
-			const oauthClientOption = (optionsParam?.options as INodeProperties[] | undefined)?.find(
-				(option) => option.name === 'oauthClient',
+		it('scopes the oauthClient option to n8nOAuth2 and forbids expressions, as the resolvers read it raw', () => {
+			const options = new Webhook().description.properties.find((p) => p.name === 'options');
+			const oauthClient = (options?.options as INodeProperties[]).find(
+				(o) => o.name === 'oauthClient',
 			);
 
-			expect(oauthClientOption).toMatchObject({
-				type: 'options',
+			expect(oauthClient).toMatchObject({
 				default: 'auto',
 				displayOptions: { show: { '/authentication': ['n8nOAuth2'] } },
 				noDataExpression: true,
 			});
-			expect(oauthClientOption?.options).toEqual([
-				expect.objectContaining({ value: 'auto' }),
-				expect.objectContaining({ value: 'bearer' }),
-				expect.objectContaining({ value: 'browser' }),
-			]);
 		});
 	});
 
@@ -319,42 +310,27 @@ describe('Test Webhook Node', () => {
 			expect(result.workflowData?.[0][0].json.body).toEqual({ hello: 'world' });
 		});
 
-		describe('browser flow', () => {
-			it('still 401s a tokenless browser GET when oauthClient is unset on a pre-2.2 node, preserving prior behavior for workflows saved before this option existed', async () => {
-				// beforeEach sets typeVersion 2.1, below the 2.2 threshold where unset
-				// starts defaulting to auto.
-				req.headers.accept = 'text/html';
-
-				const result = await node.webhook(context);
-
-				expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
-				expect(res.writeHead).toHaveBeenCalledWith(401, expect.any(Object));
-				expect(result).toEqual({ noWebhookResponse: true });
-			});
-
-			it('redirects a tokenless browser GET instead of 401ing when oauthClient is unset on a 2.2+ node, defaulting to auto', async () => {
+		// The node's only decision is the mode it hands to `n8nOAuth2Auth`: explicit
+		// `oauthClient` wins, an unset one defaults to auto from typeVersion 2.2 on and
+		// stays bearer-only below, so workflows saved before the option existed keep
+		// 401ing. The heuristics behind each mode are covered on the flow itself.
+		it.each([
+			[2.1, undefined, 401],
+			[2.2, undefined, 302],
+			[2.1, 'auto', 302],
+			[2.1, 'bearer', 401],
+			[2.1, 'browser', 302],
+		])(
+			'answers a tokenless browser GET on a %s node with oauthClient %s with a %s',
+			async (typeVersion, oauthClient, status) => {
 				req.headers.accept = 'text/html';
 				context.getNode.mockReturnValue({
 					type: 'n8n-nodes-base.webhook',
-					typeVersion: 2.2,
+					typeVersion,
 					name: 'Webhook',
 				} as any);
-				context.beginN8nOAuth2Flow.mockResolvedValue('https://n8n.test/oauth/authorize?…');
-
-				const result = await node.webhook(context);
-
-				expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(
-					`${WEBHOOK_URL}?method=GET`,
-					expect.any(Object),
-				);
-				expect(res.writeHead).toHaveBeenCalledWith(302, expect.any(Object));
-				expect(result).toEqual({ noWebhookResponse: true });
-			});
-
-			it('redirects a tokenless browser GET instead of 401ing, once the node opts in via Auto-Detect', async () => {
-				req.headers.accept = 'text/html';
 				context.getNodeParameter.mockImplementation((paramName: string) => {
-					if (paramName === 'options') return { oauthClient: 'auto' };
+					if (paramName === 'options') return oauthClient ? { oauthClient } : {};
 					if (paramName === 'responseMode') return 'onReceived';
 					if (paramName === 'authentication') return 'n8nOAuth2';
 					if (paramName === 'httpMethod') return 'GET';
@@ -364,49 +340,19 @@ describe('Test Webhook Node', () => {
 
 				const result = await node.webhook(context);
 
-				expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(
-					`${WEBHOOK_URL}?method=GET`,
-					expect.any(Object),
-				);
-				expect(res.writeHead).toHaveBeenCalledWith(302, expect.any(Object));
+				expect(res.writeHead).toHaveBeenCalledWith(status, expect.any(Object));
+				if (status === 302) {
+					expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(
+						`${WEBHOOK_URL}?method=GET`,
+						expect.any(Object),
+					);
+				} else {
+					expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+				}
 				expect(context.establishTriggerIdentity).not.toHaveBeenCalled();
 				expect(result).toEqual({ noWebhookResponse: true });
-			});
-
-			it('never redirects when the node is set to Bearer Token Only, even for a browser GET', async () => {
-				req.headers.accept = 'text/html';
-				context.getNodeParameter.mockImplementation((paramName: string) => {
-					if (paramName === 'options') return { oauthClient: 'bearer' };
-					if (paramName === 'responseMode') return 'onReceived';
-					if (paramName === 'authentication') return 'n8nOAuth2';
-					if (paramName === 'httpMethod') return 'GET';
-					return undefined;
-				});
-
-				const result = await node.webhook(context);
-
-				expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
-				expect(res.writeHead).toHaveBeenCalledWith(401, expect.any(Object));
-				expect(result).toEqual({ noWebhookResponse: true });
-			});
-
-			it('redirects a plain tokenless GET when the node is set to Browser (Virtual Client)', async () => {
-				context.getNodeParameter.mockImplementation((paramName: string) => {
-					if (paramName === 'options') return { oauthClient: 'browser' };
-					if (paramName === 'responseMode') return 'onReceived';
-					if (paramName === 'authentication') return 'n8nOAuth2';
-					if (paramName === 'httpMethod') return 'GET';
-					return undefined;
-				});
-				context.beginN8nOAuth2Flow.mockResolvedValue('https://n8n.test/oauth/authorize?…');
-
-				const result = await node.webhook(context);
-
-				expect(context.beginN8nOAuth2Flow).toHaveBeenCalled();
-				expect(res.writeHead).toHaveBeenCalledWith(302, expect.any(Object));
-				expect(result).toEqual({ noWebhookResponse: true });
-			});
-		});
+			},
+		);
 	});
 
 	describe('sensitiveOutputFields', () => {
