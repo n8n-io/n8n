@@ -68,7 +68,7 @@ export function diffAgentConfigParts(
 	nextSchema: AgentJsonConfig | null,
 	previousIntegrations: AgentIntegrationConfig[],
 	nextIntegrations: AgentIntegrationConfig[],
-	sidecarChanges: Partial<Record<'tools' | 'skills' | 'tasks', boolean>> = {},
+	sidecarChanges: AgentSidecarChanges = {},
 ): AgentConfigPart[] {
 	return CONFIG_PARTS.filter((part) => {
 		if (part === 'triggers') return !isEqual(previousIntegrations, nextIntegrations);
@@ -103,12 +103,14 @@ export function captureAgentMutation(agent: Agent) {
 
 export type AgentMutationSnapshot = ReturnType<typeof captureAgentMutation>;
 
+export type AgentSidecarChanges = Partial<Record<'tools' | 'skills' | 'tasks', boolean>>;
+
 export function buildAgentMutationEvent(
 	agent: Agent,
 	projectId: string,
 	context: AgentMutationTelemetryContext,
 	previous: AgentMutationSnapshot,
-	sidecarChanges: Partial<Record<'tools' | 'skills' | 'tasks', boolean>>,
+	sidecarChanges: AgentSidecarChanges,
 ): AgentModificationEvent {
 	return {
 		agent,

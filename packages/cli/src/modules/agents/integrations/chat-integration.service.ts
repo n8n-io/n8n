@@ -31,7 +31,12 @@ import { channelIntegrationRecorder } from './recording/channel-integration-reco
 import { recordAdapterCalls } from './recording/recording-adapter';
 import type { Agent } from '../entities/agent.entity';
 import { AgentChangePublisher } from '../agent-change-publisher.service';
-import { agentChannelKey, agentChannelRef, type AgentChannelRef } from '../utils/agent-channel';
+import {
+	agentChannelKey,
+	agentChannelRef,
+	type AgentChannelRef,
+	type IntegrationRef,
+} from '../utils/agent-channel';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
 
@@ -368,7 +373,7 @@ export class ChatIntegrationService {
 	 */
 	async disconnect(
 		agentId: string,
-		integration?: { credentialId: string; type: string },
+		integration?: IntegrationRef,
 		options: DisconnectOptions = {},
 	): Promise<void> {
 		if (!integration) {
@@ -409,10 +414,7 @@ export class ChatIntegrationService {
 	 * through {@link disconnect} instead would relay a teardown to the leader and
 	 * stop a channel that is meant to keep running.
 	 */
-	async releaseChannelLocally(
-		agentId: string,
-		integration: { credentialId: string; type: string },
-	): Promise<void> {
+	async releaseChannelLocally(agentId: string, integration: IntegrationRef): Promise<void> {
 		await this.disconnectLocal(agentId, integration, { skipExternalHooks: true });
 	}
 
@@ -560,10 +562,7 @@ export class ChatIntegrationService {
 	/**
 	 * Return the first live Chat instance for an agent, or undefined if not connected.
 	 */
-	getChatInstance(
-		agentId: string,
-		integration?: { type: string; credentialId: string },
-	): ChatInstance | undefined {
+	getChatInstance(agentId: string, integration?: IntegrationRef): ChatInstance | undefined {
 		if (integration) {
 			return this.connections.get(agentChannelKey(agentChannelRef(agentId, integration)))?.chat;
 		}
@@ -612,7 +611,7 @@ export class ChatIntegrationService {
 	 * a follower must neither restart a channel the leader just started nor tear
 	 * down one it cannot see — but a caller needing certainty has to ask the leader.
 	 */
-	isChannelLive(agentId: string, integration: { type: string; credentialId: string }): boolean {
+	isChannelLive(agentId: string, integration: IntegrationRef): boolean {
 		if (this.shouldRouteToLeader(integration.type, true)) return true;
 		return this.getChatInstance(agentId, integration) !== undefined;
 	}
@@ -623,7 +622,7 @@ export class ChatIntegrationService {
 	 */
 	async getChatInstanceForTools(
 		agentId: string,
-		integration: { type: string; credentialId: string },
+		integration: IntegrationRef,
 	): Promise<ChatInstance | undefined> {
 		const live = this.getChatInstance(agentId, integration);
 		if (live) return live;
@@ -654,7 +653,7 @@ export class ChatIntegrationService {
 
 	getShortenCallback(
 		agentId: string,
-		integration: { type: string; credentialId: string },
+		integration: IntegrationRef,
 		metadata?: CallbackMetadata,
 	): ShortenCallback | undefined {
 		return this.connections
@@ -906,7 +905,7 @@ export class ChatIntegrationService {
 
 	private async disconnectLocal(
 		agentId: string,
-		integration: { credentialId: string; type: string },
+		integration: IntegrationRef,
 		options: DisconnectOptions = {},
 	): Promise<void> {
 		const key = agentChannelKey(agentChannelRef(agentId, integration));
@@ -1179,7 +1178,7 @@ export class ChatIntegrationService {
 
 	private reportOutboundError(
 		agentId: string,
-		integration: { type: string; credentialId: string },
+		integration: IntegrationRef,
 		error: unknown,
 	): undefined {
 		this.logger.warn(

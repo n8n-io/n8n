@@ -35,6 +35,7 @@ import {
 } from './slack-setup.types';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
+import type { AgentIntegrationRemovalContext } from '../../agent-chat-integration';
 import { stringProperty } from '../../integration-helpers';
 
 const SLACK_MANAGER_CREDENTIAL_TYPE = 'slackManagerOAuth2Api';
@@ -77,14 +78,6 @@ export interface UpdateManagedSlackAppSettingsOptions extends GetManagedSlackApp
 	name: string;
 	description: string;
 	alwaysOnline: boolean;
-}
-
-export interface DeleteManagedSlackAppOptions {
-	projectId: string;
-	agentId: string;
-	credentialId: string;
-	user: User;
-	deleteExternalResource?: boolean;
 }
 
 export interface ManagedSlackAppDeletionWarning {
@@ -373,7 +366,7 @@ export class SlackManagedSetupService {
 	}
 
 	async deleteAppForCredential(
-		options: DeleteManagedSlackAppOptions,
+		options: AgentIntegrationRemovalContext,
 	): Promise<ManagedSlackAppDeletionWarning | undefined> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			options.credentialId,
@@ -780,7 +773,7 @@ export class SlackManagedSetupService {
 	}
 
 	private async deleteManagedExternalApp(
-		options: DeleteManagedSlackAppOptions,
+		options: AgentIntegrationRemovalContext,
 		managedAppId: string,
 		managerCredentialId: string,
 	): Promise<ManagedSlackAppDeletionWarning | undefined> {

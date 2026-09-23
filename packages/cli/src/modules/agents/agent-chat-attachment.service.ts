@@ -35,14 +35,6 @@ export interface StoreInboundAttachmentParams {
 	data: Buffer;
 }
 
-/** Reference passed from ingestion (controller/bridge) to the orchestrator. */
-export interface StoredAttachmentRef {
-	id: string;
-	fileName: string;
-	mimeType: string;
-	sizeBytes: number;
-}
-
 /**
  * One directory per attachment, so deleting a single file never touches
  * others. Inline agents share the `agents/inline/` directory (a real agent id

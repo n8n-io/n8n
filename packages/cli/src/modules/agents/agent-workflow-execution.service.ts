@@ -62,6 +62,7 @@ import { describeStructuredOutputError } from './utils/structured-output-error';
 import {
 	WorkflowAgentStreamAdapter,
 	type WorkflowAgentStreamObserver,
+	type PendingTool,
 } from './workflow-agent-stream';
 
 interface WorkflowSandboxScope {
@@ -97,7 +98,7 @@ interface WorkflowAgentStreamConsumption {
 }
 
 interface WorkflowAgentStreamState extends WorkflowAgentStreamConsumption {
-	toolInputs: Map<string, { toolName: string; input: unknown }>;
+	toolInputs: Map<string, PendingTool>;
 }
 
 interface WorkflowExecutionContext {

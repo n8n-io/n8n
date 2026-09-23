@@ -11,6 +11,7 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 
+import type { AgentSessionMode } from './utils/agent-thread-access';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
 import {
@@ -104,7 +105,7 @@ export class AgentTurnExecutionService {
 		private readonly chatExecutionService: AgentChatExecutionService,
 	) {}
 
-	async getSessionMode(threadId: string): Promise<'new' | 'existing'> {
+	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
 		return await this.agentExecutionService.getSessionMode(threadId);
 	}
 

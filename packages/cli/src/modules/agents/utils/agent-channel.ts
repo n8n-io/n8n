@@ -1,3 +1,9 @@
+/** Identifies a persisted integration. An empty credential ID identifies a draft. */
+export interface IntegrationRef {
+	type: string;
+	credentialId: string;
+}
+
 /** Identifies one channel of one agent across all processes. */
 export interface AgentChannelRef {
 	agentId: string;
@@ -5,10 +11,7 @@ export interface AgentChannelRef {
 	credentialId: string;
 }
 
-export function agentChannelRef(
-	agentId: string,
-	integration: { type: string; credentialId: string },
-): AgentChannelRef {
+export function agentChannelRef(agentId: string, integration: IntegrationRef): AgentChannelRef {
 	return { agentId, integrationType: integration.type, credentialId: integration.credentialId };
 }
 

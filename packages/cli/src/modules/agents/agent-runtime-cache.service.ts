@@ -19,11 +19,13 @@ import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
-import type { UserToolAccessSnapshot } from './agent-runtime-reconstruction.service';
+import type {
+	ReconstructedAgentRuntime,
+	UserToolAccessSnapshot,
+} from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
-import type { ToolRegistry } from './tool-registry';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 
@@ -58,12 +60,8 @@ export interface GetRuntimeParams {
  */
 const TOOL_ACCESS_RECHECK_INTERVAL_MS = Time.minutes.toMilliseconds;
 
-export interface AgentRuntime {
-	agent: RuntimeAgent;
+export interface AgentRuntime extends ReconstructedAgentRuntime {
 	agentId: string;
-	toolRegistry: ToolRegistry;
-	/** MCP server name -> registry attribution appended to replies that used its tools. */
-	mcpServerAttributions: Map<string, string>;
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 	/**

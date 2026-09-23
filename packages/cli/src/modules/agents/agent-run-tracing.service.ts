@@ -1,4 +1,4 @@
-import type { AttributeValue, BuiltTelemetry } from '@n8n/agents';
+import type { AgentSnapshot, AttributeValue, BuiltTelemetry } from '@n8n/agents';
 import { Telemetry } from '@n8n/agents';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -108,9 +108,6 @@ export class AgentRunTracingService {
 }
 
 /** Format an agent snapshot's model as `provider/name`, or undefined if either is missing. */
-export function modelIdFromSnapshot(model: {
-	provider: string | null;
-	name: string | null;
-}): string | undefined {
+export function modelIdFromSnapshot(model: AgentSnapshot['model']): string | undefined {
 	return model.provider && model.name ? `${model.provider}/${model.name}` : undefined;
 }

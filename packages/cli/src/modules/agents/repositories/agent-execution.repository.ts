@@ -1,9 +1,10 @@
+import type { AgentExecutionStatus } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
+import { AgentExecution } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 
 export type RunningAgentExecution = Pick<

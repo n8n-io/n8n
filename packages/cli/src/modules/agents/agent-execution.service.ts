@@ -1,4 +1,5 @@
 import type {
+	AgentExecutionStatus,
 	AgentMessageAuthor,
 	AgentSessionPreviewAccess,
 	AgentSessionQueryFilters,
@@ -16,19 +17,20 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
-import {
-	AgentChatAttachmentService,
-	type StoredAttachmentRef,
-} from './agent-chat-attachment.service';
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { buildAgentTurnMetrics } from './agent-telemetry';
 import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
 } from './entities/agent-execution-thread.entity';
-import { AgentExecution, type AgentExecutionStatus } from './entities/agent-execution.entity';
+import { AgentExecution, type AgentExecutionHitlStatus } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
-import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
+import {
+	AgentExecutionLogStore,
+	type AgentExecutionLogRef,
+} from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -61,7 +63,7 @@ export interface RecordMessageParams {
 	attachments?: StoredAttachmentRef[];
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
-	hitlStatus?: 'suspended' | 'resumed';
+	hitlStatus?: AgentExecutionHitlStatus;
 	/** Where the message originated from, e.g. 'chat', 'slack', 'task'. */
 	source?: string;
 	/** Optional metadata persisted on the thread when it is first created. */
@@ -84,11 +86,8 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	initialTimeline?: TimelineEvent[];
 }
 
-interface TimelineSnapshotParams {
-	executionId: string;
+interface TimelineSnapshotParams extends AgentExecutionLogRef {
 	projectId: string;
-	agentId: string;
-	threadId: string;
 	timeline: TimelineEvent[];
 }
 
@@ -232,7 +231,7 @@ export class AgentExecutionService {
 	}
 
 	private async deleteUnreferencedTimelineBlob(
-		ref: { agentId: string; threadId: string; executionId: string },
+		ref: AgentExecutionLogRef,
 		storedAt: StorageLocation,
 	): Promise<void> {
 		try {

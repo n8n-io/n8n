@@ -21,6 +21,12 @@ import { getDelegatedChildCheckpoints } from './utils/delegated-child-checkpoint
 
 type ExecutionContext = PubSubCommandMap['cancel-agent-chat-execution'];
 
+export interface CancelSuspendedRunParams {
+	agentId: string;
+	runId: string;
+	resourceId: string;
+}
+
 export class AgentTurnAlreadyRunningError extends UserError {
 	constructor() {
 		super('A turn is already running in this conversation.');
@@ -200,11 +206,7 @@ export class AgentChatExecutionService {
 		});
 	}
 
-	async cancelSuspended(params: {
-		agentId: string;
-		runId: string;
-		resourceId: string;
-	}): Promise<boolean> {
+	async cancelSuspended(params: CancelSuspendedRunParams): Promise<boolean> {
 		const checkpointStatus = await this.checkpointStorage.getStatus(params.runId, params.agentId);
 		if (checkpointStatus.status === 'not-found' || checkpointStatus.checkpoint === undefined)
 			return false;

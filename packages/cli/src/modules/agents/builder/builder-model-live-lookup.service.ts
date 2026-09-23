@@ -8,6 +8,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
+import type { ModelChoice } from './model-lookup.types';
 import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
 import { LLM_PROVIDER_DEFAULTS } from '../llm-provider-defaults';
 import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
@@ -17,7 +18,7 @@ export type ModelCatalogPolicy = 'curated' | 'endpoint-only' | 'managed';
 export type LiveModelLookupResult =
 	| {
 			status: 'success';
-			models: Array<{ name: string; value: string }>;
+			models: ModelChoice[];
 			policy: ModelCatalogPolicy;
 	  }
 	| { status: 'unavailable'; error: unknown; policy: ModelCatalogPolicy };
@@ -58,7 +59,7 @@ export class BuilderModelLiveLookupService {
 		credentialType: string,
 		provider: string,
 		options?: ModelLookupOptions,
-	): Promise<Array<{ name: string; value: string }>> {
+	): Promise<ModelChoice[]> {
 		const result = await this.lookup(
 			user,
 			projectId,

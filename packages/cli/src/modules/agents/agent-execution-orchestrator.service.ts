@@ -20,7 +20,10 @@ import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } fr
 import { Telemetry } from '@/telemetry';
 
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
-import { AgentChatExecutionService } from './agent-chat-execution.service';
+import {
+	AgentChatExecutionService,
+	type CancelSuspendedRunParams,
+} from './agent-chat-execution.service';
 import type { AgentThreadAccess } from './entities/agent-execution-thread.entity';
 import type { AgentSessionMode } from './utils/agent-thread-access';
 import {
@@ -58,7 +61,7 @@ import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
-import type { StoredAttachmentRef } from './agent-chat-attachment.service';
+import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
@@ -69,10 +72,28 @@ export interface AgentMemoryScope {
 	resourceId: string;
 }
 
-export interface ExecuteForChatConfig {
+interface AgentExecutionInput {
 	agentId: string;
 	projectId: string;
+	/** User message recorded in the execution transcript. */
 	message: string;
+	/** Memory scope for this execution. Task runs use a separate resource ID. */
+	memory: AgentMemoryScope;
+}
+
+interface ChatExecutionInput extends AgentExecutionInput {
+	sessionMode?: AgentSessionMode;
+	/** Stored attachments for the user turn. */
+	attachments?: StoredAttachmentRef[];
+}
+
+interface ChatExecutionCallbacks {
+	onExecutionStarted?: (executionId: string, sessionId: string) => void;
+	/** Runs after the turn is stored. Adds the execution ID to the SSE done event. */
+	onExecutionRecorded?: (executionId: string) => void;
+}
+
+export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionCallbacks {
 	/**
 	 * The calling n8n user — used to gate node/workflow tools by their access,
 	 * and for RBAC / credential resolution and telemetry attribution. Always
@@ -80,11 +101,6 @@ export interface ExecuteForChatConfig {
 	 * (`AgentChatController.chat` always has `req.user`).
 	 */
 	user: User;
-	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
-	memory: AgentMemoryScope;
-	sessionMode?: AgentSessionMode;
-	/** Stored attachments to include as file parts on the user turn. */
-	attachments?: StoredAttachmentRef[];
 	/** Identifies the surface that started the draft test run. */
 	source?: string;
 	/**
@@ -93,28 +109,17 @@ export interface ExecuteForChatConfig {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
-	onExecutionStarted?: (executionId: string, sessionId: string) => void;
-	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
-	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 }
 
-export interface ExecuteForChatPublishedConfig {
+export interface ExecuteForChatPublishedConfig extends ChatExecutionInput {
 	messageContext?: IntegrationMessageContext | null;
 	/** Platform conversation metadata scope. Execution memory can belong to a task. */
 	contextConversation?: SessionBinding;
-	agentId: string;
-	projectId: string;
-	/** What the user wrote; recorded in the execution transcript. */
-	message: string;
 	/** What the model receives when it differs from `message`, e.g. with an author label or thread history. */
 	modelMessage?: string;
 	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
 	author?: AgentMessageAuthor;
-	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
-	memory: AgentMemoryScope;
-	sessionMode?: AgentSessionMode;
-	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
@@ -125,7 +130,7 @@ export interface ExecuteForChatPublishedConfig {
 	// applies regardless.
 }
 
-export interface ResumeForChatConfig {
+export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	messageContext?: IntegrationMessageContext | null;
 	/** Platform conversation metadata scope. Execution memory can belong to a task. */
 	contextConversation?: SessionBinding;
@@ -161,27 +166,17 @@ export interface ResumeForChatConfig {
 	previewChat?: boolean;
 	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
 	automaticPreviewContinuation?: boolean;
-	onExecutionStarted?: (executionId: string, sessionId: string) => void;
-	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
-	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 }
 
-export interface ExecuteForTaskPublishedConfig {
-	agentId: string;
-	projectId: string;
-	message: string;
-	/** Memory scope — resourceId isolates per-run memory. */
-	memory: AgentMemoryScope;
+export interface ExecuteForTaskPublishedConfig extends AgentExecutionInput {
 	/** The scheduled task this run belongs to; stamped on the session for traceability. */
 	taskId: string;
 	/** Published agent_history version that supplied the scheduled task snapshot. */
 	taskVersionId: string;
 }
 
-export interface ExecuteForTaskNowConfig {
-	agentId: string;
-	projectId: string;
+export interface ExecuteForTaskNowConfig extends AgentExecutionInput {
 	/**
 	 * The calling n8n user — used to gate node/workflow tools by their
 	 * access, and for RBAC / credential resolution and recorded on the
@@ -190,19 +185,12 @@ export interface ExecuteForTaskNowConfig {
 	 * `AgentTaskService.runNow(agentId, taskId, user)`.
 	 */
 	user: User;
-	message: string;
-	/** Memory scope — resourceId isolates per-run memory. */
-	memory: AgentMemoryScope;
 	/** The task this manual run belongs to; stamped on the session for traceability. */
 	taskId: string;
 }
 
-export interface ExecuteForWakeConfig {
+export interface ExecuteForWakeConfig extends AgentExecutionInput {
 	backgroundJobSignal: AgentBackgroundJobSignal;
-	agentId: string;
-	projectId: string;
-	message: string;
-	memory: AgentMemoryScope;
 	abortSignal: AbortSignal;
 	identity:
 		| { type: 'draft'; user: User; principalHash: AgentSandboxPrincipalHash }
@@ -213,24 +201,18 @@ export interface ExecuteForWakeConfig {
 		  };
 }
 
-export interface StreamChatResponseConfig {
+export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
-	agentId: string;
 	userId?: string;
-	/** What the user wrote; recorded in the execution transcript. */
-	message: string;
 	/** What the model receives when it differs from `message`. */
 	modelMessage?: string;
 	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
 	author?: AgentMessageAuthor;
-	attachments?: StoredAttachmentRef[];
-	memory: AgentMemoryScope;
-	projectId: string;
 	source?: string;
 	taskId?: string;
 	taskVersionId?: string;
@@ -239,9 +221,6 @@ export interface StreamChatResponseConfig {
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
 	previewChat?: boolean;
-	onExecutionStarted?: (executionId: string, sessionId: string) => void;
-	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
-	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 	/** Add full sanitized tool configuration to approval cards in preview chat. */
 	includeHitlToolDetails?: boolean;
@@ -251,7 +230,6 @@ export interface StreamChatResponseConfig {
 	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
-	sessionMode?: AgentSessionMode;
 }
 
 /**
@@ -320,11 +298,7 @@ export class AgentExecutionOrchestratorService {
 		};
 	}
 
-	async cancelChatRun(params: {
-		agentId: string;
-		runId: string;
-		resourceId: string;
-	}): Promise<boolean> {
+	async cancelChatRun(params: CancelSuspendedRunParams): Promise<boolean> {
 		return await this.chatExecutionService.cancelSuspended(params);
 	}
 
