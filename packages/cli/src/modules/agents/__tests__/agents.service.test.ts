@@ -25,6 +25,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { EventService } from '@/events/event.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -59,6 +60,7 @@ function makeService() {
 	const eventService = mock<EventService>();
 	const agentExecutionService = mock<AgentExecutionService>();
 	const credentialsService = mock<CredentialsService>();
+	const projectScopeService = mock<ProjectScopeService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
@@ -85,6 +87,7 @@ function makeService() {
 		eventService,
 		agentExecutionService,
 		credentialsService,
+		projectScopeService,
 	);
 
 	return {
@@ -101,6 +104,7 @@ function makeService() {
 		eventService,
 		agentExecutionService,
 		credentialsService,
+		projectScopeService,
 	};
 }
 
@@ -622,6 +626,96 @@ describe('AgentsService', () => {
 			agentRepository.findByIdInProjects.mockResolvedValue(null);
 
 			await expect(service.findByIdForUser(agentId, makeUser([]))).resolves.toBeNull();
+		});
+	});
+
+	describe('findByUserPaginated', () => {
+		const user = { id: 'user-1' } as unknown as User;
+
+		it('scopes to agent:read + agent:execute projects and requests project info when the chat filter is true', async () => {
+			const { service, agentRepository, projectRelationRepository, projectScopeService } =
+				makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			const options = { skip: 0, take: 10, filter: { availableInChat: true } } as never;
+
+			await service.findByUserPaginated(user, options);
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, [
+				'agent:read',
+				'agent:execute',
+			]);
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
+				['project-1'],
+				options,
+				{ withProject: true },
+			);
+			expect(projectRelationRepository.findAllByUser).not.toHaveBeenCalled();
+		});
+
+		it('also scopes when the chat filter is explicitly false', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			const options = { skip: 0, take: 10, filter: { availableInChat: false } } as never;
+
+			await service.findByUserPaginated(user, options);
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, [
+				'agent:read',
+				'agent:execute',
+			]);
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
+				['project-1'],
+				options,
+				{ withProject: true },
+			);
+		});
+
+		it('passes null straight through for a global role (every project)', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			const options = { skip: 0, take: 10, filter: { availableInChat: true } } as never;
+
+			await service.findByUserPaginated(user, options);
+
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(null, options, {
+				withProject: true,
+			});
+		});
+
+		it('passes an empty project list through unchanged (the repository owns the empty-page behaviour)', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue([]);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			const options = { skip: 0, take: 10, filter: { availableInChat: true } } as never;
+
+			await service.findByUserPaginated(user, options);
+
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith([], options, {
+				withProject: true,
+			});
+		});
+
+		it('falls back to bare project membership when no chat filter is set', async () => {
+			const { service, agentRepository, projectRelationRepository, projectScopeService } =
+				makeService();
+			projectRelationRepository.findAllByUser.mockResolvedValue([
+				{ projectId: 'project-1' },
+				{ projectId: 'project-2' },
+			] as never);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			const options = { skip: 0, take: 10 } as never;
+
+			await service.findByUserPaginated(user, options);
+
+			expect(projectRelationRepository.findAllByUser).toHaveBeenCalledWith('user-1');
+			expect(projectScopeService.getProjectIds).not.toHaveBeenCalled();
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
+				['project-1', 'project-2'],
+				options,
+			);
 		});
 	});
 

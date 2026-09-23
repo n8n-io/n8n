@@ -398,7 +398,11 @@ export interface AgentSessionLangSmithExportResponse {
 
 /**
  * Internal integration type for the in-app chat channel. Injected per-run for
- * `/chat` executions — never persisted in an agent's `integrations` array.
+ * `/chat` executions. AGENT-963 also persists it as a channel: publish copies
+ * it into the version snapshot, so `activeVersion.schema.integrations` — not
+ * the mutable draft column — says whether production chat serves an agent.
+ * `AgentRepository.applyFilters` reads the snapshot for the `availableInChat`
+ * list filter, and `isN8nChatPublished` reads it for one agent.
  */
 export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
