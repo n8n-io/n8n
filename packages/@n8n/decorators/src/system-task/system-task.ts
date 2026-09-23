@@ -31,12 +31,7 @@ export interface SystemTask {
 	/** What kind of effects a run has, which sets the defaults of the overrides below. */
 	readonly effects: SystemTaskEffects;
 
-	/**
-	 * Where the occurrences run. `cluster` is one run for the whole cluster,
-	 * coordinated by leadership or by the durable scheduler. `instance` is one
-	 * run in every eligible instance, for work that reads state local to the
-	 * instance and that no other instance could do.
-	 */
+	/** Where the occurrences run. */
 	readonly placement: SystemTaskPlacement;
 
 	/**
