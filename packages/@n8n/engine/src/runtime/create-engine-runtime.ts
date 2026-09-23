@@ -105,6 +105,7 @@ export function createEngineRuntime({
 			responseSender,
 		),
 	);
+	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
 	const stepWorker = new StepWorker(
 		stepQueue,
 		new StepReadyHandler(
@@ -113,9 +114,10 @@ export function createEngineRuntime({
 			orchestrationQueue,
 			dependencies,
 			lifecycleEventPublisher,
+			// A deadline set after the sweeper armed would otherwise wait for its next pass.
+			() => waitSweeper.noteSuspended(),
 		),
 	);
-	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
 
 	const { app } = createEngineServer({
 		startExecution: new StartExecutionService(admittance, executionStore, orchestrationQueue),

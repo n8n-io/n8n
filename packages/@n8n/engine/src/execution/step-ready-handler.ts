@@ -49,6 +49,8 @@ export class StepReadyHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
+		private readonly onStepSuspended: () => void = () => {},
 	) {}
 
 	async handle(event: StepReadyEvent): Promise<void> {
@@ -134,7 +136,10 @@ export class StepReadyHandler {
 
 		// A wait is no outcome: nothing settled, so nothing is announced and no
 		// planning follows. TODO(CAT-2928): publish `step:waiting` so the UI can show it.
-		if (run.kind === 'wait') return;
+		if (run.kind === 'wait') {
+			this.onStepSuspended();
+			return;
+		}
 
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.

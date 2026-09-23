@@ -52,10 +52,22 @@ export class WaitSweeper {
 		await this.sweeping;
 	}
 
+	/**
+	 * A step suspended after `arm` read the deadlines. Re-arm, so a deadline
+	 * earlier than the armed timer fires on time instead of at the end of the
+	 * interval. Only this process learns of it; another replica's sweeper still
+	 * finds the row at its next pass.
+	 */
+	noteSuspended(): void {
+		if (this.stopped) return;
+		clearTimeout(this.timer);
+		this.timer = undefined;
+		this.rearm();
+	}
+
+	/** Arms run one after the other, so two nudges cannot leave two timers. */
 	private rearm(): void {
-		this.arming = this.arm().finally(() => {
-			this.arming = undefined;
-		});
+		this.arming = (this.arming ?? Promise.resolve()).then(async () => await this.arm());
 	}
 
 	/**
@@ -84,6 +96,8 @@ export class WaitSweeper {
 		// The read above may have outlived a `stop`.
 		if (this.stopped) return;
 
+		// A nudge may have armed a timer while this read was in flight.
+		clearTimeout(this.timer);
 		this.timer = setTimeout(
 			() => {
 				this.sweeping = this.sweep().finally(() => {

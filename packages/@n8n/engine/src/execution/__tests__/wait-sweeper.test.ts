@@ -248,6 +248,63 @@ describe('WaitSweeper', () => {
 			await sweeper.stop();
 		});
 
+		it('re-arms when a step suspends with a deadline earlier than the armed timer', async () => {
+			// The arm read the deadlines before this step suspended, so without a
+			// nudge its wait would fire at the end of the interval, not at 200ms.
+			const stepStore = storeDueAt(null);
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+			sweeper.start();
+			await vi.advanceTimersByTimeAsync(0);
+
+			vi.mocked(stepStore.nextWaitDeadline).mockResolvedValue(new Date(Date.now() + 200));
+			sweeper.noteSuspended();
+			await vi.advanceTimersByTimeAsync(200);
+
+			expect(stepStore.resumeDueSteps).toHaveBeenCalledTimes(1);
+
+			await sweeper.stop();
+		});
+
+		it('keeps one timer when several steps suspend in a row', async () => {
+			const stepStore = storeDueAt(null);
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+			sweeper.start();
+			await vi.advanceTimersByTimeAsync(0);
+
+			// each nudge reads the deadline once; the sweep that fires it reads none
+			const deadline = new Date(Date.now() + 200);
+			vi.mocked(stepStore.nextWaitDeadline)
+				.mockResolvedValue(null)
+				.mockResolvedValueOnce(deadline)
+				.mockResolvedValueOnce(deadline)
+				.mockResolvedValueOnce(deadline);
+			sweeper.noteSuspended();
+			sweeper.noteSuspended();
+			sweeper.noteSuspended();
+			await vi.advanceTimersByTimeAsync(200);
+			expect(stepStore.resumeDueSteps).toHaveBeenCalledTimes(1);
+
+			// the sweep re-armed on the interval; no stale timer fires in between
+			await vi.advanceTimersByTimeAsync(SWEEP_MS - 1);
+			expect(stepStore.resumeDueSteps).toHaveBeenCalledTimes(1);
+
+			await sweeper.stop();
+		});
+
+		it('ignores a suspension once stopped', async () => {
+			const stepStore = storeDueAt(null);
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+			sweeper.start();
+			await vi.advanceTimersByTimeAsync(0);
+			await sweeper.stop();
+
+			vi.mocked(stepStore.nextWaitDeadline).mockResolvedValue(new Date(Date.now() + 200));
+			sweeper.noteSuspended();
+			await vi.advanceTimersByTimeAsync(SWEEP_MS);
+
+			expect(stepStore.resumeDueSteps).not.toHaveBeenCalled();
+		});
+
 		it('sweeps immediately when a deadline has already passed', async () => {
 			// A restart must not add an interval to every overdue wait.
 			const stepStore = storeDueAt(new Date(Date.now() - 60_000));

@@ -56,6 +56,7 @@ function makeHandler(
 	queue: WorkQueue<OrchestrationMessage>,
 	dependencies: ExternalDependencies,
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
+	onStepSuspended?: () => void,
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
@@ -63,6 +64,7 @@ function makeHandler(
 		queue,
 		dependencies,
 		lifecycleEventPublisher,
+		onStepSuspended,
 	);
 }
 
@@ -742,6 +744,43 @@ describe('StepReadyHandler waits', () => {
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
+	it('reports the suspension once the row is written, so the sweeper can re-arm', async () => {
+		const stepStore = makeStepStore();
+		const onStepSuspended = vi.fn(() => {
+			expect(stepStore.suspendStep).toHaveBeenCalled();
+		});
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
+			makeLifecycleEventPublisher(),
+			onStepSuspended,
+		);
+
+		await handler.handle(event);
+
+		expect(onStepSuspended).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports no suspension when another owner took the step over', async () => {
+		const stepStore = makeStepStore();
+		vi.mocked(stepStore.suspendStep).mockResolvedValue(false);
+		const onStepSuspended = vi.fn();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
+			makeLifecycleEventPublisher(),
+			onStepSuspended,
+		);
+
+		await handler.handle(event);
+
+		expect(onStepSuspended).not.toHaveBeenCalled();
 	});
 
 	it('suspends a wait that only a resume request ends', async () => {
