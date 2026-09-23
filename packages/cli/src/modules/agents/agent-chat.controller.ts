@@ -21,10 +21,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import {
-	AgentChatAttachmentService,
-	type StoredAttachmentRef,
-} from './agent-chat-attachment.service';
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import {

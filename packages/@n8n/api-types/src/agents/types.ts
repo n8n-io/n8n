@@ -6,6 +6,8 @@ import type { AgentBackgroundJobSignal } from './background-job';
 
 export type AgentActor = 'user' | 'builder' | 'mcp';
 
+export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+
 export interface AgentSessionPreviewAccess {
 	canContinueInPreview: boolean;
 }
@@ -361,7 +363,7 @@ export interface AgentPersistedMessageDto {
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
-	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+	executionStatus?: AgentExecutionStatus;
 	/**
 	 * The recorded run error for a turn that ended in `error` or `interrupted`,
 	 * so history renders the same error bubble the live stream showed.
