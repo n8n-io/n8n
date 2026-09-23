@@ -78,7 +78,8 @@ export class Engine extends BaseCommand {
  */
 function assertControlPlaneIsolated(env: NodeJS.ProcessEnv): void {
 	const leaked = Object.keys(env).filter(
-		(key) => key.startsWith('DB_') || key === 'N8N_ENCRYPTION_KEY',
+		(key) =>
+			key.startsWith('DB_') || key === 'N8N_ENCRYPTION_KEY' || key === 'N8N_ENCRYPTION_KEY_FILE',
 	);
 
 	if (leaked.length > 0) {
