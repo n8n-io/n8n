@@ -47,7 +47,6 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
           # Include recent history so the PR filter can reuse the checkout.
           fetch-depth: 200
-          filter: blob:none
 
       - name: Capture commit SHA for cache consistency
         id: commit-sha
