@@ -13,6 +13,7 @@ import {
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationReason,
+	WorkflowPublicationRetryStateRepository,
 	WorkflowPublishedVersionRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -129,6 +130,7 @@ export class WorkflowService {
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
+		private readonly retryStateRepository: WorkflowPublicationRetryStateRepository,
 	) {}
 
 	async getMany(
@@ -1130,6 +1132,7 @@ export class WorkflowService {
 				activationMode,
 				{ source },
 			);
+			await this.retryStateRepository.clearRetrySuppression(workflowId);
 		}
 
 		// The publication commit boundary: both branches above have durably published the

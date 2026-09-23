@@ -27,6 +27,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
+import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import { WorkflowPublicationReconciler } from '@/workflows/publication/workflow-publication-reconciler.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -568,12 +569,20 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 
 		expect(await outboxRepository.findUnreportedPublishedWorkflowIds()).toContain(workflow.id);
 
+		const applySpy = vi
+			.spyOn(Container.get(WorkflowPublicationApplier), 'apply')
+			.mockResolvedValueOnce({ type: 'version-missing' });
+		await reconciler.reconcile('reconcile');
+		applySpy.mockRestore();
+
+		expect(await retryStateRepository.findOneBy({ workflowId: workflow.id })).toMatchObject({
+			targetVersionId: workflow.versionId,
+		});
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([]);
 		await reconciler.reconcile('reconcile');
 
-		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([
-			expect.objectContaining({ nodeId: trigger.id, status: 'activated' }),
-		]);
 		expect(await outboxRepository.countBy({ workflowId: workflow.id })).toBe(2);
+		expect(await outboxRepository.countBy({ workflowId: workflow.id, status: 'failed' })).toBe(2);
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
