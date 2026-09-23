@@ -135,6 +135,7 @@ const { browserTelemetryMock, computerTelemetryMock, telemetryMock, uiStoreMock 
 			trackCredentialDropdownOpened: vi.fn(),
 			trackExistingCredentialSelected: vi.fn(),
 			trackNewCredentialConnectionStart: vi.fn(),
+			trackToolPermissionsUpdated: vi.fn(),
 		},
 		uiStoreMock: {
 			modalsById: {
@@ -197,16 +198,17 @@ const linearItem: McpServerConnectionItem = {
 	availableTools: [],
 };
 
+const toolSettings: ToolConnectionSettings = {
+	categories: { read: 'allow', write: 'ask' },
+	tools: { search: 'allow' },
+};
+
 const connectedLinearItem: McpServerConnectionItem = {
 	...linearItem,
 	id: 'conn-1',
 	status: 'connected',
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
-};
-
-const toolSettings: ToolConnectionSettings = {
-	categories: { read: 'allow', write: 'ask' },
-	tools: { search: 'allow' },
+	settings: toolSettings,
 };
 
 let modalListeners: Record<string, unknown> = {};
@@ -321,6 +323,47 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			toolPermissions: toolSettings,
 		});
 		expect(uiStoreMock.closeModal).toHaveBeenCalledWith('instanceAiToolsConnection');
+	});
+
+	it('tracks changed MCP tool permissions after saving', async () => {
+		renderComponent();
+		const changedSettings: ToolConnectionSettings = {
+			categories: { read: 'block', write: 'ask' },
+			tools: { search: 'allow' },
+		};
+
+		emitSave(changedSettings);
+		await flushPromises();
+
+		expect(telemetryMock.trackToolPermissionsUpdated).toHaveBeenCalledWith(
+			'linear',
+			changedSettings,
+		);
+	});
+
+	it('does not track unchanged MCP tool permissions', async () => {
+		renderComponent();
+
+		emitSave({
+			categories: { ...toolSettings.categories },
+			tools: { ...toolSettings.tools },
+		});
+		await flushPromises();
+
+		expect(telemetryMock.trackToolPermissionsUpdated).not.toHaveBeenCalled();
+	});
+
+	it('does not track MCP tool permissions when saving fails', async () => {
+		mockUpdateConnection.mockResolvedValue(null);
+		renderComponent();
+
+		emitSave({
+			categories: { read: 'block', write: 'ask' },
+			tools: { search: 'allow' },
+		});
+		await flushPromises();
+
+		expect(telemetryMock.trackToolPermissionsUpdated).not.toHaveBeenCalled();
 	});
 
 	it('closes the modal after saving settings opened directly', async () => {

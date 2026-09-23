@@ -57,4 +57,18 @@ describe('instance ai mcp telemetry', () => {
 			payload,
 		);
 	});
+
+	test('tracks MCP tool permission updates', () => {
+		useInstanceAiMcpTelemetry().trackToolPermissionsUpdated('brave', {
+			categories: { read: 'allow', write: 'ask' },
+			tools: { search: 'block' },
+		});
+
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.MCP_TOOL_PERMISSIONS_UPDATED, {
+			server_slug: 'brave',
+			read_permission: 'allow',
+			write_permission: 'ask',
+			tool_override_count: 1,
+		});
+	});
 });

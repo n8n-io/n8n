@@ -294,6 +294,26 @@ function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResp
 	return mcpStore.catalog?.find((server) => server.slug === serverSlug);
 }
 
+function areToolPermissionsEqual(
+	left: ToolConnectionSettings,
+	right: ToolConnectionSettings,
+): boolean {
+	if (
+		left.categories.read !== right.categories.read ||
+		left.categories.write !== right.categories.write
+	) {
+		return false;
+	}
+
+	const leftTools = left.tools ?? {};
+	const rightTools = right.tools ?? {};
+	const leftToolNames = Object.keys(leftTools);
+	return (
+		leftToolNames.length === Object.keys(rightTools).length &&
+		leftToolNames.every((toolName) => leftTools[toolName] === rightTools[toolName])
+	);
+}
+
 function trackMcpCredentialInteraction(
 	item: ToolConnectionItem,
 	track: (serverSlug: string) => void,
@@ -337,10 +357,16 @@ async function handleSelectCredential(
 
 async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSettings) {
 	if (!settings) return;
+	const permissionsChanged =
+		item.kind === 'mcp-server' &&
+		(!item.settings || !areToolPermissionsEqual(item.settings, settings));
 	const updated = await mcpStore.updateConnection(item.id, {
 		toolPermissions: settings,
 	});
 	if (!updated) return;
+	if (permissionsChanged) {
+		mcpTelemetry.trackToolPermissionsUpdated(updated.serverSlug, settings);
+	}
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('instanceAi.mcp.settings.saved'),
