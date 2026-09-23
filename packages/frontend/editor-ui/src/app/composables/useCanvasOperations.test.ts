@@ -4973,7 +4973,7 @@ describe('useCanvasOperations', () => {
 				[NO_OP_NODE_TYPE]: { 1: nodeTypeDescription },
 			};
 
-			const anchor = mockNode({
+			const anchor = createTestNode({
 				id: 'anchor',
 				name: 'Empty group anchor',
 				type: NO_OP_NODE_TYPE,

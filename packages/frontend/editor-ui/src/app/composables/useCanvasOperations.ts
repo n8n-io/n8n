@@ -245,13 +245,16 @@ function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDesc
 	return DEFAULT_NODE_SIZE[0];
 }
 
-export function removeEmptyCanvasGroupsFromWorkflowData(workflowData: WorkflowDataUpdate) {
+export function removeEmptyCanvasGroupsFromWorkflowData(
+	workflowData: WorkflowDataUpdate,
+	anchorSourceNodes: INode[] = workflowData.nodes ?? [],
+) {
 	const nodes = workflowData.nodes ?? [];
 	const emptyGroupAnchorIds = new Set<string>();
 	const emptyGroupAnchorNames = new Set<string>();
 
 	for (const group of workflowData.nodeGroups ?? []) {
-		const anchor = getEmptyGroupAnchor(group, nodes);
+		const anchor = getEmptyGroupAnchor(group, anchorSourceNodes);
 		if (anchor) {
 			emptyGroupAnchorIds.add(anchor.id);
 			emptyGroupAnchorNames.add(anchor.name);
@@ -262,7 +265,7 @@ export function removeEmptyCanvasGroupsFromWorkflowData(workflowData: WorkflowDa
 
 	workflowData.nodes = nodes.filter((node) => !emptyGroupAnchorIds.has(node.id));
 	workflowData.nodeGroups = workflowData.nodeGroups?.filter(
-		(group) => getEmptyGroupAnchor(group, nodes) === undefined,
+		(group) => getEmptyGroupAnchor(group, anchorSourceNodes) === undefined,
 	);
 
 	if (workflowData.nodeGroups?.length === 0) {
@@ -3653,7 +3656,7 @@ export function useCanvasOperations() {
 
 		const workflowData = deepCopy(getNodesToSave(nodes));
 		if (!emptyCanvasGroupsEnabled.value) {
-			removeEmptyCanvasGroupsFromWorkflowData(workflowData);
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData, nodes);
 		}
 
 		workflowData.meta = {
