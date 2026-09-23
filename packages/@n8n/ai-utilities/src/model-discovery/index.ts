@@ -65,7 +65,7 @@ export { listAlibabaModels, shouldIncludeAlibabaModel } from './providers/alibab
 export { listAnthropicModels } from './providers/anthropic';
 export {
 	listAzureOpenAiModels,
-	isChatCapableAzureDeployment,
+	shouldIncludeAzureModel,
 	type AzureOpenAiListModelsOptions,
 } from './providers/azure';
 export { listCohereModels } from './providers/cohere';

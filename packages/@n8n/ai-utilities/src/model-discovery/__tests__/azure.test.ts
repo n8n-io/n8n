@@ -1,6 +1,6 @@
 import { UserError } from 'n8n-workflow';
 
-import { isChatCapableAzureDeployment, listAzureOpenAiModels } from '../providers/azure';
+import { shouldIncludeAzureModel, listAzureOpenAiModels } from '../providers/azure';
 
 function mockFetch(body: unknown, ok = true, status = 200) {
 	return vi.fn().mockResolvedValue({
@@ -22,7 +22,7 @@ function calledHeaders(fetchFn: unknown): Record<string, string> {
 	return init.headers;
 }
 
-describe('isChatCapableAzureDeployment', () => {
+describe('shouldIncludeAzureModel', () => {
 	it.each([
 		[{ chat_completion: 'true' }, true],
 		[{ chat_completion: true }, true],
@@ -32,7 +32,7 @@ describe('isChatCapableAzureDeployment', () => {
 		[{ embeddings: 'true' }, false],
 		[undefined, false],
 	])('classifies %s as chat-capable: %s', (capabilities, expected) => {
-		expect(isChatCapableAzureDeployment(capabilities)).toBe(expected);
+		expect(shouldIncludeAzureModel(capabilities)).toBe(expected);
 	});
 });
 

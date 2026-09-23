@@ -1,7 +1,14 @@
 import { UserError } from 'n8n-workflow';
 
+import { byName } from '../request';
 import type { ProviderModel } from '../types';
 
+/**
+ * Not a {@link ListModelsFn} and not in `MODEL_DISCOVERY_PROVIDERS`: Azure
+ * needs a `project` and pre-built auth headers, which don't fit
+ * `ListModelsOptions`'s `apiKey` shape. Call this directly instead of through
+ * `listModelsForProvider`.
+ */
 export interface AzureOpenAiListModelsOptions {
 	/**
 	 * Origin of the Azure resource that owns the project, e.g.
@@ -29,7 +36,7 @@ interface AzureDeployment {
  * `chat_completion`. The API's own dictionary uses string values, but a
  * boolean is accepted too since the exact wire casing/type is not documented.
  */
-export function isChatCapableAzureDeployment(
+export function shouldIncludeAzureModel(
 	capabilities: Record<string, unknown> | undefined,
 ): boolean {
 	const value = capabilities?.chat_completion ?? capabilities?.chatCompletion;
@@ -76,8 +83,7 @@ export async function listAzureOpenAiModels(
 	return (data.value ?? [])
 		.filter(
 			(deployment): deployment is AzureDeployment & { name: string } =>
-				typeof deployment.name === 'string' &&
-				isChatCapableAzureDeployment(deployment.capabilities),
+				typeof deployment.name === 'string' && shouldIncludeAzureModel(deployment.capabilities),
 		)
 		.map((deployment) => ({
 			id: deployment.name,
@@ -86,5 +92,5 @@ export async function listAzureOpenAiModels(
 					? `${deployment.name} (${deployment.modelName})`
 					: deployment.name,
 		}))
-		.sort((a, b) => a.name.localeCompare(b.name));
+		.sort(byName);
 }
