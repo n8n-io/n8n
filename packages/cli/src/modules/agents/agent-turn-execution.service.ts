@@ -51,7 +51,6 @@ interface ExecuteTurnConfig {
 	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	previewChat?: boolean;
-	automaticPreviewContinuation?: boolean;
 	onExecutionStarted?: (executionId: string, sessionId: string) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
@@ -322,41 +321,26 @@ export class AgentTurnExecutionService {
 		onExecutionRecorded?.(recordedId);
 	}
 
+	/** Records a turn that failed before it could start. Takes the session lease like a turn. */
 	async recordFailedStart(
 		params: StartExecutionParams,
 		executionError: unknown,
 		onExecutionRecorded?: (executionId: string) => void,
-		options: { previewChat?: boolean; automaticContinuationRunId?: string } = {},
 	): Promise<void> {
 		const recorder = this.createRecorder();
 		recorder.record({ type: 'error', error: executionError });
 		recorder.record({ type: 'finish', finishReason: 'error' });
-		const recordStart = async () =>
-			(await this.startExecution(params, recorder.startedAt, executionError)).executionId;
-		const recordFailure = async (executionId: string) => {
-			await this.finalizeExecution({
-				executionId,
-				executionStarted: false,
-				executionError,
-				onExecutionRecorded,
-				params: { ...params, record: recorder.getMessageRecord() },
-			});
-		};
-		if (options.previewChat && options.automaticContinuationRunId) {
-			await this.chatExecutionService.admitAutomaticContinuation(
-				params.threadId,
-				params.agentId,
-				options.automaticContinuationRunId,
-				async () => await recordFailure(await recordStart()),
-			);
-		} else {
-			const executionId = options.previewChat
-				? await this.chatExecutionService.admit(params.threadId, recordStart)
-				: await recordStart();
-			await recordFailure(executionId);
-		}
+		const { executionId } = await this.startExecution(params, recorder.startedAt, executionError);
+		await this.finalizeExecution({
+			executionId,
+			executionStarted: false,
+			executionError,
+			onExecutionRecorded,
+			params: { ...params, record: recorder.getMessageRecord() },
+		});
 	}
 
+	/** The session lease admits the turn when its execution is recorded. */
 	private async admitTurn(
 		turn: AgentTurnRequest,
 		config: ExecuteTurnConfig,
@@ -364,22 +348,8 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 		previewControl?: PreviewExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
-		const recordStart = async () => await this.recordTurnStart(turn, config, recorder, state);
-		const startAccepted = async (id: string) =>
-			await this.startAcceptedTurn(id, turn, config, recorder, state, previewControl);
-		if (previewControl && config.automaticPreviewContinuation && turn.type === 'resume') {
-			return await this.chatExecutionService.admitAutomaticContinuation(
-				config.context.threadId,
-				config.context.agentId,
-				turn.options.runId,
-				async () => await startAccepted(await recordStart()),
-			);
-		}
-		const executionId = previewControl
-			? await this.chatExecutionService.admit(config.context.threadId, recordStart)
-			: await recordStart();
-		state.executionId = executionId;
-		return await startAccepted(executionId);
+		const executionId = await this.recordTurnStart(turn, config, recorder, state);
+		return await this.startAcceptedTurn(executionId, turn, config, recorder, state, previewControl);
 	}
 
 	private async recordTurnStart(

@@ -13,7 +13,6 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { LockService } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -181,7 +180,6 @@ function makeService(sandboxEnabled = false) {
 	const executionService = mock<AgentExecutionService>();
 	const executionRepository = mock<AgentExecutionRepository>();
 	const chatExecutionService = new AgentChatExecutionService(
-		Container.get(LockService),
 		executionRepository,
 		executionService,
 		checkpointStorage,
@@ -317,12 +315,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		function makeTurn({
 			abortSignal,
 			previewChat = false,
-			automaticPreviewContinuation = false,
 			announceExecution = true,
 		}: {
 			abortSignal?: AbortSignal;
 			previewChat?: boolean;
-			automaticPreviewContinuation?: boolean;
 			announceExecution?: boolean;
 		} = {}) {
 			const fixtures = makeService();
@@ -359,7 +355,6 @@ describe('AgentExecutionOrchestratorService', () => {
 							onExecutionRecorded,
 							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
-							automaticPreviewContinuation,
 							abortSignal,
 						});
 			return {
@@ -384,25 +379,21 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(onExecutionStarted).toHaveBeenCalledExactlyOnceWith('execution-1', 'thread-1');
 		});
 
-		it('rejects a competing preview without creating an execution or claiming a resume', async () => {
-			const {
-				stream,
-				onExecutionStarted,
-				sdkStart,
-				executionService,
-				executionRepository,
-				runtimeCacheService,
-			} = makeTurn({ previewChat: true });
-			executionRepository.existsRunningByThread.mockResolvedValue(true);
+		it('rejects a competing preview without starting the SDK or claiming a resume', async () => {
+			const { stream, onExecutionStarted, sdkStart, executionService, runtimeCacheService } =
+				makeTurn({ previewChat: true });
+			executionService.startExecutionRecording.mockRejectedValue(
+				new AgentTurnAlreadyRunningError(),
+			);
 			await expect(collect(stream)).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
 			expect(onExecutionStarted).not.toHaveBeenCalled();
 			expect(sdkStart).not.toHaveBeenCalled();
-			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).not.toHaveBeenCalled();
 			expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledOnce();
 		});
 
 		if (operation === 'resume') {
-			it('admits one automatic preview continuation for a suspended run', async () => {
+			it('keeps a running preview resume exclusive and stoppable', async () => {
 				const started = createDeferredPromise<AbortSignal>();
 				const release = createDeferredPromise();
 				const {
@@ -412,14 +403,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					chatExecutionService,
 					checkpointStorage,
 					executionService,
-					executionRepository,
-					onExecutionStarted,
-				} = makeTurn({
-					previewChat: true,
-					automaticPreviewContinuation: true,
-					announceExecution: false,
-				});
-				executionRepository.existsRunningByThread.mockResolvedValue(true);
+				} = makeTurn({ previewChat: true, announceExecution: false });
 				runtime.agent.resume.mockImplementation(
 					async (_method, _data, options: ResumeOptions & ExecutionOptions) => {
 						await options.onResumeClaimed?.();
@@ -438,6 +422,10 @@ describe('AgentExecutionOrchestratorService', () => {
 				);
 				const result = collect(stream);
 				const signal = await started.promise;
+				// The session lease is held by the running resume.
+				executionService.startExecutionRecording.mockRejectedValue(
+					new AgentTurnAlreadyRunningError(),
+				);
 				const resumeAgain = async () =>
 					await collect(
 						service.resumeForChat({
@@ -449,7 +437,6 @@ describe('AgentExecutionOrchestratorService', () => {
 							toolCallId: 'tc-1',
 							resumeData: { approved: true },
 							previewChat: true,
-							automaticPreviewContinuation: true,
 						}),
 					);
 
@@ -463,15 +450,10 @@ describe('AgentExecutionOrchestratorService', () => {
 					userId,
 				});
 
-				expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
 				expect(runtime.agent.resume).toHaveBeenCalledOnce();
-				expect(onExecutionStarted).not.toHaveBeenCalled();
 				expect(signal.aborted).toBe(true);
 				release.resolve();
 				await result;
-				await expect(resumeAgain()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
-				expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
-				expect(runtime.agent.resume).toHaveBeenCalledOnce();
 				expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 					'execution-1',
 					expect.objectContaining({

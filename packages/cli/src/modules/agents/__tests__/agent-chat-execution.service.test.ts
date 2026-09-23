@@ -1,7 +1,4 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import { LockService } from '@n8n/backend-common';
-import { Container } from '@n8n/di';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -10,7 +7,6 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
-import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -63,7 +59,6 @@ function makeService() {
 	const publisher = mock<Publisher>();
 	const updates = mock<AgentExecutionUpdateBroadcaster>();
 	const service = new AgentChatExecutionService(
-		Container.get(LockService),
 		repository,
 		executionService,
 		checkpointStorage,
@@ -83,51 +78,6 @@ function makeService() {
 	checkpointStorage.cancelSuspended.mockResolvedValue(true);
 	return { service, repository, executionService, checkpointStorage, publisher, updates };
 }
-
-beforeEach(() => Container.reset());
-
-it('serializes thread admission without queuing and releases the lease after creation', async () => {
-	const { service, repository } = makeService();
-	const entered = createDeferredPromise();
-	const created = createDeferredPromise();
-	const admission = service.admit(context.threadId, async () => {
-		entered.resolve();
-		await created.promise;
-		repository.existsRunningByThread.mockResolvedValue(true);
-	});
-	await entered.promise;
-	const competing = vi.fn();
-	await expect(service.admit(context.threadId, competing)).rejects.toBeInstanceOf(
-		AgentTurnAlreadyRunningError,
-	);
-	expect(competing).not.toHaveBeenCalled();
-	created.resolve();
-	await admission;
-	await expect(service.admit(context.threadId, competing)).rejects.toBeInstanceOf(
-		AgentTurnAlreadyRunningError,
-	);
-	repository.existsRunningByThread.mockResolvedValue(false);
-	await service.admit(context.threadId, competing);
-	expect(competing).toHaveBeenCalledOnce();
-
-	const automaticEntered = createDeferredPromise();
-	const automaticCreated = createDeferredPromise();
-	const automaticAdmission = service.admitAutomaticContinuation(
-		context.threadId,
-		context.agentId,
-		'run-1',
-		async () => {
-			automaticEntered.resolve();
-			await automaticCreated.promise;
-		},
-	);
-	await automaticEntered.promise;
-	await expect(service.admit(context.threadId, competing)).rejects.toBeInstanceOf(
-		AgentTurnAlreadyRunningError,
-	);
-	automaticCreated.resolve();
-	await automaticAdmission;
-});
 
 it.each([
 	{ userId: 'other-user' },
@@ -172,35 +122,30 @@ it('relays Stop to the owning main and leaves other and later executions running
 });
 
 it.each([false, true])(
-	'cleans a raced suspension before releasing control, finalization failed=%s',
+	'cancels a stopped suspension before finalization releases the lease, finalization failed=%s',
 	async (fail) => {
 		const { service, checkpointStorage, repository } = makeService();
 		const controller = new AbortController();
 		service.register(context, controller);
-		const deleting = createDeferredPromise();
-		const deleted = createDeferredPromise();
+		controller.abort();
+		const order: string[] = [];
 		checkpointStorage.delete.mockImplementation(async () => {
-			deleting.resolve();
-			await deleted.promise;
+			order.push('cancel');
 		});
 		const error = new Error('recording failed');
+
 		const settlement = service.settle(
 			context.executionId,
 			async () => {
-				controller.abort();
+				order.push('finalize');
 				if (fail) throw error;
 			},
 			'run-1',
 		);
-		const settled = fail
-			? expect(settlement).rejects.toBe(error)
-			: expect(settlement).resolves.toBeUndefined();
-		await deleting.promise;
-		await expect(service.admit(context.threadId, vi.fn())).rejects.toBeInstanceOf(
-			AgentTurnAlreadyRunningError,
-		);
-		deleted.resolve();
-		await settled;
+
+		if (fail) await expect(settlement).rejects.toBe(error);
+		else await expect(settlement).resolves.toBeUndefined();
+		expect(order).toEqual(['cancel', 'finalize']);
 		expect(checkpointStorage.delete).toHaveBeenCalledExactlyOnceWith('run-1', 'agent-1');
 		const next = new AbortController();
 		service.register({ ...context, executionId: 'execution-2' }, next);
@@ -235,21 +180,20 @@ it('cancels the recorded suspension if the relay arrives after the execution set
 	expect(checkpointStorage.delete).toHaveBeenCalledOnce();
 });
 
-it('leaves a checkpoint claimed by a later execution intact during cleanup', async () => {
-	const { service, repository, checkpointStorage } = makeService();
+it('leaves a checkpoint that a resume already claimed intact during cleanup', async () => {
+	const { service, checkpointStorage } = makeService();
 	const stopped = new AbortController();
-	const resumed = new AbortController();
 	service.register(context, stopped);
 	stopped.abort();
-	await service.settle(
-		context.executionId,
-		async () => {
-			repository.findLatestByThreadId.mockResolvedValue({ ...running, id: 'execution-2' });
-			service.register({ ...context, executionId: 'execution-2' }, resumed);
-		},
-		'run-1',
-	);
-	expect(resumed.signal.aborted).toBe(false);
+	checkpointStorage.getStatus.mockResolvedValue({
+		status: 'active',
+		checkpoint: { ...checkpoint, status: 'running' },
+	});
+	const finalize = vi.fn(async () => {});
+
+	await service.settle(context.executionId, finalize, 'run-1');
+
+	expect(finalize).toHaveBeenCalledOnce();
 	expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
 	expect(checkpointStorage.delete).not.toHaveBeenCalled();
 });
