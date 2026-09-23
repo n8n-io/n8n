@@ -351,6 +351,7 @@ export type VariableResource = BaseResource & {
 
 export type CredentialsResource = BaseResource & {
 	resourceType: 'credential';
+	description?: string | null;
 	updatedAt: string;
 	createdAt: string;
 	type: string;

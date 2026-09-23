@@ -11,8 +11,7 @@ describe('AgentCheckpointPruningTask', () => {
 		expect(task.name).toBe('agent-checkpoint-pruning');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
 		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(true);
-		expect(task.runOnTakeover).toBe(true);
+		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
 		expect(task.retryDelaySeconds).toBe(30);
 	});
 

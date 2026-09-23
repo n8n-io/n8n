@@ -7,9 +7,9 @@ import { mock } from 'vitest-mock-extended';
 import {
 	buildAskCredentialTool,
 	buildAskEmbeddingCredentialTool,
-	type AskCredentialToolDeps,
 	type AskEmbeddingCredentialToolDeps,
 } from '../ask-credential.tool';
+import type { CredentialSetupDeps } from '../setup-tool.types';
 
 interface TestCtx {
 	resumeData?: unknown;
@@ -37,8 +37,8 @@ function expectListed(credentialService: InstanceAiCredentialService, credential
 
 let track: Mock;
 
-function askCredentialTool(deps: Omit<AskCredentialToolDeps, 'track' | 'projectId'>) {
-	const merged: AskCredentialToolDeps = { projectId: 'project-1', ...deps, track };
+function askCredentialTool(deps: Omit<CredentialSetupDeps, 'track' | 'projectId'>) {
+	const merged: CredentialSetupDeps = { projectId: 'project-1', ...deps, track };
 	return buildAskCredentialTool(merged);
 }
 

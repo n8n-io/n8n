@@ -402,7 +402,7 @@ the code path did not run.
 block. The thread history travels with every request, so an earlier block still reaches
 the model, and `carriedFromRunId` names the run that sent it.
 
-CONTEXT-137 defines the event. CONTEXT-139 publishes it.
+The schema defines this event. CONTEXT-139 publishes it.
 
 ```json
 {"type":"preferences-applied","runId":"run_abc123","agentId":"agent-001","payload":{"preferences":[{"id":"9f1c…","scope":"user"},{"id":"3c7a…","scope":"project","projectId":"pr_1","projectName":"Marketing"}],"renderedLength":1240,"injectedThisTurn":true}}
@@ -629,7 +629,8 @@ replaying all SSE events.
 - **`GET /instance-ai/threads/:threadId/messages`** — returns rich
   `InstanceAiMessage[]` with full agent trees, tool calls, and reasoning.
   Includes a `nextEventId` field indicating the SSE cursor position at the
-  time of response.
+  time of response, and `appliedPreferences`, the payload of the thread's latest
+  `preferences-applied` fact, when a turn has published one.
 
 - **`GET /instance-ai/threads/:threadId/status`** — returns the thread's
   current activity state:

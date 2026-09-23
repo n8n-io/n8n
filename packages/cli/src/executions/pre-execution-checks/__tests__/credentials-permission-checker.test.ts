@@ -6,6 +6,7 @@ import {
 	type SharedCredentialsRepository,
 	type CredentialsRepository,
 	type UserRepository,
+	type ProjectRelationRepository,
 	GLOBAL_OWNER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
@@ -19,6 +20,11 @@ import type { ProjectService } from '@/services/project.service.ee';
 
 import { CredentialsPermissionChecker } from '../credentials-permission-checker';
 
+const flags = { credSharingEnabled: false };
+vi.mock('@/constants/credential-sharing', () => ({
+	isCredSharingEnabled: () => flags.credSharingEnabled,
+}));
+
 describe('CredentialsPermissionChecker', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
@@ -27,6 +33,7 @@ describe('CredentialsPermissionChecker', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const userRepository = mock<UserRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const permissionChecker = new CredentialsPermissionChecker(
 		sharedCredentialsRepository,
 		credentialsRepository,
@@ -35,6 +42,7 @@ describe('CredentialsPermissionChecker', () => {
 		nodeTypes,
 		userRepository,
 		credentialsFinderService,
+		projectRelationRepository,
 	);
 
 	const workflowId = 'workflow123';
@@ -58,12 +66,14 @@ describe('CredentialsPermissionChecker', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		flags.credSharingEnabled = false;
 
 		node.credentials!.someCredential.id = credentialId;
 		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(personalProject);
 		projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce([personalProject.id]);
 		credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 		credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([]);
+		ownershipService.getPersonalProjectOwnersCached.mockResolvedValue(new Map());
 	});
 
 	it('should throw if a node has a credential without an id', async () => {
@@ -157,6 +167,124 @@ describe('CredentialsPermissionChecker', () => {
 			expect(result.inaccessibleIds).toEqual(['b']);
 			// Decided before any sharing is read.
 			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
+		});
+
+		describe('personal route (isCredSharingEnabled)', () => {
+			const ownerPersonalProject = mock<Project>({
+				id: 'owner-personal-project',
+				type: 'personal',
+			});
+			const owner = mock<User>({ id: 'owner-user' });
+
+			beforeEach(() => {
+				ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null); // home project owner
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
+				credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce([]);
+			});
+
+			it('leaves the credential inaccessible when the flag is off, even if the owner works in the project', async () => {
+				sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
+					new Map([[credentialId, ownerPersonalProject]]),
+				);
+
+				const result = await permissionChecker.findInaccessible(workflowId, [credentialId]);
+
+				expect(result.inaccessibleIds).toEqual([credentialId]);
+				expect(sharedCredentialsRepository.findOwnerProjectsByCredentialIds).not.toHaveBeenCalled();
+			});
+
+			it('grants access when the flag is on and the credential owner works in the project', async () => {
+				flags.credSharingEnabled = true;
+				sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
+					new Map([[credentialId, ownerPersonalProject]]),
+				);
+				ownershipService.getPersonalProjectOwnersCached.mockResolvedValueOnce(
+					new Map([[ownerPersonalProject.id, owner]]),
+				);
+				projectRelationRepository.findProjectIdsByUserIds.mockResolvedValueOnce(
+					new Map([[owner.id, [personalProject.id]]]),
+				);
+
+				const result = await permissionChecker.findInaccessible(workflowId, [credentialId]);
+
+				expect(result.inaccessibleIds).toEqual([]);
+			});
+
+			it('keeps the credential inaccessible when the owner does not work in the project', async () => {
+				flags.credSharingEnabled = true;
+				sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
+					new Map([[credentialId, ownerPersonalProject]]),
+				);
+				ownershipService.getPersonalProjectOwnersCached.mockResolvedValueOnce(
+					new Map([[ownerPersonalProject.id, owner]]),
+				);
+				projectRelationRepository.findProjectIdsByUserIds.mockResolvedValueOnce(
+					new Map([[owner.id, ['some-other-project']]]),
+				);
+
+				const result = await permissionChecker.findInaccessible(workflowId, [credentialId]);
+
+				expect(result.inaccessibleIds).toEqual([credentialId]);
+			});
+
+			it('resolves membership for several distinct owners with a single batched query', async () => {
+				flags.credSharingEnabled = true;
+				const otherCredentialId = 'cred456';
+				const otherOwnerPersonalProject = mock<Project>({
+					id: 'other-owner-personal-project',
+					type: 'personal',
+				});
+				const otherOwner = mock<User>({ id: 'other-owner-user' });
+
+				sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
+					new Map([
+						[credentialId, ownerPersonalProject],
+						[otherCredentialId, otherOwnerPersonalProject],
+					]),
+				);
+				ownershipService.getPersonalProjectOwnersCached.mockResolvedValue(
+					new Map([
+						[ownerPersonalProject.id, owner],
+						[otherOwnerPersonalProject.id, otherOwner],
+					]),
+				);
+				projectRelationRepository.findProjectIdsByUserIds.mockResolvedValueOnce(
+					new Map([
+						[owner.id, [personalProject.id]],
+						[otherOwner.id, ['some-other-project']],
+					]),
+				);
+
+				const result = await permissionChecker.findInaccessible(workflowId, [
+					credentialId,
+					otherCredentialId,
+				]);
+
+				// One query covering both owners, not one per credential/owner.
+				expect(ownershipService.getPersonalProjectOwnersCached).toHaveBeenCalledTimes(1);
+				expect(ownershipService.getPersonalProjectOwnersCached).toHaveBeenCalledWith([
+					ownerPersonalProject.id,
+					otherOwnerPersonalProject.id,
+				]);
+				expect(projectRelationRepository.findProjectIdsByUserIds).toHaveBeenCalledTimes(1);
+				expect(projectRelationRepository.findProjectIdsByUserIds).toHaveBeenCalledWith(
+					expect.arrayContaining([owner.id, otherOwner.id]),
+				);
+				expect(result.inaccessibleIds).toEqual([otherCredentialId]);
+			});
+
+			it('ignores the personal route for a credential owned by a team project', async () => {
+				flags.credSharingEnabled = true;
+				const teamOwnerProject = mock<Project>({ id: 'team-owner-project', type: 'team' });
+				sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
+					new Map([[credentialId, teamOwnerProject]]),
+				);
+
+				const result = await permissionChecker.findInaccessible(workflowId, [credentialId]);
+
+				expect(result.inaccessibleIds).toEqual([credentialId]);
+				expect(ownershipService.getPersonalProjectOwnerCached).toHaveBeenCalledTimes(1); // only the home-project check
+			});
 		});
 	});
 
