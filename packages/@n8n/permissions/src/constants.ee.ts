@@ -77,6 +77,7 @@ export const RESOURCES = {
 	insights: ['list', 'read'] as const,
 	oidc: ['manage'] as const,
 	provisioning: ['manage'] as const,
+	sso: ['manage'] as const,
 	dataTable: [
 		...DEFAULT_OPERATIONS,
 		'readRow',

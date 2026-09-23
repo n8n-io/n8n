@@ -231,7 +231,13 @@ describe('Init', () => {
 			};
 
 			settingsStore.userManagement.authenticationMethod = AuthenticationMethod.Oidc;
-			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
+			settingsStore.settings.sso = {
+				managedByEnv: false,
+				redirectLoginToSso: true,
+				saml,
+				ldap,
+				oidc,
+			};
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc] = true;
 
 			usersStore.registerLoginHook.mockImplementation(async (hook) => {
@@ -246,7 +252,8 @@ describe('Init', () => {
 			expect(ssoStore.initialize).toHaveBeenLastCalledWith({
 				authenticationMethod: AuthenticationMethod.Oidc,
 				managedByEnv: false,
-				config: { managedByEnv: false, saml, ldap, oidc },
+				redirectLoginToSso: true,
+				config: { managedByEnv: false, redirectLoginToSso: true, saml, ldap, oidc },
 				features: {
 					saml: false,
 					ldap: false,
@@ -261,7 +268,13 @@ describe('Init', () => {
 			const oidc = { loginEnabled: false, loginUrl: '', callbackUrl: '' };
 
 			settingsStore.userManagement.authenticationMethod = AuthenticationMethod.Saml;
-			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
+			settingsStore.settings.sso = {
+				managedByEnv: false,
+				redirectLoginToSso: true,
+				saml,
+				ldap,
+				oidc,
+			};
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
 
 			await initializeCore();
@@ -269,7 +282,8 @@ describe('Init', () => {
 			expect(ssoStore.initialize).toHaveBeenCalledWith({
 				authenticationMethod: AuthenticationMethod.Saml,
 				managedByEnv: false,
-				config: { managedByEnv: false, saml, ldap, oidc },
+				redirectLoginToSso: true,
+				config: { managedByEnv: false, redirectLoginToSso: true, saml, ldap, oidc },
 				features: {
 					saml: true,
 					ldap: false,
