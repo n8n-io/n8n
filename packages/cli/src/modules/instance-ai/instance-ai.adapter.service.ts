@@ -441,15 +441,10 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
-<<<<<<< HEAD
+			setupPanelVariant?: 'control' | 'variant';
 			/** Per-user MCP registry gate (via `resolveExperimentGates`). Falsy →
 			 *  mcp service/tool not wired. */
 			mcpConnectionsEnabled?: boolean;
-=======
-			setupPanelVariant?: 'control' | 'variant';
-			/** Resolved MCP registry availability. Falsy → mcp service/tool not wired. */
-			mcpConnectionsAvailable?: boolean;
->>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
 			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
 			nodeUsageEnabled?: boolean;
@@ -476,12 +471,8 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
-<<<<<<< HEAD
-			mcpConnectionsEnabled,
-=======
 			setupPanelVariant,
-			mcpConnectionsAvailable,
->>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
+			mcpConnectionsEnabled,
 			nodeUsageEnabled,
 			instanceContextEnabled,
 			conversationHistory,

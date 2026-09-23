@@ -886,28 +886,17 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(environment.instanceContextEnabled).toBe(instanceContextEnabled);
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			fakeUser,
-<<<<<<< HEAD
-			expect.objectContaining({ instanceContextEnabled }),
-=======
 			expect.objectContaining({
-				...expectedGates,
+				instanceContextEnabled,
 				configEvalsEnabled: true,
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
 			}),
->>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 		);
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
-<<<<<<< HEAD
-=======
 		expect(service.runState.setSetupPanelEnabled).toHaveBeenCalledWith(
 			'thread-1',
 			snapshotMode !== 'off',
 		);
-		expect(service.adapterService.createContext).toHaveBeenCalledWith(
-			expect.anything(),
-			expect.objectContaining({ mcpConnectionsAvailable: true }),
-		);
->>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 		if (snapshotMode === 'off') {
 			expect(service.eventLog.getSetupItemsSnapshots).not.toHaveBeenCalled();
 			expect(createSetupItemsEmitter).not.toHaveBeenCalled();

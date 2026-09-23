@@ -2418,23 +2418,14 @@ export class InstanceAiService {
 			mcpConnectionsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
-<<<<<<< HEAD
-			nodeUsageEnabled,
-=======
 			setupPanelEnabled,
 			setupPanelVariant,
->>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
+			nodeUsageEnabled,
 			folderExplorationEnabled,
 			aiPreferencesEnabled,
-<<<<<<< HEAD
 			instanceContextEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
-=======
-		} = gates;
 		this.runState.setSetupPanelEnabled(threadId, setupPanelEnabled);
-		// Resumed segments use the gates bound to the original turn.
-		const { instanceContextEnabled, nodeUsageEnabled } = instanceContextGates ?? gates;
->>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 		// One scoped reader backs both the tool and the first-turn hint.
 		const conversationHistory = conversationHistoryEnabled
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
@@ -2457,12 +2448,8 @@ export class InstanceAiService {
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
-<<<<<<< HEAD
-			mcpConnectionsEnabled,
-=======
 			setupPanelVariant,
-			mcpConnectionsAvailable,
->>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
+			mcpConnectionsEnabled,
 			nodeUsageEnabled,
 			instanceContextEnabled,
 			conversationHistory,

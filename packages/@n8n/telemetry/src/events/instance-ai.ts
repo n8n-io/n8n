@@ -7,11 +7,7 @@ import {
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-<<<<<<< HEAD
-=======
-import { assistantSurfaceSchema } from '../schemas';
 import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
->>>>>>> 0254343d (feat(core): Track n8n Assistant workflow setup (no-changelog) (#39190))
 
 /**
  * How each n8n Assistant setup component is configured. Source (who set it) and
