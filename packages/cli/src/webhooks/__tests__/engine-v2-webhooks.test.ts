@@ -1,4 +1,5 @@
 import type { StepSlots } from '@n8n/engine';
+import type { EngineConfig } from '@n8n/config';
 import { WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,6 +12,7 @@ const engineV2Webhooks = new EngineV2Webhooks(
 	mock<EngineV2Dispatcher>(),
 	mock<EngineV2PayloadGuard>(),
 	mock<EngineDataPlaneProxyService>(),
+	mock<EngineConfig>(),
 );
 
 describe('EngineV2Webhooks.toRun', () => {
