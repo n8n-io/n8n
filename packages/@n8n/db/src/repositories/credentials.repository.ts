@@ -113,6 +113,16 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/** Id and name for each of the given credential ids. */
+	async findNamesByIds(ids: string[]): Promise<Array<Pick<CredentialsEntity, 'id' | 'name'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			where: { id: In(ids) },
+			select: ['id', 'name'],
+		});
+	}
+
 	/** Filters `ids` down to the global credentials, which every project can use. */
 	async findGlobalProjectCredentialIds(ids: string[]): Promise<string[]> {
 		if (ids.length === 0) return [];

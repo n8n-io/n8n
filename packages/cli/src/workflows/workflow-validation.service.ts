@@ -1,3 +1,4 @@
+import type { User } from '@n8n/db';
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
@@ -25,6 +26,7 @@ import type {
 import { STARTING_NODES } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { NodeTypes } from '@/node-types';
 
 export interface WorkflowValidationResult {
@@ -58,6 +60,7 @@ export class WorkflowValidationService {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	/**
@@ -381,6 +384,24 @@ export class WorkflowValidationService {
 		return error
 			? { isValid: false, error: `Cannot publish workflow: ${error}` }
 			: { isValid: true };
+	}
+
+	/** A published workflow runs as its publisher, so the publisher must be able to use every credential it references. */
+	async validatePublisherCredentialAccess(
+		user: User,
+		nodes: INode[],
+	): Promise<WorkflowValidationResult> {
+		const inaccessible = await this.credentialsPermissionChecker.findInaccessibleForUser(
+			user.id,
+			nodes,
+		);
+		if (inaccessible.length === 0) return { isValid: true };
+
+		const plural = inaccessible.length > 1;
+		const credNames = formatCredentialNames(inaccessible);
+		const error = `Cannot publish workflow: you do not have access to credential${plural ? 's' : ''} ${credNames}. Ask ${plural ? 'their owners' : 'its owner'} to share ${plural ? 'them' : 'it'} with you.`;
+
+		return { isValid: false, error };
 	}
 
 	/**

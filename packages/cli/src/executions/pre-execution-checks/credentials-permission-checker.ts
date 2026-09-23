@@ -73,6 +73,44 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
+		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUser(
+			userId,
+			workflowCredIds,
+		);
+		if (inaccessibleIds.length > 0) {
+			throw new InaccessibleCredentialForUserError(credIdsToNodes[inaccessibleIds[0]][0]);
+		}
+	}
+
+	/**
+	 * Non-throwing, named-credential sibling of `checkForUser`, for publish validation. Gated
+	 * behind {@link isCredSharingEnabled}, same as the personal route inside `findInaccessible`.
+	 */
+	async findInaccessibleForUser(
+		userId: string,
+		nodes: INode[],
+	): Promise<Array<{ id: string; name: string }>> {
+		if (!isCredSharingEnabled()) return [];
+
+		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
+		const workflowCredIds = Object.keys(credIdsToNodes);
+
+		if (workflowCredIds.length === 0) return [];
+
+		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUser(
+			userId,
+			workflowCredIds,
+		);
+		if (inaccessibleIds.length === 0) return [];
+
+		return await this.credentialsRepository.findNamesByIds(inaccessibleIds);
+	}
+
+	/** The ids among `credentialIds` that `userId` personally cannot use. */
+	private async resolveInaccessibleCredentialIdsForUser(
+		userId: string,
+		credentialIds: string[],
+	): Promise<string[]> {
 		// Load the role relation (scopes are eager) so hasGlobalScope can resolve.
 		const user = await this.userRepository.findOne({
 			where: { id: userId },
@@ -80,27 +118,29 @@ export class CredentialsPermissionChecker {
 		});
 		if (!user) {
 			// Cannot resolve the triggering user - fail closed.
-			throw new InaccessibleCredentialForUserError(credIdsToNodes[workflowCredIds[0]][0]);
-		}
-		const unavailableCredentials =
-			await this.credentialsRepository.findNonProjectCredentialsByIds(workflowCredIds);
-		if (unavailableCredentials.length > 0) {
-			throw new InaccessibleCredentialForUserError(credIdsToNodes[unavailableCredentials[0].id][0]);
+			return credentialIds;
 		}
 
-		// A user who may use any credential on the instance needs no further check.
-		if (hasGlobalScope(user, 'credential:use')) return;
+		const unavailableCredentials =
+			await this.credentialsRepository.findNonProjectCredentialsByIds(credentialIds);
+		const unavailableIds = unavailableCredentials.map((c) => c.id);
+		const unavailableSet = new Set(unavailableIds);
+		const remainingIds = credentialIds.filter((id) => !unavailableSet.has(id));
+
+		// Nothing left to check once every id is already unavailable outright.
+		if (remainingIds.length === 0) return unavailableIds;
+
+		// A user who may use any credential on the instance needs no further check for the rest —
+		// unavailable (non-project) credentials above stay blocked regardless.
+		if (hasGlobalScope(user, 'credential:use')) return unavailableIds;
 
 		const accessibleCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
 		const accessibleSet = new Set(accessibleCredentials.map((cred) => cred.id));
+		const stillInaccessible = remainingIds.filter((id) => !accessibleSet.has(id));
 
-		for (const credentialsId of workflowCredIds) {
-			if (!accessibleSet.has(credentialsId)) {
-				throw new InaccessibleCredentialForUserError(credIdsToNodes[credentialsId][0]);
-			}
-		}
+		return [...unavailableIds, ...stillInaccessible];
 	}
 
 	/**

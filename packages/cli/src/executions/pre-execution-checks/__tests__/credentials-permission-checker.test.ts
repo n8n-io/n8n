@@ -778,6 +778,110 @@ describe('CredentialsPermissionChecker', () => {
 		});
 	});
 
+	describe('findInaccessibleForUser', () => {
+		const userId = 'user-123';
+
+		beforeEach(() => {
+			flags.credSharingEnabled = true;
+		});
+
+		it('returns an empty array without checking anything when credential sharing is not enabled', async () => {
+			flags.credSharingEnabled = false;
+
+			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([]);
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('returns an empty array when the workflow has no credentials', async () => {
+			await expect(permissionChecker.findInaccessibleForUser(userId, [])).resolves.toEqual([]);
+
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('returns an empty array when the user may use any credential', async () => {
+			userRepository.findOne.mockResolvedValueOnce(mock<User>({ role: GLOBAL_OWNER_ROLE }));
+
+			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([]);
+			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
+			expect(credentialsRepository.findNamesByIds).not.toHaveBeenCalled();
+		});
+
+		it('returns an empty array when the user has access to every credential', async () => {
+			userRepository.findOne.mockResolvedValueOnce(
+				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
+			);
+			credentialsFinderService.findCredentialsForUser.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: credentialId }),
+			]);
+
+			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([]);
+			expect(credentialsRepository.findNamesByIds).not.toHaveBeenCalled();
+		});
+
+		it('names the credentials the user cannot use', async () => {
+			userRepository.findOne.mockResolvedValueOnce(
+				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
+			);
+			credentialsFinderService.findCredentialsForUser.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Test Credential' },
+			]);
+
+			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([
+				{ id: credentialId, name: 'Test Credential' },
+			]);
+			expect(credentialsRepository.findNamesByIds).toHaveBeenCalledWith([credentialId]);
+		});
+
+		it('reports every inaccessible credential, not just the unavailable ones', async () => {
+			const otherCredentialId = 'other-cred';
+			const otherNode = mock<INode>({
+				name: 'Other Node',
+				credentials: { otherCredential: { id: otherCredentialId, name: 'Other Credential' } },
+				disabled: false,
+			});
+
+			userRepository.findOne.mockResolvedValueOnce(
+				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
+			);
+			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: credentialId }),
+			]);
+			credentialsFinderService.findCredentialsForUser.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Test Credential' },
+				{ id: otherCredentialId, name: 'Other Credential' },
+			]);
+
+			await expect(
+				permissionChecker.findInaccessibleForUser(userId, [node, otherNode]),
+			).resolves.toEqual([
+				{ id: credentialId, name: 'Test Credential' },
+				{ id: otherCredentialId, name: 'Other Credential' },
+			]);
+
+			// The unavailable credential must not short-circuit the check for the remaining one.
+			expect(credentialsFinderService.findCredentialsForUser).toHaveBeenCalled();
+			expect(credentialsRepository.findNamesByIds).toHaveBeenCalledWith([
+				credentialId,
+				otherCredentialId,
+			]);
+		});
+
+		it('fails closed and names every referenced credential when the user cannot be resolved', async () => {
+			userRepository.findOne.mockResolvedValueOnce(null);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Test Credential' },
+			]);
+
+			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([
+				{ id: credentialId, name: 'Test Credential' },
+			]);
+			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
+			expect(credentialsRepository.findNamesByIds).toHaveBeenCalledWith([credentialId]);
+		});
+	});
+
 	describe('a global role needs `credential:use`, not just list/read', () => {
 		// The skip is what lets an Owner run anything. A see-only instance role holds
 		// list and read but not use, so it must not short-circuit either check.
