@@ -52,6 +52,7 @@ const props = withDefaults(
 		agentId: string;
 		mode?: 'panel' | 'inline';
 		continueSessionId?: string;
+		newSession?: boolean;
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
@@ -65,6 +66,7 @@ const props = withDefaults(
 		visible: true,
 		mode: 'panel',
 		continueSessionId: undefined,
+		newSession: false,
 		canEditAgent: true,
 		canSendToAssistant: false,
 		beforeSend: undefined,
@@ -77,6 +79,7 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'session-created': [sessionId: string];
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
@@ -98,6 +101,7 @@ const {
 	loadHistory,
 	sendMessage,
 	stopGenerating,
+	detachStream,
 	resume,
 	cancelAndSteer,
 	dismissFatalError,
@@ -106,11 +110,13 @@ const {
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
 	continueSessionId: toRef(props, 'continueSessionId'),
+	newSession: toRef(props, 'newSession'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) {
 			emit('continue-loaded', { sessionId: props.continueSessionId, count });
 		}
 	},
+	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 });
 
 const { jobs: backgroundJobs } = useAgentBackgroundJobs({
@@ -462,30 +468,33 @@ function consumeQueuedExternalMessage(message: string) {
 
 async function onSubmit(): Promise<SubmitResult> {
 	const text = inputText.value.trim();
-	const files = attachedFiles.value;
+	const files = [...attachedFiles.value];
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	const isCurrentTarget = () =>
+		!disposed &&
+		props.projectId === target.projectId &&
+		props.agentId === target.agentId &&
+		props.continueSessionId === target.continueSessionId;
 
 	if (hasOpenInteractiveQuestion.value) {
 		if (!text) return 'rejected';
-		inputText.value = '';
-		await cancelAndSteer(text);
-		consumeQueuedExternalMessage(text);
-		return 'sent';
+		const result = await cancelAndSteer(text, () => {
+			if (!isCurrentTarget()) return;
+			if (inputText.value.trim() === text) inputText.value = '';
+			consumeQueuedExternalMessage(text);
+		});
+		if (isCurrentTarget()) consumeQueuedExternalMessage(text);
+		return result === 'busy' ? 'busy' : 'sent';
 	}
 
 	isPreparingToSend.value = true;
 	try {
-		const target = {
-			projectId: props.projectId,
-			agentId: props.agentId,
-			continueSessionId: props.continueSessionId,
-		};
-		const isCurrentTarget = () =>
-			!disposed &&
-			props.projectId === target.projectId &&
-			props.agentId === target.agentId &&
-			props.continueSessionId === target.continueSessionId;
 		try {
 			await props.beforeSend?.();
 		} catch {
@@ -501,20 +510,22 @@ async function onSubmit(): Promise<SubmitResult> {
 		// Keep the draft if a local resume or cancellation started during preparation.
 		if (isStreaming.value || isCancelling.value) return 'busy';
 
-		inputText.value = '';
-		attachedFiles.value = [];
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
 			status: props.agentStatus,
 			agentConfig: fingerprint,
 		});
 
-		if (files.length > 0) {
-			await sendMessage(text, files);
-		} else {
-			await sendMessage(text);
-		}
-		consumeQueuedExternalMessage(text);
+		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
+			if (!isCurrentTarget()) return;
+			if (inputText.value.trim() === text) inputText.value = '';
+			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
+			consumeQueuedExternalMessage(text);
+		});
+		isPreparingToSend.value = false;
+		const result = await sending;
+		if (isCurrentTarget()) consumeQueuedExternalMessage(text);
+		if (result === 'busy') return 'busy';
 		return 'sent';
 	} finally {
 		isPreparingToSend.value = false;
@@ -568,7 +579,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	disposed = true;
-	if (isStreaming.value) void stopGenerating();
+	detachStream();
 });
 </script>
 
@@ -655,12 +666,7 @@ onBeforeUnmount(() => {
 					!isPreparingToSend &&
 					(inputText.trim().length > 0 || attachedFiles.length > 0)
 				"
-				:disabled="
-					inputBlockedBySuspension ||
-					isCancelling ||
-					isPreparingToSend ||
-					(isStreaming && messagingState !== 'receiving')
-				"
+				:disabled="inputBlockedBySuspension || isPreparingToSend"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"

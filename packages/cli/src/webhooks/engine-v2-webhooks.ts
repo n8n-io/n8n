@@ -1,6 +1,8 @@
 import { Service } from '@n8n/di';
 import type {
 	INode,
+	IRun,
+	IRunData,
 	IWebhookResponseData,
 	IWorkflowBase,
 	WebhookResponseMode,
@@ -9,16 +11,20 @@ import type {
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	classifyTriggerIdentity,
+	createRunExecutionData,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	UserError,
 	WAIT_NODE_TYPE,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
+import type { WebhookRunOutcome } from '@/services/pending-webhook-response';
 
 /**
  * Trigger types the v2 path cannot serve. Each carries machinery the engine
@@ -33,6 +39,13 @@ const UNSUPPORTED_TRIGGERS = new Set<string>([
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	WAIT_NODE_TYPE,
 ]);
+
+/**
+ * Response modes the v2 path serves. Each mode is added here as its support
+ * lands, so a mode that is not ready yet fails with a reason rather than
+ * answering wrongly.
+ */
+const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>(['onReceived', 'lastNode']);
 
 /** What the request says about a run, before the webhook node has produced anything. */
 export type EngineV2WebhookRequest = {
@@ -54,6 +67,7 @@ export class EngineV2Webhooks {
 	constructor(
 		private readonly dispatcher: EngineV2Dispatcher,
 		private readonly payloadGuard: EngineV2PayloadGuard,
+		private readonly proxy: EngineDataPlaneProxyService,
 	) {}
 
 	/** Whether this webhook run starts on the engine 2.0 data plane. */
@@ -77,6 +91,15 @@ export class EngineV2Webhooks {
 	 * Ordered so the user hears the most fundamental reason first.
 	 */
 	assertSupported({ workflowStartNode, responseMode, executionId }: EngineV2WebhookRequest): void {
+		// Checked first: `EngineV2WebhookResponder.waitForResponse` assumes the module
+		// registered its channel, and throws an internal error otherwise. Only a check
+		// that precedes that call can turn "module off" into a 400 instead of a 500.
+		if (!this.proxy.isAvailable()) {
+			throw new UserError(
+				'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+			);
+		}
+
 		// A v2 run keeps no control-plane execution row, so there is nothing to resume.
 		if (executionId !== undefined) {
 			throw new UserError('Engine 2.0 cannot resume a waiting execution yet.');
@@ -99,12 +122,54 @@ export class EngineV2Webhooks {
 			);
 		}
 
-		// TODO(CAT-4313): support `lastNode`. TODO(CAT-4079): support `responseNode`.
-		if (responseMode !== 'onReceived') {
+		// TODO(CAT-4079): Support `responseNode`.
+		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 			throw new UserError(
 				`Engine 2.0 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
 			);
 		}
+	}
+
+	/** Converts the data plane's answer to the shape the v1 response path reads. */
+	async toRun(
+		outcome: Exclude<WebhookRunOutcome, { status: 'timeout' }>,
+		executionMode: WorkflowExecuteMode,
+	): Promise<IRun> {
+		const runData: IRunData = {};
+		let lastNodeExecuted = outcome.status === 'failed' ? outcome.nodeName : undefined;
+
+		if (outcome.status === 'completed' && outcome.lastNode) {
+			const { fromStepInputs } = await import('@n8n/node-engine-compatibility');
+			lastNodeExecuted = outcome.lastNode.nodeName;
+			runData[lastNodeExecuted] = [
+				{
+					startTime: Date.now(),
+					executionIndex: 0,
+					source: [],
+					executionTime: 0,
+					executionStatus: 'success',
+					data: { main: fromStepInputs(outcome.lastNode.outputs) },
+				},
+			];
+		}
+
+		return {
+			mode: executionMode,
+			startedAt: new Date(),
+			status: outcome.status === 'failed' ? 'error' : 'success',
+			// The data plane holds the run. This object never reaches a store.
+			storedAt: 'db',
+			data: createRunExecutionData({
+				resultData: {
+					runData,
+					lastNodeExecuted,
+					error:
+						outcome.status === 'failed'
+							? new WorkflowOperationError(outcome.error?.message ?? 'The workflow failed')
+							: undefined,
+				},
+			}),
+		};
 	}
 
 	/**

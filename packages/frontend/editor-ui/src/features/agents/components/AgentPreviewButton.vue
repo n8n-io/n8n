@@ -11,12 +11,14 @@ const props = withDefaults(
 		isRunnable: boolean;
 		isPreviewOpen?: boolean;
 		iconOnly?: boolean;
+		variant?: 'subtle' | 'ghost';
 		validationIssues?: AgentConfigValidationIssue[];
 		testId?: string;
 	}>(),
 	{
 		isPreviewOpen: false,
 		iconOnly: false,
+		variant: 'subtle',
 		validationIssues: () => [],
 		testId: undefined,
 	},
@@ -58,9 +60,9 @@ function onClick() {
 		<N8nToggle
 			v-if="props.iconOnly"
 			:model-value="props.isPreviewOpen"
-			variant="ghost"
+			variant="subtle"
 			size="medium"
-			icon="play"
+			icon="flask-conical"
 			:label="label"
 			:disabled="isDisabled"
 			:data-testid="props.testId"
@@ -68,9 +70,9 @@ function onClick() {
 		/>
 		<N8nButton
 			v-else
-			variant="subtle"
+			:variant="props.variant"
 			size="medium"
-			icon="play"
+			icon="flask-conical"
 			:label="label"
 			:disabled="isDisabled"
 			:data-testid="props.testId"

@@ -61,9 +61,8 @@ so one value serves every reader:
   reader: `create()` counts the target scope, and `update()` counts it again when the write
   moves a row to another scope.
 
-No tool input schema carries either number yet, because no tool writes a preference yet.
 The `describe()` text on `aiPreferenceContentSchema` states both limits for a model, and
-the write tool of CONTEXT-138 reuses that schema for its content field.
+the `save_user_preference` tool reuses that schema for its content field.
 
 The caps apply on the write, never on the read. A read that dropped a row would hide a
 colleague's preference with no way to tell. A write can refuse the text while the person
@@ -117,6 +116,13 @@ length, and whether it sent a new block. The event is the answer to "which prefe
 applied here", and the chat and the plus menu read it rather than deriving an answer from
 `GET /rest/ai-preferences`, which lists every visible row and knows nothing about the
 turn.
+
+The payload names rows by id and scope, not by text. The plus menu reads the latest
+payload from `GET /rest/instance-ai/threads/:threadId/messages`, which carries it as
+`appliedPreferences`, and from the live event after that. It then resolves the display text
+with `GET /rest/ai-preferences?ids=`, which narrows the same visibility rules to the named
+rows and never widens them. The menu keeps a row the lookup does not return and marks it
+as removed, so the list the user sees stays the list the turn carried.
 
 See
 [the streaming protocol](../../../@n8n/instance-ai/docs/streaming-protocol.md#preferences-applied)

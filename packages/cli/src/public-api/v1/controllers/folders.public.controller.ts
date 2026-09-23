@@ -1,4 +1,7 @@
 import {
+	CreateFolderPublicDto,
+	CreatedFolderPublicDto,
+	DeleteFolderQueryPublicDto,
 	FolderDetailsPublicDto,
 	FolderListPublicDto,
 	type FolderPublic,
@@ -6,6 +9,7 @@ import {
 	UpdateFolderPublicDto,
 	UpdatedFolderPublicDto,
 	folderIdParamSchema,
+	folderProjectIdParamSchema,
 	projectIdParamSchema,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -22,10 +26,12 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Licensed,
 	Param,
 	Patch,
+	Post,
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
@@ -37,8 +43,11 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { assertProjectScope } from '@/public-api/v1/shared/services/utils.service';
 import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 const tags = ['Folders'];
+
+const PERSONAL_PROJECT_ALIAS = 'personal';
 
 /**
  * The `select` query parameter decides which columns the query loads, so a field the caller did not
@@ -89,6 +98,16 @@ const toUpdatedFolderPublicDto = (folder: Folder): UpdatedFolderPublicDto => ({
 	updatedAt: folder.updatedAt.toISOString(),
 });
 
+type CreatedFolder = Omit<Folder, 'homeProject'>;
+
+const toCreatedFolderPublicDto = (folder: CreatedFolder): CreatedFolderPublicDto => ({
+	id: folder.id,
+	name: folder.name,
+	parentFolderId: folder.parentFolderId ?? folder.parentFolder?.id ?? null,
+	createdAt: folder.createdAt.toISOString(),
+	updatedAt: folder.updatedAt.toISOString(),
+});
+
 const handleError = (error: unknown): never => {
 	if (error instanceof FolderNotFoundError) {
 		throw new NotFoundError(error.message);
@@ -102,7 +121,10 @@ const handleError = (error: unknown): never => {
 
 @PublicApiController('/projects/:projectId/folders')
 export class FoldersPublicController {
-	constructor(private readonly folderService: FolderService) {}
+	constructor(
+		private readonly folderService: FolderService,
+		private readonly projectService: ProjectService,
+	) {}
 
 	@Get('/')
 	@Licensed(LICENSE_FEATURES.FOLDERS)
@@ -126,6 +148,34 @@ export class FoldersPublicController {
 		const [data, count] = await this.folderService.getManyAndCount(projectId, query);
 
 		return { count, data: data.map(toFolderPublicDto) };
+	}
+
+	@Post('/')
+	@Licensed(LICENSE_FEATURES.FOLDERS)
+	@ApiKeyScope('folder:create')
+	@ApiSummary('Create a folder')
+	@ApiDescription('Create a folder within a project.')
+	@ApiTags(tags)
+	@ApiResponse(201, CreatedFolderPublicDto)
+	@ApiErrorResponse(404)
+	async createFolder(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', folderProjectIdParamSchema) projectId: string,
+		@Body body: CreateFolderPublicDto,
+	): Promise<CreatedFolderPublicDto> {
+		const resolvedProjectId = await this.resolveProjectId(req, projectId);
+
+		// A 404 for an unknown project, so `@ProjectScope` (which answers 403) cannot be used here.
+		await assertProjectScope(req.user, resolvedProjectId, ['folder:create']);
+
+		try {
+			return toCreatedFolderPublicDto(
+				await this.folderService.createFolder(body, resolvedProjectId),
+			);
+		} catch (error) {
+			return handleError(error);
+		}
 	}
 
 	@Get('/:folderId')
@@ -179,5 +229,45 @@ export class FoldersPublicController {
 		} catch (error) {
 			return handleError(error);
 		}
+	}
+
+	@Delete('/:folderId')
+	@Licensed(LICENSE_FEATURES.FOLDERS)
+	@ApiKeyScope('folder:delete')
+	@ApiSummary('Delete a folder')
+	@ApiDescription(
+		'Delete a folder within a project. When `transferToFolderId` is provided, workflows and ' +
+			'sub-folders are moved to the target folder before deletion. When omitted, workflows are ' +
+			'moved to the project root and archived, and child folders are deleted.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async deleteFolder(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('folderId', folderIdParamSchema) folderId: string,
+		@Query query: DeleteFolderQueryPublicDto,
+	): Promise<void> {
+		// Stays a manual check: an unknown project answers 404 here, where `@ProjectScope` answers 403.
+		await assertProjectScope(req.user, projectId, ['folder:delete']);
+
+		try {
+			await this.folderService.deleteFolder(req.user, folderId, projectId, query);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	private async resolveProjectId(req: AuthenticatedRequest, projectId: string): Promise<string> {
+		if (projectId !== PERSONAL_PROJECT_ALIAS) return projectId;
+
+		const personalProject = await this.projectService.getPersonalProject(req.user);
+		if (!personalProject) {
+			throw new NotFoundError('Could not find a personal project for this user');
+		}
+
+		return personalProject.id;
 	}
 }

@@ -308,6 +308,20 @@ progress indicator from this data.
 }
 ```
 
+### `instance-context`
+
+The server publishes a context summary before the agent starts. The raw block
+stays on the server. An injected block has
+`{ state: 'injected', isUpdate, legs, chars }`. A failed read has
+`{ state: 'absent', reason: 'failed' }`.
+
+Empty results, disabled instance gates, and machine follow-ups emit no trace row.
+Telemetry still records these outcomes for comparison.
+
+The reducer stores one row per run on the root agent timeline. History replay
+restores it. The `contextReach` field on `run-finish` adds reads from all segments,
+including reads before a suspension.
+
 ### `setup-items`
 
 The setup panel checklist for a workflow (service-keyed items, kinds
@@ -390,7 +404,7 @@ the code path did not run.
 block. The thread history travels with every request, so an earlier block still reaches
 the model, and `carriedFromRunId` names the run that sent it.
 
-CONTEXT-137 defines the event. CONTEXT-139 publishes it.
+The schema defines this event. CONTEXT-139 publishes it.
 
 ```json
 {"type":"preferences-applied","runId":"run_abc123","agentId":"agent-001","payload":{"preferences":[{"id":"9f1c…","scope":"user"},{"id":"3c7a…","scope":"project","projectId":"pr_1","projectName":"Marketing"}],"renderedLength":1240,"injectedThisTurn":true}}
@@ -617,7 +631,8 @@ replaying all SSE events.
 - **`GET /instance-ai/threads/:threadId/messages`** — returns rich
   `InstanceAiMessage[]` with full agent trees, tool calls, and reasoning.
   Includes a `nextEventId` field indicating the SSE cursor position at the
-  time of response.
+  time of response, and `appliedPreferences`, the payload of the thread's latest
+  `preferences-applied` fact, when a turn has published one.
 
 - **`GET /instance-ai/threads/:threadId/status`** — returns the thread's
   current activity state:
@@ -667,7 +682,7 @@ creating duplicate messages.
 | Event Type | Payload Key Fields | Purpose |
 |------------|-------------------|---------|
 | `run-start` | `messageId` | First event in a run |
-| `run-finish` | `status`, `reason?` | Ends orchestrator streaming; detached events can follow |
+| `run-finish` | `status`, `reason?`, `contextReach?` | Ends orchestrator streaming; detached events can follow |
 | `text-delta` | `text` | Incremental agent text |
 | `reasoning-delta` | `text` | Incremental agent reasoning |
 | `tool-call` | `toolCallId`, `toolName`, `args` | Tool invocation (before execution) |
@@ -677,6 +692,7 @@ creating duplicate messages.
 | `agent-completed` | `role`, `result` | Sub-agent finished |
 | `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
 | `tasks-update` | `tasks` | Task checklist created/updated |
+| `instance-context` | `injection` | What the turn was handed as instance context (once, before the agent runs) |
 | `setup-items` | `workflowId`, `items` | Setup panel snapshot for a workflow (full list, last wins) |
 | `status` | `message` | Transient status indicator |
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |

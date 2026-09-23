@@ -66,6 +66,10 @@ export default defineConfig({
 						rule: 'no-unsealed-workflow-entity-write',
 						message: 'Route the write through a token-gated `WorkflowRepository` method.',
 					},
+					{
+						rule: 'no-unsealed-credentials-entity-write',
+						message: 'Route the write through a token-gated `CredentialsRepository` method.',
+					},
 				],
 			},
 		],
@@ -103,6 +107,17 @@ export default defineConfig({
 		'typescript/no-duplicate-type-constituents': 'warn',
 	},
 	overrides: [
+		{
+			// Shrink-only ratchet: the two import paths that upsert a whole credential row,
+			// including `type`. There is no sealed credential import method yet.
+			// NEVER add to this list — the override is per file, so a second write here
+			// goes unreported.
+			files: [
+				'./src/commands/import/credentials.ts',
+				'./src/modules/source-control.ee/source-control-import.service.ee.ts',
+			],
+			rules: { 'n8n-local-rules/no-unsealed-credentials-entity-write': 'off' },
+		},
 		{
 			// Public API guardrail: handlers/controllers must go through a service, never a repository.
 			files: ['./src/public-api/v1/handlers/**/*.ts', './src/public-api/v1/controllers/**/*.ts'],
@@ -146,7 +161,6 @@ export default defineConfig({
 				'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
 				'./src/public-api/v1/handlers/discover/discover.handler.ts',
 				'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
-				'./src/public-api/v1/handlers/folders/folders.handler.ts',
 				'./src/public-api/v1/handlers/insights/insights.handler.ts',
 				'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 				'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',

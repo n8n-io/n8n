@@ -10,7 +10,7 @@ describe('getMcpClientCatalog', () => {
 		expect(catalog.map((group) => group.id)).toEqual(['cli', 'web', 'ide']);
 		expect(catalog.map((group) => group.clients.map((client) => client.id))).toEqual([
 			['claude-code', 'codex', 'gemini-cli'],
-			['claude-ai', 'chatgpt'],
+			['claude-ai', 'chatgpt', 'mistral-vibe'],
 			['cursor', 'vscode', 'windsurf'],
 		]);
 	});

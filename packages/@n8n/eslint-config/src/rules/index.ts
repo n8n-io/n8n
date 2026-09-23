@@ -28,9 +28,11 @@ import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
 import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
+import { NoUnsealedCredentialsEntityWriteRule } from './no-unsealed-credentials-entity-write.js';
 import { RequireEscapedQueryValuesRule } from './require-escaped-query-values.js';
 import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
+import { NoRawEnumRule } from './no-raw-enum.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -62,7 +64,9 @@ export const rules = {
 	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
 	'require-public-api-controller': RequirePublicApiControllerRule,
 	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
+	'no-unsealed-credentials-entity-write': NoUnsealedCredentialsEntityWriteRule,
 	'require-escaped-query-values': RequireEscapedQueryValuesRule,
 	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
 	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
+	'no-raw-enum': NoRawEnumRule,
 } satisfies Record<string, AnyRuleModule>;

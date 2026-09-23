@@ -1,10 +1,12 @@
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } from 'n8n-workflow';
 
-import type { AgentIntegrationSettings } from './agent-integration.schema';
+import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentBackgroundJobSignal } from './background-job';
 
 export type AgentActor = 'user' | 'builder' | 'mcp';
+
+export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 
 export interface AgentSessionPreviewAccess {
 	canContinueInPreview: boolean;
@@ -122,6 +124,14 @@ export interface ChatIntegrationDescriptor {
 	capabilities?: string[];
 	useIntegrationWhen?: string[];
 	useNodeToolWhen?: string[];
+	/** Actions a user can hold for approval, in the order they should be listed. */
+	approvableActions?: ChatIntegrationApprovableAction[];
+}
+
+export interface ChatIntegrationApprovableAction {
+	name: string;
+	/** Pre-selected when a user turns approval on for this channel. */
+	sensitive: boolean;
 }
 
 /**
@@ -139,6 +149,8 @@ export interface AgentIntegrationStatusEntry {
 	type: string;
 	credentialId?: string;
 	settings?: AgentIntegrationSettings;
+	/** Channel actions that need approval before they run. */
+	approval?: AgentApproval;
 	/** Authoritative per-channel state; prefer this over the response rollup. */
 	status: AgentChannelRuntimeStatus;
 	/** Present only when `status` is `error`. */
@@ -351,7 +363,7 @@ export interface AgentPersistedMessageDto {
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
-	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+	executionStatus?: AgentExecutionStatus;
 	/**
 	 * The recorded run error for a turn that ended in `error` or `interrupted`,
 	 * so history renders the same error bubble the live stream showed.
@@ -372,6 +384,12 @@ export interface AgentBuilderOpenSuspension {
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
+	/**
+	 * Running preview turn, including a turn with no recorded output yet.
+	 * `null` means that the server found no running execution.
+	 * An omitted value means that the endpoint does not report execution state.
+	 */
+	activeExecutionId?: string | null;
 }
 
 export interface AgentSessionLangSmithExportResponse {

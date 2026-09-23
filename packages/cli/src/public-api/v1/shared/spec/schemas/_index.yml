@@ -1,7 +1,5 @@
 Error:
   $ref: './error.yml'
-Role:
-  $ref: './../../../handlers/users/spec/schemas/role.yml'
 Node:
   $ref: './../../../handlers/workflows/spec/schemas/node.yml'
 WorkflowNodeGroup:

@@ -15,6 +15,7 @@ import type {
 	InstanceAiEvent,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
+	InstanceContextReach,
 } from '../instance-ai.schema';
 
 // ---------------------------------------------------------------------------
@@ -36,6 +37,23 @@ function makeRunFinish(
 ): Extract<InstanceAiEvent, { type: 'run-finish' }> {
 	return { type: 'run-finish', runId, agentId, payload: { status, ...(reason ? { reason } : {}) } };
 }
+
+function makeInstanceContext(
+	runId: string,
+	agentId: string,
+	payload: Extract<InstanceAiEvent, { type: 'instance-context' }>['payload'],
+): Extract<InstanceAiEvent, { type: 'instance-context' }> {
+	return { type: 'instance-context', runId, agentId, payload };
+}
+
+const INJECTED_PAYLOAD = {
+	injection: {
+		state: 'injected' as const,
+		isUpdate: false,
+		legs: { inventory: 3, events: 2, runs: 1 },
+		chars: 420,
+	},
+};
 
 function makeTextDelta(
 	runId: string,
@@ -209,6 +227,135 @@ function expectStateMapsNotPolluted(state: AgentRunState): void {
 // ---------------------------------------------------------------------------
 
 describe('agent-run-reducer', () => {
+	describe('instance context', () => {
+		it('appends what the turn was handed to the root timeline', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			// The event carries a summary, not the raw block.
+			expect(state.agentsById.root.timeline).toEqual([
+				{
+					type: 'instance-context',
+					runId: 'run-1',
+					injection: INJECTED_PAYLOAD.injection,
+				},
+			]);
+		});
+
+		it('records an absent block, so a turn told nothing stays distinguishable', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(
+				state,
+				makeInstanceContext('run-1', 'root', {
+					injection: { state: 'absent', reason: 'empty' },
+				}),
+			);
+
+			expect(state.agentsById.root.timeline).toEqual([
+				{
+					type: 'instance-context',
+					runId: 'run-1',
+					injection: { state: 'absent', reason: 'empty' },
+				},
+			]);
+		});
+
+		/** Replay re-delivers persisted events, and the entry describes the turn, not each delivery. */
+		it('appends only once when the event is delivered twice', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			expect(state.agentsById.root.timeline).toHaveLength(1);
+		});
+
+		/**
+		 * A message group accumulates several runs, so two turns can fold into one state.
+		 * Deduping by type alone dropped the second turn's entry entirely.
+		 */
+		it('keeps an entry for each turn in a group that holds more than one run', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-2', 'root', INJECTED_PAYLOAD));
+
+			expect(
+				state.agentsById.root.timeline.filter((e) => e.type === 'instance-context'),
+			).toHaveLength(2);
+		});
+
+		it("attaches each turn's reach to its own entry", () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-2', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, {
+				type: 'run-finish',
+				runId: 'run-2',
+				agentId: 'root',
+				payload: { status: 'completed', contextReach: { surfaces: ['workflow-read'] } },
+			});
+
+			const entries = state.agentsById.root.timeline.filter(
+				(e): e is Extract<typeof e, { type: 'instance-context' }> => e.type === 'instance-context',
+			);
+			expect(entries.find((e) => e.runId === 'run-1')?.reach).toBeUndefined();
+			expect(entries.find((e) => e.runId === 'run-2')?.reach).toEqual({
+				surfaces: ['workflow-read'],
+			});
+		});
+
+		it('folds onto the root even when a sub-agent emitted it', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+
+			reduceEvent(state, makeInstanceContext('run-1', 'sub-1', INJECTED_PAYLOAD));
+
+			// The root timeline also carries the spawn's own `child` entry, so count only these.
+			expect(
+				state.agentsById.root.timeline.filter((e) => e.type === 'instance-context'),
+			).toHaveLength(1);
+			expect(state.agentsById['sub-1'].timeline).toEqual([]);
+		});
+
+		// The terminal event contains the combined reads from all segments.
+		it.each<InstanceContextReach>([
+			{ surfaces: ['activity-expand'] },
+			{ surfaces: ['activity-list', 'workflow-read'] },
+		])('completes the entry on run-finish: %j', ({ surfaces }) => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					status: 'completed',
+					contextReach: { surfaces },
+				},
+			});
+
+			const entry = state.agentsById.root.timeline[0];
+			expect(entry.type).toBe('instance-context');
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toEqual({ surfaces });
+		});
+
+		it('leaves the reach unset when the run reported none', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			const entry = state.agentsById.root.timeline[0];
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toBeUndefined();
+		});
+	});
+
 	describe('createInitialState', () => {
 		it('creates state with default root agent', () => {
 			const state = createInitialState();
@@ -1037,6 +1184,113 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].setupItemsByWorkflowId).toBeUndefined();
 			expectStateMapsNotPolluted(state);
+		});
+	});
+
+	describe('preference-card', () => {
+		function savedPreferenceState(): AgentRunState {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'save_user_preference'));
+			reduceEvent(
+				state,
+				makeToolResult('run-1', 'root', 'tc-1', {
+					ok: true,
+					preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+				}),
+			);
+			return state;
+		}
+
+		it('folds an edit and an undo onto the tool call that saved the preference', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies brief.',
+				},
+			});
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'edited',
+				content: 'Keep replies brief.',
+			});
+
+			// The undo fact carries no content, so the edited text must survive it. Without
+			// that, the resolver falls back to the tool result and strikes out the text the
+			// user replaced rather than the one they removed.
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+			});
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'undone',
+				content: 'Keep replies brief.',
+			});
+		});
+
+		it('leaves the content unset on an undo with no edit before it', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			// Nothing replaced the saved text, so the resolver reads the tool result.
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'undone',
+				content: undefined,
+			});
+		});
+
+		it('ignores a card fact for an unknown tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'nope', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			expect(Object.keys(state.toolCallsById)).toHaveLength(0);
+		});
+
+		it('ignores an unsafe toolCallId key', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: '__proto__', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			expectStateMapsNotPolluted(state);
+		});
+
+		it('ignores a toolCallId that names an inherited property', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'toString', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			expect(Object.hasOwn(state.toolCallsById, 'toString')).toBe(false);
+			expect('preferenceCard' in Object.prototype.toString).toBe(false);
+			expect(state.toolCallsById['tc-1'].preferenceCard).toBeUndefined();
 		});
 	});
 

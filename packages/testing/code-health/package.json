@@ -31,15 +31,18 @@
 	"dependencies": {
 		"@n8n/rules-engine": "workspace:*",
 		"@n8n/vitest-config": "workspace:*",
+		"change-case": "catalog:",
 		"fast-glob": "catalog:",
+		"markdown-it": "catalog:",
 		"ts-morph": "catalog:",
 		"tsx": "catalog:",
 		"typescript": "catalog:typescript",
 		"yaml": "catalog:"
 	},
-  "devDependencies": {
+	"devDependencies": {
+		"@types/markdown-it": "catalog:",
 		"@vitest/coverage-v8": "catalog:",
 		"fast-check": "catalog:",
 		"vitest": "catalog:"
-  }
+	}
 }

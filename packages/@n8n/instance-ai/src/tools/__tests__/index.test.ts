@@ -241,6 +241,16 @@ describe('domain tool construction', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('activity')).toBe(true);
 	});
 
+	it('registers save_user_preference only when the preference service is wired', () => {
+		const without = getActiveOrchestratorDomainToolNames(makeContext());
+		expect(without.has('save_user_preference')).toBe(false);
+
+		const context = makeContext();
+		context.aiPreferenceService = { create: vi.fn(), recordRejection: vi.fn() };
+		const withService = getActiveOrchestratorDomainToolNames(context);
+		expect(withService.has('save_user_preference')).toBe(true);
+	});
+
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});

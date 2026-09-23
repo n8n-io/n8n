@@ -535,6 +535,14 @@ describe('Microsoft Graph transport kernel', () => {
 			expect(() => validateMicrosoftGraphId(id, mockNode)).toThrow();
 		});
 
+		it.each(['\uD800', 'e76f456f\uDC00'])('rejects an id with a lone surrogate (%j)', (id) => {
+			expect(() => validateMicrosoftGraphId(id, mockNode)).toThrow('The ID is not valid');
+		});
+
+		it('accepts a well-formed astral character (a surrogate pair is not a lone surrogate)', () => {
+			expect(validateMicrosoftGraphId('team-\u{1F600}', mockNode)).toBe('team-\u{1F600}');
+		});
+
 		it.each([
 			'a/b',
 			'a\\b',

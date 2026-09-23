@@ -21,7 +21,6 @@ These rules come from the shared base or backend layers. Resolve these first bec
 
 | Priority | Rule | Blocker | Suggested next action |
 | --- | --- | --- | --- |
-| P1 | `no-restricted-syntax` | Oxlint has no AST-selector rule. The base layer uses it for the raw-enum restriction. | Add a purpose-built syntax rule for each active selector. Start with the raw-enum rule. |
 | P1 | `typescript/consistent-type-imports` | Oxlint does not honor the `emitDecoratorMetadata` exception. Its fixer can remove imports that DI needs at runtime. | Wait for upstream support or add a tested shim that skips decorated files. Do not enable the current fixer. |
 | P1 | `typescript/prefer-optional-chain` | The native nursery rule changes guarded undeclared globals incorrectly. | Re-test after the rule leaves nursery or after the upstream fixer issue is resolved. |
 | P2 | `import/export` | A native rule exists, but it is still in the nursery category. | Run parity samples and enable it after it becomes stable. |

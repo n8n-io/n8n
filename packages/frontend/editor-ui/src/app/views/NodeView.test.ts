@@ -97,13 +97,10 @@ describe('NodeView', () => {
 					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocStore),
 				},
 				stubs: {
-					// The node creator is an async component that pulls in a large subtree. No
-					// test here needs it, and on a writable canvas the import can still be in
-					// flight when the environment tears down, which fails the whole run.
-					LazyNodeCreation: true,
-					// Same for the setup-credentials button: its import chain pulls in the
-					// ready-to-run stores and their bundled workflow fixtures.
-					LazySetupWorkflowCredentialsButton: true,
+					// Boolean stubs still start async imports. Use components to avoid loading
+					// unused subtrees that can outlive the test environment.
+					LazyNodeCreation: { render: () => null },
+					LazySetupWorkflowCredentialsButton: { render: () => null },
 					WorkflowCanvas: defineComponent({
 						emits: ['copy:nodes'],
 						setup(_, { expose }) {

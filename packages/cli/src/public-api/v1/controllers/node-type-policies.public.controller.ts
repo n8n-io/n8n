@@ -84,7 +84,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Get('/instance')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Retrieve the instance node type policy')
@@ -106,7 +106,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Put('/instance')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Replace the instance node type policy')
@@ -140,7 +140,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Get('/projects/:projectId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@ProjectScope('nodeTypePolicy:manage')
 	@ApiSummary("Retrieve a project's node type policy")
@@ -166,7 +166,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Put('/projects/:projectId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@ProjectScope('nodeTypePolicy:manage')
 	@ApiSummary("Replace a project's node type policy")
@@ -201,7 +201,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Get('/policies')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('List node type policy documents')
@@ -229,7 +229,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Post('/policies')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Create a node type policy document')
@@ -254,7 +254,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Get('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Retrieve a node type policy document')
@@ -276,7 +276,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Put('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Replace the rules of a node type policy document')
@@ -306,7 +306,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Delete('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Delete a node type policy document')
@@ -327,7 +327,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Put('/scopes/:scopeId/attachments')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary("Replace a scope's attached policy documents")

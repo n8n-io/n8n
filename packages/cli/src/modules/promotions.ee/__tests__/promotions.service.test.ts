@@ -1005,6 +1005,7 @@ describe('PromotionsService', () => {
 
 		beforeEach(async () => {
 			bindingPreflight.checkDirectory.mockResolvedValue({
+				missingProjects: [],
 				missingBindings: [],
 				accessRequirements: [],
 				conflicts: [],
@@ -1083,6 +1084,7 @@ describe('PromotionsService', () => {
 			{ project: { id: 'p1', name: 'Orders' }, workflows: [{ id: 'w1', name: 'Process order' }] },
 		];
 		const unresolved: PromotionBindingPreflightResult = {
+			missingProjects: [],
 			missingBindings: [
 				{
 					kind: 'variable',
@@ -1126,11 +1128,25 @@ describe('PromotionsService', () => {
 			expectedSource: { configId: CONFIG_ID, branchName: 'dev', commitSha: 'remotesha' },
 		};
 
+		it('imports when only projects are missing', async () => {
+			await mkdir(packageFolder, { recursive: true });
+			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingProjects: [{ id: 'p1', name: 'Orders' }],
+				missingBindings: [],
+				accessRequirements: [],
+				conflicts: [],
+				warnings: [],
+			});
+			expect(await service.apply('conn1', actor)).toMatchObject({ status: 'applied' });
+			expect(n8nPackagesService.importPackageFromDirectory).toHaveBeenCalled();
+		});
+
 		it.each(['missingBindings', 'accessRequirements', 'conflicts'] as const)(
 			'blocks on %s before import or reconciliation',
 			async (group) => {
 				await mkdir(packageFolder, { recursive: true });
 				const preflight = {
+					missingProjects: [],
 					missingBindings: [],
 					accessRequirements: [],
 					conflicts: [],
@@ -1169,6 +1185,7 @@ describe('PromotionsService', () => {
 			});
 			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingProjects: [],
 				missingBindings: [],
 				accessRequirements: [],
 				conflicts: [],
@@ -1192,6 +1209,7 @@ describe('PromotionsService', () => {
 		it('imports with warnings on initial Apply', async () => {
 			await mkdir(packageFolder, { recursive: true });
 			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingProjects: [],
 				missingBindings: [],
 				accessRequirements: [],
 				conflicts: [],

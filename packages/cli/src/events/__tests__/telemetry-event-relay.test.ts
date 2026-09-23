@@ -33,6 +33,7 @@ import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { OtelConfig } from '@/modules/otel/otel.config';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import type { NodeTypes } from '@/node-types';
@@ -159,6 +160,7 @@ describe('TelemetryEventRelay', () => {
 	const credentialsRepository = mock<CredentialsRepository>();
 	const dynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
 	const dbConnection = mock<DbConnection>();
+	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const eventService = new EventService();
 
 	let telemetryEventRelay: TelemetryEventRelay;
@@ -179,6 +181,7 @@ describe('TelemetryEventRelay', () => {
 			credentialsRepository,
 			dynamicCredentialsProxy,
 			dbConnection,
+			loadNodesAndCredentials,
 		);
 
 		await telemetryEventRelay.init();
@@ -211,6 +214,7 @@ describe('TelemetryEventRelay', () => {
 				credentialsRepository,
 				dynamicCredentialsProxy,
 				dbConnection,
+				loadNodesAndCredentials,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
@@ -238,6 +242,7 @@ describe('TelemetryEventRelay', () => {
 				credentialsRepository,
 				dynamicCredentialsProxy,
 				dbConnection,
+				loadNodesAndCredentials,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
@@ -682,6 +687,20 @@ describe('TelemetryEventRelay', () => {
 		const knownTypes = (...names: string[]) =>
 			Object.fromEntries(names.map((name) => [name, {}])) as ReturnType<NodeTypes['getKnownTypes']>;
 
+		const knownCredentials = (...names: string[]) =>
+			Object.fromEntries(
+				names.map((name) => [name, {}]),
+			) as LoadNodesAndCredentials['knownCredentials'];
+
+		const makeLoader = (packageName: string, credentialNames: string[]) =>
+			({
+				packageName,
+				known: {
+					nodes: {},
+					credentials: Object.fromEntries(credentialNames.map((name) => [name, {}])),
+				},
+			}) as unknown as LoadNodesAndCredentials['loaders'][string];
+
 		beforeEach(() => {
 			nodeTypes.getKnownTypes.mockReturnValue(
 				knownTypes(
@@ -690,6 +709,14 @@ describe('TelemetryEventRelay', () => {
 					'@acme/n8n-nodes-acme.thing',
 				),
 			);
+			Object.defineProperty(loadNodesAndCredentials, 'knownCredentials', {
+				configurable: true,
+				value: knownCredentials('slackApi', 'notionApi', 'httpBasicAuth'),
+			});
+			loadNodesAndCredentials.loaders = {
+				'n8n-nodes-base': makeLoader('n8n-nodes-base', ['slackApi', 'notionApi']),
+				'@acme/n8n-nodes-acme': makeLoader('@acme/n8n-nodes-acme', ['httpBasicAuth']),
+			};
 		});
 
 		it('should track a first instance-scope save', () => {
@@ -708,7 +735,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-saved', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				{
 					user_id: 'user123',
 					source: 'user',
@@ -736,24 +763,70 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
-		it('should report a credential type policy save with its own kind', () => {
+		it('should summarize a credential type policy save against known credentials, not known node types', () => {
+			const credentialDenyRule: PolicyRule = {
+				id: 'rule-1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'notionApi' },
+			};
+
 			const event: RelayEventMap['node-type-policy-saved'] = {
 				updatedBy: 'user123',
 				kind: 'credential-types',
 				projectId: null,
 				scopeId: 'scope-1',
 				before: null,
-				after: { defaultAction: 'deny', version: 1 },
+				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
-				rulesAfter: [],
+				rulesAfter: [credentialDenyRule],
 				warningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
-				expect.objectContaining({ kind: 'credential-types' }),
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
+				expect.objectContaining({
+					kind: 'credential-types',
+					evaluated_type_count: 3,
+					blocked_type_count: 1,
+					allowed_type_count: 2,
+					blocked_types: ['notionApi'],
+					allowed_types: ['slackApi', 'httpBasicAuth'],
+				}),
+			);
+		});
+
+		it('should expand a credential type package rule using the credential loader package, not a dotted-type prefix', () => {
+			const credentialPackageDenyRule: PolicyRule = {
+				id: 'rule-1',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-base' },
+			};
+
+			const event: RelayEventMap['node-type-policy-saved'] = {
+				updatedBy: 'user123',
+				kind: 'credential-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [credentialPackageDenyRule],
+				warningCount: 0,
+			};
+
+			eventService.emit('node-type-policy-saved', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
+				expect.objectContaining({
+					kind: 'credential-types',
+					blocked_type_count: 2,
+					blocked_types: ['slackApi', 'notionApi'],
+					allowed_type_count: 1,
+					allowed_types: ['httpBasicAuth'],
+				}),
 			);
 		});
 
@@ -791,7 +864,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-saved', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				expect.objectContaining({
 					scope: 'project',
 					project_id: 'project-1',
@@ -837,7 +910,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-document-created', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 				{
 					user_id: 'user123',
 					source: 'user',
@@ -865,7 +938,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-document-created', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 				expect.objectContaining({ kind: 'credential-types' }),
 			);
 		});
@@ -897,7 +970,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-document-updated', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 				expect.objectContaining({
 					operation: 'updated',
 					rule_count: 2,
@@ -917,7 +990,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-document-deleted', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 				expect.objectContaining({
 					operation: 'deleted',
 					rule_count: 0,
@@ -941,7 +1014,7 @@ describe('TelemetryEventRelay', () => {
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				expect.objectContaining({
 					blocked_type_count: 1,
 					allowed_type_count: 2,
@@ -965,7 +1038,7 @@ describe('TelemetryEventRelay', () => {
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				expect.objectContaining({
 					rule_count: 1,
 					blocked_type_count: 2,
@@ -1018,7 +1091,7 @@ describe('TelemetryEventRelay', () => {
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
 				expect.objectContaining({
 					blocked_type_count: 3,
 					allowed_type_count: 0,
@@ -1045,7 +1118,7 @@ describe('TelemetryEventRelay', () => {
 				});
 
 				expect(telemetry.track).not.toHaveBeenCalledWith(
-					TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+					TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 					expect.anything(),
 				);
 			},
@@ -1073,7 +1146,8 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-attachments-updated', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES
+					.USER_UPDATED_TYPE_AVAILABILITY_POLICY_ATTACHMENTS,
 				{
 					user_id: 'user123',
 					source: 'user',
@@ -1101,7 +1175,8 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-attachments-updated', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES
+					.USER_UPDATED_TYPE_AVAILABILITY_POLICY_ATTACHMENTS,
 				expect.objectContaining({ kind: 'credential-types' }),
 			);
 		});
@@ -1504,6 +1579,43 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('credentials events', () => {
+		it('keeps credential events unchanged when description metrics are absent', () => {
+			const event = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialName: 'Reporting account',
+				credentialType: 'github',
+				credentialId: 'cred123',
+				publicApi: false,
+				projectId: 'project123',
+				projectType: 'personal',
+				isDynamic: false,
+			} satisfies RelayEventMap['credentials-created'];
+
+			eventService.emit('credentials-created', event);
+			eventService.emit('credentials-updated', event);
+
+			for (const eventName of [
+				TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
+				TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,
+			]) {
+				expect(telemetry.track).toHaveBeenCalledWith(
+					eventName,
+					expect.objectContaining({ credential_id: 'cred123' }),
+				);
+			}
+			for (const [, properties] of telemetry.track.mock.calls) {
+				expect(properties).not.toHaveProperty('has_description');
+				expect(properties).not.toHaveProperty('description_length');
+				expect(properties).not.toHaveProperty('source');
+			}
+		});
+
 		it.each([
 			{ descriptionLength: 0, publicApi: false },
 			{ descriptionLength: 18, publicApi: false },

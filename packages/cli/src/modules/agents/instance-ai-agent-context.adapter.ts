@@ -225,6 +225,7 @@ export class InstanceAiAgentContextAdapterService {
 				const result = await this.agentExecutionService.getThreads(
 					projectId,
 					agent.id,
+					user.id,
 					input.limit ?? 20,
 					input.cursor,
 					{
@@ -244,6 +245,7 @@ export class InstanceAiAgentContextAdapterService {
 					input.threadId,
 					projectId,
 					agent.id,
+					user.id,
 				);
 				if (!detail) return { notFound: true };
 				const transcript = formatPreviewSessionContext(

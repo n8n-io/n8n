@@ -12,10 +12,10 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(entry).toBeDefined();
 	});
 
-	it('is gated by the node type policies license feature, so an unlicensed instance skips init', () => {
+	it('is gated by the type availability policies license feature, so an unlicensed instance skips init', () => {
 		const entry = Container.get(ModuleMetadata).get('type-availability-policies');
 
-		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
 	// The available-types controller injects the node registry, whose import chain takes
@@ -56,7 +56,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 	// Asserted by class name, because importing the check to compare identities would run
 	// `@PolicyCheck()` here and register it, and reading `id` off an instance would construct
 	// its repositories. Either one would make this pass with `init()` no longer importing it.
-	it('registers the node type policy check on init', async () => {
+	it('registers both policy checks on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
@@ -66,6 +66,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 			.map((checkClass) => checkClass.name);
 
 		expect(registered).toContain('NodeTypePolicyCheck');
+		expect(registered).toContain('CredentialTypePolicyCheck');
 	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {

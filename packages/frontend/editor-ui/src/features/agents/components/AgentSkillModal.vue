@@ -4,17 +4,16 @@ import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 } from '@n8n/api-types';
-import { N8nButton, N8nCallout, N8nHeading, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
-import Modal from '@/app/components/Modal.vue';
-import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
 import AgentSkillViewer, { type AgentSkillAllowedToolOption } from './AgentSkillViewer.vue';
+import AgentModal from './modals/AgentModal.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -41,11 +40,23 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
-const { showMessage } = useToast();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+function getDefaultSkillName(): string {
+	const baseName = i18n.baseText('agents.builder.skills.defaultName' as BaseTextKey);
+	const existingNames = new Set(
+		(props.data.existingSkillNames ?? []).map((name) => name.trim().toLowerCase()),
+	);
+	if (!existingNames.has(baseName.toLowerCase())) return baseName;
+
+	let suffix = 2;
+	while (existingNames.has(`${baseName} ${suffix}`.toLowerCase())) suffix += 1;
+	return `${baseName} ${suffix}`;
+}
 
 const skill = ref<AgentSkill>(
 	normalizeSkill({
-		name: props.data.skill?.name ?? '',
+		name: props.data.skill?.name ?? getDefaultSkillName(),
 		description: props.data.skill?.description ?? '',
 		instructions: props.data.skill?.instructions ?? '',
 		...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
@@ -79,6 +90,12 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 		errors.name = i18n.baseText('agents.builder.skills.validation.nameRequired');
 	} else if (name.length > 128) {
 		errors.name = i18n.baseText('agents.builder.skills.validation.nameMaxLength');
+	} else if (
+		(props.data.existingSkillNames ?? []).some(
+			(existingName) => existingName.trim().toLowerCase() === name.toLowerCase(),
+		)
+	) {
+		errors.name = i18n.baseText('agents.builder.skills.validation.nameDuplicate');
 	}
 
 	if (!description) {
@@ -103,6 +120,9 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 
 const visibleErrors = computed(() =>
 	submitted.value || openedWithMissingContent.value ? validationErrors.value : {},
+);
+const visibleNameError = computed(() =>
+	submitted.value ? (validationErrors.value.name ?? '') : '',
 );
 const canSave = computed(() => formIsValid.value);
 
@@ -177,19 +197,7 @@ function closeModal() {
 
 function onSave() {
 	submitted.value = true;
-	if (!canSave.value) {
-		const message =
-			validationErrors.value.name ??
-			validationErrors.value.description ??
-			validationErrors.value.instructions ??
-			validationErrors.value.references;
-		showMessage({
-			title: i18n.baseText('agents.builder.skills.saveError'),
-			...(message ? { message } : {}),
-			type: 'error',
-		});
-		return;
-	}
+	if (!canSave.value) return;
 
 	const payload = normalizeSkill({
 		name: skill.value.name.trim(),
@@ -211,98 +219,82 @@ function onRemove() {
 </script>
 
 <template>
-	<Modal
-		:name="props.modalName"
-		width="1100px"
-		:custom-class="$style.modal"
+	<AgentModal
+		:open="modalOpen"
+		:title="skill.name"
+		:title-placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
+		:title-error="visibleNameError"
+		:title-max-length="128"
+		size="fit"
+		body-flush
+		editable-title
 		data-testid="agent-skill-modal"
+		@update:open="!$event && closeModal()"
+		@update:title="onSkillUpdate({ name: $event })"
 	>
-		<template #header>
-			<N8nHeading tag="h2" size="large">
-				{{ i18n.baseText('agents.builder.skills.create.title') }}
-			</N8nHeading>
-		</template>
+		<N8nCallout
+			v-if="openedWithMissingContent"
+			theme="warning"
+			:class="$style.missingContentCallout"
+			data-testid="agent-skill-missing-content-callout"
+		>
+			{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
+		</N8nCallout>
+		<div :class="$style.content">
+			<AgentSkillFileNav
+				:skill="skill"
+				:selected-path="selectedPath"
+				:add-reference-disabled="!canAddReference"
+				@add-reference="onAddReference"
+				@remove-reference="onRemoveReference"
+				@select="selectedPath = $event"
+			/>
+			<AgentSkillViewer
+				:skill="skill"
+				:available-tools="props.data.availableTools ?? []"
+				:existing-skill-names="props.data.existingSkillNames ?? []"
+				:selected-path="selectedPath"
+				:errors="visibleErrors"
+				:scrollable="false"
+				:show-name-field="false"
+				:show-validation-warnings="submitted || openedWithMissingContent"
+				@import:skill="onImportSkill"
+				@select:path="selectedPath = $event"
+				@update:skill="onSkillUpdate"
+				@update:valid="onValidUpdate"
+			/>
+		</div>
 
-		<template #content>
-			<N8nCallout
-				v-if="openedWithMissingContent"
-				theme="warning"
-				data-testid="agent-skill-missing-content-callout"
-			>
-				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
-			</N8nCallout>
-			<div :class="$style.content">
-				<AgentSkillFileNav
-					:skill="skill"
-					:selected-path="selectedPath"
-					:add-reference-disabled="!canAddReference"
-					@add-reference="onAddReference"
-					@remove-reference="onRemoveReference"
-					@select="selectedPath = $event"
-				/>
-				<AgentSkillViewer
-					:skill="skill"
-					:available-tools="props.data.availableTools ?? []"
-					:existing-skill-names="props.data.existingSkillNames ?? []"
-					:selected-path="selectedPath"
-					:errors="visibleErrors"
-					:scrollable="false"
-					:show-validation-warnings="submitted || openedWithMissingContent"
-					@import:skill="onImportSkill"
-					@select:path="selectedPath = $event"
-					@update:skill="onSkillUpdate"
-					@update:valid="onValidUpdate"
-				/>
-			</div>
+		<template v-if="isEditing && data.onRemove" #footerLeft>
+			<N8nButton variant="ghost" data-testid="agent-skill-remove" @click="onRemove">
+				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ i18n.baseText('agents.builder.skills.remove') }}
+			</N8nButton>
 		</template>
-
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton
-					v-if="isEditing && data.onRemove"
-					variant="subtle"
-					data-testid="agent-skill-remove"
-					@click="onRemove"
-				>
-					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
-					{{ i18n.baseText('agents.builder.skills.remove') }}
-				</N8nButton>
-				<div :class="$style.footerActions">
-					<N8nButton variant="subtle" @click="closeModal">
-						{{ i18n.baseText('agents.builder.skills.create.cancel') }}
-					</N8nButton>
-					<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
-						{{ i18n.baseText('agents.builder.skills.create.save') }}
-					</N8nButton>
-				</div>
-			</div>
+		<template #footerActions>
+			<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
+				{{ i18n.baseText('generic.save') }}
+			</N8nButton>
 		</template>
-	</Modal>
+	</AgentModal>
 </template>
 
 <style module>
 .content {
-	height: 620px;
+	/* The Design System has no width preset between 2xlarge and full. */
+	width: min(52rem, calc(100dvw - var(--spacing--lg) * 3));
+	height: min(calc(70dvh - var(--spacing--lg)), calc(var(--height--5xl) * 6 - var(--spacing--lg)));
 	min-height: 0;
-	margin: 0 calc(-1 * var(--spacing--lg)) calc(-1 * var(--spacing--lg));
 	display: flex;
 }
 
-.modal {
-	:global(.modal-content) {
-		overflow: hidden;
+.missingContentCallout {
+	margin: var(--spacing--md) var(--spacing--lg) 0;
+}
+
+@media (max-width: 480px) {
+	.content {
+		flex-direction: column;
 	}
-}
-
-.footer {
-	display: flex;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
-}
-
-.footerActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	margin-left: auto;
 }
 </style>

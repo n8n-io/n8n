@@ -40,6 +40,9 @@ const loadMcpServersTool = lazyMod(
 const loadActivityTool = lazyMod(
 	() => require('./activity.tool') as typeof import('./activity.tool'),
 );
+const loadSaveUserPreferenceTool = lazyMod(
+	() => require('./save-user-preference.tool') as typeof import('./save-user-preference.tool'),
+);
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
@@ -160,6 +163,15 @@ function getOrchestratorDomainToolFactories(
 					resolveDefaultAgentId: async () => (await resolveAgentBuilderTarget(context))?.agentId,
 					logger: context.logger,
 				}),
+		]);
+	}
+
+	// Presence is the gate, as with activity: the adapter wires `aiPreferenceService`
+	// only when saved preferences are enabled for this user.
+	if (context.aiPreferenceService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
+			() => loadSaveUserPreferenceTool().createSaveUserPreferenceTool(context),
 		]);
 	}
 

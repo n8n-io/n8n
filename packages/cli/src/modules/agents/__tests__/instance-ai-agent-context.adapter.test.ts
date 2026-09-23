@@ -41,7 +41,7 @@ function makeService() {
 	};
 }
 
-const user = mock<User>();
+const user = mock<User>({ id: 'user-1' });
 const agent = {
 	id: 'agent-1',
 	projectId: 'project-1',
@@ -116,6 +116,7 @@ describe('InstanceAiAgentContextAdapterService', () => {
 		expect(agentExecutionService.getThreads).toHaveBeenCalledWith(
 			'project-1',
 			'agent-1',
+			'user-1',
 			5,
 			undefined,
 			{ status: 'error' },
