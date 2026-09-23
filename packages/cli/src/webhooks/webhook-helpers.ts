@@ -831,7 +831,7 @@ export async function executeWebhook(
 	};
 
 	let didSendResponse = false;
-	/** Whether this run goes to the engine 2.0 data plane instead of the v1 path. */
+	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
 	let pendingEngineV2Response: PendingWebhookResponse | undefined;
 	let runExecutionDataMerge = {};
@@ -1052,7 +1052,7 @@ export async function executeWebhook(
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
 			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
-			// sets, so carrying it here changes nothing for v1. Engine 2.0 has no way to
+			// sets, so carrying it here changes nothing for v1. Engine v2 has no way to
 			// stop at a node, and its dispatcher refuses the run on this field.
 			destinationNode,
 		};
@@ -1209,26 +1209,40 @@ export async function executeWebhook(
 
 		/**
 		 * A callback to handle the pending execution response from the data plane.
-		 * Returns the run data if we get a response in time. Otherwise sends a 504
-		 * timeout to the webhook caller.
+		 * Returns the run data when it arrives. Otherwise, it sends the response
+		 * channel error or a 504 timeout to the webhook caller.
 		 */
 		const waitForDataPlaneRun = async (waiting: PendingWebhookResponse) => {
 			try {
 				const outcome = await waiting.settled;
-				if (outcome.status !== 'timeout') {
+				if (outcome.status === 'completed' || outcome.status === 'failed') {
 					return await engineV2Webhooks.toRun(outcome, executionMode);
 				}
 
-				Container.get(Logger).warn('No answer arrived for an engine 2.0 webhook run', {
+				const isUndeliverable = outcome.status === 'undeliverable';
+				const errorResponse = isUndeliverable
+					? {
+							logMessage: 'Could not deliver an engine v2 webhook response',
+							responseMessage: outcome.error.message,
+							responseCode: 500,
+						}
+					: {
+							// timeout
+							logMessage: 'No answer arrived for an engine v2 webhook run',
+							responseMessage: 'The workflow did not answer in time',
+							responseCode: 504,
+						};
+				Container.get(Logger).warn(errorResponse.logMessage, {
 					executionId,
 					workflowId: workflowData.id,
+					...(isUndeliverable ? { error: outcome.error } : {}),
 				});
 				// The webhook node can answer before the execution starts. Do not send a
-				// second response if the execution response later times out.
+				// second response when the execution response later settles.
 				if (!didSendResponse) {
 					responseCallback(null, {
-						data: { message: 'The workflow did not answer in time' },
-						responseCode: 504,
+						data: { message: errorResponse.responseMessage },
+						responseCode: errorResponse.responseCode,
 					});
 					didSendResponse = true;
 				}
@@ -1240,7 +1254,7 @@ export async function executeWebhook(
 		};
 
 		// Get a promise which resolves when the workflow did execute and send then response.
-		// Engine 2.0 keeps no control-plane execution to wait on, so its answer comes
+		// Engine v2 keeps no control-plane execution to wait on, so its answer comes
 		// off the response channel, shaped like the run the handler below reads.
 		const executePromise = pendingEngineV2Response
 			? waitForDataPlaneRun(pendingEngineV2Response)

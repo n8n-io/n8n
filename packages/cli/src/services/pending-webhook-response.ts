@@ -10,6 +10,8 @@ export type LastNode = { nodeName: string; outputs: StepSlots };
 export type WebhookRunOutcome =
 	| { status: 'completed'; lastNode?: LastNode }
 	| { status: 'failed'; nodeName: string; error?: { name: string; message: string } }
+	/** The execution response could not be produced or delivered. */
+	| { status: 'undeliverable'; error: { name: string; message: string } }
 	| { status: 'timeout' };
 
 export type PendingWebhookResponseOptions = {

@@ -2224,6 +2224,27 @@ describe('executeWebhook on engine 2.0', () => {
 				},
 			]);
 		});
+
+		it('answers with the channel error when the response is undeliverable', async () => {
+			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
+			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+			const pending = waitForResponse.mock.results[0]?.value;
+
+			expect(pending).toBeDefined();
+			pending?.resolve({
+				status: 'undeliverable',
+				error: { name: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+			});
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback.mock.calls[0]).toEqual([
+				null,
+				{
+					data: { message: 'The response is too large.' },
+					responseCode: 500,
+				},
+			]);
+		});
 	});
 
 	describe('rejections', () => {

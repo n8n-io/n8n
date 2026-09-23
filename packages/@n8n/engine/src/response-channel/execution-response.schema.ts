@@ -11,6 +11,14 @@ import { SETTLED_STEP_STATUSES } from '../execution/execution.types';
  */
 export const executionResponseSchema = z.discriminatedUnion('type', [
 	z.object({
+		type: z.literal('undeliverable'),
+		executionId: z.string().min(1),
+		error: z.object({
+			code: z.string().min(1),
+			message: z.string().min(1),
+		}),
+	}),
+	z.object({
 		type: z.literal('ended'),
 		executionId: z.string().min(1),
 		workflowId: z.string().min(1),
