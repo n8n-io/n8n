@@ -1,6 +1,8 @@
+import { ExecuteContext, SupplyDataContext } from 'n8n-core';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 
+import { isExecuteFunctions } from '../agents/utils';
 import { assertToolsAgentMode, getInputs } from '../utils';
 
 describe('assertToolsAgentMode', () => {
