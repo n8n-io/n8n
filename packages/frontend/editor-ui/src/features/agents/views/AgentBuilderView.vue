@@ -1541,6 +1541,8 @@ async function onApplyTemplate(template: AgentTemplate) {
 	// send first, a failed save (e.g. invalid tool fields in draft mode)
 	// rejects `beforeSend` and the chat message is never sent. Flushing here
 	// drains the queue so `beforeSend` resolves immediately.
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	try {
 		await ensureAgentPersisted();
 		await flushAutosave();
@@ -1548,23 +1550,44 @@ async function onApplyTemplate(template: AgentTemplate) {
 		// Invalid tool fields are expected in draft mode; the chat message
 		// should still reach the assistant.
 	}
+	// The user may have opened another agent while the save was in flight.
+	// The panel ref now belongs to that agent, so this prompt must not follow.
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	// Task creation writes the task ref into the server config and changes its
+	// hash. Reload that config before the assistant prompt: the tasks counter
+	// only refreshes task bodies, and the update push skips this tab. A later
+	// edit would otherwise save against the old hash, get a 409, and lose the
+	// change when the conflict reload lands.
 	if (template.tasks?.length) {
+		let tasksCreated = false;
 		try {
 			await ensureAgentPersisted();
 			for (const task of template.tasks) {
-				await createAgentTask(rootStore.restApiContext, projectId.value, agentId.value, {
+				if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+				await createAgentTask(rootStore.restApiContext, targetProjectId, targetAgentId, {
 					...task,
 					enabled: true,
 				});
+				tasksCreated = true;
 			}
-			await onConfigUpdated();
 		} catch (error) {
-			showError(error, locale.baseText('agents.builder.tasks.saveError'));
+			if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+				showError(error, locale.baseText('agents.builder.tasks.saveError'));
+			}
+		}
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		// A created task already changed the hash. Do not prompt the assistant
+		// until this tab has reloaded that config.
+		if (tasksCreated) {
+			const refreshed = await refreshConfigAfterTemplateTasks(targetProjectId, targetAgentId);
+			if (!refreshed || isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 		}
 	}
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	const templateIndex = AGENT_TEMPLATES.findIndex((entry) => entry.id === template.id);
 	// Send the template prompt to the assistant right away so it starts
 	// building. The prompt format is "Build {name} agent to {description}".
+	// Catalog positions are one-based, matching the home-screen suggestion list.
 	aiPanelRef.value?.submitSuggestion({
 		prompt: locale.baseText('agents.builder.templates.prompt', {
 			interpolate: {
@@ -1574,10 +1597,31 @@ async function onApplyTemplate(template: AgentTemplate) {
 		}),
 		suggestionId: template.id,
 		suggestionKind: 'prompt',
-		position: templateIndex === -1 ? 0 : templateIndex,
+		position: templateIndex >= 0 ? templateIndex + 1 : 0,
 		suggestionCatalogVersion: AGENT_TEMPLATE_SUGGESTIONS_VERSION,
 		prefillType: 'template_adjustment',
 	});
+}
+
+/** Reload the config after task creation. One retry, then stop. */
+async function refreshConfigAfterTemplateTasks(
+	targetProjectId: string,
+	targetAgentId: string,
+): Promise<boolean> {
+	let lastError: unknown;
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+		try {
+			await onConfigUpdated();
+			return !isStaleAgentTarget(targetProjectId, targetAgentId);
+		} catch (error) {
+			lastError = error;
+		}
+	}
+	if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+		showError(lastError, locale.baseText('agents.builder.tasks.saveError'));
+	}
+	return false;
 }
 
 function persistMissingPersonalisationGradient() {

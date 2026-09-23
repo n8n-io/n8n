@@ -2684,7 +2684,9 @@ describe('AgentBuilderView — three-column shell', () => {
 				savedWrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
 			).not.toBeNull(),
 		);
-		await savedWrapper.find('[data-testid="stub-toggle-instance-ai"]').trigger('click');
+		// The header toggle button moved out of this stub on master. Call the
+		// same handler the button uses so this still opens the panel after merge.
+		(savedWrapper.vm as unknown as { toggleAiPanel: () => void }).toggleAiPanel();
 		await flushPromises();
 		expect(savedWrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 		expect(savedWrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false);
@@ -2721,7 +2723,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 		expect(editor.props('connectedTriggers')).toEqual([]);
 		// Tasks change the server config hash. The prompt waits until that
-		// config is reloaded, and reports the row index plus the template catalog.
+		// config is reloaded, and reports a one-based catalog position.
 		await vi.waitFor(() => expect(createAgentTaskMock).toHaveBeenCalledOnce());
 		await vi.waitFor(() => expect(submitSuggestionMock).toHaveBeenCalled());
 		expect(createAgentTaskMock.mock.invocationCallOrder[0]).toBeLessThan(
@@ -2739,7 +2741,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				prefillType: 'template_adjustment',
 				suggestionId: 'morning-news-brief',
 				prompt: expect.stringContaining('Morning news brief'),
-				position: AGENT_TEMPLATES.findIndex((template) => template.id === 'morning-news-brief'),
+				position: AGENT_TEMPLATES.findIndex((template) => template.id === 'morning-news-brief') + 1,
 				suggestionCatalogVersion: AGENT_TEMPLATE_SUGGESTIONS_VERSION,
 			}),
 		);
@@ -2757,6 +2759,96 @@ describe('AgentBuilderView — three-column shell', () => {
 		await vi.waitFor(() =>
 			expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false),
 		);
+	});
+
+	it('reports a non-first template position as one-based', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		const template = AGENT_TEMPLATES.find((entry) => entry.id === 'process-incoming-emails');
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(template);
+		await vi.waitFor(() => expect(submitSuggestionMock).toHaveBeenCalled());
+
+		const position =
+			AGENT_TEMPLATES.findIndex((entry) => entry.id === 'process-incoming-emails') + 1;
+		expect(position).toBeGreaterThan(1);
+		expect(submitSuggestionMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				suggestionId: 'process-incoming-emails',
+				position,
+				suggestionCatalogVersion: AGENT_TEMPLATE_SUGGESTIONS_VERSION,
+			}),
+		);
+	});
+
+	it('does not send the template prompt when the config refresh fails', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
+		const fetchImpl = fetchConfigMock.getMockImplementation();
+		createAgentTaskMock.mockImplementation(async () => {
+			fetchConfigMock.mockRejectedValue(new Error('refresh failed'));
+			return { id: 'task-1' };
+		});
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		try {
+			(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+				AGENT_TEMPLATES.find((entry) => entry.id === 'morning-news-brief'),
+			);
+			await vi.waitFor(() => expect(createAgentTaskMock).toHaveBeenCalled());
+			await vi.waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+			expect(submitSuggestionMock).not.toHaveBeenCalled();
+		} finally {
+			if (fetchImpl) fetchConfigMock.mockImplementation(fetchImpl);
+		}
+	});
+
+	it('does not send the template prompt after the user switches agents', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
+		let release: (value: { id: string }) => void = () => {};
+		createAgentTaskMock.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+			AGENT_TEMPLATES.find((entry) => entry.id === 'morning-news-brief'),
+		);
+		await vi.waitFor(() => expect(createAgentTaskMock).toHaveBeenCalled());
+		routeParams.agentId = 'a2';
+		release({ id: 'task-1' });
+		await flushPromises();
+
+		expect(submitSuggestionMock).not.toHaveBeenCalled();
 	});
 
 	it('keeps a renamed agent name when applying a template', async () => {
