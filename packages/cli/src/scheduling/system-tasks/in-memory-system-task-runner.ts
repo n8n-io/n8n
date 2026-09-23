@@ -202,9 +202,10 @@ export class InMemorySystemTaskRunner {
 	}
 
 	private async runOnce(entry: Entry): Promise<void> {
+		// Read before the await, so a stop and a start during the check keep this run aborted.
+		const { signal } = this.controller;
 		const skipped = entry.shouldSkipRun !== undefined && (await entry.shouldSkipRun());
 		if (!skipped) {
-			const { signal } = this.controller;
 			if (signal.aborted) {
 				this.emitSkipped(entry.task, 'aborted');
 			} else {
