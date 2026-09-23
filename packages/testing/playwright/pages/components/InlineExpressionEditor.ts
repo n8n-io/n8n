@@ -107,7 +107,7 @@ export class InlineExpressionEditor {
 			await editor.click();
 			await this.page.keyboard.press('ControlOrMeta+A');
 			await this.page.keyboard.press('Delete');
-			await expect(editor.locator('.cm-content')).toHaveText('');
+			expect((await editor.locator('.cm-content').textContent())?.trim()).toBe('');
 		}).toPass({ timeout: 15_000 });
 	}
 
