@@ -436,6 +436,7 @@ export class TypeAvailabilityPolicyService {
 		const warnings = lintRulesForShadowing(
 			rules,
 			packageResolverFor(kind, this.loadNodesAndCredentials),
+			policedTypeFor(kind, this.nodeTypes),
 		);
 
 		const policy = await this.policyRepository.createPolicy({ kind, rules, updatedBy }, {});
@@ -473,6 +474,7 @@ export class TypeAvailabilityPolicyService {
 		const warnings = lintRulesForShadowing(
 			rules,
 			packageResolverFor(kind, this.loadNodesAndCredentials),
+			policedTypeFor(kind, this.nodeTypes),
 		);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
@@ -727,6 +729,7 @@ export class TypeAvailabilityPolicyService {
 		const warnings = lintRulesForShadowing(
 			input.rules,
 			packageResolverFor(kind, this.loadNodesAndCredentials),
+			policedTypeFor(kind, this.nodeTypes),
 		);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
