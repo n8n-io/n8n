@@ -28,6 +28,7 @@ packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/index.ts
 packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolRow.vue
   s_9b9696034972ce::t_b960cc009eadc4 1-2,9-173,175,178-180,182-439
   s_9b9696034972ce::t_14e9077f4ee737 4-8
+  s_2157abf0156ebc::t_7c5692e2c69a0a 3
 packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolDetailView.vue
   s_9b9696034972ce::t_b960cc009eadc4 1-2,7-57,60-92,94-100,103-104,107-179
   s_9b9696034972ce::t_14e9077f4ee737 3-6
@@ -121,6 +122,14 @@ pnpm-lock.yaml
         "tool": "pi",
         "id": "01a0aa84-c35c-738d-a0b9-ae845184cb2c",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_2157abf0156ebc": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0cdb5-8c5d-7647-8a5f-e1d02cfb6a39",
+        "model": "gpt-6-astra"
       },
       "human_author": "heymynameisrob <robhough180@gmail.com>"
     },
