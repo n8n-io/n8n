@@ -24,9 +24,10 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: showMessageSpy }),
 }));
 
-const flexibleGroupsEnabled = shallowRef(false);
-vi.mock('@/app/composables/useFlexibleGroups', () => ({
-	useFlexibleGroups: () => ({ isEnabled: flexibleGroupsEnabled }),
+const allowTriggerInGroup = shallowRef(false);
+const allowMultipleBoundaryNodes = shallowRef(false);
+vi.mock('@/app/composables/useNodeGroupRules', () => ({
+	useNodeGroupRules: () => ({ allowTriggerInGroup, allowMultipleBoundaryNodes }),
 }));
 
 const WORKFLOW_ID = 'test-workflow';
@@ -80,10 +81,11 @@ describe('useInvalidNodeGroupCleanup', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
-		flexibleGroupsEnabled.value = false;
+		allowTriggerInGroup.value = false;
+		allowMultipleBoundaryNodes.value = false;
 	});
 
-	it('removes a group that holds a trigger while the flag is off', () => {
+	it('removes a group that holds a trigger while both rules are off', () => {
 		const store = setupTriggeredGroup();
 
 		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
@@ -93,8 +95,8 @@ describe('useInvalidNodeGroupCleanup', () => {
 		expect(showMessageSpy).toHaveBeenCalled();
 	});
 
-	it('keeps a group that holds a trigger while the flag is on', () => {
-		flexibleGroupsEnabled.value = true;
+	it('keeps a group that holds a trigger while the trigger rule is on', () => {
+		allowTriggerInGroup.value = true;
 		const store = setupTriggeredGroup();
 
 		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
@@ -102,6 +104,17 @@ describe('useInvalidNodeGroupCleanup', () => {
 
 		expect(removed).toEqual([]);
 		expect(showMessageSpy).not.toHaveBeenCalled();
+	});
+
+	it('removes a group that holds a trigger while only the boundary rule is on', () => {
+		allowMultipleBoundaryNodes.value = true;
+		const store = setupTriggeredGroup();
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+		const removed = removeInvalidNodeGroups(store);
+
+		expect(removed).toHaveLength(1);
+		expect(showMessageSpy).toHaveBeenCalled();
 	});
 
 	it('keeps valid groups and shows no toast', () => {

@@ -15,7 +15,7 @@ import {
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { findGroupIdsWithTrigger } from '../nodeGroups.utils';
-import { useFlexibleGroups } from '@/app/composables/useFlexibleGroups';
+import { useNodeGroupRules } from '@/app/composables/useNodeGroupRules';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -455,11 +455,11 @@ const {
 });
 
 const { isSelectionExtractable } = useSelectionValidation();
-const { isEnabled: isFlexibleGroupsEnabled } = useFlexibleGroups();
+const { allowTriggerInGroup } = useNodeGroupRules();
 
 // Groups that start the workflow themselves
 const groupIdsWithTrigger = computed(() => {
-	if (!isFlexibleGroupsEnabled.value) {
+	if (!allowTriggerInGroup.value) {
 		return new Set<string>();
 	}
 

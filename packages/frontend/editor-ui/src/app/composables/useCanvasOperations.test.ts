@@ -106,11 +106,12 @@ const mockRoute = reactive({
 
 const mockRouterReplace = vi.fn();
 
-// This file turns every PostHog flag on, so the flexible groups need their own
-// switch: most of these tests describe the strict group rules.
-const flexibleGroupsEnabled = shallowRef(false);
-vi.mock('@/app/composables/useFlexibleGroups', () => ({
-	useFlexibleGroups: () => ({ isEnabled: flexibleGroupsEnabled }),
+// This file turns every PostHog flag on, so the group rules need their own
+// switches: most of these tests describe the strict rules.
+const allowTriggerInGroup = shallowRef(false);
+const allowMultipleBoundaryNodes = shallowRef(false);
+vi.mock('@/app/composables/useNodeGroupRules', () => ({
+	useNodeGroupRules: () => ({ allowTriggerInGroup, allowMultipleBoundaryNodes }),
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -261,7 +262,8 @@ describe('useCanvasOperations', () => {
 		) as WritableDocumentStore;
 
 		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
-		flexibleGroupsEnabled.value = false;
+		allowTriggerInGroup.value = false;
+		allowMultipleBoundaryNodes.value = false;
 		mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
 			(name) => ({ name, available: true }),
 		);
@@ -2903,8 +2905,8 @@ describe('useCanvasOperations', () => {
 			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		});
 
-		it('leaves the group alone when the flexible rules already accept the connection', () => {
-			flexibleGroupsEnabled.value = true;
+		it('leaves the group alone when the boundary rule already accepts the connection', () => {
+			allowMultipleBoundaryNodes.value = true;
 			const toast = useToast();
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');

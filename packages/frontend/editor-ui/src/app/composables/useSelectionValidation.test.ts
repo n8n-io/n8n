@@ -19,10 +19,11 @@ import type { INodeUi } from '@/Interface';
 const TEST_WF_ID = 'test-wf-validation';
 const INJECTED_WF_ID = 'injected-wf-validation';
 
-const flexibleGroupsEnabled = shallowRef(false);
+const allowTriggerInGroup = shallowRef(false);
+const allowMultipleBoundaryNodes = shallowRef(false);
 
-vi.mock('@/app/composables/useFlexibleGroups', () => ({
-	useFlexibleGroups: () => ({ isEnabled: flexibleGroupsEnabled }),
+vi.mock('@/app/composables/useNodeGroupRules', () => ({
+	useNodeGroupRules: () => ({ allowTriggerInGroup, allowMultipleBoundaryNodes }),
 }));
 
 function makeNode(overrides: Partial<INodeUi> = {}): INodeUi {
@@ -175,7 +176,8 @@ describe('useSelectionValidation', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		useWorkflowsStore().workflowId = TEST_WF_ID;
-		flexibleGroupsEnabled.value = false;
+		allowTriggerInGroup.value = false;
+		allowMultipleBoundaryNodes.value = false;
 	});
 
 	afterEach(() => {
@@ -266,9 +268,9 @@ describe('useSelectionValidation', () => {
 		}
 	});
 
-	describe('with the flexible groups flag on', () => {
+	describe('with the trigger rule on alone', () => {
 		beforeEach(() => {
-			flexibleGroupsEnabled.value = true;
+			allowTriggerInGroup.value = true;
 		});
 
 		it('accepts a selection that holds a trigger', () => {
@@ -279,6 +281,21 @@ describe('useSelectionValidation', () => {
 			const { isSelectionGroupable } = useSelectionValidation();
 
 			expect(isSelectionGroupable(['a', 'b']).valid).toBe(true);
+		});
+
+		it('still refuses a selection with two entry nodes', () => {
+			const graph = makeTwoEntryGraph();
+			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(false);
+		});
+	});
+
+	describe('with the boundary rule on alone', () => {
+		beforeEach(() => {
+			allowMultipleBoundaryNodes.value = true;
 		});
 
 		it('accepts a selection with two entry nodes', () => {
@@ -299,6 +316,16 @@ describe('useSelectionValidation', () => {
 			expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(true);
 		});
 
+		it('still refuses a selection that holds a trigger', () => {
+			const graph = makeLinearGraph();
+			graph.nodes.a.type = 'n8n-nodes-base.manualTrigger';
+			setupGraph(graph, triggerNodeTypes);
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b']).valid).toBe(false);
+		});
+
 		it('still refuses to extract a selection with two entry nodes', () => {
 			const graph = makeTwoEntryGraph();
 			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
@@ -309,7 +336,7 @@ describe('useSelectionValidation', () => {
 		});
 	});
 
-	it('refuses a selection with two entry nodes while the flag is off', () => {
+	it('refuses a selection with two entry nodes while both rules are off', () => {
 		const graph = makeTwoEntryGraph();
 		setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
 
@@ -318,7 +345,7 @@ describe('useSelectionValidation', () => {
 		expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(false);
 	});
 
-	it('refuses a selection with two exit nodes while the flag is off', () => {
+	it('refuses a selection with two exit nodes while both rules are off', () => {
 		const graph = makeTwoExitGraph();
 		setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
 

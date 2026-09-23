@@ -6,7 +6,7 @@ import type { IWorkflowGroup } from 'n8n-workflow';
 import { validateNodeSelectionForGrouping } from 'n8n-workflow';
 import { escapeHtml } from 'xss';
 
-import { useFlexibleGroups } from '@/app/composables/useFlexibleGroups';
+import { useNodeGroupRules } from '@/app/composables/useNodeGroupRules';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
@@ -24,7 +24,7 @@ import type { INodeUi } from '@/Interface';
 export function useInvalidNodeGroupCleanup() {
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
-	const { isEnabled: isFlexibleGroupsEnabled } = useFlexibleGroups();
+	const { allowTriggerInGroup, allowMultipleBoundaryNodes } = useNodeGroupRules();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
@@ -50,7 +50,8 @@ export function useInvalidNodeGroupCleanup() {
 			connectionsBySourceNode: store.connectionsBySourceNode,
 			getNodeType: (node) => nodeTypesStore.getNodeType(node.type, node.typeVersion),
 			existingNodeGroups: allGroups.filter((other) => other.id !== group.id),
-			relaxNodeGroupRules: isFlexibleGroupsEnabled.value,
+			allowTriggerInGroup: allowTriggerInGroup.value,
+			allowMultipleBoundaryNodes: allowMultipleBoundaryNodes.value,
 		}).valid;
 	}
 
