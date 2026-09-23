@@ -89,7 +89,7 @@ export class InstanceReportingService {
 	 * `batchId`, so a redelivery reuses the row instead of measuring the day again,
 	 * and only a delivered report crosses its days off.
 	 *
-	 * A retry resends today's pending report exactly as measured instead of taking
+	 * A retry resends the pending report exactly as measured instead of taking
 	 * fresh numbers. The cumulative point is a lifetime total sampled at this
 	 * instance's report time, so its day-to-day difference only lines up with the
 	 * daily point while every sample sits 24 hours apart; re-measuring hours later
@@ -113,13 +113,13 @@ export class InstanceReportingService {
 		}
 
 		const now = new Date();
-		let report = await this.reportRepository.findTodaysPending(now);
+		let report = await this.reportRepository.findPending();
 
 		// A crash between recording a failure and skipping the report leaves an
 		// exhausted row pending, so the budget is re-checked before sending rather
 		// than only after. Settling it here also ends the day for the scheduler.
 		if (report && report.attempts >= MAX_ATTEMPTS) {
-			await this.skip(report.id, report.attempts);
+			await this.skip(report.id, report.attempts, 'max-retries');
 			return;
 		}
 
@@ -180,7 +180,7 @@ export class InstanceReportingService {
 
 			// `recordFailure` incremented the count, so the in-memory row is one behind.
 			if (report.attempts + 1 >= MAX_ATTEMPTS) {
-				await this.skip(report.id, report.attempts + 1);
+				await this.skip(report.id, report.attempts + 1, 'max-retries');
 			}
 
 			throw error;
@@ -191,12 +191,15 @@ export class InstanceReportingService {
 	}
 
 	/** Stop trying to deliver this report; the next one covers its days again. */
-	private async skip(id: string, attempts: number): Promise<void> {
+	async skip(id: string, attempts: number, reason: 'max-retries' | 'slot-passed'): Promise<void> {
 		await this.reportRepository.markSkipped(id);
-		this.logger.error('Giving up on the instance report after repeated delivery failures', {
-			batchId: id,
-			attempts,
-		});
+
+		const message =
+			reason === 'max-retries'
+				? 'Giving up on the instance report after repeated delivery failures'
+				: 'Giving up on the instance report because its slot has passed';
+
+		this.logger.error(message, { batchId: id, attempts });
 	}
 
 	/**
@@ -208,7 +211,7 @@ export class InstanceReportingService {
 	 * seconds.
 	 */
 	async msUntilRetryAllowed(now: Date): Promise<number> {
-		const pending = await this.reportRepository.findTodaysPending(now);
+		const pending = await this.reportRepository.findPending();
 		if (!pending?.lastAttemptAt) return 0;
 
 		const elapsed = now.getTime() - pending.lastAttemptAt.getTime();
