@@ -8786,6 +8786,7 @@
 	"tools.connection.empty.noResults": "No results for \"{query}\"",
 	"tools.connection.detail.back": "Back",
 	"tools.connection.detail.officialServer": "Official {service} MCP server",
+	"tools.connection.detail.server": "{service} MCP server",
 	"tools.connection.detail.publishedBy": "Published by",
 	"tools.connection.detail.versionValue": "Version {version}",
 	"tools.connection.detail.publisher": "Publisher",

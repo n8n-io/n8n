@@ -95,6 +95,7 @@ export type ToolConnectionSettings = McpToolSettings;
 export interface McpServerConnectionItem extends BaseConnectionItem {
 	kind: 'mcp-server';
 	availableTools: McpServerTool[];
+	isOfficial?: boolean;
 	settings?: McpToolSettings;
 	publisher?: PublisherInfo;
 	version?: string;

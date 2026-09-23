@@ -180,6 +180,7 @@ function buildItem(
 			required: true,
 		})),
 		availableTools: availableToolsForServer(server, connection),
+		isOfficial: server.isOfficial,
 		...(connection ? { settings: settingsForConnection(connection) } : {}),
 		publisher:
 			server.isOfficial || server.websiteUrl

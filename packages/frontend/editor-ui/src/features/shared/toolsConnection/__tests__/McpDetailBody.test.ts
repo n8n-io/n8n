@@ -20,6 +20,7 @@ describe('McpDetailBody', () => {
 		const { getByText, getByTestId } = renderComponent({
 			props: {
 				item: item({
+					isOfficial: true,
 					publisher: { name: 'Figma', url: 'https://www.figma.com' },
 					version: '2.21',
 					longDescription: 'Search, read, and update your Figma projects and files',
@@ -40,7 +41,8 @@ describe('McpDetailBody', () => {
 			props: { item: item() },
 		});
 
-		expect(getByText('Official Figma MCP server')).toBeVisible();
+		expect(getByText('Figma MCP server')).toBeVisible();
 		expect(queryByTestId('tools-connection-detail-metadata')).not.toBeInTheDocument();
+		expect(queryByTestId('tools-connection-detail-description')).not.toBeInTheDocument();
 	});
 });

@@ -110,6 +110,7 @@ const permissionOptions: Array<{ value: McpToolPermission; label: string }> = [
 	},
 	{ value: 'blocked', label: i18n.baseText('tools.connection.permissions.blocked') },
 ];
+const customPermissionLabel = i18n.baseText('tools.connection.permissions.custom');
 
 const categoryContent: Record<McpToolCategory, { title: BaseTextKey; description: BaseTextKey }> = {
 	read: {
@@ -273,15 +274,17 @@ function handleRecovery() {
 						<N8nSelect
 							:class="$style.permissionSelect"
 							:model-value="
-								hasCategoryOverrides(group.category)
-									? i18n.baseText('tools.connection.permissions.custom')
-									: categories[group.category]
+								hasCategoryOverrides(group.category) ? undefined : categories[group.category]
 							"
+							:placeholder="hasCategoryOverrides(group.category) ? ' ' : undefined"
 							size="small"
 							:disabled="arePermissionsDisabled"
 							:data-test-id="`tools-connection-permission-${group.category}`"
 							@update:model-value="onCategoryChange(group.category, $event)"
 						>
+							<template v-if="hasCategoryOverrides(group.category)" #prefix>
+								<N8nText size="small">{{ customPermissionLabel }}</N8nText>
+							</template>
 							<N8nOption
 								v-for="option in permissionOptions"
 								:key="option.value"
@@ -322,7 +325,7 @@ function handleRecovery() {
 								</N8nText>
 							</div>
 							<N8nSelect
-								:class="[$style.permissionSelect, $style.toolPermissionSelect]"
+								:class="$style.permissionSelect"
 								:model-value="toolPermissions[tool.id] ?? categories[group.category]"
 								size="small"
 								:disabled="arePermissionsDisabled"

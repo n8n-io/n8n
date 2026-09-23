@@ -82,8 +82,8 @@ describe('McpToolSettingsContent', () => {
 		expect(getByText('Can look things up')).toHaveTextContent(/^Can look things up$/);
 	});
 
-	it('does not render a permission group with no tools', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
+	it('renders both permission groups when one has no tools', () => {
+		const { getByTestId } = renderComponent({
 			props: {
 				item: item({
 					availableTools: [{ id: 'search', name: 'Search issues', category: 'read' }],
@@ -92,7 +92,7 @@ describe('McpToolSettingsContent', () => {
 		});
 
 		expect(getByTestId('tools-connection-count-read')).toBeVisible();
-		expect(queryByTestId('tools-connection-count-write')).not.toBeInTheDocument();
+		expect(getByTestId('tools-connection-count-write')).toHaveTextContent('0');
 	});
 
 	it('uses actor-specific permission and confirmation copy', async () => {

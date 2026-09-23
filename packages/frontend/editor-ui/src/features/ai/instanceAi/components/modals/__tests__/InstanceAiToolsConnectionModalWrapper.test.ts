@@ -478,6 +478,9 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		};
 		mcpStoreMock.connections = [connection];
 		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
+		mcpStoreMock.connectionToolsById = new Map([
+			['conn-1', [{ name: 'search', description: 'Search issues', category: 'read' }]],
+		]);
 		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
 
 		const { getAllByText, getByTestId } = renderComponent({

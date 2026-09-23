@@ -18,9 +18,12 @@ const hasMetadata = computed(() => Boolean(props.item.publisher) || Boolean(prop
 		<div :class="$style.identity">
 			<N8nText :class="$style.serverName" tag="h3">
 				{{
-					i18n.baseText('tools.connection.detail.officialServer', {
-						interpolate: { service: item.title },
-					})
+					i18n.baseText(
+						item.isOfficial
+							? 'tools.connection.detail.officialServer'
+							: 'tools.connection.detail.server',
+						{ interpolate: { service: item.title } },
+					)
 				}}
 			</N8nText>
 
@@ -53,7 +56,11 @@ const hasMetadata = computed(() => Boolean(props.item.publisher) || Boolean(prop
 			</p>
 		</div>
 
-		<p v-if="item.longDescription" :class="$style.description">
+		<p
+			v-if="item.longDescription"
+			:class="$style.description"
+			data-test-id="tools-connection-detail-description"
+		>
 			{{ item.longDescription }}
 		</p>
 
