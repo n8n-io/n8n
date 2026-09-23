@@ -88,7 +88,6 @@ describe('CommunityNodeInfo - links & bugs URL', () => {
 		mockInstalledPackage.value = {
 			packageName: 'n8n-nodes-test',
 			installedVersion: '1.0.0',
-			updateAvailable: '1.0.1',
 			installedNodes: [],
 			createdAt: new Date(),
 			updatedAt: new Date(),
