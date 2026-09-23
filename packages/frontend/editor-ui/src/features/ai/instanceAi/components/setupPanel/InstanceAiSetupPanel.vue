@@ -19,6 +19,7 @@ import {
 	type SetupPanelItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { NodeHelpers } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import type { INodeUi } from '@/Interface';
 import {
@@ -80,6 +81,7 @@ const usersStore = useUsersStore();
 const rootStore = useRootStore();
 const oauth = useCredentialOAuth();
 const connectingItemId = ref<string>();
+const reopenAuthorization = ref<() => void>();
 let active = true;
 onScopeDispose(() => {
 	active = false;
@@ -323,8 +325,9 @@ const panelItems = computed<SetupPanelItem[]>(() =>
 					!group.credential.isDone &&
 					oauth.isOAuthCredentialType(group.credential.item.credentialType) &&
 					oauth.canOAuthCredentialQuickConnect(group.credential.item.credentialType) &&
-					credentialsStore.getUsableCredentialByType(group.credential.item.credentialType)
-						.length === 0,
+					(connectingItemId.value === group.id ||
+						credentialsStore.getUsableCredentialByType(group.credential.item.credentialType)
+							.length === 0),
 			),
 			completed:
 				(!group.credential || group.credential.isDone) &&
@@ -389,7 +392,19 @@ const detailSections = computed(() => {
 	const group = selectedGroup.value;
 	if (!group) return [];
 	const credential = group.credential?.item;
-	const editors = parameterEditors.value;
+	const editors = parameterEditors.value.filter(({ item, node }) => {
+		const type = nodeType(node);
+		if (!type) return false;
+		const values =
+			NodeHelpers.getNodeParameters(type.properties, node.parameters, true, true, node, type) ??
+			node.parameters;
+		return type.properties.some(
+			(property) =>
+				property.type !== 'hidden' &&
+				item.parameterNames.some((name) => name.split(/[.[\]]/)[0] === property.name) &&
+				NodeHelpers.displayParameter(values, property, node, type),
+		);
+	});
 	const nodes = credential ? selectedNodes.value : editors.map((editor) => editor.node);
 	return [
 		...(credential && !perNodeCredentials.value
@@ -427,7 +442,9 @@ const detailSections = computed(() => {
 						? isCredentialConfigured(node.credentials?.[credential.credentialType])
 						: !group.credential || group.credential.isDone,
 			})),
-	];
+	].filter(
+		(section) => section.credential || (section.showParameters && section.editors.length > 0),
+	);
 });
 const parameterEditorComponents = useTemplateRef<
 	Array<InstanceType<typeof InstanceAiSetupPanelDetail>>
@@ -594,6 +611,10 @@ async function onExecute() {
 }
 
 async function connectFromRow(id: string) {
+	if (connectingItemId.value === id && reopenAuthorization.value) {
+		reopenAuthorization.value();
+		return;
+	}
 	const group = groupById(id);
 	const item = group?.credential?.item;
 	const projectId = credentialProjectId.value;
@@ -617,11 +638,15 @@ async function connectFromRow(id: string) {
 		const credential = await oauth.createAndAuthorize(item.credentialType, node?.type, {
 			projectId,
 			workflowId,
+			onAuthorizationStarted: (reopen) => {
+				reopenAuthorization.value = reopen;
+			},
 		});
 		if (credential) await bind(credential.id);
 	} catch (error) {
 		if (active) toast.showError(error, i18n.baseText('instanceAi.setupPanel.connectionError'));
 	} finally {
+		reopenAuthorization.value = undefined;
 		connectingItemId.value = undefined;
 	}
 }
@@ -703,8 +728,11 @@ async function onConfirmParameters() {
 			<N8nButton
 				size="small"
 				variant="subtle"
-				:disabled="item.disabled || Boolean(connectingItemId)"
-				:loading="connectingItemId === item.id"
+				:disabled="
+					item.disabled ||
+					Boolean(connectingItemId && (connectingItemId !== item.id || !reopenAuthorization))
+				"
+				:loading="connectingItemId === item.id && !reopenAuthorization"
 				@click="connectFromRow(item.id)"
 			>
 				{{ i18n.baseText('instanceAi.setupPanel.connect') }}
