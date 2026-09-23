@@ -245,14 +245,9 @@ async function toggleMCPAccess(enabled: boolean) {
 @use '@n8n/design-system/css/mixins/breakpoints';
 
 .cardLink {
-	transition: box-shadow 0.3s ease;
 	cursor: pointer;
 	padding: 0;
 	align-items: stretch;
-
-	&:hover {
-		box-shadow: var(--shadow--card-hover);
-	}
 }
 
 .cardHeading {
