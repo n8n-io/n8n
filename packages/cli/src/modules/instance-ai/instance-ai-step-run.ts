@@ -53,16 +53,16 @@ export interface StepRunPlan {
 	 */
 	rootNodeNames?: string[];
 	/**
-	 * Set when the caller asked to replay an earlier execution, the reused run
-	 * data does not cover the path, and a run would execute real nodes above the
-	 * target. The caller must refuse the run instead of silently downgrading it.
+	 * Set when the requested run data does not cover the path, and a run would
+	 * execute real nodes above the target. The caller must refuse the run
+	 * instead of silently downgrading it.
 	 *
-	 * Mocked input has no such case. It mocks the direct parents of the roots and
-	 * walks up from there, which is the same walk `collectAncestorNames` makes,
-	 * so a target with a node above it always has something to mock.
+	 * Mocked input reaches this only through a Loop Over Items node: the mock
+	 * leaves its `done` output empty, and the engine restarts a loop that did
+	 * not finish.
 	 */
 	unhonoredInput?: {
-		requested: 'reused-execution';
+		requested: 'reused-execution' | 'mocked';
 		upstreamNodeNames: string[];
 	};
 }
@@ -387,11 +387,16 @@ function outputCarriedItems(runData: IRunData, nodeName: string, outputIndex: nu
 /** Loop Over Items. The engine's `findStartNodes` matches the same literal. */
 const SPLIT_IN_BATCHES_NODE_TYPE = 'n8n-nodes-base.splitInBatches';
 
-/** Whether `nodeName` can reach itself through main connections. */
+/**
+ * Whether `nodeName` can reach itself through main connections without
+ * passing a node in `avoid`. `findSubgraph` drops every cycle that runs
+ * through the destination, so such a cycle is no loop to the engine.
+ */
 function reachesItself(
 	connections: IConnections,
 	nodesByName: Map<string, INode>,
 	nodeName: string,
+	avoid: Set<string>,
 ): boolean {
 	const seen = new Set<string>();
 	const queue = [nodeName];
@@ -400,7 +405,7 @@ function reachesItself(
 		const current = queue.shift() as string;
 		for (const edge of directChildren(connections, nodesByName, current)) {
 			if (edge.node.name === nodeName) return true;
-			if (seen.has(edge.node.name)) continue;
+			if (avoid.has(edge.node.name) || seen.has(edge.node.name)) continue;
 			seen.add(edge.node.name);
 			queue.push(edge.node.name);
 		}
@@ -451,11 +456,14 @@ export function findUncoveredAncestors(args: {
 	const isClean = (name: string) =>
 		!failed(name) && (runData[name] !== undefined || pinned.has(name));
 
-	// Mirrors the engine's `isALoop`: without a cycle back to the node, the Loop
-	// Over Items node is a plain node and its first output leads on.
+	const stopAt = new Set([...rootNames, targetName]);
+
+	// Mirrors the engine's `isALoop` on the subgraph: without a cycle back to
+	// the node, the Loop Over Items node is a plain node and its second output
+	// leads on.
 	const isUnfinishedLoop = (name: string) => {
 		if (nodesByName.get(name)?.type !== SPLIT_IN_BATCHES_NODE_TYPE) return false;
-		const doneOutput = reachesItself(connections, nodesByName, name) ? 0 : 1;
+		const doneOutput = reachesItself(connections, nodesByName, name, stopAt) ? 0 : 1;
 		const lastRun = runData[name]?.at(-1);
 		return (lastRun?.data?.[NodeConnectionTypes.Main]?.[doneOutput] ?? []).length === 0;
 	};
@@ -471,7 +479,6 @@ export function findUncoveredAncestors(args: {
 	const uncovered = new Set<string>();
 	const seen = new Set<string>(startPoints);
 	const queue = [...startPoints];
-	const stopAt = new Set([...rootNames, targetName]);
 
 	while (queue.length > 0) {
 		const current = queue.shift() as string;
@@ -544,6 +551,30 @@ export function planStepRun(args: {
 		// gives the engine a start point it accepts, instead of a partial run it
 		// rejects for having no reachable root with run data.
 		if (mockedNodeNames.length > 0) {
+			// The mock gives every ancestor run data, so the one rule it can break
+			// is the loop rule. Other findings, such as a missing trigger, are the
+			// walk's guesses about a graph the engine starts elsewhere. Pins do not
+			// matter either: the run drops the pin of every node it mocks.
+			const loopNames = new Set(
+				nodes.filter((n) => n.type === SPLIT_IN_BATCHES_NODE_TYPE).map((n) => n.name),
+			);
+			const notMocked = findUncoveredAncestors({
+				nodes,
+				connections,
+				targetName,
+				rootNames,
+				runData,
+			}).filter((name) => loopNames.has(name));
+			if (notMocked.length > 0) {
+				return {
+					inputMode: 'chain',
+					mockedNodeNames: [],
+					reusedNodeNames: [],
+					...throughRoots,
+					unhonoredInput: { requested: 'mocked', upstreamNodeNames: notMocked },
+				};
+			}
+
 			return {
 				inputMode: 'mocked',
 				runData,
@@ -590,9 +621,8 @@ export function planStepRun(args: {
 	// nodes above the target from running, and those nodes write to real systems
 	// — report it instead of running them.
 	//
-	// A request for mocked input cannot reach here with work left to refuse:
-	// mocking walks the same edges as `collectAncestorNames`, so it mocks nothing
-	// only when the target has nothing above it, and then a chain run is what the
+	// A request for mocked input reaches here only when it mocks nothing, which
+	// means the target has nothing above it, and then a chain run is what the
 	// caller wanted anyway.
 	return {
 		inputMode: 'chain',

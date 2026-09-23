@@ -86,6 +86,10 @@ first move whenever the user is debugging a **read** node that already failed a
 real execution: the node ran for real once already, and a mock-only check is
 what sends the user back for a second session.
 
+The action refuses a replay that would re-run a node above the target: one the
+execution never reached, one that failed there, or a loop that did not
+finish. Pick another execution, or tell the user which node would run again.
+
 ### Decide whether the node is safe to run first
 
 A step run is a real run. The node uses the user's real credentials and reaches

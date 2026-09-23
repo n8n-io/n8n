@@ -638,6 +638,19 @@ placeholder on an upstream IF or Switch picks a branch that real data may pick
 differently, which is why a mocked step is never evidence that the workflow
 works.
 
+The action refuses a run whose input would not keep the nodes above the target
+out of it. It applies the rules of `findStartNodes`, so the engine re-runs:
+
+- A node with no run data.
+- A node whose saved run failed, even a pinned one. The engine retries it.
+- A Loop Over Items node whose last run left the `done` output empty. The
+  engine restarts the loop. A loop edge that runs through the target does not
+  count, because `findSubgraph` drops it, and then the second output decides.
+
+`mockInput` can hit only the last rule: the placeholder on a loop leaves
+`done` empty when the target hangs off the loop body. Use `reuseExecutionId`
+with an execution where the loop finished.
+
 **Sub-node targets**: a tool has no main input, and the engine never runs one on
 its own. It replaces the node that owns the tool (the Agent) with a virtual Tool
 Executor that inherits that node's main parents, then runs the tool from there.

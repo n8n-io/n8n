@@ -2157,6 +2157,13 @@ export class InstanceAiAdapterService {
 				if (plan.unhonoredInput) {
 					const names = plan.unhonoredInput.upstreamNodeNames;
 					const upstream = names.slice(0, 10).join(', ') + (names.length > 10 ? ', …' : '');
+					if (plan.unhonoredInput.requested === 'mocked') {
+						throw new UserError(
+							`mockInput cannot keep every node above "${nodeName}" out of the run: ` +
+								`the mock leaves a Loop Over Items node unfinished, and n8n would restart it and execute these nodes for real (${upstream}). ` +
+								'Pass reuseExecutionId with an execution where the loop finished, or omit both options to run the chain on purpose.',
+						);
+					}
 					throw new UserError(
 						`Execution ${options?.reuseExecutionId} does not cover every node above "${nodeName}", ` +
 							`so the run would execute them for real (${upstream}). ` +

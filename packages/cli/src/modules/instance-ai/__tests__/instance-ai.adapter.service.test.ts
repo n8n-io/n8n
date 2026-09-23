@@ -5845,6 +5845,42 @@ describe('createExecutionAdapter runStep()', () => {
 		);
 	});
 
+	it('refuses mocked input that would restart a loop above the target', async () => {
+		// Trigger -> Loop; Loop "loop" -> Body -> Loop, and Body -> Send. The mock
+		// leaves the done output empty, so the engine would restart the loop.
+		const loopWorkflow = {
+			id: 'wf-1',
+			versionId: 'v-current',
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1, position: [0, 0] },
+				{ name: 'Loop', type: 'n8n-nodes-base.splitInBatches', typeVersion: 3, position: [1, 0] },
+				{ name: 'Body', type: 'n8n-nodes-base.httpRequest', typeVersion: 1, position: [2, 0] },
+				{ name: 'Send', type: 'n8n-nodes-base.noOp', typeVersion: 1, position: [3, 0] },
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+				Loop: { main: [[], [{ node: 'Body', type: 'main', index: 0 }]] },
+				Body: {
+					main: [
+						[
+							{ node: 'Loop', type: 'main', index: 0 },
+							{ node: 'Send', type: 'main', index: 0 },
+						],
+					],
+				},
+			},
+		};
+		const harness = createRunAdapterForTests(loopWorkflow, {
+			execution: makeExecution({ status: 'success' }),
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await expect(runStep('wf-1', 'Send', { mockInput: [{}] })).rejects.toThrow(
+			'the mock leaves a Loop Over Items node unfinished, and n8n would restart it and execute these nodes for real (Loop)',
+		);
+		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
 	it('refuses to run the chain when the reused execution covers nothing above the target', async () => {
 		const harness = createRunAdapterForTests(chainWorkflow, {
 			// The execution never reached the nodes above `Send`.

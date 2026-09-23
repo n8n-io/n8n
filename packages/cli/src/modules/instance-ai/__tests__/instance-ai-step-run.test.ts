@@ -1,5 +1,12 @@
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import { cleanRunData, DirectedGraph, findStartNodes, findSubgraph, rewireGraph } from 'n8n-core';
+import {
+	cleanRunData,
+	DirectedGraph,
+	findStartNodes,
+	findSubgraph,
+	handleCycles,
+	rewireGraph,
+} from 'n8n-core';
 import type { IConnections, INode, IRunData, ITaskData, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -375,29 +382,30 @@ describe('planStepRun', () => {
 			expect(plan.inputMode).toBe('reused-execution');
 		});
 
-		/** Where `findStartNodes` starts a run to `Target` on this graph. */
+		/**
+		 * Where the engine starts a run to `Target`: the steps `runPartialWorkflow2`
+		 * takes, from the subgraph to the cycle handling.
+		 */
 		function engineStartNodes(
 			graphNodes: INode[],
-			edges: Array<[string, string, number?]>,
+			graphConnections: IConnections,
 			runData: IRunData,
 		) {
-			const byName = new Map(graphNodes.map((graphNode) => [graphNode.name, graphNode]));
-			const graph = new DirectedGraph().addNodes(...graphNodes).addConnections(
-				...edges.map(([from, to, outputIndex]) => ({
-					from: byName.get(from)!,
-					to: byName.get(to)!,
-					outputIndex: outputIndex ?? 0,
-				})),
-			);
-			return [
-				...findStartNodes({
-					graph,
-					trigger: byName.get('Trigger')!,
-					destination: byName.get('Target')!,
-					runData,
-					pinData: {},
-				}),
-			].map((startNode) => startNode.name);
+			const graph = DirectedGraph.fromNodesAndConnections(graphNodes, graphConnections);
+			const byName = graph.getNodes();
+			const trigger = byName.get('Trigger')!;
+			const destination = byName.get('Target')!;
+
+			const subgraph = findSubgraph({ graph, destination, trigger });
+			const cleaned = cleanRunData(runData, subgraph, new Set([destination]));
+			const startNodes = findStartNodes({
+				graph: subgraph,
+				trigger,
+				destination,
+				runData: cleaned,
+				pinData: {},
+			});
+			return [...handleCycles(subgraph, startNodes, trigger)].map((startNode) => startNode.name);
 		}
 
 		const failedTask = (): ITaskData => ({
@@ -415,16 +423,7 @@ describe('planStepRun', () => {
 
 			expect(plan.inputMode).toBe('chain');
 			expect(plan.unhonoredInput?.upstreamNodeNames).toEqual(['Fetch']);
-			expect(
-				engineStartNodes(
-					nodes,
-					[
-						['Trigger', 'Fetch'],
-						['Fetch', 'Target'],
-					],
-					priorRunData,
-				),
-			).toEqual(['Fetch']);
+			expect(engineStartNodes(nodes, connections, priorRunData)).toEqual(['Fetch']);
 		});
 
 		it('refuses a replay whose pinned node failed, because the error outranks the pin', () => {
@@ -445,60 +444,118 @@ describe('planStepRun', () => {
 		});
 
 		describe('a Loop Over Items node above the target', () => {
-			// Trigger -> Loop; Loop "loop" output -> Body -> Loop; Loop "done" -> Target.
 			const loopNodes = [
 				node('Trigger'),
 				node('Loop', { type: 'n8n-nodes-base.splitInBatches' }),
 				node('Body'),
 				node('Target'),
 			];
-			const loopConnections = connect(
-				['Trigger', 'Loop'],
-				['Loop:1', 'Body'],
-				['Body', 'Loop'],
-				['Loop:0', 'Target'],
-			);
-			const loopEdges: Array<[string, string, number?]> = [
-				['Trigger', 'Loop'],
-				['Loop', 'Body', 1],
-				['Body', 'Loop'],
-				['Loop', 'Target', 0],
-			];
+			const loopRunning = taskDataOnOutputs([[], [{ json: {} }]]);
+			const loopDone = taskDataOnOutputs([[{ json: {} }], []]);
+			const runOf = (...loopRuns: ITaskData[]): IRunData => ({
+				Trigger: [taskData([{ json: {} }])],
+				Loop: loopRuns,
+				Body: [taskData([{ json: {} }])],
+			});
+			const plan = (connections: IConnections, input: Partial<Parameters<typeof planStepRun>[0]>) =>
+				planStepRun({ nodes: loopNodes, connections, targetName: 'Target', ...input });
+			const mockItems = toExecutionItems([{ id: 1 }]);
 
-			it('refuses a replay of a loop that stopped before its done output', () => {
-				const priorRunData: IRunData = {
-					Trigger: [taskData([{ json: {} }])],
-					Loop: [taskDataOnOutputs([[], [{ json: {} }]])],
-					Body: [taskData([{ json: {} }])],
-				};
+			describe('with the target after the done output', () => {
+				// Trigger -> Loop; Loop "loop" -> Body -> Loop; Loop "done" -> Target.
+				const afterDone = connect(
+					['Trigger', 'Loop'],
+					['Loop:1', 'Body'],
+					['Body', 'Loop'],
+					['Loop:0', 'Target'],
+				);
 
-				const plan = planStepRun({
-					nodes: loopNodes,
-					connections: loopConnections,
-					targetName: 'Target',
-					priorRunData,
+				it('refuses a replay of a loop that stopped before its done output', () => {
+					const priorRunData = runOf(loopRunning);
+
+					expect(plan(afterDone, { priorRunData }).unhonoredInput?.upstreamNodeNames).toEqual([
+						'Loop',
+					]);
+					expect(engineStartNodes(loopNodes, afterDone, priorRunData)).toEqual(['Loop']);
 				});
 
-				expect(plan.unhonoredInput?.upstreamNodeNames).toEqual(['Loop']);
-				expect(engineStartNodes(loopNodes, loopEdges, priorRunData)).toEqual(['Loop']);
+				it('accepts a replay of a loop that finished', () => {
+					const priorRunData = runOf(loopRunning, loopDone);
+
+					expect(plan(afterDone, { priorRunData }).inputMode).toBe('reused-execution');
+					expect(engineStartNodes(loopNodes, afterDone, priorRunData)).toEqual(['Target']);
+				});
+
+				it('mocks the path, because the mock fills the done output', () => {
+					const mocked = plan(afterDone, { mockItems });
+
+					expect(mocked.inputMode).toBe('mocked');
+					expect(engineStartNodes(loopNodes, afterDone, mocked.runData!)).toEqual(['Target']);
+				});
 			});
 
-			it('accepts a replay of a loop that finished', () => {
-				const priorRunData: IRunData = {
-					Trigger: [taskData([{ json: {} }])],
-					Loop: [taskDataOnOutputs([[], [{ json: {} }]]), taskDataOnOutputs([[{ json: {} }], []])],
-					Body: [taskData([{ json: {} }])],
-				};
+			describe('with the target on the cycle', () => {
+				// Trigger -> Loop; Loop "loop" -> Body -> Target -> Loop.
+				// `findSubgraph` drops a cycle through the destination, so the engine
+				// treats the Loop node as a plain node.
+				const onCycle = connect(
+					['Trigger', 'Loop'],
+					['Loop:1', 'Body'],
+					['Body', 'Target'],
+					['Target', 'Loop'],
+				);
 
-				const plan = planStepRun({
-					nodes: loopNodes,
-					connections: loopConnections,
-					targetName: 'Target',
-					priorRunData,
+				it('refuses a replay of a finished loop, which the engine restarts', () => {
+					const priorRunData = runOf(loopRunning, loopDone);
+
+					expect(plan(onCycle, { priorRunData }).unhonoredInput?.upstreamNodeNames).toEqual([
+						'Loop',
+					]);
+					expect(engineStartNodes(loopNodes, onCycle, priorRunData)).toEqual(['Loop']);
 				});
 
-				expect(plan.inputMode).toBe('reused-execution');
-				expect(engineStartNodes(loopNodes, loopEdges, priorRunData)).toEqual(['Target']);
+				it('mocks the path', () => {
+					const mocked = plan(onCycle, { mockItems });
+
+					expect(mocked.inputMode).toBe('mocked');
+					expect(engineStartNodes(loopNodes, onCycle, mocked.runData!)).toEqual(['Target']);
+				});
+			});
+
+			describe('with the target off the loop body', () => {
+				// Trigger -> Loop; Loop "loop" -> Body -> Loop, and Body -> Target.
+				const offBody = connect(
+					['Trigger', 'Loop'],
+					['Loop:1', 'Body'],
+					['Body', 'Loop'],
+					['Body', 'Target'],
+				);
+
+				it('refuses mocked input, which leaves the done output empty', () => {
+					const refused = plan(offBody, { mockItems });
+
+					expect(refused.inputMode).toBe('chain');
+					expect(refused.unhonoredInput).toEqual({
+						requested: 'mocked',
+						upstreamNodeNames: ['Loop'],
+					});
+
+					// Fed to the engine, the mock restarts the loop, and "Body" runs.
+					const { runData } = buildMockedStepRunData({
+						nodes: loopNodes,
+						connections: offBody,
+						targetName: 'Target',
+						mockItems,
+					});
+					expect(engineStartNodes(loopNodes, offBody, runData)).toEqual(['Loop']);
+				});
+
+				it('accepts a replay of a loop that finished', () => {
+					const priorRunData = runOf(loopRunning, loopDone);
+
+					expect(plan(offBody, { priorRunData }).inputMode).toBe('reused-execution');
+					expect(engineStartNodes(loopNodes, offBody, priorRunData)).toEqual(['Target']);
+				});
 			});
 		});
 	});
@@ -542,7 +599,7 @@ describe('planStepRun', () => {
 // request never has to be refused. A self loop broke that: the mock skipped the
 // target, the ancestor walk counted it, and the plan reported the target as a
 // node above itself.
-describe('a mocked request never goes unhonoured', () => {
+describe('a mocked request without a loop never goes unhonoured', () => {
 	const shapes: Array<[string, INode[], IConnections]> = [
 		['a chain above the target', [node('Trigger'), node('Target')], connect(['Trigger', 'Target'])],
 		['nothing above the target', [node('Target')], {}],
