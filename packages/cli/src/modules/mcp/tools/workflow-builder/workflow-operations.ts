@@ -105,7 +105,7 @@ export const workflowSettingsObjectSchema = z.object({
 	callerPolicy: z
 		.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
 		.describe(
-			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner". Do not choose "any": it is deprecated and removed in version 3. Use "workflowsFromAList" with callerIds, or "workflowsFromSameOwner".',
+			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner".',
 		)
 		.optional(),
 	callerIds: z
