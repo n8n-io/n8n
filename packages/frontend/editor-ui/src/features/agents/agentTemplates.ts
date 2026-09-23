@@ -1,9 +1,10 @@
 import type { BaseTextKey } from '@n8n/i18n';
-import type {
-	AgentIntegrationConfig,
-	AgentJsonConfig,
-	AgentJsonToolConfig,
-	AgentTaskConfig,
+import {
+	DEFAULT_AGENT_PERSONALISATION,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+	type AgentJsonToolConfig,
+	type AgentTaskConfig,
 } from '@n8n/api-types';
 
 /**
@@ -80,7 +81,10 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 					node: {
 						nodeType: 'n8n-nodes-base.gmail',
 						nodeTypeVersion: 2,
-						nodeParameters: {},
+						// `getAll` is valid with no extra fields. The default
+						// `send` operation requires recipient, subject, and body,
+						// and an invalid tool blocks every chat send.
+						nodeParameters: { resource: 'message', operation: 'getAll' },
 						credentials: { gmailOAuth2: { id: '', name: 'gmailOAuth2' } },
 					},
 				},
@@ -91,7 +95,14 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 					node: {
 						nodeType: 'n8n-nodes-base.googleCalendar',
 						nodeTypeVersion: 1,
-						nodeParameters: {},
+						// `create` requires start and end. Runtime values keep the
+						// tool valid before a calendar is connected.
+						nodeParameters: {
+							resource: 'event',
+							operation: 'create',
+							start: "={{ $fromAI('start', 'Event start time', 'string') }}",
+							end: "={{ $fromAI('end', 'Event end time', 'string') }}",
+						},
 						credentials: {
 							googleCalendarOAuth2Api: { id: '', name: 'googleCalendarOAuth2Api' },
 						},
@@ -128,7 +139,14 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 					node: {
 						nodeType: 'n8n-nodes-base.linkedIn',
 						nodeTypeVersion: 1,
-						nodeParameters: {},
+						// `create` requires the person to post as. A runtime value
+						// keeps the tool valid before a credential is connected.
+						nodeParameters: {
+							resource: 'post',
+							operation: 'create',
+							person: "={{ $fromAI('person', 'LinkedIn person to post as', 'string') }}",
+							text: "={{ $fromAI('text', 'The message to post', 'string') }}",
+						},
 						credentials: { linkedInOAuth2Api: { id: '', name: 'linkedInOAuth2Api' } },
 					},
 				},
@@ -155,7 +173,8 @@ export function isAgentConfigBlank(config: AgentJsonConfig): boolean {
  * Returns the config with the template written onto it, or `null` when the
  * agent already has content (instructions or tools). `name` is only replaced
  * while it still equals `defaultName` (the seeded "New Agent"), so a renamed
- * agent keeps its name. `model` and every other field are preserved.
+ * agent keeps its name. The template icon replaces the personalisation icon;
+ * the existing gradient stays. `model` and every other field are preserved.
  */
 export function applyAgentTemplate(
 	config: AgentJsonConfig,
@@ -170,5 +189,9 @@ export function applyAgentTemplate(
 		tools: template.config.tools ?? [],
 		integrations: template.config.integrations ?? [],
 		config: { ...config.config, ...template.config.config },
+		personalisation: {
+			icon: template.icon,
+			gradient: config.personalisation?.gradient ?? { ...DEFAULT_AGENT_PERSONALISATION.gradient },
+		},
 	};
 }

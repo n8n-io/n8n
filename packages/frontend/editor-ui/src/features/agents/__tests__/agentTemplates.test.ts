@@ -71,6 +71,25 @@ describe('applyAgentTemplate', () => {
 		expect(result?.tools).toHaveLength(2);
 	});
 
+	it('sets the personalisation icon from the template and keeps the gradient', () => {
+		const template = AGENT_TEMPLATES.find((t) => t.id === 'process-incoming-emails')!;
+		const gradient = {
+			from: '#111111',
+			to: '#222222',
+			angle: 90,
+			fromStop: 0,
+			toStop: 100,
+		};
+		const result = applyAgentTemplate(
+			blankConfig({ personalisation: { icon: 'bot', gradient } }),
+			template,
+			'New Agent',
+		);
+
+		expect(result?.personalisation?.icon).toBe('mail');
+		expect(result?.personalisation?.gradient).toEqual(gradient);
+	});
+
 	it('keeps a renamed agent name', () => {
 		const template = AGENT_TEMPLATES[0];
 		const result = applyAgentTemplate(blankConfig({ name: 'Ops bot' }), template, 'New Agent');
@@ -135,6 +154,25 @@ describe('applyAgentTemplate', () => {
 		}
 	});
 
+	it('writes schema-valid parameters for the email tools', () => {
+		const template = AGENT_TEMPLATES.find((t) => t.id === 'process-incoming-emails')!;
+		const result = applyAgentTemplate(blankConfig(), template, 'New Agent');
+		const tools = result?.tools ?? [];
+		const gmail = tools[0];
+		const calendar = tools[1];
+
+		expect(gmail?.type).toBe('node');
+		expect(calendar?.type).toBe('node');
+		if (gmail?.type !== 'node' || calendar?.type !== 'node') return;
+		expect(gmail.node.nodeParameters).toEqual({ resource: 'message', operation: 'getAll' });
+		expect(calendar.node.nodeParameters).toMatchObject({
+			resource: 'event',
+			operation: 'create',
+			start: expect.stringContaining('$fromAI'),
+			end: expect.stringContaining('$fromAI'),
+		});
+	});
+
 	it('writes a draft credential for the linkedin outreach tool', () => {
 		const template = AGENT_TEMPLATES.find((t) => t.id === 'linkedin-outreach')!;
 		const result = applyAgentTemplate(blankConfig(), template, 'New Agent');
@@ -144,6 +182,11 @@ describe('applyAgentTemplate', () => {
 		if (tool?.type === 'node') {
 			const cred = Object.values(tool.node.credentials ?? {})[0];
 			expect(cred?.id).toBe('');
+			expect(tool.node.nodeParameters).toMatchObject({
+				resource: 'post',
+				operation: 'create',
+				person: expect.stringContaining('$fromAI'),
+			});
 		}
 	});
 });
