@@ -105,6 +105,7 @@ packages/cli/src/modules/agents/agent-turn-execution.service.ts
   s_13d2093edecceb::t_418cfbc70eca7a 355-359,367-369,380-383,386-394,401-406,410-411,421-423,427-429
   s_13d2093edecceb::t_815e8b97ce1620 28
   s_13d2093edecceb::t_9c37ce041c3c5d 57,117,129,138-139,205,353-354,360-365,370-379,384-385,395-400,407-409,412-420,424-426,430-437
+  s_13d2093edecceb::t_5bbab9c4c5e15f 366
 packages/testing/playwright/services/api-helper.ts
   s_c4a4e9a494a612::t_439a3989b7e269 22,90,116
 packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
