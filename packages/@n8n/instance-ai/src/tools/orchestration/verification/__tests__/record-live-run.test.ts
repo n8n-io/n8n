@@ -128,6 +128,7 @@ describe('recordLiveRunVerification', () => {
 			'reported a node error',
 			{ nodeErrors: [{ nodeName: 'Send Telegram Message', message: 'Bad Request' }] },
 		],
+		['ran an unknown version', { workflowVersionId: undefined }],
 	])('keeps the stored claim when the run %s', async (_label, overrides) => {
 		const { context, workflowTaskService } = createContext();
 
@@ -150,6 +151,24 @@ describe('recordLiveRunVerification', () => {
 		],
 	])('does not record when %s', async (_label, outcome) => {
 		const { context, workflowTaskService } = createContext({ outcome });
+
+		const claim = await recordLiveRunVerification({
+			context,
+			workflowId: 'wf_1',
+			result: makeRunResult(),
+		});
+
+		expect(claim).toBeUndefined();
+		expect(workflowTaskService.recordVerification).not.toHaveBeenCalled();
+	});
+
+	it('does not record when the draft was saved during the run', async () => {
+		const { context, workflowTaskService } = createContext();
+		vi.mocked(context.workflowService.getWorkflowHead).mockResolvedValueOnce({
+			versionId: 'version-3',
+			activeVersionId: null,
+			updatedAt: 0,
+		});
 
 		const claim = await recordLiveRunVerification({
 			context,

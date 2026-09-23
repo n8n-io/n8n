@@ -9,7 +9,6 @@
 
 import { analyzeVerificationResult, countProducedOutputRows } from './analyze-result';
 import { deriveVerificationClaim } from './claim';
-import { resolvePublishState } from './publish-state';
 import type { ExecutionRunResult } from './types';
 import type { InstanceAiContext } from '../../../types';
 import type { VerificationClaim } from '../../../workflow-loop/workflow-loop-state';
@@ -39,6 +38,12 @@ export async function recordLiveRunVerification(args: {
 		// A verification in flight owns the record; do not race its write.
 		if (!outcome || !plan || outcome.verification?.status === 'running') return undefined;
 
+		// A save during the run moves the draft past the version that ran, and
+		// this run proves nothing about the newer draft.
+		const executedVersionId = result.workflowVersionId;
+		const head = await context.workflowService.getWorkflowHead(workflowId);
+		if (!executedVersionId || head.versionId !== executedVersionId) return undefined;
+
 		// No planned simulations: this run used no verification pin data. Saved
 		// pins and injected trigger input still count as simulated in the analysis.
 		const analysis = analyzeVerificationResult({
@@ -49,16 +54,10 @@ export async function recordLiveRunVerification(args: {
 			runId: context.runId ?? buildContext.runId,
 			triggerNodeName,
 		});
-		const publishState = await resolvePublishState({
-			workflowService: context.workflowService,
-			workflowId,
-			executedVersionId: result.workflowVersionId,
-			logger: context.logger,
-		});
 		const claim = deriveVerificationClaim({
 			analysis,
 			plannedNodeCount: plan.length,
-			publishState,
+			publishState: { activeVersionId: head.activeVersionId, draftVersionId: executedVersionId },
 		});
 		if (claim.level !== 'verified') return undefined;
 
