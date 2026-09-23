@@ -23,6 +23,7 @@ import {
 	type IWorkflowSettings,
 	type RelatedExecution,
 	type GetNodeTypeForGrouping,
+	type NodeGroupRuleOptions,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -166,14 +167,14 @@ export function validateWorkflowNodeGroups(
 		connections?: IWorkflowBase['connections'];
 	},
 	getNodeType: GetNodeTypeForGrouping | null,
-	options: { relaxNodeGroupRules?: boolean } = {},
+	rules: NodeGroupRuleOptions = {},
 ) {
 	const result = validateWorkflowGroups({
 		nodes: workflow.nodes,
 		connectionsBySourceNode: workflow.connections,
 		nodeGroups: workflow.nodeGroups,
 		getNodeType,
-		relaxNodeGroupRules: options.relaxNodeGroupRules,
+		...rules,
 	});
 
 	if (!result.valid) {

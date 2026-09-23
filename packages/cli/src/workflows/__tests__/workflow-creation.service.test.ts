@@ -27,12 +27,13 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { FolderService } from '@/services/folder.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
-import { RelaxedNodeGroupRulesFlagGate } from '@/workflows/relaxed-node-group-rules-flag-gate';
+import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
 vi.mock('@/permissions.ee/check-access');
 vi.mock('@/workflow-helpers');
@@ -57,7 +58,7 @@ describe('WorkflowCreationService', () => {
 	let mcpSettingsService: MockProxy<McpSettingsService>;
 	let policyEnforcementServiceMock: MockProxy<PolicyEnforcementService>;
 	let workflowRepositoryMock: MockProxy<WorkflowRepository>;
-	let relaxedNodeGroupRulesFlagGateMock: MockProxy<RelaxedNodeGroupRulesFlagGate>;
+	let nodeGroupRulesFlagGateMock: MockProxy<NodeGroupRulesFlagGate>;
 	let loggerMock: MockProxy<Logger>;
 
 	beforeEach(() => {
@@ -97,8 +98,8 @@ describe('WorkflowCreationService', () => {
 		workflowRepositoryMock = mock<WorkflowRepository>();
 
 		// Default: the user is outside the rollout, so today's group rules apply.
-		relaxedNodeGroupRulesFlagGateMock = mock<RelaxedNodeGroupRulesFlagGate>();
-		relaxedNodeGroupRulesFlagGateMock.isEnabled.mockResolvedValue(false);
+		nodeGroupRulesFlagGateMock = mock<NodeGroupRulesFlagGate>();
+		nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(NO_RULES_RELAXED);
 
 		workflowCreationService = new WorkflowCreationService(
 			loggerMock,
@@ -123,7 +124,7 @@ describe('WorkflowCreationService', () => {
 			mcpSettingsService,
 			policyEnforcementServiceMock,
 			workflowRepositoryMock,
-			relaxedNodeGroupRulesFlagGateMock,
+			nodeGroupRulesFlagGateMock,
 		);
 	});
 
@@ -210,7 +211,7 @@ describe('WorkflowCreationService', () => {
 
 	describe('createWorkflow()', () => {
 		it('relaxes the group rules for a user inside the rollout', async () => {
-			relaxedNodeGroupRulesFlagGateMock.isEnabled.mockResolvedValue(true);
+			nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(ALL_RULES_RELAXED);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			setupTransactionMocks();
@@ -223,9 +224,9 @@ describe('WorkflowCreationService', () => {
 				workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
 			).rejects.toThrow();
 
-			expect(relaxedNodeGroupRulesFlagGateMock.isEnabled).toHaveBeenCalledWith(user);
+			expect(nodeGroupRulesFlagGateMock.getEnabledRules).toHaveBeenCalledWith(user);
 			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
-			expect(options).toEqual({ relaxNodeGroupRules: true });
+			expect(options).toEqual(ALL_RULES_RELAXED);
 		});
 
 		it('keeps the group rules for a user outside the rollout', async () => {
@@ -241,11 +242,11 @@ describe('WorkflowCreationService', () => {
 			).rejects.toThrow();
 
 			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
-			expect(options).toEqual({ relaxNodeGroupRules: false });
+			expect(options).toEqual(NO_RULES_RELAXED);
 		});
 
 		it('does not read the flag for a workflow without groups', async () => {
-			relaxedNodeGroupRulesFlagGateMock.isEnabled.mockResolvedValue(true);
+			nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(ALL_RULES_RELAXED);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			setupTransactionMocks();
@@ -259,9 +260,9 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toThrow();
 
-			expect(relaxedNodeGroupRulesFlagGateMock.isEnabled).not.toHaveBeenCalled();
+			expect(nodeGroupRulesFlagGateMock.getEnabledRules).not.toHaveBeenCalled();
 			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
-			expect(options).toEqual({ relaxNodeGroupRules: false });
+			expect(options).toEqual({});
 		});
 
 		it('should throw BadRequestError for invalid workflow structure', async () => {

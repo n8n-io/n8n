@@ -36,7 +36,7 @@ import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
-import { RelaxedNodeGroupRulesFlagGate } from './relaxed-node-group-rules-flag-gate';
+import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -77,7 +77,7 @@ export class WorkflowCreationService {
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly relaxedNodeGroupRulesFlagGate: RelaxedNodeGroupRulesFlagGate,
+		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 	) {}
 
 	async prepareBatchContext(
@@ -215,15 +215,15 @@ export class WorkflowCreationService {
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
 		WorkflowHelpers.validateWorkflowStructure(newWorkflow);
-		// Only a workflow with groups needs the flag.
-		const relaxNodeGroupRules = newWorkflow.nodeGroups?.length
-			? await this.relaxedNodeGroupRulesFlagGate.isEnabled(user)
-			: false;
+		// Only a workflow with groups needs the flags.
+		const rules = newWorkflow.nodeGroups?.length
+			? await this.nodeGroupRulesFlagGate.getEnabledRules(user)
+			: {};
 
 		WorkflowHelpers.validateWorkflowNodeGroups(
 			newWorkflow,
 			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
-			{ relaxNodeGroupRules },
+			rules,
 		);
 
 		if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
