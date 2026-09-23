@@ -213,7 +213,15 @@ function parseScope(): {
 	projectId: string | null;
 	userId: string | null;
 } {
-	if (form.scope === USER_SCOPE_VALUE) return { scope: 'user', projectId: null, userId: null };
+	if (form.scope === USER_SCOPE_VALUE) {
+		// A create targets the caller by default. An edit must name its owner, or the
+		// server refuses it, so the caller's own id travels on an edit.
+		return {
+			scope: 'user',
+			projectId: null,
+			userId: mode.value === 'edit' ? (currentUserId.value ?? null) : null,
+		};
+	}
 	if (form.scope === INSTANCE_SCOPE_VALUE) {
 		return { scope: 'instance', projectId: null, userId: null };
 	}
@@ -237,7 +245,7 @@ async function handleSubmit() {
 
 	const { scope, projectId, userId } = parseScope();
 	const content = trimmedContent.value;
-	// The owner travels only when it is not the caller.
+	// The owner travels on every user-scope edit, and on a create only when it is not the caller.
 	const payload = { content, scope, projectId, ...(userId ? { userId } : {}) };
 
 	try {

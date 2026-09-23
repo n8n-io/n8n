@@ -382,6 +382,60 @@ describe('PreferenceModal', () => {
 			});
 		});
 
+		it('names the caller as the owner when editing their own user-scoped row', async () => {
+			// The server refuses a user-scope edit without an owner, so the id always travels.
+			const preference: Preference = {
+				id: 'p1',
+				content: 'Mine.',
+				userId: 'user-1',
+				user: { id: 'user-1', email: 'me@n8n.io', firstName: 'Me', lastName: null },
+				projectId: null,
+				project: null,
+				source: 'ui',
+				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			const { getByTestId } = renderModal({ props: { open: true, preference }, pinia });
+
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
+				content: 'Mine.',
+				scope: 'user',
+				projectId: null,
+				userId: 'user-1',
+			});
+		});
+
+		it('names the caller as the owner when moving a project row back to themselves', async () => {
+			const preference: Preference = {
+				id: 'p1',
+				content: 'Use sub-workflows.',
+				userId: null,
+				user: null,
+				projectId: 'p-write',
+				project: { id: 'p-write', name: 'Writable Project', type: 'team', icon: null },
+				source: 'ui',
+				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			const { getByTestId } = renderModal({ props: { open: true, preference }, pinia });
+
+			await userEvent.click(findOption('Just you · All projects')!);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
+				content: 'Use sub-workflows.',
+				scope: 'user',
+				projectId: null,
+				userId: 'user-1',
+			});
+		});
+
 		it("sends the owner back when editing another user's preference", async () => {
 			usersStore.currentUser = currentUser(['aiPreference:create', 'aiPreference:update']);
 			const preference: Preference = {
