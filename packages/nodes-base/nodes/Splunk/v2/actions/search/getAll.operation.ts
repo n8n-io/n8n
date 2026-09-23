@@ -115,7 +115,7 @@ export async function execute(
 	const sort = this.getNodeParameter('sort.values', i, {}) as IDataObject;
 
 	populate(sort, qs);
-	setReturnAllOrLimit.call(this, qs);
+	setReturnAllOrLimit.call(this, qs, i);
 
 	const endpoint = '/services/search/jobs';
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint, {}, qs);
