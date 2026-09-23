@@ -44,20 +44,35 @@ describe('InstanceAiPreferenceCardService', () => {
 		expect(eventBus.publish).not.toHaveBeenCalled();
 	});
 
-	it('edit updates the same row with user scope, appends an edited fact, returns the dto', async () => {
-		aiPreferenceService.update.mockResolvedValue(
-			mock<AiPreferenceDto>({ id: 'pref-1', content: 'Keep replies brief.' }),
-		);
-
-		const { preference, event } = await service.edit(user, 'thread-1', 'pref-1', {
-			runId: 'run-1',
-			toolCallId: 'tc-1',
+	const userDto = (overrides: Partial<AiPreferenceDto> = {}) =>
+		mock<AiPreferenceDto>({
+			id: 'pref-1',
 			content: 'Keep replies brief.',
+			userId: 'user-1',
+			projectId: null,
+			...overrides,
 		});
+
+	const editBody = {
+		runId: 'run-1',
+		toolCallId: 'tc-1',
+		content: 'Keep replies brief.',
+		scope: 'user' as const,
+		userId: 'user-1',
+		projectId: null,
+	};
+
+	it('edit passes scope, project and owner to the service, appends an edited fact, returns the dto', async () => {
+		aiPreferenceService.getById.mockResolvedValue(userDto({ content: 'Keep replies short.' }));
+		aiPreferenceService.update.mockResolvedValue(userDto());
+
+		const { preference, event } = await service.edit(user, 'thread-1', 'pref-1', editBody);
 
 		expect(aiPreferenceService.update).toHaveBeenCalledWith(user, 'pref-1', {
 			content: 'Keep replies brief.',
 			scope: 'user',
+			userId: 'user-1',
+			projectId: null,
 		});
 		expect(eventBus.publish).toHaveBeenCalledWith('thread-1', {
 			type: 'preference-card',
@@ -68,40 +83,101 @@ describe('InstanceAiPreferenceCardService', () => {
 				preferenceId: 'pref-1',
 				state: 'edited',
 				content: 'Keep replies brief.',
+				scope: 'user',
+				projectId: null,
 			},
 		});
 		expect(preference).toMatchObject({ id: 'pref-1' });
 		expect(event).toEqual(eventBus.publish.mock.calls[0][1]);
 	});
 
-	it('edit fires resolved(accepted_after_edit)', async () => {
-		aiPreferenceService.update.mockResolvedValue(
-			mock<AiPreferenceDto>({ id: 'pref-1', content: 'Keep replies brief.' }),
-		);
+	it('edit names the scope the row landed in on the fact, from the saved dto', async () => {
+		aiPreferenceService.getById.mockResolvedValue(userDto());
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: 'p-1' }));
 
-		await service.edit(user, 'thread-1', 'pref-1', {
-			runId: 'run-1',
-			toolCallId: 'tc-1',
-			content: 'Keep replies brief.',
+		const { event } = await service.edit(user, 'thread-1', 'pref-1', {
+			...editBody,
+			scope: 'project',
+			projectId: 'p-1',
+			userId: null,
 		});
+
+		expect(event.payload).toMatchObject({ state: 'edited', scope: 'project', projectId: 'p-1' });
+	});
+
+	it('edit fires resolved(accepted_after_edit) with the new scope, and no scope event without a move', async () => {
+		aiPreferenceService.getById.mockResolvedValue(userDto({ content: 'Keep replies short.' }));
+		aiPreferenceService.update.mockResolvedValue(userDto());
+
+		await service.edit(user, 'thread-1', 'pref-1', editBody);
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
 			{ surface: 'aia', outcome: 'accepted_after_edit', scope_type: 'user', text_length: 19 },
 		);
+		expect(telemetry.track).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			expect.anything(),
+		);
+	});
+
+	it('edit fires scope accepted with the scope it left and the one it reached, on a move', async () => {
+		aiPreferenceService.getById.mockResolvedValue(userDto());
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: null }));
+
+		await service.edit(user, 'thread-1', 'pref-1', {
+			...editBody,
+			scope: 'instance',
+			userId: null,
+		});
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			{
+				surface: 'aia',
+				offered_scope: 'user',
+				accepted_scope: 'instance',
+				scope_changed: true,
+			},
+		);
+	});
+
+	it('edit counts a change of project as a move', async () => {
+		aiPreferenceService.getById.mockResolvedValue(userDto({ userId: null, projectId: 'p-1' }));
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: 'p-2' }));
+
+		await service.edit(user, 'thread-1', 'pref-1', {
+			...editBody,
+			scope: 'project',
+			projectId: 'p-2',
+			userId: null,
+		});
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			{
+				surface: 'aia',
+				offered_scope: 'project',
+				accepted_scope: 'project',
+				scope_changed: true,
+			},
+		);
 	});
 
 	it('edit appends nothing when the update throws', async () => {
+		aiPreferenceService.getById.mockResolvedValue(userDto());
 		aiPreferenceService.update.mockRejectedValue(new Error('too long'));
 
-		await expect(
-			service.edit(user, 'thread-1', 'pref-1', {
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				content: 'Keep replies brief.',
-			}),
-		).rejects.toThrow('too long');
+		await expect(service.edit(user, 'thread-1', 'pref-1', editBody)).rejects.toThrow('too long');
 		expect(eventBus.publish).not.toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('edit reads nothing else when the row is hidden', async () => {
+		aiPreferenceService.getById.mockRejectedValue(new Error('not found'));
+
+		await expect(service.edit(user, 'thread-1', 'pref-1', editBody)).rejects.toThrow('not found');
+		expect(aiPreferenceService.update).not.toHaveBeenCalled();
+		expect(eventBus.publish).not.toHaveBeenCalled();
 	});
 });

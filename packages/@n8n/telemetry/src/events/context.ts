@@ -146,7 +146,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCE_SCOPE_ACCEPTED: {
 		name: 'Preference scope accepted',
 		description:
-			'The scope the user accepted against the scope the assistant offered. Shows whether the assistant reads the difference between a personal habit and a team rule. Fires only on an accepted write.',
+			'The scope the user accepted against the scope the assistant offered. The assistant always offers `user`, so this measures how often people move a preference off that default. Fires on an accepted write from the assistant with both scopes equal, and again from the chat card when the user moves the row to another scope or project.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			offered_scope: scopeType,

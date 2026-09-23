@@ -186,7 +186,11 @@ The events live in the `CONTEXT` domain of
 [`@n8n/telemetry`](../../../@n8n/telemetry/src/events/context.ts). Three cover the settings
 area. Six more cover the assistant paths: the preferences applied to a turn, an assistant
 write, the confirmation shown and answered, the scope accepted against the scope offered,
-and a refused write with its reason. The `get_user_preferences` MCP tool reports the count
+and a refused write with its reason.
+The chat card fires the scope event a second time when the user moves the row from the
+Edit modal, with the scope the row left as the offered one.
+
+The `get_user_preferences` MCP tool reports the count
 and the scopes it returned on the existing tool event.
 
 The MCP write tools fire the same events with `surface` set to `mcp`, through the shared
