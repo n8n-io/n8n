@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { OperationContext, Transaction } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -6,6 +7,7 @@ import type { AgentResourceRepository } from '../../repositories/agent-resource.
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { encodeIntegrationMessageContext } from '../integration-message-context';
 import { IntegrationMessageContextService } from '../integration-message-context.service';
+import { mockSessionLeases } from '../../__tests__/test-utils/session-leases';
 import type { IntegrationMessageContext } from '../integration-tools';
 
 describe('IntegrationMessageContextService', () => {
@@ -26,22 +28,25 @@ describe('IntegrationMessageContextService', () => {
 		}
 		const threadRepository = mock<AgentThreadRepository>();
 		const resourceRepository = mock<AgentResourceRepository>();
-		threadRepository.findOneBy.mockImplementation(async ({ id }: { id: string }) =>
-			threads.has(id) ? (threads.get(id) as never) : (null as never),
+		const findThread = async (id: string) =>
+			threads.has(id) ? (threads.get(id) as never) : (null as never);
+		threadRepository.findOneBy.mockImplementation(
+			async ({ id }: { id: string }) => await findThread(id),
 		);
+		threadRepository.findByIdInContext.mockImplementation(async (id) => await findThread(id));
 		threadRepository.create.mockImplementation((data: unknown) => data as never);
-		threadRepository.save.mockImplementation(
-			async (entity: { id: string; metadata: string | null }) => {
-				threads.set(entity.id, { id: entity.id, metadata: entity.metadata });
-				return undefined as never;
-			},
-		);
+		threadRepository.saveInContext.mockImplementation(async (entity) => {
+			threads.set(entity.id, { id: entity.id, metadata: entity.metadata });
+			return entity;
+		});
+		const sessionLeases = mockSessionLeases();
 		const service = new IntegrationMessageContextService(
 			threadRepository,
 			resourceRepository,
 			mockLogger(),
+			sessionLeases,
 		);
-		return { service, threadRepository, threads };
+		return { service, threadRepository, resourceRepository, sessionLeases, threads };
 	}
 
 	it.each([
@@ -78,7 +83,7 @@ describe('IntegrationMessageContextService', () => {
 		const { service, threadRepository } = setup({
 			task: { continueAs: { threadId: 'origin', resourceId: 'owner' } },
 		});
-		threadRepository.save.mockRejectedValueOnce(new Error('database unavailable'));
+		threadRepository.saveInContext.mockRejectedValueOnce(new Error('database unavailable'));
 		await service.installIncoming(
 			context,
 			{ threadId: 'task', resourceId: 'task:task-1' },
@@ -124,7 +129,7 @@ describe('IntegrationMessageContextService', () => {
 	it('is a no-op when the derived id already is the origin', async () => {
 		const { service, threadRepository } = setup();
 		await service.bindSession('task', { threadId: 'task', resourceId: 'task:task-1' });
-		expect(threadRepository.save).not.toHaveBeenCalled();
+		expect(threadRepository.saveInContext).not.toHaveBeenCalled();
 	});
 
 	it('returns null when no binding is stored', async () => {
@@ -184,12 +189,13 @@ describe('IntegrationMessageContextService', () => {
 
 		await service.unbindSession('agent-1:slack:D123:1001');
 
-		expect(threadRepository.save).toHaveBeenCalledWith(
+		expect(threadRepository.saveInContext).toHaveBeenCalledWith(
 			expect.objectContaining({
 				id: 'agent-1:slack:D123:1001',
 				// JSON.stringify drops the undefined continueAs key, leaving the rest.
 				metadata: JSON.stringify({ currentMessageContext: context }),
 			}),
+			{},
 		);
 	});
 
@@ -206,7 +212,7 @@ describe('IntegrationMessageContextService', () => {
 			resourceId: 'task:task-2',
 		});
 
-		const saves = (threadRepository.save as unknown as ReturnType<typeof vi.fn>).mock.calls;
+		const saves = threadRepository.saveInContext.mock.calls;
 		expect(saves.find((c) => (c[0] as { id: string }).id === 'task-2')).toBeUndefined();
 	});
 
@@ -218,7 +224,7 @@ describe('IntegrationMessageContextService', () => {
 			resourceId: 'task:task-1',
 		});
 
-		const saves = (threadRepository.save as unknown as ReturnType<typeof vi.fn>).mock.calls;
+		const saves = threadRepository.saveInContext.mock.calls;
 		const originSave = saves.find((c) => (c[0] as { id: string }).id === 'task');
 		expect(originSave).toBeDefined();
 		expect(JSON.parse((originSave![0] as { metadata: string }).metadata).boundThreads).toEqual([
@@ -241,7 +247,7 @@ describe('IntegrationMessageContextService', () => {
 
 		await service.clearSessionBindings('task');
 
-		const saves = (threadRepository.save as unknown as ReturnType<typeof vi.fn>).mock.calls;
+		const saves = threadRepository.saveInContext.mock.calls;
 		const originSave = saves.find((c) => (c[0] as { id: string }).id === 'task');
 		expect(originSave).toBeDefined();
 		expect(JSON.parse((originSave![0] as { metadata: string }).metadata).boundThreads).toEqual([]);
@@ -251,9 +257,29 @@ describe('IntegrationMessageContextService', () => {
 		expect(JSON.parse((d1Save![0] as { metadata: string }).metadata).continueAs).toBeUndefined();
 	});
 
+	it('runs each write in one fenced transaction', async () => {
+		const { service, threadRepository, resourceRepository, sessionLeases } = setup();
+		const trxCtx: OperationContext = { trx: mock<Transaction>() };
+		sessionLeases.fencedWrite.mockImplementation(async (_ctx, write) => await write(trxCtx));
+		const origin = { threadId: 'task-run-1', resourceId: 'task:task-1' };
+
+		await service.setLatest('thread-1', 'user-1', context);
+		await service.bindSession('agent-1:slack:C1:2.2', origin);
+
+		expect(sessionLeases.fencedWrite).toHaveBeenCalledTimes(2);
+		for (const [, ctx] of threadRepository.findByIdInContext.mock.calls) {
+			expect(ctx).toBe(trxCtx);
+		}
+		for (const [, ctx] of threadRepository.saveInContext.mock.calls) {
+			expect(ctx).toBe(trxCtx);
+		}
+		expect(resourceRepository.ensureExists).toHaveBeenCalledWith('user-1', trxCtx);
+		expect(threadRepository.findOneBy).not.toHaveBeenCalled();
+	});
+
 	it('clearSessionBindings is a no-op when the origin has no bound threads', async () => {
 		const { service, threadRepository } = setup({ task: {} });
 		await service.clearSessionBindings('task');
-		expect(threadRepository.save).not.toHaveBeenCalled();
+		expect(threadRepository.saveInContext).not.toHaveBeenCalled();
 	});
 });

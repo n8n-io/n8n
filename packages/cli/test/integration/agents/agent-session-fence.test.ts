@@ -11,6 +11,8 @@ import { AgentSessionLeaseLostError } from '@/modules/agents/agent-session-lease
 import { AgentSessionLeaseService } from '@/modules/agents/agent-session-lease.service';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
+import type { IntegrationMessageContext } from '@/modules/agents/integrations/integration-tool-types';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -231,6 +233,41 @@ describe('Fenced agent session writes', () => {
 			});
 			// The jobs are still running, so there are no results to mark.
 			await expect(jobs.markMailConsumed(threadId, [subAgentJob.id])).resolves.toBe(0);
+
+			staleTurn.settle();
+		});
+	});
+
+	describe('message context', () => {
+		it('rejects the message context writes of a turn whose lease another main took over', async () => {
+			const threadId = uuid();
+			const contexts = Container.get(IntegrationMessageContextService);
+			const context: IntegrationMessageContext = {
+				integrationConnectionId: 'slack:cred-1',
+				platform: 'slack',
+				target: { type: 'thread', threadId: 'slack:C1:1.1' },
+				messageId: '1.1',
+				updatedAt: '2026-09-23T10:00:00.000Z',
+			};
+			const origin = { threadId, resourceId: 'task:task-1' };
+			const derivedThreadId = `${agentId}:slack:C2:2.2`;
+			const staleTurn = await startStaleTurn(threadId);
+
+			await expect(
+				staleTurn.write(async () => await contexts.setLatest(threadId, 'user-1', context)),
+			).rejects.toThrow(AgentSessionLeaseLostError);
+			await expect(
+				staleTurn.write(async () => await contexts.bindSession(derivedThreadId, origin)),
+			).rejects.toThrow(AgentSessionLeaseLostError);
+			// The claim of a resume logs a failed write and does not throw.
+			await staleTurn.write(async () => await contexts.installIncoming(context, origin, origin));
+			expect(await contexts.getLatest(threadId)).toBeNull();
+			expect(await contexts.resolveSession(derivedThreadId)).toBeNull();
+
+			await contexts.setLatest(threadId, 'user-1', context);
+			await contexts.bindSession(derivedThreadId, origin);
+			expect(await contexts.getLatest(threadId)).toEqual(context);
+			expect(await contexts.resolveSession(derivedThreadId)).toEqual(origin);
 
 			staleTurn.settle();
 		});

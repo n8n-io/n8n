@@ -224,6 +224,7 @@ function makeService(sandboxEnabled = false, messageQueueEnabled = true) {
 		mock<AgentThreadRepository>(),
 		mock<AgentResourceRepository>(),
 		mockLogger(),
+		mockSessionLeases(),
 	);
 	const integrationMessageContextService = Object.assign(contextService, {
 		getLatest: vi.spyOn(contextService, 'getLatest'),
