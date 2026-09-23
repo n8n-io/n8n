@@ -435,6 +435,26 @@ describe('comparableDiff (post-write verification)', () => {
 		).toEqual([]);
 	});
 
+	it('reads a stored seed table without `rows` as the disk table that declares `rows: []`', () => {
+		const table = {
+			id: 'seed-table-1',
+			name: 'Queue',
+			columns: [{ name: 'message', type: 'string' as const }],
+		};
+		const scenario = {
+			name: 'empty-queue',
+			description: 'd',
+			dataSetup: 's',
+			successCriteria: 'ok',
+		};
+		const written = item('c', {
+			executionScenarios: [{ ...scenario, seedDataTables: [{ ...table, rows: [] }] }],
+		}).testCase;
+		const stored = body({ executionScenarios: [{ ...scenario, seedDataTables: [table] }] });
+
+		expect(comparableDiff(stored, written)).toEqual([]);
+	});
+
 	it('names `seed` when a pre-#113 server dropped it', () => {
 		const written = item('c', { seed: inlineSeed() }).testCase;
 		expect(comparableDiff(body(), written)).toEqual(['seed']);
