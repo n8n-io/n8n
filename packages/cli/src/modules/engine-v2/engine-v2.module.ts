@@ -41,51 +41,7 @@ export class EngineV2Module implements ModuleInterface {
 
 		// Hand both endpoints over before the engine starts. A short run can answer
 		// before `startExecution` returns, and responses are not replayed.
-		const logger = Container.get(Logger).scoped('engine-v2');
-		let responseSender: ExecutionResponseSender;
-		let responseReceiver;
-		if (engineConfig.responseTransport === 'redis') {
-			const { RedisClientService } = await import('@/services/redis-client.service.js');
-			const { RedisExecutionResponseSender } = await import(
-				'./response-channel/redis-execution-response-sender.js'
-			);
-			const { RedisExecutionResponseReceiver } = await import(
-				'./response-channel/redis-execution-response-receiver.js'
-			);
-			const redisClientService = Container.get(RedisClientService);
-			const globalConfig = Container.get(GlobalConfig);
-			const channelPrefix = `${redisClientService.toValidPrefix(globalConfig.redis.prefix)}:engine-v2-responses`;
-			responseSender = new RedisExecutionResponseSender(
-				redisClientService.createClient({ type: 'publisher(n8n)' }),
-				channelPrefix,
-				logger,
-			);
-			const redisReceiver = new RedisExecutionResponseReceiver(
-				redisClientService.createClient({ type: 'subscriber(n8n)' }),
-				channelPrefix,
-				logger,
-			);
-			try {
-				await redisReceiver.start();
-			} catch (error) {
-				await responseSender.stop();
-				throw error;
-			}
-			responseReceiver = redisReceiver;
-		} else {
-			const { InMemoryExecutionResponseChannel } = await import(
-				'./response-channel/in-memory-execution-response-channel.js'
-			);
-			const { InMemoryExecutionResponseSender } = await import(
-				'./response-channel/in-memory-execution-response-sender.js'
-			);
-			const { InMemoryExecutionResponseReceiver } = await import(
-				'./response-channel/in-memory-execution-response-receiver.js'
-			);
-			const responseChannel = new InMemoryExecutionResponseChannel();
-			responseSender = new InMemoryExecutionResponseSender(responseChannel, logger);
-			responseReceiver = new InMemoryExecutionResponseReceiver(responseChannel, logger);
-		}
+		const { responseSender, responseReceiver } = await this.initResponseChannel(engineConfig);
 
 		const { EngineV2WebhookResponder } = await import(
 			'@/services/engine-v2-webhook-responder.service.js'
@@ -104,6 +60,64 @@ export class EngineV2Module implements ModuleInterface {
 		Container.get(EngineDataPlaneProxyService).registerProvider(
 			Container.get(EngineDataPlaneClient),
 		);
+	}
+
+	private async initResponseChannel(engineConfig: EngineConfig) {
+		const logger = Container.get(Logger).scoped('engine-v2');
+		if (engineConfig.responseTransport === 'redis') {
+			return await this.initRedisResponseChannel(logger);
+		}
+
+		return await this.initInMemoryResponseChannel(logger);
+	}
+
+	private async initRedisResponseChannel(logger: Logger) {
+		const { RedisClientService } = await import('@/services/redis-client.service.js');
+		const { RedisExecutionResponseSender } = await import(
+			'./response-channel/redis-execution-response-sender.js'
+		);
+		const { RedisExecutionResponseReceiver } = await import(
+			'./response-channel/redis-execution-response-receiver.js'
+		);
+		const redisClientService = Container.get(RedisClientService);
+		const globalConfig = Container.get(GlobalConfig);
+		const channelPrefix = `${redisClientService.toValidPrefix(globalConfig.redis.prefix)}:engine-v2-responses`;
+		const responseSender = new RedisExecutionResponseSender(
+			redisClientService.createClient({ type: 'publisher(n8n)' }),
+			channelPrefix,
+			logger,
+		);
+		const responseReceiver = new RedisExecutionResponseReceiver(
+			redisClientService.createClient({ type: 'subscriber(n8n)' }),
+			channelPrefix,
+			logger,
+		);
+		try {
+			await responseReceiver.start();
+		} catch (error) {
+			await responseSender.stop();
+			throw error;
+		}
+
+		return { responseSender, responseReceiver };
+	}
+
+	private async initInMemoryResponseChannel(logger: Logger) {
+		const { InMemoryExecutionResponseChannel } = await import(
+			'./response-channel/in-memory-execution-response-channel.js'
+		);
+		const { InMemoryExecutionResponseSender } = await import(
+			'./response-channel/in-memory-execution-response-sender.js'
+		);
+		const { InMemoryExecutionResponseReceiver } = await import(
+			'./response-channel/in-memory-execution-response-receiver.js'
+		);
+		const responseChannel = new InMemoryExecutionResponseChannel();
+
+		return {
+			responseSender: new InMemoryExecutionResponseSender(responseChannel, logger),
+			responseReceiver: new InMemoryExecutionResponseReceiver(responseChannel, logger),
+		};
 	}
 
 	@OnShutdown()
