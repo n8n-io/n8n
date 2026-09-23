@@ -33,7 +33,8 @@ const renderComponent = createComponentRenderer(SsoSigninCard, {
 	props: { form },
 });
 
-const getEmailInput = (container: Element) => container.querySelector('input[type="email"]');
+const getEmailInput = (container: Element) =>
+	container.querySelector<HTMLInputElement>('input[type="email"]');
 
 describe('SsoSigninCard', () => {
 	afterEach(() => {
