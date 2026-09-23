@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { CredentialsRepository } from '@n8n/db';
 import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 /**
  * Deletes credentials created for an OAuth popup whose authorization never
@@ -22,9 +22,7 @@ export class PendingAuthorizationCleanupTask implements SystemTask {
 	/** A row is either past its deadline or not, so a repeated run deletes nothing new. */
 	effects: SystemTaskEffects = 'idempotent';
 
-	durable = false;
-
-	runOnTakeover = true;
+	placement: SystemTaskPlacement = { scope: 'cluster', durable: false, runOnTakeover: true };
 
 	constructor(
 		private readonly logger: Logger,
