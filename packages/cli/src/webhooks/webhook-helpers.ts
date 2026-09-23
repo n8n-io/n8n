@@ -416,8 +416,11 @@ export const handleFormRedirectionCase = (
 const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
 const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 
-const hasBinaryDataId = (response: IExecuteResponsePromiseData): response is IN8nHttpFullResponse & { body: { binaryData: { id: string } } } =>
-	isRecord(response.body) && isRecord(response.body.binaryData) &&
+const hasBinaryDataId = (
+	response: IExecuteResponsePromiseData,
+): response is IN8nHttpFullResponse & { body: { binaryData: { id: string } } } =>
+	isRecord(response.body) &&
+	isRecord(response.body.binaryData) &&
 	typeof response.body.binaryData.id === 'string';
 
 export function setupResponseNodePromise(
@@ -460,7 +463,9 @@ export function setupResponseNodePromise(
 				if (typeof response.statusCode === 'number') {
 					res.status(response.statusCode);
 				}
-				WebhookResponseHeaders.fromObject(isRecord(response.headers) ? response.headers : {}).applyToResponse(res);
+				WebhookResponseHeaders.fromObject(
+					isRecord(response.headers) ? response.headers : {},
+				).applyToResponse(res);
 				applySandboxCSP(res);
 				res.end(response.body);
 				responseCallback(null, { noWebhookResponse: true });
