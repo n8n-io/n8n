@@ -45,6 +45,9 @@ export interface AgentTemplate {
 	tasks?: AgentTaskConfig[];
 }
 
+/** Distinct from the home-screen suggestion catalog (`v1`). */
+export const AGENT_TEMPLATE_SUGGESTIONS_VERSION = 'agent-templates-v1';
+
 export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 	{
 		id: 'morning-news-brief',

@@ -14,7 +14,7 @@ import type {
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus } from '../agents.eventBus';
-import { AGENT_TEMPLATES } from '../agentTemplates';
+import { AGENT_TEMPLATES, AGENT_TEMPLATE_SUGGESTIONS_VERSION } from '../agentTemplates';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -2720,16 +2720,29 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 		expect(editor.props('connectedTriggers')).toEqual([]);
+		// Tasks change the server config hash. The prompt waits until that
+		// config is reloaded, and reports the row index plus the template catalog.
+		await vi.waitFor(() => expect(createAgentTaskMock).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(submitSuggestionMock).toHaveBeenCalled());
+		expect(createAgentTaskMock.mock.invocationCallOrder[0]).toBeLessThan(
+			submitSuggestionMock.mock.invocationCallOrder[0] ?? 0,
+		);
+		const configFetchesAfterTask = fetchConfigMock.mock.invocationCallOrder.filter(
+			(order) => order > (createAgentTaskMock.mock.invocationCallOrder[0] ?? 0),
+		);
+		expect(configFetchesAfterTask.length).toBeGreaterThan(0);
+		expect(configFetchesAfterTask[0]).toBeLessThan(
+			submitSuggestionMock.mock.invocationCallOrder[0] ?? 0,
+		);
 		expect(submitSuggestionMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				prefillType: 'template_adjustment',
 				suggestionId: 'morning-news-brief',
 				prompt: expect.stringContaining('Morning news brief'),
+				position: AGENT_TEMPLATES.findIndex((template) => template.id === 'morning-news-brief'),
+				suggestionCatalogVersion: AGENT_TEMPLATE_SUGGESTIONS_VERSION,
 			}),
 		);
-		// The morning news brief template declares a daily 9am task; the body
-		// is created through the API after the agent is persisted.
-		await vi.waitFor(() => expect(createAgentTaskMock).toHaveBeenCalledOnce());
 		expect(createAgentTaskMock).toHaveBeenCalledWith(
 			expect.anything(),
 			'p1',

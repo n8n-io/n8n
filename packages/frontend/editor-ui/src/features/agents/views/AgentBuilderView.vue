@@ -89,7 +89,13 @@ import {
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
-import { applyAgentTemplate, isAgentConfigBlank, type AgentTemplate } from '../agentTemplates';
+import {
+	AGENT_TEMPLATES,
+	AGENT_TEMPLATE_SUGGESTIONS_VERSION,
+	applyAgentTemplate,
+	isAgentConfigBlank,
+	type AgentTemplate,
+} from '../agentTemplates';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
@@ -1542,6 +1548,21 @@ async function onApplyTemplate(template: AgentTemplate) {
 		// Invalid tool fields are expected in draft mode; the chat message
 		// should still reach the assistant.
 	}
+	if (template.tasks?.length) {
+		try {
+			await ensureAgentPersisted();
+			for (const task of template.tasks) {
+				await createAgentTask(rootStore.restApiContext, projectId.value, agentId.value, {
+					...task,
+					enabled: true,
+				});
+			}
+			await onConfigUpdated();
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.tasks.saveError'));
+		}
+	}
+	const templateIndex = AGENT_TEMPLATES.findIndex((entry) => entry.id === template.id);
 	// Send the template prompt to the assistant right away so it starts
 	// building. The prompt format is "Build {name} agent to {description}".
 	aiPanelRef.value?.submitSuggestion({
@@ -1553,26 +1574,10 @@ async function onApplyTemplate(template: AgentTemplate) {
 		}),
 		suggestionId: template.id,
 		suggestionKind: 'prompt',
-		position: 0,
+		position: templateIndex === -1 ? 0 : templateIndex,
+		suggestionCatalogVersion: AGENT_TEMPLATE_SUGGESTIONS_VERSION,
 		prefillType: 'template_adjustment',
 	});
-	// Create scheduled task bodies after the agent is persisted. The backend
-	// assigns each task an id and adds the matching config ref, so the
-	// template only declares the body — not the config's `tasks` entry.
-	if (template.tasks?.length) {
-		try {
-			await ensureAgentPersisted();
-			for (const task of template.tasks) {
-				await createAgentTask(rootStore.restApiContext, projectId.value, agentId.value, {
-					...task,
-					enabled: true,
-				});
-			}
-			tasksReloadKey.value += 1;
-		} catch (error) {
-			showError(error, locale.baseText('agents.builder.tasks.saveError'));
-		}
-	}
 }
 
 function persistMissingPersonalisationGradient() {
