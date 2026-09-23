@@ -765,6 +765,48 @@ describe('AiPreferenceService', () => {
 			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('getById', () => {
+		const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+
+		beforeEach(() => {
+			projectRelationRepository.findAllByUser.mockResolvedValue([]);
+		});
+
+		it('returns a visible row as a dto with its scopes', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({
+					id: 'pref-1',
+					content: 'Mine.',
+					userId: 'user-1',
+					source: 'aia',
+					createdAt: new Date('2025-01-01'),
+					updatedAt: new Date('2025-01-02'),
+				}),
+			);
+
+			const dto = await service.getById(member, 'pref-1');
+
+			expect(dto).toMatchObject({ id: 'pref-1', content: 'Mine.', userId: 'user-1' });
+			expect(dto.scopes).toEqual(
+				expect.arrayContaining(['aiPreference:read', 'aiPreference:update', 'aiPreference:delete']),
+			);
+		});
+
+		it("hides another user's row like a missing one", async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({
+					id: 'pref-1',
+					content: 'Theirs.',
+					userId: 'user-2',
+					createdAt: new Date('2025-01-01'),
+					updatedAt: new Date('2025-01-02'),
+				}),
+			);
+
+			await expect(service.getById(member, 'pref-1')).rejects.toThrow(NotFoundError);
+		});
+	});
 });
 
 describe('groupAiPreferences', () => {

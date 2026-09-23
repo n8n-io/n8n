@@ -307,6 +307,13 @@ export class AiPreferenceService {
 		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 
+	/** One row the caller may see, with the rights the caller holds on it. A hidden row is a 404. */
+	async getById(user: User, id: string): Promise<AiPreferenceDto> {
+		const access = this.projectAccess(user);
+		const row = await this.requireVisible(user, id, access);
+		return this.toDto(row, await this.scopesFor(user, row, access));
+	}
+
 	private projectAccess(user: User): ProjectAccess {
 		return new ProjectAccess(user, this.projectRelationRepository);
 	}
