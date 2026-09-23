@@ -272,6 +272,61 @@ test.describe(
 			// Assert that no error toast appeared
 			await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
 		});
+
+		test.describe('test webhook called on a main without the editor session @mode:multi-main', () => {
+			test('should respond with Respond to Webhook node body', async ({
+				n8n,
+				mainUrls,
+				createApiForMain,
+			}) => {
+				test.skip(mainUrls.length < 2, 'Requires at least 2 mains');
+
+				await n8n.canvas.addNode('Webhook');
+				await n8n.ndv.setupHelper.webhook({
+					httpMethod: 'GET',
+					responseMode: "Using 'Respond to Webhook' Node",
+				});
+				const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
+				await n8n.ndv.close();
+				await addEditFieldsNode(n8n);
+				await n8n.canvas.addNode('Respond to Webhook', { closeNDV: true });
+
+				await n8n.canvas.clickExecuteWorkflowButton();
+				await expect(n8n.canvas.waitingForTriggerEvent()).toBeVisible();
+
+				const otherMain = await createApiForMain(1);
+				const response = await otherMain.webhooks.trigger(`/webhook-test/${webhookPath}`);
+				expect(response.status()).toBe(200);
+
+				const body = await response.text();
+				expect(body).not.toBe('');
+				expect(JSON.parse(body)).toEqual({ MyValue: 1234 });
+			});
+
+			test('should respond with last node output', async ({ n8n, mainUrls, createApiForMain }) => {
+				test.skip(mainUrls.length < 2, 'Requires at least 2 mains');
+
+				await n8n.canvas.addNode('Webhook');
+				await n8n.ndv.setupHelper.webhook({
+					httpMethod: 'GET',
+					responseMode: 'When Last Node Finishes',
+				});
+				const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
+				await n8n.ndv.close();
+				await addEditFieldsNode(n8n);
+
+				await n8n.canvas.clickExecuteWorkflowButton();
+				await expect(n8n.canvas.waitingForTriggerEvent()).toBeVisible();
+
+				const otherMain = await createApiForMain(1);
+				const response = await otherMain.webhooks.trigger(`/webhook-test/${webhookPath}`);
+				expect(response.status()).toBe(200);
+
+				const body = await response.text();
+				expect(body).not.toBe('');
+				expect(JSON.parse(body)).toEqual({ MyValue: 1234 });
+			});
+		});
 	},
 );
 
