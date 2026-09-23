@@ -96,3 +96,10 @@ export class UnsupportedWaitError extends UserError {
 		super(`Engine 2.0 cannot wait for ${waitsFor} yet`);
 	}
 }
+
+/** The node asked to wait until a value that is not a date, so no deadline can be declared. */
+export class InvalidWaitDateError extends UserError {
+	constructor(nodeName: string) {
+		super(`Node "${nodeName}" asked to wait until a date that is not valid`);
+	}
+}

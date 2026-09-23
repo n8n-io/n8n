@@ -17,6 +17,7 @@ import {
 
 import {
 	EngineRequestNotSupportedError,
+	InvalidWaitDateError,
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
 	UnsupportedStepTypeError,
@@ -64,6 +65,10 @@ function toStepResult(context: DurableWaitExecuteContext, outputs: StepSlots): S
 	}
 	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
 		throw new UnsupportedWaitError('a sub-execution');
+	}
+	// `toISOString` throws a bare RangeError on an invalid date.
+	if (Number.isNaN(waitTill.getTime())) {
+		throw new InvalidWaitDateError(context.getNode().name);
 	}
 
 	return {
