@@ -34,6 +34,7 @@ import { Telemetry } from '@/telemetry';
 import type { StartExecutionParams } from './agent-execution.service';
 import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
+import { WORKFLOW_NODE_SESSION_WAIT_MS } from './agent-session-lease.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	type AgentSandboxPrincipalHash,
@@ -482,8 +483,13 @@ export class AgentWorkflowExecutionService {
 			recordingParams,
 		);
 		if (recordingParams) {
+			// Another execution on the same session runs first. The node fails only after the wait.
 			({ executionId: agentExecutionId, leaseSignal } =
-				await this.turnExecutionService.startExecution(recordingParams, recorder.startedAt));
+				await this.turnExecutionService.startExecutionWhenSessionFree(
+					recordingParams,
+					recorder.startedAt,
+					{ waitMs: WORKFLOW_NODE_SESSION_WAIT_MS },
+				));
 		}
 
 		const { structuredOutput, toolCalls, streamError, executionError, executionStarted } =

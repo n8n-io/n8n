@@ -17,6 +17,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { WORKFLOW_NODE_SESSION_WAIT_MS } from '../agent-session-lease.service';
 import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import {
@@ -402,18 +403,50 @@ describe('AgentWorkflowExecutionService', () => {
 		},
 	);
 
-	it('fails the node run without starting the agent while another turn holds the session', async () => {
+	it('waits for the session and runs once the other execution ends', async () => {
 		const { service, agentRepository, reconstructionService, executionService } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-		executionService.startExecutionRecording.mockRejectedValue(new AgentTurnAlreadyRunningError());
+		executionService.startExecutionRecording
+			.mockRejectedValueOnce(new AgentTurnAlreadyRunningError())
+			.mockResolvedValueOnce(startedExecution('execution-1'));
 
-		await expect(
-			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
-		).rejects.toThrow(AgentTurnAlreadyRunningError);
-		expect(runtime.agent.stream).not.toHaveBeenCalled();
-		expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		expect(executionService.startExecutionRecording).toHaveBeenCalledTimes(2);
+		expect(runtime.agent.stream).toHaveBeenCalledOnce();
+	});
+
+	it('fails the node run without starting the agent when the session stays busy', async () => {
+		vi.useFakeTimers();
+		try {
+			const { service, agentRepository, reconstructionService, executionService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			executionService.startExecutionRecording.mockRejectedValue(
+				new AgentTurnAlreadyRunningError(),
+			);
+
+			let settled = false;
+			const run = service
+				.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId)
+				.finally(() => {
+					settled = true;
+				});
+			const rejected = expect(run).rejects.toThrow(AgentTurnAlreadyRunningError);
+			await vi.advanceTimersByTimeAsync(WORKFLOW_NODE_SESSION_WAIT_MS - 1_000);
+			expect(settled).toBe(false);
+			expect(executionService.startExecutionRecording.mock.calls.length).toBeGreaterThan(1);
+			await vi.advanceTimersByTimeAsync(1_500);
+			await rejected;
+
+			expect(runtime.agent.stream).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('records a workflow initialization failure without invoking the SDK', async () => {

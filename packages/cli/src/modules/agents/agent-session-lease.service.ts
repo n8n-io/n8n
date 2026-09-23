@@ -17,6 +17,12 @@ export const SESSION_LEASE_TTL_MS = 120_000;
  */
 export const INTERACTIVE_RESUME_SESSION_WAIT_MS = 5_000;
 
+/**
+ * How long an agent workflow node waits for the session. Executions that share
+ * a session ID then run one after the other, and only a long wait fails.
+ */
+export const WORKFLOW_NODE_SESSION_WAIT_MS = 30_000;
+
 /** Renewals that can fail in a row before the local turn is aborted. */
 const MAX_FAILED_RENEWALS = 2;
 

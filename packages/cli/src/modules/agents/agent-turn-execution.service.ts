@@ -64,6 +64,14 @@ interface ExecuteTurnConfig {
 /** Interval between start attempts while another turn holds the session. */
 const SESSION_WAIT_POLL_MS = 250;
 
+interface SessionWaitOptions {
+	/** How long to wait while another turn holds the session. */
+	waitMs: number;
+	abortSignal?: AbortSignal;
+	/** Runs before each start attempt. Throws when the turn must not start anymore. */
+	assertCanStart?: () => Promise<void>;
+}
+
 interface TurnExecutionState {
 	executionId?: string;
 	executionStarted: boolean;
@@ -366,41 +374,46 @@ export class AgentTurnExecutionService {
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
 	): Promise<string> {
-		const { executionId, leaseSignal } = await this.startWhenSessionFree(turn, config, recorder);
+		const { executionId, leaseSignal } = await this.startExecutionWhenSessionFree(
+			this.recordingParams(turn, config, recorder),
+			recorder.startedAt,
+			{
+				waitMs: config.sessionWaitMs ?? 0,
+				abortSignal: turn.options.abortSignal,
+				assertCanStart: config.assertCanStart,
+			},
+		);
 		state.executionId = executionId;
 		turn.options.abortSignal = withLeaseSignal(turn.options.abortSignal, leaseSignal);
 		turn.options.abortSignal.throwIfAborted();
 		return executionId;
 	}
 
-	/** Starts the execution, waiting up to `sessionWaitMs` while another turn holds the session. */
-	private async startWhenSessionFree(
-		turn: AgentTurnRequest,
-		config: ExecuteTurnConfig,
-		recorder: ExecutionRecorder,
+	/** Starts the execution, waiting up to `waitMs` while another turn holds the session. */
+	async startExecutionWhenSessionFree(
+		params: StartExecutionParams,
+		startedAt: Date,
+		options: SessionWaitOptions,
 	): Promise<StartedExecution> {
-		const deadline = Date.now() + (config.sessionWaitMs ?? 0);
+		const deadline = Date.now() + options.waitMs;
 		for (;;) {
-			const started = await this.tryStart(turn, config, recorder, deadline);
+			const started = await this.tryStart(params, startedAt, deadline, options);
 			if (started) return started;
-			await sleep(SESSION_WAIT_POLL_MS, turn.options.abortSignal);
+			await sleep(SESSION_WAIT_POLL_MS, options.abortSignal);
 		}
 	}
 
 	/** Returns null while another turn holds the session and the wait has not ended. */
 	private async tryStart(
-		turn: AgentTurnRequest,
-		config: ExecuteTurnConfig,
-		recorder: ExecutionRecorder,
+		params: StartExecutionParams,
+		startedAt: Date,
 		deadline: number,
+		{ abortSignal, assertCanStart }: SessionWaitOptions,
 	): Promise<StartedExecution | null> {
-		turn.options.abortSignal?.throwIfAborted();
-		await config.assertCanStart?.();
+		abortSignal?.throwIfAborted();
+		await assertCanStart?.();
 		try {
-			return await this.startExecution(
-				this.recordingParams(turn, config, recorder),
-				recorder.startedAt,
-			);
+			return await this.startExecution(params, startedAt);
 		} catch (error) {
 			if (error instanceof AgentTurnAlreadyRunningError && Date.now() < deadline) return null;
 			throw error;
