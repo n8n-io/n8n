@@ -2,6 +2,7 @@ import type { MockInstance } from 'vitest';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
@@ -1436,8 +1437,10 @@ describe('WorkflowCard', () => {
 
 		it('should emit workflow:published event when publish action is successful', async () => {
 			const { publishWorkflow } = useWorkflowActivate();
-			workflowsListStore.fetchWorkflow.mockResolvedValue({ id: '1', versionId: 'v2' });
-			publishWorkflow.mockResolvedValue({ success: true });
+			workflowsListStore.fetchWorkflow.mockResolvedValue(
+				createTestWorkflow({ id: '1', versionId: 'v2' }),
+			);
+			vi.mocked(publishWorkflow).mockResolvedValue({ success: true });
 
 			const data = createWorkflow({
 				activeVersionId: null,
@@ -1459,7 +1462,9 @@ describe('WorkflowCard', () => {
 
 		it('should warn instead of publishing when the fetched workflow has no versionId', async () => {
 			const { publishWorkflow } = useWorkflowActivate();
-			workflowsListStore.fetchWorkflow.mockResolvedValue({ id: '1', versionId: undefined });
+			workflowsListStore.fetchWorkflow.mockResolvedValue(
+				createTestWorkflow({ id: '1', versionId: '' }),
+			);
 
 			const data = createWorkflow({
 				activeVersionId: null,
@@ -1479,9 +1484,11 @@ describe('WorkflowCard', () => {
 
 		it('should not emit workflow:published when publish fails', async () => {
 			const { publishWorkflow } = useWorkflowActivate();
-			workflowsListStore.fetchWorkflow.mockResolvedValue({ id: '1', versionId: 'v2' });
+			workflowsListStore.fetchWorkflow.mockResolvedValue(
+				createTestWorkflow({ id: '1', versionId: 'v2' }),
+			);
 			// The composable handles errors internally and reports failure in the result
-			publishWorkflow.mockResolvedValue({ success: false, errorHandled: true });
+			vi.mocked(publishWorkflow).mockResolvedValue({ success: false, errorHandled: true });
 
 			const data = createWorkflow({
 				activeVersionId: null,
