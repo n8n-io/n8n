@@ -80,6 +80,7 @@ import {
 	handleHostedChatResponse,
 	executeWebhook,
 	_privateGetWebhookErrorMessage,
+	invokeWebhook,
 } from '../webhook-helpers';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
@@ -1200,10 +1201,112 @@ const executionContextService = mockInstance(ExecutionContextService);
 const userRepository = mockInstance(UserRepository);
 mockInstance(AuthService);
 mockInstance(EventService);
-mockInstance(WorkflowStatisticsService);
+const workflowStatisticsService = mockInstance(WorkflowStatisticsService);
 
 const WORKFLOW_ID = 'wf-1';
 const EXECUTION_ID = 'exec-1';
+
+describe('invokeWebhook', () => {
+	const workflowStartNode = mock<INode>({
+		name: 'Webhook',
+		type: WEBHOOK_NODE_TYPE,
+		typeVersion: 2,
+		parameters: {},
+	});
+	const workflow = mock<Workflow>({ id: WORKFLOW_ID });
+	const webhookData = mock<IWebhookData>();
+	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('returns webhook data and emits the success event', async () => {
+		const webhookResultData = { workflowData: [[{ json: { ok: true } }]] };
+		webhookService.runWebhook.mockResolvedValue(webhookResultData);
+
+		const result = await invokeWebhook({
+			workflow,
+			webhookData,
+			workflowStartNode,
+			additionalData,
+			executionMode: 'webhook',
+			runExecutionData: undefined,
+			webhookType: 'Webhook',
+			responseCallback: vi.fn(),
+		});
+
+		expect(result).toEqual({
+			webhookResultData,
+			didSendResponse: false,
+			runExecutionDataChanges: {},
+		});
+		expect(workflowStatisticsService.emit).toHaveBeenCalledWith('nodeFetchedData', {
+			workflowId: WORKFLOW_ID,
+			node: workflowStartNode,
+		});
+	});
+
+	it.each([
+		{
+			name: 'masks an internal error',
+			error: new Error('private details'),
+			expectedMessage: 'Workflow Webhook Error: Workflow could not be started!',
+		},
+		{
+			name: 'exposes a workflow configuration error',
+			error: new WorkflowConfigurationError(workflowStartNode, new Error('bad setup')),
+			expectedMessage: 'bad setup',
+		},
+	])('$name', async ({ error, expectedMessage }) => {
+		webhookService.runWebhook.mockRejectedValue(error);
+		const responseCallback = vi.fn();
+
+		const result = await invokeWebhook({
+			workflow,
+			webhookData,
+			workflowStartNode,
+			additionalData,
+			executionMode: 'webhook',
+			runExecutionData: undefined,
+			webhookType: 'Webhook',
+			responseCallback,
+		});
+
+		expect(responseCallback).toHaveBeenCalledWith(
+			expect.objectContaining({ message: expect.stringContaining(expectedMessage) }),
+			{},
+		);
+		expect(result.didSendResponse).toBe(true);
+		expect(result.webhookResultData).toEqual({
+			noWebhookResponse: true,
+			workflowData: [[{ json: {} }]],
+		});
+		expect(result.runExecutionDataChanges.resultData).toEqual(
+			expect.objectContaining({ lastNodeExecuted: 'Webhook', error: expect.any(Object) }),
+		);
+	});
+
+	it('normalizes and reports non-error rejections', async () => {
+		webhookService.runWebhook.mockRejectedValue('failure');
+
+		await invokeWebhook({
+			workflow,
+			webhookData,
+			workflowStartNode,
+			additionalData,
+			executionMode: 'webhook',
+			runExecutionData: undefined,
+			webhookType: 'Webhook',
+			responseCallback: vi.fn(),
+		});
+
+		expect(Container.get(ErrorReporter).error).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.any(Object),
+		);
+	});
+});
 
 describe('executeWebhook form content type', () => {
 	const runRequest = async (startNode: INode, rawBody = '{') => {

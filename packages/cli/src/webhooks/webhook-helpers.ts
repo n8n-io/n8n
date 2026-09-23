@@ -113,6 +113,20 @@ const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
 	'hostedChat',
 ]);
 
+interface WebhookInvocationResult {
+	webhookResultData: IWebhookResponseData;
+	didSendResponse: boolean;
+	runExecutionDataChanges: WebhookExecutionDataChanges;
+}
+
+interface WebhookExecutionDataChanges {
+	resultData?: {
+		runData: Record<string, never>;
+		lastNodeExecuted: string;
+		error: Record<string, unknown>;
+	};
+}
+
 const deferCleanupUntilStreamEnds = (
 	stream: Readable,
 	res: express.Response,
@@ -506,6 +520,80 @@ function shouldEstablishTriggerIdentity(workflowStartNode: INode): boolean {
 	);
 }
 
+/** Invokes the webhook node and maps invocation errors to execution data. */
+export async function invokeWebhook({
+	workflow,
+	webhookData,
+	workflowStartNode,
+	additionalData,
+	executionMode,
+	runExecutionData,
+	webhookType,
+	responseCallback,
+}: {
+	workflow: Workflow;
+	webhookData: IWebhookData;
+	workflowStartNode: INode;
+	additionalData: IWorkflowExecuteAdditionalData;
+	executionMode: WorkflowExecuteMode;
+	runExecutionData: IRunExecutionData | undefined;
+	webhookType: 'Form' | 'Webhook';
+	responseCallback: (
+		error: Error | null,
+		data: IWebhookResponseCallbackData | WebhookResponse,
+	) => void;
+}): Promise<WebhookInvocationResult> {
+	try {
+		const webhookResultData = await Container.get(WebhookService).runWebhook(
+			workflow,
+			webhookData,
+			workflowStartNode,
+			additionalData,
+			executionMode,
+			runExecutionData ?? null,
+		);
+		Container.get(WorkflowStatisticsService).emit('nodeFetchedData', {
+			workflowId: workflow.id,
+			node: workflowStartNode,
+		});
+
+		return { webhookResultData, didSendResponse: false, runExecutionDataChanges: {} };
+	} catch (e: unknown) {
+		const error = ensureError(e);
+		const errorMessage = _privateGetWebhookErrorMessage(error, webhookType);
+
+		Container.get(ErrorReporter).error(error, {
+			extra: {
+				nodeName: workflowStartNode.name,
+				nodeType: workflowStartNode.type,
+				nodeVersion: workflowStartNode.typeVersion,
+				workflowId: workflow.id,
+			},
+		});
+
+		responseCallback(new UnexpectedError(errorMessage), {});
+
+		return {
+			didSendResponse: true,
+			runExecutionDataChanges: {
+				resultData: {
+					runData: {},
+					lastNodeExecuted: workflowStartNode.name,
+					error: {
+						...error,
+						message: error.message,
+						stack: error.stack,
+					},
+				},
+			},
+			webhookResultData: {
+				noWebhookResponse: true,
+				workflowData: [[{ json: {} }]],
+			},
+		};
+	}
+}
+
 /**
  * Reconciles a pre-seeded execution stack (identity/context trigger flows) with the
  * webhook node's real output. No-op unless the start node seeded execution data.
@@ -843,10 +931,6 @@ export async function executeWebhook(
 	const engineV2Webhooks = Container.get(EngineV2Webhooks);
 	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
 	try {
-		// Run the webhook function to see what should be returned and if
-		// the workflow should be executed or not
-		let webhookResultData: IWebhookResponseData;
-
 		// Before the node runs: a streaming node, and the chat, MCP and Agent365
 		// triggers, answer the request themselves, so a later refusal could not send
 		// the 400. Also before the request body is parsed, so no file is stored for a
@@ -902,59 +986,19 @@ export async function executeWebhook(
 				});
 		}
 
-		try {
-			webhookResultData = await Container.get(WebhookService).runWebhook(
-				workflow,
-				webhookData,
-				workflowStartNode,
-				additionalData,
-				executionMode,
-				runExecutionData ?? null,
-			);
-			Container.get(WorkflowStatisticsService).emit('nodeFetchedData', {
-				workflowId: workflow.id,
-				node: workflowStartNode,
-			});
-		} catch (e: unknown) {
-			const error = ensureError(e);
-			// Send error response to webhook caller
-			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
-				? 'Form'
-				: 'Webhook';
-			const errorMessage = _privateGetWebhookErrorMessage(error, webhookType);
-
-			Container.get(ErrorReporter).error(error, {
-				extra: {
-					nodeName: workflowStartNode.name,
-					nodeType: workflowStartNode.type,
-					nodeVersion: workflowStartNode.typeVersion,
-					workflowId: workflow.id,
-				},
-			});
-
-			responseCallback(new UnexpectedError(errorMessage), {});
-			didSendResponse = true;
-
-			// Add error to execution data that it can be logged and send to Editor-UI
-			runExecutionDataMerge = {
-				resultData: {
-					runData: {},
-					lastNodeExecuted: workflowStartNode.name,
-					error: {
-						...error,
-						message: error.message,
-						stack: error.stack,
-					},
-				},
-			};
-
-			webhookResultData = {
-				noWebhookResponse: true,
-				// Add empty data that it at least tries to "execute" the webhook
-				// which then so gets the chance to throw the error.
-				workflowData: [[{ json: {} }]],
-			};
-		}
+		const invocationResult = await invokeWebhook({
+			workflow,
+			webhookData,
+			workflowStartNode,
+			additionalData,
+			executionMode,
+			runExecutionData,
+			webhookType: ['formTrigger', 'form'].includes(nodeType.description.name) ? 'Form' : 'Webhook',
+			responseCallback,
+		});
+		const { webhookResultData } = invocationResult;
+		didSendResponse = invocationResult.didSendResponse;
+		runExecutionDataMerge = invocationResult.runExecutionDataChanges;
 
 		if (cleanupMultipartFiles && webhookResultData.webhookResponse instanceof Readable) {
 			deferCleanupUntilStreamEnds(webhookResultData.webhookResponse, res, cleanupMultipartFiles);
