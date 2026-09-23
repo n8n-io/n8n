@@ -34,8 +34,11 @@ status to the next. A step is one call that returns output
 (ADR-20260828-obtain-trigger-output-before-creating-the-execution). Therefore a
 step executor cannot stay blocked for the length of a wait that reaches the
 engine. A pause must be a status of the step row. It must not be a state of a
-process. A wait that the Wait node sleeps through never reaches the engine, and
-stays a state of a process for that reason.
+process. At the date of this record, the Wait node sleeps in the process for a
+time wait under 65 seconds, and such a wait never reaches the engine. Core has
+since taken that decision from the node: the node states what can end its wait,
+and core decides how to implement it. The shim's part, to declare every wait,
+lands with CAT-2929.
 
 ## Decision
 
@@ -44,12 +47,14 @@ declaration** in place of outputs. The declaration tells the engine when to
 resume the step. A declaration can name a deadline, or accept a resume request,
 or do both. When it does both, the first of the two ends the wait.
 
-1. **The shim produces the declaration.** The v1 node code does not change. The
-   shim's execution context receives the node's `putExecutionToWait` call. The
-   shim translates the call into a wait declaration. The shim returns the
-   declaration as the step result. The converter does not rewrite wait nodes.
-   This one mechanism covers the Wait node, all send-and-wait nodes, and
-   expression-valued wait parameters.
+1. **The shim produces the declaration.** The shim's execution context receives
+   the node's `putExecutionToWait` call. The node states what can end the wait:
+   a deadline, a request, or both. The shim translates the call into a wait
+   declaration and returns it as the step result. How a wait is implemented is
+   the engine's decision and not the node's. Engine v1 sleeps in the process for
+   a short time wait. Engine v2 declares every wait. The converter does not
+   rewrite wait nodes. This one mechanism covers the Wait node, all
+   send-and-wait nodes, and expression-valued wait parameters.
 2. **The engine suspends the step.** A step that returns a declaration moves to
    the new `waiting` status. `waiting` is not a settled status. Therefore the
    existing settlement rules stop the engine from planning the steps behind it.
@@ -130,6 +135,11 @@ or do both. When it does both, the first of the two ends the wait.
   written, and a control plane that does not hold the channel yet has to refuse
   the request. A route that always accepts requests keeps the wait state in the
   data plane only, and leaves that window to the resolve path.
+- **Keep the in-process sleep in the shim for a short time wait.** This option
+  keeps engine v1's latency for a short wait and keeps its two code paths. It
+  leaves such a wait invisible to the engine: not durable, not cancellable, not
+  reported. A sweep that re-arms on suspension gives the same latency with one
+  path, so this option buys nothing that the re-arm does not.
 
 ## Consequences
 
@@ -158,28 +168,18 @@ or do both. When it does both, the first of the two ends the wait.
   handling as the step outputs.
 - A resolve request can arrive before the engine records the suspension. The
   resolve path must handle this window. It must not refuse the request.
-- A time wait under 65 seconds does not reach the engine. The Wait node sleeps
-  in the process for those waits and then returns normally. The shim runs that
-  node code unchanged, so the engine never sees a declaration. The engine
-  therefore cannot make such a wait durable, cancel it, or report it: to the
-  engine the step is only slow. Those waits behave on engine v2 exactly as they
-  do on engine v1, including being lost if the worker stops while one sleeps.
-  That 65-second minimum is the floor, and it applies to the `timeInterval` and
-  `specificTime` modes only. A `webhook` wait and a `form` wait return earlier
-  in the node, and no floor applies to them.
-- A wait with a `limitWaitTime` can fire up to one sweep interval after its
-  limit. That parameter has no minimum. The limit can therefore fall due before
-  the next pass of the sweep, and the sweep finds it on that pass. Every other
-  wait fires at its deadline. The sweep schedules its next pass from the
-  earliest deadline it can see, and a `timeInterval` or `specificTime` wait
-  that reaches the engine is at least 65 seconds out. Engine v1 is late for the
-  same waits and for no others. The same node path sets `waitTill` with no
-  floor, and the 60-second poll of v1 cannot adapt to it. Parity is the bar
-  here, so the engine keeps the same bound and not a shorter interval.
-- A wait that sleeps in the process ignores execution cancellation. The node
-  registers a handler through `onExecutionCancellation`, which needs an abort
-  signal that the shim does not supply yet (CAT-4526). Nothing observes this
-  until an execution can be cancelled (CAT-3990).
+- Every wait reaches the engine, including a time wait under 65 seconds that
+  engine v1 sleeps through in the process. Such a wait costs a row write and a
+  re-dispatch that engine v1 avoids. In exchange it survives a worker restart,
+  and the engine can cancel it and report it.
+- A wait fires at most one sweep tick after its deadline on the replica that
+  suspended it. The engine re-arms the sweep when it suspends a step whose
+  deadline is earlier than the sweep's next pass, so a short time wait does not
+  wait for that pass. Another replica's sweeper skips the row while the first
+  one holds it (`SKIP LOCKED`), and takes it over only if the first replica dies
+  before its timer fires; then the bound is one sweep interval. Engine v1 fires
+  a short time wait on time and loses it if the worker dies, so engine v2
+  matches v1 on time and improves on it after a failure.
 - Because the execution row records a status that the step rows decide, one
   statement must calculate the status and write it. Two statements are not
   enough. A step could change between the read and the write. The write would
