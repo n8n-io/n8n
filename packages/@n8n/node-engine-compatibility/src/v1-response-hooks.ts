@@ -47,9 +47,13 @@ export function attachResponseHooks(
 		stubWorkflow(context.workflowId),
 	);
 
-	additionalData.hooks.addHandler('sendResponse', (response) =>
-		respond.send(toJsonPayload(response)),
-	);
+	additionalData.hooks.addHandler('sendResponse', (response) => {
+		const error = respond.send(toJsonPayload(response));
+		if (error) {
+			// Fail the node so the caller can see the response error.
+			throw error;
+		}
+	});
 }
 
 /**

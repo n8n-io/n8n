@@ -62,7 +62,6 @@ export class V1StepExecutor implements IStepExecutor {
 		const additionalData = await this.deps.additionalDataFactory(
 			toAdditionalDataContext(request.context),
 		);
-		// After the factory, so a host cannot forget to let its nodes answer.
 		attachResponseHooks(additionalData, request);
 
 		const context = toV1ExecuteContext({

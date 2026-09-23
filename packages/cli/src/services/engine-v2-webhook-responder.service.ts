@@ -3,7 +3,6 @@ import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { IExecuteResponsePromiseData, IN8nHttpFullResponse } from 'n8n-workflow';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -66,7 +65,7 @@ export class EngineV2WebhookResponder {
 	waitForResponse(
 		executionId: ExecutionIdV2,
 		/** Set for `responseNode`: what the Respond node's answer resolves. */
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		responsePromise?: IDeferredPromise<unknown>,
 	): PendingWebhookResponse {
 		const { receiver } = this;
 		if (!receiver) {
@@ -95,7 +94,7 @@ export class EngineV2WebhookResponder {
 	private handle(
 		received: ExecutionResponse,
 		response: PendingWebhookResponse,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		responsePromise?: IDeferredPromise<unknown>,
 	): void {
 		try {
 			this.route(received, response, responsePromise);
@@ -111,7 +110,7 @@ export class EngineV2WebhookResponder {
 	private route(
 		received: ExecutionResponse,
 		response: PendingWebhookResponse,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		responsePromise?: IDeferredPromise<unknown>,
 	): void {
 		switch (received.type) {
 			case 'undeliverable':
@@ -124,7 +123,7 @@ export class EngineV2WebhookResponder {
 
 			case 'response':
 				// Opaque on the channel by design: only this plane knows a v1 response.
-				responsePromise?.resolve(received.payload as unknown as IN8nHttpFullResponse);
+				responsePromise?.resolve(received.payload);
 				return;
 
 			case 'ended':

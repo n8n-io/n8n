@@ -7,11 +7,17 @@ import type {
 	UndeliverableMessage,
 } from '@n8n/engine';
 import { toResult } from '@n8n/utils/result';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { InMemoryExecutionResponseChannel } from './in-memory-execution-response-channel';
 
 /** A response channel must be able to carry every frame this class produces. */
 const MAX_FRAME_BYTES = 5 * 1024 * 1024;
+
+type FrameAndMaybeError = {
+	error?: Error;
+	frame: string;
+};
 
 export class InMemoryExecutionResponseSender implements ExecutionResponseSender {
 	private stopped = false;
@@ -22,10 +28,13 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 		private readonly maxFrameBytes: number = MAX_FRAME_BYTES,
 	) {}
 
-	send(response: ExecutionResponse): void {
-		if (this.stopped) return;
+	send(response: ExecutionResponse): Error | null {
+		if (this.stopped) return null;
 
-		this.channel.publish(response.executionId, this.toFrame(response));
+		const frameResult = this.toFrame(response);
+		this.channel.publish(response.executionId, frameResult.frame);
+
+		return frameResult.error ?? null;
 	}
 
 	/** Gives one step a response sender without exposing execution routing. */
@@ -39,7 +48,7 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 		this.stopped = true;
 	}
 
-	private toFrame(response: ExecutionResponse): string {
+	private toFrame(response: ExecutionResponse): FrameAndMaybeError {
 		const serialized = toResult(() => JSON.stringify(response));
 		if (!serialized.ok) {
 			this.logger.warn('Could not serialize an execution response', {
@@ -64,14 +73,26 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 			});
 		}
 
-		return serialized.result;
+		return { frame: serialized.result };
 	}
 
-	private undeliverableFrame(executionId: string, error: UndeliverableMessage['error']): string {
-		return JSON.stringify({
+	private undeliverableFrame(
+		executionId: string,
+		error: UndeliverableMessage['error'],
+	): FrameAndMaybeError {
+		const frame = JSON.stringify({
 			type: 'undeliverable',
 			executionId,
 			error,
 		} satisfies UndeliverableMessage);
+
+		return {
+			frame,
+			error: new UnexpectedError(error.message, {
+				extra: {
+					code: error.code,
+				},
+			}),
+		};
 	}
 }

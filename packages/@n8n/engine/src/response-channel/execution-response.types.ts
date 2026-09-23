@@ -1,6 +1,5 @@
 import type { z } from 'zod';
 
-import type { JsonValue } from '../common';
 import type { executionResponseSchema } from './execution-response.schema';
 
 /**
@@ -38,8 +37,8 @@ export type ResponseMessage = Extract<ExecutionResponse, { type: 'response' }>;
  * step executor carries no routing state.
  */
 export interface ResponseEmitter {
-	send(payload: JsonValue): void;
+	send(payload: unknown): Error | null;
 }
 
 /** For a step whose responses nobody wants. */
-export const noopResponseEmitter: ResponseEmitter = Object.freeze({ send: () => {} });
+export const noopResponseEmitter: ResponseEmitter = Object.freeze({ send: () => null });
