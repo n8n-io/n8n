@@ -1,3 +1,4 @@
+import { createModel } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type {
@@ -8,7 +9,10 @@ import type {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { generateText } from 'ai';
+import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { EventService } from '@/events/event.service';
@@ -1924,6 +1928,119 @@ describe('InstanceAiSettingsService', () => {
 	});
 
 	describe('model verification config', () => {
+		it.each([
+			'https://api.kimi.ai/coding/v1',
+			'https://api.kimi.com/coding/v1',
+			'https://api.moonshot.ai/v1',
+			'https://api.moonshot.cn/v1',
+		])('uses the Moonshot adapter for an OpenAI connection at %s', (url) => {
+			const config = service.buildModelConfigForConnection(
+				{
+					type: 'openAiApi',
+					data: { apiKey: 'key', url, header: true, headerName: 'x-custom', headerValue: 'value' },
+				},
+				'k3',
+			);
+
+			expect(config).toEqual({
+				id: 'moonshotai/k3',
+				url,
+				apiKey: 'key',
+				headers: { 'x-custom': 'value' },
+			});
+		});
+
+		it.each([
+			['openAiApi', 'https://api.openai.com/v1', 'openai'],
+			['openAiApi', 'https://proxy.example.com/v1', 'openai'],
+			['anthropicApi', 'https://api.kimi.ai/coding/', 'anthropic'],
+		] as const)('keeps the adapter for %s at %s', (type, url, provider) => {
+			const config = service.buildModelConfigForConnection(
+				{ type, data: { apiKey: 'key', url } },
+				'model-name',
+			);
+
+			expect(config).toEqual({ id: `${provider}/model-name`, url, apiKey: 'key' });
+		});
+
+		it('selects the Moonshot adapter from saved Assistant settings', async () => {
+			persistedSettingsValue = JSON.stringify({ modelName: 'k3' });
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'kimi-credential',
+				name: 'Kimi',
+				type: 'openAiApi',
+				data: { apiKey: 'key', url: 'https://api.kimi.ai/coding/v1' },
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'moonshotai/k3',
+				url: 'https://api.kimi.ai/coding/v1',
+				apiKey: 'key',
+			});
+		});
+
+		it('retains Kimi reasoning through the adapter selected by the custom endpoint setting', async () => {
+			const url = 'https://api.kimi.ai/coding/v1';
+			const reasoning = 'Answer the greeting before continuing.';
+			const requests: unknown[] = [];
+			const scope = nock(url)
+				.post('/responses')
+				.optionally()
+				.reply(404, { error: { message: 'Not Found', type: 'not_found_error' } })
+				.post('/chat/completions', (body: unknown) => {
+					requests.push(body);
+					return true;
+				})
+				.twice()
+				.reply(200, {
+					id: 'completion_1',
+					model: 'k3',
+					created: 1,
+					choices: [
+						{
+							index: 0,
+							message: { role: 'assistant', content: 'Hello.', reasoning_content: reasoning },
+							finish_reason: 'stop',
+						},
+					],
+					usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
+				});
+			nock.disableNetConnect();
+			try {
+				const config = service.buildModelConfigForConnection(
+					{ type: 'openAiApi', data: { apiKey: 'key', url } },
+					'k3',
+				);
+				const model = createModel(config, globalThis.fetch);
+				const first = await generateText({ model, prompt: 'Hello.', maxRetries: 0 });
+				await generateText({
+					model,
+					messages: [
+						{ role: 'user', content: 'Hello.' },
+						...first.response.messages,
+						{ role: 'user', content: 'Please continue.' },
+					],
+					maxRetries: 0,
+				});
+
+				expect(scope.isDone()).toBe(true);
+				expect(requests).toHaveLength(2);
+				const sent = z
+					.object({
+						messages: z.array(
+							z.object({ role: z.string(), reasoning_content: z.string().optional() }),
+						),
+					})
+					.parse(requests[1]);
+				expect(
+					sent.messages.find((message) => message.role === 'assistant')?.reasoning_content,
+				).toBe(reasoning);
+			} finally {
+				nock.cleanAll();
+				nock.enableNetConnect();
+			}
+		});
+
 		it.each([
 			['openai/original', 'replacement', 'openai/replacement'],
 			['original', 'replacement', 'custom/replacement'],

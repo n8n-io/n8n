@@ -9,7 +9,7 @@ import type {
 	FinishReason as AiFinishReason,
 } from 'ai';
 
-import { getProviderQuirks, PROVIDER_QUIRKS } from './provider-quirks';
+import { getProviderQuirks, PROVIDER_QUIRKS, type ProviderQuirks } from './provider-quirks';
 import type { FinishReason } from '../../types';
 import type {
 	AgentMessage,
@@ -27,6 +27,10 @@ import type { JSONObject, JSONValue } from '../../types/utils/json';
 // Used across all message roles; AssistantContent omits user images and tool approval responses.
 type AiContentPart = Exclude<ModelMessage['content'], string>[number];
 type AiAssistantContent = Exclude<Extract<ModelMessage, { role: 'assistant' }>['content'], string>;
+
+export interface MessageConversionOptions {
+	reasoningReplay?: ProviderQuirks['reasoningReplay'];
+}
 
 // --- Type guards for MessageContent blocks ---
 
@@ -207,7 +211,10 @@ export function fileMetadataText(block: ContentFile): string {
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
-function toAiContent(block: MessageContent): AiContentPart | undefined {
+function toAiContent(
+	block: MessageContent,
+	options: MessageConversionOptions,
+): AiContentPart | undefined {
 	let base: AiContentPart | undefined;
 	if (isText(block)) {
 		base = { type: 'text', text: block.text };
@@ -251,7 +258,11 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		const providerOptions = isReasoning(block)
 			? toReasoningProviderOptions(block)
 			: block.providerOptions;
-		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(providerOptions)) {
+		if (
+			isReasoning(block) &&
+			options.reasoningReplay !== 'text' &&
+			!hasReplayableReasoningProviderOptions(providerOptions)
+		) {
 			return undefined;
 		}
 
@@ -381,7 +392,7 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
  * Pending tool-call blocks are silently skipped (defense-in-depth; the strip
  * step should already have removed them before forLlm() calls toAiMessages).
  */
-function toAiMessageList(msg: Message): ModelMessage[] {
+function toAiMessageList(msg: Message, options: MessageConversionOptions): ModelMessage[] {
 	switch (msg.role) {
 		case 'system': {
 			const text = msg.content
@@ -394,7 +405,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 
 		case 'user': {
 			const parts = msg.content
-				.map(toAiContent)
+				.map((block) => toAiContent(block, options))
 				.filter((p): p is TextPart | FilePart => p?.type === 'text' || p?.type === 'file');
 			const base: ModelMessage = { role: 'user', content: parts };
 			return [msg.providerOptions ? { ...base, providerOptions: msg.providerOptions } : base];
@@ -436,7 +447,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 					if (block.providerExecuted) assistantParts.push(resultPart);
 					else resultMessages.push({ role: 'tool', content: [resultPart] });
 				} else {
-					const part = toAiContent(block);
+					const part = toAiContent(block, options);
 					if (part) assistantParts.push(part);
 				}
 			}
@@ -471,8 +482,11 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 }
 
 /** Convert n8n Messages to AI SDK ModelMessages for passing to stream/generateText. */
-export function toAiMessages(messages: Message[]): ModelMessage[] {
-	const modelMessages = messages.flatMap(toAiMessageList);
+export function toAiMessages(
+	messages: Message[],
+	options: MessageConversionOptions = {},
+): ModelMessage[] {
+	const modelMessages = messages.flatMap((message) => toAiMessageList(message, options));
 	const result: ModelMessage[] = [];
 
 	for (const [index, message] of modelMessages.entries()) {
