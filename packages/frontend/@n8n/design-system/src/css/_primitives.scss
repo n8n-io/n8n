@@ -1,20 +1,3 @@
-/** Register the installed variable fonts with their supported weight range. */
-@font-face {
-	font-family: 'EK Baumer Local';
-	src: local('EKBaumerVariable-Regular');
-	font-style: normal;
-	font-weight: 100 900;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'EK Baumer Mono Local';
-	src: local('EKBaumerMonoPlus-Regular');
-	font-style: normal;
-	font-weight: 100 900;
-	font-display: swap;
-}
-
 @mixin primitives {
 	/* pink */
 	--color--pink-50: oklch(97.53% 0.0128 5.65);
@@ -249,13 +232,9 @@
 	--spacing--4xl: 8rem; /** 128px **/
 	--spacing--5xl: 16rem; /** 256px **/
 
-	/** Rebrand: use the locally installed Baumer variable fonts. */
-	--font-family:
-		'EK Baumer Local', 'EK Baumer Uniwidth UNLICENSED', -apple-system, BlinkMacSystemFont,
-		'Segoe UI', Roboto, sans-serif;
+	--font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	--font-family--monospace:
-		'EK Baumer Mono Local', 'EK Baumer Mono UNLICENSED', ui-monospace, Menlo, Consolas,
-		'DejaVu Sans Mono', monospace;
+		'Geist Mono', ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 
 	--font-size--4xs: 0.5rem;
 	--font-size--3xs: 0.625rem;
