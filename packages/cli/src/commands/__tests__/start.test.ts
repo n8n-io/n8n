@@ -28,6 +28,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
@@ -72,6 +73,7 @@ mockInstance(NodeTypes);
 const shutdownService = mockInstance(ShutdownService);
 shutdownService.validate.mockReturnValue(undefined);
 mockInstance(PostHogClient);
+mockInstance(OtelService);
 mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
@@ -126,6 +128,7 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(MultiMainSetup, multiMainSetup);
 		Container.set(AuthHandlerRegistry, authHandlerRegistry);
 		Container.set(PostHogClient, mockInstance(PostHogClient));
+		Container.set(OtelService, mockInstance(OtelService));
 		Container.set(TelemetryEventRelay, mockInstance(TelemetryEventRelay));
 		Container.set(ActivityEventRelay, mockInstance(ActivityEventRelay));
 		Container.set(
