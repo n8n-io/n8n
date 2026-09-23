@@ -17,13 +17,12 @@
  *   local rules would read as missing. Those are read from the config objects
  *   instead, which is weaker: it describes what we declared, not what oxlint
  *   resolved. A fixture probe is the only way to prove they fire.
- * - `--print-config` resolves the config, not a file, so `overrides` do not
- *   appear. Both sides are therefore compared as a union across the package's
- *   sample files.
+ * - `--print-config` does not apply overrides to its top-level rule table. Both
+ *   sides are therefore compared as a union across the package's sample files.
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, matchesGlob, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -114,6 +113,16 @@ function isEnabled(severity) {
 	return value === 'deny' || value === 'error' || value === 2;
 }
 
+const matchesPattern = (file, pattern) => matchesGlob(file, pattern.replace(/^\.\//, ''));
+
+function overrideMatchesSample({ files = [], excludeFiles = [], ignores = [] }) {
+	return sampledFiles.some(
+		(file) =>
+			(files.length === 0 || files.some((pattern) => matchesPattern(file, pattern))) &&
+			![...excludeFiles, ...ignores].some((pattern) => matchesPattern(file, pattern)),
+	);
+}
+
 /** Native rules oxlint actually resolved for this package. */
 function resolvedNativeRules() {
 	const out = spawnSync('pnpm', ['exec', 'oxlint', '--print-config'], {
@@ -126,7 +135,12 @@ function resolvedNativeRules() {
 		throw new Error(`oxlint --print-config failed: ${(out.stderr || out.stdout).trim()}`);
 	}
 	const parsed = JSON.parse(out.stdout.slice(start));
-	return Object.entries(parsed.rules ?? {})
+	return [
+		...Object.entries(parsed.rules ?? {}),
+		...(parsed.overrides ?? [])
+			.filter(overrideMatchesSample)
+			.flatMap(({ rules }) => Object.entries(rules ?? {})),
+	]
 		.filter(([, severity]) => isEnabled(severity))
 		.map(([id]) => id);
 }
@@ -138,7 +152,7 @@ function resolvedNativeRules() {
 async function declaredJsPluginRules() {
 	const mod = await import(pathToFileURL(join(root, pkgDir, 'oxlint.config.mts')).href);
 	const declared = new Map();
-	const overrideOnly = new Set();
+	const overrideOnly = new Map();
 	const plugins = new Set();
 
 	const visit = (config) => {
@@ -151,7 +165,11 @@ async function declaredJsPluginRules() {
 				// An override that turns a rule off still leaves it enforced elsewhere
 				// in the package, and this comparison is a union.
 				if (!isEnabled(severity)) continue;
-				if (!declared.has(id)) overrideOnly.add(id);
+				if (!isEnabled(declared.get(id)) || overrideOnly.has(id)) {
+					const overrides = overrideOnly.get(id) ?? [];
+					overrides.push(override);
+					overrideOnly.set(id, overrides);
+				}
 				declared.set(id, severity);
 			}
 		}
@@ -164,12 +182,6 @@ async function declaredJsPluginRules() {
 	return { ids, overrideOnly, plugins: [...plugins] };
 }
 
-// The test-file override is only comparable when a test file was sampled:
-// ESLint resolves its config per file, oxlint's --print-config does not resolve
-// overrides at all, so without a test sample there is nothing to compare and an
-// override-only rule would read as unrequested.
-const isTestSample = (key) => /(\.test\.ts|\/__tests__\/|^test\/)/.test(key.split('|')[1] ?? '');
-
 const native = oxlintRuleIds();
 const gap = JSON.parse(readFileSync(gapFile, 'utf8'));
 
@@ -177,11 +189,11 @@ const gap = JSON.parse(readFileSync(gapFile, 'utf8'));
 const snapshot = JSON.parse(readFileSync(resolve(eslintFile), 'utf8'));
 const eslintRules = new Set();
 let sampled = 0;
-let sampledTestFile = false;
+const sampledFiles = [];
 for (const [key, entry] of Object.entries(snapshot)) {
 	if (!key.startsWith(`${pkgDir}|`) || !entry.rules) continue;
 	sampled++;
-	if (isTestSample(key)) sampledTestFile = true;
+	sampledFiles.push(key.split('|')[1]);
 	for (const id of Object.keys(entry.rules)) eslintRules.add(id);
 }
 if (sampled === 0) {
@@ -191,12 +203,13 @@ if (sampled === 0) {
 
 const { ids: jsPluginIds, overrideOnly, plugins } = await declaredJsPluginRules();
 
-const comparable = (id) => !overrideOnly.has(id) || sampledTestFile;
+const comparable = (id) => {
+	const overrides = overrideOnly.get(id);
+	return !overrides || overrides.some(overrideMatchesSample);
+};
 
 const oxlintRules = new Set(
-	[...resolvedNativeRules(), ...jsPluginIds]
-		.filter(comparable)
-		.map((id) => canonical(id, native)),
+	[...resolvedNativeRules(), ...jsPluginIds].filter(comparable).map((id) => canonical(id, native)),
 );
 
 const matched = [];
@@ -225,7 +238,9 @@ const undocumented = missing.filter((entry) => !isDocumented(entry));
 console.log(`${pkgDir}: ${sampled} sample files, ${eslintRules.size} ESLint rules at error`);
 console.log(`  jsPlugins declared: ${plugins.join(', ') || 'none'}`);
 console.log(`  matched:            ${matched.length}`);
-console.log(`  missing in oxlint:  ${missing.length} (${missing.length - undocumented.length} documented)`);
+console.log(
+	`  missing in oxlint:  ${missing.length} (${missing.length - undocumented.length} documented)`,
+);
 console.log(`  extra in oxlint:    ${extra.length}`);
 
 for (const id of extra) console.log(`  EXTRA   ${id}`);

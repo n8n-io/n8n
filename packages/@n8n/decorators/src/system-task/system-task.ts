@@ -1,11 +1,15 @@
 import {
 	DEFAULT_MISFIRE_GRACE_SECONDS,
+	MAX_INTEGER_32BITS_SIGNED,
 	ScheduledJobMisfirePolicy,
+	Time,
 	type OneOffDefinition,
 	type ScheduleDefinition,
 } from '@n8n/constants';
 import { Service, type Constructable } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
+
+import type { SystemTaskPlacement } from './system-task-placement';
 
 /** Whether a run is safe to repeat. */
 export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
@@ -29,21 +33,8 @@ export interface SystemTask {
 	/** What kind of effects a run has, which sets the defaults of the overrides below. */
 	readonly effects: SystemTaskEffects;
 
-	/**
-	 * Migration status.
-	 * - `false` runs on the leader-gated in-memory timer
-	 * - `true` runs on the durable scheduler when the instance flag is on.
-	 * @remarks Temporary, removed once every task is durable.
-	 */
-	readonly durable: boolean;
-
-	/**
-	 * Runs one occurrence as soon as this instance becomes the leader,
-	 * including at startup for an instance that is already the leader, on
-	 * top of the scheduled occurrences. In-memory timers only: ignored for a
-	 * durable run.
-	 */
-	readonly runOnTakeover?: boolean;
+	/** Where the occurrences run. */
+	readonly placement: SystemTaskPlacement;
 
 	/**
 	 * How long after a failed run an earlier retry occurrence runs, instead of
@@ -75,12 +66,9 @@ export interface SystemTask {
 	readonly maxAttempts?: number;
 
 	/**
-	 * Overrides how many of the task's durable occurrences may run at the same
-	 * time. `null` lets them overlap. Defaults to
-	 * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}: one at a time, so a run that
-	 * outlasts its own cadence holds the next occurrence back instead of
-	 * overlapping it. The in-memory timer never overlaps a task with itself
-	 * either. Durable runs only.
+	 * Overrides how many durable occurrences may run at the same time.
+	 * `null` removes the limit. Defaults to
+	 * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}.
 	 */
 	readonly concurrencyLimit?: number | null;
 
@@ -98,21 +86,17 @@ export interface SystemTaskRunOptions {
 	misfirePolicy: ScheduledJobMisfirePolicy;
 	misfireGraceSeconds: number;
 	maxAttempts: number;
-	/** `null` lets the task's occurrences overlap. */
+	/** `null` means no limit. */
 	concurrencyLimit: number | null;
 }
 
-/**
- * One occurrence at a time, the overlap behavior of the in-memory timer.
- */
+/** One occurrence at a time, like the in-memory timer. */
 export const DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT = 1;
 
 /**
  * Run options a task's effects imply, when the task declares no override:
  * retries and late runs only where a repeat is harmless.
- * The grace window and the concurrency limit do not depend on effects, so every
- * task defaults to {@link DEFAULT_MISFIRE_GRACE_SECONDS} and
- * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}.
+ * The grace window and the concurrency limit do not depend on effects.
  */
 const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<
 	SystemTaskEffects,
@@ -156,12 +140,36 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	// intervals, so whatever provisions a task still has to clamp against those.
 	assertInRange(task.name, 'maxAttempts', options.maxAttempts, 1);
 	assertInRange(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 1);
-	// A ceiling below one would hold every occurrence back until its deadline passed.
+	// A limit below 1 would block every occurrence.
 	if (options.concurrencyLimit !== null) {
 		assertInRange(task.name, 'concurrencyLimit', options.concurrencyLimit, 1);
 	}
 
 	return options;
+}
+
+/** Longest delay a timeout honors. Node fires a longer one after about 1 ms. */
+const MAX_RETRY_DELAY_SECONDS = Math.floor(MAX_INTEGER_32BITS_SIGNED / Time.seconds.toMilliseconds);
+
+/**
+ * Rejects a task that declares an option the schedulers cannot honor.
+ *
+ * @throws {UnexpectedError} when `retryDelaySeconds`, `maxAttempts` or `misfireGraceSeconds` is out of range
+ */
+export function validateSystemTask(task: SystemTask): void {
+	resolveSystemTaskRunOptions(task);
+
+	const { retryDelaySeconds } = task;
+	if (
+		retryDelaySeconds !== undefined &&
+		(!Number.isInteger(retryDelaySeconds) ||
+			retryDelaySeconds < 1 ||
+			retryDelaySeconds > MAX_RETRY_DELAY_SECONDS)
+	) {
+		throw new UnexpectedError('A system task declares an out-of-range retry delay', {
+			extra: { name: task.name, retryDelaySeconds },
+		});
+	}
 }
 
 /**
@@ -181,15 +189,12 @@ function wholeSeconds(seconds: number): number {
 	return Math.max(1, Math.round(seconds));
 }
 
-/** Ceiling of an `int` column, which is what both fields are stored in. */
-const MAX_INT32 = 2_147_483_647;
-
 function assertInRange(taskName: string, field: string, value: number, min: number) {
-	if (Number.isInteger(value) && value >= min && value <= MAX_INT32) return;
-
-	throw new UnexpectedError(
-		`System task "${taskName}" declares ${field} as ${value}, but it must be an integer between ${min} and ${MAX_INT32}`,
-	);
+	if (!Number.isInteger(value) || value < min || value > MAX_INTEGER_32BITS_SIGNED) {
+		throw new UnexpectedError('A system task declares an out-of-range option', {
+			extra: { name: taskName, field, value, min, max: MAX_INTEGER_32BITS_SIGNED },
+		});
+	}
 }
 
 export type SystemTaskClass = Constructable<SystemTask>;

@@ -124,9 +124,9 @@ export interface SchedulerDeps {
 	onEvent?: (event: SchedulerEvent) => void;
 
 	/**
-	 * Notified when a reaper sweep retires tasks that their job's concurrency limit
-	 * held back until their deadline passed. The host decides what to report;
-	 * a throwing listener is swallowed.
+	 * Called when the reaper retires tasks whose job was at its concurrency limit at
+	 * their deadline. The host decides what to report. Errors from this listener are
+	 * ignored.
 	 */
 	onHeldByConcurrencyLimit?: (tasks: RetiredTask[]) => void;
 

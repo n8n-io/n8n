@@ -2,6 +2,7 @@ import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 
 import {
 	resolveSystemTaskRunOptions,
+	validateSystemTask,
 	type SystemTask,
 	type SystemTaskEffects,
 	type SystemTaskSchedule,
@@ -12,7 +13,7 @@ const schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 60 };
 const taskWith = (overrides: Partial<SystemTask> & { effects: SystemTaskEffects }): SystemTask => ({
 	name: 'test-task',
 	schedule,
-	durable: false,
+	placement: { scope: 'cluster', durable: false },
 	run: async () => {},
 	...overrides,
 });
@@ -65,7 +66,12 @@ it.each([
 ])('should reject the nonsensical override %o', (override) => {
 	expect(() =>
 		resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override })),
-	).toThrowError('test-task');
+	).toThrowError(
+		expect.objectContaining({
+			message: 'A system task declares an out-of-range option',
+			extra: expect.objectContaining({ name: 'test-task', field: Object.keys(override)[0] }),
+		}),
+	);
 });
 
 it('should keep the defaults for the fields a task does not override', () => {
@@ -95,4 +101,24 @@ it('should let a task permit overlap', () => {
 	);
 
 	expect(options.concurrencyLimit).toBeNull();
+});
+
+it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
+	'should reject a retry delay of %s',
+	(retryDelaySeconds) => {
+		expect(() =>
+			validateSystemTask(taskWith({ effects: 'idempotent', retryDelaySeconds })),
+		).toThrowError(
+			expect.objectContaining({
+				message: 'A system task declares an out-of-range retry delay',
+				extra: { name: 'test-task', retryDelaySeconds },
+			}),
+		);
+	},
+);
+
+it('should accept the longest retry delay a timeout honors', () => {
+	expect(() =>
+		validateSystemTask(taskWith({ effects: 'idempotent', retryDelaySeconds: 2_147_483 })),
+	).not.toThrow();
 });

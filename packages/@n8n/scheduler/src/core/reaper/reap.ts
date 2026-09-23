@@ -30,20 +30,21 @@ export interface ExpiredLeaseRow extends ClaimedTask {
 	dispatchedAt: Date | null;
 }
 
-/** Identity of one task a sweep retired as `missed`. */
+/** A task that the reaper set to `missed`. */
 export interface RetiredTask {
 	id: string;
 	jobId: number;
 	taskType: string;
 }
 
-/** Outcome of one sweep's retire step. */
+/** Result of the reaper's retire step. */
 export interface RetireMissedResult {
-	/** How many `pending` tasks were retired as `missed`. */
+	/** Number of tasks set to `missed`. */
 	retired: number;
 	/**
-	 * The retired tasks whose job was already running as many tasks as its
-	 * concurrency limit allows, so the limit is what kept them from a claim.
+	 * The retired tasks whose job had at least its concurrency limit of runs in
+	 * progress at the task's deadline. This is an estimate. It uses the job's current
+	 * limit, and it does not count a claimed task that has not started yet.
 	 */
 	heldByConcurrencyLimit: RetiredTask[];
 }
@@ -86,8 +87,8 @@ export interface ReaperHooks {
 	/** Notified when retiring stale `pending` rows fails; the rest of the sweep still runs. */
 	onRetireError?: (error: unknown) => void;
 	/**
-	 * Notified, once per sweep, with the tasks a job's concurrency limit held back
-	 * until their deadline passed. Never called with an empty list.
+	 * Called once per reaper run with {@link RetireMissedResult.heldByConcurrencyLimit}.
+	 * Not called when that list is empty.
 	 */
 	onHeldByConcurrencyLimit?: (tasks: RetiredTask[]) => void;
 	/** Notified when a task is failed terminally: the lease of its last attempt expired. */

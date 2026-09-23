@@ -126,7 +126,7 @@ describe('get-user-preferences MCP tool', () => {
 			expect(text && 'text' in text ? text.text : '').toContain('- Keep replies short.');
 			expect(text && 'text' in text ? text.text : '').toContain('- Prefer HubSpot nodes.');
 			// The id travels with each item: an edit has to address a row, and the block
-			// the assistant is given carries text without ids (CONTEXT-137).
+			// the assistant is given carries text without ids.
 			expect(result.structuredContent).toEqual({
 				hasPreferences: true,
 				preferences: [
@@ -375,7 +375,7 @@ describe('get-user-preferences MCP tool', () => {
 			const renderedLength = rendered && 'text' in rendered ? rendered.text.length : 0;
 
 			// Two rows in one project must not report `project` twice, and the length is the
-			// text the caller was actually given: it reviews the caps (CONTEXT-137).
+			// text the caller was actually given: it reviews the caps.
 			expect(telemetry.track).toHaveBeenCalledWith(
 				USER_CALLED_MCP_TOOL_EVENT,
 				expect.objectContaining({
