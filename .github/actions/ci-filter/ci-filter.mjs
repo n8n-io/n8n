@@ -159,13 +159,10 @@ export function getAddedFiles(baseRef, headRef = 'HEAD') {
 function fetchUntilMergeBase(baseRef, headRef) {
 	let step = Number(process.env.CI_FILTER_DEEPEN_STEP) || 200;
 	const maxDeepen = Number(process.env.CI_FILTER_MAX_DEEPEN) || 20_000;
-	if (isShallow()) {
-		deepenFetch(baseRef, 1, maxDeepen);
-	} else {
-		execSync(`git fetch --no-tags --prune --filter=blob:none origin ${baseRef}`, {
-			stdio: 'pipe',
-		});
-	}
+	const depth = isShallow() ? `--depth=${step} ` : '';
+	execSync(`git fetch --no-tags --prune --filter=blob:none ${depth}origin ${baseRef}`, {
+		stdio: 'pipe',
+	});
 
 	while (!hasReliableMergeBase(headRef)) {
 		if (!isShallow()) {
