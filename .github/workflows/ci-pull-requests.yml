@@ -88,6 +88,7 @@ jobs:
               !packages/@n8n/task-runner-python/**
               !packages/testing/playwright/**
               !.github/**
+              .github/workflows/test-unit-reusable.yml
               !**/*.md
               !**/LICENSE
               !**/CHANGELOG.md
@@ -129,9 +130,10 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
-              .devcontainer/codespaces/agent-worker*.mjs
+              .devcontainer/codespaces/*.mjs
               OWNERS
               scripts/*.test.mjs
+              scripts/cloud-session*.mjs
               scripts/codespace-env.mjs
               scripts/codespace-preview/**
               scripts/licenses/**

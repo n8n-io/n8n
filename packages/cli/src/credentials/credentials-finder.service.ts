@@ -13,6 +13,12 @@ import { In } from '@n8n/typeorm';
 
 import { RoleService } from '@/services/role.service';
 
+/**
+ * The credential scopes an instance role can hold without being allowed to use a
+ * credential — the "View" rung of the instance-role editor's Credentials group.
+ */
+const VISIBILITY_SCOPES: ReadonlySet<Scope> = new Set(['credential:read', 'credential:list']);
+
 @Service()
 export class CredentialsFinderService {
 	constructor(
@@ -34,6 +40,31 @@ export class CredentialsFinderService {
 
 	private isExactScope(scopes: Scope[], scope: Scope): boolean {
 		return scopes.length === 1 && scopes[0] === scope;
+	}
+
+	/**
+	 * A global credential scope bypasses project sharing entirely. That override now
+	 * splits in two: seeing a credential you are not a member of, and using its
+	 * secret. Using also requires `credential:use`, so an instance role can grant
+	 * "see but do not use".
+	 *
+	 * The split only applies to a request made on see-rights alone. That is where the
+	 * ambiguity lives: `credential:read` gates the NDV picker, load-options, test and
+	 * probe — all of which hand out the live secret — as well as plain metadata reads.
+	 * A caller that asks for more than see-rights names its own gate (`:update`,
+	 * `:delete`, `:move`, `:share`, `:connect`), which a see-only role does not hold,
+	 * so requiring `credential:use` on top would only break unrelated roles.
+	 *
+	 * Among the see-rights callers, the genuine metadata reads opt in with
+	 * `visibilityOnly`; the rest are treated as a use and fail closed.
+	 *
+	 * Owner and Admin hold `credential:use` from GLOBAL_OWNER_SCOPES, so for them the
+	 * added conjunct is always true and behaviour is unchanged.
+	 */
+	private hasGlobalOverride(user: User, scopes: Scope[], visibilityOnly = false): boolean {
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) return false;
+		if (scopes.some((scope) => !VISIBILITY_SCOPES.has(scope))) return true;
+		return visibilityOnly || hasGlobalScope(user, 'credential:use');
 	}
 
 	/**
@@ -111,13 +142,17 @@ export class CredentialsFinderService {
 	 * This also returns `credentials.shared` which is useful for constructing
 	 * all scopes the user has for the credential using `RoleService.addScopes`.
 	 **/
-	async findCredentialsForUser(user: User, scopes: Scope[]) {
+	async findCredentialsForUser(
+		user: User,
+		scopes: Scope[],
+		options: { visibilityOnly?: boolean } = {},
+	) {
 		let where: FindOptionsWhere<CredentialsEntity> = {
 			isGlobal: false,
 			usageScope: 'project',
 		};
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+		if (!this.hasGlobalOverride(user, scopes, options.visibilityOnly)) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),
@@ -155,7 +190,7 @@ export class CredentialsFinderService {
 		credentialsId: string,
 		user: User,
 		scopes: Scope[],
-		options: { includeInstanceCredentials?: boolean } = {},
+		options: { includeInstanceCredentials?: boolean; visibilityOnly?: boolean } = {},
 	): Promise<CredentialsEntity | null> {
 		if (options.includeInstanceCredentials && hasGlobalScope(user, 'credential:manageInstance')) {
 			const instanceCredential = await this.credentialsRepository.findOneBy({
@@ -167,7 +202,7 @@ export class CredentialsFinderService {
 
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId };
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+		if (!this.hasGlobalOverride(user, scopes, options.visibilityOnly)) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),
@@ -223,13 +258,13 @@ export class CredentialsFinderService {
 		user: User,
 		scopes: Scope[],
 		trx?: EntityManager,
-		options?: { includeGlobalCredentials?: boolean },
+		options?: { includeGlobalCredentials?: boolean; visibilityOnly?: boolean },
 	) {
 		let where: FindOptionsWhere<SharedCredentials> = {
 			credentials: { usageScope: 'project' },
 		};
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+		if (!this.hasGlobalOverride(user, scopes, options?.visibilityOnly)) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),
@@ -285,6 +320,7 @@ export class CredentialsFinderService {
 		credentialIds: string[],
 		user: User,
 		scopes: Scope[],
+		options: { visibilityOnly?: boolean } = {},
 	): Promise<Set<string>> {
 		if (credentialIds.length === 0) return new Set();
 
@@ -293,7 +329,7 @@ export class CredentialsFinderService {
 			credentials: { usageScope: 'project' },
 		};
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+		if (!this.hasGlobalOverride(user, scopes, options.visibilityOnly)) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),
