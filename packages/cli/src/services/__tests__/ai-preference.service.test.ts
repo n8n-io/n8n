@@ -494,12 +494,24 @@ describe('AiPreferenceService', () => {
 			const updated = await service.update(owner, 'pref-1', {
 				content: 'A better rule.',
 				scope: 'user',
+				userId: 'owner-1',
 			});
 
 			expect(updated.source).toBe('ui');
 			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
 				expect.objectContaining({ content: 'A better rule.', source: 'ui' }),
 			);
+		});
+
+		it('refuses an edit with user scope that names no user, before any permission check', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1', source: 'ui' }),
+			);
+
+			await expect(
+				service.update(owner, 'pref-1', { content: 'A better rule.', scope: 'user' }),
+			).rejects.toThrow('An edit of a user preference must name the user');
+			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('checks the scope a move lands in, not the one it leaves', async () => {
@@ -517,7 +529,11 @@ describe('AiPreferenceService', () => {
 				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1' }),
 			);
 
-			await service.update(owner, 'pref-1', { content: 'A better rule.', scope: 'user' });
+			await service.update(owner, 'pref-1', {
+				content: 'A better rule.',
+				scope: 'user',
+				userId: 'owner-1',
+			});
 
 			expect(aiPreferenceRepository.countForTarget).not.toHaveBeenCalled();
 		});
@@ -561,7 +577,11 @@ describe('AiPreferenceService', () => {
 			aiPreferenceRepository.existsForTargetWithContent.mockResolvedValue(true);
 
 			await expect(
-				service.update(owner, 'pref-1', { content: 'A better rule.', scope: 'user' }),
+				service.update(owner, 'pref-1', {
+					content: 'A better rule.',
+					scope: 'user',
+					userId: 'owner-1',
+				}),
 			).rejects.toThrow('This user already has a preference with the same text');
 			expect(aiPreferenceRepository.existsForTargetWithContent).toHaveBeenCalledWith(
 				{ scope: 'user', userId: 'owner-1' },
@@ -575,7 +595,7 @@ describe('AiPreferenceService', () => {
 				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1' }),
 			);
 
-			await service.update(owner, 'pref-1', { content: 'Rule.', scope: 'user' });
+			await service.update(owner, 'pref-1', { content: 'Rule.', scope: 'user', userId: 'owner-1' });
 
 			expect(aiPreferenceRepository.existsForTargetWithContent).not.toHaveBeenCalled();
 		});

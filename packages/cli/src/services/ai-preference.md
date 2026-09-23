@@ -94,6 +94,9 @@ none of its own.
 An update that moves a row to another scope needs the delete right on the old scope and
 the create right on the new one.
 
+An edit names its owner. A `PATCH` with scope `user` and no `userId` answers 400. Only a
+create defaults a missing `userId` to the caller, because a create has no owner to lose.
+
 ## The two caps
 
 Both numbers live in

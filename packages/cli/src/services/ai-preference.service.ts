@@ -234,6 +234,7 @@ export class AiPreferenceService {
 	async update(user: User, id: string, request: AiPreferenceRequestDto): Promise<AiPreferenceDto> {
 		const access = this.projectAccess(user);
 		const row = await this.requireVisible(user, id, access);
+		this.assertEditNamesOwner(request);
 		const moved = this.isMove(user, row, request);
 		await this.assertCanWrite(user, row, moved ? 'delete' : 'update', access);
 		const target = await this.resolveTarget(user, request, moved ? 'create' : 'update', access);
@@ -373,7 +374,8 @@ export class AiPreferenceService {
 		}
 	}
 
-	/** Decided from the ids alone, before any permission check. */
+	/** Decided from the ids alone, before any permission check. On an edit `request.userId`
+	 *  is always set (see `assertEditNamesOwner`), so the `?? user.id` only serves a create. */
 	private isMove(user: User, row: AiPreference, request: AiPreferenceRequestDto): boolean {
 		const userId = request.scope === 'user' ? (request.userId ?? user.id) : null;
 		const projectId = request.scope === 'project' ? (request.projectId ?? null) : null;
@@ -422,6 +424,17 @@ export class AiPreferenceService {
 				}
 				return { userId: null, user: null, projectId: project.id, project };
 			}
+		}
+	}
+
+	/**
+	 * An edit names its target. A create with scope `user` and no `userId` targets the
+	 * caller, because there is no owner to lose. An edit must not default that way, or an
+	 * admin could move another user's row to themselves by leaving the field out.
+	 */
+	private assertEditNamesOwner(request: AiPreferenceRequestDto) {
+		if (request.scope === 'user' && !request.userId) {
+			throw new BadRequestError('An edit of a user preference must name the user');
 		}
 	}
 
