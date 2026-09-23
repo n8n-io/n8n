@@ -47,6 +47,7 @@ export function blocked(
 		configId: 'config-id',
 		git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 		preflight: {
+			missingProjects: [],
 			missingBindings: [credential],
 			accessRequirements: [],
 			conflicts: [],
