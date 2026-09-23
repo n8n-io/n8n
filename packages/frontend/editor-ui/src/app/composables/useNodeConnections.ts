@@ -2,11 +2,7 @@ import type {
 	CanvasConnectionPort,
 	CanvasNodeData,
 } from '@/features/workflows/canvas/canvas.types';
-import {
-	CANVAS_NODE_GROUP_HANDLE_LEFT,
-	CANVAS_NODE_GROUP_HANDLE_RIGHT,
-	CanvasConnectionMode,
-} from '@/features/workflows/canvas/canvas.types';
+import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -63,20 +59,12 @@ export function useNodeConnections({
 	 */
 
 	function isValidConnection(connection: Connection) {
-		// Collapsed group edges use the group's visual left/right handles. They
-		// represent the canonical main input/output ports for validation.
-		const sourceGroupHandle = connection.sourceHandle === CANVAS_NODE_GROUP_HANDLE_RIGHT;
-		const targetGroupHandle = connection.targetHandle === CANVAS_NODE_GROUP_HANDLE_LEFT;
-		const { type: parsedSourceType, mode: parsedSourceMode } = parseCanvasConnectionHandleString(
+		const { type: sourceType, mode: sourceMode } = parseCanvasConnectionHandleString(
 			connection.sourceHandle,
 		);
-		const { type: parsedTargetType, mode: parsedTargetMode } = parseCanvasConnectionHandleString(
+		const { type: targetType, mode: targetMode } = parseCanvasConnectionHandleString(
 			connection.targetHandle,
 		);
-		const sourceType = sourceGroupHandle ? NodeConnectionTypes.Main : parsedSourceType;
-		const sourceMode = sourceGroupHandle ? CanvasConnectionMode.Output : parsedSourceMode;
-		const targetType = targetGroupHandle ? NodeConnectionTypes.Main : parsedTargetType;
-		const targetMode = targetGroupHandle ? CanvasConnectionMode.Input : parsedTargetMode;
 
 		const isSameMode = sourceMode === targetMode;
 		const isSameType = sourceType === targetType;
