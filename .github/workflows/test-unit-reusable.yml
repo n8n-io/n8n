@@ -35,6 +35,7 @@ on:
         type: string
 env:
   NODE_OPTIONS: --max-old-space-size=7168
+  VITEST_PHASE_PROFILE: 'true'
 
 jobs:
   unit-test-backend:

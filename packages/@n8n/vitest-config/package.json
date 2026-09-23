@@ -48,6 +48,11 @@
       "import": "./dist/node-decorators.js",
       "require": "./dist/node-decorators.js",
       "types": "./dist/node-decorators.d.ts"
+    },
+    "./phase-reporter": {
+      "import": "./dist/phase-reporter.js",
+      "require": "./dist/phase-reporter.js",
+      "types": "./dist/phase-reporter.d.ts"
     }
   },
   "scripts": {

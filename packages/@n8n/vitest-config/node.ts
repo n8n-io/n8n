@@ -5,6 +5,7 @@ import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
 
 import { coverageExcludes } from './coverage-excludes.js';
+import { profilingConfig, profilingReporters } from './profiling.js';
 
 /**
  * Pin dual-build (ESM+CJS) deps to their CJS entry so a single class identity is shared
@@ -51,6 +52,7 @@ export const forkPoolOptions = (): InlineConfig => {
  * Use this when you need to spread the config into workspace projects.
  */
 export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig => ({
+	...profilingConfig(),
 	silent: true,
 	globals: true,
 	// Restore `vi.spyOn` spies to their original implementation before each test, so
@@ -61,7 +63,6 @@ export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig
 	// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
 	server: { deps: { inline: ['vitest-mock-extended'] } },
 	...forkPoolOptions(),
-	reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
 	outputFile: { junit: './junit.xml' },
 	...(process.env.COVERAGE_ENABLED === 'true'
 		? {
@@ -75,6 +76,9 @@ export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig
 			}
 		: {}),
 	...options,
+	reporters: profilingReporters(
+		options.reporters ?? (process.env.CI === 'true' ? ['default', 'junit'] : ['default']),
+	),
 });
 
 export const createVitestConfig = (
