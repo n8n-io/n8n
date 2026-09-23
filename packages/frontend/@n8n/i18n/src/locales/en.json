@@ -4705,7 +4705,7 @@
 	"canvas.nodeGroup.expand": "Expand",
 	"canvas.nodeGroup.collapse": "Collapse",
 	"canvas.nodeGroup.addToChat": "Add group to chat",
-	"canvas.nodeGroup.holdsTrigger": "This group starts the workflow",
+	"canvas.nodeGroup.holdsTrigger": "This group contains a trigger",
 	"canvas.nodeGroup.prompt.renameGroup": "Rename group",
 	"canvas.nodeGroup.duplicateName": "A group with this name already exists",
 	"canvas.nodeGroup.renameBlocked.title": "Group not renamed",
