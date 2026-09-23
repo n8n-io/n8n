@@ -226,6 +226,7 @@ function onRemove() {
 		:title-error="visibleNameError"
 		:title-max-length="128"
 		size="fit"
+		body-flush
 		editable-title
 		data-testid="agent-skill-modal"
 		@update:open="!$event && closeModal()"
@@ -234,6 +235,7 @@ function onRemove() {
 		<N8nCallout
 			v-if="openedWithMissingContent"
 			theme="warning"
+			:class="$style.missingContentCallout"
 			data-testid="agent-skill-missing-content-callout"
 		>
 			{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
@@ -284,6 +286,10 @@ function onRemove() {
 	height: min(calc(70dvh - var(--spacing--lg)), calc(var(--height--5xl) * 6 - var(--spacing--lg)));
 	min-height: 0;
 	display: flex;
+}
+
+.missingContentCallout {
+	margin: var(--spacing--md) var(--spacing--lg) 0;
 }
 
 @media (max-width: 480px) {

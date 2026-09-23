@@ -35,7 +35,7 @@ design work.
 | Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                      |
 | Header     | Keep the header's bottom divider. Put Back on the left and Close on the right.                                               |
 | Title      | Use an editable local name when the asset supports one. Do not add an asset icon.                                            |
-| Body       | Focus the first body field. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
+| Body       | Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
 | Footer     | Do not add a divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                       |
 | Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                              |
 
@@ -50,6 +50,9 @@ when the body or nested content can scroll. The Agent shell is the only scroll
 owner for normal configuration forms. Do not put fixed heights or nested
 scrollbars on MCP, node, or workflow configuration content. A picker can use a
 stable minimum height. A configuration step must use its natural height.
+
+When a nested credential dialog is open, release the parent focus trap and
+block parent dismissal. The nested dialog owns Escape until it closes.
 
 ### Title contract
 
@@ -114,7 +117,7 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 
 | Case                      | Exception                                                                                                                                                                            |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Skills                    | Use `fit` with a 52rem content width. Keep it narrower than `full`. Keep the file navigation and editor inside the scrolling body.                                                   |
+| Skills                    | Use `fit` with a 52rem content width. Keep it narrower than `full`. Use the flush Agent body so the file workspace does not get double padding. Keep the file navigation and editor inside the scrolling body. |
 | Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal. |
 | Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                            |
 | Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                     |

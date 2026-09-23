@@ -126,6 +126,10 @@ describe('AgentSkillModal', () => {
 			'data-size',
 			'fit',
 		);
+		expect(container.querySelector('[data-testid="agent-skill-modal"]')).toHaveAttribute(
+			'data-body-flush',
+			'true',
+		);
 	});
 
 	it('does not call createAgentSkill when the user closes before saving', async () => {

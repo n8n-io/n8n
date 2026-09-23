@@ -10,6 +10,7 @@ export const AgentModalTestStub = defineComponent({
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
+		bodyFlush: { type: Boolean, default: false },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },
@@ -25,6 +26,7 @@ export const AgentModalTestStub = defineComponent({
 			:data-size="size"
 			:data-trap-focus="trapFocus"
 			:data-disable-outside-pointer-events="disableOutsidePointerEvents"
+			:data-body-flush="bodyFlush"
 		>
 			<header>
 				<button
@@ -89,6 +91,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
+		bodyFlush: { type: Boolean, default: false },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },

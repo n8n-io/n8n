@@ -5,7 +5,7 @@ import AgentModal from '../components/modals/AgentModal.vue';
 import AgentModalMultiStep from '../components/modals/AgentModalMultiStep.vue';
 
 vi.mock('@n8n/design-system', async () => {
-	const { defineComponent, onMounted } = await import('vue');
+	const { defineComponent, nextTick, onMounted, ref } = await import('vue');
 	return {
 		N8nDialog: defineComponent({
 			props: {
@@ -14,19 +14,38 @@ vi.mock('@n8n/design-system', async () => {
 				trapFocus: Boolean,
 				disableOutsidePointerEvents: Boolean,
 			},
-			emits: ['update:open', 'interactOutside', 'openAutoFocus'],
+			emits: ['update:open', 'escapeKeyDown', 'interactOutside', 'openAutoFocus'],
 			setup(_, { emit }) {
-				onMounted(() => emit('openAutoFocus', new Event('open-auto-focus', { cancelable: true })));
+				const dialog = ref<HTMLElement>();
+				const escapePrevented = ref(false);
+				onMounted(() => {
+					const event = new Event('open-auto-focus', { cancelable: true });
+					emit('openAutoFocus', event);
+					if (!event.defaultPrevented) {
+						void nextTick(() =>
+							dialog.value?.querySelector<HTMLElement>('button:not([disabled])')?.focus(),
+						);
+					}
+				});
+				function pressEscape() {
+					const event = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
+					emit('escapeKeyDown', event);
+					escapePrevented.value = event.defaultPrevented;
+				}
+				return { dialog, escapePrevented, pressEscape };
 			},
 			template: `
 				<section
+					ref="dialog"
 					v-if="open"
 					role="dialog"
 					:data-size="size"
 					:data-trap-focus="trapFocus"
 					:data-disable-outside-pointer-events="disableOutsidePointerEvents"
+					:data-escape-prevented="escapePrevented"
 				>
 					<slot />
+					<button data-test-id="dialog-escape" @click="pressEscape" />
 					<button data-test-id="dialog-dismiss" @click="$emit('update:open', false)" />
 				</section>
 			`,
@@ -145,6 +164,25 @@ describe('AgentModal', () => {
 
 		expect(wrapper.emitted('update:title')).toEqual([['Slack messages']]);
 		expect(document.activeElement).toBe(wrapper.get('[data-test-id="first-body-field"]').element);
+	});
+
+	it('uses the dialog fallback focus when the body has no interactive control', async () => {
+		const wrapper = mountModal({}, { default: '<span>Delete this agent?</span>' });
+		await flushPromises();
+
+		expect(document.activeElement).toBe(wrapper.get('[data-testid="dialog-close-button"]').element);
+	});
+
+	it('blocks parent dismissal while a nested credential dialog is open', async () => {
+		const wrapper = mountModal({ trapFocus: false, showBack: true });
+
+		await wrapper.get('[data-test-id="dialog-escape"]').trigger('click');
+		await wrapper.get('[data-test-id="dialog-dismiss"]').trigger('click');
+
+		expect(wrapper.get('[role="dialog"]').attributes('data-escape-prevented')).toBe('true');
+		expect(wrapper.get('[data-testid="agent-modal-back"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.get('[data-testid="dialog-close-button"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.emitted('update:open')).toBeUndefined();
 	});
 
 	it('emits Back and Close when the modal is idle', async () => {

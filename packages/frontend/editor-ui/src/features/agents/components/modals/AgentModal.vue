@@ -27,6 +27,7 @@ const props = withDefaults(
 		showFooter?: boolean;
 		showCancel?: boolean;
 		bodyScrollable?: boolean;
+		bodyFlush?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -42,6 +43,7 @@ const props = withDefaults(
 		showFooter: undefined,
 		showCancel: true,
 		bodyScrollable: true,
+		bodyFlush: false,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -65,29 +67,39 @@ const hasFooter = computed(
 		props.showFooter ??
 		Boolean(slots.footer || slots.footerLeft || slots.footerBeforeCancel || slots.footerActions),
 );
+const dismissalBlocked = computed(() => props.busy || !props.trapFocus);
 
 function onOpenChange(open: boolean) {
-	if (!open && props.busy) return;
+	if (!open && dismissalBlocked.value) return;
 	emit('update:open', open);
 }
 
 function close() {
-	if (!props.busy) emit('update:open', false);
+	if (!dismissalBlocked.value) emit('update:open', false);
 }
 
 function onBack() {
-	if (!props.busy) emit('back');
+	if (!dismissalBlocked.value) emit('back');
+}
+
+function onEscapeKeyDown(event: KeyboardEvent) {
+	if (dismissalBlocked.value) event.preventDefault();
+}
+
+function onInteractOutside(event: Event) {
+	if (dismissalBlocked.value) event.preventDefault();
+	emit('interactOutside', event);
 }
 
 function onOpenAutoFocus(event: Event) {
+	const autofocusTarget =
+		body.value?.querySelector<HTMLElement>(
+			'[data-agent-modal-autofocus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]',
+		) ?? body.value?.querySelector<HTMLElement>('button:not([disabled])');
+	if (!autofocusTarget) return;
+
 	event.preventDefault();
-	void nextTick(() => {
-		const autofocusTarget =
-			body.value?.querySelector<HTMLElement>(
-				'[data-agent-modal-autofocus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]',
-			) ?? body.value?.querySelector<HTMLElement>('button:not([disabled])');
-		autofocusTarget?.focus();
-	});
+	void nextTick(() => autofocusTarget.focus());
 }
 </script>
 
@@ -99,7 +111,8 @@ function onOpenAutoFocus(event: Event) {
 		:trap-focus="props.trapFocus"
 		:disable-outside-pointer-events="props.disableOutsidePointerEvents"
 		:show-close-button="false"
-		@interact-outside="emit('interactOutside', $event)"
+		@escape-key-down="onEscapeKeyDown"
+		@interact-outside="onInteractOutside"
 		@open-auto-focus="onOpenAutoFocus"
 		@update:open="onOpenChange"
 	>
@@ -110,7 +123,7 @@ function onOpenAutoFocus(event: Event) {
 					icon="arrow-left"
 					variant="ghost"
 					size="small"
-					:disabled="props.busy"
+					:disabled="dismissalBlocked"
 					:class="$style.backButton"
 					:aria-label="i18n.baseText('generic.back')"
 					data-testid="agent-modal-back"
@@ -148,7 +161,7 @@ function onOpenAutoFocus(event: Event) {
 					icon="x"
 					variant="ghost"
 					size="small"
-					:disabled="props.busy"
+					:disabled="dismissalBlocked"
 					:aria-label="i18n.baseText('generic.close')"
 					data-testid="dialog-close-button"
 					:class="$style.closeButton"
@@ -176,7 +189,11 @@ function onOpenAutoFocus(event: Event) {
 
 		<div
 			ref="body"
-			:class="[$style.body, !props.bodyScrollable && $style.bodyNotScrollable]"
+			:class="[
+				$style.body,
+				!props.bodyScrollable && $style.bodyNotScrollable,
+				props.bodyFlush && $style.bodyFlush,
+			]"
 			data-testid="agent-modal-body"
 		>
 			<slot />
@@ -193,7 +210,7 @@ function onOpenAutoFocus(event: Event) {
 						<N8nButton
 							v-if="props.showCancel"
 							variant="outline"
-							:disabled="props.busy"
+							:disabled="dismissalBlocked"
 							data-testid="agent-modal-cancel"
 							@click="close"
 						>
@@ -304,6 +321,11 @@ function onOpenAutoFocus(event: Event) {
 
 .bodyNotScrollable {
 	overflow-y: hidden;
+}
+
+.bodyFlush {
+	margin-inline: calc(var(--spacing--lg) * -1);
+	padding: 0;
 }
 
 .footer {

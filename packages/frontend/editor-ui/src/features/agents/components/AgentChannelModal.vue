@@ -643,13 +643,6 @@ watch(
 	</AgentModalMultiStep>
 </template>
 
-<style lang="scss">
-body:has([data-testid='agent-channel-modal'])
-	.el-overlay:has([data-test-id='editCredential-modal']) {
-	pointer-events: auto;
-}
-</style>
-
 <style module lang="scss">
 .container {
 	display: flex;
