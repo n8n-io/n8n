@@ -3308,7 +3308,7 @@ export interface IWorkflowMetadata {
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
-	webhookResponse?: any;
+	webhookResponse?: unknown;
 	noWebhookResponse?: boolean;
 	/** Input the trigger wants connected sub-nodes to receive, also when they run on a worker. */
 	toolInput?: IDataObject;

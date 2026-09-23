@@ -9,6 +9,7 @@ import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
 import merge from 'lodash/merge';
@@ -20,9 +21,9 @@ import {
 	WAITING_TOKEN_QUERY_PARAM,
 } from 'n8n-core';
 import type {
-	IBinaryData,
 	IDataObject,
 	IExecuteData,
+	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
 	INode,
 	IPinData,
@@ -415,8 +416,12 @@ export const handleFormRedirectionCase = (
 const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
 const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 
+const hasBinaryDataId = (response: IExecuteResponsePromiseData): response is IN8nHttpFullResponse & { body: { binaryData: { id: string } } } =>
+	isRecord(response.body) && isRecord(response.body.binaryData) &&
+	typeof response.body.binaryData.id === 'string';
+
 export function setupResponseNodePromise(
-	responsePromise: IDeferredPromise<IN8nHttpFullResponse>,
+	responsePromise: IDeferredPromise<IExecuteResponsePromiseData>,
 	res: express.Response,
 	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
 	workflowStartNode: INode,
@@ -424,7 +429,7 @@ export function setupResponseNodePromise(
 	workflow: Workflow,
 ): void {
 	void responsePromise.promise
-		.then(async (response: IN8nHttpFullResponse) => {
+		.then(async (response) => {
 			if (response === EXECUTION_ENDED_WITHOUT_RESPONSE) {
 				// The execution ended without the Respond to Webhook node running. The
 				// post-execute handler answers instead, because only it knows whether the
@@ -432,8 +437,8 @@ export function setupResponseNodePromise(
 				return;
 			}
 
-			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
-			if (binaryData?.id) {
+			if (hasBinaryDataId(response)) {
+				const { binaryData } = response.body;
 				if (response.statusCode) {
 					res.status(response.statusCode);
 				}
@@ -452,10 +457,10 @@ export function setupResponseNodePromise(
 				}
 				responseCallback(null, { noWebhookResponse: true });
 			} else if (Buffer.isBuffer(response.body)) {
-				if (response.statusCode) {
+				if (typeof response.statusCode === 'number') {
 					res.status(response.statusCode);
 				}
-				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+				WebhookResponseHeaders.fromObject(isRecord(response.headers) ? response.headers : {}).applyToResponse(res);
 				applySandboxCSP(res);
 				res.end(response.body);
 				responseCallback(null, { noWebhookResponse: true });
@@ -464,9 +469,9 @@ export function setupResponseNodePromise(
 				//       Webhook Response node
 
 				let data: IWebhookResponseCallbackData = {
-					data: response.body as IDataObject,
-					headers: response.headers,
-					responseCode: response.statusCode,
+					data: response.body,
+					headers: isRecord(response.headers) ? response.headers : undefined,
+					responseCode: typeof response.statusCode === 'number' ? response.statusCode : undefined,
 				};
 
 				data = handleFormRedirectionCase(data, workflowStartNode);
@@ -1070,9 +1075,9 @@ export async function executeWebhook(
 		);
 		if (didPublishMcpRelay) return undefined;
 
-		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
+		let responsePromise: IDeferredPromise<IExecuteResponsePromiseData> | undefined;
 		if (responseMode === 'responseNode') {
-			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
+			responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
 			// Mark the request as answered as soon as the node produces a response, before
 			// `setupResponseNodePromise` starts writing it. Streaming offloaded binary data
 			// takes time, and a node failing during that wait must not answer a second time.

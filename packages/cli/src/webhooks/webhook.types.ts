@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
+import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import type { ExpectedWebhookNodeType } from './node-type-matcher';
 import type { WebhookResponse } from './webhook-response';
@@ -37,7 +37,7 @@ export interface IWebhookManager {
 }
 
 export interface IWebhookResponseCallbackData {
-	data?: IDataObject | IDataObject[];
+	data?: unknown;
 	headers?: object;
 	noWebhookResponse?: boolean;
 	responseCode?: number;
