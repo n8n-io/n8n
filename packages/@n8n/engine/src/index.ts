@@ -85,6 +85,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionRecord,
 	ExecutionStatus,
+	DueStep,
 	ExecutionStore,
 	ExecutionView,
 	NewExecutionRecord,
@@ -95,11 +96,13 @@ export type {
 	StepKey,
 	StepKeyId,
 	StepRecord,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	StepStore,
 	StepView,
 	TriggerOutputs,
+	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';
 
