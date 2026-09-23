@@ -1,9 +1,9 @@
-operationId: listPolicyDocuments
+operationId: listNodeTypePolicyDocuments
 tags:
-  - CredentialTypePolicy
-summary: List credential type policy documents
+  - NodeTypePolicy
+summary: List node type policy documents
 description: Returns a cursor-paginated list of reusable policy documents.
-x-required-scope: credentialTypePolicy:manage
+x-required-scope: nodeTypePolicy:manage
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
   - $ref: ../../../../shared/spec/parameters/cursor.yml

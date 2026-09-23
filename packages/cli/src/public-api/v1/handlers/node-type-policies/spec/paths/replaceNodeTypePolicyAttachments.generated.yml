@@ -1,4 +1,4 @@
-operationId: replaceAttachments
+operationId: replaceNodeTypePolicyAttachments
 tags:
   - NodeTypePolicy
 summary: Replace a scope's attached policy documents

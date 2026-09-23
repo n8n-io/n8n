@@ -94,7 +94,7 @@ export class CredentialTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
-	async getInstancePolicy(): Promise<PolicyEffectivePublicDto> {
+	async getCredentialTypeInstancePolicy(): Promise<PolicyEffectivePublicDto> {
 		const effective = await (await this.service()).getEffectivePolicy(CREDENTIAL_TYPES_KIND, null);
 
 		return {
@@ -117,7 +117,7 @@ export class CredentialTypePoliciesPublicController {
 	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async putInstancePolicy(
+	async putCredentialTypeInstancePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: PutInstancePolicyDto,
@@ -150,7 +150,7 @@ export class CredentialTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
-	async getProjectPolicy(
+	async getCredentialTypeProjectPolicy(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
@@ -180,7 +180,7 @@ export class CredentialTypePoliciesPublicController {
 	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async putProjectPolicy(
+	async putCredentialTypeProjectPolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
@@ -212,7 +212,7 @@ export class CredentialTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyDocumentListPublicDto)
 	@ApiErrorResponse(503)
-	async listPolicyDocuments(
+	async listCredentialTypePolicyDocuments(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListNodeTypePolicyDocumentsQueryDto,
@@ -242,7 +242,7 @@ export class CredentialTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(201, PolicyDocumentWriteResultPublicDto)
 	@ApiErrorResponse(503)
-	async createPolicyDocument(
+	async createCredentialTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: CreatePolicyDocumentDto,
@@ -265,7 +265,7 @@ export class CredentialTypePoliciesPublicController {
 	@ApiResponse(200, PolicyDocumentPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async getPolicyDocument(
+	async getCredentialTypePolicyDocument(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', credentialTypePolicyIdParamSchema) policyId: string,
@@ -291,7 +291,7 @@ export class CredentialTypePoliciesPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async updatePolicyDocument(
+	async updateCredentialTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', credentialTypePolicyIdParamSchema) policyId: string,
@@ -321,7 +321,7 @@ export class CredentialTypePoliciesPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async deletePolicyDocument(
+	async deleteCredentialTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', credentialTypePolicyIdParamSchema) policyId: string,
@@ -341,7 +341,7 @@ export class CredentialTypePoliciesPublicController {
 	@ApiResponse(200, PolicyAttachmentsPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async replaceAttachments(
+	async replaceCredentialTypePolicyAttachments(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('scopeId', credentialTypePolicyScopeIdParamSchema) scopeId: string,

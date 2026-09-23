@@ -32,21 +32,24 @@ describe('CredentialTypePoliciesPublicController route metadata', () => {
 		handlerName,
 		route,
 	}));
-	const projectHandlers = new Set(['getProjectPolicy', 'putProjectPolicy']);
+	const projectHandlers = new Set([
+		'getCredentialTypeProjectPolicy',
+		'putCredentialTypeProjectPolicy',
+	]);
 
 	it('registers every route of the internal instance and project controllers', () => {
 		expect(routeCases.map(({ handlerName }) => handlerName).sort()).toEqual(
 			[
-				'createPolicyDocument',
-				'deletePolicyDocument',
-				'getInstancePolicy',
-				'getPolicyDocument',
-				'getProjectPolicy',
-				'listPolicyDocuments',
-				'putInstancePolicy',
-				'putProjectPolicy',
-				'replaceAttachments',
-				'updatePolicyDocument',
+				'createCredentialTypePolicyDocument',
+				'deleteCredentialTypePolicyDocument',
+				'getCredentialTypeInstancePolicy',
+				'getCredentialTypePolicyDocument',
+				'getCredentialTypeProjectPolicy',
+				'listCredentialTypePolicyDocuments',
+				'putCredentialTypeInstancePolicy',
+				'putCredentialTypeProjectPolicy',
+				'replaceCredentialTypePolicyAttachments',
+				'updateCredentialTypePolicyDocument',
 			].sort(),
 		);
 	});
@@ -107,16 +110,18 @@ describe('CredentialTypePoliciesPublicController with the module disabled', () =
 	});
 
 	it('answers 503 before touching the service', async () => {
-		await expect(controller.getInstancePolicy()).rejects.toThrow(ServiceUnavailableError);
-		await expect(controller.getProjectPolicy(req, res, 'project-id')).rejects.toThrow(
+		await expect(controller.getCredentialTypeInstancePolicy()).rejects.toThrow(
 			ServiceUnavailableError,
 		);
-		await expect(controller.getPolicyDocument(req, res, 'policy-id')).rejects.toThrow(
+		await expect(controller.getCredentialTypeProjectPolicy(req, res, 'project-id')).rejects.toThrow(
 			ServiceUnavailableError,
 		);
-		await expect(controller.deletePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
+		await expect(controller.getCredentialTypePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
 			ServiceUnavailableError,
 		);
+		await expect(
+			controller.deleteCredentialTypePolicyDocument(req, res, 'policy-id'),
+		).rejects.toThrow(ServiceUnavailableError);
 
 		expect(moduleRegistry.isActive).toHaveBeenCalledWith('type-availability-policies');
 	});
@@ -160,10 +165,10 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 		warnings: [{ ruleId: 'r2', shadowedByRuleId: 'r1' }],
 	};
 
-	it('getInstancePolicy reads the null-project scope and maps the response', async () => {
+	it('getCredentialTypeInstancePolicy reads the null-project scope and maps the response', async () => {
 		service.getEffectivePolicy.mockResolvedValue(effectivePolicy);
 
-		const result = await controller.getInstancePolicy();
+		const result = await controller.getCredentialTypeInstancePolicy();
 
 		expect(service.getEffectivePolicy).toHaveBeenCalledWith(CREDENTIAL_TYPES_KIND, null);
 		expect(result).toEqual({
@@ -174,10 +179,10 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 		});
 	});
 
-	it('getProjectPolicy reads the given project scope and maps the response', async () => {
+	it('getCredentialTypeProjectPolicy reads the given project scope and maps the response', async () => {
 		service.getEffectivePolicy.mockResolvedValue({ ...effectivePolicy, projectId: 'project-id' });
 
-		const result = await controller.getProjectPolicy(req, res, 'project-id');
+		const result = await controller.getCredentialTypeProjectPolicy(req, res, 'project-id');
 
 		expect(service.getEffectivePolicy).toHaveBeenCalledWith(CREDENTIAL_TYPES_KIND, 'project-id');
 		expect(result).toEqual({
@@ -188,15 +193,12 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 		});
 	});
 
-	it('putInstancePolicy forwards rules, defaultAction, version, and the caller id, and maps the result', async () => {
+	it('putCredentialTypeInstancePolicy forwards rules, defaultAction, version, and the caller id, and maps the result', async () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
 		const dto = { rules, defaultAction: 'deny', version: 3 } as PutInstancePolicyDto;
 
-		const result: PolicyEffectiveWriteResultPublicDto = await controller.putInstancePolicy(
-			req,
-			res,
-			dto,
-		);
+		const result: PolicyEffectiveWriteResultPublicDto =
+			await controller.putCredentialTypeInstancePolicy(req, res, dto);
 
 		expect(service.setEffectivePolicy).toHaveBeenCalledWith(
 			CREDENTIAL_TYPES_KIND,
@@ -214,11 +216,11 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 		});
 	});
 
-	it('putProjectPolicy forwards the project id, rules, defaultAction, version, and the caller id, and maps the result', async () => {
+	it('putCredentialTypeProjectPolicy forwards the project id, rules, defaultAction, version, and the caller id, and maps the result', async () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
 		const dto = { rules, defaultAction: 'deny', version: 3 } as PutProjectPolicyDto;
 
-		const result = await controller.putProjectPolicy(req, res, 'project-id', dto);
+		const result = await controller.putCredentialTypeProjectPolicy(req, res, 'project-id', dto);
 
 		expect(service.setEffectivePolicy).toHaveBeenCalledWith(
 			CREDENTIAL_TYPES_KIND,

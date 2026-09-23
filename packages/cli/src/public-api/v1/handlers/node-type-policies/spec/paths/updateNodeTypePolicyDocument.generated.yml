@@ -1,4 +1,4 @@
-operationId: updatePolicyDocument
+operationId: updateNodeTypePolicyDocument
 tags:
   - NodeTypePolicy
 summary: Replace the rules of a node type policy document
