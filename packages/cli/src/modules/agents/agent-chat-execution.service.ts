@@ -1,4 +1,3 @@
-import { LockAcquisitionTimeoutError, LockNamespace, LockService } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -9,7 +8,6 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
-import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import {
@@ -27,6 +25,11 @@ export interface CancelSuspendedRunParams {
 	resourceId: string;
 }
 
+/**
+ * Stop handling for Preview turns. The session lease admits the turns; the
+ * checkpoint compare-and-set decides between cancelling a suspension and
+ * resuming it.
+ */
 @Service()
 export class AgentChatExecutionService {
 	private readonly executions = new Map<
@@ -35,7 +38,6 @@ export class AgentChatExecutionService {
 	>();
 
 	constructor(
-		private readonly lockService: LockService,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionService: AgentExecutionService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
@@ -44,119 +46,60 @@ export class AgentChatExecutionService {
 		private readonly executionUpdates: AgentExecutionUpdateBroadcaster,
 	) {}
 
-	async admit<T>(threadId: string, create: () => Promise<T>): Promise<T> {
-		return await this.withAdmissionLease(`agent-preview-turn:${threadId}`, async (signal) => {
-			if (await this.executionRepository.existsRunningByThread(threadId)) {
-				throw new AgentTurnAlreadyRunningError();
-			}
-			signal.throwIfAborted();
-			return await create();
-		});
-	}
-
-	async admitAutomaticContinuation<T>(
-		threadId: string,
-		agentId: string,
-		runId: string,
-		createAndClaim: () => Promise<T>,
-	): Promise<T> {
-		return await this.withAdmissionLease(`agent-preview-turn:${threadId}`, async (signal) => {
-			const checkpoint = await this.checkpointStorage.getStatus(runId, agentId);
-			if (
-				checkpoint.status !== 'active' ||
-				checkpoint.checkpoint.status !== 'suspended' ||
-				checkpoint.checkpoint.persistence?.threadId !== threadId
-			) {
-				throw new AgentTurnAlreadyRunningError();
-			}
-			signal.throwIfAborted();
-			return await createAndClaim();
-		});
-	}
-
-	private async withAdmissionLease<T>(
-		key: string,
-		admit: (signal: AbortSignal) => Promise<T>,
-	): Promise<T> {
-		try {
-			return await this.lockService.withLease(LockNamespace.KNOWN_LOCKS, key, admit, {
-				waitTimeoutMs: 0,
-			});
-		} catch (error) {
-			if (error instanceof LockAcquisitionTimeoutError) throw new AgentTurnAlreadyRunningError();
-			throw error;
-		}
-	}
-
 	register(context: ExecutionContext, controller: AbortController): void {
 		this.executions.set(context.executionId, { context, controller });
 	}
 
+	/**
+	 * Cancels a suspension that the user stopped while the turn still holds the
+	 * session lease, so that no resume can start in between. The Stop
+	 * registration ends before `finalize` releases the lease: a later Stop uses
+	 * the recorded state instead of aborting a turn that already ended.
+	 */
 	async settle(
 		executionId: string,
 		finalize: () => Promise<void>,
 		suspendedRunId?: string,
 	): Promise<void> {
 		try {
-			await finalize();
+			await this.cancelStoppedSuspension(executionId, suspendedRunId);
 		} finally {
-			await this.release(executionId, suspendedRunId);
+			this.executions.delete(executionId);
+			await finalize();
 		}
 	}
 
-	private async release(executionId: string, suspendedRunId?: string): Promise<void> {
+	private async cancelStoppedSuspension(
+		executionId: string,
+		suspendedRunId?: string,
+	): Promise<void> {
 		const execution = this.executions.get(executionId);
-		try {
-			if (!execution?.controller.signal.aborted || !suspendedRunId) return;
-			const { context } = execution;
-			await this.lockService.withLease(
-				LockNamespace.KNOWN_LOCKS,
-				`agent-preview-turn:${context.threadId}`,
-				async () => {
-					const latest = await this.executionRepository.findLatestByThreadId(context.threadId);
-					if (latest?.id !== executionId) return;
-					await this.cancelSuspended({
-						agentId: context.agentId,
-						runId: suspendedRunId,
-						resourceId: draftChatMemoryResourceId(context.userId),
-					});
-				},
-			);
-		} finally {
-			this.executions.delete(executionId);
-		}
+		if (!execution?.controller.signal.aborted || !suspendedRunId) return;
+		const { context } = execution;
+		await this.cancelSuspended({
+			agentId: context.agentId,
+			runId: suspendedRunId,
+			resourceId: draftChatMemoryResourceId(context.userId),
+		});
 	}
 
 	async requestCancel(context: ExecutionContext): Promise<boolean> {
-		return await this.lockService.withLease(
-			LockNamespace.KNOWN_LOCKS,
-			`agent-preview-turn:${context.threadId}`,
-			async () => {
-				const execution = await this.getOwnedExecution(context);
-				if (!execution) throw new NotFoundError('Execution not found');
-				if (this.cancelLocal(context)) return true;
-				if (execution.status !== 'running') return await this.cancelRecordedSuspension(context);
-				if (!this.instanceSettings.isMultiMain) return false;
-				await this.publisher.publishCommand({
-					command: 'cancel-agent-chat-execution',
-					payload: context,
-				});
-				return true;
-			},
-		);
+		const execution = await this.getOwnedExecution(context);
+		if (!execution) throw new NotFoundError('Execution not found');
+		if (this.cancelLocal(context)) return true;
+		if (execution.status !== 'running') return await this.cancelRecordedSuspension(context);
+		if (!this.instanceSettings.isMultiMain) return false;
+		await this.publisher.publishCommand({
+			command: 'cancel-agent-chat-execution',
+			payload: context,
+		});
+		return true;
 	}
 
 	@OnPubSubEvent('cancel-agent-chat-execution', { instanceType: 'main' })
 	async handleCancel(context: ExecutionContext): Promise<void> {
 		if (this.cancelLocal(context)) return;
-		await this.lockService.withLease(
-			LockNamespace.KNOWN_LOCKS,
-			`agent-preview-turn:${context.threadId}`,
-			async () => {
-				if (this.cancelLocal(context)) return;
-				if (await this.getOwnedExecution(context)) await this.cancelRecordedSuspension(context);
-			},
-		);
+		if (await this.getOwnedExecution(context)) await this.cancelRecordedSuspension(context);
 	}
 
 	private cancelLocal(context: ExecutionContext): boolean {

@@ -164,8 +164,6 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
-	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
-	automaticPreviewContinuation?: boolean;
 	abortSignal?: AbortSignal;
 }
 
@@ -761,10 +759,9 @@ export class AgentExecutionOrchestratorService {
 		> & {
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;
-			automaticContinuationRunId?: string;
 		},
 	): Promise<AgentRuntime> {
-		const { onExecutionRecorded, abortSignal, automaticContinuationRunId, ...recording } = session;
+		const { onExecutionRecorded, abortSignal, ...recording } = session;
 		abortSignal?.throwIfAborted();
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
@@ -797,7 +794,6 @@ export class AgentExecutionOrchestratorService {
 					},
 					error,
 					onExecutionRecorded,
-					{ previewChat: params.previewChat, automaticContinuationRunId },
 				);
 			}
 			throw error;
@@ -808,7 +804,6 @@ export class AgentExecutionOrchestratorService {
 		const {
 			agentId,
 			projectId,
-			runId,
 			source,
 			integrationType,
 			user,
@@ -835,8 +830,6 @@ export class AgentExecutionOrchestratorService {
 				onExecutionRecorded,
 				abortSignal,
 				access,
-				automaticContinuationRunId:
-					previewChat && config.automaticPreviewContinuation ? runId : undefined,
 				sessionMode: 'existing',
 			},
 		);
@@ -855,7 +848,6 @@ export class AgentExecutionOrchestratorService {
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
 			includeHitlToolDetails: !config.usePublishedVersion,
 			previewChat: config.previewChat,
-			automaticPreviewContinuation: config.automaticPreviewContinuation,
 			onExecutionStarted: config.onExecutionStarted,
 			onExecutionRecorded: config.onExecutionRecorded,
 			onSettled: async (suspended) => {

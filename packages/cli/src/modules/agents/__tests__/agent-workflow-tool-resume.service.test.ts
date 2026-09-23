@@ -364,7 +364,6 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 				runId: 'run-1',
 				toolCallId: 'call-1',
 				resumeData: { type: 'workflow_finished', value: 'success' },
-				automaticPreviewContinuation: true,
 			}),
 		);
 	});
