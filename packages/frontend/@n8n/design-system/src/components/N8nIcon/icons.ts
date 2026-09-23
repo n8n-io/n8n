@@ -34,7 +34,6 @@ import StatusNew from './custom/status-new.svg';
 import StatusUnknown from './custom/status-unknown.svg';
 import StatusWaiting from './custom/status-waiting.svg';
 import StatusWarning from './custom/status-warning.svg';
-import Teams from './custom/teams.svg';
 import Telegram from './custom/telegram.svg';
 import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
@@ -43,6 +42,7 @@ import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 import {
+	Archive as BrandArchive,
 	ArrowDown as BrandArrowDown,
 	ArrowLeft as BrandArrowLeft,
 	ArrowRight as BrandArrowRight,
@@ -52,9 +52,19 @@ import {
 	ArrowUpRight as BrandArrowUpRight,
 	Bell as BrandBell,
 	Bold as BrandBold,
+	Book as BrandBook,
+	BookOpen as BrandBookOpen,
 	Box as BrandBox,
 	Calendar as BrandCalendar,
 	Check as BrandCheck,
+	ChevronDown as BrandChevronDown,
+	ChevronLeft as BrandChevronLeft,
+	ChevronRight as BrandChevronRight,
+	ChevronsDownUp as BrandChevronsDownUp,
+	ChevronsLeft as BrandChevronsLeft,
+	ChevronsRight as BrandChevronsRight,
+	ChevronsUpDown as BrandChevronsUpDown,
+	ChevronUp as BrandChevronUp,
 	Circle as BrandCircle,
 	CircleAlert as BrandCircleAlert,
 	CircleCheck as BrandCircleCheck,
@@ -83,14 +93,20 @@ import {
 	Globe as BrandGlobe,
 	GripVertical as BrandGripVertical,
 	Group as BrandGroup,
+	HardDrive as BrandHardDrive,
+	Hash as BrandHash,
 	History as BrandHistory,
 	House as BrandHouse,
+	Hourglass as BrandHourglass,
 	Info as BrandInfo,
 	Italic as BrandItalic,
 	KeyRound as BrandKeyRound,
 	Layers as BrandLayers,
 	Lightbulb as BrandLightbulb,
 	Link as BrandLink,
+	ListChecks as BrandListChecks,
+	ListPlus as BrandListPlus,
+	ListTree as BrandListTree,
 	Lock as BrandLock,
 	Maximize as BrandMaximize,
 	Menu as BrandMenu,
@@ -108,8 +124,10 @@ import {
 	Plus as BrandPlus,
 	Power as BrandPower,
 	RefreshCw as BrandRefreshCw,
+	Robot as BrandRobot,
 	Rss as BrandRss,
 	Search as BrandSearch,
+	Shield as BrandShield,
 	Sparkles as BrandSparkles,
 	Square as BrandSquare,
 	SquareArrowOutUpRight as BrandSquareArrowOutUpRight,
@@ -117,12 +135,17 @@ import {
 	StickyNote as BrandStickyNote,
 	Sun as BrandSun,
 	Table as BrandTable,
+	Terminal as BrandTerminal,
+	ThumbsDown as BrandThumbsDown,
+	ThumbsUp as BrandThumbsUp,
 	Trash2 as BrandTrash2,
 	TriangleAlert as BrandTriangleAlert,
 	User as BrandUser,
 	Users as BrandUsers,
+	Vault as BrandVault,
 	Variable as BrandVariable,
 	WandSparkles as BrandWandSparkles,
+	Workflow as BrandWorkflow,
 	Wrench as BrandWrench,
 	X as BrandX,
 	ZoomIn as BrandZoomIn,
@@ -143,8 +166,6 @@ import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
 import IconLucideBlocks from '~icons/lucide/blocks';
 import IconLucideBook from '~icons/lucide/book';
-import IconLucideBookOpen from '~icons/lucide/book-open';
-import IconLucideBookmark from '~icons/lucide/bookmark';
 import IconLucideBot from '~icons/lucide/bot';
 import IconLucideBox from '~icons/lucide/box';
 import IconLucideBraces from '~icons/lucide/braces';
@@ -160,9 +181,7 @@ import IconLucideChevronDown from '~icons/lucide/chevron-down';
 import IconLucideChevronLeft from '~icons/lucide/chevron-left';
 import IconLucideChevronRight from '~icons/lucide/chevron-right';
 import IconLucideChevronUp from '~icons/lucide/chevron-up';
-import IconLucideChevronsDownUp from '~icons/lucide/chevrons-down-up';
 import IconLucideChevronsLeft from '~icons/lucide/chevrons-left';
-import IconLucideChevronsRight from '~icons/lucide/chevrons-right';
 import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
@@ -249,8 +268,6 @@ import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
 import IconLucideListOrdered from '~icons/lucide/list-ordered';
-import IconLucideListPlus from '~icons/lucide/list-plus';
-import IconLucideListTree from '~icons/lucide/list-tree';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
 import IconLucideLock from '~icons/lucide/lock';
@@ -300,7 +317,6 @@ import IconLucideServer from '~icons/lucide/server';
 import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShare from '~icons/lucide/share';
-import IconLucideShield from '~icons/lucide/shield';
 import IconLucideShieldHalf from '~icons/lucide/shield-half';
 import IconLucideShieldUser from '~icons/lucide/shield-user';
 import IconLucideShredder from '~icons/lucide/shredder';
@@ -349,7 +365,6 @@ import IconLucideVolume2 from '~icons/lucide/volume-2';
 import IconLucideVolumeX from '~icons/lucide/volume-x';
 import IconLucideWallet from '~icons/lucide/wallet';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
-import IconLucideWorkflow from '~icons/lucide/workflow';
 import IconLucideWrench from '~icons/lucide/wrench';
 import IconLucideX from '~icons/lucide/x';
 import IconLucideYoutube from '~icons/lucide/youtube';
@@ -384,7 +399,6 @@ export const deprecatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
-	teams: Teams,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -606,7 +620,6 @@ export const updatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
-	teams: Teams,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
@@ -625,7 +638,7 @@ export const updatedIconSet = {
 
 	// lucide
 	'align-right': IconLucideAlignRight,
-	archive: IconLucideArchive,
+	archive: BrandArchive,
 	'archive-restore': IconLucideArchiveRestore,
 	'arrow-down': BrandArrowDown,
 	'arrow-left': BrandArrowLeft,
@@ -641,9 +654,8 @@ export const updatedIconSet = {
 	bell: BrandBell,
 	blocks: IconLucideBlocks,
 	bold: BrandBold,
-	book: IconLucideBook,
-	'book-open': IconLucideBookOpen,
-	bookmark: IconLucideBookmark,
+	book: BrandBook,
+	'book-open': BrandBookOpen,
 	bot: IconLucideBot,
 	box: BrandBox,
 	brain: IconLucideBrain,
@@ -654,14 +666,14 @@ export const updatedIconSet = {
 	'chart-column-decreasing': IconLucideChartColumnDecreasing,
 	check: BrandCheck,
 	'check-check': IconLucideCheckCheck,
-	'chevron-down': IconLucideChevronDown,
-	'chevron-left': IconLucideChevronLeft,
-	'chevron-right': IconLucideChevronRight,
-	'chevron-up': IconLucideChevronUp,
-	'chevrons-left': IconLucideChevronsLeft,
-	'chevrons-right': IconLucideChevronsRight,
-	'chevrons-down-up': IconLucideChevronsDownUp,
-	'chevrons-up-down': IconLucideChevronsUpDown,
+	'chevron-down': BrandChevronDown,
+	'chevron-left': BrandChevronLeft,
+	'chevron-right': BrandChevronRight,
+	'chevron-up': BrandChevronUp,
+	'chevrons-left': BrandChevronsLeft,
+	'chevrons-right': BrandChevronsRight,
+	'chevrons-down-up': BrandChevronsDownUp,
+	'chevrons-up-down': BrandChevronsUpDown,
 	circle: BrandCircle,
 	'circle-alert': BrandCircleAlert,
 	'circle-check': BrandCircleCheck,
@@ -725,14 +737,14 @@ export const updatedIconSet = {
 	group: BrandGroup,
 	'hand-coins': IconLucideHandCoins,
 	handshake: IconLucideHandshake,
-	'hard-drive': IconLucideHardDrive,
+	'hard-drive': BrandHardDrive,
 	'hard-drive-download': IconLucideHardDriveDownload,
-	hash: IconLucideHash,
+	hash: BrandHash,
 	'heading-1': IconLucideHeading1,
 	'heading-2': IconLucideHeading2,
 	'heading-3': IconLucideHeading3,
 	history: BrandHistory,
-	hourglass: IconLucideHourglass,
+	hourglass: BrandHourglass,
 	house: BrandHouse,
 	image: IconLucideImage,
 	inbox: IconLucideInbox,
@@ -747,9 +759,9 @@ export const updatedIconSet = {
 	lightbulb: BrandLightbulb,
 	link: BrandLink,
 	list: IconLucideList,
-	'list-checks': IconLucideListChecks,
-	'list-plus': IconLucideListPlus,
-	'list-tree': IconLucideListTree,
+	'list-checks': BrandListChecks,
+	'list-plus': BrandListPlus,
+	'list-tree': BrandListTree,
 	'list-ordered': IconLucideListOrdered,
 	lock: BrandLock,
 	'log-in': IconLucideLogIn,
@@ -792,7 +804,7 @@ export const updatedIconSet = {
 	'refresh-cw': BrandRefreshCw,
 	'remove-formatting': IconLucideRemoveFormatting,
 	rss: BrandRss,
-	robot: IconLucideBot,
+	robot: BrandRobot,
 	'satellite-dish': IconLucideSatelliteDish,
 	save: IconLucideSave,
 	scale: IconLucideScale,
@@ -804,7 +816,7 @@ export const updatedIconSet = {
 	send: IconLucideSend,
 	server: IconLucideServer,
 	share: IconLucideShare,
-	shield: IconLucideShield,
+	shield: BrandShield,
 	'shield-half': IconLucideShieldHalf,
 	'shield-user': IconLucideShieldUser,
 	shredder: IconLucideShredder,
@@ -825,9 +837,9 @@ export const updatedIconSet = {
 	table: BrandTable,
 	tags: IconLucideTags,
 	telescope: IconLucideTelescope,
-	terminal: IconLucideTerminal,
-	'thumbs-down': IconLucideThumbsDown,
-	'thumbs-up': IconLucideThumbsUp,
+	terminal: BrandTerminal,
+	'thumbs-down': BrandThumbsDown,
+	'thumbs-up': BrandThumbsUp,
 	'trash-2': BrandTrash2,
 	'tree-pine': IconLucideTreePine,
 	'trending-down': IconLucideTrendingDown,
@@ -847,14 +859,14 @@ export const updatedIconSet = {
 	'user-round': IconLucideUserRound,
 	'user-round-key': IconLucideUserRoundKey,
 	users: BrandUsers,
-	vault: IconLucideVault,
+	vault: BrandVault,
 	video: IconLucideVideo,
 	'volume-2': IconLucideVolume2,
 	'volume-x': IconLucideVolumeX,
 	wallet: IconLucideWallet,
 	'wand-sparkles': BrandWandSparkles,
 	waypoints: IconLucideWaypoints,
-	workflow: IconLucideWorkflow,
+	workflow: BrandWorkflow,
 	wrench: BrandWrench,
 	x: BrandX,
 	youtube: IconLucideYoutube,
