@@ -221,9 +221,6 @@ export class TestWebhooks implements IWebhookManager {
 						command: 'clear-test-webhooks',
 						payload: { webhookKey: key, workflowEntity, pushRef },
 					});
-					// Response (if any) was already sent via WebhookHelpers.executeWebhook's
-					// callback; resolve to settle promise to be safe and avoid hanging.
-					resolve({ noWebhookResponse: true });
 					return;
 				}
 
