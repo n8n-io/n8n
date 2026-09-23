@@ -30,6 +30,7 @@ import {
 	createEntryIdGenerator,
 	createLiveFixSnapshots,
 	createLiveReviewCopy,
+	createLiveTrace,
 	createSeedReviews,
 	daysAgo,
 	hashString,
@@ -43,6 +44,7 @@ import type {
 	SelfHealingInboxKind,
 	SelfHealingOutcome,
 	SelfHealingReview,
+	SelfHealingTraceEntry,
 	SelfHealingUsage,
 	WorkflowHealingStatus,
 } from './selfHealing.types';
@@ -358,6 +360,14 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 				reviewers: resolveReviewers(config),
 				createdAt,
 				usage: { credits: 12, turns: 7, durationSeconds: 150 },
+				trace: createLiveTrace({
+					executionId,
+					workflowId,
+					workflowName,
+					changedNode,
+					errorMessage: execution.executionError?.message?.trim() || null,
+					autoDeployed: autoDeploy,
+				}),
 				...(autoDeploy
 					? {
 							state: 'closed' as const,
@@ -429,6 +439,10 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 
 	function getOutcome(reviewId: string): SelfHealingOutcome | null {
 		return findReview(reviewId)?.outcome ?? null;
+	}
+
+	function getTrace(reviewId: string): SelfHealingTraceEntry[] {
+		return findReview(reviewId)?.trace ?? [];
 	}
 
 	/** `undefined` for an unknown item, `null` when no AI ran. */
@@ -577,6 +591,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		getInboxKind,
 		getOutcome,
 		getUsage,
+		getTrace,
 		decide,
 		addComment,
 		reset,

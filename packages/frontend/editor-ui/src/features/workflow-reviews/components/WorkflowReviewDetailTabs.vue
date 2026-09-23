@@ -12,7 +12,7 @@ import WorkflowReviewCommentComposer from './WorkflowReviewCommentComposer.vue';
 import WorkflowReviewDecisionPopover from './WorkflowReviewDecisionPopover.vue';
 import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
 
-export type WorkflowReviewDetailTab = 'activity' | 'changes';
+export type WorkflowReviewDetailTab = 'activity' | 'changes' | 'trace';
 
 const props = withDefaults(
 	defineProps<{
@@ -23,14 +23,18 @@ const props = withDefaults(
 		showChanges?: boolean;
 		/** Disables the decision and says why, for items with nothing to decide on. */
 		decisionDisabledReason?: string;
+		/** Label of an extra tab filled by the `trace` slot. Empty hides the tab. */
+		traceTabLabel?: string;
 	}>(),
-	{ showChanges: true, decisionDisabledReason: '' },
+	{ showChanges: true, decisionDisabledReason: '', traceTabLabel: '' },
 );
 
-// A deep link to the changes tab falls back to activity when there is no diff.
-const activeTab = computed<WorkflowReviewDetailTab>(() =>
-	props.showChanges ? props.tab : 'activity',
-);
+// A deep link to a tab the item does not have falls back to activity.
+const activeTab = computed<WorkflowReviewDetailTab>(() => {
+	if (props.tab === 'changes' && !props.showChanges) return 'activity';
+	if (props.tab === 'trace' && !props.traceTabLabel) return 'activity';
+	return props.tab;
+});
 
 const emit = defineEmits<{
 	'update:tab': [tab: WorkflowReviewDetailTab];
@@ -111,6 +115,7 @@ const tabOptions = computed(() => [
 				},
 			]
 		: []),
+	...(props.traceTabLabel ? [{ label: props.traceTabLabel, value: 'trace' as const }] : []),
 ]);
 </script>
 
@@ -196,6 +201,14 @@ const tabOptions = computed(() => [
 					v-if="review.state === 'open'"
 					:can-comment="viewerCanComment"
 				/>
+			</div>
+
+			<div
+				v-else-if="activeTab === 'trace'"
+				:class="$style.panel"
+				data-test-id="workflow-review-trace-panel"
+			>
+				<slot name="trace" />
 			</div>
 
 			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">

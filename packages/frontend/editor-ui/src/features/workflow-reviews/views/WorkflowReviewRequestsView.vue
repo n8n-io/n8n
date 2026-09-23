@@ -25,6 +25,8 @@ import type { ReviewInboxSidebarSection } from '../components/WorkflowReviewRequ
 import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import SelfHealingOutcomeActions from '@/features/self-healing/components/SelfHealingOutcomeActions.vue';
+import SelfHealingTrace from '@/features/self-healing/components/SelfHealingTrace.vue';
+import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
 import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 import { getSelfHealingStatusDisplay } from '@/features/self-healing/selfHealingStatus';
 
@@ -125,6 +127,14 @@ const selectedOutcome = computed(() =>
 	selectedReviewId.value ? selfHealingStore.getOutcome(selectedReviewId.value) : null,
 );
 
+// Every item the assistant created carries a read-only trace of its work.
+const selectedHasTrace = computed(
+	() =>
+		!!selectedItem.value &&
+		isSelfHealingAssistant(selectedItem.value.requester) &&
+		selfHealingStore.getTrace(selectedItem.value.id).length > 0,
+);
+
 const selectedStatusDisplay = computed(() =>
 	selectedItem.value && selectedOutcome.value
 		? (getSelfHealingStatusDisplay(i18n, selectedOutcome.value.kind, selectedItem.value.state) ??
@@ -210,14 +220,15 @@ function onActiveTabChange(tab: WorkflowReviewRequestState) {
 	void router.replace({ query });
 }
 
-const detailTab = computed<WorkflowReviewDetailTab>(() =>
-	route.query[REVIEW_INBOX_QUERY_PARAM.tab] === 'changes' ? 'changes' : 'activity',
-);
+const detailTab = computed<WorkflowReviewDetailTab>(() => {
+	const tab = route.query[REVIEW_INBOX_QUERY_PARAM.tab];
+	return tab === 'changes' || tab === 'trace' ? tab : 'activity';
+});
 
 function onDetailTabChange(tab: WorkflowReviewDetailTab) {
 	if (!isOnInbox()) return;
 	const query = { ...route.query };
-	if (tab === 'changes') query[REVIEW_INBOX_QUERY_PARAM.tab] = tab;
+	if (tab !== 'activity') query[REVIEW_INBOX_QUERY_PARAM.tab] = tab;
 	else delete query[REVIEW_INBOX_QUERY_PARAM.tab];
 	void router.replace({ query });
 }
@@ -407,11 +418,15 @@ onUnmounted(() => {
 						:decision-disabled-reason="
 							selectedOutcome ? i18n.baseText('selfHealing.outcome.noReview') : ''
 						"
+						:trace-tab-label="selectedHasTrace ? i18n.baseText('selfHealing.trace.tab') : ''"
 						@update:tab="onDetailTabChange"
 						@decide="onDecide(selectedItem.id, $event)"
 					>
 						<template v-if="selectedOutcome" #description-footer>
 							<SelfHealingOutcomeActions :review-id="selectedItem.id" />
+						</template>
+						<template v-if="selectedHasTrace" #trace>
+							<SelfHealingTrace :review-id="selectedItem.id" />
 						</template>
 					</WorkflowReviewDetailTabs>
 					<N8nLoading v-else-if="isLoadingActiveTab" :loading="true" :rows="3" />

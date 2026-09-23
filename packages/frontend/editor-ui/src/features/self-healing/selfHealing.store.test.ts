@@ -265,6 +265,18 @@ describe('useSelfHealingStore', () => {
 			expect(() => store.decide(couldNotFix.id, { decision: 'approved' })).toThrow();
 		});
 
+		it('keeps a trace for every item, with tool calls only where the assistant ran', () => {
+			const items = store.getInboxItems('open');
+			const traceOf = (kind: string) =>
+				store.getTrace(items.find((item) => store.getInboxKind(item.id) === kind)?.id ?? '');
+
+			for (const kind of ['fix', 'needs_you', 'could_not_fix']) {
+				expect(traceOf(kind).length).toBeGreaterThan(0);
+			}
+			expect(traceOf('fix').some((entry) => entry.type === 'tool')).toBe(true);
+			expect(traceOf('needs_you').some((entry) => entry.type === 'tool')).toBe(false);
+		});
+
 		it('reports what each investigation cost', () => {
 			const items = store.getInboxItems('open');
 			const kindOf = (kind: string) => items.find((item) => store.getInboxKind(item.id) === kind);

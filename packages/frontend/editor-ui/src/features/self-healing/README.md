@@ -27,6 +27,7 @@ window.featureFlags.override('self_healing_workflows_prototype', 'control');
 | Surface | Component | Host |
 | --- | --- | --- |
 | Project settings section | `components/ProjectSelfHealingSection.vue`, `components/SelfHealingConfigDialog.vue` | `ProjectSettings.vue` |
+| Read-only trace of the Assistant's work | `components/SelfHealingTrace.vue` | Trace tab in `WorkflowReviewDetailTabs.vue` |
 | Three inbox kinds: Fix ready, Needs you, Could not fix | `components/SelfHealingInboxKindBadge.vue`, `components/SelfHealingOutcomeActions.vue` | `WorkflowReviewRequestsSidebar.vue`, `WorkflowReviewDetailTabs.vue` (next step in the description, Review disabled, no Changes tab) |
 | Reviewers per configuration | `SelfHealingConfigDialog.vue` (project members picker) | seeded and live reviews list them as reviewers |
 | Workflow list badge | `components/SelfHealingWorkflowBadge.vue` | `WorkflowCard.vue` |

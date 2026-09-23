@@ -99,9 +99,28 @@ export interface SelfHealingUsage {
 	durationSeconds: number;
 }
 
+/**
+ * One entry in the read-only trace of an investigation. `at` is seconds since
+ * the failure. Tool calls keep their input and output so the trace shows what
+ * the assistant saw, not only what it concluded.
+ */
+export type SelfHealingTraceEntry =
+	| { type: 'event'; at: number; label: string; error?: string }
+	| { type: 'text'; at: number; text: string }
+	| {
+			type: 'tool';
+			at: number;
+			tool: string;
+			label: string;
+			input: Record<string, unknown>;
+			output: string;
+			error?: string;
+	  };
+
 export interface SelfHealingReview {
 	kind: SelfHealingInboxKind;
 	usage: SelfHealingUsage | null;
+	trace: SelfHealingTraceEntry[];
 	/** Set for `needs_you` and `could_not_fix`; `null` for a fix review. */
 	outcome: SelfHealingOutcome | null;
 	item: WorkflowReviewInboxItem;

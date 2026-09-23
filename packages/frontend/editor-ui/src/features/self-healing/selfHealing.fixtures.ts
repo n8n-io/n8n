@@ -15,6 +15,7 @@ import type {
 	SelfHealingConfig,
 	SelfHealingOutcome,
 	SelfHealingReview,
+	SelfHealingTraceEntry,
 	SelfHealingUsage,
 } from './selfHealing.types';
 
@@ -268,6 +269,7 @@ export interface BuildReviewOptions {
 	reviewers: WorkflowReviewEligibleReviewer[];
 	createdAt: string;
 	usage: SelfHealingUsage;
+	trace: SelfHealingTraceEntry[];
 	state?: WorkflowReviewRequestState;
 	decision?: WorkflowReviewRequestDecision;
 	/** When set, appends the approval and the publish to the feed. */
@@ -382,6 +384,7 @@ export function buildSelfHealingReview(
 	return {
 		kind: 'fix',
 		usage: options.usage,
+		trace: options.trace,
 		outcome: null,
 		item,
 		detail,
@@ -414,6 +417,7 @@ export interface BuildOutcomeOptions {
 	analysis: string;
 	outcome: SelfHealingOutcome;
 	usage: SelfHealingUsage | null;
+	trace: SelfHealingTraceEntry[];
 	executionId: string;
 	workflowId: string;
 	workflowName: string;
@@ -519,6 +523,7 @@ export function buildSelfHealingOutcome(
 	return {
 		kind: options.outcome.kind,
 		usage: options.usage,
+		trace: options.trace,
 		outcome: options.outcome,
 		item,
 		detail,
@@ -594,6 +599,88 @@ export function createSeedReviews(
 				reviewers,
 				createdAt: openedAt,
 				usage: { credits: 14, turns: 8, durationSeconds: 240 },
+				trace: [
+					{ type: 'event', at: 0, label: 'Execution #48213 failed at "Enrich with Clearbit"' },
+					{ type: 'event', at: 1, label: 'Pre-check passed. Investigation started' },
+					{
+						type: 'tool',
+						at: 3,
+						tool: 'executions',
+						label: 'Read failed execution #48213',
+						input: { executionId: '48213', include: ['error', 'nodeOutputs'] },
+						output:
+							'Stopped at "Enrich with Clearbit": 429 Too Many Requests on 14 of 100 items.\n"Get new leads" returned 100 items in one batch.\n"Update lead" did not run.',
+					},
+					{
+						type: 'text',
+						at: 20,
+						text: 'All 14 failures are 429 responses in the same second. The node sends every item at once, so the burst goes over the rate limit.',
+					},
+					{
+						type: 'tool',
+						at: 24,
+						tool: 'workflows',
+						label: 'Read published workflow "Lead enrichment sync"',
+						input: { workflowId: 'self-healing-demo-lead-enrichment', version: 'published' },
+						output:
+							'4 nodes, published version le-v7.\n"Enrich with Clearbit" is an HTTP Request node with no retry and no batching.',
+					},
+					{
+						type: 'tool',
+						at: 41,
+						tool: 'research',
+						label: 'Search the web: Clearbit Enrichment API rate limit',
+						input: { query: 'Clearbit Enrichment API rate limit' },
+						output: 'Clearbit allows 600 requests per minute per key and returns 429 above that.',
+					},
+					{
+						type: 'tool',
+						at: 70,
+						tool: 'n8n-docs',
+						label: 'Read n8n docs: HTTP Request batching and retries',
+						input: { page: 'HTTP Request node', sections: ['Batching', 'Retry On Fail'] },
+						output:
+							'Options > Batching: items per batch, batch interval (ms).\nSettings > Retry On Fail: max tries, wait between tries (ms).',
+					},
+					{
+						type: 'text',
+						at: 95,
+						text: 'Batching 10 items per second keeps the node under the limit. Retry On Fail covers any request that still gets a 429.',
+					},
+					{
+						type: 'tool',
+						at: 110,
+						tool: 'draft-workflow',
+						label: 'Draft a change to "Enrich with Clearbit"',
+						input: {
+							node: 'Enrich with Clearbit',
+							set: {
+								retryOnFail: true,
+								maxTries: 3,
+								waitBetweenTries: 5000,
+								'options.batching': { batchSize: 10, batchInterval: 1000 },
+							},
+						},
+						output: 'Draft saved. 1 node changed.',
+					},
+					{
+						type: 'tool',
+						at: 150,
+						tool: 'validate-draft',
+						label: 'Validate the draft',
+						input: { draft: 'le-v8' },
+						output: 'Structure and parameters are valid. No other node changed.',
+					},
+					{
+						type: 'tool',
+						at: 190,
+						tool: 'executions',
+						label: 'Replay #48213 on the draft with pinned data',
+						input: { executionId: '48213', draft: 'le-v8', pinnedData: true },
+						output: 'Completed. 100 of 100 items enriched and updated.',
+					},
+					{ type: 'event', at: 240, label: 'Fix submitted for review' },
+				],
 			},
 			nextEntryId,
 		),
@@ -629,6 +716,60 @@ export function createSeedReviews(
 				reviewers,
 				createdAt: invoiceOpenedAt,
 				usage: { credits: 11, turns: 7, durationSeconds: 180 },
+				trace: [
+					{ type: 'event', at: 0, label: 'Execution #47902 failed at "Send reminder"' },
+					{ type: 'event', at: 1, label: 'Pre-check passed. Investigation started' },
+					{
+						type: 'tool',
+						at: 3,
+						tool: 'executions',
+						label: 'Read failed execution #47902',
+						input: { executionId: '47902', include: ['error', 'nodeOutputs'] },
+						output:
+							'"Get overdue invoices" returned 0 items.\n"Send reminder" threw: Cannot read properties of undefined (reading \'customer_email\').',
+					},
+					{
+						type: 'text',
+						at: 18,
+						text: 'The Gmail node still runs when the query returns nothing, so it reads a field from an item that does not exist.',
+					},
+					{
+						type: 'tool',
+						at: 22,
+						tool: 'workflows',
+						label: 'Read published workflow "Invoice reminder emails"',
+						input: { workflowId: 'self-healing-demo-invoice-reminders', version: 'published' },
+						output: '3 nodes, published version ir-v3. No guard between the query and the send.',
+					},
+					{
+						type: 'tool',
+						at: 60,
+						tool: 'draft-workflow',
+						label: 'Draft a guard before "Send reminder"',
+						input: {
+							addNode: { name: 'Has overdue invoices?', type: 'n8n-nodes-base.if' },
+							set: { 'Get overdue invoices.alwaysOutputData': true },
+						},
+						output: 'Draft saved. 1 node added, 1 node changed.',
+					},
+					{
+						type: 'tool',
+						at: 110,
+						tool: 'validate-draft',
+						label: 'Validate the draft',
+						input: { draft: 'ir-v4' },
+						output: 'Structure and parameters are valid.',
+					},
+					{
+						type: 'tool',
+						at: 140,
+						tool: 'executions',
+						label: 'Run the draft with no overdue invoices and with three',
+						input: { draft: 'ir-v4', pinnedData: ['empty', 'three invoices'] },
+						output: 'Empty run finished without sending.\nThree-invoice run sent 3 reminders.',
+					},
+					{ type: 'event', at: 180, label: 'Fix submitted for review' },
+				],
 				state: 'closed',
 				decision: 'approved',
 				approval: { by: reviewer, at: invoiceApprovedAt, note: 'Looks good, thanks.' },
@@ -657,6 +798,20 @@ export function createSeedReviews(
 					action: { type: 'open_credential', credentialName: 'HubSpot – Sales' },
 				},
 				usage: null,
+				trace: [
+					{ type: 'event', at: 0, label: 'Execution #48377 failed at "Get new deals"' },
+					{
+						type: 'event',
+						at: 0,
+						label: 'Pre-check: expired token on "HubSpot – Sales"',
+					},
+					{
+						type: 'event',
+						at: 0,
+						label: 'Investigation skipped. Nothing in the workflow to change',
+					},
+					{ type: 'event', at: 0, label: 'Sent to your inbox as Needs you' },
+				],
 			},
 			nextEntryId,
 		),
@@ -682,6 +837,61 @@ export function createSeedReviews(
 					action: null,
 				},
 				usage: { credits: 9, turns: 6, durationSeconds: 170 },
+				trace: [
+					{ type: 'event', at: 0, label: 'Execution #48311 failed at "Create shipment"' },
+					{ type: 'event', at: 1, label: 'Pre-check passed. Investigation started' },
+					{
+						type: 'tool',
+						at: 3,
+						tool: 'executions',
+						label: 'Read failed execution #48311',
+						input: { executionId: '48311', include: ['error', 'nodeOutputs'] },
+						output:
+							'HTTP 400 Bad Request: Unknown field "shipping_method_v1".\nRequest body built by "Map shipment".',
+					},
+					{
+						type: 'tool',
+						at: 20,
+						tool: 'executions',
+						label: 'List recent executions of "Order sync to warehouse"',
+						input: { workflowId: 'self-healing-demo-order-sync', limit: 20 },
+						output:
+							'Last success: yesterday 22:04.\nFirst failure: yesterday 22:10.\nNo workflow changes in between.',
+					},
+					{
+						type: 'text',
+						at: 35,
+						text: 'The workflow did not change, so the warehouse API did. I need the name of the field that replaced "shipping_method_v1".',
+					},
+					{
+						type: 'tool',
+						at: 40,
+						tool: 'research',
+						label: 'Search the web: warehouse API shipping_method_v1 deprecated',
+						input: { query: 'warehouse API "shipping_method_v1" deprecated replacement' },
+						output: 'No changelog entry or announcement found.',
+					},
+					{
+						type: 'tool',
+						at: 80,
+						tool: 'research',
+						label: 'Fetch the warehouse API reference for POST /shipments',
+						input: { url: 'https://docs.example-warehouse.com/api/shipments#create' },
+						output: 'The reference still lists "shipping_method_v1" as a required field.',
+					},
+					{
+						type: 'text',
+						at: 120,
+						text: 'The error and the reference disagree, and nothing names the replacement. A guessed field name could create shipments with wrong data, so I stop here.',
+					},
+					{
+						type: 'event',
+						at: 170,
+						label: 'Stopped without a fix',
+						error: 'No source names the field that replaced "shipping_method_v1".',
+					},
+					{ type: 'event', at: 170, label: 'Sent to your inbox as Could not fix' },
+				],
 			},
 			nextEntryId,
 		),
@@ -727,6 +937,79 @@ export function createLiveFixSnapshots(input: {
 }
 
 /** Title, summary and feed comment for a fix started from a real execution. */
+/** Trace for a fix started from the execution banner. */
+export function createLiveTrace(input: {
+	executionId: string;
+	workflowId: string;
+	workflowName: string;
+	changedNode: string;
+	errorMessage: string | null;
+	autoDeployed: boolean;
+}): SelfHealingTraceEntry[] {
+	const error = input.errorMessage ?? 'an unhandled error';
+	return [
+		{
+			type: 'event',
+			at: 0,
+			label: `Execution #${input.executionId} failed at "${input.changedNode}"`,
+		},
+		{ type: 'event', at: 1, label: 'Pre-check passed. Investigation started' },
+		{
+			type: 'tool',
+			at: 3,
+			tool: 'executions',
+			label: `Read failed execution #${input.executionId}`,
+			input: { executionId: input.executionId, include: ['error', 'nodeOutputs'] },
+			output: `Stopped at "${input.changedNode}" with ${error}.`,
+		},
+		{
+			type: 'tool',
+			at: 18,
+			tool: 'workflows',
+			label: `Read published workflow "${input.workflowName}"`,
+			input: { workflowId: input.workflowId, version: 'published' },
+			output: `"${input.changedNode}" has no retry configured.`,
+		},
+		{
+			type: 'text',
+			at: 40,
+			text: 'The input data looks valid and the same node succeeded on earlier runs, so the failure is most likely transient. A retry covers it.',
+		},
+		{
+			type: 'tool',
+			at: 70,
+			tool: 'draft-workflow',
+			label: `Draft a change to "${input.changedNode}"`,
+			input: {
+				node: input.changedNode,
+				set: { retryOnFail: true, maxTries: 3, waitBetweenTries: 5000 },
+			},
+			output: 'Draft saved. 1 node changed.',
+		},
+		{
+			type: 'tool',
+			at: 100,
+			tool: 'validate-draft',
+			label: 'Validate the draft',
+			input: { node: input.changedNode },
+			output: 'Structure and parameters are valid. No other node changed.',
+		},
+		{
+			type: 'tool',
+			at: 130,
+			tool: 'executions',
+			label: `Replay #${input.executionId} on the draft with pinned data`,
+			input: { executionId: input.executionId, pinnedData: true },
+			output: 'The run completed.',
+		},
+		{
+			type: 'event',
+			at: 150,
+			label: input.autoDeployed ? 'Fix published automatically' : 'Fix submitted for review',
+		},
+	];
+}
+
 export function createLiveReviewCopy(input: {
 	executionId: string;
 	changedNode: string;
