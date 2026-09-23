@@ -12,7 +12,6 @@ describe('release command', () => {
 		'exec',
 		'--',
 		'release-it',
-		'--ci',
 		'--git.requireBranch=main',
 		'--git.requireCleanWorkingDir',
 		'--git.requireUpstream',
@@ -77,8 +76,8 @@ describe('release command', () => {
 		const [, args] = vi.mocked(spawn).mock.calls[0];
 		const options = args.slice(args.indexOf('release-it') + 1);
 
-		// release-it 21 parses arguments strictly. It rejects short aliases such as
-		// `-n` and values passed as a separate word such as `--git.requireBranch main`.
+		// release-it 21 parses arguments strictly. It rejects unknown short flags such
+		// as `-n` and values passed as a separate word such as `--git.requireBranch main`.
 		for (const option of options) {
 			expect(option).toMatch(/^--[\w.:-]+(=.*)?$/);
 		}
