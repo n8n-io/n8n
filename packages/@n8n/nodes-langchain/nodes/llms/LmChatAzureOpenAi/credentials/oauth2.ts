@@ -1,13 +1,12 @@
 import { getBearerTokenProvider } from '@azure/identity';
 import { NodeOperationError, type ISupplyDataFunctions } from 'n8n-workflow';
 
+import { AZURE_COGNITIVE_SERVICES_SCOPE } from './constants';
 import { N8nOAuth2TokenCredential } from './N8nOAuth2TokenCredential';
 import type {
 	AzureEntraCognitiveServicesOAuth2ApiCredential,
 	AzureOpenAIOAuth2ModelConfig,
 } from '../types';
-
-const AZURE_OPENAI_SCOPE = 'https://cognitiveservices.azure.com/.default';
 /**
  * Creates Entra ID (OAuth2) authentication for Azure OpenAI
  */
@@ -24,7 +23,10 @@ export async function setupOAuth2Authentication(
 
 		// Use getBearerTokenProvider to create the function LangChain expects
 		// Pass the required scope for Azure Cognitive Services
-		const azureADTokenProvider = getBearerTokenProvider(entraTokenCredential, AZURE_OPENAI_SCOPE);
+		const azureADTokenProvider = getBearerTokenProvider(
+			entraTokenCredential,
+			AZURE_COGNITIVE_SERVICES_SCOPE,
+		);
 
 		this.logger.debug('Successfully created Azure AD Token Provider.');
 

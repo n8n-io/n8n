@@ -14,10 +14,13 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			// The node signs in as the app with the client ID and secret below, so there is no browser
+			// step and no user token. The grant says so, which is also what stops n8n asking for a
+			// sign-in before the credential can be saved.
 			displayName: 'Grant Type',
 			name: 'grantType',
 			type: 'hidden',
-			default: 'authorizationCode',
+			default: 'clientCredentials',
 		},
 		{
 			displayName: 'Endpoint Type',
