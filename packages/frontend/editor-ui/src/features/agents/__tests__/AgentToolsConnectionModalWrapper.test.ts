@@ -4,6 +4,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { getWorkflow } from '@/app/api/workflows';
@@ -1189,6 +1192,69 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				slackApi: { id: null, name: '', __aiGatewayManaged: true },
 			});
 			expect(data.existingToolNames).toContain(existing.name);
+		});
+	});
+
+	describe('restricted node types', () => {
+		function restrictedSlackItem() {
+			const item = getItems().find((candidate) => candidate.id === `nodeType:${SLACK.name}`);
+			if (!item) throw new Error('Missing Slack item');
+			return item;
+		}
+
+		it('loads the policy for the agent project on mount', async () => {
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+
+			render([], vi.fn(), [], PROJECT_ID);
+			await flushPromises();
+
+			expect(fetchForProject).toHaveBeenCalledWith(PROJECT_ID);
+		});
+
+		it('flags a restricted tool so the modal can lock it and list it last', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+
+			render();
+			await flushPromises();
+
+			// The wrapper marks; ToolsConnectionModal owns the order and the row treatment.
+			expect(restrictedSlackItem()).toMatchObject({
+				restriction: { available: false, scope: 'instance' },
+			});
+			const wikipedia = getItems().find((item) => item.id === `nodeType:${WIKIPEDIA.name}`);
+			expect(wikipedia).toBeDefined();
+			expect('restriction' in wikipedia! && wikipedia.restriction).toBeFalsy();
+		});
+
+		it('adds nothing when a restricted tool is activated', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const onConfirm = vi.fn();
+
+			render([], onConfirm);
+			await flushPromises();
+
+			emitConnect(restrictedSlackItem());
+			emitOpenDetail(restrictedSlackItem());
+			await flushPromises();
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(onConfirm).not.toHaveBeenCalled();
+		});
+
+		it('leaves the list untouched when nothing is restricted', async () => {
+			mockRestrictedNodeTypes();
+
+			render();
+			await flushPromises();
+
+			const nodeItems = getItems().filter((item) => item.id.startsWith('nodeType:'));
+			expect(nodeItems.map((item) => item.id)).toEqual([
+				`nodeType:${SLACK.name}`,
+				`nodeType:${WIKIPEDIA.name}`,
+			]);
+			expect(nodeItems.every((item) => !('restriction' in item && item.restriction))).toBe(true);
 		});
 	});
 });
