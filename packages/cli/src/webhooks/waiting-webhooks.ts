@@ -16,7 +16,6 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { acquireIsolateForResponse } from './acquire-isolate-for-response';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
@@ -379,18 +378,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
 		});
-		// Form webhooks respond without invoking the completion callback, so the
-		// promise below never settles and the `finally` alone never runs.
-		const { release: releaseIsolate, responseEnded } = await acquireIsolateForResponse(
-			workflow,
-			res,
-		);
-
-		// The client disconnected while the isolate was being acquired. It has
-		// already been released and there is nobody left to serve, so stop rather
-		// than run an execution whose expressions have no bridge.
-		if (responseEnded) return { noWebhookResponse: true };
-
+		await workflow.expression.acquireIsolate();
 		try {
 			const webhookData = this.webhookService
 				.getNodeWebhooks(workflow, workflowStartNode, additionalData)
@@ -446,7 +434,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
-			await releaseIsolate();
+			await workflow.expression.releaseIsolate();
 		}
 	}
 }

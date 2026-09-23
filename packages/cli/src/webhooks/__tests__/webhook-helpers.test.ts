@@ -570,11 +570,14 @@ describe('handleHostedChatResponse', () => {
 		const executionId = '123';
 		const resumeToken = 'a'.repeat(64);
 
+		const responseCallback = vi.fn();
+
 		const result = handleHostedChatResponse(
 			res,
 			responseMode,
 			didSendResponse,
 			executionId,
+			responseCallback,
 			resumeToken,
 		);
 
@@ -582,6 +585,10 @@ describe('handleHostedChatResponse', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(res.end).toHaveBeenCalled();
 		expect(result).toBe(true);
+		// The contract callers depend on: writing the response is not enough,
+		// the callback is what settles their promise and frees the isolate.
+		expect(responseCallback).toHaveBeenCalledTimes(1);
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
 	});
 
 	it('should not send response when responseMode is not hostedChat', () => {
@@ -592,12 +599,20 @@ describe('handleHostedChatResponse', () => {
 		const executionId = 'testExecutionId';
 		const didSendResponse = false;
 		const responseMode = 'responseNode';
+		const responseCallback = vi.fn();
 
-		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+		const result = handleHostedChatResponse(
+			res,
+			responseMode,
+			didSendResponse,
+			executionId,
+			responseCallback,
+		);
 
 		expect(res.send).not.toHaveBeenCalled();
 		expect(res.end).not.toHaveBeenCalled();
 		expect(result).toBe(false);
+		expect(responseCallback).not.toHaveBeenCalled();
 	});
 
 	it('should not send response when didSendResponse is true', () => {
@@ -608,12 +623,21 @@ describe('handleHostedChatResponse', () => {
 		const executionId = 'testExecutionId';
 		const didSendResponse = true;
 		const responseMode = 'hostedChat';
+		const responseCallback = vi.fn();
 
-		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+		const result = handleHostedChatResponse(
+			res,
+			responseMode,
+			didSendResponse,
+			executionId,
+			responseCallback,
+		);
 
 		expect(res.send).not.toHaveBeenCalled();
 		expect(res.end).not.toHaveBeenCalled();
 		expect(result).toBe(true);
+		// Someone else already responded and already called back.
+		expect(responseCallback).not.toHaveBeenCalled();
 	});
 });
 
@@ -1939,6 +1963,91 @@ describe('executeWebhook in responseNode mode when the Respond node never runs',
 		await new Promise(process.nextTick);
 
 		expect(responseCallback).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('executeWebhook response-mode callback contract', () => {
+	/**
+	 * Callers treat the response callback as the "response is done" signal: it
+	 * settles the promise they await and releases the expression isolate in their
+	 * `finally`. Modes that write the response themselves used to return without
+	 * calling back, so that promise stayed pending forever and the isolate — a
+	 * native `isolated-vm` resource that only `dispose()` frees — was stranded for
+	 * the life of the process.
+	 *
+	 * One case per self-responding mode, so the next mode that forgets is caught
+	 * here rather than in production memory.
+	 */
+	const startWebhook = async (responseMode: string) => {
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>({
+				// A real string: the formPage branch builds a URL from it.
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+			}),
+		);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		webhookService.runWebhook.mockResolvedValue({ workflowData: [[{ json: {} }]] });
+		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
+		activeExecutions.getPostExecutePromise.mockReturnValue(
+			createDeferredPromise<IRun | undefined>().promise,
+		);
+
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			name: 'Test Workflow',
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'webhook' } })),
+			},
+			expression: {
+				// Return the webhook description value, so `responseMode` below applies.
+				getSimpleParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getSimpleParameterValue']>) =>
+						args[1] ?? args[5],
+				),
+				getComplexParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) => args[1],
+				),
+			},
+		});
+
+		const responseCallback = vi.fn();
+
+		await executeWebhook(
+			workflow,
+			{
+				webhookDescription: { name: 'default', responseMode },
+				workflowId: WORKFLOW_ID,
+			} as unknown as IWebhookData,
+			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
+			mock<INode>({ name: 'Webhook', type: WEBHOOK_NODE_TYPE, typeVersion: 2, parameters: {} }),
+			'webhook',
+			undefined,
+			undefined,
+			undefined,
+			mock<WebhookRequest>({ method: 'POST', contentType: undefined, headers: {} }),
+			mock<express.Response>({ headersSent: false }),
+			responseCallback,
+		);
+
+		await new Promise(process.nextTick);
+
+		return { responseCallback };
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+	});
+
+	it('invokes the response callback exactly once in formPage mode', async () => {
+		const { responseCallback } = await startWebhook('formPage');
+
+		expect(responseCallback).toHaveBeenCalledTimes(1);
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
 	});
 });
 

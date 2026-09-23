@@ -234,11 +234,16 @@ export function handleHostedChatResponse(
 	responseMode: WebhookResponseMode,
 	didSendResponse: boolean,
 	executionId: string,
+	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
 	resumeToken?: string,
 ): boolean {
 	if (responseMode === 'hostedChat' && !didSendResponse) {
 		res.send({ executionStarted: true, executionId, resumeToken });
 		process.nextTick(() => res.end());
+		// The response is written here, but callers treat the callback as the
+		// "response is done" signal — it is what settles their promise and
+		// releases the expression isolate in their `finally`.
+		responseCallback(null, { noWebhookResponse: true });
 		return true;
 	}
 
@@ -1102,6 +1107,12 @@ export async function executeWebhook(
 			// TODO: Add check for streaming nodes here
 			runData.httpResponse = res;
 			runData.streamingEnabled = true;
+			// No `responseCallback` here, unlike the formPage and hostedChat
+			// branches: streaming requires the trigger to have taken over the
+			// response itself, so it returns `noWebhookResponse: true` (see
+			// `Webhook.node.ts` and `ChatTrigger.node.ts`) and the handler for
+			// that above has already answered. Calling back here would answer a
+			// second time.
 			didSendResponse = true;
 		}
 
@@ -1179,6 +1190,8 @@ export async function executeWebhook(
 			}
 			res.send({ formWaitingUrl: formUrl.toString() });
 			process.nextTick(() => res.end());
+			// See handleHostedChatResponse: the callback is the contract, not the write.
+			responseCallback(null, { noWebhookResponse: true });
 			didSendResponse = true;
 		}
 
@@ -1187,6 +1200,7 @@ export async function executeWebhook(
 			responseMode,
 			didSendResponse,
 			executionId,
+			responseCallback,
 			runExecutionData?.resumeToken,
 		);
 
