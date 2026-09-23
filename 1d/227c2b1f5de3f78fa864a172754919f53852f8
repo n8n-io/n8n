@@ -1,0 +1,21 @@
+packages/testing/code-health/src/rules/adr-conventions.rule.test.ts
+  s_2454f636ff8714::t_a35754def15a80 535-564
+packages/testing/code-health/src/rules/adr-conventions.rule.ts
+  s_2454f636ff8714::t_e8d4372ee1add3 41,95-97,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1d227c2b1f5de3f78fa864a172754919f53852f8",
+  "prompts": {},
+  "sessions": {
+    "s_2454f636ff8714": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f562a6e6-0a0b-4195-8720-c3b04a7db944",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
