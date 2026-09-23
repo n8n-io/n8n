@@ -55,6 +55,7 @@ import {
 	validateFormPageAuth,
 	generateFormUserAuthToken,
 	verifyFormUserAuthToken,
+	setFormAuthCookie,
 } from '../utils/utils';
 import { isIpAllowed } from '../../Webhook/utils';
 import type { Mock } from 'vitest';
@@ -4229,6 +4230,26 @@ describe('validateFormPageAuth', () => {
 		expect(res.writeHead).toHaveBeenCalledWith(
 			302,
 			expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+		);
+	});
+});
+
+describe('setFormAuthCookie', () => {
+	it('keeps a workflow-scoped cookie on the shared form-waiting path', () => {
+		const context = mock<IWebhookFunctions>();
+		const cookie = vi.fn();
+		context.getRequestObject.mockReturnValue({ protocol: 'http', headers: {} } as Request);
+		context.getResponseObject.mockReturnValue({ cookie } as never);
+		context.evaluateExpression.mockReturnValue(
+			'http://localhost:5678/form-waiting/execution-1' as never,
+		);
+
+		setFormAuthCookie(context, 'token', { workflowId: 'workflow-1' });
+
+		expect(cookie).toHaveBeenCalledWith(
+			'n8n-form-auth-wf-workflow-1',
+			'token',
+			expect.objectContaining({ path: '/form-waiting' }),
 		);
 	});
 });

@@ -965,20 +965,21 @@ function readCookieValue(req: Request, name: string): string | null {
 }
 
 /**
- * Path the form-waiting endpoint is served under, or `null` when it can't be
- * derived. It is configurable and the instance may sit behind a path prefix, so
- * derive it rather than assume it: `$execution.resumeFormUrl` is
- * `<formWaitingBaseUrl>/<executionId>`, and dropping the last segment leaves the
- * base path.
+ * Path for the current form-waiting execution, or `null` when it can't be
+ * derived. It is configurable and the instance may sit behind a path prefix.
  */
-function getFormWaitingBasePath(context: IWebhookFunctions): string | null {
+function getFormWaitingPath(context: IWebhookFunctions): string | null {
 	try {
 		const resumeFormUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
-		const { pathname } = new URL(resumeFormUrl);
-		return pathname.slice(0, pathname.lastIndexOf('/')) || null;
+		return new URL(resumeFormUrl).pathname || null;
 	} catch {
 		return null;
 	}
+}
+
+function getFormWaitingBasePath(context: IWebhookFunctions): string | null {
+	const path = getFormWaitingPath(context);
+	return path?.slice(0, path.lastIndexOf('/')) || null;
 }
 
 /**
@@ -992,15 +993,19 @@ export function setFormAuthCookie(
 	binding: FormUserAuthTokenBinding,
 ): void {
 	const req = context.getRequestObject();
+	const cookiePath = binding.executionId
+		? getFormWaitingPath(context)
+		: getFormWaitingBasePath(context);
 	context.getResponseObject().cookie(getFormAuthCookieName(binding), token, {
 		httpOnly: true,
 		// Lax, and only ever sent on a navigation the shell (or the top-level page)
 		// initiates from the real origin.
 		sameSite: 'lax',
 		secure: isSecureRequest(req),
-		// Nothing narrower is derivable when the base path is unknown; the cookie is
-		// httpOnly and expires with the token either way.
-		path: getFormWaitingBasePath(context) ?? '/',
+		// Keep the pre-execution cookie on the shared base path for the first hop.
+		// Scope run cookies to their execution so completed runs do not accumulate
+		// in the Cookie header of later forms.
+		path: cookiePath ?? '/',
 		maxAge: FORM_USER_AUTH_TOKEN_TTL_SECONDS * 1000,
 	});
 }

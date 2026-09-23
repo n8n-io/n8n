@@ -321,14 +321,18 @@ describe('formNodeUtils', () => {
 			return { cookie, render };
 		};
 
-		it('is set for an authenticated submitter, scoped to the form-waiting path', async () => {
+		it('is set for an authenticated submitter, scoped to its execution path', async () => {
 			const { cookie } = await renderAuthedPage();
 
 			expect(cookie).toHaveBeenCalledWith(
 				// Named for the run, so concurrent forms don't overwrite each other.
 				'n8n-form-auth-ex-execution-1',
 				expect.any(String),
-				expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/form-waiting' }),
+				expect.objectContaining({
+					httpOnly: true,
+					sameSite: 'lax',
+					path: '/form-waiting/execution-1',
+				}),
 			);
 		});
 
