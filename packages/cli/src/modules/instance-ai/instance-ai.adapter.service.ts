@@ -4386,10 +4386,8 @@ export async function extractExecutionResult(
 }
 
 /** Output branches of a run that a non-main connection carried. */
-function nonMainOutputs(lastRun: ITaskData | undefined) {
-	return Object.entries(lastRun?.data ?? {}).find(
-		([type]) => type !== NodeConnectionTypes.Main,
-	)?.[1];
+function nonMainOutputs(run: ITaskData | undefined) {
+	return Object.entries(run?.data ?? {}).find(([type]) => type !== NodeConnectionTypes.Main)?.[1];
 }
 
 /** Whether this is the virtual node the engine runs a tool through. */
@@ -4731,10 +4729,7 @@ export async function extractNodeOutput(
 	const readsEveryRun = nodeRuns.some((run) => nonMainOutputs(run) !== undefined);
 	const runsRead = readsEveryRun ? nodeRuns : [lastRun];
 	const outputsPerRun = runsRead.map(
-		(run) =>
-			run?.data?.[NodeConnectionTypes.Main] ??
-			Object.entries(run?.data ?? {}).find(([type]) => type !== NodeConnectionTypes.Main)?.[1] ??
-			[],
+		(run) => run?.data?.[NodeConnectionTypes.Main] ?? nonMainOutputs(run) ?? [],
 	);
 	const outputCount = Math.max(0, ...outputsPerRun.map((runOutputs) => runOutputs.length));
 
