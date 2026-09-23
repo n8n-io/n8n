@@ -44,6 +44,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { DEFAULT_NODE_SIZE, snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 
@@ -110,6 +111,7 @@ describe('NodeView', () => {
 		copyNodeIds = [];
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockReturnValue(true);
 		vi.stubGlobal('localStorage', {
 			getItem: vi.fn().mockReturnValue(null),
 		});
@@ -268,6 +270,36 @@ describe('NodeView', () => {
 			expect(undoable.commands).toHaveLength(2);
 			expect(undoable.commands[0]).toBeInstanceOf(AddNodeCommand);
 			expect(undoable.commands[1]).toBeInstanceOf(AddNodeGroupCommand);
+		});
+
+		it('does not create an empty group when the feature is disabled', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: NO_OP_NODE_TYPE,
+					displayName: 'No Operation, do nothing',
+					properties: [
+						{
+							displayName: 'Empty Group Anchor',
+							name: 'emptyGroupAnchor',
+							type: 'hidden',
+							default: false,
+							validateType: undefined,
+						},
+					],
+				}),
+			]);
+			vi.spyOn(usePostHog(), 'isFeatureEnabled').mockReturnValue(false);
+
+			const { findByTestId } = renderNodeView();
+			await userEvent.click(await findByTestId('node-creation-stub-add-empty-group'));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(workflowDocumentStore.allGroups).toHaveLength(0);
+			expect(workflowDocumentStore.allNodes).toHaveLength(0);
 		});
 
 		it('ignores overlapping empty-group creation requests', async () => {

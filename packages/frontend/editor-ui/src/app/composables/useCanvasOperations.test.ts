@@ -138,7 +138,10 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 	getWorkflowVersion: vi.fn().mockResolvedValue({ workflow: { nodes: [], connections: {} } }),
 }));
 
-import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import {
+	removeEmptyCanvasGroupsFromWorkflowData,
+	useCanvasOperations,
+} from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
 import * as nodeGroupOperationGuards from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
 import { DEFAULT_NODE_SIZE, GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
@@ -4886,6 +4889,63 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('copyNodes', () => {
+		it('removes empty groups and their anchors from copied workflow data', () => {
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'Empty group anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const source = createTestNode({ id: 'source', name: 'Source' });
+			const target = createTestNode({ id: 'target', name: 'Target' });
+			const node = createTestNode({ id: 'node', name: 'Node' });
+			const workflowData = {
+				nodes: [anchor, source, target, node],
+				connections: {
+					[source.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: anchor.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					[anchor.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: target.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					[node.name]: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: target.name, type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+				nodeGroups: [
+					{ id: 'group', name: 'Empty group', nodeIds: [anchor.id] },
+					{ id: 'non-empty-group', name: 'Non-empty group', nodeIds: [node.id] },
+				],
+				pinData: { [anchor.name]: [], [node.name]: [{ json: { value: 1 } }] },
+			};
+
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData);
+
+			expect(workflowData.nodes).toEqual([source, target, node]);
+			expect(workflowData.nodeGroups).toEqual([
+				{ id: 'non-empty-group', name: 'Non-empty group', nodeIds: [node.id] },
+			]);
+			expect(workflowData.connections).toEqual({
+				[source.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: target.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				[node.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: target.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			});
+			expect(workflowData.pinData).toEqual({ [node.name]: [{ json: { value: 1 } }] });
+		});
+
 		it('should copy nodes', async () => {
 			const nodeTypesStore = useNodeTypesStore();
 			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
@@ -4904,6 +4964,39 @@ describe('useCanvasOperations', () => {
 
 			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
 			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
+		});
+
+		it('does not copy empty groups when the feature is disabled', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: NO_OP_NODE_TYPE });
+			nodeTypesStore.nodeTypes = {
+				[NO_OP_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const anchor = mockNode({
+				id: 'anchor',
+				name: 'Empty group anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			anchor.position = [40, 40];
+			workflowDocumentStoreInstance.allNodes = [anchor];
+			vi.spyOn(workflowDocumentStoreInstance, 'allGroups', 'get').mockReturnValue([
+				{ id: 'group', name: 'Empty group', nodeIds: [anchor.id] },
+			]);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([anchor]);
+
+			const { copyNodes, getNodesToSave } = useCanvasOperations();
+			expect(getNodesToSave([anchor]).nodeGroups).toEqual([
+				{ id: 'group', name: 'Empty group', nodeIds: [anchor.id] },
+			]);
+			await copyNodes([anchor.id]);
+
+			const copiedData = JSON.parse(vi.mocked(useClipboard().copy).mock.calls[0][0] as string);
+			expect(copiedData.nodes).toEqual([]);
+			expect(copiedData.nodeGroups).toBeUndefined();
 		});
 
 		it('should not copy a selection that contains a restricted node type', async () => {
