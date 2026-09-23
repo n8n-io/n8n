@@ -1,5 +1,7 @@
 import {
 	INSTANCE_AI_PREFILL_TYPES,
+	instanceContextAbsenceReasonSchema,
+	instanceContextSurfaceSchema,
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -7,6 +9,7 @@ import {
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { assistantSurfaceSchema } from '../schemas';
 import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 /**
@@ -51,6 +54,48 @@ const threadActionSource = z.enum([
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 ]);
 const prefillType = z.enum([...INSTANCE_AI_PREFILL_TYPES, INSTANCE_AI_PREFILL_TYPE_FALLBACK]);
+
+const instanceContextTurnSchema = z.object({
+	surface: assistantSurfaceSchema,
+	user_id: z.string(),
+	thread_id: z.string().optional(),
+	run_id: z.string().describe('Turn ID shared by all segments'),
+	segment: z
+		.enum(['whole', 'suspended', 'resumed'])
+		.describe(
+			'Whole turn, pause for input, or final resumed segment. A turn can pause more than once.',
+		),
+	instance_context_enabled: z.boolean().describe('Instance activity gate result'),
+	node_usage_enabled: z.boolean().describe('Per-user node usage gate result'),
+	context_depth: z
+		.number()
+		.int()
+		.describe(
+			'Deepest attempted read: 0 none, 1 activity list, 2 activity expand or node usage, 3 workflow inspection',
+		),
+	context_surfaces: z
+		.array(z.enum(instanceContextSurfaceSchema.options))
+		.describe('Distinct context surfaces called in this segment'),
+	asked_clarifying_question: z
+		.boolean()
+		.describe('This segment asked for missing information. Combine segments with OR.'),
+	tool_calls: z.number().int().describe('Total tool calls in this segment'),
+	turn_prompt_tokens: z
+		.number()
+		.int()
+		.optional()
+		.describe('Measured prompt tokens for this segment'),
+	turn_completion_tokens: z
+		.number()
+		.int()
+		.optional()
+		.describe('Measured completion tokens for this segment'),
+	turn_total_tokens: z.number().int().optional().describe('Measured total tokens for this segment'),
+	turn_cost_usd: z.number().optional().describe('Estimated segment cost from model prices'),
+	status: z
+		.enum(['completed', 'cancelled', 'errored', 'suspended'])
+		.describe('How this segment ended'),
+});
 
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	SETUP_PANEL_STATE_OBSERVED: {
@@ -485,5 +530,34 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			result_count: z.number().int().describe('Rows returned on this page'),
 			total: z.number().int().describe('Rows matching every filter, ignoring limit'),
 		}),
+	},
+	INSTANCE_CONTEXT_TURN: {
+		name: 'Instance AI instance-context turn completed',
+		description:
+			'One context result per turn segment, including turns without a block. Group by run_id. Count distinct runs, sum segment tokens, and count a question if any segment asked one.',
+		properties: z.discriminatedUnion('block_state', [
+			instanceContextTurnSchema
+				.extend({
+					block_state: z.literal('absent'),
+					absence_reason: z
+						.enum(instanceContextAbsenceReasonSchema.options)
+						.describe('Why this turn received no block'),
+				})
+				.strict(),
+			instanceContextTurnSchema
+				.extend({
+					block_state: z.literal('injected'),
+					block_is_update: z.boolean().describe('The block adds to an earlier window'),
+					block_inventory_rows: z.number().int(),
+					block_event_rows: z.number().int(),
+					block_run_rows: z.number().int(),
+					block_chars: z.number().int().describe('Exact rendered block length'),
+					block_tokens_estimated: z
+						.number()
+						.int()
+						.describe('Block token estimate at four characters per token'),
+				})
+				.strict(),
+		]),
 	},
 });

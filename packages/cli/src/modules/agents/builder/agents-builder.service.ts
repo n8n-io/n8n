@@ -302,7 +302,7 @@ export class AgentsBuilderService {
 			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
-			.configuration({ maxIterations: 30 });
+			.configuration({ maxIterations: 100 });
 		const promptCaching = resolveAIAPromptCaching(modelConfig);
 		if (promptCaching) {
 			builder.promptCaching(promptCaching);

@@ -13,6 +13,25 @@ export { default as N8nActionToggle } from './N8nActionToggle';
 export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
 export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
 export { useDropdownSearch } from './N8nDropdownMenu/composables/useDropdownSearch';
+export { default as N8nContextMenu } from './N8nContextMenu/ContextMenu.vue';
+export { default as N8nContextMenuItem } from './N8nContextMenu/ContextMenuItem.vue';
+export type {
+	ContextMenuId,
+	ContextMenuItem,
+	ContextMenuRadio,
+	ContextMenuCheckbox,
+	ContextMenuGroup,
+	ContextMenuSubmenu,
+	ContextMenuRadioGroup,
+	ContextMenuNode,
+	ContextMenuLeaf,
+	ContextMenuProps,
+	ContextMenuEmits,
+	ContextMenuSlots,
+	ContextMenuItemProps,
+	ContextMenuItemEmits,
+	ContextMenuItemSlots,
+} from './N8nContextMenu/ContextMenu.types';
 export { default as N8nAiModelSelectorDropdown } from './N8nAiModelSelectorDropdown';
 export type {
 	AiModelSelectorMenuItem,
@@ -91,6 +110,8 @@ export { default as N8nOption } from './N8nOption';
 export { default as N8nPagination } from './N8nPagination';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
+export { default as N8nSelectedItemsInfo } from './N8nSelectedItemsInfo';
+export type { SelectedItemsInfoProps } from './N8nSelectedItemsInfo';
 export { default as N8nSettingsLayout } from './N8nSettingsLayout';
 export type { SettingsLayoutProps } from './N8nSettingsLayout';
 export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
@@ -148,6 +169,8 @@ export { default as N8nTabs } from './N8nTabs';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
 export { default as N8nText } from './N8nText';
+export { default as N8nTimeAgo } from './N8nTimeAgo';
+export type { TimeAgoProps } from './N8nTimeAgo';
 export { default as N8nTooltip } from './N8nTooltip';
 export type { N8nTooltipProps, N8nTooltipSlots } from './N8nTooltip';
 export { default as N8nAiActivityStepButton } from './N8nAiActivityStepButton';

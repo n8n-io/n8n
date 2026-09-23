@@ -2289,6 +2289,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	setupPanelVariant?: 'control' | 'variant';
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
+	teamProjectsLicensed?: boolean;
 	branchReadOnly?: boolean;
 	sharingEnabled?: boolean;
 	folderExploration?: boolean;
@@ -2374,6 +2375,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 	const mockProjectService = {
 		getAccessibleProjects: vi.fn().mockResolvedValue([{ id: 'team-project-id' }, { id: 'p2' }]),
+		getPersonalProject: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
 	};
 	const mockLogger = {
 		error: vi.fn(),
@@ -2457,6 +2459,11 @@ function createWorkflowAdapterForTests(overrides?: {
 			: (mockFolderFinderService as unknown as ConstructorParameters<
 					typeof InstanceAiAdapterService
 				>[41]),
+		undefined,
+		undefined,
+		{
+			isTeamProjectsLicensed: vi.fn().mockReturnValue(overrides?.teamProjectsLicensed ?? true),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[44],
 	);
 
 	const boundProjectId =
@@ -4289,6 +4296,49 @@ describe('license-gated features', () => {
 		});
 	});
 
+	describe('projects (quota:maxTeamProjects)', () => {
+		// An admin reads every project on the instance, peer personal ones included.
+		const accessibleProjects = [
+			{ id: 'personal-project-id', name: 'Personal', type: 'personal' },
+			{ id: 'team-project-id', name: 'Team', type: 'team' },
+			{ id: 'p2', name: 'Other team', type: 'team' },
+			{ id: 'peer-personal-id', name: 'Peer', type: 'personal' },
+		];
+
+		it('lists every accessible project when team projects are licensed', async () => {
+			const { context, mockProjectService } = createWorkflowAdapterForTests({
+				teamProjectsLicensed: true,
+			});
+			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
+
+			await expect(context.workspaceService!.listProjects()).resolves.toEqual(accessibleProjects);
+		});
+
+		it('lists only the personal and the bound project when team projects are not licensed', async () => {
+			const { context, mockProjectService } = createWorkflowAdapterForTests({
+				teamProjectsLicensed: false,
+			});
+			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
+
+			await expect(context.workspaceService!.listProjects()).resolves.toEqual([
+				{ id: 'personal-project-id', name: 'Personal', type: 'personal' },
+				{ id: 'team-project-id', name: 'Team', type: 'team' },
+			]);
+		});
+
+		it('lists only the personal project when team projects are not licensed and no project is bound', async () => {
+			const { context, mockProjectService } = createWorkflowAdapterForTests({
+				teamProjectsLicensed: false,
+				projectId: null,
+			});
+			mockProjectService.getAccessibleProjects.mockResolvedValue(accessibleProjects);
+
+			await expect(context.workspaceService!.listProjects()).resolves.toEqual([
+				{ id: 'personal-project-id', name: 'Personal', type: 'personal' },
+			]);
+		});
+	});
+
 	describe('licenseHints', () => {
 		it('includes hints for unlicensed features', () => {
 			const { context } = createWorkflowAdapterForTests({
@@ -4323,6 +4373,16 @@ describe('license-gated features', () => {
 			expect(context.licenseHints).not.toEqual(
 				expect.arrayContaining([expect.stringContaining('Named workflow versions')]),
 			);
+		});
+
+		it('includes a hint when team projects are not licensed', () => {
+			const { context } = createWorkflowAdapterForTests({
+				namedVersionsLicensed: true,
+				foldersLicensed: true,
+				teamProjectsLicensed: false,
+			});
+
+			expect(context.licenseHints).toEqual([expect.stringContaining('Team projects')]);
 		});
 	});
 });
@@ -6557,7 +6617,7 @@ describe('createContext — builder delegate wiring', () => {
 		service.createContext(mockUser, {
 			threadId: 'thread-1',
 			projectId: 'proj-1',
-			credentialIdAllowlist: [],
+			getCredentialIdAllowlist: () => [],
 		});
 
 		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(

@@ -19,7 +19,7 @@ import {
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -412,6 +412,9 @@ export class InstanceAiAdapterService {
 		private readonly folderFinderService?: FolderFinderService,
 		private readonly instanceContext?: InstanceContextService,
 		private readonly executeNodeService?: ExecuteNodeService,
+		// Optional for the same positional-construction reason as above.
+		// See `teamProjectsLicensed()` for the absent case.
+		private readonly licenseState?: LicenseState,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -427,8 +430,10 @@ export class InstanceAiAdapterService {
 			pushRef?: string;
 			threadId?: string;
 			projectId?: string;
-			/** Eval-only: restrict the credential `list()` view to these IDs. */
-			credentialIdAllowlist?: string[];
+			/** Eval-only: restrict the credential `list()` view to these IDs. A getter,
+			 *  read on every `list()`: the harness appends credentials it creates
+			 *  mid-run, after this context is built. */
+			getCredentialIdAllowlist?: () => string[] | undefined;
 			/** Eval-only: resolve a credential's connection test as successful without
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
@@ -464,7 +469,7 @@ export class InstanceAiAdapterService {
 			pushRef,
 			threadId,
 			projectId,
-			credentialIdAllowlist,
+			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
@@ -485,7 +490,7 @@ export class InstanceAiAdapterService {
 		const credentialService = this.createCredentialAdapter(
 			user,
 			projectId,
-			credentialIdAllowlist,
+			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
 		);
 		return {
@@ -520,7 +525,7 @@ export class InstanceAiAdapterService {
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
-			workspaceService: this.createWorkspaceAdapter(user),
+			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
@@ -549,7 +554,7 @@ export class InstanceAiAdapterService {
 									targetAgentId,
 								),
 							credentialService,
-							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
+							{ useEvalModelCatalog: getCredentialIdAllowlist?.() !== undefined },
 						),
 					}
 				: {}),
@@ -608,7 +613,7 @@ export class InstanceAiAdapterService {
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
-		/** Saved AI preferences on the opening turn. */
+		/** Saved AI preferences on every user turn. */
 		aiPreferencesEnabled: boolean;
 		/** Shared activity recording and retrieval use the same instance gate. */
 		instanceContextEnabled: boolean;
@@ -796,6 +801,11 @@ export class InstanceAiAdapterService {
 		};
 	}
 
+	/** Team projects are a quota, not a feature flag, so the read goes through `LicenseState`. */
+	private teamProjectsLicensed(): boolean {
+		return this.licenseState?.isTeamProjectsLicensed() ?? true;
+	}
+
 	private buildLicenseHints(): string[] {
 		const hints: string[] = [];
 		if (!this.license.isLicensed('feat:namedVersions')) {
@@ -806,6 +816,11 @@ export class InstanceAiAdapterService {
 		if (!this.license.isLicensed('feat:folders')) {
 			hints.push(
 				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+			);
+		}
+		if (!this.teamProjectsLicensed()) {
+			hints.push(
+				'**Team projects** — this instance has no team-project license. `list-projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
 			);
 		}
 		return hints;
@@ -2438,7 +2453,7 @@ export class InstanceAiAdapterService {
 	private createCredentialAdapter(
 		user: User,
 		boundProjectId?: string,
-		credentialIdAllowlist?: string[],
+		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
 		const {
@@ -2871,16 +2886,21 @@ export class InstanceAiAdapterService {
 			},
 		};
 
-		if (!credentialIdAllowlist) return adapter;
+		if (!getCredentialIdAllowlist?.()) return adapter;
 
 		// Eval runs pin each build thread to a declared credential set so
 		// concurrent test cases can't observe each other's credentials. Discovery
 		// only: get/test/delete still resolve explicit IDs the caller already has.
-		const allowed = new Set(credentialIdAllowlist);
+		// Read per call, not snapshotted: a credential the harness creates on a
+		// setup card must show on the next card of the same run.
 		return {
 			...adapter,
-			list: async (options) =>
-				allowed.size === 0 ? [] : (await adapter.list(options)).filter((c) => allowed.has(c.id)),
+			list: async (options) => {
+				const allowed = new Set(getCredentialIdAllowlist());
+				return allowed.size === 0
+					? []
+					: (await adapter.list(options)).filter((c) => allowed.has(c.id));
+			},
 		};
 	}
 
@@ -3788,7 +3808,7 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createWorkspaceAdapter(user: User): InstanceAiWorkspaceService {
+	private createWorkspaceAdapter(user: User, boundProjectId?: string): InstanceAiWorkspaceService {
 		const {
 			projectService,
 			folderService,
@@ -3801,6 +3821,7 @@ export class InstanceAiAdapterService {
 		} = this;
 		const assertNotReadOnly = (resource: string) => this.assertInstanceNotReadOnly(resource);
 		const { assertProjectScope } = this.createProjectScopeHelpers(user);
+		const teamProjectsLicensed = this.teamProjectsLicensed();
 
 		const adapter: InstanceAiWorkspaceService = {
 			async getProject(projectId: string): Promise<ProjectSummary | null> {
@@ -3811,11 +3832,18 @@ export class InstanceAiAdapterService {
 
 			async listProjects(): Promise<ProjectSummary[]> {
 				const projects = await projectService.getAccessibleProjects(user);
-				return projects.map((p) => ({
+				const summaries = projects.map((p) => ({
 					id: p.id,
 					name: p.name,
 					type: p.type,
 				}));
+				if (teamProjectsLicensed) return summaries;
+				// An instance that loses its team-project license keeps its projects, and
+				// an admin still reads all of them. The user cannot work in those
+				// projects, so list only their own personal project and the project this
+				// conversation is bound to.
+				const personalProjectId = (await projectService.getPersonalProject(user))?.id;
+				return summaries.filter((p) => p.id === personalProjectId || p.id === boundProjectId);
 			},
 
 			...(this.license.isLicensed('feat:folders')
