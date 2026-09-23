@@ -21,74 +21,6 @@ export interface WriteLock {
 }
 
 /**
- * Lua scripts for atomic lock operations on Redis. These run entirely on
- * the Redis server, so they are race-free across multiple n8n mains sharing
- * the same Redis — unlike the in-memory `serializeLockOp` which only
- * serializes within a single process.
- *
- * The cache stores values double-JSON-encoded: `cache.set(key, JSON.stringify(obj))`
- * → Redis stores `JSON.stringify(JSON.stringify(obj))`. The scripts
- * `cjson.decode` twice to recover the object, and `SET` with a
- * double-encoded value produced in TypeScript (`encodeLockData`).
- *
- * Covered by `collaboration.state.redis.test.ts`, which runs these scripts
- * unmodified against `ioredis-mock`.
- */
-
-/**
- * Shared prelude: `read_lock(key)` returns the decoded lock table, or nil
- * for a missing or malformed value so it is treated as "no lock" — the same
- * rule `parseLock` applies on the TypeScript side.
- */
-const LOCK_PRELUDE = `
-local function read_lock(key)
-  local current = redis.call('GET', key)
-  if not current then return nil end
-  local ok, decoded = pcall(cjson.decode, current)
-  if not ok or type(decoded) ~= 'string' then return nil end
-  local ok2, lock = pcall(cjson.decode, decoded)
-  if not ok2 or type(lock) ~= 'table' or not lock.clientId or not lock.userId then return nil end
-  return lock
-end
-`;
-
-// ARGV: [encodedLock, clientId, ttlMs]
-// SET if absent or already held by the same clientId. Returns 1 on success, 0 if held by another client.
-const ACQUIRE_LOCK_SCRIPT = `${LOCK_PRELUDE}
-local lock = read_lock(KEYS[1])
-if lock and lock.clientId ~= ARGV[2] then return 0 end
-redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[3])
-return 1
-`;
-
-// ARGV: [encodedLock, userId, ttlMs]
-// SET if absent or held by the same userId (force-steal from same user's other tab).
-const ACQUIRE_LOCK_FORCE_SCRIPT = `${LOCK_PRELUDE}
-local lock = read_lock(KEYS[1])
-if lock and lock.userId ~= ARGV[2] then return 0 end
-redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[3])
-return 1
-`;
-
-// ARGV: [clientId, ttlMs]
-// PEXPIRE only if the caller holds the lock (clientId matches).
-const RENEW_LOCK_SCRIPT = `${LOCK_PRELUDE}
-local lock = read_lock(KEYS[1])
-if not lock or lock.clientId ~= ARGV[1] then return 0 end
-redis.call('PEXPIRE', KEYS[1], ARGV[2])
-return 1
-`;
-
-// ARGV: [clientId]
-// DEL only if the caller holds the lock (clientId matches).
-const RELEASE_LOCK_SCRIPT = `${LOCK_PRELUDE}
-local lock = read_lock(KEYS[1])
-if not lock or lock.clientId ~= ARGV[1] then return 0 end
-redis.call('DEL', KEYS[1])
-return 1
-`;
-
-/**
  * State management for the collaboration service. Workflow active
  * users are stored in a hash in the following format:
  * {
@@ -108,11 +40,17 @@ export class CollaborationState {
 	constructor(private readonly cache: CacheService) {}
 
 	/**
-	 * Per-resource promise chains that serialize write-lock operations.
-	 * Without this, two concurrent push handlers can both observe an empty
-	 * lock and then both write — or a heartbeat can restore a stale lock
-	 * after a forced takeover. Each chain ensures the check-then-act
-	 * sequence for a given resource runs without interleaving.
+	 * Per-resource promise chains that serialize write-lock operations
+	 * within this process. Without this, two concurrent push handlers can
+	 * both observe an empty lock and then both write — or a heartbeat can
+	 * restore a stale lock after a forced takeover.
+	 *
+	 * The write lock is advisory: it drives the read-only UI, not data
+	 * integrity. Across several mains a check-then-set can still race for a
+	 * few milliseconds, and the loser then gets a 409 from the lock check or
+	 * from the optimistic revision fence on the persisted write. That is
+	 * cheaper than Redis-side scripting for a lock that heals on the next
+	 * heartbeat, poll, or TTL expiry.
 	 */
 	private lockChains = new Map<string, Promise<unknown>>();
 
@@ -132,27 +70,6 @@ export class CollaborationState {
 			}
 		});
 		return await next;
-	}
-
-	/**
-	 * Whether the cache backend is Redis. When true, lock operations use
-	 * atomic Lua scripts (race-free across mains); when false, they fall
-	 * back to the in-memory `serializeLockOp` (single-process only).
-	 * Async because the cache initializes lazily on first use, and a lock
-	 * op may be the first cache access on a freshly started main.
-	 */
-	private async isRedis() {
-		return await this.cache.isRedisBackend();
-	}
-
-	/**
-	 * Encode lock data for Redis storage. `CacheService.set` JSON-encodes
-	 * the value, and `setAgentWriteLock` passes a JSON string, so the
-	 * value in Redis is double-encoded. Lua scripts must `SET` the same
-	 * format to stay compatible with `getAgentWriteLock`.
-	 */
-	private encodeLockData(lockData: WriteLock): string {
-		return JSON.stringify(JSON.stringify(lockData));
 	}
 
 	/**
@@ -285,9 +202,9 @@ export class CollaborationState {
 	}
 
 	/**
-	 * Atomically acquire the write lock: set only if absent or already held
-	 * by the same client. Returns true if acquired, false if another client
-	 * holds the lock.
+	 * Acquire the write lock: set only if absent or already held by the
+	 * same client. Returns true if acquired, false if another client holds
+	 * the lock.
 	 */
 	async acquireWriteLock(
 		workflowId: Workflow['id'],
@@ -295,15 +212,6 @@ export class CollaborationState {
 		userId: User['id'],
 	): Promise<boolean> {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
-		if (await this.isRedis()) {
-			const encoded = this.encodeLockData({ clientId, userId });
-			const result = await this.cache.eval(
-				ACQUIRE_LOCK_SCRIPT,
-				[cacheKey],
-				[encoded, clientId, this.writeLockTtl],
-			);
-			return result === 1;
-		}
 		return await this.serializeLockOp(cacheKey, async () => {
 			const current = await this.getWriteLock(workflowId);
 			if (current && current.clientId !== clientId) return false;
@@ -314,10 +222,6 @@ export class CollaborationState {
 
 	async renewWriteLock(workflowId: Workflow['id'], clientId: string) {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
-		if (await this.isRedis()) {
-			await this.cache.eval(RENEW_LOCK_SCRIPT, [cacheKey], [clientId, this.writeLockTtl]);
-			return;
-		}
 		await this.serializeLockOp(cacheKey, async () => {
 			const currentLock = await this.getWriteLock(workflowId);
 			if (currentLock?.clientId === clientId) {
@@ -353,16 +257,12 @@ export class CollaborationState {
 	}
 
 	/**
-	 * Atomically release the write lock only if the caller holds it.
-	 * Prevents a release from deleting a lock that was taken over by
-	 * another tab between the check and the delete.
+	 * Release the write lock only if the caller holds it. Prevents a release
+	 * from deleting a lock that was taken over by another tab between the
+	 * check and the delete.
 	 */
 	async releaseWriteLockIfHolder(workflowId: Workflow['id'], clientId: string): Promise<boolean> {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
-		if (await this.isRedis()) {
-			const result = await this.cache.eval(RELEASE_LOCK_SCRIPT, [cacheKey], [clientId]);
-			return result === 1;
-		}
 		return await this.serializeLockOp(cacheKey, async () => {
 			const current = await this.getWriteLock(workflowId);
 			if (current?.clientId !== clientId) return false;
@@ -388,15 +288,6 @@ export class CollaborationState {
 		userId: User['id'],
 	): Promise<boolean> {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
-		if (await this.isRedis()) {
-			const encoded = this.encodeLockData({ clientId, userId });
-			const result = await this.cache.eval(
-				ACQUIRE_LOCK_FORCE_SCRIPT,
-				[cacheKey],
-				[encoded, userId, this.writeLockTtl],
-			);
-			return result === 1;
-		}
 		return await this.serializeLockOp(cacheKey, async () => {
 			const currentLock = await this.getWriteLock(workflowId);
 			if (currentLock && currentLock.userId !== userId) return false;
@@ -476,10 +367,8 @@ export class CollaborationState {
 	}
 
 	/**
-	 * Atomically acquire the agent write lock: set only if absent or
-	 * already held by the same client. Returns true if acquired.
-	 * Uses a Redis Lua script when Redis is the cache backend (atomic
-	 * across mains); falls back to in-process serialization for memory.
+	 * Acquire the agent write lock: set only if absent or already held by
+	 * the same client. Returns true if acquired.
 	 */
 	async acquireAgentWriteLock(
 		agentId: string,
@@ -487,15 +376,6 @@ export class CollaborationState {
 		userId: User['id'],
 	): Promise<boolean> {
 		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
-		if (await this.isRedis()) {
-			const encoded = this.encodeLockData({ clientId, userId });
-			const result = await this.cache.eval(
-				ACQUIRE_LOCK_SCRIPT,
-				[cacheKey],
-				[encoded, clientId, this.writeLockTtl],
-			);
-			return result === 1;
-		}
 		return await this.serializeLockOp(cacheKey, async () => {
 			const current = await this.getAgentWriteLock(agentId);
 			if (current && current.clientId !== clientId) return false;
@@ -506,10 +386,6 @@ export class CollaborationState {
 
 	async renewAgentWriteLock(agentId: string, clientId: string) {
 		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
-		if (await this.isRedis()) {
-			await this.cache.eval(RENEW_LOCK_SCRIPT, [cacheKey], [clientId, this.writeLockTtl]);
-			return;
-		}
 		await this.serializeLockOp(cacheKey, async () => {
 			const currentLock = await this.getAgentWriteLock(agentId);
 			if (currentLock?.clientId === clientId) {
@@ -549,14 +425,10 @@ export class CollaborationState {
 	}
 
 	/**
-	 * Atomically release the agent write lock only if the caller holds it.
+	 * Release the agent write lock only if the caller holds it.
 	 */
 	async releaseAgentWriteLockIfHolder(agentId: string, clientId: string): Promise<boolean> {
 		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
-		if (await this.isRedis()) {
-			const result = await this.cache.eval(RELEASE_LOCK_SCRIPT, [cacheKey], [clientId]);
-			return result === 1;
-		}
 		return await this.serializeLockOp(cacheKey, async () => {
 			const current = await this.getAgentWriteLock(agentId);
 			if (current?.clientId !== clientId) return false;
@@ -571,8 +443,8 @@ export class CollaborationState {
 
 	/**
 	 * Acquire agent write lock forcefully, stealing from same user's other tab.
-	 * Uses a Redis Lua script when Redis is the cache backend (atomic
-	 * across mains); falls back to in-process serialization for memory.
+	 * Serialized so a concurrent heartbeat cannot restore the old lock
+	 * between the check and the set.
 	 *
 	 * @returns true if lock was acquired, false if lock is held by different user
 	 */
@@ -582,15 +454,6 @@ export class CollaborationState {
 		userId: User['id'],
 	): Promise<boolean> {
 		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
-		if (await this.isRedis()) {
-			const encoded = this.encodeLockData({ clientId, userId });
-			const result = await this.cache.eval(
-				ACQUIRE_LOCK_FORCE_SCRIPT,
-				[cacheKey],
-				[encoded, userId, this.writeLockTtl],
-			);
-			return result === 1;
-		}
 		return await this.serializeLockOp(cacheKey, async () => {
 			const currentLock = await this.getAgentWriteLock(agentId);
 			if (currentLock && currentLock.userId !== userId) return false;

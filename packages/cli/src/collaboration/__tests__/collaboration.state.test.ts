@@ -21,9 +21,6 @@ describe('CollaborationState', () => {
 
 	beforeEach(() => {
 		mockCacheService = mock<CacheService>();
-		// Memory backend: lock ops take the in-process `serializeLockOp` path.
-		// The Redis Lua path is covered in `collaboration.state.redis.test.ts`.
-		mockCacheService.isRedisBackend.mockResolvedValue(false);
 		collaborationState = new CollaborationState(mockCacheService);
 	});
 

@@ -86,17 +86,6 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		return this.cache.kind === 'redis';
 	}
 
-	/**
-	 * Like `isRedis()`, but safe before the lazy `init()` has run — `get`/`set`
-	 * initialize on first use, so a caller that branches on the backend before
-	 * touching the cache must use this variant.
-	 */
-	async isRedisBackend() {
-		if (!this.cache) await this.init();
-
-		return this.cache.kind === 'redis';
-	}
-
 	isMemory() {
 		return this.cache.kind === 'memory';
 	}
@@ -407,20 +396,5 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		}
 
 		return true;
-	}
-
-	/**
-	 * Run a Lua script atomically on the Redis server. Only available
-	 * when the cache backend is Redis — memory cache has no equivalent.
-	 * Used by collaboration lock operations for cross-main atomicity.
-	 */
-	async eval(script: string, keys: string[], args: (string | number)[]): Promise<unknown> {
-		if (!this.cache) await this.init();
-
-		if (this.cache.kind === 'redis') {
-			return await this.cache.store.client.eval(script, keys.length, ...keys, ...args);
-		}
-
-		throw new UserError('Lua scripts are only supported with Redis cache backend');
 	}
 }
