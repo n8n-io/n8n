@@ -88,7 +88,7 @@
 		"test:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "VITEST_SHARD"],
 			"cache": false
 		},
 		"test:unit": {

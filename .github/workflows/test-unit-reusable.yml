@@ -320,7 +320,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend:changed --summarize -- --shard=${{ matrix.shard }}/4
+        run: pnpm test:ci:frontend:changed --summarize
         env:
           VITEST_SHARD: ${{ matrix.shard }}/4
 
