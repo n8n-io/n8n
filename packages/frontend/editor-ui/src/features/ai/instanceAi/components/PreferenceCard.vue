@@ -157,6 +157,9 @@ const modalOpen = ref(false);
 			v-model:open="modalOpen"
 			:preference-id="card.preferenceId"
 			:content="card.content"
+			:scope="card.scope"
+			:project-id="card.projectId"
+			:user-id="card.userId"
 			:run-id="props.runId"
 			:tool-call-id="props.toolCall.toolCallId"
 		/>

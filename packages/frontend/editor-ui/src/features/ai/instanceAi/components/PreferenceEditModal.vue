@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import type { AiPreferenceScope } from '@n8n/api-types';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, aiPreferenceContentSchema } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -13,15 +14,25 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Rule, RuleGroup } from '@/Interface';
 
+import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	canWriteInstanceScope,
+	canWriteProjectScope,
+} from '@/features/settings/context/context.utils';
+
 import { editPreferenceCard, undoPreferenceCard } from '../instanceAi.api';
 import { useThread } from '../instanceAi.store';
 import { isPreferenceCardEvent } from '../preferenceCard.utils';
+import { preferenceScopeLabel } from '../preferenceScope.utils';
 
 type FailureKey =
 	| 'instanceAi.preferenceCard.modal.saveFailed'
@@ -33,6 +44,11 @@ const props = defineProps<{
 	preferenceId: string;
 	/** The text the row currently holds. Save stays off until the draft differs from it. */
 	content: string;
+	/** Where the row is now. The select opens on it and always lists it. */
+	scope: AiPreferenceScope;
+	projectId: string | null;
+	/** The owner of a user-scoped row. An edit must name it, so it travels with the request. */
+	userId: string | null;
 	runId: string;
 	toolCallId: string;
 }>();
@@ -42,8 +58,92 @@ const { restApiContext } = useRootStore();
 const thread = useThread();
 const telemetry = useTelemetry();
 
-/** The only scope this ticket writes. CONTEXT-141 adds the others and enables the select. */
+const projectsStore = useProjectsStore();
+const usersStore = useUsersStore();
+
+/** Select values, in the shape the settings modal uses: `user`, `instance`, `project:<id>`. */
 const USER_SCOPE_VALUE = 'user';
+const INSTANCE_SCOPE_VALUE = 'instance';
+const PROJECT_SCOPE_PREFIX = 'project:';
+const projectScopeValue = (id: string) => `${PROJECT_SCOPE_PREFIX}${id}`;
+
+function scopeValueOf(scope: AiPreferenceScope, projectId: string | null): string {
+	if (scope === 'instance') return INSTANCE_SCOPE_VALUE;
+	if (scope === 'project' && projectId) return projectScopeValue(projectId);
+	return USER_SCOPE_VALUE;
+}
+
+const currentScopeValue = computed(() => scopeValueOf(props.scope, props.projectId));
+const scopeDraft = ref(currentScopeValue.value);
+
+type ScopeOption = { value: string; label: string; icon: IconOrEmoji };
+
+// The same icons as the settings modal: the user for "Just you", a globe for everyone.
+const USER_ICON: IconOrEmoji = { type: 'icon', value: 'user' };
+const INSTANCE_ICON: IconOrEmoji = { type: 'icon', value: 'globe' };
+
+function optionFor(value: string): ScopeOption {
+	const projects = projectsStore.myProjects;
+	if (value === USER_SCOPE_VALUE) {
+		return { value, label: preferenceScopeLabel(i18n, 'user', null, projects), icon: USER_ICON };
+	}
+	if (value === INSTANCE_SCOPE_VALUE) {
+		return {
+			value,
+			label: preferenceScopeLabel(i18n, 'instance', null, projects),
+			icon: INSTANCE_ICON,
+		};
+	}
+	const projectId = value.slice(PROJECT_SCOPE_PREFIX.length);
+	const project = projects.find((candidate) => candidate.id === projectId);
+	return {
+		value,
+		label: preferenceScopeLabel(i18n, 'project', projectId, projects),
+		icon: project?.type === 'personal' ? USER_ICON : (project?.icon ?? DEFAULT_PROJECT_ICON),
+	};
+}
+
+/**
+ * The scopes this user may write, from the same helpers the settings modal uses: the
+ * user always, the thread's project when they hold `projectAiPreference:create` on it,
+ * the instance when they hold the global `aiPreference:create`. The row's current scope
+ * is always listed, so the select shows where the row is even when the user could not
+ * put it there today. The server refuses a move the user may not make.
+ */
+const scopeOptions = computed<ScopeOption[]>(() => {
+	const values = [USER_SCOPE_VALUE];
+	const boundProjectId = thread.projectId;
+	if (boundProjectId && canWriteProjectScope(boundProjectId)) {
+		values.push(projectScopeValue(boundProjectId));
+	}
+	if (canWriteInstanceScope()) values.push(INSTANCE_SCOPE_VALUE);
+	if (!values.includes(currentScopeValue.value)) values.push(currentScopeValue.value);
+	return values.map(optionFor);
+});
+
+const selectedIcon = computed<IconOrEmoji>(
+	() =>
+		scopeOptions.value.find((option) => option.value === scopeDraft.value)?.icon ??
+		DEFAULT_PROJECT_ICON,
+);
+
+function parseScope(): {
+	scope: AiPreferenceScope;
+	projectId: string | null;
+	userId: string | null;
+} {
+	const value = scopeDraft.value;
+	if (value === INSTANCE_SCOPE_VALUE) return { scope: 'instance', projectId: null, userId: null };
+	if (value.startsWith(PROJECT_SCOPE_PREFIX)) {
+		return { scope: 'project', projectId: value.slice(PROJECT_SCOPE_PREFIX.length), userId: null };
+	}
+	// An edit must name its owner. The result carries it; an older result falls back to the caller.
+	return {
+		scope: 'user',
+		projectId: null,
+		userId: props.userId ?? usersStore.currentUser?.id ?? null,
+	};
+}
 
 const draft = ref(props.content);
 const busy = ref(false);
@@ -53,7 +153,9 @@ const errorMessage = ref('');
 watch(open, (isOpen) => {
 	if (!isOpen) return;
 	draft.value = props.content;
+	scopeDraft.value = currentScopeValue.value;
 	errorMessage.value = '';
+	void projectsStore.getMyProjects();
 });
 
 // The same rules, counter, and cap as the preference modal on the settings page.
@@ -64,8 +166,10 @@ const contentValidationRules: Array<Rule | RuleGroup> = [
 
 const validation = computed(() => aiPreferenceContentSchema.safeParse(draft.value));
 
-// Nothing to accept when the text is unchanged: the preference is already saved.
-const isDirty = computed(() => draft.value.trim() !== props.content);
+// Nothing to accept when neither the text nor the scope changed: the preference is already saved.
+const isDirty = computed(
+	() => draft.value.trim() !== props.content || scopeDraft.value !== currentScopeValue.value,
+);
 const canSave = computed(() => isDirty.value && validation.value.success && !busy.value);
 
 async function save() {
@@ -77,6 +181,7 @@ async function save() {
 			runId: props.runId,
 			toolCallId: props.toolCallId,
 			content: validation.value.data,
+			...parseScope(),
 		});
 		if (!applyReturnedFact(response, 'instanceAi.preferenceCard.modal.saveFailed')) return;
 		open.value = false;
@@ -102,7 +207,7 @@ async function remove() {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
 			count: 1,
 			source: 'rejected',
-			scope_types: ['user'],
+			scope_types: [props.scope],
 		});
 		open.value = false;
 	} catch (error) {
@@ -181,18 +286,23 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 				color="text-dark"
 			>
 				<N8nSelect
-					:model-value="USER_SCOPE_VALUE"
+					v-model="scopeDraft"
 					size="large"
-					disabled
+					:disabled="busy"
 					:teleported="false"
 					data-test-id="instance-ai-preference-modal-scope"
 				>
 					<template #prefix>
-						<N8nIcon icon="user" />
+						<N8nText v-if="selectedIcon.type === 'emoji'" :class="$style.emoji">{{
+							selectedIcon.value
+						}}</N8nText>
+						<N8nIcon v-else :icon="selectedIcon.value" />
 					</template>
 					<N8nOption
-						:value="USER_SCOPE_VALUE"
-						:label="i18n.baseText('settings.context.preferences.scope.user')"
+						v-for="option in scopeOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
 					/>
 				</N8nSelect>
 			</N8nInputLabel>
@@ -244,6 +354,10 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 .counter {
 	align-self: flex-end;
 	margin-top: calc(-1 * var(--spacing--xs));
+}
+
+.emoji {
+	line-height: 1;
 }
 
 /* Removal is the one destructive action here, so it sits apart from Cancel and Save. */

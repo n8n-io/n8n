@@ -8,6 +8,10 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
+import { mockedStore } from '@/__tests__/utils';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+
 import PreferenceCard from '../components/PreferenceCard.vue';
 import { createThreadComponentRenderer, makeThread } from './createThreadComponentRenderer';
 
@@ -120,8 +124,28 @@ async function openModal(): Promise<HTMLTextAreaElement> {
 	return wrapper.querySelector('textarea')!;
 }
 
+function scopeOptionLabels() {
+	return Array.from(document.querySelectorAll('li.el-select-dropdown__item')).map(
+		(li) => li.textContent?.trim() ?? '',
+	);
+}
+
+async function pickScope(label: string) {
+	const option = Array.from(document.querySelectorAll('li.el-select-dropdown__item')).find((li) =>
+		li.textContent?.includes(label),
+	);
+	if (!option) throw new Error(`No scope option "${label}"`);
+	await userEvent.click(option);
+}
+
 describe('PreferenceCard', () => {
-	beforeEach(() => vi.clearAllMocks());
+	beforeEach(() => {
+		vi.clearAllMocks();
+		const usersStore = mockedStore(useUsersStore);
+		usersStore.currentUser = { id: 'user-1', globalScopes: [] } as never;
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.myProjects = projectsState[STORES.PROJECTS].myProjects as never;
+	});
 
 	describe('the row', () => {
 		it('reads "Preference saved" and is expanded on the active turn', () => {
@@ -379,7 +403,7 @@ describe('PreferenceCard', () => {
 
 	describe('the edit modal', () => {
 		// The same scope label, required mark, cap, and counter as the settings page modal.
-		it('opens with the stored text and a disabled scope that reads as on the settings page', async () => {
+		it('opens with the stored text and "Just you" selected, and the select is enabled', async () => {
 			renderActive();
 			const input = await openModal();
 
@@ -388,10 +412,135 @@ describe('PreferenceCard', () => {
 			expect(screen.getByTestId('instance-ai-preference-modal-counter')).toHaveTextContent(
 				`${STORED_TEXT.length} / ${AI_PREFERENCE_CONTENT_MAX_LENGTH}`,
 			);
-			const scope = screen.getByTestId('instance-ai-preference-modal-scope');
-			const scopeInput = scope.querySelector('input');
-			expect(scopeInput).toBeDisabled();
+			const scopeInput = screen
+				.getByTestId('instance-ai-preference-modal-scope')
+				.querySelector('input');
+			expect(scopeInput).not.toBeDisabled();
 			expect(scopeInput).toHaveValue('settings.context.preferences.scope.user');
+		});
+
+		it('offers the bound project when the user may write it, and no instance option to a member', async () => {
+			renderActive();
+			await openModal();
+
+			const labels = scopeOptionLabels();
+			expect(labels).toContain('settings.context.preferences.scope.user');
+			expect(labels).toContain('instanceAi.preferenceCard.scope.project:{"name":"Marketing"}');
+			expect(labels).not.toContain('settings.context.preferences.scope.instance');
+		});
+
+		it('hides the bound project from a user who may only read it', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.myProjects = [
+				{
+					id: 'thread-project',
+					name: 'Marketing',
+					type: 'team',
+					scopes: ['projectAiPreference:read'],
+				},
+			] as never;
+			renderActive();
+			await openModal();
+
+			expect(scopeOptionLabels()).toEqual(['settings.context.preferences.scope.user']);
+		});
+
+		it('offers everyone on the instance to a user with the global create scope', async () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.currentUser = { id: 'user-1', globalScopes: ['aiPreference:create'] } as never;
+			renderActive();
+			await openModal();
+
+			expect(scopeOptionLabels()).toContain('settings.context.preferences.scope.instance');
+		});
+
+		it('keeps the current scope as an option even when the user may not write it any more', async () => {
+			// Review focus 4: the select must show the truth about where the row is.
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.myProjects = [
+				{
+					id: 'thread-project',
+					name: 'Marketing',
+					type: 'team',
+					scopes: ['projectAiPreference:read'],
+				},
+			] as never;
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'project',
+					projectId: 'thread-project',
+				},
+			});
+			await openModal();
+
+			const scopeInput = screen
+				.getByTestId('instance-ai-preference-modal-scope')
+				.querySelector('input');
+			expect(scopeInput).toHaveValue(
+				'instanceAi.preferenceCard.scope.project:{"name":"Marketing"}',
+			);
+			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeDisabled();
+		});
+
+		it('enables Save on a scope change alone and sends the project', async () => {
+			editPreferenceCard.mockResolvedValue({
+				preference: { id: 'pref-1', content: STORED_TEXT },
+				event: {
+					...editedEvent,
+					payload: {
+						toolCallId: 'tc-1',
+						preferenceId: 'pref-1',
+						state: 'edited',
+						content: STORED_TEXT,
+						scope: 'project',
+						projectId: 'thread-project',
+					},
+				},
+			});
+			renderActive();
+			await openModal();
+			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeDisabled();
+
+			await pickScope('instanceAi.preferenceCard.scope.project');
+			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeEnabled();
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-save'));
+
+			await waitFor(() =>
+				expect(editPreferenceCard).toHaveBeenCalledWith(expect.anything(), 'thread-1', 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					content: STORED_TEXT,
+					scope: 'project',
+					projectId: 'thread-project',
+					userId: null,
+				}),
+			);
+		});
+
+		it('falls back to the current user as the owner when the result carried none', async () => {
+			editPreferenceCard.mockResolvedValue({
+				preference: { id: 'pref-1', content: 'Keep replies brief.' },
+				event: editedEvent,
+			});
+			renderActive({
+				result: { ok: true, preference: { id: 'pref-1', content: STORED_TEXT, scope: 'user' } },
+			});
+			const input = await openModal();
+
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Keep replies brief.');
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-save'));
+
+			await waitFor(() =>
+				expect(editPreferenceCard).toHaveBeenCalledWith(
+					expect.anything(),
+					'thread-1',
+					'pref-1',
+					expect.objectContaining({ scope: 'user', userId: 'user-1', projectId: null }),
+				),
+			);
 		});
 
 		it('disables Save while the text is unchanged', async () => {
@@ -446,6 +595,9 @@ describe('PreferenceCard', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: 'Keep replies brief.',
+					scope: 'user',
+					projectId: null,
+					userId: 'user-1',
 				}),
 			);
 			expect(thread.applyEvent).toHaveBeenCalledWith(editedEvent);
@@ -522,6 +674,29 @@ describe('PreferenceCard', () => {
 					count: 1,
 					source: 'rejected',
 					scope_types: ['user'],
+				}),
+			);
+		});
+
+		it('reports the real scope of a removed preference', async () => {
+			undoPreferenceCard.mockResolvedValue({ ok: true, event: undoneEvent });
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'instance',
+					projectId: null,
+				},
+			});
+			await openModal();
+
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-remove'));
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+					count: 1,
+					source: 'rejected',
+					scope_types: ['instance'],
 				}),
 			);
 		});
