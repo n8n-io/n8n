@@ -95,12 +95,8 @@ paths:
     $ref: './handlers/sso-saml/spec/paths/settings.sso.saml.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
-  /workflows/{id}/test-runs/{runId}:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.yml'
   /workflows/{id}/test-runs/{runId}/cancel:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.cancel.yml'
-  /workflows/{id}/test-runs/{runId}/test-cases:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.test-cases.yml'
   /data-tables:
     $ref: './handlers/data-tables/spec/paths/data-tables.yml'
   /data-tables/{dataTableId}:
