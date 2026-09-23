@@ -151,7 +151,7 @@ describe('needsRegexEngine', () => {
 				taskRunners: {},
 				nodes: {},
 				expressionEngine: { engine: 'legacy' },
-				regexEngine: { engine: 'pcre2' as never },
+				regexEngine: { engine: 'bogus-engine' as never },
 				generic: { gracefulShutdownTimeout: 30 },
 			}),
 		);
@@ -162,7 +162,10 @@ describe('needsRegexEngine', () => {
 
 		await new PlainCommand().init();
 
-		expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('pcre2'), expect.any(Error));
+		expect(exitSpy).toHaveBeenCalledWith(
+			expect.stringContaining('bogus-engine'),
+			expect.any(Error),
+		);
 		expect(regexEngineService.init).not.toHaveBeenCalled();
 	});
 });
