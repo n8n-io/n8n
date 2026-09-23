@@ -106,7 +106,7 @@ export function collectTarget(target, index, { outputDir, dynamic, timeoutSecond
 		const outputFile = join(outputDir, `${index}.json`);
 		const env = {
 			...process.env,
-			CI: 'false',
+			CI: 'true',
 			COVERAGE_ENABLED: 'false',
 			DB_SQLITE_POOL_SIZE: '4',
 			DB_TYPE: 'sqlite',
@@ -176,7 +176,31 @@ export function collectTarget(target, index, { outputDir, dynamic, timeoutSecond
 				}
 			});
 		};
-		runList(!dynamic);
+		if (dynamic && target.package === '@n8n/db') {
+			const child = spawn('pnpm', ['gen:migration-index'], {
+				cwd: join(repoRoot, target.dir),
+				detached: true,
+				env,
+				stdio: ['ignore', 'pipe', 'pipe'],
+			});
+			activePid = child.pid;
+			let stderr = '';
+			child.stdout.resume();
+			child.stderr.on('data', (data) => (stderr += data));
+			child.on('error', (error) => finish({ error: error.message }));
+			child.on('close', (code) => {
+				if (settled) return;
+				if (code !== 0) {
+					finish({
+						error: `migration index generation exited with ${code}: ${stderr.trim().slice(-500)}`,
+					});
+					return;
+				}
+				runList(false);
+			});
+		} else {
+			runList(!dynamic);
+		}
 	});
 }
 

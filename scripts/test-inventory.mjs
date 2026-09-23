@@ -80,8 +80,13 @@ for (const packageFile of globSync('packages/**/package.json', {
 if (values.package) targets = targets.filter((target) => target.package === values.package);
 if (!targets.length) {
 	const error = 'No matching Vitest package or CI target was found';
-	if (values.json) process.stdout.write(`${JSON.stringify({ schemaVersion: 1, error })}\n`);
-	else process.stderr.write(`${error}\n`);
+	if (values.json) {
+		await new Promise((resolve) =>
+			process.stdout.write(`${JSON.stringify({ schemaVersion: 1, error })}\n`, resolve),
+		);
+	} else {
+		process.stderr.write(`${error}\n`);
+	}
 	process.exit(1);
 }
 
