@@ -3,6 +3,7 @@ import { AI_PREFERENCE_CONTENT_MAX_LENGTH, aiPreferenceContentSchema } from '@n8
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import z from 'zod';
 
@@ -88,6 +89,17 @@ const reviewFormSchema = z.object({
 });
 
 /**
+ * Whether the client can show a form. On this revision a client names its modes, and one that
+ * declares `url` alone cannot answer a form. A bare `elicitation: {}` still counts as form
+ * support: the rule from before modes existed, which the SDK keeps as well.
+ */
+function supportsFormElicitation(capabilities: unknown): boolean {
+	const elicitation = isRecord(capabilities) ? capabilities.elicitation : undefined;
+	if (!isRecord(elicitation)) return false;
+	return 'form' in elicitation || !('url' in elicitation);
+}
+
+/**
  * Saves a personal preference with no confirmation gate, then, on a client that declares
  * elicitation, follows the write with one form that offers edit and undo: Accept keeps the text
  * as shown, Decline removes the row, and a cancelled form keeps it, because the write already
@@ -124,13 +136,7 @@ export const createSaveUserPreferenceTool = (
 		>(async () => await import('@modelcontextprotocol/server'));
 
 		const ctx = (extra ?? {}) as HandlerContext;
-		const capabilities = ctx.mcpReq?.envelope?.[CLIENT_CAPABILITIES_META_KEY];
-		// A bare `elicitation: {}` counts as form support on this revision.
-		const canElicit =
-			typeof capabilities === 'object' &&
-			capabilities !== null &&
-			'elicitation' in capabilities &&
-			capabilities.elicitation !== undefined;
+		const canElicit = supportsFormElicitation(ctx.mcpReq?.envelope?.[CLIENT_CAPABILITIES_META_KEY]);
 		const review = inputResponse(ctx.mcpReq?.inputResponses, REVIEW_KEY);
 		const url = preferencesSettingsUrl(urlService);
 
@@ -213,8 +219,30 @@ export const createSaveUserPreferenceTool = (
 			}
 
 			if (editedText && editedText !== content) {
+				// The form's maxLength is advice to the client. The cap is applied here as the tool
+				// input applies it, so an edit cannot save what a fresh save would refuse.
+				const parsed = aiPreferenceContentSchema.safeParse(editedText);
+				if (!parsed.success) {
+					const message = `The edited text is longer than ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters.`;
+					telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+						surface: 'mcp',
+						reason: 'too_long',
+						scope_type: 'user',
+						text_length: editedText.length,
+					});
+					return done(
+						{
+							saved: true,
+							preference: { id, scope: 'user', text: content, url },
+							error: message,
+							reason: 'too_long',
+						},
+						`The user edited the preference but the edit was refused: ${message} The original text is still saved: "${content}". ${keep}`,
+						true,
+					);
+				}
 				try {
-					const updated = await aiPreferenceService.updateContent(user, id, editedText);
+					const updated = await aiPreferenceService.updateContent(user, id, parsed.data);
 					telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
 						surface: 'mcp',
 						outcome: 'accepted_after_edit',

@@ -166,8 +166,8 @@ type McpAppTelemetryResolution = {
 };
 
 /** Mirrors the SDK's `isInputRequiredResult` without a value import of the SDK at boot. */
-function isInputRequired(result: ToolHandlerResult): result is InputRequiredResult {
-	return 'resultType' in result && result.resultType === 'input_required';
+function isInputRequired(result: ToolHandlerResult | undefined): result is InputRequiredResult {
+	return result !== undefined && 'resultType' in result && result.resultType === 'input_required';
 }
 
 /**
@@ -787,10 +787,11 @@ export class McpService {
 					this.aiPreferenceService,
 					this.telemetry,
 					this.urlService,
+					this.logger,
 				),
 			);
 			registerIfAllowed(
-				createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry),
+				createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
 			);
 		}
 

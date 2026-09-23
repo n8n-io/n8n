@@ -12,6 +12,7 @@ import { AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	AI_PREFERENCES_CLEARED_BLOCK,
@@ -601,6 +602,17 @@ describe('AiPreferenceService', () => {
 			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
 		});
 
+		it('refuses a row the caller may see but not edit, such as an instance rule for a member', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: null, projectId: null }),
+			);
+
+			await expect(service.updateContent(member, 'pref-1', 'Mine now.')).rejects.toBeInstanceOf(
+				ForbiddenError,
+			);
+			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+		});
+
 		it('refuses a text another row in the scope already holds, through the shared rule', async () => {
 			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
 				row({ id: 'pref-1', content: 'Rule.', userId: 'user-1' }),
@@ -669,6 +681,16 @@ describe('AiPreferenceService', () => {
 			await expect(service.undoWrite(member, 'pref-1', 'mcp')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
+			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('refuses a row the person has since moved to the instance, even for an owner', async () => {
+			const owner = mock<User>({ id: 'user-1', role: GLOBAL_OWNER_ROLE });
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: null, source: 'mcp', createdById: 'user-1' }),
+			);
+
+			await expect(service.undoWrite(owner, 'pref-1', 'mcp')).rejects.toBeInstanceOf(NotFoundError);
 			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
 		});
 

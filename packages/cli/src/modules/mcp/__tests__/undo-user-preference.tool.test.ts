@@ -1,5 +1,5 @@
 import type { AiPreferenceDto } from '@n8n/api-types';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
@@ -22,7 +22,8 @@ const user = Object.assign(new User(), {
 	role: { slug: 'global:member', scopes: [] },
 });
 
-const removedRow: AiPreferenceDto = {
+/** Built when the mock answers, so `seconds_since_saved` is read against a fresh clock. */
+const removedRow = (): AiPreferenceDto => ({
 	id: 'pref-1',
 	content: 'Keep replies short.',
 	userId: 'user-1',
@@ -33,15 +34,16 @@ const removedRow: AiPreferenceDto = {
 	scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 	createdAt: new Date(Date.now() - 120_000).toISOString(),
 	updatedAt: new Date().toISOString(),
-};
+});
 
 const createMocks = () => {
 	const aiPreferenceService = mockInstance(AiPreferenceService, {
-		undoWrite: vi.fn().mockResolvedValue(removedRow),
+		undoWrite: vi.fn().mockImplementation(async () => removedRow()),
 	});
 	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
-	const tool = createUndoUserPreferenceTool(user, aiPreferenceService, telemetry);
-	return { aiPreferenceService, telemetry, tool };
+	const logger = mockLogger();
+	const tool = createUndoUserPreferenceTool(user, aiPreferenceService, telemetry, logger);
+	return { aiPreferenceService, telemetry, tool, logger };
 };
 
 describe('undo_user_preference MCP tool', () => {
@@ -89,25 +91,30 @@ describe('undo_user_preference MCP tool', () => {
 	});
 
 	test.each([
-		[new NotFoundError('not saved by mcp for you'), 'not_found'],
-		[new ForbiddenError('no'), 'not_permitted'],
-		[new Error('db down'), 'failed'],
-	])('relays what the service refuses (%s) as %s and removes nothing', async (error, reason) => {
-		const { aiPreferenceService, telemetry, tool } = createMocks();
-		aiPreferenceService.undoWrite.mockRejectedValue(error);
+		[new NotFoundError('not saved by mcp for you'), 'not_found', 'not saved by mcp for you'],
+		[new ForbiddenError('no'), 'not_permitted', 'no'],
+		[new Error('db down'), 'failed', 'The preference could not be removed.'],
+	])(
+		'relays what the service refuses (%s) as %s and removes nothing',
+		async (error, reason, message) => {
+			const { aiPreferenceService, telemetry, tool, logger } = createMocks();
+			aiPreferenceService.undoWrite.mockRejectedValue(error);
 
-		const result = await tool.handler({ id: 'pref-1' });
+			const result = await tool.handler({ id: 'pref-1' });
 
-		expect(result.isError).toBe(true);
-		expect(result.structuredContent).toEqual({
-			removed: false,
-			id: 'pref-1',
-			error: error.message,
-			reason,
-		});
-		expect(telemetry.track).not.toHaveBeenCalledWith(
-			TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES,
-			expect.anything(),
-		);
-	});
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({
+				removed: false,
+				id: 'pref-1',
+				error: message,
+				reason,
+			});
+			// A fault keeps its text away from the client and goes to the log instead.
+			expect(logger.error).toHaveBeenCalledTimes(reason === 'failed' ? 1 : 0);
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES,
+				expect.anything(),
+			);
+		},
+	);
 });

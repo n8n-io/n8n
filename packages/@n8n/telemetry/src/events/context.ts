@@ -57,7 +57,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 					'`row` is the per-row Delete button and `bulk` the selection toolbar on the settings page. `rejected` is the Undo on the chat card, Decline on the MCP review form, or the MCP undo tool: the user did not accept a preference the assistant saved, a late refusal of one they first let stand',
 				),
 			scope_types: z.array(scopeType).describe('Distinct scopes the deleted preferences covered'),
-			surface: surface
+			surface: assistantSurfaceSchema
 				.optional()
 				.describe('Set on a `rejected` delete, to tell the chat card from an MCP client'),
 			seconds_since_saved: z
@@ -117,7 +117,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCE_CONFIRMATION_SHOWN: {
 		name: 'Preference confirmation shown',
 		description:
-			'The assistant saved a preference and the surface that lets the user edit or undo it was shown: the chat card, or the MCP review form. Fires with the write, whatever the user does next.',
+			'The assistant saved a preference and the user was given the way to edit or undo it: the chat card, the MCP review form, or, on an MCP client without elicitation, the tool result that tells the client to relay the saved text and the settings link. Fires with the write, whatever the user does next.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			scope_type: scopeType.describe('Scope the assistant offered'),

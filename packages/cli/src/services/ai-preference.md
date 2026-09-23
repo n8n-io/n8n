@@ -43,7 +43,9 @@ serves callers that hold an id and no scope, such as an MCP client editing a row
 scope as a move.
 
 `undoWrite(user, id, source)` removes a row only when the named surface created it for the
-caller: `source` and `createdById` must both match. It is the undo of an assistant write,
+caller and it is still the caller's personal row: `source`, `createdById` and `userId` must
+all match. A row the person has since moved to a project or the instance is out of reach,
+whatever their role. It is the undo of an assistant write,
 narrower than `delete()` on purpose, so a client can take back what it saved and nothing the
 person wrote by hand. A row that fails the check answers like one that does not exist.
 

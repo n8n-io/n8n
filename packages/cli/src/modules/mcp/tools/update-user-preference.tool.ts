@@ -1,5 +1,6 @@
 import type { AiPreferenceDto } from '@n8n/api-types';
 import { aiPreferenceContentSchema } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
@@ -53,6 +54,7 @@ export const createUpdateUserPreferenceTool = (
 	aiPreferenceService: AiPreferenceService,
 	telemetry: Telemetry,
 	urlService: UrlService,
+	logger: Logger,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
 	config: {
@@ -79,6 +81,11 @@ export const createUpdateUserPreferenceTool = (
 			preference = await aiPreferenceService.updateContent(user, id, content);
 		} catch (error) {
 			const { reason, message } = classifyPreferenceWriteError(error);
+			// The mapped refusals carry their own text. Anything else is a fault whose message stays
+			// internal, so it goes to the log or it is lost.
+			if (reason === 'failed') {
+				logger.error('Updating an AI preference over MCP failed', { error });
+			}
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
 				surface: 'mcp',
 				reason: toRejectedReason(reason),

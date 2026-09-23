@@ -287,7 +287,9 @@ export class AiPreferenceService {
 	async undoWrite(user: User, id: string, source: AiPreferenceSource): Promise<AiPreferenceDto> {
 		const access = this.projectAccess(user);
 		const row = await this.requireVisible(user, id, access);
-		if (row.source !== source || row.createdById !== user.id) {
+		// Only a personal row the surface saved for the caller. A row the person has since moved to
+		// a project or the instance is a shared rule now, and the settings area owns it.
+		if (row.source !== source || row.createdById !== user.id || row.userId !== user.id) {
 			throw new NotFoundError(`Preference with id ${id} was not saved by ${source} for you`);
 		}
 		await this.assertCanWrite(user, row, 'delete', access);

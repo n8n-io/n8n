@@ -1,6 +1,6 @@
 import type { AiPreferenceDto } from '@n8n/api-types';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
@@ -47,8 +47,15 @@ const createMocks = () => {
 	const urlService = mockInstance(UrlService, {
 		getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 	});
-	const tool = createUpdateUserPreferenceTool(user, aiPreferenceService, telemetry, urlService);
-	return { aiPreferenceService, telemetry, tool };
+	const logger = mockLogger();
+	const tool = createUpdateUserPreferenceTool(
+		user,
+		aiPreferenceService,
+		telemetry,
+		urlService,
+		logger,
+	);
+	return { aiPreferenceService, telemetry, tool, logger };
 };
 
 describe('update_user_preference MCP tool', () => {
@@ -85,6 +92,11 @@ describe('update_user_preference MCP tool', () => {
 			saved: true,
 			preference: { id: 'pref-1', scope: 'user', text: 'New text.', url: URL },
 		});
+		// The text is what the client's model relays, so it has to carry the new text and the link.
+		const [item] = result.content;
+		const spoken = item.type === 'text' ? item.text : '';
+		expect(spoken).toContain('"New text."');
+		expect(spoken).toContain(URL);
 	});
 
 	test('reports the edit as an assistant save that replaced an existing row, with the row scope', async () => {
@@ -113,13 +125,15 @@ describe('update_user_preference MCP tool', () => {
 		[new ConflictError('dup'), 'duplicate', 'duplicate', 'dup'],
 		[new Error('boom'), 'failed', 'failed', 'The preference could not be saved.'],
 	])('relays the refusal %s with reason %s', async (error, reason, rejectedReason, message) => {
-		const { aiPreferenceService, telemetry, tool } = createMocks();
+		const { aiPreferenceService, telemetry, tool, logger } = createMocks();
 		aiPreferenceService.updateContent.mockRejectedValue(error);
 
 		const result = await tool.handler({ id: 'pref-1', content: 'New text.' });
 
 		expect(result.isError).toBe(true);
 		expect(result.structuredContent).toEqual({ saved: false, error: message, reason });
+		// Only a fault is logged: the mapped refusals are expected answers with their own text.
+		expect(logger.error).toHaveBeenCalledTimes(reason === 'failed' ? 1 : 0);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
 			{ surface: 'mcp', reason: rejectedReason, text_length: 9 },

@@ -78,12 +78,14 @@ const ctx = ({
 	review,
 	requestState = ID,
 }: {
-	elicitation?: boolean;
+	elicitation?: boolean | Record<string, unknown>;
 	review?: { action: 'accept' | 'decline' | 'cancel'; content?: Record<string, unknown> };
 	requestState?: string | null;
 } = {}) => ({
 	mcpReq: {
-		envelope: elicitation ? { [CLIENT_CAPABILITIES_META_KEY]: { elicitation: {} } } : {},
+		envelope: elicitation
+			? { [CLIENT_CAPABILITIES_META_KEY]: { elicitation: elicitation === true ? {} : elicitation } }
+			: {},
 		inputResponses: review ? { review } : undefined,
 		requestState: () => requestState ?? undefined,
 	},
@@ -209,6 +211,27 @@ describe('save_user_preference MCP tool', () => {
 
 			expect(isInputRequired(result)).toBe(false);
 			expect(structured(result)).toMatchObject({ saved: true });
+		});
+
+		// On this revision a client names its modes. One that offers only `url` has no form to show.
+		test('returns the plain saved result to a client that declared URL elicitation only', async () => {
+			const { tool } = createMocks();
+
+			const result = await tool.handler({ content: TEXT }, ctx({ elicitation: { url: {} } }));
+
+			expect(isInputRequired(result)).toBe(false);
+			expect(structured(result)).toMatchObject({ saved: true });
+		});
+
+		test('shows the form to a client that named the form mode', async () => {
+			const { tool } = createMocks();
+
+			const result = await tool.handler(
+				{ content: TEXT },
+				ctx({ elicitation: { form: {}, url: {} } }),
+			);
+
+			expect(isInputRequired(result)).toBe(true);
 		});
 
 		test('serves a call with no handler context like a client without elicitation', async () => {
@@ -401,6 +424,30 @@ describe('save_user_preference MCP tool', () => {
 				expect.objectContaining({
 					results: { success: true, data: { saved: true, removed: false, review: 'cancel' } },
 				}),
+			);
+		});
+
+		test('refuses an edit over the length cap without touching the row', async () => {
+			const { aiPreferenceService, telemetry, tool } = createMocks();
+			const tooLong = 'x'.repeat(AI_PREFERENCE_CONTENT_MAX_LENGTH + 1);
+
+			const result = await tool.handler(
+				{ content: TEXT },
+				ctx({ elicitation: true, review: { action: 'accept', content: { text: tooLong } } }),
+			);
+
+			expect(aiPreferenceService.updateContent).not.toHaveBeenCalled();
+			expect(isInputRequired(result)).toBe(false);
+			if (isInputRequired(result)) return;
+			expect(result.isError).toBe(true);
+			expect(structured(result)).toMatchObject({
+				saved: true,
+				preference: { id: ID, text: TEXT },
+				reason: 'too_long',
+			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+				{ surface: 'mcp', reason: 'too_long', scope_type: 'user', text_length: tooLong.length },
 			);
 		});
 

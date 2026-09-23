@@ -1,4 +1,5 @@
 import type { AiPreferenceDto } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
@@ -45,6 +46,7 @@ export const createUndoUserPreferenceTool = (
 	user: User,
 	aiPreferenceService: AiPreferenceService,
 	telemetry: Telemetry,
+	logger: Logger,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
 	config: {
@@ -76,7 +78,12 @@ export const createUndoUserPreferenceTool = (
 				classified.reason === 'not_found' || classified.reason === 'not_permitted'
 					? classified.reason
 					: 'failed';
-			const message = error instanceof Error ? error.message : String(error);
+			// The two refusals carry text meant for the user. A fault keeps its message internal.
+			if (reason === 'failed') {
+				logger.error('Removing an AI preference over MCP failed', { error });
+			}
+			const message =
+				reason === 'failed' ? 'The preference could not be removed.' : classified.message;
 			telemetryPayload.results = { success: false, error: message, data: { reason } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 			return {

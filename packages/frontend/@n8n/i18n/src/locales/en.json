@@ -3604,7 +3604,7 @@
 	"settings.mcp.oAuthClients.scope.tag.read": "List tags",
 	"settings.mcp.oAuthClients.scope.communityPackage.install": "Install verified community nodes",
 	"settings.mcp.oAuthClients.scope.aiPreference.read": "Read AI preferences",
-	"settings.mcp.oAuthClients.scope.aiPreference.write": "Save and update AI preferences",
+	"settings.mcp.oAuthClients.scope.aiPreference.write": "Save, update and undo AI preferences",
 	"settings.mcp.oAuthClients.scope.more": "+{count}",
 	"settings.mcp.oAuthClients.access.full": "Full access",
 	"settings.mcp.oAuthClients.access.none": "No access",
