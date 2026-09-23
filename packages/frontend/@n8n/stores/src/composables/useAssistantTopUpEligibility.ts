@@ -1,3 +1,4 @@
+import { useNow } from '@vueuse/core';
 import { computed } from 'vue';
 
 import { useCloudPlanStore } from '../cloudPlan.store';
@@ -22,6 +23,9 @@ export function useAssistantTopUpEligibility() {
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
+	// Reactive clock so a tab kept open across the GA cutoff re-computes eligibility on its own.
+	// One-minute polling is enough for a date-based flip and keeps the ticker cheap.
+	const now = useNow({ interval: 60_000 });
 
 	const isEligible = computed(() => {
 		if (!settingsStore.isCloudDeployment) return false;
@@ -29,7 +33,7 @@ export function useAssistantTopUpEligibility() {
 		if (cloudPlanStore.userIsTrialing) return false;
 		if (settingsStore.moduleSettings?.['instance-ai']?.activationCapped) return false;
 
-		const pastGa = Date.now() >= ASSISTANT_TOP_UP_GA_DATE.getTime();
+		const pastGa = now.value.getTime() >= ASSISTANT_TOP_UP_GA_DATE.getTime();
 		return pastGa || settingsStore.isAiAssistantCloudUbbEnabled;
 	});
 
