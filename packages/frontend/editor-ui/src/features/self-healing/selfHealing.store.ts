@@ -442,6 +442,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 	): DecideWorkflowReviewRequestResponse {
 		const review = findReview(reviewId);
 		if (!review) throw new Error(`Unknown self-healing review: ${reviewId}`);
+		if (review.outcome) throw new Error(`Nothing to decide on: ${reviewId}`);
 
 		const decidedAt = nowIso();
 		const { item, detail } = review;
@@ -455,29 +456,6 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 			workflowVersionId: workflow.workflowVersionId ?? '',
 		}));
 		const note = input.note?.trim() ? input.note.trim() : null;
-
-		// "Needs you" and "could not fix" items publish nothing: approving resolves them.
-		if (review.outcome && input.decision === 'approved') {
-			item.state = 'closed';
-			detail.state = 'closed';
-			detail.viewerCanDecide = false;
-			review.activity.push({
-				id: nextEntryId(),
-				typeVersion: 1,
-				type: 'review.approved',
-				createdBy: viewer.value,
-				createdAt: decidedAt,
-				data: { workflowVersions, note },
-			});
-			return {
-				id: item.id,
-				state: item.state,
-				decision: item.decision,
-				workflowVersionId: item.workflowVersionId,
-				createdAt: item.createdAt,
-				updatedAt: item.updatedAt,
-			};
-		}
 
 		if (input.decision === 'approved') {
 			item.state = 'closed';

@@ -21,11 +21,10 @@ const props = withDefaults(
 		deciding: boolean;
 		/** Off for items that carry no diff, such as a self-healing report. */
 		showChanges?: boolean;
-		/** Passed to the decision popover. */
-		approveLabel?: string;
-		showRequestChanges?: boolean;
+		/** Disables the decision and says why, for items with nothing to decide on. */
+		decisionDisabledReason?: string;
 	}>(),
-	{ showChanges: true, approveLabel: '', showRequestChanges: true },
+	{ showChanges: true, decisionDisabledReason: '' },
 );
 
 // A deep link to the changes tab falls back to activity when there is no diff.
@@ -66,6 +65,7 @@ provide(
 );
 
 const ineligibilityHint = computed(() => {
+	if (props.decisionDisabledReason) return props.decisionDisabledReason;
 	if (!detail.value || detail.value.viewerCanDecide) return '';
 	// Any reason other than 'author' gets the generic permission hint, so new
 	// backend reasons degrade gracefully instead of breaking the UI.
@@ -87,8 +87,6 @@ const ineligibilityHint = computed(() => {
 const showApprovedAndPublished = computed(() => {
 	const review = detail.value;
 	if (!review || review.state !== 'closed' || review.decision !== 'approved') return false;
-	// An item without a diff published nothing, whatever its version pointers say.
-	if (!props.showChanges) return false;
 
 	return (
 		review.workflows.length > 0 &&
@@ -135,8 +133,6 @@ const tabOptions = computed(() => [
 					:viewer-can-decide="viewerCanDecide"
 					:viewer-can-comment="viewerCanComment"
 					:ineligibility-hint="ineligibilityHint"
-					:approve-label="approveLabel"
-					:show-request-changes="showRequestChanges"
 					@decide="emit('decide', $event)"
 					@comment-posted="emit('update:tab', 'activity')"
 				/>

@@ -478,8 +478,7 @@ export function buildSelfHealingOutcome(
 				baselineVersion: version,
 			},
 		],
-		// "Mark as resolved" goes through the decision flow.
-		viewerCanDecide: true,
+		viewerCanDecide: false,
 		viewerDecisionIneligibilityReason: null,
 		viewerCanComment: true,
 	};

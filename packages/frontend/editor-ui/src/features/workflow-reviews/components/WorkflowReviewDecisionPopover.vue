@@ -9,19 +9,13 @@ import { computed, ref, useId } from 'vue';
 import { useReviewActivityStore } from '../reviewActivity.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
-const props = withDefaults(
-	defineProps<{
-		deciding: boolean;
-		viewerCanDecide: boolean;
-		viewerCanComment: boolean;
-		/** Why the viewer may not decide; empty when they may. */
-		ineligibilityHint: string;
-		/** Overrides "Approve and publish" for items that publish nothing. */
-		approveLabel?: string;
-		showRequestChanges?: boolean;
-	}>(),
-	{ approveLabel: '', showRequestChanges: true },
-);
+const props = defineProps<{
+	deciding: boolean;
+	viewerCanDecide: boolean;
+	viewerCanComment: boolean;
+	/** Why the viewer may not decide; empty when they may. */
+	ineligibilityHint: string;
+}>();
 
 const emit = defineEmits<{
 	decide: [input: WorkflowReviewDecisionInput];
@@ -149,7 +143,6 @@ async function onComment() {
 						{{ i18n.baseText('workflowReviews.detail.decision.comment') }}
 					</N8nButton>
 					<N8nTooltip
-						v-if="showRequestChanges"
 						:disabled="!!note"
 						:content="i18n.baseText('workflowReviews.detail.decision.note.required')"
 						:show-after="300"
@@ -177,7 +170,7 @@ async function onComment() {
 						<template #icon>
 							<N8nIcon icon="check" />
 						</template>
-						{{ approveLabel || i18n.baseText('workflowReviews.detail.decision.approveAndPublish') }}
+						{{ i18n.baseText('workflowReviews.detail.decision.approveAndPublish') }}
 					</N8nButton>
 				</div>
 			</div>

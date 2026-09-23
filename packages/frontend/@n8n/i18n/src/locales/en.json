@@ -8774,7 +8774,7 @@
 	"selfHealing.inbox.kind.could_not_fix": "Could not fix",
 	"selfHealing.outcome.action.openCredential": "Open credentials",
 	"selfHealing.outcome.action.continueInChat": "Continue in chat",
-	"selfHealing.outcome.action.resolve": "Mark as resolved",
+	"selfHealing.outcome.noReview": "There is no fix to review. The next step is in the description.",
 	"selfHealing.usage.title": "Credits used",
 	"selfHealing.usage.credits": "1 credit | {count} credits",
 	"selfHealing.usage.detail": "{turns} turns · {minutes} min",
