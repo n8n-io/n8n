@@ -1126,6 +1126,113 @@ describe('agent-run-reducer', () => {
 		});
 	});
 
+	describe('preference-card', () => {
+		function savedPreferenceState(): AgentRunState {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'save_user_preference'));
+			reduceEvent(
+				state,
+				makeToolResult('run-1', 'root', 'tc-1', {
+					ok: true,
+					preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+				}),
+			);
+			return state;
+		}
+
+		it('folds an edit and an undo onto the tool call that saved the preference', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies brief.',
+				},
+			});
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'edited',
+				content: 'Keep replies brief.',
+			});
+
+			// The undo fact carries no content, so the edited text must survive it. Without
+			// that, the resolver falls back to the tool result and strikes out the text the
+			// user replaced rather than the one they removed.
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+			});
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'undone',
+				content: 'Keep replies brief.',
+			});
+		});
+
+		it('leaves the content unset on an undo with no edit before it', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			// Nothing replaced the saved text, so the resolver reads the tool result.
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'undone',
+				content: undefined,
+			});
+		});
+
+		it('ignores a card fact for an unknown tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'nope', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			expect(Object.keys(state.toolCallsById)).toHaveLength(0);
+		});
+
+		it('ignores an unsafe toolCallId key', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: '__proto__', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			expectStateMapsNotPolluted(state);
+		});
+
+		it('ignores a toolCallId that names an inherited property', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'toString', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			expect(Object.hasOwn(state.toolCallsById, 'toString')).toBe(false);
+			expect('preferenceCard' in Object.prototype.toString).toBe(false);
+			expect(state.toolCallsById['tc-1'].preferenceCard).toBeUndefined();
+		});
+	});
+
 	describe('error routing', () => {
 		it('routes error to specific agent', () => {
 			const state = stateWithRun('run-1', 'root');

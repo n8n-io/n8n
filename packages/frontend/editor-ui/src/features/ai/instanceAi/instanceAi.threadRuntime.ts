@@ -1033,6 +1033,25 @@ export function createThreadRuntime(
 
 	// --- SSE lifecycle ---
 
+	/**
+	 * Fold one event into the thread state. The stream calls it for every frame
+	 * it receives, and an action that already holds the fact its endpoint
+	 * published calls it too, so its own card renders at once instead of waiting
+	 * for the stream. The stream then delivers the same fact; the facts that take
+	 * this second path are idempotent, so the repeat sets the same fields.
+	 */
+	function applyEvent(event: InstanceAiEvent): void {
+		activeRunId.value = reduceEvent(
+			{
+				messages: messages.value,
+				activeRunId: activeRunId.value,
+				runStateByGroupId,
+				groupIdByRunId,
+			},
+			event,
+		);
+	}
+
 	function onSSEMessage(sseEvent: MessageEvent): void {
 		try {
 			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
@@ -1087,15 +1106,7 @@ export function createThreadRuntime(
 				debugEvents.value.splice(0, debugEvents.value.length - MAX_DEBUG_EVENTS);
 			}
 			const previousRunId = activeRunId.value;
-			activeRunId.value = reduceEvent(
-				{
-					messages: messages.value,
-					activeRunId: activeRunId.value,
-					runStateByGroupId,
-					groupIdByRunId,
-				},
-				parsed.data,
-			);
+			applyEvent(parsed.data);
 			// Anything received on the stream means generation isn't stalled.
 			resetGenerationStallWatchdog();
 			if (parsed.data.type === 'tasks-update') {
@@ -1811,6 +1822,7 @@ export function createThreadRuntime(
 		forgetManualExecution,
 		resetState,
 		dispose,
+		applyEvent,
 		connectSSE,
 		closeSSE,
 		loadHistoricalMessages,
