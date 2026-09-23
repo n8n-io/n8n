@@ -739,11 +739,10 @@ describe('TestWebhooks', () => {
 				((testWebhooks as any).push.hasPushRef as Mock).mockReset();
 			});
 
-			const setup = (responseMode: string) => {
+			const setup = () => {
 				const expression = mock<WorkflowExpression>();
 				const workflowStartNode = mock<ReturnType<Workflow['getNode']>>({
 					type: 'n8n-nodes-base.webhook',
-					parameters: { responseMode },
 				});
 				const workflow = mock<Workflow>({
 					id: workflowEntity.id,
@@ -778,7 +777,7 @@ describe('TestWebhooks', () => {
 			};
 
 			test('resolves with the responseNode callback data received after executeWebhook returns', async () => {
-				setup('responseNode');
+				setup();
 				const callbackData = {
 					data: { ok: true },
 					responseCode: 201,
@@ -795,7 +794,7 @@ describe('TestWebhooks', () => {
 			});
 
 			test('rejects with the error thrown by WebhookHelpers.executeWebhook', async () => {
-				setup('lastNode');
+				setup();
 				const error = new Error('boom');
 				vi.spyOn(WebhookHelpers, 'executeWebhook').mockRejectedValue(error);
 
