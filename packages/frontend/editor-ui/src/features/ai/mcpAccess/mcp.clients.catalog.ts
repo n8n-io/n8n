@@ -147,9 +147,6 @@ url = "${serverUrl}"`;
 					name: 'Mistral Vibe',
 					category: 'web',
 					icon: MistralIcon,
-					// Opens Vibe's (formerly Le Chat) connector marketplace on its n8n template:
-					// title, description and OAuth 2.1 are preset, only the server URL is left
-					// to paste. The page errors when the user is signed out of Vibe.
 					addUrl: 'https://chat.mistral.ai/connections/marketplace?search=n8n&template=n8n',
 				},
 			],
