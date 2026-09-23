@@ -256,7 +256,7 @@ describe('save_user_preference MCP tool', () => {
 	});
 
 	describe('the review form on a client with elicitation', () => {
-		test('writes first, then asks for input with the saved text prefilled and a remove box', async () => {
+		test('writes first, then asks for input with the saved text prefilled', async () => {
 			const { aiPreferenceService, telemetry, tool } = createMocks();
 
 			const result = await tool.handler({ content: TEXT }, ctx({ elicitation: true }));
@@ -274,7 +274,6 @@ describe('save_user_preference MCP tool', () => {
 						type: 'object',
 						properties: {
 							text: { type: 'string', default: TEXT, maxLength: AI_PREFERENCE_CONTENT_MAX_LENGTH },
-							remove: { type: 'boolean', default: false },
 						},
 					},
 				},
@@ -314,7 +313,7 @@ describe('save_user_preference MCP tool', () => {
 				{ content: TEXT },
 				ctx({
 					elicitation: true,
-					review: { action: 'accept', content: { text: `  ${edited}  `, remove: false } },
+					review: { action: 'accept', content: { text: `  ${edited}  ` } },
 				}),
 			);
 
@@ -336,16 +335,13 @@ describe('save_user_preference MCP tool', () => {
 		});
 
 		// Reported as the chat card reports its Undo: a deleted preference with source `rejected`.
-		test('removes the row when the remove box is ticked and reports a rejected delete', async () => {
+		test('reports a declined form as a rejected delete with the time since the write', async () => {
 			const { aiPreferenceService, telemetry, tool } = createMocks();
 			aiPreferenceService.undoWrite.mockResolvedValue(dto());
 
 			const result = await tool.handler(
 				{ content: TEXT },
-				ctx({
-					elicitation: true,
-					review: { action: 'accept', content: { text: TEXT, remove: true } },
-				}),
+				ctx({ elicitation: true, review: { action: 'decline', content: { text: TEXT } } }),
 			);
 
 			expect(aiPreferenceService.undoWrite).toHaveBeenCalledWith(user, ID, 'mcp');
@@ -367,8 +363,8 @@ describe('save_user_preference MCP tool', () => {
 			);
 		});
 
-		// Clients label the button "Decline", so a press after the write means "not this one".
-		test('removes the row when the form is declined, like the remove box', async () => {
+		// Every client offers Decline, and a press after the write means "not this one".
+		test('removes the row when the form is declined without content', async () => {
 			const { aiPreferenceService, tool } = createMocks();
 			aiPreferenceService.undoWrite.mockResolvedValue(dto());
 
@@ -428,13 +424,13 @@ describe('save_user_preference MCP tool', () => {
 			expect(text(result)).toContain(`"${TEXT}"`);
 		});
 
-		test('reports a failed removal and states that the preference is still saved', async () => {
+		test('reports a failed removal after Decline and states that the preference is still saved', async () => {
 			const { aiPreferenceService, tool } = createMocks();
 			aiPreferenceService.undoWrite.mockRejectedValue(new Error('db down'));
 
 			const result = await tool.handler(
 				{ content: TEXT },
-				ctx({ elicitation: true, review: { action: 'accept', content: { remove: true } } }),
+				ctx({ elicitation: true, review: { action: 'decline' } }),
 			);
 
 			expect(isInputRequired(result)).toBe(false);

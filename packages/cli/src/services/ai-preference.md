@@ -67,12 +67,12 @@ OAuth scope and the `CONTEXT_PREFERENCES_FLAG`:
 | `undo_user_preference` | Removes a row through `undoWrite`, so only what MCP saved for this user. |
 
 On a client that declares the elicitation capability, the save follows the write with one
-form: the saved text, editable, and a "remove" box. It is the second round of the same
+form: the saved text, prefilled and editable. It is the second round of the same
 `tools/call` (multi-round-trip elicitation, revision 2026-07-28); the row id travels in
-`requestState`, and the retry re-authorizes through the service. Accept applies the edit or
-the removal. Decline removes the row too, because clients label that button "Decline" and a
-press after the write means "not this one". A cancelled form keeps the row: the write already
-happened, and silence must not delete data.
+`requestState`, and the retry re-authorizes through the service. Accept keeps the text as
+shown, edited or not. Decline removes the row: every client offers that answer, and a press
+after the write means "not this one". A cancelled form keeps the row, because a client with
+no way to show the form answers cancel on its own, and silence must not delete data.
 
 ## Who may read and write
 

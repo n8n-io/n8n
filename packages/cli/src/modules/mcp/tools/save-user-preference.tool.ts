@@ -61,9 +61,7 @@ const outputSchema = {
 	removed: z
 		.boolean()
 		.optional()
-		.describe(
-			'True when the user removed the preference in the review form that followed the write.',
-		),
+		.describe('True when the user declined the review form that followed the write.'),
 	error: z.string().optional().describe('Set when the write or the review failed.'),
 	reason: z
 		.enum(PREFERENCE_WRITE_REASONS)
@@ -84,17 +82,16 @@ type HandlerContext = {
 	};
 };
 
-/** What the form asks: the saved text, editable, and a way out. */
+/** What the form asks: the saved text, editable. The three answers carry the rest. */
 const reviewFormSchema = z.object({
 	text: z.string().optional(),
-	remove: z.boolean().optional(),
 });
 
 /**
  * Saves a personal preference with no confirmation gate, then, on a client that declares
- * elicitation, follows the write with one form that offers edit and undo. Decline removes the row,
- * like the remove box. A cancelled form keeps it: the write already happened, and silence must
- * not delete data.
+ * elicitation, follows the write with one form that offers edit and undo: Accept keeps the text
+ * as shown, Decline removes the row, and a cancelled form keeps it, because the write already
+ * happened and silence must not delete data.
  *
  * The form is the second round of one `tools/call` (multi-round-trip elicitation, protocol
  * revision 2026-07-28): the client answers and retries the same call, and the row id travels in
@@ -183,10 +180,10 @@ export const createSaveUserPreferenceTool = (
 				);
 			}
 
-			// Decline removes, like the remove box: clients label the button "Decline", and a user
-			// who presses it after a write means "not this one". Only an explicit press gets here.
+			// Decline removes: every client offers that answer, and a press after the write means
+			// "not this one". Unlike cancel, it is only ever a deliberate act.
 			const form = reviewFormSchema.safeParse(answer.content ?? {});
-			const wantsRemoval = answer.action === 'decline' || (form.success && form.data.remove === true);
+			const wantsRemoval = answer.action === 'decline';
 			const editedText = form.success ? form.data.text?.trim() : undefined;
 
 			if (wantsRemoval) {
@@ -290,22 +287,17 @@ export const createSaveUserPreferenceTool = (
 				[REVIEW_KEY]: inputRequired.elicit({
 					// Clients may show only the first lines of the message, so the state comes first:
 					// the row is already saved, and closing the form keeps it.
-					message: `Already saved to your n8n preferences. Accept keeps it, Decline removes it.\n\n"${preference.content}"\n\nThe n8n assistant and connected AI tools apply it from now on. Edit the text to change it. Closing this without an answer keeps it as saved.`,
+					message: `Already saved to your n8n preferences. Accept keeps it, Decline removes it.\n\n"${preference.content}"\n\nThe n8n assistant and connected AI tools apply it from now on. Edit the text before you accept to change it. Closing this without an answer keeps it as saved.`,
 					requestedSchema: {
 						type: 'object',
 						properties: {
 							text: {
 								type: 'string',
 								title: 'Preference (already saved)',
-								description: 'Edit the text to change what is saved. Leave it as it is to keep it.',
+								description:
+									'Accept keeps this text, edited or not. Decline removes the preference.',
 								default: preference.content,
 								maxLength: AI_PREFERENCE_CONTENT_MAX_LENGTH,
-							},
-							remove: {
-								type: 'boolean',
-								title: 'Remove this preference',
-								description: 'It is already saved. Tick this box to delete it.',
-								default: false,
 							},
 						},
 					},
