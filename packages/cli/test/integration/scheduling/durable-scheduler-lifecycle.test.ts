@@ -152,8 +152,7 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 				concurrencyLimit: 1,
 			}),
 		);
-		// The single slot is taken, so the next occurrence sits pending until its
-		// deadline passes and the reaper retires it.
+		// The only slot is taken, so the reaper retires the next occurrence.
 		const running = await seedDueTask(taskRepo, systemTaskType, job.id, 1);
 		await taskRepo.update(running.id, {
 			status: 'running',
