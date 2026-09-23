@@ -161,6 +161,22 @@ describe('Community packages (Public API)', () => {
 	});
 
 	describe('POST /community-packages', () => {
+		it('should return 403 when API key lacks communityPackage:install scope', async () => {
+			const userWithoutCommunityScopes = await createOwner();
+			const apiKey = await addApiKey(userWithoutCommunityScopes, {
+				scopes: [...OWNER_API_KEY_SCOPES],
+			});
+			userWithoutCommunityScopes.apiKeys = [apiKey];
+
+			const response = await testServer
+				.publicApiAgentFor(userWithoutCommunityScopes)
+				.post('/community-packages')
+				.send({ name: mockPackageName() });
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
 		it('should return 400 when package name is missing', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
@@ -169,6 +185,16 @@ describe('Community packages (Public API)', () => {
 
 			expect(response.status).toBe(400);
 			expect(response.body.message).toBeDefined();
+		});
+
+		it('should return 400 when the body contains an unknown field', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/community-packages')
+				.send({ name: mockPackageName(), unknown: true });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unknown');
 		});
 
 		it('should return 400 when package is already installed and loaded', async () => {
@@ -237,6 +263,32 @@ describe('Community packages (Public API)', () => {
 	});
 
 	describe('PATCH /community-packages/:name', () => {
+		it('should return 403 when API key lacks communityPackage:update scope', async () => {
+			const userWithoutCommunityScopes = await createOwner();
+			const apiKey = await addApiKey(userWithoutCommunityScopes, {
+				scopes: [...OWNER_API_KEY_SCOPES],
+			});
+			userWithoutCommunityScopes.apiKeys = [apiKey];
+
+			const response = await testServer
+				.publicApiAgentFor(userWithoutCommunityScopes)
+				.patch(`/community-packages/${encodeURIComponent(mockPackageName())}`)
+				.send({});
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
+		it('should return 400 when the body contains an unknown field', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/community-packages/${encodeURIComponent(mockPackageName())}`)
+				.send({ unknown: true });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unknown');
+		});
+
 		it('should return 200 when package is updated successfully', async () => {
 			const pkg = mockPackage();
 			const updatedPkg = mockPackage();
@@ -280,6 +332,21 @@ describe('Community packages (Public API)', () => {
 	});
 
 	describe('DELETE /community-packages/:name', () => {
+		it('should return 403 when API key lacks communityPackage:uninstall scope', async () => {
+			const userWithoutCommunityScopes = await createOwner();
+			const apiKey = await addApiKey(userWithoutCommunityScopes, {
+				scopes: [...OWNER_API_KEY_SCOPES],
+			});
+			userWithoutCommunityScopes.apiKeys = [apiKey];
+
+			const response = await testServer
+				.publicApiAgentFor(userWithoutCommunityScopes)
+				.delete(`/community-packages/${encodeURIComponent(mockPackageName())}`);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
 		it('should return 404 when package is not installed', async () => {
 			const name = mockPackageName();
 			communityPackagesService.parseNpmPackageName.mockReturnValue({

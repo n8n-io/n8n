@@ -23,6 +23,9 @@ export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the w
 export const testRunIdParamSchema = stringIdParamSchema('The ID of the test run.');
 export const projectIdParamSchema = stringIdParamSchema('The ID of the project.');
 export const tagIdParamSchema = stringIdParamSchema('The ID of the tag.');
+export const communityPackageNameParamSchema = stringIdParamSchema(
+	'The npm package name of the community package.',
+);
 export const folderIdParamSchema = stringIdParamSchema('The ID of the folder.');
 export const userIdParamSchema = stringIdParamSchema('The ID of the user.');
 export const userIdentifierParamSchema = z
