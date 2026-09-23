@@ -37,11 +37,14 @@ type Props = {
 	isSharedGlobally?: boolean;
 	allUsersLabel?: string;
 	disabledTooltip?: string;
+	teleported?: boolean;
 	// Show the dropdown chevron even in remote+filterable mode (element-plus hides it by default)
 	showSuffix?: boolean;
 };
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
 
 const GLOBAL_GROUP: ProjectListItem = {
 	id: 'all_users',
@@ -231,6 +234,7 @@ watch(
 				:size="size ?? 'medium'"
 				:disabled="props.readonly || !!props.disabledTooltip"
 				:clearable
+				:teleported="props.teleported"
 				:popper-class="$style.popper"
 				@update:model-value="onProjectSelected"
 				@clear="emit('clear')"
