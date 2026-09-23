@@ -72,6 +72,7 @@ describe('CredentialsPermissionChecker', () => {
 		projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce([personalProject.id]);
 		credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 		credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([]);
+		ownershipService.getPersonalProjectOwnersCached.mockResolvedValue(new Map());
 	});
 
 	it('should throw if a node has a credential without an id', async () => {
@@ -196,7 +197,9 @@ describe('CredentialsPermissionChecker', () => {
 				sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
 					new Map([[credentialId, ownerPersonalProject]]),
 				);
-				ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(owner);
+				ownershipService.getPersonalProjectOwnersCached.mockResolvedValueOnce(
+					new Map([[ownerPersonalProject.id, owner]]),
+				);
 				projectRelationRepository.findProjectIdsByUserIds.mockResolvedValueOnce(
 					new Map([[owner.id, [personalProject.id]]]),
 				);
@@ -211,7 +214,9 @@ describe('CredentialsPermissionChecker', () => {
 				sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
 					new Map([[credentialId, ownerPersonalProject]]),
 				);
-				ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(owner);
+				ownershipService.getPersonalProjectOwnersCached.mockResolvedValueOnce(
+					new Map([[ownerPersonalProject.id, owner]]),
+				);
 				projectRelationRepository.findProjectIdsByUserIds.mockResolvedValueOnce(
 					new Map([[owner.id, ['some-other-project']]]),
 				);
@@ -236,11 +241,12 @@ describe('CredentialsPermissionChecker', () => {
 						[otherCredentialId, otherOwnerPersonalProject],
 					]),
 				);
-				ownershipService.getPersonalProjectOwnerCached.mockImplementation(async (projectId) => {
-					if (projectId === ownerPersonalProject.id) return owner;
-					if (projectId === otherOwnerPersonalProject.id) return otherOwner;
-					return null;
-				});
+				ownershipService.getPersonalProjectOwnersCached.mockResolvedValue(
+					new Map([
+						[ownerPersonalProject.id, owner],
+						[otherOwnerPersonalProject.id, otherOwner],
+					]),
+				);
 				projectRelationRepository.findProjectIdsByUserIds.mockResolvedValueOnce(
 					new Map([
 						[owner.id, [personalProject.id]],
@@ -254,6 +260,11 @@ describe('CredentialsPermissionChecker', () => {
 				]);
 
 				// One query covering both owners, not one per credential/owner.
+				expect(ownershipService.getPersonalProjectOwnersCached).toHaveBeenCalledTimes(1);
+				expect(ownershipService.getPersonalProjectOwnersCached).toHaveBeenCalledWith([
+					ownerPersonalProject.id,
+					otherOwnerPersonalProject.id,
+				]);
 				expect(projectRelationRepository.findProjectIdsByUserIds).toHaveBeenCalledTimes(1);
 				expect(projectRelationRepository.findProjectIdsByUserIds).toHaveBeenCalledWith(
 					expect.arrayContaining([owner.id, otherOwner.id]),

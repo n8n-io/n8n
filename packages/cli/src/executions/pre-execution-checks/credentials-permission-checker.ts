@@ -203,14 +203,11 @@ export class CredentialsPermissionChecker {
 		];
 		if (personalOwnerProjectIds.length === 0) return [];
 
-		const owners = await Promise.all(
-			personalOwnerProjectIds.map(
-				async (id) => await this.ownershipService.getPersonalProjectOwnerCached(id),
-			),
-		);
+		const owners =
+			await this.ownershipService.getPersonalProjectOwnersCached(personalOwnerProjectIds);
 		const ownerUserIdByProjectId = new Map<string, string>();
-		personalOwnerProjectIds.forEach((projectId, index) => {
-			const owner = owners[index];
+		personalOwnerProjectIds.forEach((projectId) => {
+			const owner = owners.get(projectId);
 			if (owner) ownerUserIdByProjectId.set(projectId, owner.id);
 		});
 
