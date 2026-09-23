@@ -20,7 +20,11 @@ import {
 	takeValidator,
 	VALID_SORT_OPTIONS,
 } from './list-folder-query.dto';
-import { folderIdSchema, folderNameSchema } from '../../schemas/folder.schema';
+import {
+	FOLDER_NAME_MAX_LENGTH,
+	folderIdSchema,
+	folderNameSchema,
+} from '../../schemas/folder.schema';
 import { nullableObjectGuardSchema } from '../../schemas/object-guard.schema';
 import { projectTypeSchema, type ProjectIcon } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
@@ -105,7 +109,10 @@ export class FolderDetailsPublicDto extends Z.class({
 
 const updateFolderPublicSchema = z
 	.object({
-		name: folderNameSchema.optional().openapi(updateFolderFieldDocs.name),
+		name: folderNameSchema.optional().openapi({
+			...updateFolderFieldDocs.name,
+			maxLength: FOLDER_NAME_MAX_LENGTH,
+		}),
 		parentFolderId: folderIdSchema.optional().openapi(updateFolderFieldDocs.parentFolderId),
 	})
 	.strict()
@@ -148,7 +155,10 @@ export class DeleteFolderQueryPublicDto extends Z.class(
 
 export class CreateFolderPublicDto extends Z.class(
 	{
-		name: folderNameSchema.openapi(folderFieldDocs.name),
+		name: folderNameSchema.openapi({
+			...folderFieldDocs.name,
+			maxLength: FOLDER_NAME_MAX_LENGTH,
+		}),
 		parentFolderId: folderIdSchema.optional().openapi(folderFieldDocs.parentFolderId),
 	},
 	{ strict: true },

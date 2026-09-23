@@ -23,6 +23,7 @@ requestBody:
         properties:
           name:
             type: string
+            maxLength: 128
             example: My Folder
           parentFolderId:
             type: string
