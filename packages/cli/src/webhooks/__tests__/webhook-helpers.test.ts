@@ -543,6 +543,33 @@ describe('setupResponseNodePromise', () => {
 		expect(responseCallback).toHaveBeenCalledWith(error, {});
 	});
 
+	test('should normalize non-Error rejections', async () => {
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		const rejection = 'Test rejection';
+		responsePromise.reject(rejection as unknown as Error);
+		await new Promise(process.nextTick);
+
+		const error = errorReporter.error.mock.calls[0][0];
+		expect(error).toBeInstanceOf(Error);
+		expect(error).toMatchObject({
+			message: 'Error that was not an instance of Error was thrown',
+			cause: rejection,
+		});
+		expect(logger.error).toHaveBeenCalledWith(
+			`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
+			{ executionId, workflowId },
+		);
+		expect(responseCallback).toHaveBeenCalledWith(error, {});
+	});
+
 	// When an execution ends without the Respond to Webhook node having run,
 	// `ActiveExecutions.resolveExecutionResponsePromise` settles this promise with a
 	// sentinel. The post-execute handler answers in that case, so this one must not.
