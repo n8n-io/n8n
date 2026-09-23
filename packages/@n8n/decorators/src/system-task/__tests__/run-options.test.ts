@@ -2,6 +2,7 @@ import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 
 import {
 	resolveSystemTaskRunOptions,
+	validateSystemTask,
 	type SystemTask,
 	type SystemTaskEffects,
 	type SystemTaskSchedule,
@@ -84,4 +85,24 @@ it('should refuse to retry non-idempotent work that asked for more attempts', ()
 	);
 
 	expect(options.maxAttempts).toBe(1);
+});
+
+it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
+	'should reject a retry delay of %s',
+	(retryDelaySeconds) => {
+		expect(() =>
+			validateSystemTask(taskWith({ effects: 'idempotent', retryDelaySeconds })),
+		).toThrowError(
+			expect.objectContaining({
+				message: 'A system task declares an out-of-range retry delay',
+				extra: { name: 'test-task', retryDelaySeconds },
+			}),
+		);
+	},
+);
+
+it('should accept the longest retry delay a timeout honors', () => {
+	expect(() =>
+		validateSystemTask(taskWith({ effects: 'idempotent', retryDelaySeconds: 2_147_483 })),
+	).not.toThrow();
 });

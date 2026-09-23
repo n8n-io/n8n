@@ -921,10 +921,12 @@ describe('SystemTaskRunner', () => {
 		const durably = { schedulerActive: true, enabledForSystemTasks: true };
 
 		type Emitted = [string, Record<string, unknown>];
+		const emittedCalls = (eventService: EventService) =>
+			(eventService.emit as unknown as { mock: { calls: Emitted[] } }).mock.calls;
 		const emitted = (eventService: EventService, event: string) =>
-			(eventService.emit as unknown as { mock: { calls: Emitted[] } }).mock.calls.filter(
-				([name]) => name === event,
-			);
+			emittedCalls(eventService).filter(([name]) => name === event);
+		const emittedIndex = (eventService: EventService, event: string) =>
+			emittedCalls(eventService).findIndex(([name]) => name === event);
 
 		it('emits an in-memory task as routed, with its interval', async () => {
 			const { runner, metadata, eventService } = setup();
@@ -1242,14 +1244,9 @@ describe('SystemTaskRunner', () => {
 
 			await initRunner(runner);
 
-			const order = (event: string) =>
-				(eventService.emit as unknown as { mock: { calls: Emitted[] } }).mock.calls.findIndex(
-					([name]) => name === event,
-				);
-			expect(order('system-task-timers-started')).toBeGreaterThanOrEqual(0);
-			expect(order('system-task-timers-started')).toBeLessThan(
-				order('system-task-scheduling-failed'),
-			);
+			const started = emittedIndex(eventService, 'system-task-timers-started');
+			expect(started).toBeGreaterThanOrEqual(0);
+			expect(started).toBeLessThan(emittedIndex(eventService, 'system-task-scheduling-failed'));
 		});
 
 		it('emits the runs of a durable task as durable', async () => {
