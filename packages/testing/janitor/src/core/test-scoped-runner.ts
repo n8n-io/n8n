@@ -24,19 +24,14 @@ export function buildRunnerArgs(
 	scope: Extract<ScopeResult, { kind: 'scoped' | 'full' }>,
 	rootDir: string,
 	passthroughArgs: string[],
-	shard?: string,
 ): string[] {
-	const runnerArgs =
-		shard && !passthroughArgs.some((arg) => arg === '--shard' || arg.startsWith('--shard='))
-			? [...passthroughArgs, `--shard=${shard}`]
-			: passthroughArgs;
 	if (scope.kind === 'full') {
-		return ['run', ...runnerArgs];
+		return ['run', ...passthroughArgs];
 	}
 	const absoluteFiles = scope.files.map((f) => (isAbsolute(f) ? f : resolve(rootDir, f)));
 	// `vitest related` defaults to watch mode and does NOT TTY-detect, so it
 	// would hang the CI runner forever. `--run` forces a single-pass execution.
-	return ['related', ...absoluteFiles, '--run', ...runnerArgs];
+	return ['related', ...absoluteFiles, '--run', ...passthroughArgs];
 }
 
 export function runTestScoped(options: TestScopedOptions): number {
@@ -59,12 +54,7 @@ export function runTestScoped(options: TestScopedOptions): number {
 		console.log(`[janitor:test-scoped] scoping to ${scope.files.length} file(s)`);
 	}
 
-	const args = buildRunnerArgs(
-		scope,
-		options.rootDir,
-		options.passthroughArgs,
-		process.env.VITEST_SHARD,
-	);
+	const args = buildRunnerArgs(scope, options.rootDir, options.passthroughArgs);
 	// Pass cwd explicitly so an override via --package-dir is honoured
 	// (otherwise spawnSync inherits the caller's cwd and vitest would
 	// resolve config + tests from the wrong project).

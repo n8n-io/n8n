@@ -1,4 +1,4 @@
-import { isAbsolute, resolve } from 'node:path';
+import { isAbsolute } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { buildRunnerArgs, resolveExitCode } from './test-scoped-runner.js';
@@ -36,34 +36,6 @@ describe('buildRunnerArgs', () => {
 		expect(buildRunnerArgs({ kind: 'full', reason: 'no signal' }, rootDir, ['--coverage'])).toEqual(
 			['run', '--coverage'],
 		);
-	});
-
-	it('uses the environment shard when no explicit shard is present', () => {
-		expect(
-			buildRunnerArgs({ kind: 'full', reason: 'no signal' }, rootDir, ['--coverage'], '1/4'),
-		).toEqual(['run', '--coverage', '--shard=1/4']);
-	});
-
-	it('uses the environment shard after `--run` for scoped tests', () => {
-		expect(
-			buildRunnerArgs(
-				{ kind: 'scoped', files: ['packages/frontend/editor-ui/src/x.ts'] },
-				rootDir,
-				[],
-				'1/4',
-			),
-		).toEqual([
-			'related',
-			resolve(rootDir, 'packages/frontend/editor-ui/src/x.ts'),
-			'--run',
-			'--shard=1/4',
-		]);
-	});
-
-	it('keeps an explicit shard instead of adding the environment shard', () => {
-		expect(
-			buildRunnerArgs({ kind: 'full', reason: 'no signal' }, rootDir, ['--shard=2/4'], '1/4'),
-		).toEqual(['run', '--shard=2/4']);
 	});
 });
 
