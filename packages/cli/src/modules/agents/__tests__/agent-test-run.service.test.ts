@@ -66,7 +66,7 @@ function makeService() {
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 	agentExecutionService.findThreadById.mockResolvedValue(null);
-	agentExecutionService.canUsePreviewThread.mockResolvedValue(true);
+	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 
 	return {
@@ -413,7 +413,7 @@ describe('AgentTestRunService', () => {
 			agentValidationService,
 			agentExecutionOrchestratorService,
 		} = makeService();
-		agentExecutionService.canUsePreviewThread.mockResolvedValue(false);
+		agentExecutionService.canUseDraftThread.mockResolvedValue(false);
 
 		await expect(
 			service.executeDraftRun({

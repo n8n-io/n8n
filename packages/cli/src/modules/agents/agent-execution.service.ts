@@ -1,16 +1,18 @@
 import type {
 	AgentMessageAuthor,
+	AgentSessionPreviewAccess,
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
-import { TransactionRunner } from '@n8n/db';
+import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
@@ -29,7 +31,12 @@ import { AgentExecutionLogStore } from './execution-log/agent-execution-log-stor
 import { N8nMemory } from './integrations/n8n-memory';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import { threadBelongsTo } from './utils/agent-thread-access';
+import {
+	canContinueThreadInPreview,
+	canUseTopLevelDraftThread,
+	threadBelongsTo,
+	type AgentSessionMode,
+} from './utils/agent-thread-access';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
 import {
@@ -72,6 +79,7 @@ export interface RecordMessageParams {
 
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
 	access: AgentThreadAccess;
+	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
 }
 
@@ -90,9 +98,10 @@ export interface ThreadDetail {
 
 export interface ThreadListItem
 	extends Omit<
-		AgentExecutionThread,
-		'generateId' | 'setUpdateDate' | 'ownerId' | 'accessScope' | 'owner'
-	> {
+			AgentExecutionThread,
+			'generateId' | 'setUpdateDate' | 'ownerId' | 'accessScope' | 'owner'
+		>,
+		AgentSessionPreviewAccess {
 	firstMessage: string | null;
 	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
 	source: string | null;
@@ -136,15 +145,15 @@ export class AgentExecutionService {
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
-		const { userMessage, created } = await this.prepareThread(params);
-		const inserted = await this.agentExecutionRepository.save(
-			this.agentExecutionRepository.create({
+		const { inserted, created, needsTitleSync } = await this.txRunner.run({}, async (ctx) => {
+			const prepared = await this.prepareThread(params, ctx);
+			const execution = this.agentExecutionRepository.create({
 				threadId: params.threadId,
 				status: 'running',
 				startedAt,
 				stoppedAt: null,
 				duration: 0,
-				userMessage,
+				userMessage: prepared.userMessage,
 				author: params.author ?? null,
 				model: null,
 				promptTokens: null,
@@ -159,10 +168,16 @@ export class AgentExecutionService {
 				hitlStatus: null,
 				source: params.source ?? null,
 				attachments: params.attachments?.length ? params.attachments : null,
-			}),
-		);
-		if (created) this.executionsNeedingTitleSync.add(inserted.id);
+			});
+			return {
+				inserted: await this.agentExecutionRepository.saveInContext(execution, ctx),
+				created: prepared.created,
+				needsTitleSync: !prepared.created && !prepared.thread.title,
+			};
+		});
 		this.startHeartbeat(inserted.id);
+		if (created) this.executionsNeedingTitleSync.add(inserted.id);
+		if (needsTitleSync) await this.syncTitleFromMemory(params.threadId, params.agentId);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
 			agentId: params.agentId,
@@ -381,22 +396,22 @@ export class AgentExecutionService {
 
 	private async prepareThread(
 		params: StartExecutionParams,
-	): Promise<{ userMessage: string | null; created: boolean }> {
+		ctx: OperationContext,
+	): Promise<{ userMessage: string | null; created: boolean; thread: AgentExecutionThread }> {
 		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
 			params.threadId,
 			params.agentId,
 			params.agentName,
 			params.projectId,
 			params.access,
+			ctx,
 			params.threadMetadata,
 			params.taskId,
 			params.taskVersionId,
+			params.sessionMode,
 		);
-		if (!created) {
-			await this.agentExecutionThreadRepository.bumpUpdatedAt(params.threadId);
-			if (!thread.title) await this.syncTitleFromMemory(params.threadId, params.agentId);
-		}
-		return { userMessage: cleanUserMessage(params.userMessage, params.agentName), created };
+		if (!created) await this.agentExecutionThreadRepository.bumpUpdatedAt(params.threadId, ctx);
+		return { userMessage: cleanUserMessage(params.userMessage, params.agentName), created, thread };
 	}
 
 	private async completeRecordedExecution(
@@ -520,7 +535,7 @@ export class AgentExecutionService {
 		threadId: string,
 		userId: string,
 	): Promise<boolean> {
-		const refs = await this.txRunner.run({}, async (ctx) => {
+		const result = await this.txRunner.run({}, async (ctx) => {
 			const deletion = await this.agentExecutionThreadRepository.deleteSession(
 				projectId,
 				agentId,
@@ -529,11 +544,16 @@ export class AgentExecutionService {
 				ctx,
 			);
 			if (!deletion) return null;
+			if (deletion.status === 'busy') return deletion;
 
 			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId, ctx);
 			return deletion;
 		});
-		if (!refs) return false;
+		if (!result) return false;
+		if (result.status === 'busy') {
+			throw new ConflictError('The session has active work and cannot be deleted');
+		}
+		const { refs } = result;
 
 		await Promise.all([
 			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
@@ -591,11 +611,15 @@ export class AgentExecutionService {
 			filters,
 		);
 
-		if (page.threads.length === 0) {
-			return { threads: [], nextCursor: page.nextCursor };
-		}
+		return { ...page, threads: await this.toThreadListItems(page.threads, userId) };
+	}
 
-		const threadIds = page.threads.map((t) => t.id);
+	private async toThreadListItems(
+		threads: AgentExecutionThread[],
+		userId: string,
+	): Promise<ThreadListItem[]> {
+		if (threads.length === 0) return [];
+		const threadIds = threads.map((t) => t.id);
 		const [messageMap, sourceMap, failureSummaryMap, latestStatusMap] = await Promise.all([
 			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
 			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
@@ -603,18 +627,18 @@ export class AgentExecutionService {
 			this.agentExecutionRepository.findLatestStatusesByThreadIds(threadIds),
 		]);
 
-		return {
-			...page,
-			threads: page.threads.map(
-				({ ownerId: _ownerId, accessScope: _accessScope, owner: _owner, ...t }) => ({
-					...t,
-					firstMessage: messageMap.get(t.id) ?? null,
-					source: sourceMap.get(t.id) ?? null,
-					failureSummary: failureSummaryMap.get(t.id) ?? null,
-					status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
-				}),
-			),
-		};
+		return threads.map((thread) => {
+			const { ownerId: _ownerId, accessScope: _accessScope, owner: _owner, ...t } = thread;
+			const source = sourceMap.get(t.id) ?? null;
+			return {
+				...t,
+				canContinueInPreview: canContinueThreadInPreview(thread, userId, source),
+				firstMessage: messageMap.get(t.id) ?? null,
+				source,
+				failureSummary: failureSummaryMap.get(t.id) ?? null,
+				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
+			};
+		});
 	}
 
 	/**
@@ -688,16 +712,30 @@ export class AgentExecutionService {
 		return await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 	}
 
-	async canUsePreviewThread(
+	async canUseDraftThread(
 		threadId: string,
 		projectId: string,
 		agentId: string,
 		userId: string,
+		options: { previewChat?: boolean; sessionMode?: AgentSessionMode } = {},
 	): Promise<boolean> {
 		const thread = await this.findThreadById(threadId);
 		if (thread) {
-			return thread.accessScope === 'user' && threadBelongsTo(thread, projectId, agentId, userId);
+			if (!threadBelongsTo(thread, projectId, agentId, userId)) return false;
+			if (!options.previewChat) return canUseTopLevelDraftThread(thread, userId);
+
+			const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
+			return canContinueThreadInPreview(thread, userId, sources.get(threadId));
 		}
+		if (options.sessionMode === 'existing') return false;
+		return await this.canUseUnrecordedDraftThread(threadId, agentId, userId);
+	}
+
+	private async canUseUnrecordedDraftThread(
+		threadId: string,
+		agentId: string,
+		userId: string,
+	): Promise<boolean> {
 		const resourceId = draftChatMemoryResourceId(userId);
 		const memory = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
 		if (memory && memory.resourceId !== resourceId) return false;
@@ -706,6 +744,10 @@ export class AgentExecutionService {
 			threadId,
 			resourceId,
 		);
+	}
+
+	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
+		return (await this.findThreadById(threadId)) ? 'existing' : 'new';
 	}
 
 	/** Narrow refs to those whose data lives in a blob store, i.e. all but `db`. */

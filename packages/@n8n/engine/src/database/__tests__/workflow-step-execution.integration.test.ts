@@ -47,6 +47,7 @@ describe('workflow_step_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			workflow: {},
 			triggerOutputs: null,
+			callerContext: { hostMode: 'trigger' },
 			finishedAt: null,
 		});
 		await repo.save(execution);

@@ -296,6 +296,8 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'confirmation-request':
 		case 'tasks-update':
 		case 'setup-items':
+		// Apply context events during live runs as well as history replay.
+		case 'instance-context':
 		case 'status': {
 			const { runState } = resolveTarget(state, event.runId);
 			if (runState) {

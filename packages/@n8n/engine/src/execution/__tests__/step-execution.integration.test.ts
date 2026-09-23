@@ -17,9 +17,8 @@ import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import { noopLifecycleEventPublisher } from '../../lifecycle-events';
 import type { LifecycleEventCallback, LifecycleEvent } from '../../lifecycle-events';
-import { createConsoleLogger } from '../../logging';
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
-import { ExecutionResponseChannel, noopResponseTransport } from '../../response-channel';
+import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { TriggerOutputs } from '../execution.types';
 import type { StartExecutionResult } from '../start-execution.service';
@@ -82,7 +81,7 @@ describe('step execution (integration)', () => {
 			dataSource,
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
-			responseChannel: new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
+			responseSender: noopExecutionResponseSender,
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
@@ -111,7 +110,7 @@ describe('step execution (integration)', () => {
 				workflow: {},
 				triggerOutputs,
 				executionId: generateId(),
-				callerContext: {},
+				callerContext: { hostMode: 'trigger' },
 			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
@@ -155,6 +154,7 @@ describe('step execution (integration)', () => {
 			executionId,
 			workflowId: 'wf-1',
 			mode: 'production',
+			hostMode: 'trigger',
 			at: expect.any(String) as string,
 		});
 		// The ids are the ones a consumer would re-query the data plane with.
@@ -185,7 +185,7 @@ describe('step execution (integration)', () => {
 			workflowId: 'wf-1',
 			mode: 'production',
 			iteration: 0,
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 	});
 
@@ -402,7 +402,7 @@ describe('step execution (integration)', () => {
 			graph,
 			workflow: {},
 			triggerOutputs: null,
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them
