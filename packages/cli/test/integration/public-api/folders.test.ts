@@ -186,30 +186,13 @@ describe('POST /projects/:projectId/folders', () => {
 			.send({ name: 'My Folder' });
 
 		expect(response.statusCode).toBe(201);
-		expect(response.body).toEqual({
+		expect(response.body).toStrictEqual({
 			id: expect.any(String),
 			name: 'My Folder',
 			parentFolderId: null,
-			createdAt: expect.any(String),
-			updatedAt: expect.any(String),
+			createdAt: expect.stringMatching(ISO_DATE_TIME),
+			updatedAt: expect.stringMatching(ISO_DATE_TIME),
 		});
-	});
-
-	test('should not expose internal folder fields', async () => {
-		testServer.license.enable('feat:folders');
-
-		const response = await authOwnerAgent
-			.post(`/projects/${ownerPersonalProject.id}/folders`)
-			.send({ name: 'My Folder' });
-
-		expect(response.statusCode).toBe(201);
-		expect(Object.keys(response.body as Record<string, unknown>).sort()).toEqual([
-			'createdAt',
-			'id',
-			'name',
-			'parentFolderId',
-			'updatedAt',
-		]);
 	});
 
 	test('should create a folder with parentFolderId', async () => {
