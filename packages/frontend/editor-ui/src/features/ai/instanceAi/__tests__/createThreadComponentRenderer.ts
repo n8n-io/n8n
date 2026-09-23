@@ -74,6 +74,12 @@ export function makeThread(): ThreadRuntime {
 	thread.clearPendingWorkflowAttachment = vi.fn(() => {
 		thread.pendingWorkflowAttachment = null;
 	});
+	thread.upsertTransientWorkflowReference = vi.fn((reference) => {
+		thread.transientWorkflowReferences.set(reference.referenceId, reference);
+	});
+	thread.removeTransientWorkflowReference = vi.fn((referenceId) => {
+		thread.transientWorkflowReferences.delete(referenceId);
+	});
 	return thread as unknown as ThreadRuntime;
 }
 

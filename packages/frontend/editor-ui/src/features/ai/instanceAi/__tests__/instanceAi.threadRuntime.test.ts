@@ -265,12 +265,21 @@ describe('transient workflow references', () => {
 			workflowId: 'wf-1',
 			workflowName: 'Orders',
 		});
+		first.upsertTransientWorkflowReference({
+			referenceId: 'draft-2',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		});
 		await nextTick();
 
 		expect(first.producedArtifacts.get('wf-1')?.name).toBe('Orders');
 		expect(second.producedArtifacts.has('wf-1')).toBe(false);
 
 		first.removeTransientWorkflowReference('draft-1');
+		await nextTick();
+		expect(first.producedArtifacts.has('wf-1')).toBe(true);
+
+		first.removeTransientWorkflowReference('draft-2');
 		await nextTick();
 		expect(first.producedArtifacts.has('wf-1')).toBe(false);
 	});

@@ -67,6 +67,12 @@ export function useAssistantAtMentions(options: {
 		const input = options.getInputElement();
 		const caret = caretOverride ?? input?.selectionEnd ?? value.length;
 		savedSelection.value = { start: caret, end: caret };
+		const triggerIndex = caret - 1;
+		const followsWhitespace = triggerIndex === 0 || /\s/.test(value[triggerIndex - 1] ?? '');
+		if (value[triggerIndex] === '@' && followsWhitespace) {
+			openTypedRange(triggerIndex, caret);
+			return;
+		}
 
 		const range = activeRange.value;
 		if (range) {
@@ -80,12 +86,6 @@ export function useAssistantAtMentions(options: {
 			range.end = caret;
 			query.value = value.slice(range.queryStart, caret);
 			return;
-		}
-
-		const triggerIndex = caret - 1;
-		const followsWhitespace = triggerIndex === 0 || /\s/.test(value[triggerIndex - 1] ?? '');
-		if (value[triggerIndex] === '@' && followsWhitespace) {
-			openTypedRange(triggerIndex, caret);
 		}
 	}
 

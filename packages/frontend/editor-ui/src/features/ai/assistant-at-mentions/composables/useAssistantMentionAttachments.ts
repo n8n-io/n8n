@@ -28,6 +28,8 @@ export interface AssistantMentionAttachmentSubmission {
 	restore(): void;
 }
 
+export type AssistantMentionAttachmentSubmissionSnapshot = readonly string[];
+
 export function useAssistantMentionAttachments(options: {
 	files: Ref<File[]>;
 	resources: Ref<InstanceAiResourceAttachment[]>;
@@ -204,8 +206,16 @@ export function useAssistantMentionAttachments(options: {
 		options.onCleared?.();
 	}
 
-	function detachSubmission(): AssistantMentionAttachmentSubmission {
-		const records = [...selectedRecords.values()];
+	function snapshotSubmission(): AssistantMentionAttachmentSubmissionSnapshot {
+		return [...selectedRecords.values()].map(({ referenceId }) => referenceId);
+	}
+
+	function detachSubmission(
+		referenceIds: AssistantMentionAttachmentSubmissionSnapshot = snapshotSubmission(),
+	): AssistantMentionAttachmentSubmission {
+		const records = referenceIds
+			.map((referenceId) => ownedRecords.get(referenceId))
+			.filter((record) => record !== undefined);
 		for (const record of records) {
 			if (selectedRecords.get(record.item.key) === record) {
 				selectedRecords.delete(record.item.key);
@@ -255,6 +265,7 @@ export function useAssistantMentionAttachments(options: {
 		updateResource,
 		removeResource,
 		clearForProjectChange,
+		snapshotSubmission,
 		detachSubmission,
 	};
 }

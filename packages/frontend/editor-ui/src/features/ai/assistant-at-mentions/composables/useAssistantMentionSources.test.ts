@@ -334,7 +334,7 @@ describe('useAssistantMentionSources', () => {
 		scope.stop();
 	});
 
-	it('invalidates an in-flight search when the query is cleared', async () => {
+	it('invalidates an in-flight search when results are cleared', async () => {
 		const response = deferred<AssistantMentionItem[]>();
 		const source: MentionSourceProvider = {
 			id: 'workflows',
@@ -348,7 +348,7 @@ describe('useAssistantMentionSources', () => {
 		});
 
 		const pending = sources.search('orders');
-		await sources.search('');
+		sources.clearSearchResults();
 		response.resolve([buildWorkflowMentionItem(makeWorkflow('old', 'Orders'), 'workflows')]);
 		await pending;
 

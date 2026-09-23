@@ -160,6 +160,7 @@ const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const attachedResources = ref<InstanceAiResourceAttachment[]>([]);
+const isPreparingSubmission = ref(false);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 const mentionPickerRef = ref<InstanceType<typeof AssistantAtMentionPicker> | null>(null);
 const composerRef = ref<HTMLElement | null>(null);
@@ -261,7 +262,9 @@ defineExpose({
 // A run suspended on a plan review is parked, not working: the user is meant to
 // type into it. Only a real in-flight submission blocks the composer then.
 const isBusy = computed(() =>
-	props.isAwaitingPlanReview ? props.isSubmitting : props.isStreaming || props.isSubmitting,
+	props.isAwaitingPlanReview
+		? props.isSubmitting
+		: props.isStreaming || props.isSubmitting || isPreparingSubmission.value,
 );
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
@@ -512,6 +515,7 @@ function submitComposerMessage(
 	draftSnapshot?: {
 		files: File[];
 		resources: InstanceAiResourceAttachment[];
+		mentionReferenceIds: readonly string[];
 	},
 ) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
@@ -542,7 +546,7 @@ function submitComposerMessage(
 
 	const submittedFiles = draftSnapshot?.files ?? [...attachedFiles.value];
 	const submittedResources = draftSnapshot?.resources ?? [...attachedResources.value];
-	const mentionSubmission = mentionAttachments.detachSubmission();
+	const mentionSubmission = mentionAttachments.detachSubmission(draftSnapshot?.mentionReferenceIds);
 	emitSubmittedMessage(
 		message,
 		attachments,
@@ -593,14 +597,21 @@ async function handleSubmit() {
 
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
-	const fileAttachments: InstanceAiAttachment[] = submittedFiles.length
-		? (await Promise.all(submittedFiles.map(convertFileToBinaryData))).map((b) => ({
-				type: 'file' as const,
-				data: b.data,
-				mimeType: b.mimeType,
-				fileName: b.fileName ?? 'unnamed',
-			}))
-		: [];
+	const mentionReferenceIds = mentionAttachments.snapshotSubmission();
+	isPreparingSubmission.value = true;
+	let fileAttachments: InstanceAiAttachment[];
+	try {
+		fileAttachments = submittedFiles.length
+			? (await Promise.all(submittedFiles.map(convertFileToBinaryData))).map((b) => ({
+					type: 'file' as const,
+					data: b.data,
+					mimeType: b.mimeType,
+					fileName: b.fileName ?? 'unnamed',
+				}))
+			: [];
+	} finally {
+		isPreparingSubmission.value = false;
+	}
 	const attachments = [...fileAttachments, ...submittedResources];
 
 	submitComposerMessage(
@@ -608,7 +619,7 @@ async function handleSubmit() {
 		attachments.length ? attachments : undefined,
 		prefill,
 		responseStartedAtEpochMs,
-		{ files: submittedFiles, resources: submittedResources },
+		{ files: submittedFiles, resources: submittedResources, mentionReferenceIds },
 	);
 }
 
@@ -798,7 +809,7 @@ const resizable = computed(() => {
 			:placeholder="placeholder"
 			:is-streaming="props.isAwaitingPlanReview ? false : props.isStreaming"
 			:can-submit="canSubmit"
-			:disabled="isGatedBySetup"
+			:disabled="isGatedBySetup || isPreparingSubmission"
 			:autosize="resizable"
 			:button-label="props.submitLabel"
 			:active-requires-focus="props.submitActiveRequiresFocus"

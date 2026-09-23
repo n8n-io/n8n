@@ -90,6 +90,15 @@ describe('useAssistantMentionAttachments', () => {
 		scope.stop();
 	});
 
+	it('propagates the group truncation result', () => {
+		const { mentions, scope } = setup();
+		const selection = workflowSelection();
+		selection.truncated = true;
+
+		expect(mentions.select(selection)).toEqual({ status: 'added', truncated: true });
+		scope.stop();
+	});
+
 	it('keeps child context when the workflow attachment is removed', () => {
 		const { mentions, resources, onReferenceRemoved, scope } = setup();
 		mentions.select(workflowSelection());
@@ -114,6 +123,18 @@ describe('useAssistantMentionAttachments', () => {
 		acceptedSubmission.accept();
 		expect(onReferenceRemoved).toHaveBeenCalledTimes(1);
 		expect(resources.value).toHaveLength(1);
+		scope.stop();
+	});
+
+	it('settles only references captured before submission work starts', () => {
+		const { mentions, onReferenceRemoved, scope } = setup();
+		mentions.select(workflowSelection());
+		const snapshot = mentions.snapshotSubmission();
+		mentions.select(nodeSelection());
+
+		mentions.detachSubmission(snapshot).accept();
+
+		expect(onReferenceRemoved).toHaveBeenCalledTimes(1);
 		scope.stop();
 	});
 

@@ -73,6 +73,8 @@ const workflowProvider = createWorkflowMentionSourceProvider({
 	artifactWorkflowIds: () => props.artifacts.map(({ id }) => id),
 });
 const sources = useAssistantMentionSources([artifactProvider, workflowProvider]);
+const searchPending = ref(false);
+let highlightedForCurrentOpen = false;
 
 function toMenuItem(item: AssistantMentionItem, searchMode: boolean): MentionMenuItem {
 	const indexEntry = artifactIndex.getEntry(item.workflowId);
@@ -124,24 +126,34 @@ const itemsById = computed(() => {
 
 const runSearch = useDebounceFn(async (query: string) => {
 	if (!props.modelValue || query !== props.query.trim()) return;
-	await sources.search(query);
+	try {
+		await sources.search(query);
+	} finally {
+		if (query === props.query.trim()) searchPending.value = false;
+	}
 }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 watch(
 	[() => props.modelValue, () => props.query],
 	([open, query]) => {
-		if (!open) return;
+		if (!open) {
+			searchPending.value = false;
+			return;
+		}
+		highlightedForCurrentOpen = false;
 		const normalizedQuery = query.trim();
 		if (normalizedQuery) {
+			searchPending.value = true;
+			sources.clearSearchResults();
 			void runSearch(normalizedQuery);
 		} else {
+			searchPending.value = false;
 			void sources.browse();
 		}
 	},
 	{ immediate: true },
 );
 
-let highlightedForCurrentOpen = false;
 watch(
 	() => props.modelValue,
 	(open) => {
@@ -191,6 +203,7 @@ defineExpose({ handleExternalKeydown });
 		:external-focus-target="inputElement"
 		:reference="reference ?? undefined"
 		:disabled="disabled"
+		:loading="searchPending"
 		:empty-text="i18n.baseText('instanceAi.mentions.noResults')"
 		placement="top-start"
 		searchable

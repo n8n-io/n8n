@@ -41,6 +41,19 @@ describe('useAssistantAtMentions', () => {
 		expect(mentions.menuOpen.value).toBe(false);
 	});
 
+	it('starts a new range when another whitespace-delimited trigger is typed', async () => {
+		const { text, input, mentions } = setup();
+		input.value = '@';
+		input.setSelectionRange(1, 1);
+		await mentions.handleTextChange('@');
+		input.value = '@foo @';
+		input.setSelectionRange(6, 6);
+		await mentions.handleTextChange('@foo @');
+		await mentions.replaceActiveRange('Orders');
+
+		expect(text.value).toBe('@foo "Orders"');
+	});
+
 	it('replaces only the active typed range and preserves trailing text', async () => {
 		const { text, input, mentions } = setup('Compare @ with the current workflow');
 		input.value = 'Compare @ with the current workflow';

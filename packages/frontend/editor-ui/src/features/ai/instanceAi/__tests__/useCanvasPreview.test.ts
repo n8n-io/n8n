@@ -1088,6 +1088,27 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('resource attachment auto-open', () => {
+		test('ignores an attached parent workflow that has no artifact tab', async () => {
+			const ctx = setup();
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'missing-workflow',
+							workflowName: 'Missing workflow',
+							sets: [{ nodes: [{ id: 'n1' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
 		test('opens the parent workflow from an attached node mention', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1', 'Orders');

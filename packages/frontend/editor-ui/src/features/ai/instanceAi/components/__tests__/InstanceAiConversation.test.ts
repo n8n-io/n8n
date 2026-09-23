@@ -127,17 +127,25 @@ describe('InstanceAiConversation', () => {
 			...reference,
 			projectId: 'thread-project',
 		});
+		expect(thread.transientWorkflowReferences.get('draft-1')).toMatchObject(reference);
 		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
 		expect(input.props('mentionArtifacts')).toEqual([{ id: 'wf-1', name: 'Orders' }]);
 
 		input.vm.$emit('mention-reference-removed', 'draft-1');
 		expect(thread.removeTransientWorkflowReference).toHaveBeenCalledWith('draft-1');
+		expect(thread.transientWorkflowReferences.has('draft-1')).toBe(false);
 	});
 
 	it('accepts the submitted mention draft only after the message is admitted', async () => {
 		const wrapper = mountConversation();
 		const input = wrapper.findComponent(InstanceAiInputStub);
 		const acceptDraft = vi.fn();
+		let admit!: (sent: boolean) => void;
+		vi.mocked(thread.sendMessage).mockReturnValueOnce(
+			new Promise<boolean>((resolve) => {
+				admit = resolve;
+			}),
+		);
 
 		input.vm.$emit(
 			'submit',
@@ -149,6 +157,9 @@ describe('InstanceAiConversation', () => {
 			acceptDraft,
 		);
 		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+		expect(acceptDraft).not.toHaveBeenCalled();
+
+		admit(true);
 		await vi.waitFor(() => expect(acceptDraft).toHaveBeenCalledOnce());
 	});
 
