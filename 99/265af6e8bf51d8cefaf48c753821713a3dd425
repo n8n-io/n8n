@@ -1,0 +1,92 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_1741cce0e6f082::t_4a34e3a9918b23 465-475,478-480,483-484,486-488
+  s_1741cce0e6f082::t_3c26a7c3ac5f03 384,386,393,395,402
+  s_1741cce0e6f082::t_9d280df498fb96 38
+  s_1741cce0e6f082::t_6fe796d0e0a0d7 86-96
+  s_1741cce0e6f082::t_9260da1cd77670 85
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_1741cce0e6f082::t_0283d0929653ea 95-107,110,116
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_1741cce0e6f082::t_a987d1c2b7c62a 114-122
+  s_1741cce0e6f082::t_1d0f5012db864b 398-400,402
+  s_1741cce0e6f082::t_f0c090509ce0a6 156-159,176-183
+  s_1741cce0e6f082::t_7955a2eaaa6998 55
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.ts
+  s_1741cce0e6f082::t_6a514660a8f5df 106
+  s_1741cce0e6f082::t_c394af50f5ec9c 26-42
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_1741cce0e6f082::t_9d2a92f49f38fb 15
+  s_1741cce0e6f082::t_e10b2b4b829213 403-414
+  s_1741cce0e6f082::t_ab9262c22aa716 92
+  s_1741cce0e6f082::t_8f7bdfede0ddd6 4,6
+  s_1741cce0e6f082::t_71ad75fbc1ce01 39
+  s_1741cce0e6f082::t_9dc4d07738e2d6 268-277
+  s_1741cce0e6f082::t_4e3e9fb8f97f34 26
+  s_1741cce0e6f082::t_e842b6d667dcf1 80-91,93
+  s_1741cce0e6f082::t_7db3530fceff6e 337-338,342-369
+  s_1741cce0e6f082::t_a1bb66c0396906 69
+  s_1741cce0e6f082::t_6451b06d0d270e 126
+  s_1741cce0e6f082::t_3aeb8b54878f2c 370-372
+  s_1741cce0e6f082::t_789d766a2c7a78 415-416
+  s_e99accbeffc22c::t_fb3d25f5db0d23 373
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.test.ts
+  s_1741cce0e6f082::t_6ee6584415a205 126-141
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_1741cce0e6f082::t_fea09e97525bcf 344-345,357-358,405-406,434-435,457-458,487-488,510-511
+  s_1741cce0e6f082::t_23cb30583a3efa 361-362,365-367
+  s_1741cce0e6f082::t_e183c0a7c23da3 320-324,326-329,332-336
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_1741cce0e6f082::t_5ef18b9bdc4bab 252-270,277-278
+  s_1741cce0e6f082::t_fb167a5beee1c5 545-559
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_1741cce0e6f082::t_dc5f78c5549e1a 72-82
+  s_1741cce0e6f082::t_ace53ffc0c6861 71
+  s_e99accbeffc22c::t_0ac538144d1e4e 568,597
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_1741cce0e6f082::t_cd37c9ca871080 88-167,169
+  s_1741cce0e6f082::t_566fa94cbd6484 8,12
+  s_1741cce0e6f082::t_611aa3c0f50e94 48-52
+  s_1741cce0e6f082::t_d65e5256277a6e 168
+  s_1741cce0e6f082::t_11719fd102029a 170-172
+  s_e99accbeffc22c::t_266d39f2b68bb9 173-174
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_1741cce0e6f082::t_d63bd7fd5cc424 55-56
+  s_1741cce0e6f082::t_a98becab9ee280 24-36
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1741cce0e6f082::t_06aa6b6fe331bc 8854-8855,8857
+packages/cli/src/modules/n8n-packages/engine/workflow-selection.ts
+  s_e99accbeffc22c::t_1d83d0d67d5b29 1-63
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_1741cce0e6f082::t_5e4c95c381b49e 280-282
+  s_1741cce0e6f082::t_aab58e277300de 87-90
+  s_1741cce0e6f082::t_e6cff9cfd35665 436-438
+  s_1741cce0e6f082::t_525fd645670a81 239
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_1741cce0e6f082::t_825414dde6136f 41-56
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_1741cce0e6f082::t_df3abb7ea438af 42-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99265af6e8bf51d8cefaf48c753821713a3dd425",
+  "prompts": {},
+  "sessions": {
+    "s_1741cce0e6f082": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd61f4ba-5efd-4a79-bf38-a65c0867151c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_e99accbeffc22c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49138942-642b-4b23-957f-06d05e29184f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
