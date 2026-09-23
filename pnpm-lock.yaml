@@ -195,7 +195,7 @@ catalogs:
       version: 4.5.0
 
 overrides:
-  adm-zip: 0.6.0
+  adm-zip: 0.6.1
   '@isaacs/brace-expansion': 5.0.1
   ast-types: 0.16.1
   '@azure/identity': 4.13.0
@@ -9382,8 +9382,8 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  adm-zip@0.6.0:
-    resolution: {integrity: sha512-XleryMhbuksdKtofnWZ9Sk+4CUTbms4Mb/EU32SZwToAyZ5RgVos/ki8n+yr0LWHOGKuakbXTuuYNHLQjhddgg==}
+  adm-zip@0.6.1:
+    resolution: {integrity: sha512-Xwrja8nx9e5o2N1my4DsKCeKpdrnACyr1wtbPxBDgGzKzKyE9kRtBFA8mWldI+RVlD7CBZNWY/wQ2+ydwOR6kQ==}
     engines: {node: '>=14.0'}
 
   ag-charts-types@12.1.1:
@@ -26313,7 +26313,7 @@ snapshots:
 
   acorn@8.15.0: {}
 
-  adm-zip@0.6.0: {}
+  adm-zip@0.6.1: {}
 
   ag-charts-types@12.1.1: {}
 
@@ -28441,7 +28441,7 @@ snapshots:
 
   epub2@3.0.2(ts-toolbelt@9.6.0):
     dependencies:
-      adm-zip: 0.6.0
+      adm-zip: 0.6.1
       array-hyper-unique: 2.1.4
       bluebird: 3.7.2
       crlf-normalize: 1.0.19(ts-toolbelt@9.6.0)
