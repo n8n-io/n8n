@@ -147,7 +147,10 @@ describe('SettingsMCPClientsView', () => {
 		await userEvent.click(within(document.body).getByRole('button', { name: 'Revoke' }));
 
 		await waitFor(() => {
-			expect(mcpStore.removeOAuthClient).toHaveBeenCalledWith('client-1', 'user-2');
+			// The clients page shows the list, so it lets the store refetch it.
+			expect(mcpStore.removeOAuthClient).toHaveBeenCalledWith('client-1', 'user-2', {
+				refreshList: true,
+			});
 		});
 	});
 
@@ -211,15 +214,17 @@ describe('SettingsMCPClientsView', () => {
 		});
 	});
 
-	it('should reflect a tab switch in the URL', async () => {
+	it('should reflect a tab switch in the URL before the fetch settles', async () => {
+		// Keep the fetch pending: the URL must follow the user's choice, not the
+		// (possibly slower, possibly superseded) response.
+		mcpStore.setOAuthClientsOwnership.mockReturnValue(new Promise<void>(() => {}));
+
 		const { getByTestId } = createComponent({ pinia });
 		await nextTick();
 
 		await userEvent.click(getByTestId('stub-ownership-all'));
 
-		await waitFor(() => {
-			expect(routerReplace).toHaveBeenCalledWith({ query: { tab: 'all' } });
-		});
+		expect(routerReplace).toHaveBeenCalledWith({ query: { tab: 'all' } });
 	});
 
 	describe('?tab deep link', () => {

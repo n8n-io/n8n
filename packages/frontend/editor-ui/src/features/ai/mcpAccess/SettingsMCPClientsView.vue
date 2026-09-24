@@ -46,15 +46,17 @@ const fetchoAuthCLients = async () => {
 };
 
 const onOwnershipChange = async (ownership: 'mine' | 'all') => {
+	// Reflect the tab in the URL right away (replace keeps history clean /
+	// back-button safe). Written before the fetch: the tab is the user's choice,
+	// not the fetch result, so a slow earlier fetch can't stamp a stale tab later.
+	if (route.query.tab !== ownership) {
+		void router.replace({ query: { ...route.query, tab: ownership } });
+	}
 	try {
 		oAuthClientsLoading.value = true;
 		await mcpStore.setOAuthClientsOwnership(ownership);
 		if (ownership === 'all') {
 			mcp.trackViewedAllClients();
-		}
-		// Reflect the tab in the URL (replace keeps history clean / back-button safe).
-		if (route.query.tab !== ownership) {
-			void router.replace({ query: { ...route.query, tab: ownership } });
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));

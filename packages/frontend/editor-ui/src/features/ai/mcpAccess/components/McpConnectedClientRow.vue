@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { I18nT } from 'vue-i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nSettingsRow, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -42,6 +43,15 @@ const accessSummary = computed(() => getAccessSummary(i18n, props.client, offere
 
 const grantedAt = computed(() => new Date(props.client.grantedAt).toISOString());
 
+// One translatable phrase per shape ("IDE · Connected 2 minutes ago" / "Connected
+// 2 minutes ago"), so locales own the separator and word order; the relative time
+// is a component, hence slot interpolation rather than a string.
+const metaKeypath = computed(() =>
+	typeLabel.value
+		? 'settings.mcp.connectedClients.preview.meta'
+		: 'settings.mcp.connectedClients.preview.metaWithoutType',
+);
+
 const revokeLabel = computed(() =>
 	i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccessFor', {
 		interpolate: { name: props.client.name },
@@ -76,9 +86,10 @@ const revokeLabel = computed(() =>
 					{{ client.name }}
 				</N8nText>
 				<N8nText size="small" color="text-light" :class="$style.line">
-					<template v-if="typeLabel">{{ typeLabel }} · </template>
-					{{ i18n.baseText('settings.mcp.connectedClients.preview.connected') }}
-					<TimeAgo :date="grantedAt" />
+					<I18nT :keypath="metaKeypath" scope="global" tag="span">
+						<template v-if="typeLabel" #type>{{ typeLabel }}</template>
+						<template #timeAgo><TimeAgo :date="grantedAt" /></template>
+					</I18nT>
 				</N8nText>
 				<N8nText
 					size="xsmall"

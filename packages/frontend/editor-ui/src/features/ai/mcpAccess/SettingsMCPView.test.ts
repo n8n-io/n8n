@@ -397,7 +397,11 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(within(document.body).getByRole('button', { name: 'Revoke' }));
 
 			await waitFor(() => {
-				expect(mcpStore.removeOAuthClient).toHaveBeenCalledWith('client-2', undefined);
+				// No list refetch from the overview: it never renders the clients page's
+				// list, whose persisted ownership might be "all".
+				expect(mcpStore.removeOAuthClient).toHaveBeenCalledWith('client-2', undefined, {
+					refreshList: false,
+				});
 			});
 			expect(trackClientAccessRevokedSpy).toHaveBeenCalledWith({
 				clientId: 'client-2',
@@ -407,6 +411,16 @@ describe('SettingsMCPView', () => {
 			await waitFor(() => {
 				expect(mcpStore.fetchOAuthClientsPreview).toHaveBeenCalledTimes(1);
 			});
+		});
+
+		it('should drop the cached preview when leaving the page', async () => {
+			const { unmount } = createComponent({ pinia });
+			await waitAllPromises();
+			expect(mcpStore.clearOAuthClientsPreview).not.toHaveBeenCalled();
+
+			unmount();
+
+			expect(mcpStore.clearOAuthClientsPreview).toHaveBeenCalled();
 		});
 
 		it('should not open the client details when the revoke action is clicked', async () => {

@@ -16,8 +16,15 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
  * `onRevoked` runs after a successful revoke so the caller can refresh its own
  * view of the data. It owns its error handling: the revoke already succeeded,
  * so a failed refresh must not be reported as a failed revoke.
+ *
+ * `refreshList` (default true) refetches the clients page's list after the
+ * revoke. Callers that don't render that list (the overview) turn it off and
+ * refresh their own data in `onRevoked`, so the list's persisted ownership and
+ * filters are never requested from a page that doesn't show them.
  */
-export function useOAuthClientRevoke(options: { onRevoked?: () => Promise<void> | void } = {}) {
+export function useOAuthClientRevoke(
+	options: { onRevoked?: () => Promise<void> | void; refreshList?: boolean } = {},
+) {
 	const i18n = useI18n();
 	const toast = useToast();
 	const mcp = useMcp();
@@ -45,7 +52,9 @@ export function useOAuthClientRevoke(options: { onRevoked?: () => Promise<void> 
 		let revoked = false;
 		try {
 			revoking.value = true;
-			await mcpStore.removeOAuthClient(client.id, client.owner?.id);
+			await mcpStore.removeOAuthClient(client.id, client.owner?.id, {
+				refreshList: options.refreshList ?? true,
+			});
 			revoked = true;
 			mcp.trackClientAccessRevoked({
 				clientId: client.id,

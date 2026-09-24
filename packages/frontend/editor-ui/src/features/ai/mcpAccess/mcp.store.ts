@@ -37,6 +37,7 @@ import { isWorkflowListItem } from '@/app/utils/typeGuards';
 import type {
 	ApiKey,
 	InstanceMcpClientStatsResponseDto,
+	ListOAuthClientsResponseDto,
 	OAuthClientResponseDto,
 	DeleteOAuthClientResponseDto,
 } from '@n8n/api-types';
@@ -63,6 +64,14 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	const oauthClientOwners = ref<Array<NonNullable<OAuthClientResponseDto['owner']>>>([]);
 	/** Monotonic token so a slow in-flight list fetch can't overwrite a newer one. */
 	let oauthClientsRequestSeq = 0;
+	/** Same guard for the overview preview fetch. */
+	let oauthClientsPreviewRequestSeq = 0;
+	/**
+	 * Totals and scope tools are instance-wide and come back with both the list
+	 * and the preview fetch; this token keeps an older response of either kind
+	 * from overwriting a newer one.
+	 */
+	let oauthClientMetadataRequestSeq = 0;
 	const allowedRedirectUris = ref<string[]>([]);
 	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
@@ -288,8 +297,15 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		currentUserMCPKey.value = null;
 	}
 
+	function applyOAuthClientMetadata(seq: number, response: ListOAuthClientsResponseDto) {
+		if (seq !== oauthClientMetadataRequestSeq) return;
+		oauthClientScopeTools.value = response.scopeTools;
+		oauthClientTotals.value = response.totals;
+	}
+
 	async function getAllOAuthClients(): Promise<OAuthClientResponseDto[]> {
 		const seq = ++oauthClientsRequestSeq;
+		const metadataSeq = ++oauthClientMetadataRequestSeq;
 		const filters = oauthClientsFilters.value;
 		const response = await fetchOAuthClients(rootStore.restApiContext, {
 			ownership: oauthClientsOwnership.value,
@@ -316,8 +332,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		}
 
 		oauthClients.value = response.data;
-		oauthClientScopeTools.value = response.scopeTools;
-		oauthClientTotals.value = response.totals;
+		applyOAuthClientMetadata(metadataSeq, response);
 		oauthClientsCount.value = response.count;
 		oauthClientOwners.value = response.owners ?? [];
 		return response.data;
@@ -333,15 +348,28 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	async function fetchOAuthClientsPreview(
 		limit = MCP_CLIENTS_PREVIEW_LIMIT,
 	): Promise<OAuthClientResponseDto[]> {
+		const seq = ++oauthClientsPreviewRequestSeq;
+		const metadataSeq = ++oauthClientMetadataRequestSeq;
 		const response = await fetchOAuthClients(rootStore.restApiContext, {
 			ownership: 'mine',
 			skip: 0,
 			take: limit,
 		});
+		// A newer preview fetch (e.g. after a revoke) superseded this one.
+		if (seq !== oauthClientsPreviewRequestSeq) return response.data;
+
 		oauthClientsPreview.value = response.data;
-		oauthClientScopeTools.value = response.scopeTools;
-		oauthClientTotals.value = response.totals;
+		applyOAuthClientMetadata(metadataSeq, response);
 		return response.data;
+	}
+
+	/**
+	 * Drops the cached preview. The overview calls this when it unmounts so the
+	 * per-user rows never outlive the page, e.g. into another user's session
+	 * after a soft-redirect logout and login.
+	 */
+	function clearOAuthClientsPreview(): void {
+		oauthClientsPreview.value = [];
 	}
 
 	async function setOAuthClientsOwnership(ownership: 'mine' | 'all'): Promise<void> {
@@ -377,11 +405,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		}
 	}
 
+	/**
+	 * Revokes a client's grant. By default the clients page's list is refetched
+	 * afterwards; callers that don't show that list (the overview) pass
+	 * `refreshList: false` and refresh their own data instead, so the list's
+	 * persisted ownership and filters are never requested from elsewhere.
+	 */
 	async function removeOAuthClient(
 		clientId: string,
 		userId?: string,
+		{ refreshList = true }: { refreshList?: boolean } = {},
 	): Promise<DeleteOAuthClientResponseDto> {
 		const response = await deleteOAuthClient(rootStore.restApiContext, clientId, userId);
+		if (!refreshList) return response;
 		// Refetch instead of splicing locally so the tab totals stay accurate. The
 		// revoke already succeeded, so keep the refresh best-effort: a failed
 		// refetch must not turn a successful revoke into a reported error.
@@ -450,6 +486,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		oauthClients,
 		oauthClientsPreview,
 		fetchOAuthClientsPreview,
+		clearOAuthClientsPreview,
 		oauthClientsOwnership,
 		oauthClientTotals,
 		oauthClientOwners,

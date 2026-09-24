@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { ElSwitch } from 'element-plus';
@@ -231,7 +231,7 @@ const openClientDetails = (client: OAuthClientResponseDto) => {
 };
 
 const { revokeClient, revoking, isRevokingForOther, requestRevoke, cancelRevoke, confirmRevoke } =
-	useOAuthClientRevoke({ onRevoked: fetchConnectedClientsPreview });
+	useOAuthClientRevoke({ refreshList: false, onRevoked: fetchConnectedClientsPreview });
 
 const openWorkflowsView = () => {
 	void router.push({ name: MCP_WORKFLOWS_VIEW });
@@ -280,6 +280,12 @@ onMounted(async () => {
 		fetches.push(mcpStore.getInstanceClientStats());
 	}
 	await Promise.all(fetches);
+});
+
+// The preview is per-user data; don't let it outlive the page (a soft-redirect
+// logout keeps the store), so the next visit starts from the loading state.
+onBeforeUnmount(() => {
+	mcpStore.clearOAuthClientsPreview();
 });
 </script>
 
