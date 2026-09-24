@@ -112,13 +112,25 @@ const badgeTooltip = computed(() => {
 	});
 });
 
+const isConfigFileManaged = computed(() => provider.value.managedBy === 'config-file');
+const configFileManagedTooltip = i18n.baseText(
+	'settings.secretsProviderConnections.managedByConfigFile.tooltip',
+);
+
 const actionDropdownOptions = computed(() => {
 	if (!props.canUpdate) return [];
 
-	const options = [
+	const options: Array<{
+		label: string;
+		value: string;
+		disabled?: boolean;
+		tooltip?: string;
+	}> = [
 		{
 			label: i18n.baseText('generic.edit'),
 			value: 'edit',
+			disabled: isConfigFileManaged.value,
+			tooltip: isConfigFileManaged.value ? configFileManagedTooltip : undefined,
 		},
 	];
 
@@ -147,6 +159,8 @@ const actionDropdownOptions = computed(() => {
 		options.push({
 			label: i18n.baseText('generic.delete'),
 			value: 'delete',
+			disabled: isConfigFileManaged.value,
+			tooltip: isConfigFileManaged.value ? configFileManagedTooltip : undefined,
 		});
 	}
 

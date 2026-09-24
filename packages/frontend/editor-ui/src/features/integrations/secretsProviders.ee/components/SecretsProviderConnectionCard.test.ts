@@ -353,4 +353,29 @@ describe('SecretsProviderConnectionCard', () => {
 
 		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
 	});
+
+	it('disables edit and delete, but keeps reload enabled, when managed by config file', async () => {
+		const rbacStore = useRBACStore();
+		rbacStore.globalScopes = ['externalSecretsProvider:delete', 'externalSecretsProvider:sync'];
+
+		const configFileManagedProvider: SecretProviderConnection = {
+			...mockProvider,
+			managedBy: 'config-file',
+			state: 'connected',
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find(
+			(t) => t.type === configFileManagedProvider.type,
+		);
+
+		renderComponent({
+			pinia,
+			props: { provider: configFileManagedProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		await openActionsMenu();
+
+		expect(await screen.findByTestId('action-edit')).toHaveAttribute('aria-disabled', 'true');
+		expect(await screen.findByTestId('action-delete')).toHaveAttribute('aria-disabled', 'true');
+		expect(await screen.findByTestId('action-reload')).not.toHaveAttribute('aria-disabled');
+	});
 });

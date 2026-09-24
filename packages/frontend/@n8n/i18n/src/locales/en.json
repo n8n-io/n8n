@@ -4299,6 +4299,7 @@
 	"settings.secretsProviderConnections.delete.error": "Failed to delete secret store",
 	"settings.secretsProviderConnections.badge.tooltip.project": "This secrets vault is shared with {projectName}.",
 	"settings.secretsProviderConnections.badge.tooltip.global": "This secrets vault is available to all projects and users of this instance.",
+	"settings.secretsProviderConnections.managedByConfigFile.tooltip": "This connection is managed by the external secrets config file and cannot be edited or deleted here. Edit the file and restart n8n to make changes.",
 	"settings.sourceControl.title": "Environments",
 	"settings.sourceControl.actionBox.title": "Available on the Enterprise plan",
 	"settings.sourceControl.actionBox.description": "Use multiple instances for different environments (dev, prod, etc.), deploying between them via a Git repository.",
