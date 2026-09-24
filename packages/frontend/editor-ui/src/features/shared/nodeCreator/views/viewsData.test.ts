@@ -5,11 +5,13 @@ import {
 	AI_CATEGORY_CHAINS,
 	AI_TRANSFORM_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { AIView, HitlToolView } from './viewsData';
+import { AIView, HitlToolView, TriggerView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { SimplifiedNodeType } from '@/Interface';
@@ -231,6 +233,21 @@ describe('viewsData', () => {
 				name: 'badge-check',
 			});
 			expect(result.items).toHaveLength(1);
+		});
+	});
+
+	describe('TriggerView', () => {
+		test('should not include node types that are not loaded', () => {
+			getNodeType.mockImplementation((nodeName: string) =>
+				nodeName === SCHEDULE_TRIGGER_NODE_TYPE
+					? null
+					: mockNodeTypeDescription({ name: nodeName }),
+			);
+
+			const keys = TriggerView().items.map((item) => item.key);
+
+			expect(keys).not.toContain(SCHEDULE_TRIGGER_NODE_TYPE);
+			expect(keys).toContain(WEBHOOK_NODE_TYPE);
 		});
 	});
 });

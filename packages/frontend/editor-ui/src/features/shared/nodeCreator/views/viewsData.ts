@@ -377,6 +377,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 
 export function TriggerView() {
 	const i18n = useI18n();
+	const nodeTypesStore = useNodeTypesStore();
 	const evaluationStore = useEvaluationStore();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
 
@@ -495,7 +496,7 @@ export function TriggerView() {
 					icon: 'folder-open',
 				},
 			},
-		],
+		].filter((item) => item.type !== 'node' || nodeTypesStore.getNodeType(item.key)),
 	};
 
 	return view;

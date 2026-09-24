@@ -2,13 +2,23 @@ import { defineComponent, nextTick, watch } from 'vue';
 import type { PropType } from 'vue';
 import { createPinia } from 'pinia';
 import { screen, fireEvent, waitFor } from '@testing-library/vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { EVALUATION_TRIGGER_NODE_TYPE, type INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockNodeTypeDescription, mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
-import { REGULAR_NODE_CREATOR_VIEW, DEBOUNCE_TIME } from '@/app/constants';
+import {
+	REGULAR_NODE_CREATOR_VIEW,
+	DEBOUNCE_TIME,
+	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+} from '@/app/constants';
 import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -72,6 +82,17 @@ describe('NodesListPanel', () => {
 			const { container } = getWrapperComponent(() => {
 				const { setMergeNodes } = useNodeCreatorStore();
 
+				useNodeTypesStore().setNodeTypes(
+					[
+						MANUAL_TRIGGER_NODE_TYPE,
+						SCHEDULE_TRIGGER_NODE_TYPE,
+						WEBHOOK_NODE_TYPE,
+						FORM_TRIGGER_NODE_TYPE,
+						EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+						CHAT_TRIGGER_NODE_TYPE,
+						EVALUATION_TRIGGER_NODE_TYPE,
+					].map((name) => mockNodeTypeDescription({ name })),
+				);
 				setMergeNodes([...mockedTriggerNodes, ...mockedRegularNodes]);
 				return {};
 			});
