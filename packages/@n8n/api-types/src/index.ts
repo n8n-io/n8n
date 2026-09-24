@@ -847,6 +847,10 @@ export {
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
 export {
+	GROUPS_WITH_TRIGGERS_FLAG,
+	GROUPS_WITH_MANY_BOUNDARIES_FLAG,
+} from './constants/canvas-feature-flags';
+export {
 	MOONSHOTAI_KIMI_K3_MODEL_ID,
 	MOONSHOTAI_KIMI_K3_MODEL_NAME,
 	MOONSHOTAI_KIMI_K3_PROVIDER,

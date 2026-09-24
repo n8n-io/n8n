@@ -134,6 +134,18 @@ export function formatTopLevelItemsMessage(summary: TopLevelItemsSummary): strin
 	);
 }
 
+/**
+ * The group rules that relax behind a flag. Each one rolls out on its own.
+ * The validator takes this shape; the canvas and the save path each fill it
+ * from their own flag reader.
+ */
+export type NodeGroupRuleOptions = {
+	/** Accept a group that holds its own trigger. */
+	allowTriggerInGroup?: boolean;
+	/** Accept a group with several entry and exit nodes. */
+	allowMultipleBoundaryNodes?: boolean;
+};
+
 export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 	nodes: TNode[];
 	connectionsBySourceNode: IConnections;
