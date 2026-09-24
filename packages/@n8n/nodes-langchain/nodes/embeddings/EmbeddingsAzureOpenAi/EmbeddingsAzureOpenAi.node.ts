@@ -15,7 +15,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { AZURE_COGNITIVE_SERVICES_SCOPE } from '../../llms/LmChatAzureOpenAi/credentials/constants';
+import { AZURE_OPENAI_INFERENCE_SCOPE } from '../../llms/LmChatAzureOpenAi/types';
 import { N8nOAuth2TokenCredential } from '../../llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../../llms/LmChatAzureOpenAi/types';
 
@@ -213,7 +213,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				endpointType: credential.endpointType,
 				foundryEndpoint: credential.foundryEndpoint,
 			};
-			tokenProvider = getBearerTokenProvider(entraCredential, AZURE_COGNITIVE_SERVICES_SCOPE);
+			tokenProvider = getBearerTokenProvider(entraCredential, AZURE_OPENAI_INFERENCE_SCOPE);
 		} else {
 			const credential = await this.getCredentials<AzureApiKeyCredential>(API_KEY_AUTH);
 			target = credential;
@@ -273,8 +273,10 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			configuration: {
 				fetch: aiClientFetch,
 				fetchOptions: {
+					// Resolve the proxy against the host LangChain dials so NO_PROXY applies to it.
+					// `||` rather than `??`, so an endpoint that is set but empty also falls back.
 					dispatcher: getProxyAgent(
-						target.endpoint ?? `https://${target.resourceName}.openai.azure.com`,
+						target.endpoint || `https://${target.resourceName}.openai.azure.com`,
 						{},
 						this.helpers.getSecureEgressFilter(),
 					),
