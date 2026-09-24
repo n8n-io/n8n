@@ -17,6 +17,7 @@ import {
 	type EvalLlmMockHandler,
 	type EvalMockHttpResponse,
 	synthesizeBinaryFixture,
+	WorkflowHasIssuesError,
 } from 'n8n-core';
 import {
 	type IBinaryData,
@@ -38,6 +39,7 @@ import {
 	TimeoutExecutionCancelledError,
 	UserError,
 	Workflow,
+	type IWorkflowIssues,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -382,10 +384,8 @@ export class EvalExecutionService {
 				if (!bypassSet.has(node.name) || !emitsDataTableRows(node)) continue;
 				const filtered = applyDataTableReadParameters(node, normalized[node.name]);
 				normalized[node.name] = filtered.items;
-				for (const warning of filtered.warnings) {
-					this.logger.warn(`[EvalMock] ${warning}`);
-					warnings.push(warning);
-				}
+				for (const warning of filtered.warnings) this.logger.warn(`[EvalMock] ${warning}`);
+				warnings.push(...filtered.flags);
 			}
 
 			return normalized;
@@ -547,6 +547,23 @@ export class EvalExecutionService {
 		// Genuinely unresolved misconfigurations are still recorded and still fail.
 		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
 		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+
+		// The engine refuses to start while a node downstream of the start node has
+		// parameter issues, and drops the execution before the runner can await it —
+		// the run then only reports "No active execution found" and a trigger with
+		// no output. Report the refusal itself, before anything is pinned or started.
+		const blockingIssues = this.issuesBlockingRun(workflow, startNode, pinDataNodeNames);
+		if (blockingIssues) {
+			const reason = new WorkflowHasIssuesError(blockingIssues, workflow.nodes).message;
+			this.logger.warn(`[EvalMock] Workflow cannot start: ${reason}`);
+			return this.buildPartialFailureResult(
+				randomUUID(),
+				new Error(`n8n refused to start the workflow: ${reason}`),
+				nodeResults,
+				hints,
+				undefined,
+			);
+		}
 		const executionData = this.buildExecutionData(startNode, pinData);
 
 		// Mark the trigger node as pinned (it gets its output from pin data, not execution).
@@ -704,6 +721,33 @@ export class EvalExecutionService {
 			this.asTriggerNode(hinted) ??
 			this.asTriggerNode(this.findStartNode(this.buildWorkflow(workflowEntity)))
 		);
+	}
+
+	/**
+	 * Same rule as `WorkflowExecute.checkReadyForExecution`: the start node and every
+	 * node downstream of it, disabled nodes skipped, pinned nodes' parameters exempt.
+	 */
+	private issuesBlockingRun(
+		workflow: Workflow,
+		startNode: INode,
+		pinDataNodeNames: string[],
+	): IWorkflowIssues | null {
+		const issues: IWorkflowIssues = {};
+		for (const nodeName of [...workflow.getChildNodes(startNode.name), startNode.name]) {
+			const node = workflow.nodes[nodeName];
+			if (!node || node.disabled) continue;
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeIssues = nodeType
+				? NodeHelpers.getNodeParametersIssues(
+						nodeType.description.properties,
+						node,
+						nodeType.description,
+						pinDataNodeNames,
+					)
+				: { typeUnknown: true };
+			if (nodeIssues) issues[node.name] = nodeIssues;
+		}
+		return Object.keys(issues).length > 0 ? issues : null;
 	}
 
 	/** Accept a Phase-1 start-node hint only when it names a real, enabled trigger-capable node. */

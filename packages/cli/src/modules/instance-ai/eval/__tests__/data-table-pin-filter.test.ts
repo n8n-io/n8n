@@ -67,6 +67,8 @@ describe('applyDataTableReadParameters', () => {
 		expect(result.warnings).toEqual([
 			'Pinned Data Table read "Read Rows": unknown condition "startsWith" on "country"; rows were not filtered by it',
 		]);
+		// Three rows fit the default limit, so nothing tells the judge the pin is wrong.
+		expect(result.flags).toEqual([]);
 	});
 
 	it('leaves the rows untouched and reports a condition whose value is an expression', () => {
@@ -79,6 +81,21 @@ describe('applyDataTableReadParameters', () => {
 
 		expect(result.items).toEqual(seeded);
 		expect(result.warnings[0]).toContain('uses an expression');
+		// More rows than the limit allows: the judge is told the pin is not what the node returns.
+		expect(result.flags).toEqual(result.warnings);
+	});
+
+	it('does not flag an unevaluable condition when the rows fit the limit', () => {
+		const node = readNode({
+			...filter([{ keyName: 'country', condition: 'eq', keyValue: '={{ $json.country }}' }]),
+			limit: 1,
+		});
+
+		const result = applyDataTableReadParameters(node, seeded.slice(0, 1));
+
+		expect(result.items).toEqual(seeded.slice(0, 1));
+		expect(result.warnings).toHaveLength(1);
+		expect(result.flags).toEqual([]);
 	});
 
 	it('distinguishes anyCondition from allConditions', () => {

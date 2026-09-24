@@ -88,6 +88,10 @@ vi.mock('n8n-workflow', async () => {
 			// in-place parameter patching propagates to the executed workflow).
 			this.nodes = Object.fromEntries((options?.nodes ?? []).map((node) => [node.name, node]));
 		}
+		// Every other node counts as downstream of the start node.
+		getChildNodes(nodeName: string) {
+			return Object.keys(this.nodes).filter((name) => name !== nodeName);
+		}
 	}
 	return {
 		...actual,
@@ -496,6 +500,66 @@ describe('EvalExecutionService', () => {
 				expect(generateMockHintsMock).toHaveBeenCalledTimes(1);
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			});
+		});
+
+		it('refuses to start when a node downstream of the trigger still has a parameter issue', async () => {
+			// An id-mode locator that fails its validation is what the engine rejects with
+			// WorkflowHasIssuesError before any node runs; the patcher leaves it alone.
+			const jiraNode = {
+				id: 'node-2',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { project: { __rl: true, mode: 'id', value: 'IT' } },
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [makeStartNode(), jiraNode] }) as never,
+			);
+			nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
+				if (nodeType !== 'n8n-nodes-base.httpRequest') {
+					return { description: { properties: [] } as unknown as INodeTypeDescription } as never;
+				}
+				return {
+					description: {
+						properties: [
+							{
+								displayName: 'Project',
+								name: 'project',
+								type: 'resourceLocator',
+								default: { mode: 'list', value: '' },
+								required: true,
+								modes: [
+									{
+										displayName: 'ID',
+										name: 'id',
+										type: 'string',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '^[0-9]+$',
+													errorMessage: 'Not a valid Jira Project ID',
+												},
+											},
+										],
+									},
+								],
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				} as never;
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(result.success).toBe(false);
+			expect(result.errors[0]).toMatch(
+				/^Execution failed: n8n refused to start the workflow: .*'HTTP Request' node has issues:\n- Not a valid Jira Project ID/,
+			);
+			expect(result.nodeResults['HTTP Request']?.configIssues).toBeDefined();
+			expect(result.nodeResults.Webhook?.executionMode).not.toBe('pinned');
 		});
 
 		it("applies a pinned Data Table read's literal conditions and limit to the generated rows", async () => {

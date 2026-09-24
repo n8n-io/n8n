@@ -26,8 +26,11 @@ type RowPredicate = (row: Row) => boolean;
 
 export interface PinnedReadFilterResult {
 	items: INodeExecutionData[];
-	/** Conditions the harness could not apply; the judge reads them as framework flags. */
+	/** Conditions the harness could not apply, for the server log. */
 	warnings: string[];
+	/** The same warnings, only when the pin certainly holds rows the real node would not
+	 *  have returned (more rows than its limit). Surfaced to the judge as framework flags. */
+	flags: string[];
 }
 
 /**
@@ -48,6 +51,7 @@ export function applyDataTableReadParameters(
 			warnings: [
 				`Pinned Data Table read "${node.name}": its filter parameters could not be read (${parsed.error.issues[0]?.message ?? 'invalid'}); rows were left as generated`,
 			],
+			flags: [],
 		};
 	}
 	const { matchType, filters, returnAll, limit } = parsed.data;
@@ -68,7 +72,8 @@ export function applyDataTableReadParameters(
 		);
 	}
 	if (!returnAll && allEvaluable) kept = kept.slice(0, limit);
-	return { items: kept, warnings };
+	const flags = !allEvaluable && !returnAll && kept.length > limit ? warnings : [];
+	return { items: kept, warnings, flags };
 }
 
 function conditionPredicate(
