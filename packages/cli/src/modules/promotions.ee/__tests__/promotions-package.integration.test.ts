@@ -1009,7 +1009,7 @@ describe('Promote and Apply', () => {
 	});
 });
 
-describe('Promote a selection', () => {
+describe('Promote a project selection — branch effects', () => {
 	it('refuses a selection when the branch has no package yet', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
@@ -1017,12 +1017,11 @@ describe('Promote a selection', () => {
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1']);
 
 		await expect(
-			service.promoteSelection(
-				connection.id,
-				owner,
-				{ canExportVariableValues: true, commitMessage: 'Add w1' },
-				{ projectId: project.id, workflowIds: [workflows[0].id], deletedWorkflowIds: [] },
-			),
+			service.promoteProjectSelection(project.id, owner, {
+				workflowIds: [workflows[0].id],
+				commitMessage: 'Add w1',
+				canExportVariableValues: true,
+			}),
 		).rejects.toThrow('Promote the instance first');
 	});
 
@@ -1038,12 +1037,11 @@ describe('Promote a selection', () => {
 		});
 
 		const w4 = await createWorkflow({ name: 'w4', nodes: [], connections: {} }, project);
-		const result = await service.promoteSelection(
-			connection.id,
-			owner,
-			{ canExportVariableValues: true, commitMessage: 'Add w4' },
-			{ projectId: project.id, workflowIds: [w4.id], deletedWorkflowIds: [] },
-		);
+		const result = await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [w4.id],
+			commitMessage: 'Add w4',
+			canExportVariableValues: true,
+		});
 
 		const { dir } = await inspectBranch(remote.bareDir);
 		const onBranch = await readBranchEntities(dir, 'workflow.json');
@@ -1080,12 +1078,11 @@ describe('Promote a selection', () => {
 		const baseCommit = (await remote.git.revparse(['main'])).trim();
 
 		const w3 = await createWorkflow({ name: 'w3', nodes: [], connections: {} }, project);
-		const result = await service.promoteSelection(
-			connection.id,
-			owner,
-			{ canExportVariableValues: true, commitMessage: 'Add w3' },
-			{ projectId: project.id, workflowIds: [w3.id], deletedWorkflowIds: [] },
-		);
+		const result = await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [w3.id],
+			commitMessage: 'Add w3',
+			canExportVariableValues: true,
+		});
 
 		const remoteGit = simpleGit(remote.bareDir);
 		expect(result.git.branchName).toMatch(
@@ -1139,16 +1136,11 @@ describe('Promote a selection', () => {
 		});
 		await workflowRepository.update(workflows[1].id, { name: 'w2-updated' });
 
-		await service.promoteSelection(
-			connection.id,
-			owner,
-			{ canExportVariableValues: true, commitMessage: 'Update w2' },
-			{
-				projectId: project.id,
-				workflowIds: [workflows[1].id],
-				deletedWorkflowIds: [],
-			},
-		);
+		await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [workflows[1].id],
+			commitMessage: 'Update w2',
+			canExportVariableValues: true,
+		});
 
 		const { dir } = await inspectBranch(remote.bareDir);
 		const onBranch = await readBranchEntities(dir, 'workflow.json');
@@ -1174,16 +1166,14 @@ describe('Promote a selection', () => {
 			commitMessage: 'Full promote',
 		});
 
-		await service.promoteSelection(
-			connection.id,
-			owner,
-			{ canExportVariableValues: true, commitMessage: 'Delete w3' },
-			{
-				projectId: project.id,
-				workflowIds: [],
-				deletedWorkflowIds: [workflows[2].id],
-			},
-		);
+		// w3 is gone from the instance, so the project no longer owns it and the
+		// promote classifies the selected id as a deletion.
+		await Container.get(WorkflowRepository).delete({ id: workflows[2].id });
+		await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [workflows[2].id],
+			commitMessage: 'Delete w3',
+			canExportVariableValues: true,
+		});
 
 		const { dir } = await inspectBranch(remote.bareDir);
 		const workflowIds = (await readBranchEntities(dir, 'workflow.json')).map((w) => w.id);
@@ -1209,16 +1199,13 @@ describe('Promote a selection', () => {
 		).trim();
 
 		const w4 = await createWorkflow({ name: 'w4', nodes: [], connections: {} }, project);
-		await service.promoteSelection(
-			connection.id,
-			owner,
-			{ canExportVariableValues: true, commitMessage: 'Add w4, delete w3' },
-			{
-				projectId: project.id,
-				workflowIds: [w4.id],
-				deletedWorkflowIds: [workflows[2].id],
-			},
-		);
+		// w3 is gone from the instance, so it promotes as a deletion next to the new w4.
+		await Container.get(WorkflowRepository).delete({ id: workflows[2].id });
+		await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [w4.id, workflows[2].id],
+			commitMessage: 'Add w4, delete w3',
+			canExportVariableValues: true,
+		});
 
 		const after = await inspectBranch(remote.bareDir);
 		const workflowIds = (await readBranchEntities(after.dir, 'workflow.json')).map((w) => w.id);
@@ -1245,12 +1232,11 @@ describe('Promote a selection', () => {
 		});
 
 		const p1w2 = await createWorkflow({ name: 'p1-w2', nodes: [], connections: {} }, p1);
-		await service.promoteSelection(
-			connection.id,
-			owner,
-			{ canExportVariableValues: true, commitMessage: 'Add p1-w2' },
-			{ projectId: p1.id, workflowIds: [p1w2.id], deletedWorkflowIds: [] },
-		);
+		await service.promoteProjectSelection(p1.id, owner, {
+			workflowIds: [p1w2.id],
+			commitMessage: 'Add p1-w2',
+			canExportVariableValues: true,
+		});
 
 		const workflowIds = (
 			await readBranchEntities((await inspectBranch(remote.bareDir)).dir, 'workflow.json')
@@ -1276,12 +1262,11 @@ describe('Promote a selection', () => {
 		).find((w) => w.id === workflows[1].id)!.target;
 
 		await Container.get(WorkflowRepository).update(workflows[1].id, { name: 'Renamed' });
-		await service.promoteSelection(
-			connection.id,
-			owner,
-			{ canExportVariableValues: true, commitMessage: 'Rename w2' },
-			{ projectId: project.id, workflowIds: [workflows[1].id], deletedWorkflowIds: [] },
-		);
+		await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [workflows[1].id],
+			commitMessage: 'Rename w2',
+			canExportVariableValues: true,
+		});
 
 		const { dir } = await inspectBranch(remote.bareDir);
 		const onBranch = await readBranchEntities(dir, 'workflow.json');
@@ -1323,12 +1308,11 @@ describe('Promote a selection', () => {
 
 		const folderRepository = Container.get(FolderRepository);
 		await folderRepository.update(folder.id, { name: 'Revenue' });
-		await service.promoteSelection(
-			connection.id,
-			owner,
-			{ canExportVariableValues: true, commitMessage: 'Rename folder, promote one workflow' },
-			{ projectId: project.id, workflowIds: [selected.id], deletedWorkflowIds: [] },
-		);
+		await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [selected.id],
+			commitMessage: 'Rename folder, promote one workflow',
+			canExportVariableValues: true,
+		});
 
 		const { dir } = await inspectBranch(remote.bareDir);
 		const folders = await readBranchEntities(dir, 'folder.json');

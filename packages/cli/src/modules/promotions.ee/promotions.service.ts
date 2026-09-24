@@ -236,37 +236,17 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Promotes selected workflows of one project and their dependencies. Unselected
-	 * workflows stay as-is, and so do the projects and folders the branch already
-	 * holds: a selection creates a container, never renames one, so nothing moves
-	 * that the user did not select.
-	 */
-	async promoteSelection(
-		connectionId: string,
-		actor: User,
-		request: PromotePackageDto & { canExportVariableValues: boolean },
-		selection: SelectivePushOptions,
-	): Promise<PromotePackageResultDto> {
-		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
-		return await this.promoteSelectionResolved(input, actor, request, selection);
-	}
-
-	/**
-	 * Selective promote against an already-resolved connection. The project path
-	 * resolves through `resolveForProject`, so it skips resolving the connection again.
+	 * Selective promote against an already-resolved connection. Unselected workflows
+	 * stay as-is, and so do the projects and folders the branch already holds: a
+	 * selection creates a container, never renames one, so nothing moves that the
+	 * user did not select. A promotion branch is always new, so force never applies.
 	 */
 	private async promoteSelectionResolved(
 		input: PromotionOperationInput,
 		actor: User,
-		request: PromotePackageDto & { canExportVariableValues: boolean },
+		request: { commitMessage: string; canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
 	): Promise<PromotePackageResultDto> {
-		if (request.force) {
-			throw new BadRequestError(
-				"Selective promotion doesn't support force. Set force to false and try again.",
-			);
-		}
-
 		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
 

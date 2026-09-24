@@ -495,14 +495,21 @@ describe('PromotionsService', () => {
 		});
 	});
 
-	describe('promoteSelection', () => {
+	describe('promoteProjectSelection push mechanics', () => {
 		const actor = mock<User>({
 			id: 'actor',
 			firstName: 'Ada',
 			lastName: 'Lovelace',
 			email: 'ada@example.com',
 		});
-		const selection = { projectId: 'p1', workflowIds: ['w1', 'w2'], deletedWorkflowIds: [] };
+
+		// classifySelection turns the sent ids into a selection: an id the project
+		// owns becomes a push, an id it no longer owns becomes a deletion. Each test
+		// declares the ownership it needs, so the resolved core runs on a real selection.
+		const ownedByP1 = (...ids: string[]) =>
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map(ids.map((id) => [id, mock<Project>({ id: 'p1' })])),
+			);
 
 		let packageFolder: string;
 		let repositoryFolder: string;
@@ -571,7 +578,7 @@ describe('PromotionsService', () => {
 
 		beforeEach(async () => {
 			const input = promoteInput();
-			resolver.resolveForConnection.mockResolvedValue(input);
+			resolver.resolveForProject.mockResolvedValue(input);
 			await markCloned(input, 'staging');
 			repositoryFolder = workingDirectory.paths(CONFIG_ID).repositoryFolder;
 			packageFolder = path.join(repositoryFolder, 'n8n-export');
@@ -591,12 +598,12 @@ describe('PromotionsService', () => {
 				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
 			});
 
-			await service.promoteSelection(
-				'conn1',
-				actor,
-				{ commitMessage: 'm', canExportVariableValues: true },
-				selection,
-			);
+			ownedByP1('w1', 'w2');
+			await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1', 'w2'],
+				commitMessage: 'm',
+				canExportVariableValues: true,
+			});
 
 			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -612,7 +619,7 @@ describe('PromotionsService', () => {
 		});
 
 		it('pushes the selection to a new branch when branching is enabled', async () => {
-			resolver.resolveForConnection.mockResolvedValue(
+			resolver.resolveForProject.mockResolvedValue(
 				operationInput({
 					direction: 'promote',
 					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
@@ -627,12 +634,12 @@ describe('PromotionsService', () => {
 			await writeExportTree(packageFolder, files);
 			mockExport(files);
 
-			const result = await service.promoteSelection(
-				'conn1',
-				actor,
-				{ commitMessage: 'm', canExportVariableValues: true },
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
-			);
+			ownedByP1('w1');
+			const result = await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1'],
+				commitMessage: 'm',
+				canExportVariableValues: true,
+			});
 
 			const targetBranchName = result.git.branchName;
 			expect(targetBranchName).toMatch(
@@ -650,14 +657,14 @@ describe('PromotionsService', () => {
 
 		it('refuses a selection when the branch has no package', async () => {
 			await mkdir(repositoryFolder, { recursive: true });
+			ownedByP1('w1');
 
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'first selective', canExportVariableValues: true },
-					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					commitMessage: 'first selective',
+					canExportVariableValues: true,
+				}),
 			).rejects.toThrow('Promote the instance first');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
@@ -675,13 +682,13 @@ describe('PromotionsService', () => {
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
+			ownedByP1('w1', 'w2');
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'm', canExportVariableValues: true },
-					{ projectId: 'p1', workflowIds: ['w1', 'w2'], deletedWorkflowIds: [] },
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1', 'w2'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
 			).rejects.toThrow('The export does not match the selection (missing w2)');
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
@@ -698,13 +705,13 @@ describe('PromotionsService', () => {
 				new BadRequestError('export failed'),
 			);
 
+			ownedByP1('w1');
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'm', canExportVariableValues: true },
-					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
 			).rejects.toThrow(BadRequestError);
 
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
@@ -718,13 +725,14 @@ describe('PromotionsService', () => {
 				'projects/alpha/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
 			});
 
+			// The project no longer owns w-unknown, so it classifies as a deletion.
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'm', canExportVariableValues: true },
-					{ projectId: 'p1', workflowIds: [], deletedWorkflowIds: ['w-unknown'] },
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w-unknown'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
 			).rejects.toThrow('Deleted workflows not found on the branch: w-unknown');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
@@ -745,13 +753,13 @@ describe('PromotionsService', () => {
 				'projects/beta/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
 			});
 
+			ownedByP1('w1');
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'm', canExportVariableValues: true },
-					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
 			).rejects.toThrow('These workflows moved to another project: w1');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
@@ -772,12 +780,12 @@ describe('PromotionsService', () => {
 				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
 			});
 
-			await service.promoteSelection(
-				'conn1',
-				actor,
-				{ commitMessage: 'add w2', canExportVariableValues: true },
-				{ projectId: 'p1', workflowIds: ['w2'], deletedWorkflowIds: [] },
-			);
+			ownedByP1('w2');
+			await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w2'],
+				commitMessage: 'add w2',
+				canExportVariableValues: true,
+			});
 
 			const snapshot = JSON.parse(await readExported('manifest.json')) as {
 				workflows: Array<{ id: string }>;
@@ -799,13 +807,13 @@ describe('PromotionsService', () => {
 				return { commitSha: 'selsha' };
 			});
 
+			ownedByP1('w1');
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'm', canExportVariableValues: true },
-					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
 			).resolves.toMatchObject({ git: { commitSha: 'selsha', branchName: 'staging' } });
 
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
@@ -841,13 +849,13 @@ describe('PromotionsService', () => {
 				throw pushError;
 			});
 
+			ownedByP1('w2');
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'm', canExportVariableValues: true },
-					{ projectId: 'p1', workflowIds: ['w2'], deletedWorkflowIds: [] },
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w2'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
 			).rejects.toBe(pushError);
 
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
@@ -866,21 +874,21 @@ describe('PromotionsService', () => {
 
 		it('refuses to promote a selection before the direction is cloned', async () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
+			ownedByP1('w1', 'w2');
 
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'm', canExportVariableValues: true },
-					selection,
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1', 'w2'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
 			).rejects.toThrow('not cloned');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 		});
 
 		it('refuses to promote a selection when the checkout was cloned from another branch', async () => {
-			resolver.resolveForConnection.mockResolvedValue(
+			resolver.resolveForProject.mockResolvedValue(
 				operationInput({
 					direction: 'promote',
 					settings: {
@@ -890,44 +898,42 @@ describe('PromotionsService', () => {
 					},
 				}),
 			);
+			ownedByP1('w1', 'w2');
 
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'm', canExportVariableValues: true },
-					selection,
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1', 'w2'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
 			).rejects.toThrow('not cloned');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
 		it('refuses a project-scope connection', async () => {
-			resolver.resolveForConnection.mockResolvedValue(
-				promoteInput({ connectionScope: 'projects' }),
-			);
+			resolver.resolveForProject.mockResolvedValue(promoteInput({ connectionScope: 'projects' }));
+			ownedByP1('w1', 'w2');
 
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'm', canExportVariableValues: true },
-					selection,
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1', 'w2'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
 			).rejects.toThrow('instance connection');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
 		it('refuses a missing project', async () => {
 			projectRepository.findOneBy.mockResolvedValue(null);
+			ownedByP1('w1', 'w2');
 
 			await expect(
-				service.promoteSelection(
-					'conn1',
-					actor,
-					{ commitMessage: 'm', canExportVariableValues: true },
-					selection,
-				),
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1', 'w2'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
 			).rejects.toThrow(NotFoundError);
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
