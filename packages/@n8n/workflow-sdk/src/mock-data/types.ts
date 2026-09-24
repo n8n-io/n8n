@@ -67,7 +67,7 @@ export interface NodeSchemaContext {
 	outputParser?: OutputParserContext;
 	/** Real Data Table columns for dataTable reads — rendered in the prompt as the authoritative row shape. */
 	dataTableColumns?: DataTableColumnInfo[];
-	/** The filter and limit a Data Table `get` node applies — the pinned rows are the node's output, not the table. */
+	/** The filter a Data Table `get` node applies; the pinned rows are its output, not the table. */
 	dataTableRead?: DataTableReadParameters;
 	declaredFields?: DeclaredFieldContract;
 }

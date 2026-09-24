@@ -259,8 +259,7 @@ export class EvalExecutionService {
 				}),
 		);
 
-		// A trigger pinned without content starts the run with no items, and every
-		// downstream miss then reads as the builder's fault.
+		// A trigger pinned without content runs with no items and blames every downstream miss on the builder.
 		const triggerStart = this.triggerStartNode(workflowEntity, hints);
 		if (triggerStart && lacksTriggerContent(hints)) {
 			throw new Error(
@@ -358,8 +357,7 @@ export class EvalExecutionService {
 				}
 			}
 
-			// The generator answers with table rows; the real node applies its own
-			// conditions and limit to them before emitting anything.
+			// The real node applies its conditions and limit to the rows before emitting them.
 			const bypassSet = new Set(bypassNodeNames);
 			for (const node of workflowEntity.nodes) {
 				if (!bypassSet.has(node.name) || !emitsDataTableRows(node)) continue;
@@ -529,10 +527,7 @@ export class EvalExecutionService {
 		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
 		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
 
-		// The engine refuses to start while a node downstream of the start node has
-		// parameter issues, and drops the execution before the runner can await it —
-		// the run then only reports "No active execution found" and a trigger with
-		// no output. Report the refusal itself, before anything is pinned or started.
+		// The engine drops a refused execution before the runner can await it, so report the refusal first.
 		const blockingIssues = this.issuesBlockingRun(workflow, startNode, pinDataNodeNames);
 		if (blockingIssues) {
 			const reason = new WorkflowHasIssuesError(blockingIssues, workflow.nodes).message;
@@ -693,7 +688,6 @@ export class EvalExecutionService {
 		return workflow.getStartNode() ?? this.findWebhookNode(workflow);
 	}
 
-	/** The start node the run will pin, when it is trigger-capable. */
 	private triggerStartNode(workflowEntity: IWorkflowBase, hints: MockHints): INode | undefined {
 		const hinted = hints.startNodeName
 			? workflowEntity.nodes.find((node) => node.name === hints.startNodeName)
@@ -704,10 +698,7 @@ export class EvalExecutionService {
 		);
 	}
 
-	/**
-	 * Same rule as `WorkflowExecute.checkReadyForExecution`: the start node and every
-	 * node downstream of it, disabled nodes skipped, pinned nodes' parameters exempt.
-	 */
+	// Same rule as `WorkflowExecute.checkReadyForExecution`.
 	private issuesBlockingRun(
 		workflow: Workflow,
 		startNode: INode,

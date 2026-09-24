@@ -13,18 +13,11 @@ export interface PinnedReadFilterResult {
 	items: INodeExecutionData[];
 	/** Conditions the harness could not apply, for the server log. */
 	warnings: string[];
-	/** The same warnings, only when the pin certainly holds rows the real node would not
-	 *  have returned (more rows than its limit). Surfaced to the judge as framework flags. */
+	/** The warnings the judge sees: only when the pin holds more rows than the node's limit. */
 	flags: string[];
 }
 
-/**
- * Apply a pinned Data Table read's own conditions, match type, order and limit to
- * the rows generated for it, the way the real node would. A condition the harness
- * cannot evaluate (an expression, an unknown operator) counts as a match and is
- * reported; the limit is skipped in that case so no row the real node might
- * have returned is dropped. An empty pin stays empty.
- */
+// A condition the harness cannot evaluate counts as a match and lifts the limit, so no row the real node might return is dropped.
 export function applyDataTableReadParameters(
 	node: INode,
 	items: INodeExecutionData[],

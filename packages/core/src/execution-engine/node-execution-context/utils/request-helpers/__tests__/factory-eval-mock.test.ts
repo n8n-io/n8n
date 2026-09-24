@@ -5,7 +5,6 @@ import type { EvalLlmMockHandler } from '@/execution-engine';
 
 import { getRequestHelperFunctions } from '../factory';
 
-// A request that opted out of throwing on non-2xx gets the mocked response back, as with the real clients.
 describe('request helpers under the eval mock', () => {
 	const workflow = mock<Workflow>();
 	const node = mock<INode>({ name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest' });

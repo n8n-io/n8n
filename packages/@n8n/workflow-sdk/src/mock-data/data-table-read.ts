@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-// Mirrors the Data Table node's `get` parameters (nodes-base DataTable/common/selectMany.ts,
-// actions/row/get.operation.ts); absent keys mean the node defaults.
+// Mirrors the Data Table node's `get` parameters; absent keys mean the node defaults.
 const ROWS_LIMIT_DEFAULT = 50;
 
 const conditionSchema = z.object({
@@ -10,8 +9,7 @@ const conditionSchema = z.object({
 	keyValue: z.unknown().optional(),
 });
 
-// A field an expression fills is unknown before the run, so it reads as its widest
-// setting (any condition, every row) and the rest of the filter stays usable.
+// An expression-filled field reads as its widest setting, so the rest of the filter stays usable.
 const readParametersSchema = z.object({
 	resource: z.string().default('row'),
 	operation: z.string().default('insert'),
@@ -47,7 +45,6 @@ export function literalParameter(value: unknown): { literal: unknown; isExpressi
 		: { literal: value.slice(1), isExpression: false };
 }
 
-/** The filter, match type, order and limit of a Data Table `get` node; undefined for any other node. */
 export function readDataTableReadParameters(node: {
 	type: string;
 	parameters?: unknown;

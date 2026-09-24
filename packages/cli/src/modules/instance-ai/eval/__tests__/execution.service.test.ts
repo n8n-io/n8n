@@ -431,8 +431,6 @@ describe('EvalExecutionService', () => {
 		});
 
 		describe('trigger content', () => {
-			// The default node type stub has no trigger/webhook capability; give the
-			// Webhook start node one so the empty-content guard applies.
 			function triggerCapableStart() {
 				nodeTypes.getByNameAndVersion.mockReturnValue({
 					description: { properties: [] } as unknown as INodeTypeDescription,
@@ -481,8 +479,7 @@ describe('EvalExecutionService', () => {
 		});
 
 		describe('engine readiness', () => {
-			// An id-mode locator that fails its validation is what the engine rejects with
-			// WorkflowHasIssuesError before any node runs; the patcher leaves it alone.
+			// The patcher leaves an invalid id-mode locator alone, so the readiness check rejects it.
 			const idLocatorNode = (): INode =>
 				({
 					id: 'node-2',

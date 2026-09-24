@@ -67,7 +67,6 @@ describe('applyDataTableReadParameters', () => {
 		expect(result.warnings).toEqual([
 			'Pinned Data Table read "Read Rows": unknown condition "startsWith" on "country"; rows were not filtered by it',
 		]);
-		// Three rows fit the default limit, so nothing tells the judge the pin is wrong.
 		expect(result.flags).toEqual([]);
 	});
 
@@ -81,7 +80,6 @@ describe('applyDataTableReadParameters', () => {
 
 		expect(result.items).toEqual(seeded);
 		expect(result.warnings[0]).toContain('uses an expression');
-		// More rows than the limit allows: the judge is told the pin is not what the node returns.
 		expect(result.flags).toEqual(result.warnings);
 	});
 
