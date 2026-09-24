@@ -1,7 +1,13 @@
+import type { AgentChatQueueResponse } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import type { AgentMessageQueue } from './entities/agent-message-queue.entity';
@@ -12,7 +18,7 @@ import { AgentExecutionThreadRepository } from './repositories/agent-execution-t
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import type { AgentExecutionAdmission, AgentQueuedMessage } from './types/agent-queued-message';
-import type { AgentSessionMode } from './utils/agent-thread-access';
+import { canContinueThreadInPreview, type AgentSessionMode } from './utils/agent-thread-access';
 
 export interface ClaimedAgentMessage {
 	item: AgentMessageQueue;
@@ -34,6 +40,8 @@ export class AgentMessageQueueService {
 		private readonly executionService: AgentExecutionService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly agentRepository: AgentRepository,
+		private readonly attachments: AgentChatAttachmentService,
+		private readonly updates: AgentExecutionUpdateBroadcaster,
 	) {}
 
 	async enqueue(
@@ -68,8 +76,73 @@ export class AgentMessageQueueService {
 			onInserted?.(inserted.id);
 			return inserted;
 		});
+		if (payload.kind === 'preview') this.updates.notifyQueueUpdated(item.threadId);
 		this.onAvailable?.(item.threadId);
 		return item;
+	}
+
+	async listPending(input: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		userId: string;
+	}): Promise<AgentChatQueueResponse> {
+		const thread = await this.threadRepository.findOneBy({ id: input.threadId });
+		// A client-created Preview session can have no accepted messages yet.
+		if (!thread) return { items: [] };
+		await this.assertPreviewAccess(thread, input);
+		const items = await this.repository.listPending(thread.id);
+		return {
+			items: items
+				.filter((item) => item.payload.kind === 'preview')
+				.map((item) => ({
+					id: item.id,
+					message: item.payload.message,
+					attachments: item.payload.attachments,
+					createdAt: item.createdAt.toISOString(),
+				})),
+		};
+	}
+
+	async removePending(input: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		userId: string;
+		queueId: string;
+	}): Promise<void> {
+		const item = await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(input.threadId, ctx);
+			if (!thread) throw new NotFoundError('Session not found');
+			await this.assertPreviewAccess(thread, input, ctx);
+			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
+			if (!item || item.payload.kind !== 'preview')
+				throw new NotFoundError('Queued message not found');
+			if (
+				item.executionId !== null ||
+				!(await this.repository.removePending(thread.id, item.id, ctx))
+			) {
+				throw new ConflictError('This message has already started');
+			}
+			return item;
+		});
+		this.updates.notifyQueueUpdated(item.threadId);
+		await this.attachments.deleteByIds(item.payload.attachments?.map(({ id }) => id) ?? []);
+	}
+
+	private async assertPreviewAccess(
+		thread: AgentExecutionThread,
+		input: { projectId: string; agentId: string; userId: string },
+		ctx: OperationContext = {},
+	): Promise<void> {
+		const sources = await this.executionRepository.findFirstSourceByThreadIds([thread.id], ctx);
+		if (
+			thread.projectId !== input.projectId ||
+			thread.agentId !== input.agentId ||
+			!canContinueThreadInPreview(thread, input.userId, sources.get(thread.id))
+		) {
+			throw new NotFoundError('Session not found');
+		}
 	}
 
 	async claimNext(

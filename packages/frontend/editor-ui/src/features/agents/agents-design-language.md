@@ -150,3 +150,11 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 Add a section when an Agent-specific pattern applies to two or more Agent
 surfaces. Keep implementation details with the owning pattern. Do not duplicate
 global Design System guidance.
+
+## Preview composer queue
+
+Keep Send on the right. Put Stop at the left end when a turn can be stopped.
+Show pending messages above background tasks in the composer panel. Keep them
+out of the conversation until processing starts. Use the existing activity
+group and a Remove action for each pending message. Hide an empty queue section.
+Removal discards the message. It does not restore the composer draft.

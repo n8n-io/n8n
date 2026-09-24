@@ -158,6 +158,8 @@ describe('AgentChatController route access scopes', () => {
 		['cancelChatRun', 'agent:execute'],
 		['cancelChatExecution', 'agent:execute'],
 		['getChatMessages', 'agent:read'],
+		['getQueuedMessages', 'agent:read'],
+		['removeQueuedMessage', 'agent:execute'],
 		['getBackgroundJobs', 'agent:read'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
@@ -737,8 +739,14 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		expect(agentChatAttachmentService.deleteByIds).not.toHaveBeenCalled();
 	});
 
-	it('relays existing SSE events from the main that claims the message', async () => {
+	it('acknowledges committed acceptance and relays events from the claiming main', async () => {
 		const { controller, messageQueue, previewStreams } = makeController();
+		const commit = createDeferredPromise();
+		messageQueue.enqueue.mockImplementationOnce(async (_input, onInserted) => {
+			onInserted?.('queue-1');
+			await commit.promise;
+			return mock<AgentMessageQueue>({ id: 'queue-1' });
+		});
 		const { res, events } = makeCleanupSseResponse();
 		const request = controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
@@ -747,6 +755,15 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			{ message: 'hi', sessionId: 'thread-1', newSession: true } as never,
 		);
 		await vi.waitFor(() => expect(messageQueue.enqueue).toHaveBeenCalled());
+		expect(events()).toEqual([]);
+		commit.resolve();
+		await vi.waitFor(() =>
+			expect(events()).toContainEqual({
+				type: 'message-queued',
+				queueId: 'queue-1',
+				sessionId: 'thread-1',
+			}),
+		);
 		const started = {
 			type: 'execution-started' as const,
 			executionId: 'exec-1',
@@ -758,7 +775,11 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		previewStreams.handleRelay({ queueId: 'queue-1', sequence: 2, event: done });
 		previewStreams.handleRelay({ queueId: 'queue-1', sequence: 3, event: null });
 		await request;
-		expect(events()).toEqual([started, done]);
+		expect(events()).toEqual([
+			{ type: 'message-queued', queueId: 'queue-1', sessionId: 'thread-1' },
+			started,
+			done,
+		]);
 		expect(res.end).toHaveBeenCalledOnce();
 	});
 

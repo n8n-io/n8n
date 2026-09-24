@@ -25,6 +25,23 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		);
 	}
 
+	async listPending(threadId: string) {
+		return await this.find({ where: { threadId, executionId: IsNull() }, order: { id: 'ASC' } });
+	}
+
+	async findItem(threadId: string, id: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOneBy(AgentMessageQueue, { threadId, id });
+	}
+
+	async removePending(threadId: string, id: string, ctx: OperationContext) {
+		const result = await this.managerFor(ctx).delete(AgentMessageQueue, {
+			threadId,
+			id,
+			executionId: IsNull(),
+		});
+		return result.affected === 1;
+	}
+
 	async findHead(threadId: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(AgentMessageQueue, {
 			where: { threadId },

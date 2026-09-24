@@ -152,7 +152,10 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	 *
 	 * Returns one row per thread from that thread's earliest matching run.
 	 */
-	async findFirstSourceByThreadIds(threadIds: string[]): Promise<Map<string, string>> {
+	async findFirstSourceByThreadIds(
+		threadIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string>> {
 		if (threadIds.length === 0) return new Map();
 
 		// Correlated subquery: for each thread, pick the row with the smallest
@@ -160,7 +163,9 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		// so Postgres preserves their camelCase (it lowercases unquoted names),
 		// and the table name is read from metadata so DB_TABLE_PREFIX is respected.
 		const tableName = this.metadata.tablePath;
-		const rows = await this.createQueryBuilder('e')
+		const rows = await this.managerFor(ctx)
+			.getRepository(AgentExecution)
+			.createQueryBuilder('e')
 			.select(['e."threadId" AS "threadId"', 'e."source" AS "source"'])
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere('e."source" IS NOT NULL')

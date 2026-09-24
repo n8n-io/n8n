@@ -380,6 +380,17 @@ export interface AgentBuilderOpenSuspension {
 	suspendPayload?: unknown;
 }
 
+export interface AgentChatQueueItem {
+	id: string;
+	message: string;
+	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
+	createdAt: string;
+}
+
+export interface AgentChatQueueResponse {
+	items: AgentChatQueueItem[];
+}
+
 /** Chat history envelope returned by the agent chat messages endpoints. */
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
