@@ -4,6 +4,7 @@ import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weav
 import { WeaviateStore } from '@langchain/weaviate';
 import { createVectorStoreNode } from '@n8n/ai-utilities';
 import {
+	NodeOperationError,
 	UnexpectedError,
 	jsonParse,
 	type IDataObject,
@@ -193,7 +194,7 @@ const insertFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'Raw Weaviate collection definition used to create the collection when it does not already exist. Provide the JSON shape returned by Weaviate\'s REST API or by <code>client.collections.exportToJson()</code>, or generate it with the <a href="https://weaviate.github.io/weaviate-add-collection/" target="_blank">collection builder</a>. The "class" in the schema must match the selected collection name. Ignored when the collection already exists.',
+					'Raw Weaviate collection definition used to create the collection when it does not already exist. Provide the JSON shape returned by Weaviate\'s REST API or by <code>client.collections.exportToJson()</code>, or generate it with the <a href="https://weaviate.github.io/weaviate-add-collection/" target="_blank">collection builder</a>. If set, the "class" in the schema must match the selected collection name. Ignored when the collection already exists.',
 			},
 		],
 	},
@@ -218,7 +219,7 @@ const retrieveFields: INodeProperties[] = [
 					'{\n  "OR": [\n    {\n        "path": ["pdf_info_Author"],\n        "operator": "Equal",\n        "valueString": "Elis"\n    },\n    {\n        "path": ["pdf_info_Author"],\n        "operator": "Equal",\n        "valueString": "Pinnacle"\n    }    \n  ]\n}',
 				validateType: 'object',
 				description:
-					'Filter pageContent or metadata using this <a href="https://weaviate.io/" target="_blank">filtering syntax</a>',
+					'Filter pageContent or metadata using this <a href="https://docs.weaviate.io/weaviate/search/filters" target="_blank">filtering syntax</a>. Combine conditions with "AND", "OR" and "NOT", which can be nested.',
 			},
 			{
 				displayName: 'Metadata Keys',
@@ -411,10 +412,19 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 
 		let jsonSchema: WeaviateClass | undefined;
 		if (options.jsonSchema) {
-			jsonSchema =
+			const parsedSchema =
 				typeof options.jsonSchema === 'string'
 					? jsonParse<WeaviateClass>(options.jsonSchema)
 					: (options.jsonSchema as WeaviateClass);
+			if (parsedSchema.class && parsedSchema.class !== collectionName) {
+				throw new NodeOperationError(
+					context.getNode(),
+					'The "class" in the collection JSON schema must match the collection name',
+					{ itemIndex },
+				);
+			}
+			// Copy, so the node parameter object is not changed.
+			jsonSchema = { ...parsedSchema, class: collectionName };
 		}
 
 		const config: WeaviateLibArgs = {
@@ -423,7 +433,6 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			tenant: options.tenant ?? undefined,
 			textKey: options.textKey || 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
-			jsonSchema,
 		};
 
 		if (options.clearStore) {
@@ -433,6 +442,11 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 				const collection = client.collections.get(collectionName);
 				await collection.tenants.remove([{ name: options.tenant }]);
 			}
+		}
+
+		// Create the collection here, so LangChain only inserts into an existing one.
+		if (jsonSchema && !(await client.collections.exists(collectionName))) {
+			await client.collections.createFromJson(jsonSchema);
 		}
 
 		await WeaviateStore.fromDocuments(documents, embeddings, config);

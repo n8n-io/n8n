@@ -250,60 +250,89 @@ describe('VectorStoreWeaviate.node', () => {
 			class: 'TestCollection',
 			properties: [{ name: 'text', dataType: ['text'] }],
 		};
+		const documents = [{ pageContent: 'hello', metadata: {} }];
 
-		it('passes a parsed jsonSchema to fromDocuments when provided as a string', async () => {
+		const mockClient = (collectionExists: boolean) => {
+			const collections = {
+				exists: vi.fn().mockResolvedValue(collectionExists),
+				createFromJson: vi.fn().mockResolvedValue({}),
+			};
+			MockCreateClient.mockResolvedValue({ collections } as never);
+			return collections;
+		};
+
+		const populate = async (extraOptions: Record<string, unknown> = {}) => {
 			const node = new VectorStoreWeaviate() as unknown as NodeWithPopulateVectorStore;
-			const documents = [{ pageContent: 'hello', metadata: {} }];
+			await node.populateVectorStore(buildContext(undefined, extraOptions), {}, documents, 0);
+		};
 
-			await node.populateVectorStore(
-				buildContext(undefined, { jsonSchema: JSON.stringify(jsonSchemaObject) }),
-				{},
-				documents,
-				0,
-			);
-
-			expect(hoisted.fromDocumentsSpy).toHaveBeenCalledTimes(1);
+		const fromDocumentsConfig = () => {
 			const [, , config] = hoisted.fromDocumentsSpy.mock.calls[0] as [
 				unknown,
 				unknown,
 				Record<string, unknown>,
 			];
-			expect(config.jsonSchema).toEqual(jsonSchemaObject);
+			return config;
+		};
+
+		it('creates the collection from a string jsonSchema through the client', async () => {
+			const collections = mockClient(false);
+
+			await populate({ jsonSchema: JSON.stringify(jsonSchemaObject) });
+
+			expect(collections.exists).toHaveBeenCalledWith('TestCollection');
+			expect(collections.createFromJson).toHaveBeenCalledWith(jsonSchemaObject);
+			expect(hoisted.fromDocumentsSpy).toHaveBeenCalledTimes(1);
+			expect(fromDocumentsConfig().jsonSchema).toBeUndefined();
 		});
 
-		it('passes an object jsonSchema through to fromDocuments unchanged', async () => {
-			const node = new VectorStoreWeaviate() as unknown as NodeWithPopulateVectorStore;
-			const documents = [{ pageContent: 'hello', metadata: {} }];
+		it('creates the collection from an object jsonSchema through the client', async () => {
+			const collections = mockClient(false);
 
-			await node.populateVectorStore(
-				buildContext(undefined, { jsonSchema: jsonSchemaObject }),
-				{},
-				documents,
-				0,
-			);
+			await populate({ jsonSchema: jsonSchemaObject });
 
-			expect(hoisted.fromDocumentsSpy).toHaveBeenCalledTimes(1);
-			const [, , config] = hoisted.fromDocumentsSpy.mock.calls[0] as [
-				unknown,
-				unknown,
-				Record<string, unknown>,
-			];
-			expect(config.jsonSchema).toEqual(jsonSchemaObject);
+			expect(collections.createFromJson).toHaveBeenCalledWith(jsonSchemaObject);
+			expect(fromDocumentsConfig().jsonSchema).toBeUndefined();
 		});
 
-		it('leaves jsonSchema undefined when not provided', async () => {
-			const node = new VectorStoreWeaviate() as unknown as NodeWithPopulateVectorStore;
-			const documents = [{ pageContent: 'hello', metadata: {} }];
+		it('does not create the collection when it already exists', async () => {
+			const collections = mockClient(true);
 
-			await node.populateVectorStore(buildContext(undefined), {}, documents, 0);
+			await populate({ jsonSchema: jsonSchemaObject });
 
+			expect(collections.createFromJson).not.toHaveBeenCalled();
 			expect(hoisted.fromDocumentsSpy).toHaveBeenCalledTimes(1);
-			const [, , config] = hoisted.fromDocumentsSpy.mock.calls[0] as [
-				unknown,
-				unknown,
-				Record<string, unknown>,
-			];
-			expect(config.jsonSchema).toBeUndefined();
+		});
+
+		it('throws when the schema class does not match the collection name', async () => {
+			const collections = mockClient(false);
+
+			await expect(
+				populate({ jsonSchema: { ...jsonSchemaObject, class: 'OtherCollection' } }),
+			).rejects.toThrow('must match the collection name');
+
+			expect(collections.createFromJson).not.toHaveBeenCalled();
+			expect(hoisted.fromDocumentsSpy).not.toHaveBeenCalled();
+		});
+
+		it('uses the collection name when the schema has no class', async () => {
+			const collections = mockClient(false);
+			const { class: _, ...schemaWithoutClass } = jsonSchemaObject;
+
+			await populate({ jsonSchema: schemaWithoutClass });
+
+			expect(collections.createFromJson).toHaveBeenCalledWith(jsonSchemaObject);
+			expect(schemaWithoutClass).not.toHaveProperty('class');
+		});
+
+		it('does not call the client when no jsonSchema is provided', async () => {
+			const collections = mockClient(false);
+
+			await populate();
+
+			expect(collections.exists).not.toHaveBeenCalled();
+			expect(collections.createFromJson).not.toHaveBeenCalled();
+			expect(hoisted.fromDocumentsSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 });
