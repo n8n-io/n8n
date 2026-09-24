@@ -6,9 +6,7 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<!-- Progress feedback while the AI mutates this agent: the builder only
-	     refetches after each change lands, so without this pill the panel
-	     looks idle mid-build (AGENT-714). Same signal as the editing lock. -->
+	<!-- Show progress from prompt submission through the agent build. -->
 	<div
 		:class="$style.buildingIndicator"
 		role="status"
