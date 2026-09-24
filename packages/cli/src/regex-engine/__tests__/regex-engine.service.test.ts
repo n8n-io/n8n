@@ -1,8 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { resetUserRegexEngine, safeInternalRegex, safeUserRegex } from 'n8n-workflow';
+import {
+	resetUserRegexEngine,
+	safeInternalRegex,
+	safeUserRegex,
+	setUserRegexEngine,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { ManagedRegexEngine } from '../regex-engine.service';
 import { RegexEngineService } from '../regex-engine.service';
 
 function service(engine: string) {
@@ -55,5 +61,30 @@ describe('shutdown', () => {
 
 	it('does nothing when init never ran', () => {
 		expect(() => service('js').shutdown()).not.toThrow();
+	});
+
+	it('resets the user engine before disposing an installed one', () => {
+		const subject = service('js');
+		let stillRoutedToTheInstalledEngineAtDisposeTime = true;
+		const engine = mock<ManagedRegexEngine>({
+			test: vi.fn(() => true),
+			dispose: vi.fn(() => {
+				// If reset ran first, this now hits the restored default engine, which
+				// does not match this pattern.
+				stillRoutedToTheInstalledEngineAtDisposeTime = safeUserRegex.test('no-match', 'x');
+			}),
+		});
+		setUserRegexEngine(engine);
+		(subject as unknown as { active?: ManagedRegexEngine }).active = engine;
+
+		subject.shutdown();
+
+		expect(engine.dispose).toHaveBeenCalledTimes(1);
+		expect(stillRoutedToTheInstalledEngineAtDisposeTime).toBe(false);
+		expect((subject as unknown as { active?: ManagedRegexEngine }).active).toBeUndefined();
+
+		subject.shutdown();
+
+		expect(engine.dispose).toHaveBeenCalledTimes(1);
 	});
 });
