@@ -31,7 +31,7 @@ export class ChatTriggerEmbeddedJsonRule implements IBreakingChangeWorkflowRule 
 			description:
 				'The chat WebSocket now sends every frame as JSON. Embedded chats using an old @n8n/chat widget pinned to a specific version, or a custom chat client that reads the raw WebSocket, will not understand the new frames until updated. Chats embedded via the unpinned CDN script update automatically, and hosted chats served by n8n are unaffected.',
 			category: BreakingChangeCategory.workflow,
-			severity: 'low',
+			impact: 'behaviorChanges',
 			documentationUrl: 'https://www.npmjs.com/package/@n8n/chat',
 		};
 	}

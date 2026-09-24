@@ -27,7 +27,7 @@ export class ExternalSecretsProjectRolesDefaultRule implements IBreakingChangeIn
 			description:
 				'In v3, project editors and admins get external-secrets scopes in their projects by default, and the Settings → External Secrets toggle is removed. Instances that keep this toggle off today widen these role permissions after the update.',
 			category: BreakingChangeCategory.environment,
-			severity: 'medium',
+			impact: 'behaviorChanges',
 			documentationUrl: 'https://docs.n8n.io/external-secrets/#access-for-project-roles',
 		};
 	}
