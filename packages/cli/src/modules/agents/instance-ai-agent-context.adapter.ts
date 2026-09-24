@@ -1,3 +1,5 @@
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
+import { AgentJsonConfigBaseSchema } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
@@ -25,6 +27,7 @@ import { AttachableWorkflowsService } from './attachable-workflows.service';
 import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
 import { formatPreviewSessionContext } from './builder/format-preview-context';
 import { composeJsonConfig } from './json-config/agent-config-composition';
+import { jsonSchemaToCompactText } from './json-config/schema-text-serializer';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
 
 const toSessionSummary = (thread: ThreadListItem): AgentSessionSummary => ({
@@ -113,6 +116,14 @@ export class InstanceAiAgentContextAdapterService {
 					published: agent.activeVersionId !== null,
 					updatedAt: agent.updatedAt.toISOString(),
 				})),
+			};
+		}
+
+		if (input.type === 'config-schema') {
+			return {
+				configurableProperties: jsonSchemaToCompactText(
+					zodSchemaToJsonSchema(AgentJsonConfigBaseSchema),
+				),
 			};
 		}
 

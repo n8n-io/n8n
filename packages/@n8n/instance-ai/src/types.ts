@@ -1530,6 +1530,7 @@ export interface AgentSessionSummary {
 
 export type AgentContextLookup =
 	| { type: 'agents' }
+	| { type: 'config-schema' }
 	| { type: 'config'; agentId: string }
 	| { type: 'skills'; agentId: string }
 	| { type: 'skill'; agentId: string; skillId: string; referencePaths?: string[] }
