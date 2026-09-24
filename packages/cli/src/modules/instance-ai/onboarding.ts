@@ -113,7 +113,16 @@ const openingSchema = z.object({
 	greeting: z.string().min(1),
 	/** Steps of the one `ask-user` card shown before the agent's first turn, in this order. */
 	questions: z.array(instanceAiQuestionSchema).min(1),
+	/** Assistant text posted when the card is answered. `{{apps}}` becomes the picked apps. */
+	followUp: z.string().min(1),
 });
+
+/** "Gmail", "Gmail and Slack", or "Gmail, Slack, and your other tools" for the follow-up text. */
+function mentionApps(apps: string[]): string {
+	if (apps.length === 0) return 'your tools';
+	if (apps.length <= 2) return apps.join(' and ');
+	return `${apps[0]}, ${apps[1]}, and your other tools`;
+}
 
 interface Onboarding {
 	/** Body of the preloaded skill, sent with the opening turn. */
@@ -148,7 +157,8 @@ export async function loadOnboarding(): Promise<Onboarding> {
  * The agent-first onboarding thread. The greeting and one question card are stored before the
  * agent's first turn, the card as a finished synthetic run whose `ask-user` call still waits
  * for an answer. The UI shows, answers and restores the card through the same HITL path as a
- * live one; the answer starts the first real turn.
+ * live one. The answer settles the card and posts the follow-up question the same way, with no
+ * model turn; the task the user types next starts the first real turn.
  */
 @Service()
 export class InstanceAiOnboardingService {
@@ -184,27 +194,27 @@ export class InstanceAiOnboardingService {
 			user.id,
 			greeting,
 		);
-		await this.seedCard({
+		await this.seedTurn({
 			threadId,
 			userId: user.id,
 			messageId: userMessageId,
-			title: opening.title,
 			text: greeting,
-			questions: shown,
+			card: { title: opening.title, questions: shown },
 		});
 		return response;
 	}
 
 	/**
-	 * Settle the host-seeded card with the user's answers and return the hidden message that
-	 * starts the first turn. Returns `undefined` when `requestId` is not that card (the HITL path
-	 * owns it then, and answers a consumed request with 404 like for any card).
+	 * Settle the host-seeded card with the user's answers, then post the follow-up question as a
+	 * second finished synthetic run and return its id. Returns `undefined` when `requestId` is
+	 * not that card (the HITL path owns it then, and answers a consumed request with 404 like for
+	 * any card).
 	 */
 	async answerCard(
 		userId: string,
 		requestId: string,
 		request: InstanceAiConfirmRequest,
-	): Promise<{ threadId: string; message: string } | undefined> {
+	): Promise<{ threadId: string; runId: string } | undefined> {
 		if (!requestId.startsWith(CARD_REQUEST_ID_PREFIX)) return undefined;
 		const row = await this.pendingConfirmationRepo.claim(requestId, userId);
 		if (!row?.toolCallId) return undefined;
@@ -235,7 +245,7 @@ export class InstanceAiOnboardingService {
 			agentId: orchestratorAgentId(row.runId),
 			payload: { toolCallId: row.toolCallId, result: { answered: true, answers } },
 		});
-		// Committed before the first turn writes its rows, so the fold keeps the card under the
+		// Committed before the follow-up writes its rows, so the fold keeps the card under the
 		// greeting.
 		await this.eventLog.flush(row.threadId);
 		// The card showed only what the survey left open; the agent gets every line, in opening order.
@@ -245,82 +255,107 @@ export class InstanceAiOnboardingService {
 				? { question: question.question, selectedOptions: [fromSurvey] }
 				: answerFor(question);
 		});
-		return { threadId: row.threadId, message: buildOnboardingAnswerMessage(lines) };
+		// The LLM history reads the answers as the hidden user turn under the follow-up, so the
+		// task the user types next is a normal first turn.
+		// ponytail: a free-text app (customText) counts as no pick: "your tools".
+		const apps = answers.find((answer) => answer.questionId === 'apps')?.selectedOptions ?? [];
+		const followUp = opening.followUp.replace('{{apps}}', mentionApps(apps));
+		const { userMessageId } = await this.memoryService.seedOpeningMessages(
+			row.threadId,
+			userId,
+			followUp,
+			buildOnboardingAnswerMessage(lines),
+		);
+		const runId = await this.seedTurn({
+			threadId: row.threadId,
+			userId,
+			messageId: userMessageId,
+			text: followUp,
+		});
+		return { threadId: row.threadId, runId };
 	}
 
 	/**
-	 * Store the card as a finished synthetic run whose `ask-user` call still waits for an answer,
-	 * plus the pending row `answerCard` claims.
+	 * Store a host-written assistant turn as a finished synthetic run. With `card`, the run also
+	 * holds an `ask-user` call that still waits for an answer, plus the pending row `answerCard`
+	 * claims. Returns the run id.
 	 */
-	private async seedCard(card: {
+	private async seedTurn(turn: {
 		threadId: string;
 		userId: string;
 		messageId: string;
-		title: string;
-		/** Assistant text shown before the card. */
 		text: string;
-		questions: Question[];
-	}): Promise<void> {
-		const { threadId, questions } = card;
+		card?: { title: string; questions: Question[] };
+	}): Promise<string> {
+		const { threadId, card } = turn;
 		const runId = randomUUID();
 		// Own group like a real run: history dedupes assistant rows by group inside one visible turn,
 		// and the hidden `(continue)` rows open no turn, so a groupless greeting collapses into the
 		// first real turn after a reload.
 		const messageGroupId = `mg_${nanoid()}`;
 		const agentId = orchestratorAgentId(runId);
-		const toolCallId = nanoid();
-		const requestId = `${CARD_REQUEST_ID_PREFIX}${nanoid()}`;
-		const args = { questions };
 		const events: InstanceAiEvent[] = [
 			{
 				type: 'run-start',
 				runId,
 				agentId,
-				payload: { messageId: card.messageId, messageGroupId },
+				payload: { messageId: turn.messageId, messageGroupId },
 			},
-			{ type: 'text-block', runId, agentId, payload: { text: card.text } },
-			{
-				type: 'tool-call',
-				runId,
-				agentId,
-				payload: { toolCallId, toolName: ASK_USER_TOOL_ID, args },
-			},
-			{
-				type: 'confirmation-request',
-				runId,
-				agentId,
-				payload: {
-					requestId,
-					toolCallId,
-					toolName: ASK_USER_TOOL_ID,
-					args,
-					severity: 'info',
-					message: card.title,
-					inputType: 'questions',
-					questions,
-				},
-			},
-			// Finished, so the interrupted-run sweeper leaves it alone. A completed run keeps an
-			// unanswered card actionable (shared reducer, `run-finish`).
-			{ type: 'run-finish', runId, agentId, payload: { status: 'completed' } },
+			// A delta, not a block: the log persists blocks but streams only deltas, and the
+			// follow-up must show while the confirm request is still in flight.
+			{ type: 'text-delta', runId, agentId, responseId: nanoid(), payload: { text: turn.text } },
 		];
+		const toolCallId = nanoid();
+		const requestId = `${CARD_REQUEST_ID_PREFIX}${nanoid()}`;
+		if (card) {
+			const args = { questions: card.questions };
+			events.push(
+				{
+					type: 'tool-call',
+					runId,
+					agentId,
+					payload: { toolCallId, toolName: ASK_USER_TOOL_ID, args },
+				},
+				{
+					type: 'confirmation-request',
+					runId,
+					agentId,
+					payload: {
+						requestId,
+						toolCallId,
+						toolName: ASK_USER_TOOL_ID,
+						args,
+						severity: 'info',
+						message: card.title,
+						inputType: 'questions',
+						questions: card.questions,
+					},
+				},
+			);
+		}
+		// Finished, so the interrupted-run sweeper leaves it alone. A completed run keeps an
+		// unanswered card actionable (shared reducer, `run-finish`).
+		events.push({ type: 'run-finish', runId, agentId, payload: { status: 'completed' } });
 		for (const event of events) this.eventBus.publish(threadId, event);
-		// No expiry: nothing could revive the card after a timeout.
-		// ponytail: kind 'inline' (no checkpoint) because the column CHECK allows only 'inline' and
-		// 'suspended'; a 'seeded' kind needs a migration. The prefix above is the real marker.
-		await this.pendingConfirmationRepo.save(
-			this.pendingConfirmationRepo.create({
-				requestId,
-				threadId,
-				userId: card.userId,
-				kind: 'inline',
-				runId,
-				messageGroupId,
-				toolCallId,
-				expiresAt: null,
-			}),
-		);
-		// The client loads the messages right after the response; the fold reads committed rows.
+		if (card) {
+			// No expiry: nothing could revive the card after a timeout.
+			// ponytail: kind 'inline' (no checkpoint) because the column CHECK allows only 'inline' and
+			// 'suspended'; a 'seeded' kind needs a migration. The prefix above is the real marker.
+			await this.pendingConfirmationRepo.save(
+				this.pendingConfirmationRepo.create({
+					requestId,
+					threadId,
+					userId: turn.userId,
+					kind: 'inline',
+					runId,
+					messageGroupId,
+					toolCallId,
+					expiresAt: null,
+				}),
+			);
+		}
+		// The client reads the messages right after the response; the fold reads committed rows.
 		await this.eventLog.flush(threadId);
+		return runId;
 	}
 }

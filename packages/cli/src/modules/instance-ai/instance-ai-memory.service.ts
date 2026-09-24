@@ -382,13 +382,15 @@ export class InstanceAiMemoryService {
 	/**
 	 * Store an assistant greeting before any user turn (onboarding). The model API
 	 * needs a user message first, so a hidden auto-follow-up turn precedes the
-	 * greeting; the message parser drops that turn from the UI. Returns the id of
-	 * that hidden turn.
+	 * greeting; the message parser drops that turn from the UI. `hiddenUserText`
+	 * replaces the auto-follow-up text when the hidden turn carries context for
+	 * the model (the onboarding answers). Returns the id of that hidden turn.
 	 */
 	async seedOpeningMessages(
 		threadId: string,
 		userId: string,
 		greeting: string,
+		hiddenUserText: string = AUTO_FOLLOW_UP_MESSAGE,
 	): Promise<{ userMessageId: string }> {
 		// Both stamps stay in the past: event rows written right after this must
 		// not sort before the greeting, or the fold shows the greeting twice.
@@ -403,7 +405,7 @@ export class InstanceAiMemoryService {
 					createdAt: new Date(now - 1),
 					type: 'llm',
 					role: 'user',
-					content: [{ type: 'text', text: AUTO_FOLLOW_UP_MESSAGE }],
+					content: [{ type: 'text', text: hiddenUserText }],
 				},
 				{
 					id: randomUUID(),

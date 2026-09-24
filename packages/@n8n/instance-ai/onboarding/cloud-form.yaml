@@ -1,16 +1,20 @@
 # The opening of an onboarding thread. The UI shows the greeting as the first assistant message
 # and the questions as ONE ask-user card, one step per question in this order. A `required` step
 # has no Skip button; the card's own "Something else" free text is the way out of a `single` or
-# `multi` step. The answers reach the agent in an <onboarding-answer> block on the first user
-# turn, one line per question, so a new question here needs no code change: add it to the list.
-# The host skips a step the signup survey already answered; that answer still reaches the
-# agent. The next new onboarding thread reads this file again. {{firstName}} becomes the user's first
-# name, or "there".
+# `multi` step. When the card is answered, the host posts `followUp` as plain assistant text,
+# with no model turn, and the user types the task in the chat. The answers reach the agent in an
+# <onboarding-answer> block, one line per question, so a new question here needs no code change:
+# add it to the list. The host skips a step the signup survey already answered; that answer
+# still reaches the agent. The next new onboarding thread reads this file again.
 title: Welcome to n8n
 greeting: >-
-  Hi {{firstName}}, welcome to n8n! I am the n8n Assistant. I can build
-  workflows with you, connect your tools, and answer questions about n8n.
-  Tell me a little about yourself so I can suggest a good first automation.
+  Hi, I'm your Assistant. Think of me as your n8n expert. I'll ask 2
+  questions to finish your setup and suggest automations based on real
+  workflows.
+# {{apps}} becomes the apps the user picked: one or two names, and "and your other tools" when
+# they picked more ("Gmail, Slack, and your other tools"). No pick: "your tools".
+followUp: >-
+  Nice. Tell me how you use {{apps}}. Is there a task you'd like to automate?
 questions:
   # The n8n Cloud signup form's team labels, so the answers stay comparable with the Cloud
   # metadata (`what_team_are_you_on`). The card hides options that start with "other"; its
@@ -27,7 +31,7 @@ questions:
   # {{team}} becomes the team from the signup survey ("in your Sales work"). Without one the
   # words close up ("in your work"): no survey team, "Other", or the team step in the card.
   - id: apps
-    question: Which tools do you use in your {{team}} work?
+    question: Which apps do you use most in your {{team}} work?
     type: multi
     required: true
     options: [Gmail, Google Sheets, Slack, Google Calendar, Google Drive, Notion, Microsoft Outlook, Microsoft Teams, HubSpot, Airtable]
@@ -41,9 +45,3 @@ questions:
         IT: [Slack, Microsoft Teams, Google Workspace, Microsoft 365, Jira, ServiceNow, Okta, PagerDuty, GitHub, AWS]
         Engineering: [GitHub, GitLab, Jira, Linear, Slack, Google Sheets, Notion, AWS, PostgreSQL, PagerDuty]
         Marketing: [HubSpot, Salesforce, Gmail, Google Sheets, Slack, Mailchimp, LinkedIn, Notion, Google Calendar, Microsoft Outlook]
-  # Required: the suggestions come from what the user wants to automate, so the card asks for
-  # at least one sentence.
-  - id: task
-    question: Tell me about your work. Is there a task you are trying to automate?
-    type: text
-    required: true

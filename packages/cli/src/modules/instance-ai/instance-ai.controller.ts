@@ -573,17 +573,10 @@ export class InstanceAiController {
 			throw new BadRequestError(parseResult.error.errors[0].message);
 		}
 
-		// The host-seeded onboarding card has no run to resume: settle it, then start the first
-		// turn with the answers.
+		// The host-seeded onboarding card has no run to resume: settle it and post the follow-up
+		// question as a finished synthetic run. The user's next chat message starts the first turn.
 		const card = await this.onboarding.answerCard(req.user.id, requestId, parseResult.data);
-		if (card) {
-			await this.requireModelConfigured();
-			if (this.instanceAiService.hasActiveRun(card.threadId)) {
-				throw new ConflictError('A run is already active for this thread');
-			}
-			const runId = this.instanceAiService.startRun(req.user, card.threadId, card.message);
-			return { ok: true, runId };
-		}
+		if (card) return { ok: true, runId: card.runId };
 
 		const resolved = await this.instanceAiService.resolveConfirmation(
 			req.user.id,
