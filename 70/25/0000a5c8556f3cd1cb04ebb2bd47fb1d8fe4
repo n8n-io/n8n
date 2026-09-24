@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_0ed5271cdd014d::t_38b5179613a44e 157-163
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0ed5271cdd014d::t_38b5179613a44e 7921
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_0ed5271cdd014d::t_2b80f89269a0d4 144-146
+  s_0ed5271cdd014d::t_38b5179613a44e 22,975-976,985-993
+  s_0ed5271cdd014d::t_7d63b1abe1b20b 1027-1035
+  s_0ed5271cdd014d::t_cd77fa566866c7 704-771,789,791,793,898-899,901,903-910,914
+  s_0ed5271cdd014d::t_b3a50186e31c3c 790
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_0ed5271cdd014d::t_0b80df295ee96e 54,283,306-308,315-316,332-370,551
+  s_0ed5271cdd014d::t_2c9977c4603a1c 309-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "70250000a5c8556f3cd1cb04ebb2bd47fb1d8fe4",
+  "prompts": {},
+  "sessions": {
+    "s_0ed5271cdd014d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d3f3-6fd7-7481-922e-2a901b1c46ca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

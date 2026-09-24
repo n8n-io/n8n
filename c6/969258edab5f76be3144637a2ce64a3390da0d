@@ -1,0 +1,33 @@
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_2ed659fa6b1ae7::t_0e46e846240241 87-89
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_2ed659fa6b1ae7::t_244af276bf637d 79-82,123-131
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_2ed659fa6b1ae7::t_12fc524e52a52d 15,60-62
+packages/@n8n/instance-ai/src/types.ts
+  s_2ed659fa6b1ae7::t_0ac4e98edebc18 1489-1490
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_2ed659fa6b1ae7::t_44a44d84bd2ed6 454-455,475,494
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_2ed659fa6b1ae7::t_71201b4a4078b0 2447-2451,2466
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_2ed659fa6b1ae7::t_382cb32c20e0e1 92,393-394,435,437-439,441,443-444
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_2ed659fa6b1ae7::t_9ccb55f819ec22 106-107,143-144,1099-1104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c6969258edab5f76be3144637a2ce64a3390da0d",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
