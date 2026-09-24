@@ -86,7 +86,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	N8nLink: (await importOriginal<typeof import('@n8n/design-system')>()).N8nLink,
 	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
 		.useDropdownSearch,
-	N8nButton: { template: '<button><slot /></button>' },
+	N8nButton: { template: '<button><slot name="icon" /><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
 	N8nHeading: { template: '<div><slot /></div>' },
@@ -306,7 +306,11 @@ describe('AgentChatPanel', () => {
 			wrapper.html().indexOf('agent-background-jobs'),
 		);
 		expect(messagesMock.value).toEqual([]);
-		await wrapper.findAll('[aria-label="agents.chat.queue.remove"]')[1].trigger('click');
+		const removeButtons = wrapper.findAll('[aria-label="agents.chat.queue.remove"]');
+		for (const button of removeButtons) {
+			expect(button.findComponent({ name: 'N8nIcon' }).props('icon')).toBe('trash-2');
+		}
+		await removeButtons[1].trigger('click');
 		expect(removeQueuedMessageMock).toHaveBeenCalledWith('2');
 		queuedMessagesMock.value = [];
 		await nextTick();

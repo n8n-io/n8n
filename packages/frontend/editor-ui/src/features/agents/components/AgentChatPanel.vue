@@ -11,11 +11,12 @@ import {
 } from 'vue';
 import {
 	N8nAiActivityStepGroup,
+	N8nButton,
 	N8nCallout,
 	N8nIcon,
-	N8nIconButton,
 	N8nLink,
 	N8nSendStopButton,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -578,14 +579,17 @@ onBeforeUnmount(() => {
 				</span>
 			</div>
 			<template #trailingContent>
-				<N8nIconButton
-					icon="x"
-					variant="ghost"
-					size="xsmall"
-					:aria-label="locale.baseText('agents.chat.misconfigured.dismiss')"
-					:title="locale.baseText('agents.chat.misconfigured.dismiss')"
-					@click="dismissFatalError"
-				/>
+				<N8nTooltip :content="locale.baseText('agents.chat.misconfigured.dismiss')" placement="top">
+					<N8nButton
+						icon-only
+						variant="ghost"
+						size="xsmall"
+						:aria-label="locale.baseText('agents.chat.misconfigured.dismiss')"
+						@click="dismissFatalError"
+					>
+						<template #icon><N8nIcon icon="x" size="xsmall" aria-hidden="true" /></template>
+					</N8nButton>
+				</N8nTooltip>
 			</template>
 		</N8nCallout>
 
@@ -608,14 +612,17 @@ onBeforeUnmount(() => {
 					}}</span>
 				</div>
 				<template #trailingContent>
-					<N8nIconButton
-						icon="x"
-						variant="ghost"
-						size="xsmall"
-						:aria-label="locale.baseText('agents.chat.warning.dismiss')"
-						:title="locale.baseText('agents.chat.warning.dismiss')"
-						@click="dismissWarning(index)"
-					/>
+					<N8nTooltip :content="locale.baseText('agents.chat.warning.dismiss')" placement="top">
+						<N8nButton
+							icon-only
+							variant="ghost"
+							size="xsmall"
+							:aria-label="locale.baseText('agents.chat.warning.dismiss')"
+							@click="dismissWarning(index)"
+						>
+							<template #icon><N8nIcon icon="x" size="xsmall" aria-hidden="true" /></template>
+						</N8nButton>
+					</N8nTooltip>
 				</template>
 			</N8nCallout>
 		</div>
@@ -679,15 +686,24 @@ onBeforeUnmount(() => {
 											attachment.fileName
 										}}</span>
 									</div>
-									<N8nIconButton
-										icon="x"
-										variant="ghost"
-										size="xsmall"
+									<N8nTooltip
+										:content="locale.baseText('agents.chat.queue.remove')"
 										:disabled="removingQueueIds.has(item.id)"
-										:aria-label="locale.baseText('agents.chat.queue.remove')"
-										:title="locale.baseText('agents.chat.queue.remove')"
-										@click="removeQueuedMessage(item.id)"
-									/>
+										placement="top"
+									>
+										<N8nButton
+											icon-only
+											variant="ghost"
+											size="xsmall"
+											:disabled="removingQueueIds.has(item.id)"
+											:aria-label="locale.baseText('agents.chat.queue.remove')"
+											@click="removeQueuedMessage(item.id)"
+										>
+											<template #icon>
+												<N8nIcon icon="trash-2" size="xsmall" aria-hidden="true" />
+											</template>
+										</N8nButton>
+									</N8nTooltip>
 								</li>
 							</ul>
 						</N8nAiActivityStepGroup>
