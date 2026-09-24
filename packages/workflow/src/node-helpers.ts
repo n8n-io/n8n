@@ -47,6 +47,7 @@ import type {
 	FeatureCondition,
 	NodeFeaturesDefinition,
 	NodeFeatures,
+	NodePropertyTypes,
 } from './interfaces';
 import { validateFilterParameter } from './node-parameters/filter-parameter';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
@@ -2273,4 +2274,71 @@ export function resolveSupportedCredentialActivation(
 		}
 	}
 	return undefined;
+}
+
+// Parameter types whose value is an object. Every other value-carrying type holds a
+// plain value or an array.
+const OBJECT_VALUED_PARAMETER_TYPES: ReadonlySet<NodePropertyTypes> = new Set<NodePropertyTypes>([
+	'agentSelector',
+	'assignmentCollection',
+	'collection',
+	'filter',
+	'fixedCollection',
+	'resourceLocator',
+	'resourceMapper',
+	'workflowSelector',
+]);
+
+// Parameter types with no user-entered value, or with a value that code sets.
+const VALUELESS_PARAMETER_TYPES: ReadonlySet<NodePropertyTypes> = new Set<NodePropertyTypes>([
+	'button',
+	'callout',
+	'curlImport',
+	'hidden',
+	'icon',
+	'notice',
+]);
+
+export interface ParameterShapeConflict {
+	name: string;
+	types: NodePropertyTypes[];
+}
+
+function isShownOnVersion(property: INodeProperties, typeVersion: number): boolean {
+	const show = property.displayOptions?.show?.['@version'];
+	const hide = property.displayOptions?.hide?.['@version'];
+	if (show && !checkConditions(show, [typeVersion])) return false;
+	if (hide && checkConditions(hide, [typeVersion])) return false;
+	return true;
+}
+
+/**
+ * Finds top-level parameters that share a name on one node version but hold values
+ * of a different shape: an object (resource locator, collection, ...) next to a plain
+ * value (string, options, ...). The editor keeps parameter values by name when the
+ * user switches resource or operation, so the object carries over into the plain
+ * field and renders as "[object Object]". Parameters that `@version` gates to other
+ * versions are ignored.
+ */
+export function findParameterShapeConflicts(
+	properties: INodeProperties[],
+	typeVersion: number,
+): ParameterShapeConflict[] {
+	const typesByName = new Map<string, Set<NodePropertyTypes>>();
+	for (const property of properties) {
+		if (VALUELESS_PARAMETER_TYPES.has(property.type)) continue;
+		if (!isShownOnVersion(property, typeVersion)) continue;
+		const types = typesByName.get(property.name) ?? new Set<NodePropertyTypes>();
+		types.add(property.type);
+		typesByName.set(property.name, types);
+	}
+
+	const conflicts: ParameterShapeConflict[] = [];
+	for (const [name, types] of typesByName) {
+		const shapes = new Set([...types].map((type) => OBJECT_VALUED_PARAMETER_TYPES.has(type)));
+		if (shapes.size > 1) {
+			conflicts.push({ name, types: [...types].sort() });
+		}
+	}
+	return conflicts;
 }
