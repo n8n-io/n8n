@@ -44,6 +44,7 @@ vi.mock('../workflow-analysis', () => ({
 		rootToSubNode: new Map(),
 	}),
 	generateMockHints: vi.fn(),
+	TRIGGER_CONTENT_CORRECTION: 'trigger-content-correction',
 	identifyNodesForHints: vi.fn(),
 	identifyNodesForPinData: vi.fn(),
 	isDataTableRead: vi.fn().mockReturnValue(false),
@@ -108,6 +109,7 @@ import {
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	partitionAiRoots,
+	TRIGGER_CONTENT_CORRECTION,
 } from '../workflow-analysis';
 import type { MockHints } from '../workflow-analysis';
 
@@ -421,6 +423,117 @@ describe('EvalExecutionService', () => {
 				pinData?: Record<string, unknown[]>;
 			};
 			expect(runArg.pinData?.Webhook).toEqual([]);
+		});
+
+		describe('trigger content', () => {
+			// The default node type stub has no trigger/webhook capability; give the
+			// Webhook start node one so the empty-content guard applies.
+			function triggerCapableStart() {
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: { properties: [] } as unknown as INodeTypeDescription,
+					webhook: vi.fn(),
+				} as never);
+			}
+
+			it('retries Phase 1 once with a correction when a trigger start node gets no trigger content', async () => {
+				triggerCapableStart();
+				const empty = makeEmptyHints();
+				empty.triggerContent = {};
+				const filled = makeEmptyHints();
+				filled.triggerContent = { body: { order: 'O-1' } };
+				generateMockHintsMock.mockResolvedValueOnce(empty).mockResolvedValueOnce(filled);
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(generateMockHintsMock).toHaveBeenCalledTimes(2);
+				expect(generateMockHintsMock.mock.calls[1][0]).toEqual(
+					expect.objectContaining({ correction: TRIGGER_CONTENT_CORRECTION }),
+				);
+				expect(workflowRunner.run).toHaveBeenCalledWith(
+					expect.objectContaining({
+						pinData: expect.objectContaining({ Webhook: [{ json: { body: { order: 'O-1' } } }] }),
+					}),
+				);
+			});
+
+			it('returns a framework error and does not run when the corrected retry still has no trigger content', async () => {
+				triggerCapableStart();
+				const empty = makeEmptyHints();
+				empty.triggerContent = {};
+				generateMockHintsMock.mockResolvedValue(empty);
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(generateMockHintsMock).toHaveBeenCalledTimes(2);
+				expect(result.success).toBe(false);
+				expect(result.errors[0]).toMatch(
+					/^FRAMEWORK ISSUE: .*no trigger content for start node "Webhook"/,
+				);
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			it('keeps the zero-item pin without retrying when the scenario says the trigger emits nothing', async () => {
+				triggerCapableStart();
+				const hints = makeEmptyHints();
+				hints.triggerContent = {};
+				hints.triggerEmitsNoItems = true;
+				generateMockHintsMock.mockResolvedValue(hints);
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(generateMockHintsMock).toHaveBeenCalledTimes(1);
+				const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+					pinData?: Record<string, unknown[]>;
+				};
+				expect(runArg.pinData?.Webhook).toEqual([]);
+			});
+
+			it('does not retry Phase 1 when the trigger content is present', async () => {
+				triggerCapableStart();
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(generateMockHintsMock).toHaveBeenCalledTimes(1);
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		it("applies a pinned Data Table read's literal conditions and limit to the generated rows", async () => {
+			const readNode = {
+				id: 'node-3',
+				name: 'Read Pending Tasks',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1.1,
+				position: [400, 0],
+				parameters: {
+					operation: 'get',
+					matchType: 'allConditions',
+					filters: { conditions: [{ keyName: 'status', condition: 'eq', keyValue: 'pending' }] },
+					returnAll: false,
+					limit: 1,
+				},
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [makeStartNode(), readNode] }) as never,
+			);
+			identifyNodesForPinDataMock.mockReturnValue([readNode]);
+			emitsDataTableRowsMock.mockReturnValue(true);
+			generatePinDataMock.mockResolvedValue({
+				'Read Pending Tasks': [
+					{ json: { task: 'T-1', status: 'done' } },
+					{ json: { task: 'T-2', status: 'pending' } },
+					{ json: { task: 'T-3', status: 'pending' } },
+				],
+			});
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+				pinData?: Record<string, unknown[]>;
+			};
+			expect(runArg.pinData?.['Read Pending Tasks']).toEqual([
+				{ json: { task: 'T-2', status: 'pending' } },
+			]);
 		});
 
 		it('routes through WorkflowRunner with evaluation mode + pin data + user', async () => {

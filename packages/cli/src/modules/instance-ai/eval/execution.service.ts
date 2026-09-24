@@ -62,12 +62,14 @@ import {
 	isOpenAiResponsesUrl,
 	normalizeOpenAiResponsesMockResponse,
 } from './openai-responses-envelope';
+import { applyDataTableReadParameters } from './data-table-pin-filter';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
 	emitsDataTableRows,
 	generateMockHints,
+	TRIGGER_CONTENT_CORRECTION,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	type MockHints,
@@ -245,7 +247,7 @@ export class EvalExecutionService {
 			`[EvalMock] Generating hints for ${nodeNames.length} nodes: ${nodeNames.join(', ')}`,
 		);
 
-		const hints = await timings.time(
+		let hints = await timings.time(
 			'hints',
 			undefined,
 			async () =>
@@ -255,6 +257,33 @@ export class EvalExecutionService {
 					scenarioHints,
 				}),
 		);
+
+		// A trigger pinned without content starts the run with no items, and every
+		// downstream miss then reads as the builder's fault.
+		const triggerStart = this.triggerStartNode(workflowEntity, hints);
+		if (triggerStart && lacksTriggerContent(hints)) {
+			this.logger.warn(
+				`[EvalMock] Phase 1 returned no trigger content for "${triggerStart.name}" — retrying once with a correction`,
+			);
+			const retried = await timings.time(
+				'hints',
+				undefined,
+				async () =>
+					await generateMockHints({
+						workflow: workflowEntity,
+						nodeNames,
+						scenarioHints,
+						correction: TRIGGER_CONTENT_CORRECTION,
+					}),
+			);
+			const warnings = [...hints.warnings, ...retried.warnings];
+			if (lacksTriggerContent(retried)) {
+				throw new Error(
+					`FRAMEWORK ISSUE: Phase 1 produced no trigger content for start node "${triggerStart.name}" after a corrected retry (${warnings.join('; ') || 'no details'}); the scenario cannot run without a trigger event`,
+				);
+			}
+			hints = { ...retried, warnings };
+		}
 
 		if (!hints.globalContext && nodeNames.length > 0) {
 			this.logger.warn(
@@ -279,6 +308,7 @@ export class EvalExecutionService {
 				bypassNodeNames,
 				hints.globalContext,
 				timings,
+				hints.warnings,
 				scenarioHints,
 			);
 			this.logger.debug(
@@ -301,6 +331,7 @@ export class EvalExecutionService {
 		bypassNodeNames: string[],
 		globalContext: string,
 		timings: EvalTimings,
+		warnings: string[],
 		scenarioHints?: string,
 	): Promise<IPinData> {
 		if (bypassNodeNames.length === 0) return {};
@@ -341,6 +372,19 @@ export class EvalExecutionService {
 						`[EvalMock] Phase 1.5 produced no pin data for bypass node "${nodeName}" — pinning empty to prevent real execution`,
 					);
 					normalized[nodeName] = [];
+				}
+			}
+
+			// The generator answers with table rows; the real node applies its own
+			// conditions and limit to them before emitting anything.
+			const bypassSet = new Set(bypassNodeNames);
+			for (const node of workflowEntity.nodes) {
+				if (!bypassSet.has(node.name) || !emitsDataTableRows(node)) continue;
+				const filtered = applyDataTableReadParameters(node, normalized[node.name]);
+				normalized[node.name] = filtered.items;
+				for (const warning of filtered.warnings) {
+					this.logger.warn(`[EvalMock] ${warning}`);
+					warnings.push(warning);
 				}
 			}
 
@@ -649,6 +693,17 @@ export class EvalExecutionService {
 	 */
 	private findStartNode(workflow: Workflow): INode | undefined {
 		return workflow.getStartNode() ?? this.findWebhookNode(workflow);
+	}
+
+	/** The start node the run will pin, when it is trigger-capable. */
+	private triggerStartNode(workflowEntity: IWorkflowBase, hints: MockHints): INode | undefined {
+		const hinted = hints.startNodeName
+			? workflowEntity.nodes.find((node) => node.name === hints.startNodeName)
+			: undefined;
+		return (
+			this.asTriggerNode(hinted) ??
+			this.asTriggerNode(this.findStartNode(this.buildWorkflow(workflowEntity)))
+		);
 	}
 
 	/** Accept a Phase-1 start-node hint only when it names a real, enabled trigger-capable node. */
@@ -1158,6 +1213,10 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+function lacksTriggerContent(hints: MockHints): boolean {
+	return !hints.triggerEmitsNoItems && Object.keys(hints.triggerContent).length === 0;
 }
 
 /** `warnings` is the channel the verification artifact renders as FRAMEWORK ISSUE flags. */

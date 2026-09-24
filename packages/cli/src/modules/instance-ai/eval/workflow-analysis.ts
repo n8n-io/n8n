@@ -590,7 +590,12 @@ export interface GenerateMockHintsOptions {
 	workflow: IWorkflowBase;
 	nodeNames: string[];
 	scenarioHints?: string;
+	/** Appended to the prompt on a retry, naming what the previous answer got wrong. */
+	correction?: string;
 }
+
+export const TRIGGER_CONTENT_CORRECTION =
+	'The previous answer left "triggerContent" empty. The Test Scenario describes the event that fires the workflow\'s trigger or start node, so "triggerContent" must carry that event as the node\'s output object and must not be {}. Set "triggerEmitsNoItems": true only when the scenario says the trigger has nothing to emit.';
 
 const SYSTEM_PROMPT = `You are a test data planner for n8n workflow automation. Your job is to create a consistent data context, trigger output data, and per-node hints that will guide an API mock server to generate realistic, coherent responses across all nodes in a workflow.
 
@@ -692,7 +697,7 @@ const HINT_LLM_TIMEOUT_MS = 300_000;
 
 /** One LLM call → globalContext + triggerContent + per-node hints. Retried once on structural issues. */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
-	const { workflow, nodeNames, scenarioHints } = options;
+	const { workflow, nodeNames, scenarioHints, correction } = options;
 	const emptyResult: MockHints = {
 		globalContext: '',
 		nodeHints: {},
@@ -703,7 +708,10 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 
 	if (nodeNames.length === 0) return emptyResult;
 
-	const userPrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
+	const basePrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
+	const userPrompt = correction
+		? `${basePrompt}\n\n## Correction required\n\n${correction}`
+		: basePrompt;
 	const warnings: string[] = [];
 
 	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
