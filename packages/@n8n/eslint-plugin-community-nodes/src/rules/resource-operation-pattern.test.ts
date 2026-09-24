@@ -1,10 +1,17 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+import type { RuleModule } from '@typescript-eslint/utils/ts-eslint';
 
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 
 const ruleTester = new RuleTester();
 
-ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
+// CE-2057: The expected message is absent until the rule handles missing actions.
+const ruleWithExpectedMessage = ResourceOperationPatternRule as RuleModule<
+	'missingActions' | 'tooManyOperationsWithoutResources',
+	[]
+>;
+
+ruleTester.run('resource-operation-pattern', ruleWithExpectedMessage, {
 	valid: [
 		{
 			name: 'node with resources and operations (good pattern)',
@@ -36,10 +43,10 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{ name: 'Get', value: 'get' },
-									{ name: 'Create', value: 'create' },
-									{ name: 'Update', value: 'update' },
-									{ name: 'Delete', value: 'delete' }
+									{ name: 'Get', value: 'get', action: 'Get a user' },
+									{ name: 'Create', value: 'create', action: 'Create a user' },
+									{ name: 'Update', value: 'update', action: 'Update a user' },
+									{ name: 'Delete', value: 'delete', action: 'Delete a user' }
 								],
 								default: 'get'
 							}
@@ -49,7 +56,7 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 			`,
 		},
 		{
-			name: 'node without operations property',
+			name: 'single-resource node with one operation and an action',
 			filename: '/tmp/TestNode.node.ts',
 			code: `
 				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
@@ -62,14 +69,13 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 						version: 1,
 						inputs: ['main'],
 						outputs: ['main'],
-						properties: [
-							{
-								displayName: 'API Key',
-								name: 'apiKey',
-								type: 'string',
-								default: ''
-							}
-						]
+						properties: [{
+							displayName: 'Operation',
+							name: 'operation',
+							type: 'options',
+							options: [{ name: 'Send', value: 'send', action: 'Send a message' }],
+							default: 'send'
+						}]
 					};
 				}
 			`,
@@ -116,11 +122,11 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{ name: 'Get', value: 'get' },
-									{ name: 'Create', value: 'create' },
-									{ name: 'Update', value: 'update' },
-									{ name: 'Delete', value: 'delete' },
-									{ name: 'List', value: 'list' }
+									{ name: 'Get', value: 'get', action: 'Get a message' },
+									{ name: 'Create', value: 'create', action: 'Create a message' },
+									{ name: 'Update', value: 'update', action: 'Update a message' },
+									{ name: 'Delete', value: 'delete', action: 'Delete a message' },
+									{ name: 'List', value: 'list', action: 'List messages' }
 								],
 								default: 'get'
 							}
@@ -131,6 +137,58 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 		},
 	],
 	invalid: [
+		{
+			// An action needs an Operation even when the node has only one resource.
+			name: 'single-action node without an operation',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						group: ['output'],
+						version: 1,
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [{
+							displayName: 'Message',
+							name: 'message',
+							type: 'string',
+							default: ''
+						}]
+					};
+				}
+			`,
+			errors: [{ messageId: 'missingActions' }],
+		},
+		{
+			name: 'operation option without an action',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						group: ['output'],
+						version: 1,
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [{
+							displayName: 'Operation',
+							name: 'operation',
+							type: 'options',
+							options: [{ name: 'Send', value: 'send' }],
+							default: 'send'
+						}]
+					};
+				}
+			`,
+			errors: [{ messageId: 'missingActions' }],
+		},
 		{
 			name: 'node with exactly 6 operations without resources (error)',
 			filename: '/tmp/TestNode.node.ts',
@@ -151,12 +209,12 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{ name: 'Get', value: 'get' },
-									{ name: 'Create', value: 'create' },
-									{ name: 'Update', value: 'update' },
-									{ name: 'Delete', value: 'delete' },
-									{ name: 'List', value: 'list' },
-									{ name: 'Search', value: 'search' }
+									{ name: 'Get', value: 'get', action: 'Get a message' },
+									{ name: 'Create', value: 'create', action: 'Create a message' },
+									{ name: 'Update', value: 'update', action: 'Update a message' },
+									{ name: 'Delete', value: 'delete', action: 'Delete a message' },
+									{ name: 'List', value: 'list', action: 'List messages' },
+									{ name: 'Search', value: 'search', action: 'Search messages' }
 								],
 								default: 'get'
 							}
@@ -191,14 +249,14 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 								name: 'operation',
 								type: 'options',
 								options: [
-									{ name: 'Get User', value: 'getUser' },
-									{ name: 'Create User', value: 'createUser' },
-									{ name: 'Update User', value: 'updateUser' },
-									{ name: 'Delete User', value: 'deleteUser' },
-									{ name: 'List Users', value: 'listUsers' },
-									{ name: 'Get Project', value: 'getProject' },
-									{ name: 'Create Project', value: 'createProject' },
-									{ name: 'Update Project', value: 'updateProject' }
+									{ name: 'Get User', value: 'getUser', action: 'Get a user' },
+									{ name: 'Create User', value: 'createUser', action: 'Create a user' },
+									{ name: 'Update User', value: 'updateUser', action: 'Update a user' },
+									{ name: 'Delete User', value: 'deleteUser', action: 'Delete a user' },
+									{ name: 'List Users', value: 'listUsers', action: 'List users' },
+									{ name: 'Get Project', value: 'getProject', action: 'Get a project' },
+									{ name: 'Create Project', value: 'createProject', action: 'Create a project' },
+									{ name: 'Update Project', value: 'updateProject', action: 'Update a project' }
 								],
 								default: 'getUser'
 							}
