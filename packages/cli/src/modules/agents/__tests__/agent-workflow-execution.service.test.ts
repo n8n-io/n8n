@@ -14,6 +14,7 @@ import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
@@ -121,6 +122,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const executionService = mock<AgentExecutionService>();
+	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 	const telemetry = mock<Telemetry>();
 	const credentialsService = mock<CredentialsService>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
@@ -146,6 +148,7 @@ function makeService() {
 			mockLogger(),
 			executionService,
 			mock<AgentChatExecutionService>(),
+			mock<AgentMessageQueueService>(),
 		),
 		telemetry,
 		credentialsService,

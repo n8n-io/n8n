@@ -9,13 +9,12 @@ import type { AgentRepository } from '../../../../repositories/agent.repository'
 import type { ChatInstance } from '../../../chat-integration.service';
 import { ComponentMapper } from '../../../component-mapper';
 import type { IntegrationMessageContext } from '../../../integration-tools';
-import { TeamsIntegration } from '../../../platforms/teams-integration';
+import { TeamsIntegration } from '../../../platforms/teams/teams-integration';
 import {
 	createReplayContextSetup,
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 import {
 	TEAMS_APP_ID,
@@ -172,7 +171,7 @@ export async function createTeamsReplayContext(
 
 	const webhooks = chat.webhooks as unknown as Record<string, ReplayWebhookHandler>;
 	const post = async (payload: unknown, headers: Headers) =>
-		await sendJsonWebhook(
+		await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.teams(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/teams',
 			payload,

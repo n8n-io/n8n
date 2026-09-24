@@ -32,6 +32,10 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 		),
 	);
 
+	function getVariablesInScope(id: string | null | undefined) {
+		return allVariables.value.filter((variable) => (variable.project?.id ?? null) === (id || null));
+	}
+
 	async function fetchAllVariables() {
 		const data = await environmentsApi.getVariables(rootStore.restApiContext);
 
@@ -88,6 +92,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 
 	return {
 		variables,
+		getVariablesInScope,
 		scopedVariables,
 		variablesAsObject,
 		fetchAllVariables,
