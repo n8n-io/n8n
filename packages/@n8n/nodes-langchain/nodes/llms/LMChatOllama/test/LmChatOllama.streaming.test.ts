@@ -95,6 +95,68 @@ describe('LmChatOllama streaming', () => {
 			expect(sentStreamFlag()).toBe(false);
 			expect(result.content).toBe('pong');
 		});
+
+		it('preserves tool calls from the non-streaming response', async () => {
+			mockedProxyFetch.mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						...ollamaResponse,
+						message: {
+							role: 'assistant',
+							content: '',
+							tool_calls: [
+								{
+									function: { name: 'getWeather', arguments: { city: 'Berlin' } },
+								},
+							],
+						},
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } },
+				),
+			);
+
+			const node = new LmChatOllama();
+			const { response } = await node.supplyData.call(setupContext({ streaming: false }), 0);
+			const model = response as unknown as {
+				invoke: (input: string) => Promise<{ tool_calls?: unknown[] }>;
+			};
+
+			const result = await model.invoke('What is the weather in Berlin?');
+
+			expect(sentStreamFlag()).toBe(false);
+			expect(result.tool_calls).toHaveLength(1);
+			expect(result.tool_calls?.[0]).toMatchObject({
+				name: 'getWeather',
+				args: { city: 'Berlin' },
+			});
+		});
+
+		it('preserves thinking output as reasoning content', async () => {
+			mockedProxyFetch.mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						...ollamaResponse,
+						message: { role: 'assistant', content: 'pong', thinking: 'let me check' },
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } },
+				),
+			);
+
+			const node = new LmChatOllama();
+			const { response } = await node.supplyData.call(setupContext({ streaming: false }), 0);
+			const model = response as unknown as {
+				invoke: (input: string) => Promise<{
+					content: string;
+					additional_kwargs?: { reasoning_content?: string };
+				}>;
+			};
+
+			const result = await model.invoke('ping');
+
+			expect(sentStreamFlag()).toBe(false);
+			expect(result.content).toBe('pong');
+			expect(result.additional_kwargs?.reasoning_content).toBe('let me check');
+		});
 	});
 
 	describe('with Streaming enabled', () => {
