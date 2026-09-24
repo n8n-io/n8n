@@ -104,7 +104,6 @@ async function seedIndexedAgent(
 		tools: agent.tools,
 		skills: agent.skills,
 		publishedBy: user,
-		n8nChatEnabled: false,
 	});
 	agent.activeVersionId = publishedVersionId;
 	await agentRepo.save(agent);

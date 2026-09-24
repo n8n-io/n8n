@@ -127,6 +127,19 @@ function scrubCassette(definitions: nock.Definition[]): nock.Definition[] {
 		});
 }
 
+function formatCassette(definitions: nock.Definition[]): string {
+	return `[
+${definitions
+	.map((definition) => {
+		const fields = Object.entries(definition)
+			.map(([key, value]) => `\t\t${JSON.stringify(key)}: ${JSON.stringify(value)}`)
+			.join(',\n');
+		return `\t{\n${fields}\n\t}`;
+	})
+	.join(',\n')}
+]\n`;
+}
+
 beforeAll(async () => {
 	await testModules.loadModules(['agents']);
 });
@@ -157,7 +170,9 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 		if (!record && !replay) return;
 		if (!nock.isActive()) nock.activate();
 		const name = `${context.task.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`;
-		const cassette = await nockBack(name, { afterRecord: scrubCassette });
+		const cassette = await nockBack(name, {
+			afterRecord: (definitions) => formatCassette(scrubCassette(definitions)),
+		});
 		finishCassette = cassette.nockDone;
 		bypassLocalFetchInterceptors();
 		nock.enableNetConnect(record ? /127\.0\.0\.1|api\.openai\.com/ : /127\.0\.0\.1/);
