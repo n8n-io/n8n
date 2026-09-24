@@ -160,7 +160,10 @@ export class SubAgentBackgroundRunner {
 				// the sweeper reconciles the still-running row later.
 				this.logger.error('Failed to settle background sub-agent job', { jobId, error });
 			})
-			.finally(() => clearTimeout(timeout));
+			.finally(() => {
+				clearTimeout(timeout);
+				this.jobService.unregisterAbortController(jobId, abortController);
+			});
 
 		return receipt;
 	}

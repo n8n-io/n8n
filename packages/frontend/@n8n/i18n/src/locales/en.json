@@ -7937,6 +7937,7 @@
 	"agents.chat.backgroundTasks.viewTrace": "View trace",
 	"agents.chat.backgroundTasks.status.waiting": "Waiting",
 	"agents.chat.backgroundTasks.status.running": "Running",
+	"agents.chat.backgroundTasks.status.suspended": "Waiting for approval",
 	"agents.chat.backgroundTasks.status.completed": "Completed",
 	"agents.chat.backgroundTasks.status.failed": "Failed",
 	"agents.chat.backgroundTasks.status.cancelled": "Canceled",

@@ -1,8 +1,10 @@
+import type { AgentBackgroundJobDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { createHash } from 'node:crypto';
 import type { ExecutionStatus, IRunData, ITaskData, TerminalExecutionStatus } from 'n8n-workflow';
 import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 
@@ -14,11 +16,19 @@ import type { AgentBackgroundJob } from '../entities/agent-background-job.entity
 import {
 	AgentBackgroundJobRepository,
 	type AgentBackgroundJobSettlement,
+	type ExpectedBackgroundJobState,
 	type BackgroundJobGroupItem,
 	type NewSubAgentJob,
 	type NewWorkflowJob,
 } from '../repositories/agent-background-job.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
+import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
+import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import {
+	BACKGROUND_APPROVAL_RUN_PREFIX,
+	readBackgroundSubAgentState,
+} from './sub-agent-background-state';
 
 /** Bounds live sub-agent runs per thread. Workflow jobs are parked executions and are exempt. */
 export const MAX_RUNNING_JOBS_PER_THREAD = 5;
@@ -130,6 +140,7 @@ export class AgentBackgroundJobService {
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly updateBroadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly checkpointStorage: N8NCheckpointStorage,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -142,7 +153,7 @@ export class AgentBackgroundJobService {
 	async registerSubAgentJob(
 		params: Omit<NewSubAgentJob, 'kind' | 'timeoutAt'>,
 	): Promise<BackgroundJobReceipt> {
-		const running = await this.jobRepository.countRunningSubAgentsByParentThread(
+		const running = await this.jobRepository.countActiveSubAgentsByParentThread(
 			params.parentThreadId,
 		);
 		if (running >= MAX_RUNNING_JOBS_PER_THREAD) return { status: 'limit-reached' };
@@ -191,19 +202,107 @@ export class AgentBackgroundJobService {
 		return await this.settle(job.id, settlement);
 	}
 
-	async settle(jobId: string, settlement: AgentBackgroundJobSettlement): Promise<boolean> {
+	async settle(
+		jobId: string,
+		settlement: AgentBackgroundJobSettlement,
+		expected?: ExpectedBackgroundJobState,
+	): Promise<boolean> {
+		const controller = this.abortControllers.get(jobId);
+		let releaseController = true;
 		try {
-			const settled = await this.jobRepository.settleIfRunning(jobId, settlement);
-			if (!settled) return false;
+			const settled = await this.jobRepository.settleIfActive(jobId, settlement, expected);
+			releaseController = settled;
 			const job = await this.findJob(jobId);
-			if (!job) return true;
+			if (job && job.status !== 'running' && job.status !== 'suspended')
+				await this.clearChildCheckpoint(job);
+			if (!settled || !job) return settled;
 			this.notifyJobUpdate(job);
 			await this.requestWakeSafely(job.parentThreadId);
 			return true;
 		} finally {
 			// Drop the handle even when the write throws — a leaked entry would
 			// shield the still-running row from orphan reconciliation forever.
-			this.abortControllers.delete(jobId);
+			if (controller && releaseController) this.unregisterAbortController(jobId, controller);
+		}
+	}
+
+	async getApproval(job: AgentBackgroundJob) {
+		if (
+			job.kind !== 'subagent' ||
+			!job.subAgentId ||
+			!job.childThreadId ||
+			(job.status !== 'running' && job.status !== 'suspended')
+		)
+			return undefined;
+		const suspension = await this.checkpointStorage.findDelegatedSuspensionForThread(
+			job.subAgentId,
+			job.childThreadId,
+		);
+		if (!suspension) return undefined;
+		const { checkpoint } = suspension;
+		const metadata = readBackgroundSubAgentState(checkpoint);
+		const scope = decodeAgentSandboxHostMetadata(checkpoint.persistence?.hostMetadata);
+		if (
+			!scope ||
+			metadata?.jobId !== job.id ||
+			metadata.resumeContext.agentId !== job.subAgentId ||
+			checkpoint.persistence?.resourceId !== job.parentResourceId ||
+			scope.principalHash !== job.parentPrincipalHash
+		)
+			return undefined;
+		const pending = Object.values(checkpoint.pendingToolCalls).find(
+			(call) => call.suspended && isApprovalSuspendPayload(call.suspendPayload),
+		);
+		if (!pending?.suspended || pending.runId !== suspension.runId) return undefined;
+		// Bind responses to this checkpoint revision, including repeated gates on the same tool.
+		const token = createHash('sha256')
+			.update(suspension.serializedState)
+			.update(suspension.updatedAt.toISOString())
+			.digest('base64url')
+			.slice(0, 22);
+		return { ...suspension, metadata, pending, scope, token };
+	}
+
+	async suspend(jobId: string): Promise<boolean> {
+		const job = await this.jobRepository.findById(jobId);
+		if (!job) return false;
+		if (job.status !== 'running') {
+			if (job.status !== 'suspended') await this.clearChildCheckpoint(job);
+			return false;
+		}
+		const approval = await this.getApproval(job);
+		if (!approval) return false;
+		if (
+			!(await this.jobRepository.suspendIfRunning(
+				jobId,
+				approval.expiresAt,
+				approval.runId,
+				approval.serializedState,
+			))
+		) {
+			const latest = await this.jobRepository.findById(jobId);
+			if (latest && latest.status !== 'running' && latest.status !== 'suspended')
+				await this.clearChildCheckpoint(latest);
+			return false;
+		}
+		this.notifyJobUpdate(job);
+		await this.requestWakeSafely(job.parentThreadId);
+		return true;
+	}
+
+	async resume(jobId: string, timeoutAt: Date): Promise<boolean> {
+		const resumed = await this.jobRepository.resumeIfSuspended(jobId, timeoutAt);
+		if (resumed) await this.notifyJobUpdateById(jobId);
+		return resumed;
+	}
+
+	private async clearChildCheckpoint(job: AgentBackgroundJob): Promise<void> {
+		if (job.kind !== 'subagent' || !job.subAgentId || !job.childThreadId) return;
+		try {
+			await this.checkpointStorage.deleteDelegatedForThread(job.subAgentId, job.childThreadId);
+		} catch (error) {
+			// Reconciliation retries while the terminal job retains a checkpoint.
+			this.logger.warn('Failed to clear background child checkpoints', { jobId: job.id, error });
 		}
 	}
 
@@ -225,6 +324,10 @@ export class AgentBackgroundJobService {
 
 	registerAbortController(jobId: string, controller: AbortController): void {
 		this.abortControllers.set(jobId, controller);
+	}
+
+	unregisterAbortController(jobId: string, controller: AbortController): void {
+		if (this.abortControllers.get(jobId) === controller) this.abortControllers.delete(jobId);
 	}
 
 	/**
@@ -266,7 +369,7 @@ export class AgentBackgroundJobService {
 	async listCurrentGroupForThread(
 		parentAgentId: string,
 		parentThreadId: string,
-	): Promise<BackgroundJobGroupItem[]> {
+	): Promise<Array<BackgroundJobGroupItem & Pick<AgentBackgroundJobDto, 'approval'>>> {
 		const jobs = (await this.jobRepository.findGroupCandidates(parentAgentId, parentThreadId)).sort(
 			(a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
 		);
@@ -280,14 +383,35 @@ export class AgentBackgroundJobService {
 			group.push(job);
 			groupEndsAt = Math.max(
 				groupEndsAt,
-				job.status === 'running'
+				job.status === 'running' || job.status === 'suspended'
 					? Number.POSITIVE_INFINITY
 					: (job.settledAt?.getTime() ?? startedAt),
 			);
 		}
 
 		// Keep finished jobs visible until the parent consumes their results.
-		return group.some((job) => job.status === 'running' || !job.notifiedAt) ? group : [];
+		if (
+			!group.some(
+				(job) => job.status === 'running' || job.status === 'suspended' || !job.notifiedAt,
+			)
+		)
+			return [];
+		return await Promise.all(
+			group.map(async (job) => {
+				if (job.status !== 'suspended') return job;
+				const row = await this.jobRepository.findById(job.id);
+				const approval = row && (await this.getApproval(row));
+				if (!approval) return job;
+				return {
+					...job,
+					approval: {
+						runId: `${BACKGROUND_APPROVAL_RUN_PREFIX}${job.id}`,
+						toolCallId: approval.token,
+						suspendPayload: approval.pending.suspendPayload,
+					},
+				};
+			}),
+		);
 	}
 
 	/**
@@ -303,11 +427,11 @@ export class AgentBackgroundJobService {
 	): Promise<'cancelled' | 'not-found' | 'already-settled'> {
 		const [job] = await this.jobRepository.findByParentThread(parentThreadId, [jobId]);
 		if (!job) return 'not-found';
-		if (job.status !== 'running') return 'already-settled';
+		if (job.status !== 'running' && job.status !== 'suspended') return 'already-settled';
 
 		if (job.kind === 'workflow') return await this.cancelWorkflowJob(job);
 
-		const claimed = await this.jobRepository.settleIfRunning(jobId, { status: 'cancelled' });
+		const claimed = await this.jobRepository.settleIfActive(jobId, { status: 'cancelled' });
 		if (!claimed) return 'already-settled';
 		this.updateBroadcaster.notifyBackgroundJobsUpdated(job.parentAgentId, job.parentThreadId);
 
@@ -330,8 +454,27 @@ export class AgentBackgroundJobService {
 			}
 		}
 
+		await this.clearChildCheckpoint(job);
 		await this.consumeCancelledMail(parentThreadId, jobId);
 		return 'cancelled';
+	}
+
+	async cancelForParent(
+		parentAgentId: string,
+		parentThreadId: string,
+		parentResourceId: string,
+	): Promise<void> {
+		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
+		for (const job of jobs) {
+			if (
+				job.kind === 'subagent' &&
+				job.parentAgentId === parentAgentId &&
+				job.parentResourceId === parentResourceId &&
+				(job.status === 'running' || job.status === 'suspended')
+			) {
+				await this.cancel(parentThreadId, job.id);
+			}
+		}
 	}
 
 	private async findJob(jobId: string): Promise<AgentBackgroundJob | null> {
@@ -386,6 +529,9 @@ export class AgentBackgroundJobService {
 	 * so overlapping sweeps on multiple mains converge on the first writer.
 	 */
 	async reconcile(): Promise<void> {
+		for (const job of await this.jobRepository.findSettledSubAgentsWithCheckpoints()) {
+			await this.clearChildCheckpoint(job);
+		}
 		await this.failJobsPastTimeout();
 		await this.failOrphanedSubAgentJobs(await this.jobRepository.findRunningJobs('subagent'));
 		await this.reconcileWorkflowJobs();
@@ -418,7 +564,7 @@ export class AgentBackgroundJobService {
 
 		// The stopped execution's settle hook may have written `cancelled` first;
 		// either way the job is cancelled.
-		const settled = await this.jobRepository.settleIfRunning(job.id, { status: 'cancelled' });
+		const settled = await this.jobRepository.settleIfActive(job.id, { status: 'cancelled' });
 		if (settled) {
 			this.updateBroadcaster.notifyBackgroundJobsUpdated(job.parentAgentId, job.parentThreadId);
 		}
@@ -501,18 +647,29 @@ export class AgentBackgroundJobService {
 	}
 
 	private async failJobsPastTimeout(): Promise<void> {
-		const timedOut = await this.jobRepository.findRunningPastTimeout(new Date());
+		const timedOut = await this.jobRepository.findActivePastTimeout(new Date());
 		for (const job of timedOut) {
+			if (job.status !== 'running' && job.status !== 'suspended') continue;
+			if (job.status === 'running' && (await this.suspend(job.id))) continue;
 			// Settle first so the timeout is recorded as the reason — an abort-first
 			// order would race the aborted run's own settle write. Grab the handle
 			// before settle drops it from the map.
-			const controller = this.abortControllers.get(job.id);
+			const controller = job.status === 'running' ? this.abortControllers.get(job.id) : undefined;
+			let abort = true;
 
 			try {
-				const settled = await this.settle(job.id, {
-					status: 'failed',
-					error: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
-				});
+				const settled = await this.settle(
+					job.id,
+					{
+						status: 'failed',
+						error:
+							job.status === 'suspended'
+								? 'Approval expired'
+								: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
+					},
+					{ status: job.status, timeoutAt: job.timeoutAt },
+				);
+				abort = settled;
 				if (settled) {
 					this.logger.debug('Failed background job past its timeout', { jobId: job.id });
 				}
@@ -524,7 +681,7 @@ export class AgentBackgroundJobService {
 			} finally {
 				// The job is past its timeout either way — one failing settle write
 				// must not leave this run alive or starve the rest of the batch.
-				controller?.abort();
+				if (abort) controller?.abort();
 			}
 		}
 	}
@@ -552,11 +709,19 @@ export class AgentBackgroundJobService {
 		let settledAny = false;
 		for (const { job, childThreadId } of orphans) {
 			const childStatus = statuses.get(childThreadId);
+			if (childStatus !== 'running' && (await this.suspend(job.id))) {
+				settledAny = true;
+				continue;
+			}
 			if (childStatus !== 'interrupted' && childStatus !== 'error') continue;
-			const settled = await this.settle(job.id, {
-				status: 'failed',
-				error: `Sub-agent run ended with status "${childStatus}" and its result was not recovered`,
-			});
+			const settled = await this.settle(
+				job.id,
+				{
+					status: 'failed',
+					error: `Sub-agent run ended with status "${childStatus}" and its result was not recovered`,
+				},
+				{ status: 'running', timeoutAt: job.timeoutAt },
+			);
 			settledAny ||= settled;
 		}
 		return settledAny;
