@@ -47,7 +47,6 @@ import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 export type TriggerFailureHandler = (opts: {
@@ -86,7 +85,6 @@ export class TriggerExecutionContextFactory {
 		private readonly pollCursorService: PollCursorService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly engineV2ActiveTriggers: EngineV2ActiveTriggers,
-		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -523,11 +521,6 @@ export class TriggerExecutionContextFactory {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflowData.id,
 			workflowSettings: workflowData.settings,
-			// A poll has nobody to be, so the run is attributed to the publisher.
-			userId: await this.workflowPublisherService.findPublisherUserId(
-				workflowData.id,
-				workflowData.activeVersionId,
-			),
 		});
 
 		const resolveWorkflowData = async () =>

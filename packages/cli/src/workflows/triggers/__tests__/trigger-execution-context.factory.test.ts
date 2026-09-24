@@ -118,7 +118,6 @@ describe('TriggerExecutionContextFactory', () => {
 			pollCursorService,
 			mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
 			engineV2ActiveTriggers,
-			mock(),
 		);
 	});
 
@@ -1087,7 +1086,6 @@ describe('TriggerExecutionContextFactory', () => {
 					pollCursorService,
 					globalConfig,
 					engineV2ActiveTriggers,
-					mock(),
 				);
 				const getPollFunctions = budgetFactory.getExecutePollFunctions(
 					mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),

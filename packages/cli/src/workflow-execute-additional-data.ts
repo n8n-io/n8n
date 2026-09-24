@@ -573,25 +573,10 @@ async function startExecution(
 
 	let data;
 	try {
-		// The original mode of the whole run tree: a sub-workflow's own
-		// `WorkflowExecute` always runs as 'integrated'. Same pattern as
-		// `credentials-helper`.
-		const rootExecutionMode = additionalData.rootExecutionMode ?? options.executionMode;
-
-		if (
-			isInlineSubworkflow &&
-			additionalData.userId &&
-			isManualOrChatExecution(rootExecutionMode)
-		) {
+		if (isInlineSubworkflow && additionalData.userId) {
 			// Inline sub-workflow triggered by a specific user: its credentials were
 			// never vetted against that user (they live only in the parameter JSON),
 			// so validate them against the user rather than the parent's project.
-			//
-			// Gated on the run being user-initiated, not merely on a user being
-			// present. Triggered runs now carry the publishing user for attribution,
-			// and that must not silently swap this project check for a user check —
-			// an ordinary project credential has to keep working on a schedule even
-			// if the publisher's own access to it has since changed.
 			await Container.get(CredentialsPermissionChecker).checkForUser(
 				additionalData.userId,
 				workflowData.nodes,

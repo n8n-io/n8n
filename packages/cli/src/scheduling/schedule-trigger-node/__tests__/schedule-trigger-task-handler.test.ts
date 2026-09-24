@@ -41,7 +41,6 @@ describe('ScheduleTriggerTaskHandler', () => {
 		triggerExecutionContextFactory,
 		workflowExecutionService,
 		ownershipService,
-		mock(),
 	);
 
 	// The executor's dispatch-marker callback; cleared each test by vi.clearAllMocks().

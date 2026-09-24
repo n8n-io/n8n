@@ -33,7 +33,6 @@ import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 vi.mock('@/webhooks/webhook-helpers');
@@ -53,7 +52,6 @@ describe('LiveWebhooks', () => {
 	const expressionEngineConfig = mock<ExpressionEngineConfig>({
 		allowWebhookIsolateSkip: true,
 	});
-	const workflowPublisherService = mock<WorkflowPublisherService>();
 
 	let liveWebhooks: LiveWebhooks;
 
@@ -70,7 +68,6 @@ describe('LiveWebhooks', () => {
 			workflowsConfig,
 			workflowPublishedDataService,
 			expressionEngineConfig,
-			workflowPublisherService,
 		);
 
 		// Mock WorkflowExecuteAdditionalData.getBase to avoid DI issues
@@ -202,67 +199,6 @@ describe('LiveWebhooks', () => {
 			expect(capturedNodes[0].id).toBe('webhook-node-active');
 			// The allowed-methods lookup is reserved for 404 responses
 			expect(webhookService.getWebhookMethods).not.toHaveBeenCalled();
-		});
-
-		/** Minimal published workflow the webhook path can actually execute. */
-		function publishedWorkflowEntity() {
-			const nodes: INode[] = [
-				{
-					id: 'webhook-node',
-					name: NODE_NAME,
-					type: 'n8n-nodes-base.webhook',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: { path: WEBHOOK_PATH, httpMethod: 'GET' },
-				},
-			];
-			return mock<WorkflowEntity>({
-				id: WORKFLOW_ID,
-				name: 'Test Workflow',
-				active: true,
-				activeVersionId: 'v1',
-				nodes,
-				connections: {},
-				staticData: {},
-				activeVersion: mock<WorkflowHistory>({
-					versionId: 'v1',
-					workflowId: WORKFLOW_ID,
-					nodes,
-					connections: {},
-				}),
-				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
-			});
-		}
-
-		// A production webhook is fired by a third party, so the run is attributed
-		// to whoever published the workflow.
-		it('passes the publishing user into the execution context', async () => {
-			workflowPublisherService.findPublisherUserId.mockResolvedValue('publisher-1');
-
-			const workflowEntity = publishedWorkflowEntity();
-			const request = setupExecuteWebhookMocks(workflowEntity);
-
-			await liveWebhooks.executeWebhook(request, mock<Response>());
-
-			// The version comes from the workflow the webhook path already loaded,
-			// so this costs no extra query.
-			expect(workflowPublisherService.findPublisherUserId).toHaveBeenCalledWith(WORKFLOW_ID, 'v1');
-			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
-				expect.objectContaining({ userId: 'publisher-1' }),
-			);
-		});
-
-		it('leaves the context without a user when nobody published the workflow', async () => {
-			workflowPublisherService.findPublisherUserId.mockResolvedValue(undefined);
-
-			const workflowEntity = publishedWorkflowEntity();
-			const request = setupExecuteWebhookMocks(workflowEntity);
-
-			await liveWebhooks.executeWebhook(request, mock<Response>());
-
-			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
-				expect.objectContaining({ userId: undefined }),
-			);
 		});
 
 		it('should look up allowed methods and include them in the 404 when no webhook is registered', async () => {
