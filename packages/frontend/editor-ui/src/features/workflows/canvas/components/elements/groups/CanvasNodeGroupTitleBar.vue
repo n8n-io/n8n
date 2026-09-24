@@ -489,26 +489,27 @@ function onWrapperPointerDown(event: PointerEvent) {
 				</div>
 			</div>
 
+			<div v-if="hasTrigger && isCollapsed" :class="$style.triggerMark">
+				<N8nTooltip
+					:content="i18n.baseText('canvas.nodeGroup.holdsTrigger')"
+					:show-after="HOVER_DELAY.SHOW"
+					placement="left"
+				>
+					<!-- N8nIcon marks its svg aria-hidden, so the name lives on this wrapper. -->
+					<span
+						role="img"
+						tabindex="0"
+						:aria-label="i18n.baseText('canvas.nodeGroup.holdsTrigger')"
+						data-test-id="canvas-node-group-trigger-mark"
+					>
+						<N8nIcon icon="bolt-filled" size="large" />
+					</span>
+				</N8nTooltip>
+			</div>
+
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
 				<div :class="$style.titleColumn">
 					<div :class="$style.titleRow">
-						<N8nTooltip
-							v-if="hasTrigger"
-							:content="i18n.baseText('canvas.nodeGroup.holdsTrigger')"
-							:show-after="HOVER_DELAY.SHOW"
-							placement="bottom"
-						>
-							<!-- N8nIcon marks its svg aria-hidden, so the name lives on this wrapper. -->
-							<span
-								:class="$style.triggerMark"
-								role="img"
-								tabindex="0"
-								:aria-label="i18n.baseText('canvas.nodeGroup.holdsTrigger')"
-								data-test-id="canvas-node-group-trigger-mark"
-							>
-								<N8nIcon icon="bolt-filled" />
-							</span>
-						</N8nTooltip>
 						<div :class="$style.title" data-test-id="canvas-node-group-title">
 							<N8nTooltip
 								:content="group.name"
@@ -900,9 +901,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 .triggerMark {
-	display: inline-flex;
-	flex-shrink: 0;
-	color: var(--color--warning);
+	position: absolute;
+	right: 100%;
+	top: 0;
+	display: flex;
+	align-items: center;
+	height: 100%;
+	padding-right: var(--spacing--sm);
+	color: var(--color--primary);
 }
 
 .infoIcon {

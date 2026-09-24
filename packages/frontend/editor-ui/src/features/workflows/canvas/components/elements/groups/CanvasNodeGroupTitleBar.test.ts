@@ -105,14 +105,20 @@ describe('CanvasNodeGroupTitleBar', () => {
 	}
 
 	describe('trigger mark', () => {
-		it('renders the bolt when the group holds a trigger', () => {
-			const wrapper = render({ hasTrigger: true });
+		it('renders the zap when a collapsed group holds a trigger', () => {
+			const wrapper = render({ hasTrigger: true, data: makeData({ isCollapsed: true }) });
 
 			expect(wrapper.queryByTestId('canvas-node-group-trigger-mark')).toBeTruthy();
 		});
 
-		it('renders no bolt when the group holds no trigger', () => {
-			const wrapper = render({ hasTrigger: false });
+		it('renders no zap when the group holds no trigger', () => {
+			const wrapper = render({ hasTrigger: false, data: makeData({ isCollapsed: true }) });
+
+			expect(wrapper.queryByTestId('canvas-node-group-trigger-mark')).toBeNull();
+		});
+
+		it('renders no zap while the group is open, where the triggers are visible', () => {
+			const wrapper = render({ hasTrigger: true, data: makeData({ isCollapsed: false }) });
 
 			expect(wrapper.queryByTestId('canvas-node-group-trigger-mark')).toBeNull();
 		});
