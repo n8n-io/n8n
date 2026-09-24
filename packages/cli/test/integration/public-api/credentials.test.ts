@@ -1760,7 +1760,7 @@ describe('PATCH /credentials/:id', () => {
 	});
 
 	test('should not require omitted fields when isPartialData is true', async () => {
-		// `ftp` marks `host` and `port` as unconditionally required in its schema
+		// `ftp` marks `host` as unconditionally required in its schema
 		const savedCredential = await saveCredential(
 			{
 				name: randomName(),
@@ -1926,7 +1926,8 @@ describe('GET /credentials/schema/:credentialType', () => {
 		expect(properties.port.type).toBe('number');
 		expect(properties.username.type).toBe('string');
 		expect(properties.password.type).toBe('string');
-		expect(required).toEqual(expect.arrayContaining(['host', 'port']));
+		// `port` has a default value, so it is not required.
+		expect(required).toEqual(['host']);
 		expect(response.statusCode).toBe(200);
 	});
 });
