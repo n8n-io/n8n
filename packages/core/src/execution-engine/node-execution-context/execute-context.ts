@@ -3,7 +3,6 @@ import type {
 	AINodeConnectionType,
 	CallbackManager,
 	CloseFunction,
-	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -133,10 +132,6 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				fallbackValue,
 				options,
 			)) as IExecuteFunctions['getNodeParameter'];
-	}
-
-	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
-		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
 	}
 
 	async getInputConnectionData(
