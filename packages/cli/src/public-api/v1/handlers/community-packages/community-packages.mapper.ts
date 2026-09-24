@@ -32,9 +32,3 @@ export function toCommunityPackagePublic(pkg: PublicInstalledPackage): Community
 		failedLoading: optionalBoolean(pkg.failedLoading),
 	});
 }
-
-export function toCommunityPackageListPublic(
-	packages: PublicInstalledPackage[],
-): CommunityPackagePublic[] {
-	return packages.map(toCommunityPackagePublic);
-}
