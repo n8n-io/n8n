@@ -77,7 +77,10 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		credentialId: string,
 		ctx: OperationContext = {},
 	) {
-		const agent = await this.managerFor(ctx).findOneBy(Agent, { id: agentId, projectId });
+		const agent = await this.managerFor(ctx).findOne(Agent, {
+			select: ['integrations', 'activeVersionId'],
+			where: { id: agentId, projectId },
+		});
 		if (!agent?.activeVersionId) return undefined;
 		return agent.integrations?.find(
 			(connection) =>

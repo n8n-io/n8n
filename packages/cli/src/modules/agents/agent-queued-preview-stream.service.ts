@@ -17,6 +17,8 @@ type QueueStreamEvent = PubSubCommandMap['relay-agent-queued-chat'];
 @Service()
 export class AgentQueuedPreviewStreamService {
 	private static readonly RECOVERY_GRACE_MS = 10_000;
+	private static readonly RELAY_HEARTBEAT_MS = 5_000;
+	private static readonly RELAY_TIMEOUT_MS = 30_000;
 
 	private readonly listeners = new Map<
 		string,
@@ -24,6 +26,7 @@ export class AgentQueuedPreviewStreamService {
 			accepted: boolean;
 			sequence: number;
 			recoveryDeadline?: number;
+			relayDeadline?: number;
 			send: (event: AgentSseEvent) => void;
 			close: () => void;
 		}
@@ -71,9 +74,11 @@ export class AgentQueuedPreviewStreamService {
 		let sequence = 0;
 		let pending = Promise.resolve();
 		let failed = false;
+		let heartbeat: NodeJS.Timeout | undefined;
 		const stopped = createDeferredPromise();
 		const stop = () => {
 			failed = true;
+			clearInterval(heartbeat);
 			this.listeners.get(queueId)?.close();
 			stopped.resolve();
 		};
@@ -81,7 +86,7 @@ export class AgentQueuedPreviewStreamService {
 			this.stopRelays.add(stop);
 			if (this.publisher.getClient().status !== 'ready') stop();
 		}
-		const send = (event: AgentSseEvent | null) => {
+		const send = (event: QueueStreamEvent['event']) => {
 			if (failed) return;
 			const payload = { queueId, sequence: ++sequence, event };
 			this.handleRelay(payload);
@@ -96,9 +101,17 @@ export class AgentQueuedPreviewStreamService {
 					this.logger.warn('Failed to relay queued agent output', { queueId, error });
 				});
 		};
+		if (this.instanceSettings.isMultiMain && !failed) {
+			heartbeat = setInterval(
+				() => send(undefined),
+				AgentQueuedPreviewStreamService.RELAY_HEARTBEAT_MS,
+			);
+			heartbeat.unref();
+		}
 		return {
 			send: (event: AgentSseEvent) => send(event),
 			close: async () => {
+				clearInterval(heartbeat);
 				send(null);
 				// Redis can retain an in-flight publish while disconnected. It must not stall the queue.
 				await Promise.race([pending, stopped.promise]);
@@ -117,7 +130,8 @@ export class AgentQueuedPreviewStreamService {
 		}
 		listener.sequence = sequence;
 		listener.recoveryDeadline = undefined;
-		listener.send(event);
+		listener.relayDeadline = Date.now() + AgentQueuedPreviewStreamService.RELAY_TIMEOUT_MS;
+		if (event !== undefined) listener.send(event);
 	}
 
 	/** A lost producer cannot send EOF. Let the client recover from recorded history. */
@@ -127,6 +141,10 @@ export class AgentQueuedPreviewStreamService {
 			const item = await this.repository.findDeliveryState(id);
 			if (item && (!item.execution || item.execution.status === 'running')) {
 				listener.recoveryDeadline = undefined;
+				if (item.execution && this.instanceSettings.isMultiMain) {
+					listener.relayDeadline ??= Date.now() + AgentQueuedPreviewStreamService.RELAY_TIMEOUT_MS;
+					if (Date.now() >= listener.relayDeadline) listener.close();
+				}
 				continue;
 			}
 			// Allow final relay events to arrive after database settlement.

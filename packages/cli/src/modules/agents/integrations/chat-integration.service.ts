@@ -4,6 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import { OnLeaderStepdown, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
@@ -69,6 +70,8 @@ export interface ChatInstance {
 interface ChatAgentConnection {
 	chat: ChatInstance;
 	bridge?: AgentChatBridge;
+	disconnecting?: boolean;
+	queueConsumers?: Set<Promise<void>>;
 	/**
 	 * Which channel this connection is. The map key encodes the same thing, but
 	 * as one string — this keeps callers that need the parts from parsing it back.
@@ -588,6 +591,24 @@ export class ChatIntegrationService {
 		return this.findConnection(agentId, integrationType, (c) => c.bridge !== undefined)?.bridge;
 	}
 
+	/** Keep the bridge alive from queue admission through response delivery. */
+	acquireQueueBridge(agentId: string, integrationType: string, credentialId: string) {
+		const connection = this.connections.get(
+			agentChannelKey({ agentId, integrationType, credentialId }),
+		);
+		if (!connection?.bridge || connection.disconnecting) return undefined;
+		const done = createDeferredPromise();
+		connection.queueConsumers ??= new Set();
+		connection.queueConsumers.add(done.promise);
+		return {
+			bridge: connection.bridge,
+			release: () => {
+				connection.queueConsumers?.delete(done.promise);
+				done.resolve();
+			},
+		};
+	}
+
 	/** First live connection for an agent, optionally pinned to one platform. */
 	private findConnection(
 		agentId: string,
@@ -947,6 +968,8 @@ export class ChatIntegrationService {
 	private async disconnectOne(key: string, options: DisconnectOptions = {}): Promise<void> {
 		const conn = this.connections.get(key);
 		if (!conn) return;
+		conn.disconnecting = true;
+		if (conn.queueConsumers) await Promise.all(conn.queueConsumers);
 
 		// External teardown runs while the chat is still live — symmetric with
 		// `onAfterConnect`, which runs after `chat.initialize()`. Errors are

@@ -149,6 +149,56 @@ describe('AgentQueuedPreviewStreamService', () => {
 		expect(stream.close).toHaveBeenCalledOnce();
 	});
 
+	it.each(['before first relay', 'publisher disconnect', 'publish rejection'])(
+		'closes a remote running stream after relay loss: %s',
+		async (failure) => {
+			vi.useFakeTimers();
+			const receiver = new AgentQueuedPreviewStreamService(
+				mock<Publisher>({ getClient: vi.fn(() => mock<Redis>({ status: 'ready' })) }),
+				mock<InstanceSettings>({ isMultiMain: true }),
+				repository,
+				mockLogger(),
+				mock<Subscriber>({ getClient: vi.fn(() => mock<Redis>()) }),
+			);
+			publisher.publishCommand.mockImplementation(async (command) => {
+				if (command.command === 'relay-agent-queued-chat') receiver.handleRelay(command.payload);
+			});
+			const subscription = receiver.subscribe('queue', stream);
+			subscription.accepted();
+			repository.findDeliveryState.mockResolvedValue(mock<AgentMessageQueue>({ execution: null }));
+			await receiver.closeSettledStreams();
+			await vi.advanceTimersByTimeAsync(60_000);
+			await receiver.closeSettledStreams();
+			expect(stream.close).not.toHaveBeenCalled();
+			repository.findDeliveryState.mockResolvedValue(
+				mock<AgentMessageQueue>({ execution: mock<AgentExecution>({ status: 'running' }) }),
+			);
+			const sender = service.createSender('queue');
+			try {
+				await receiver.closeSettledStreams();
+				if (failure !== 'before first relay') {
+					// Quiet tool calls stay connected while the producer can send heartbeats.
+					await vi.advanceTimersByTimeAsync(60_000);
+					await receiver.closeSettledStreams();
+					expect(stream.close).not.toHaveBeenCalled();
+					expect(stream.send).not.toHaveBeenCalled();
+				}
+				if (failure === 'publish rejection') {
+					publisher.publishCommand.mockRejectedValue(new Error('Redis unavailable'));
+					await vi.advanceTimersByTimeAsync(5_000);
+				} else publisherEvents.emit('close');
+				await receiver.closeSettledStreams();
+				expect(stream.close).not.toHaveBeenCalled();
+				await vi.advanceTimersByTimeAsync(30_000);
+				await receiver.closeSettledStreams();
+				await subscription.done;
+				expect(stream.close).toHaveBeenCalledOnce();
+			} finally {
+				await sender.close();
+			}
+		},
+	);
+
 	it('settles delivery when Redis retains an in-flight publish during a disconnect', async () => {
 		const publish = createDeferredPromise();
 		publisher.publishCommand.mockReturnValue(publish.promise);

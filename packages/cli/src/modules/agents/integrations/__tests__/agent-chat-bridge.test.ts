@@ -3156,7 +3156,7 @@ describe('AgentChatBridge — consumeStream', () => {
 	});
 
 	describe('durable capture', () => {
-		it('queues overlapping messages during approval with their actual session and reply context', async () => {
+		it('queues overlapping messages with their session and reply connection', async () => {
 			const { bot, handlers } = makeBot();
 			const executor = makeAgentExecutor([finishChunk]);
 			const queue = mock<AgentMessageQueueService>();

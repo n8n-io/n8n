@@ -1,6 +1,6 @@
 import type { AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { UserRepository, type OperationContext } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -15,8 +15,7 @@ import { AgentMessageQueueService, type ClaimedAgentMessage } from './agent-mess
 import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
 import { emitChunkEvents } from './agent-sse-stream';
 import { AgentTestRunService } from './agent-test-run.service';
-import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import type { AgentMessageQueue } from './entities/agent-message-queue.entity';
+import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 
@@ -82,40 +81,42 @@ export class AgentMessageQueueConsumer {
 
 	private async drain(threadId: string): Promise<void> {
 		while (!this.stopped) {
-			const claim = await this.queue.claimNext(
-				threadId,
-				async (item, thread, ctx) => await this.canConsume(item, thread, ctx),
-			);
-			if (!claim) return;
-			await this.consume(claim);
+			if (!(await this.consumeNext(threadId))) return;
 		}
 	}
 
-	private async canConsume(
-		item: AgentMessageQueue,
-		thread: AgentExecutionThread,
-		ctx: OperationContext,
-	): Promise<boolean> {
-		if (this.stopped) return false;
-		if (item.payload.kind === 'preview') return true;
-		const connection = await this.repository.findPublishedConnection(
-			thread.agentId,
-			thread.projectId,
-			item.source,
-			item.payload.credentialId,
-			ctx,
-		);
-		// Removed connections fail the item. A channel still connecting leaves it pending.
-		return (
-			!this.stopped &&
-			(!connection ||
-				Boolean(
-					this.integrations.getBridge(thread.agentId, item.source, item.payload.credentialId),
-				))
-		);
+	private async consumeNext(threadId: string): Promise<boolean> {
+		let lease: ReturnType<ChatIntegrationService['acquireQueueBridge']>;
+		try {
+			const claim = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
+				if (this.stopped) return false;
+				if (item.payload.kind === 'preview') return true;
+				const connection = await this.repository.findPublishedConnection(
+					thread.agentId,
+					thread.projectId,
+					item.source,
+					item.payload.credentialId,
+					ctx,
+				);
+				if (this.stopped) return false;
+				// Removed connections fail the item. A missing or closing bridge leaves it pending.
+				if (!connection) return true;
+				lease = this.integrations.acquireQueueBridge(
+					thread.agentId,
+					item.source,
+					item.payload.credentialId,
+				);
+				return lease !== undefined;
+			});
+			if (!claim) return false;
+			await this.consume(claim, lease?.bridge);
+			return true;
+		} finally {
+			lease?.release();
+		}
 	}
 
-	private async consume(claim: ClaimedAgentMessage): Promise<void> {
+	private async consume(claim: ClaimedAgentMessage, bridge?: AgentChatBridge): Promise<void> {
 		const { item, thread, admission } = claim;
 		const controller = new AbortController();
 		const signal = AbortSignal.any([
@@ -141,7 +142,7 @@ export class AgentMessageQueueConsumer {
 					async () => await this.consumePreview(claim, signal, sender.send),
 				);
 			} else {
-				await this.consumeIntegration(claim, signal);
+				await this.consumeIntegration(claim, signal, bridge);
 			}
 		} catch (error) {
 			await this.queue.recordFailure(claim, error, controller.signal);
@@ -226,7 +227,11 @@ export class AgentMessageQueueConsumer {
 			send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
 	}
 
-	private async consumeIntegration(claim: ClaimedAgentMessage, signal: AbortSignal): Promise<void> {
+	private async consumeIntegration(
+		claim: ClaimedAgentMessage,
+		signal: AbortSignal,
+		bridge?: AgentChatBridge,
+	): Promise<void> {
 		const { item, thread } = claim;
 		if (item.payload.kind !== 'integration') return;
 		const connection = await this.repository.findPublishedConnection(
@@ -236,11 +241,6 @@ export class AgentMessageQueueConsumer {
 			item.payload.credentialId,
 		);
 		if (!connection) throw new UserError('The message integration is no longer configured');
-		const bridge = this.integrations.getBridge(
-			thread.agentId,
-			item.source,
-			item.payload.credentialId,
-		);
 		if (!bridge) throw new OperationalError('The message integration is unavailable');
 		await bridge.consumeQueuedMessage(item.payload, thread.id, claim.admission, signal, connection);
 	}

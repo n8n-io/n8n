@@ -14,7 +14,8 @@ export type PubSubCommandMap = {
 	'relay-agent-queued-chat': {
 		queueId: string;
 		sequence: number;
-		event: AgentSseEvent | null;
+		// An omitted event is a relay heartbeat. Null closes the stream.
+		event?: AgentSseEvent | null;
 	};
 	// #region Lifecycle
 

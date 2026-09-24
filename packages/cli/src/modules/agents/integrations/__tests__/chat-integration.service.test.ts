@@ -24,7 +24,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import type { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service';
-import { ChatIntegrationService } from '../chat-integration.service';
+import { ChatIntegrationService, type ChatInstance } from '../chat-integration.service';
 import * as esmLoader from '../esm-loader';
 import {
 	LEADER_CHANNEL_REQUEST_TIMEOUT_MS,
@@ -975,6 +975,37 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 	});
 
 	describe('disconnectLeaderOnlyIntegrations', () => {
+		it('keeps admitted queue consumers alive and blocks new claims during teardown', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('telegram', true));
+			const { service } = buildServiceWith({ registry });
+			const chat = mock<ChatInstance>();
+			const bridge = mock<AgentChatBridge>();
+			const connections = (service as unknown as { connections: Map<string, unknown> }).connections;
+			connections.set('agent-1:telegram:c1', {
+				chat,
+				bridge,
+				ref: { agentId: 'agent-1', integrationType: 'telegram', credentialId: 'c1' },
+				context: mock<AgentChatIntegrationContext>(),
+			});
+			const first = service.acquireQueueBridge('agent-1', 'telegram', 'c1');
+			const second = service.acquireQueueBridge('agent-1', 'telegram', 'c1');
+			expect(first?.bridge).toBe(bridge);
+			expect(second?.bridge).toBe(bridge);
+			const disconnecting = service.disconnectLeaderOnlyIntegrations();
+			// Stepdown first drains connection operations, then starts bridge teardown.
+			await Promise.resolve();
+			expect(service.acquireQueueBridge('agent-1', 'telegram', 'c1')).toBeUndefined();
+			expect(chat.shutdown).not.toHaveBeenCalled();
+			first?.release();
+			await Promise.resolve();
+			expect(chat.shutdown).not.toHaveBeenCalled();
+			second?.release();
+			await disconnecting;
+			expect(chat.shutdown).toHaveBeenCalledOnce();
+			expect(service.getBridge('agent-1', 'telegram', 'c1')).toBeUndefined();
+		});
+
 		it('only tears down integrations that require the leader', async () => {
 			const registry = new ChatIntegrationRegistry();
 			registry.register(new FakeIntegration('telegram', true));

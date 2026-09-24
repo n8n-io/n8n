@@ -168,20 +168,76 @@ describe('AgentMessageQueueConsumer', () => {
 
 	it('leaves integration work pending until its bridge is available and stops admission during shutdown', async () => {
 		const item = claim('session', true);
+		const checked = createDeferredPromise();
+		const resume = createDeferredPromise();
+		const release = vi.fn();
 		repository.findThreadIds.mockResolvedValue(['session']);
-		queue.claimNext.mockResolvedValue(null);
+		queue.claimNext.mockImplementationOnce(async (_threadId, canConsume) => {
+			expect(await canConsume(item.item, item.thread, {})).toBe(false);
+			integrations.acquireQueueBridge.mockReturnValue({ bridge: mock<AgentChatBridge>(), release });
+			expect(await canConsume(item.item, item.thread, {})).toBe(true);
+			checked.resolve();
+			await resume.promise;
+			expect(await canConsume(item.item, item.thread, {})).toBe(false);
+			return null;
+		});
 		repository.findPublishedConnection.mockResolvedValue(
 			mock<AgentIntegrationConfig>({ type: 'slack', credentialId: 'credential' }),
 		);
 		consumer.start();
-		await vi.waitFor(() => expect(queue.claimNext).toHaveBeenCalled());
-		const canConsume = queue.claimNext.mock.calls[0][1];
-		expect(await canConsume(item.item, item.thread, {})).toBe(false);
-		integrations.getBridge.mockReturnValue(mock<AgentChatBridge>());
-		expect(await canConsume(item.item, item.thread, {})).toBe(true);
+		await checked.promise;
 		consumer.stop();
-		expect(await canConsume(item.item, item.thread, {})).toBe(false);
+		resume.resolve();
+		await vi.waitFor(() => expect(release).toHaveBeenCalledOnce());
+		expect(queue.recordFailure).not.toHaveBeenCalled();
 	});
+
+	it.each(['accepted', 'claim fails'] as const)(
+		'releases the reserved bridge after the message is %s during handover',
+		async (outcome) => {
+			const item = claim('session', true);
+			const bridge = mock<AgentChatBridge>();
+			const release = vi.fn();
+			const running = createDeferredPromise();
+			repository.findThreadIds.mockResolvedValue(['session']);
+			repository.findPublishedConnection.mockResolvedValue(
+				mock<AgentIntegrationConfig>({ type: 'slack', credentialId: 'credential' }),
+			);
+			integrations.acquireQueueBridge.mockReturnValue({ bridge, release });
+			bridge.consumeQueuedMessage.mockReturnValue(running.promise);
+			queue.claimNext
+				.mockImplementationOnce(async (_threadId, canConsume) => {
+					expect(await canConsume(item.item, item.thread, {})).toBe(true);
+					// Teardown now refuses new consumers. The admitted consumer keeps its bridge.
+					integrations.acquireQueueBridge.mockReturnValue(undefined);
+					integrations.getBridge.mockReturnValue(undefined);
+					if (outcome === 'claim fails') throw new Error('Commit failed');
+					return item;
+				})
+				.mockResolvedValue(null);
+			consumer.start();
+			try {
+				if (outcome === 'accepted') {
+					await vi.waitFor(() =>
+						expect(bridge.consumeQueuedMessage).toHaveBeenCalledWith(
+							item.item.payload,
+							item.thread.id,
+							item.admission,
+							expect.any(AbortSignal),
+							expect.objectContaining({ credentialId: 'credential' }),
+						),
+					);
+					expect(release).not.toHaveBeenCalled();
+				}
+			} finally {
+				running.resolve();
+			}
+			await vi.waitFor(() => expect(release).toHaveBeenCalledOnce());
+			expect(queue.recordFailure).not.toHaveBeenCalled();
+			if (outcome === 'claim fails') expect(bridge.consumeQueuedMessage).not.toHaveBeenCalled();
+			else expect(queue.settle).toHaveBeenCalledWith(item.thread.id, item.admission.executionId);
+		},
+	);
 
 	it('records a removed integration as a failure instead of leaving it pending', async () => {
 		const item = claim('session', true);
