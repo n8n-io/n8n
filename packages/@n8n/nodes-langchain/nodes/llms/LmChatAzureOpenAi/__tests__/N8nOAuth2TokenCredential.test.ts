@@ -142,6 +142,20 @@ describe('N8nOAuth2TokenCredential', () => {
 			expect(result?.expiresOnTimestamp).toBe(1790000000 * 1000);
 		});
 
+		// A real Entra v1 response carries both fields. Without this case the two branches can be
+		// swapped and the suite still passes.
+		it('should prefer expires_in when the response carries both', async () => {
+			mockGetToken.mockResolvedValueOnce({
+				data: { access_token: 'fresh-test-token', expires_in: '3599', expires_on: '1790000000' },
+			});
+			const before = Date.now();
+
+			const result = await credential.getToken();
+
+			expect(result?.expiresOnTimestamp).toBeGreaterThanOrEqual(before + 3599 * 1000);
+			expect(result?.expiresOnTimestamp).toBeLessThanOrEqual(Date.now() + 3599 * 1000);
+		});
+
 		it('should report an unreadable expiry as already expired, rather than caching forever', async () => {
 			mockGetToken.mockResolvedValueOnce({ data: { access_token: 'fresh-test-token' } });
 			const before = Date.now();
@@ -179,7 +193,10 @@ describe('N8nOAuth2TokenCredential', () => {
 	// it is the reason the expiry has to be in milliseconds.
 	describe('through getBearerTokenProvider', () => {
 		it('should mint one token for many calls', async () => {
-			const provider = getBearerTokenProvider(credential, `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`);
+			const provider = getBearerTokenProvider(
+				credential,
+				`${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`,
+			);
 
 			await expect(provider()).resolves.toBe('fresh-test-token');
 			await expect(provider()).resolves.toBe('fresh-test-token');
@@ -193,7 +210,10 @@ describe('N8nOAuth2TokenCredential', () => {
 			mockGetToken.mockResolvedValue({
 				data: { access_token: 'fresh-test-token', expires_in: '30' },
 			});
-			const provider = getBearerTokenProvider(credential, `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`);
+			const provider = getBearerTokenProvider(
+				credential,
+				`${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`,
+			);
 
 			await provider();
 			await provider();
