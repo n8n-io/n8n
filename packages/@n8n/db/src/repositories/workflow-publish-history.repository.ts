@@ -47,4 +47,32 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 		});
 		return record?.userId ?? undefined;
 	}
+
+	/**
+	 * Who published the workflow's currently active version, so a triggered run
+	 * can be attributed to them.
+	 *
+	 * Prefers the activation of `versionId`: republishing an older version means
+	 * the most recent activation is not necessarily the live one. Falls back to
+	 * the latest activation of any version, which covers a published version
+	 * whose history row has since been pruned.
+	 *
+	 * Returns `undefined` when the publisher was deleted (the FK nulls the
+	 * column) or the workflow never recorded an activation.
+	 */
+	async findPublisherUserId(
+		workflowId: string,
+		versionId?: string | null,
+	): Promise<string | undefined> {
+		if (versionId) {
+			const forVersion = await this.findOne({
+				select: ['userId'],
+				where: { workflowId, versionId, event: 'activated' },
+				order: { createdAt: 'DESC' },
+			});
+			if (forVersion?.userId) return forVersion.userId;
+		}
+
+		return await this.findActivatedByUserId(workflowId);
+	}
 }

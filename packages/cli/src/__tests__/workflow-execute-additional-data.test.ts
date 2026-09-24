@@ -313,11 +313,17 @@ describe('WorkflowExecuteAdditionalData', () => {
 			it('checks credentials against the triggering user for an inline sub-workflow', async () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
-					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					// `rootExecutionMode` explicit: a deep mock auto-stubs every
+					// property, so leaving it out would hand `??` a truthy proxy.
+					mock<IWorkflowExecuteAdditionalData>({
+						userId: 'user-1',
+						rootExecutionMode: undefined,
+					}),
 					mock<ExecuteWorkflowOptions>({
 						loadedWorkflowData: subWorkflowData(),
 						doNotWaitToFinish: false,
 						parentWorkflowId: 'parent-1',
+						executionMode: 'manual',
 					}),
 				);
 
@@ -326,6 +332,50 @@ describe('WorkflowExecuteAdditionalData', () => {
 					'user-1',
 				);
 				expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			});
+
+			// A sub-workflow's own WorkflowExecute runs as 'integrated', so the
+			// original mode has to come from the root.
+			it('checks against the triggering user through a nested inline sub-workflow', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({
+						userId: 'user-1',
+						rootExecutionMode: 'manual',
+					}),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+						executionMode: 'integrated',
+					}),
+				);
+
+				expect(credentialsPermissionChecker.checkForUser).toHaveBeenCalledTimes(1);
+				expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			});
+
+			// A triggered run now carries the publishing user for attribution. That
+			// must not turn this project check into a user check: an ordinary project
+			// credential has to keep working on a schedule even if the publisher's own
+			// access to it has since changed.
+			it('keeps the project check for an inline sub-workflow in a triggered run', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({
+						userId: 'publisher-1',
+						rootExecutionMode: undefined,
+					}),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+						executionMode: 'trigger',
+					}),
+				);
+
+				expect(credentialsPermissionChecker.check).toHaveBeenCalled();
+				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
 			});
 
 			it('checks credentials against the project for a database sub-workflow', async () => {

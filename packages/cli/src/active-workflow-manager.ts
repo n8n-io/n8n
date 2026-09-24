@@ -58,6 +58,7 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { getErrorDescription, getErrorNodeId } from '@/workflows/utils';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
@@ -94,6 +95,7 @@ export class ActiveWorkflowManager {
 		private readonly workflowPushNotifier: WorkflowPushNotifier,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -633,9 +635,13 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			// A triggered run carries no user of its own, so attribute it to whoever
+			// published the workflow. Flows on into `IWorkflowExecutionDataProcess`
+			// when a trigger or webhook fires.
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				workflowId: workflow.id,
 				workflowSettings: dbWorkflow.settings,
+				userId: await this.workflowPublisherService.findPublisherUserId(dbWorkflow.id),
 			});
 
 			let triggerCount = 0;
