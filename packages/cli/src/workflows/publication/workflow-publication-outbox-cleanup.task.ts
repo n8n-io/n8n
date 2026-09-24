@@ -21,7 +21,7 @@ export class WorkflowPublicationOutboxCleanupTask implements SystemTask {
 
 	readonly placement: SystemTaskPlacement = {
 		scope: 'cluster',
-		durable: false,
+		durable: true,
 		/** A new leader enqueues one terminal row per active workflow, so a backlog is waiting. */
 		runOnTakeover: true,
 	};
