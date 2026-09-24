@@ -35,6 +35,34 @@ const unimplementedVariables: IWorkflowExecuteAdditionalData['variables'] = new 
 	},
 );
 
+class UnimplementedExternalSecretsProxy extends ExternalSecretsProxy {
+	private unavailable(): never {
+		throw new UnimplementedError('External secrets ($secrets) are not supported on Engine 2.0 yet');
+	}
+
+	override getSecret(): never {
+		return this.unavailable();
+	}
+
+	override hasSecret(): never {
+		return this.unavailable();
+	}
+
+	override hasProvider(): never {
+		return this.unavailable();
+	}
+
+	override listProviders(): never {
+		return this.unavailable();
+	}
+
+	override listSecrets(): never {
+		return this.unavailable();
+	}
+}
+
+const unimplementedExternalSecretsProxy = new UnimplementedExternalSecretsProxy();
+
 /**
  * Builds the v1 `additionalData` for a step that runs on the engine 2.0 data
  * plane. Reads config only: the data plane has no control plane database, so
@@ -47,7 +75,6 @@ export class EngineAdditionalDataBuilder {
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly eventService: EventService,
-		private readonly externalSecretsProxy: ExternalSecretsProxy,
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
@@ -80,7 +107,7 @@ export class EngineAdditionalDataBuilder {
 			mcpBaseUrl: webhookBase + endpoints.mcp,
 			mcpTestBaseUrl: testWebhookBase + endpoints.mcpTest,
 			variables: unimplementedVariables,
-			externalSecretsProxy: this.externalSecretsProxy,
+			externalSecretsProxy: unimplementedExternalSecretsProxy,
 			logAiEvent: (eventName, payload) => {
 				eventService.emit(eventName, payload);
 			},

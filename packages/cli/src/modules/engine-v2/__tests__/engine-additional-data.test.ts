@@ -1,7 +1,6 @@
 import type { SsrfProtectionService } from '@n8n/backend-network';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { UnimplementedError } from '@n8n/engine';
-import type { ExternalSecretsProxy } from 'n8n-core';
 import type { ICredentialsHelper } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -30,7 +29,6 @@ describe('EngineAdditionalDataBuilder', () => {
 		} as GlobalConfig['endpoints'],
 	});
 	const eventService = mock<EventService>();
-	const externalSecretsProxy = mock<ExternalSecretsProxy>();
 	const credentialsHelper = mock<ICredentialsHelper>();
 	const ssrfProtectionService = mock<SsrfProtectionService>();
 
@@ -47,7 +45,6 @@ describe('EngineAdditionalDataBuilder', () => {
 			urlService,
 			globalConfig,
 			eventService,
-			externalSecretsProxy,
 			mock<SsrfProtectionConfig>({ enabled: ssrfEnabled }),
 			ssrfProtectionService,
 		).build(context, credentialsHelper);
@@ -85,8 +82,13 @@ describe('EngineAdditionalDataBuilder', () => {
 		expect(build().credentialsHelper).toBe(credentialsHelper);
 	});
 
-	it('exposes the external secrets proxy of this process', () => {
-		expect(build().externalSecretsProxy).toBe(externalSecretsProxy);
+	it('reports direct external secret access as unsupported', () => {
+		const secrets = build().externalSecretsProxy;
+		expect(() => secrets.hasProvider('vault')).toThrow(UnimplementedError);
+		expect(() => secrets.hasSecret('vault', 'key')).toThrow(UnimplementedError);
+		expect(() => secrets.getSecret('vault', 'key')).toThrow(UnimplementedError);
+		expect(() => secrets.listProviders()).toThrow(UnimplementedError);
+		expect(() => secrets.listSecrets('vault')).toThrow(UnimplementedError);
 	});
 
 	it('fails on the first $vars read instead of resolving undefined', () => {
