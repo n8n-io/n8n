@@ -14,7 +14,7 @@
 // Note: --license enterprise and AI (--ai) features cannot be used together.
 //
 // Needs a token in ~/.n8n/dev/nathan-token — on first run it links you to a form to
-// get one and saves it there. A public tunnel is opened via `npx localtunnel`.
+// get one and saves it there. A public tunnel is opened via `npx cloudflared`.
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -38,6 +38,7 @@ const IDLE_MS = posNum(process.env.NATHAN_IDLE_MS, 8000, 'NATHAN_IDLE_MS'); // g
 // 15-20 min, so keep this generous; override via NATHAN_TIMEOUT_MS.
 const TIMEOUT_MS = posNum(process.env.NATHAN_TIMEOUT_MS, 1_500_000, 'NATHAN_TIMEOUT_MS'); // 25 min
 const TUNNEL_START_MS = 45000;
+const TUNNEL_DNS_SETTLE_MS = 10000;
 const STAGING_DOMAIN = 'stage-app.n8n.cloud'; // instances live at https://<name>.<domain>
 const DEFAULT_SLACK_CHANNEL = 'C0BGVHZ0SCW'; // #updates-pnpm-nathan
 const DEFAULT_SLACK_CHANNEL_URL = 'https://n8nio.slack.com/archives/C0BGVHZ0SCW';
@@ -157,7 +158,15 @@ const CALLBACK_PATH = `/cb/${randomUUID()}`;
 const MAX_BODY = 1_000_000; // Nathan's replies are small Slack messages
 let done, doneReason, settled = false;
 const finished = new Promise((r) => (done = r));
-const finish = (reason) => { if (settled) return; settled = true; doneReason = reason; done(); };
+const finish = (reason) => {
+	if (settled) {
+		return;
+	}
+	settled = true;
+	doneReason = reason;
+	done();
+};
+
 let idleTimer;
 const server = http.createServer((req, res) => {
 	// A GET is our own reachability probe (or noise) — ack it, don't process it.
@@ -167,7 +176,7 @@ const server = http.createServer((req, res) => {
 	let raw = '', tooBig = false;
 	req.on('data', (c) => {
 		if (tooBig) return;
-		raw += c;
+		raw += c;https://github.com/n8n-io/n8n-argo-apps/pull/644
 		if (raw.length > MAX_BODY) { tooBig = true; res.writeHead(413).end('payload too large'); req.destroy(); }
 	});
 	req.on('end', () => {
@@ -185,29 +194,55 @@ const server = http.createServer((req, res) => {
 			return; // otherwise work is starting; wait (overall timeout backstops)
 		}
 		// A known error reply must fail the run; anything else is a success.
-		idleTimer = setTimeout(() => finish(isError(body) ? 'error' : 'idle'), IDLE_MS);
+		idleTimer = setTimeout(() => {
+			console.log("Idle timer tripped")
+			finish(isError(body) ? 'error' : 'idle')
+		}, IDLE_MS);
 	});
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 
-// --- public tunnel via npx localtunnel ---------------------------------------
-// Pin an exact, vetted version — an unpinned `npx localtunnel` would run whatever
+// --- public tunnel via npx cloudflared ---------------------------------------
+// Pin exact, vetted versions — an unpinned `npx cloudflared` would run whatever
 // the registry currently serves, as the user, with read access to the token file.
-// To update: bump this version deliberately after reviewing the release.
-const LOCALTUNNEL_VERSION = '2.0.2';
+// To update: bump these versions deliberately after reviewing both releases.
+const CLOUDFLARED_NPM_VERSION = '0.7.3';
+const CLOUDFLARED_VERSION = '2026.9.1';
 function startTunnel() {
-	const proc = spawn('npx', ['-y', `localtunnel@${LOCALTUNNEL_VERSION}`, '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
-	const urlRe = /https:\/\/[^\s]+\.loca\.lt/;
+	const proc = spawn(
+		'npx',
+		[
+			'-y',
+			`cloudflared@${CLOUDFLARED_NPM_VERSION}`,
+			'tunnel',
+			'--url',
+			`http://127.0.0.1:${port}`,
+			'--no-autoupdate',
+		],
+		{
+			stdio: ['ignore', 'pipe', 'pipe'],
+			env: { ...process.env, CLOUDFLARED_VERSION },
+		},
+	);
+	const urlRe = /https:\/\/[^\s]+\.trycloudflare\.com/;
 	return new Promise((resolve, reject) => {
 		const t = setTimeout(() => reject(new Error('tunnel did not start in time')), TUNNEL_START_MS);
+		let url;
+		let connected = false;
+		let output = '';
 		const scan = (buf) => {
-			const m = String(buf).match(urlRe);
-			if (m) { clearTimeout(t); resolve({ url: m[0], proc }); }
+			output = (output + String(buf)).slice(-10000);
+			url ??= output.match(urlRe)?.[0];
+			connected ||= output.includes('Registered tunnel connection');
+			if (url && connected) {
+				clearTimeout(t);
+				resolve({ url, proc });
+			}
 		};
 		proc.stdout.on('data', scan);
 		proc.stderr.on('data', scan);
-		proc.on('exit', (code) => reject(new Error(`localtunnel process exited (${code})`)));
+		proc.on('exit', (code) => reject(new Error(`cloudflared process exited (${code})`)));
 	});
 }
 
@@ -215,6 +250,8 @@ function startTunnel() {
 // so firing immediately can make Nathan's callback fail with ENOTFOUND. Self-probe
 // the tunnel (GET, ignored by the server above) until it routes back to us.
 async function waitReachable(url) {
+	// Avoid caching NXDOMAIN before Cloudflare publishes the Quick Tunnel hostname.
+	await new Promise((r) => setTimeout(r, TUNNEL_DNS_SETTLE_MS));
 	const deadline = Date.now() + TUNNEL_START_MS;
 	while (Date.now() < deadline) {
 		try { if ((await fetch(url, { signal: AbortSignal.timeout(5000) })).ok) return true; }
@@ -263,6 +300,7 @@ if (!res.ok) {
 	console.error(`Webhook returned HTTP ${res.status}`);
 	await cleanup(1);
 }
+
 console.error('Sent. Waiting for Nathan to reply (Ctrl-C to stop)…\n');
 
 // Reliable backstop: if the instance URL is predictable, poll it directly so a
@@ -277,7 +315,9 @@ if (pollUrl) {
 		(async () => {
 			while (!settled) {
 				if (await up(pollUrl)) {
-					if (!settled) console.log(`\n${'─'.repeat(60)}\n✅ Instance is up: ${pollUrl}\n   Login: test@n8n.io / helloWorld7 (default test owner)\n`);
+					if (!settled) {
+						console.log(`\n${'─'.repeat(60)}\n✅ Instance is up: ${pollUrl}\n   Waiting for workflow to report login credentials...\n`);
+					}
 					return finish('up');
 				}
 				await new Promise((r) => setTimeout(r, 10000));
@@ -291,12 +331,16 @@ process.on('SIGINT', () => finish('interrupted'));
 await finished;
 clearTimeout(overall);
 
+// Wait for Nathan workflow to finish sending messages to us
+await new Promise(r => setTimeout(r, 15000))
+
 if (doneReason === 'timeout') console.error('\n⏱  Timed out waiting for the final reply — the deploy may still be running (check Slack / Grafana).');
 if (doneReason === 'interrupted') console.error('\nStopped. The command may still be running on Nathan.');
 if (doneReason === 'error') console.error('\n✖ Nathan reported an error (see the reply above).');
 await cleanup(['idle', 'up', 'local'].includes(doneReason) ? 0 : 1);
 
 function cleanup(code) {
+	console.log("Closing server and tunnel.");
 	try { tunnel?.proc.kill(); } catch {}
 	server.close();
 	// give the tunnel a beat to die, then exit hard (server/proc keep the loop alive)

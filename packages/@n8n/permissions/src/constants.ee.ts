@@ -12,6 +12,10 @@ export const RESOURCES = {
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
+	// `use` is global-only by construction: it means "may use any credential on the
+	// instance in a workflow, without being a member of its project". It is never a
+	// per-credential or per-project right, so it stays out of every PROJECT_* scope
+	// set and out of API_KEY_RESOURCES.
 	credential: [
 		'share',
 		'unshare',
@@ -20,6 +24,7 @@ export const RESOURCES = {
 		'connect',
 		'createEndUser',
 		'manageInstance',
+		'use',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	credentialTypePolicy: ['manage'] as const,
@@ -126,7 +131,7 @@ export const API_KEY_RESOURCES = {
 	role: ['manage', 'manageProject', 'list', 'read'] as const,
 	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
 	nodeTypePolicy: ['manage'] as const,
-	// TODO: add credentialTypePolicy:manage once a Public API endpoint consumes it.
+	credentialTypePolicy: ['manage'] as const,
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';

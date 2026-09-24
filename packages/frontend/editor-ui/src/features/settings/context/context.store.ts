@@ -1,4 +1,5 @@
 import type { AiPreferenceRequestDto } from '@n8n/api-types';
+import { AI_PREFERENCES_MAX_IDS_FILTER } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
@@ -41,6 +42,25 @@ export const useContextStore = defineStore('context', () => {
 		}
 	}
 
+	/**
+	 * The rows behind a list of ids, for a reader that already knows which rows it wants,
+	 * such as the plus menu naming the preferences a turn applied. Ids the caller cannot
+	 * see, or that no longer exist, are simply absent. Bypasses the paged `preferences`
+	 * state on purpose: this is a lookup, not the settings table.
+	 */
+	async function fetchPreferencesByIds(ids: string[]): Promise<Preference[]> {
+		const pages: Preference[][] = [];
+		for (let start = 0; start < ids.length; start += AI_PREFERENCES_MAX_IDS_FILTER) {
+			const chunk = ids.slice(start, start + AI_PREFERENCES_MAX_IDS_FILTER);
+			const response = await api.getPreferences(rootStore.restApiContext, {
+				ids: chunk,
+				take: chunk.length,
+			});
+			pages.push(response.data);
+		}
+		return pages.flat();
+	}
+
 	async function fetchPreferenceCount() {
 		const countRead = ++latestCountRead;
 		const total = await api.getPreferenceCount(rootStore.restApiContext);
@@ -79,6 +99,7 @@ export const useContextStore = defineStore('context', () => {
 		count,
 		loading,
 		fetchPreferences,
+		fetchPreferencesByIds,
 		fetchPreferenceCount,
 		createPreference,
 		updatePreference,

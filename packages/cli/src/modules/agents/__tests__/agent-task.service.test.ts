@@ -9,6 +9,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentTaskService } from '../agent-task.service';
@@ -151,7 +152,7 @@ describe('AgentTaskService', () => {
 			agentExecutionOrchestratorService,
 			mock<InstanceSettings>({ isLeader }),
 			agentTaskScheduler,
-			publisher,
+			new AgentChangePublisher(publisher, globalConfig, logger),
 			modificationTelemetry,
 			durableJobRegistrar,
 			mock<AgentUpdateBroadcaster>(),

@@ -1,0 +1,78 @@
+operationId: createFolder
+tags:
+  - Folders
+summary: Create a folder
+description: Create a folder within a project.
+x-required-scope: folder:create
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project, or `personal` to create the folder in the calling user's own personal project.
+    name: projectId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            maxLength: 128
+            example: My Folder
+          parentFolderId:
+            type: string
+            maxLength: 36
+            example: kRZ0ewrAEAhCkTBd
+        required:
+          - name
+        additionalProperties: false
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              readOnly: true
+              example: zLXWgYyZrZ4Gn1Vk
+            name:
+              type: string
+              example: My Folder
+            parentFolderId:
+              type: string
+              nullable: true
+              example: kRZ0ewrAEAhCkTBd
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+            updatedAt:
+              type: string
+              format: date-time
+              readOnly: true
+          required:
+            - id
+            - name
+            - parentFolderId
+            - createdAt
+            - updatedAt
+          additionalProperties: false
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

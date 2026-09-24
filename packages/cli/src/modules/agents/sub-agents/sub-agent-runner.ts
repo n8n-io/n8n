@@ -218,6 +218,7 @@ export class SubAgentRunner {
 			agentName: runtimeSource.source.config.name,
 			projectId: context.projectId,
 			userMessage,
+			sessionMode: operation.type === 'resume' ? 'existing' : 'new',
 			source: 'subagent',
 			threadMetadata: {
 				parentThreadId: operation.request.parentThreadId,

@@ -19,6 +19,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
+import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import { AgentTurnExecutionService } from '../../agent-turn-execution.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import {
@@ -137,7 +138,11 @@ describe('SubAgentRunner', () => {
 		logger = mock<Logger>();
 		runner = new SubAgentRunner(
 			sourceResolver,
-			new AgentTurnExecutionService(logger, agentExecutionService),
+			new AgentTurnExecutionService(
+				logger,
+				agentExecutionService,
+				mock<AgentChatExecutionService>(),
+			),
 			checkpointStorage,
 			logger,
 			aiConfigMock,

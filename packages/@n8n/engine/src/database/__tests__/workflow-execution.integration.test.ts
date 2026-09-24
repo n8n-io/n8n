@@ -41,6 +41,7 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			workflow: {},
 			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: { hostMode: 'trigger' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -55,6 +56,7 @@ describe('workflow_execution table (integration)', () => {
 		expect(found.status).toBe('running');
 		expect(found.mode).toBe('production');
 		expect(found.triggerOutputs).toEqual([{ foo: 'bar' }]);
+		expect(found.callerContext).toEqual({ hostMode: 'trigger' });
 		expect(found.finishedAt).toBeNull();
 		expect(found.createdAt).toBeInstanceOf(Date);
 		expect(found.updatedAt).toBeInstanceOf(Date);
@@ -71,6 +73,7 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: { hostMode: 'manual' },
 			finishedAt,
 		});
 		await repo.save(created);
@@ -86,6 +89,7 @@ describe('workflow_execution table (integration)', () => {
 			workflowId: 'wf-3',
 			status: 'completed',
 			mode: 'manual',
+			hostMode: 'manual',
 			graph: { nodes: [], edges: [] },
 			workflow: sampleWorkflow,
 			createdAt: expect.any(Date) as Date,
@@ -104,6 +108,7 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: { hostMode: 'trigger' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -118,7 +123,7 @@ describe('workflow_execution table (integration)', () => {
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
 			triggerOutputs: [{ foo: 'bar' }],
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 	});
 
@@ -148,6 +153,7 @@ describe('workflow_execution table (integration)', () => {
 				graph: { nodes: [], edges: [] },
 				workflow: {},
 				triggerOutputs: null,
+				callerContext: { hostMode: 'trigger' },
 				finishedAt: null,
 			}),
 		);
@@ -160,6 +166,7 @@ describe('workflow_execution table (integration)', () => {
 				graph: { nodes: [], edges: [] },
 				workflow: {},
 				triggerOutputs: null,
+				callerContext: { hostMode: 'trigger' },
 				finishedAt: new Date(),
 			}),
 		);

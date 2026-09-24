@@ -662,7 +662,7 @@ const tags = computed(
 				data-test-id="workflow-card-name"
 			>
 				{{ data.name }}
-				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" variant="outline">
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
 			</N8nText>
@@ -863,6 +863,7 @@ const tags = computed(
 
 .cardBadge {
 	background-color: var(--color--background--light-3);
+	border-radius: var(--radius--full);
 }
 
 .cardBadge.with-breadcrumbs {

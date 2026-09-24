@@ -65,11 +65,13 @@ const {
 	effectiveSessionId,
 	currentSessionHasMessages,
 	currentSessionIsEphemeral,
+	currentSessionIsLocallyMinted,
 	currentSessionTitle,
 	sessionMenu,
 	isDeletingSession,
 	onSessionPick,
 	onNewChat,
+	markSessionCreated,
 	deleteSession,
 } = useAgentBuilderSession({ routeBacked: computed(() => false), projectId, agentId });
 
@@ -81,7 +83,7 @@ const {
  */
 const isPreviewSessionStale = computed(
 	() =>
-		currentSessionIsEphemeral.value &&
+		currentSessionIsLocallyMinted.value &&
 		effectiveSessionId.value !== undefined &&
 		effectiveSessionId.value !== threadId.value,
 );
@@ -196,7 +198,7 @@ const totalTokens = computed(() => {
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
 const canPreviewSession = computed(
 	() =>
-		currentSessionIsEphemeral.value ||
+		currentSessionIsLocallyMinted.value ||
 		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
 );
 const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
@@ -415,12 +417,14 @@ function viewPreviewTrace() {
 				:local-config="localConfig"
 				:connected-triggers="[]"
 				:effective-session-id="effectiveSessionId"
+				:new-session="currentSessionIsEphemeral"
 				:can-delete-session="canDeleteSession"
 				:is-deleting-session="isDeletingSession"
 				@view-trace="viewPreviewTrace"
 				@new-session="onNewChat"
 				@delete-session="onDeletePreviewSession"
 				@session-select="onSessionPick"
+				@session-created="markSessionCreated"
 				@close="togglePreview"
 			/>
 		</div>
