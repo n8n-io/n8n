@@ -327,10 +327,14 @@ export type {
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
+	MigrationFindingStatus,
 	WorkflowMigrationResult,
 } from './schemas/breaking-changes.schema';
 
-export { MIGRATION_REPORT_TARGET_VERSION } from './schemas/breaking-changes.schema';
+export {
+	MIGRATION_REPORT_TARGET_VERSION,
+	migrationFindingStatusSchema,
+} from './schemas/breaking-changes.schema';
 
 export type {
 	SecretsProviderType,
