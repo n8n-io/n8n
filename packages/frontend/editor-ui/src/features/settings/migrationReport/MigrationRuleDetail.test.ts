@@ -11,6 +11,7 @@ import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import { UNUSED_WORKFLOW_THRESHOLD_DAYS } from './constants';
 
 vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReportForRule: vi.fn(),
@@ -323,6 +324,56 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('Webhook')).toBeInTheDocument();
 				expect(screen.getByText('Gmail')).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('probably unused flag', () => {
+		const DAY_MS = 24 * 60 * 60 * 1000;
+
+		it('flags a workflow that never ran', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [{ ...mockWorkflowWithIssue, lastExecutedAt: undefined }],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			expect(await screen.findByTestId('workflow-probably-unused-badge')).toHaveTextContent(
+				'Probably unused',
+			);
+		});
+
+		it('flags a workflow whose last execution is older than the threshold', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							lastExecutedAt: new Date(Date.now() - (UNUSED_WORKFLOW_THRESHOLD_DAYS + 1) * DAY_MS),
+						},
+					],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			expect(await screen.findByTestId('workflow-probably-unused-badge')).toBeInTheDocument();
+		});
+
+		it('does not flag a workflow that ran recently', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{ ...mockWorkflowWithIssue, lastExecutedAt: new Date(Date.now() - DAY_MS) },
+					],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => expect(screen.getByText('Test Workflow 1')).toBeInTheDocument());
+			expect(screen.queryByTestId('workflow-probably-unused-badge')).not.toBeInTheDocument();
 		});
 	});
 
