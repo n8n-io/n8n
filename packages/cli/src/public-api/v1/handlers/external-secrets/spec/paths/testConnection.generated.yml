@@ -1,0 +1,40 @@
+operationId: testConnection
+tags:
+  - External Secrets
+summary: Test an external secrets connection
+description: Test the connection to an external secrets provider.
+x-required-scope: externalSecretsProvider:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: providerKey
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            testState:
+              type: string
+              enum:
+                - connected
+                - tested
+                - error
+            error:
+              type: string
+          required:
+            - success
+            - testState
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

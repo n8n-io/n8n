@@ -1,0 +1,90 @@
+operationId: getConnection
+tags:
+  - External Secrets
+summary: Get an external secrets connection
+description: Retrieve a single external secrets provider connection by its key.
+x-required-scope: externalSecretsProvider:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: providerKey
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            type:
+              type: string
+              enum:
+                - awsSecretsManager
+                - gcpSecretsManager
+                - vault
+                - azureKeyVault
+                - infisical
+                - onePassword
+            state:
+              type: string
+              enum:
+                - initializing
+                - initialized
+                - connecting
+                - connected
+                - error
+                - retrying
+            isEnabled:
+              type: boolean
+            managedBy:
+              type: string
+              enum:
+                - api
+                - config-file
+            projects:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  role:
+                    type: string
+                    enum:
+                      - secretsProviderConnection:owner
+                      - secretsProviderConnection:user
+                required:
+                  - id
+                  - name
+            secretsCount:
+              type: number
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+          required:
+            - id
+            - name
+            - type
+            - state
+            - isEnabled
+            - managedBy
+            - projects
+            - secretsCount
+            - createdAt
+            - updatedAt
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
