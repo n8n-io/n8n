@@ -271,20 +271,19 @@ function handleRecovery() {
 							</div>
 							<N8nText size="small" color="text-light">{{ group.description }}</N8nText>
 						</div>
+						<!-- Show "Custom" as selected value when there are overrides -->
 						<N8nSelect
 							:class="$style.permissionSelect"
 							:model-value="
-								hasCategoryOverrides(group.category) ? undefined : categories[group.category]
+								hasCategoryOverrides(group.category)
+									? customPermissionLabel
+									: categories[group.category]
 							"
-							:placeholder="hasCategoryOverrides(group.category) ? ' ' : undefined"
 							size="small"
 							:disabled="arePermissionsDisabled"
 							:data-test-id="`tools-connection-permission-${group.category}`"
 							@update:model-value="onCategoryChange(group.category, $event)"
 						>
-							<template v-if="hasCategoryOverrides(group.category)" #prefix>
-								<N8nText size="small">{{ customPermissionLabel }}</N8nText>
-							</template>
 							<N8nOption
 								v-for="option in permissionOptions"
 								:key="option.value"
@@ -461,7 +460,7 @@ function handleRecovery() {
 	height: var(--height--3xs);
 	padding: var(--spacing--5xs) var(--spacing--4xs);
 	border-radius: var(--radius--full);
-	background: var(--background--brand--disabled);
+	background: var(--background--active);
 	color: var(--text-color--subtler);
 }
 
