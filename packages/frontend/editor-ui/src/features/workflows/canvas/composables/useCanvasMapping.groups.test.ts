@@ -8,6 +8,7 @@ import {
 	buildCollapsedGroupByNodeId,
 	computeGroupFrameRects,
 	computeNodesRectFromStore,
+	getCanvasGroupFrameRect,
 	mapGroupsToVueFlowNodes,
 	remapCollapsedGroupConnections,
 	titleBarFromNodesRect,
@@ -25,7 +26,7 @@ import {
 } from '../stores/canvasNodeGroups.constants';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { createNodeExecutionSnapshot } from '../__tests__/utils';
+import { createCanvasGraphGroupNode, createNodeExecutionSnapshot } from '../__tests__/utils';
 
 const snapToGrid = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 
@@ -99,6 +100,26 @@ describe('computeGroupFrameRects', () => {
 		expect(expanded.height - GROUP_HEADER_HEIGHT).toBe(
 			nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
 		);
+	});
+});
+
+describe('getCanvasGroupFrameRect', () => {
+	it('uses the expanded frame width when Vue Flow still has a narrower measured width', () => {
+		const nodesRect = { x: 100, y: 200, width: 600, height: 100 };
+		const groupNode = createCanvasGraphGroupNode({
+			isCollapsed: false,
+			nodesRect,
+			position: { x: 40, y: 60 },
+		});
+		groupNode.dimensions.width = GROUP_HEADER_WIDTH_COLLAPSED;
+		const { expanded } = computeGroupFrameRects(nodesRect);
+
+		expect(getCanvasGroupFrameRect(groupNode)).toEqual({
+			x: 40,
+			y: 60,
+			width: expanded.width,
+			height: expanded.height,
+		});
 	});
 });
 

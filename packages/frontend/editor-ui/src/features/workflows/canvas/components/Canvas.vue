@@ -4,7 +4,7 @@ import type { ContextMenuTarget } from '@/features/shared/contextMenu/composable
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { CanvasLayoutEvent, CanvasLayoutResult } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
-import { computeGroupFrameRects } from '../composables/useCanvasMapping.groups';
+import { getCanvasGroupFrameRect } from '../composables/useCanvasMapping.groups';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
@@ -1972,18 +1972,7 @@ function getContainingGroupRect(nodeId: string) {
 	);
 	if (!groupNode) return undefined;
 
-	const frameRects = computeGroupFrameRects(groupNode.data.nodesRect);
-	const frameRect = groupNode.data.isCollapsed ? frameRects.collapsed : frameRects.expanded;
-	const position = groupNode.computedPosition ?? groupNode.position;
-
-	return {
-		x: position.x,
-		y: position.y,
-		width: groupNode.dimensions.width || frameRect.width,
-		height: groupNode.data.isCollapsed
-			? groupNode.dimensions.height || frameRect.height
-			: frameRect.height,
-	};
+	return getCanvasGroupFrameRect(groupNode);
 }
 
 provide(CanvasKey, {

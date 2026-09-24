@@ -1,4 +1,5 @@
 import { getEmptyGroupAnchor, type ExecutionStatus, type IWorkflowGroup } from 'n8n-workflow';
+import type { GraphNode } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
@@ -86,6 +87,20 @@ export function computeGroupFrameRects(nodesRect: NodesRect): {
 			),
 			height: GROUP_HEADER_HEIGHT + nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
 		},
+	};
+}
+
+/** Returns the full visible frame instead of Vue Flow's asynchronously measured node size. */
+export function getCanvasGroupFrameRect(groupNode: GraphNode<CanvasGroupNodeData>): BoundingBox {
+	const frameRects = computeGroupFrameRects(groupNode.data.nodesRect);
+	const frameRect = groupNode.data.isCollapsed ? frameRects.collapsed : frameRects.expanded;
+	const position = groupNode.computedPosition ?? groupNode.position;
+
+	return {
+		x: position.x,
+		y: position.y,
+		width: frameRect.width,
+		height: frameRect.height,
 	};
 }
 
