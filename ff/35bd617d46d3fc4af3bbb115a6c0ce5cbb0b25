@@ -1,0 +1,14 @@
+.github/workflows/ci-cla-check.yml
+  h_52a137d26d774c 72-73,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff35bd617d46d3fc4af3bbb115a6c0ce5cbb0b25",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

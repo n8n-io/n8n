@@ -1,0 +1,96 @@
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 67,90,120
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_934fec7376a80c::t_db94ba73022f76 148-177
+  s_934fec7376a80c::t_2c1f42761d7a20 9,144,178,538
+packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test.ts
+  s_934fec7376a80c::t_71c014d46a662c 58,99,130
+  s_934fec7376a80c::t_b4079e9977b641 20,30,35-39,76,81,104
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 15
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 219,249,642
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_934fec7376a80c::t_1edbb5b3282924 308,359,362,1451,1750
+  s_934fec7376a80c::t_db94ba73022f76 360-361,1414-1428,1430-1445,1447-1450,1452,1454-1462,1464-1466
+  s_934fec7376a80c::t_506d8c92db0512 35
+  s_934fec7376a80c::t_6db66817826023 2157-2176,2178-2194
+  s_934fec7376a80c::t_c6fabf1e9f54b1 462,1365
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 1020
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  s_934fec7376a80c::t_2c1f42761d7a20 1
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_934fec7376a80c::t_edb8254c8a23d8 38
+  s_934fec7376a80c::t_db94ba73022f76 39-46,431-440,488-500,502-509,511-513,515-534,787-815
+  s_934fec7376a80c::t_1edbb5b3282924 20,430,441
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_934fec7376a80c::t_183a29314f3471 31,68
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_934fec7376a80c::t_2c1f42761d7a20 172,179,304
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_934fec7376a80c::t_183a29314f3471 646-651,730-733
+  s_934fec7376a80c::t_d3f2090a67e9f6 734
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 143,145-153,156-157,164,166-171
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 2,7-9
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_934fec7376a80c::t_2c1f42761d7a20 47,64-66,68,77-89,93,117-119,121-124,343-345
+  s_934fec7376a80c::t_db94ba73022f76 111-116,339-340
+  s_934fec7376a80c::t_c7edb5f1b6444d 5
+  s_934fec7376a80c::t_71c014d46a662c 99,110
+  s_934fec7376a80c::t_edb8254c8a23d8 67,69-71
+  s_934fec7376a80c::t_83a2fb70102158 7,20,72,75,91,120
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_934fec7376a80c::t_db94ba73022f76 129-131,337,631-642,653,660,664,667,669-671,674-675,677-684,695,699,701-704,711,715,718-739,741,745-746,748-750,756,760-792,794,1017,1019-1020,1072-1076,1078,1081-1083,1087-1091,1093,1095-1104,1110,1112-1121
+  s_934fec7376a80c::t_3edb367dc5df7d 1004,1066-1069,1077,1079-1080
+  s_934fec7376a80c::t_170baf272562bd 14,63
+  s_934fec7376a80c::t_08ae93d3aaf876 23,62,64-65
+  s_934fec7376a80c::t_71c014d46a662c 88-89
+  s_934fec7376a80c::t_0cf128aa336498 438,1015
+  s_934fec7376a80c::t_85881f007ff6d5 1005-1014
+  s_934fec7376a80c::t_1d830ccf583ce7 72,83-87,90,116,120-128,138-139,148,151-152,160-183,404
+  s_934fec7376a80c::t_c949a2a49fe702 66,184,626,628-630,795-805
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 2,7-9
+packages/cli/test/integration/agents/agent-conversation-state.test.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 51
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_934fec7376a80c::t_b4079e9977b641 80,98,112,177,179,185-189,198,209,211-213,238,470,561,1026
+  s_934fec7376a80c::t_db94ba73022f76 180-181
+  s_934fec7376a80c::t_9503118cffe2a2 3
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_934fec7376a80c::t_4bd921c482f451 2199,2234,2250,2254
+  s_934fec7376a80c::t_db94ba73022f76 2191-2198,2200-2233,2235-2249,2251-2253,2255-2265
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 54,56-57,91,93-111,115
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 40,46-53,57,61,64,67,69-76,84,87,90,93-97,99-109
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 2,47-49,52-53,63,70,73,80-81
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 819
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_934fec7376a80c::t_183a29314f3471 436
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 183
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_934fec7376a80c::t_7a2b1c405114fa 19,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0a655c11f7ddefbec7052c73ceebafa02148fc97",
+  "prompts": {},
+  "sessions": {
+    "s_934fec7376a80c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c8b5-7083-7d41-b054-88e2c5315cda",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

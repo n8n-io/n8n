@@ -1,0 +1,29 @@
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_77655ca8fe3a59::t_63480d929b5fe4 23-24,903-1015
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_77655ca8fe3a59::t_b60a83995eb1ef 39,134-151
+packages/nodes-base/nodes/Wait/Wait.node.ts
+  s_77655ca8fe3a59::t_c07f33326a2114 594-595,626-627,630-635
+packages/nodes-base/nodes/Wait/test/Wait.node.test.ts
+  s_77655ca8fe3a59::t_27a991b21cb3da 8,69-71,78,87,95-102,104-119,121,123-125,192,209-214
+packages/workflow/src/constants.ts
+  s_77655ca8fe3a59::t_0f0309cd355467 11-19
+packages/workflow/src/interfaces.ts
+  s_77655ca8fe3a59::t_17a4f396261364 1351-1358
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "901308f497da0ed7ac33069da90850318c36b995",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
