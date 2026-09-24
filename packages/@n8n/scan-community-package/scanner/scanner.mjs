@@ -189,6 +189,21 @@ export const findPackageRoot = (sourceDir, packageName) => {
 	return null;
 };
 
+export const checkSourcePackageLayout = (sourceDir, packageName) => {
+	const packageDir = findPackageRoot(sourceDir, packageName);
+	if (!packageDir) return null;
+
+	if (packageDir !== sourceDir) {
+		return {
+			passed: false,
+			message:
+				'Community nodes must use a single-package repository. Monorepo packages are not supported.',
+		};
+	}
+
+	return { passed: true, packageDir };
+};
+
 const downloadAndExtractSource = async ({ owner, repo, gitCommit }, packageName) => {
 	const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${gitCommit}`;
 	const { data } = await axios.get(url, {
@@ -215,7 +230,7 @@ const downloadAndExtractSource = async ({ owner, repo, gitCommit }, packageName)
 	}
 	fs.unlinkSync(safeJoinPath(TEMP_DIR, tarballName));
 
-	return findPackageRoot(sourceDir, packageName);
+	return checkSourcePackageLayout(sourceDir, packageName);
 };
 
 /**
@@ -399,13 +414,13 @@ export const analyzePackageByName = async (packageName, version) => {
 		// back to a tarball-only scan would silently reintroduce that blind
 		// spot.
 		stdout.write(`Fetching source for ${label}...`);
-		let sourceDir = null;
+		let sourceLayout = null;
 		let sourceInfo = null;
 		let sourceError = null;
 		try {
 			sourceInfo = await fetchSourceInfo(packageName, exactVersion);
 			if (sourceInfo) {
-				sourceDir = await downloadAndExtractSource(sourceInfo, packageName);
+				sourceLayout = await downloadAndExtractSource(sourceInfo, packageName);
 			}
 		} catch (error) {
 			sourceError = error;
@@ -415,7 +430,7 @@ export const analyzePackageByName = async (packageName, version) => {
 			stdout.cursorTo(0);
 		}
 
-		if (!sourceDir) {
+		if (!sourceLayout) {
 			const reason = sourceError?.message ?? 'unsupported or unlocatable source repository';
 			stdout.write(`❌ Could not fetch source for ${label} \n`);
 
@@ -424,6 +439,14 @@ export const analyzePackageByName = async (packageName, version) => {
 				version: exactVersion,
 				passed: false,
 				message: `Could not fetch the source repository recorded in the package's npm provenance (${reason}). The scan lints the attested source, so it must be reachable — publish with provenance from a public GitHub repository.`,
+			};
+		}
+		if (!sourceLayout.passed) {
+			stdout.write(`❌ Unsupported source layout for ${label} \n`);
+			return {
+				packageName,
+				version: exactVersion,
+				...sourceLayout,
 			};
 		}
 
@@ -447,7 +470,7 @@ export const analyzePackageByName = async (packageName, version) => {
 		// into `dist/`. Scope the tarball leg to compiled `.js` and the
 		// published package.json; `.ts`/`.d.ts` declarations are covered better
 		// by the source scan and only false-positive on filename rules here.
-		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
+		const sourceResult = await analyzePackage(sourceLayout.packageDir, SOURCE_FILE_PATTERNS);
 		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
 		const analysisResult = {
 			passed: sourceResult.passed && distResult.passed,

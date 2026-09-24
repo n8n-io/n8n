@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
 	analyzePackage,
 	buildScanConfig,
+	checkSourcePackageLayout,
 	findPackageRoot,
 	parseSourceRepo,
 	SOURCE_FILE_PATTERNS,
@@ -195,6 +196,40 @@ describe('findPackageRoot', () => {
 		});
 
 		expect(findPackageRoot(fixtureDir, 'n8n-nodes-foo')).toBeNull();
+	});
+});
+
+describe('checkSourcePackageLayout', () => {
+	let fixtureDir;
+
+	afterEach(() => {
+		if (fixtureDir) fs.rmSync(fixtureDir, { recursive: true, force: true });
+	});
+
+	it('rejects a nested package without repository.directory', () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': { name: 'workspace-root', private: true },
+			'packages/foo/package.json': {
+				name: 'n8n-nodes-foo',
+				version: '1.0.0',
+			},
+		});
+
+		expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo')).toEqual({
+			passed: false,
+			message: expect.stringMatching(/single-package repository|monorepo/i),
+		});
+	});
+
+	it('accepts a package at the repository root', () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
+		});
+
+		expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo')).toEqual({
+			passed: true,
+			packageDir: fixtureDir,
+		});
 	});
 });
 
