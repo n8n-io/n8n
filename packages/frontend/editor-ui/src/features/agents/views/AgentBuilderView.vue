@@ -316,6 +316,7 @@ function onAiThreadIdChange(threadId: string) {
 }
 /** True while the embedded assistant is actively mutating this agent. */
 const embeddedAiBuilding = ref(false);
+const embeddedAiProcessing = ref(false);
 const aiPanelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('aiPanelRef');
 // The standalone preview route doesn't render the AI dock (`showAiPanel`
 // requires the builder route), so a hand-off requested from there has nowhere
@@ -2746,6 +2747,7 @@ function onSwitchAgent(nextAgentId: string) {
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
+						@update:processing="embeddedAiProcessing = $event"
 						@close="isAiPanelOpen = false"
 					>
 						<template v-if="showAgentIntro" #empty>
@@ -2754,7 +2756,17 @@ function onSwitchAgent(nextAgentId: string) {
 					</InstanceAiChatPanel>
 				</N8nResizeWrapper>
 			</aside>
-			<AgentBuildingIndicator v-if="embeddedAiBuilding" />
+			<div
+				v-if="embeddedAiProcessing || embeddedAiBuilding"
+				:class="$style.activityArea"
+				:style="{
+					left: showAiPanel ? `${renderedSidePanelWidths.ai}px` : undefined,
+					right: isPreviewDockOpen ? `${renderedSidePanelWidths.preview}px` : undefined,
+				}"
+				data-testid="agent-builder-activity-area"
+			>
+				<AgentBuildingIndicator />
+			</div>
 			<div v-if="showBuilderLoading" :class="$style.loading">
 				<N8nIcon icon="spinner" spin />
 			</div>
@@ -2962,6 +2974,13 @@ function onSwitchAgent(nextAgentId: string) {
 .editorColumn {
 	flex: 1 1 auto;
 	min-width: 0;
+}
+
+.activityArea {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	pointer-events: none;
 }
 
 .aiDock {

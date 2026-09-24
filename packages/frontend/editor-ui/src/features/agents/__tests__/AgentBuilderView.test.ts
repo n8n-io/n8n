@@ -642,11 +642,14 @@ const commonStubs = {
 			'<div data-testid="stub-ai-chat-panel" :data-subject-id="subject?.id" :data-thread-id="threadId">' +
 			'<button data-testid="ai-panel-emit-thread-id" @click="$emit(\'update:threadId\', \'thread-99\')" />' +
 			'<button data-testid="ai-panel-emit-building" @click="$emit(\'update:building\', true)" />' +
+			'<button data-testid="ai-panel-stop-building" @click="$emit(\'update:building\', false)" />' +
+			'<button data-testid="ai-panel-emit-processing" @click="$emit(\'update:processing\', true)" />' +
+			'<button data-testid="ai-panel-stop-processing" @click="$emit(\'update:processing\', false)" />' +
 			'<button data-testid="ai-panel-emit-close" @click="$emit(\'close\')" />' +
 			'<slot name="empty" />' +
 			'</div>',
 		props: ['subject', 'launch', 'threadId', 'beforeNewThread', 'beforeSend'],
-		emits: ['update:threadId', 'update:building', 'close'],
+		emits: ['update:threadId', 'update:building', 'update:processing', 'close'],
 		// Stands in for the real `defineExpose`d `handoff`, `setPrefill` and `submitSuggestion` — the
 		// view calls these through a template ref, not a prop or emit.
 		methods: {
@@ -3454,6 +3457,58 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		expect(editor.props('canEditAgent')).toBe(false);
 		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(true);
+	});
+
+	it('shows activity before the embedded assistant builds without locking editing', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		await wrapper.find('[data-testid="ai-panel-emit-processing"]').trigger('click');
+		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(true);
+		expect(editor.props('canEditAgent')).toBe(true);
+
+		const activityArea = wrapper.get('[data-testid="agent-builder-activity-area"]');
+		expect(activityArea.element.parentElement).toBe(
+			wrapper.get('[data-testid="agent-builder-container"]').element,
+		);
+
+		await wrapper.find('[data-testid="ai-panel-emit-building"]').trigger('click');
+		await wrapper.find('[data-testid="ai-panel-stop-processing"]').trigger('click');
+		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(true);
+		expect(editor.props('canEditAgent')).toBe(false);
+
+		await wrapper.find('[data-testid="ai-panel-stop-building"]').trigger('click');
+		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(false);
+		expect(editor.props('canEditAgent')).toBe(true);
+	});
+
+	it('centers the activity indicator over the agent configuration with both panels open', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const view = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			toggleAiPanel: () => void;
+		};
+		view.builderContainerWidth = 1200;
+		await nextTick();
+		view.toggleAiPanel();
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+
+		await wrapper.find('[data-testid="ai-panel-emit-processing"]').trigger('click');
+		const builder = wrapper.get('[data-testid="agent-builder-container"]').element as HTMLElement;
+		const activityArea = wrapper.get('[data-testid="agent-builder-activity-area"]')
+			.element as HTMLElement;
+		expect(activityArea.parentElement).toBe(builder);
+		expect(activityArea.style.left).not.toBe('');
+		expect(activityArea.style.right).not.toBe('');
+		expect(activityArea.style.left).toBe(builder.style.getPropertyValue('--agent-ai-panel-width'));
+		expect(activityArea.style.right).toBe(
+			builder.style.getPropertyValue('--agent-preview-chat-column-width'),
+		);
 	});
 
 	it('writes the panel thread id to the assistantThread query param', async () => {

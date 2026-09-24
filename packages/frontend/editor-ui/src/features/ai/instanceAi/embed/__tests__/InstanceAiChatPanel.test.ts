@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { computed, defineComponent, ref } from 'vue';
+import { computed, defineComponent, nextTick, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
@@ -107,6 +107,7 @@ function mountPanel(props: {
 	subject: InstanceAiEmbedSubject;
 	launch: typeof launch;
 	threadId?: string;
+	beforeSend?: () => Promise<void>;
 }) {
 	return mount(InstanceAiChatPanel, { props, global: { stubs: panelStubs } });
 }
@@ -460,6 +461,62 @@ describe('InstanceAiChatPanel', () => {
 		buildingIds.value = new Set(['agent-1']);
 		await vi.waitFor(() => expect(emitted('update:building')?.at(-1)).toEqual([true]));
 		expect(useAgentMutationRefreshMock).toHaveBeenCalled();
+	});
+
+	it('reports processing from send preparation through the Assistant run', async () => {
+		const runtime = makeThread();
+		store.getOrCreateRuntime.mockReturnValue(runtime);
+		store.getRuntime.mockReturnValue(runtime);
+		const preparation = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => preparation.promise);
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match', beforeSend });
+		await flushPromises();
+		const prepareSend = wrapper
+			.findComponent({ name: 'InstanceAiConversation' })
+			.props('beforeSend') as () => Promise<void>;
+
+		const send = prepareSend();
+		await nextTick();
+		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([true]);
+		expect(wrapper.emitted('update:building')?.at(-1)).toEqual([false]);
+
+		runtime.isSendingMessage = true;
+		preparation.resolve();
+		await send;
+		await nextTick();
+		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([true]);
+
+		runtime.isSendingMessage = false;
+		runtime.isStreaming = true;
+		await nextTick();
+		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([true]);
+
+		runtime.isStreaming = false;
+		await nextTick();
+		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([false]);
+	});
+
+	it('clears processing when send preparation fails', async () => {
+		const preparation = Promise.withResolvers<void>();
+		const wrapper = mountPanel({
+			subject,
+			launch,
+			threadId: 't-match',
+			beforeSend: () => preparation.promise,
+		});
+		await flushPromises();
+		const prepareSend = wrapper
+			.findComponent({ name: 'InstanceAiConversation' })
+			.props('beforeSend') as () => Promise<void>;
+
+		const send = prepareSend();
+		await nextTick();
+		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([true]);
+
+		preparation.reject(new Error('Save failed'));
+		await expect(send).rejects.toThrow('Save failed');
+		await nextTick();
+		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([false]);
 	});
 
 	it('emits update:building false on unmount so a host closing the panel mid-build unlocks', async () => {
