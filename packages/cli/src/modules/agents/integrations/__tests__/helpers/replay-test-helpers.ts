@@ -231,6 +231,9 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 			selectedContext = config.messageContext ?? undefined;
 			return toStream(stream);
 		}),
+		// Production wires this through an optional interface member, so leaving
+		// it out here would disable the stale-run gate in every replay test.
+		isResumable: vi.fn(async () => true),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
 	const pending: Array<{ payload: QueuedIntegrationMessage; threadId: string }> = [];

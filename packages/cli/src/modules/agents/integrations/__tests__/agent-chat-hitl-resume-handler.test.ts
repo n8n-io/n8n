@@ -145,6 +145,28 @@ describe('notices that answer one click', () => {
 		expect(resumeForChat).not.toHaveBeenCalled();
 	});
 
+	it('falls back to the thread when the ephemeral post is rejected', async () => {
+		const thread = {
+			post: vi.fn().mockResolvedValue(undefined),
+			postEphemeral: vi.fn().mockRejectedValue(new Error('rate limited')),
+		};
+		const handler = createHandler({
+			callbackStore: { resolve: vi.fn().mockResolvedValue(undefined) } as never,
+		});
+
+		await handler.handleAction({
+			actionId: 'callback-key',
+			thread,
+			threadId: THREAD_ID,
+			messageId: 'message-1',
+			user: ALICE,
+			adapter: { deleteMessage: vi.fn() },
+			raw: {},
+		} as never);
+
+		expect(thread.post).toHaveBeenCalledWith(EXPIRED_NOTICE);
+	});
+
 	it('falls back to the thread where the platform has no ephemeral message', async () => {
 		const thread = createThread(false);
 		const handler = createHandler({
@@ -245,6 +267,31 @@ describe('notices that answer one click', () => {
 		// the card is not relabelled with a decision that never took effect.
 		expect(resumeForChat).not.toHaveBeenCalled();
 		expect(settleActionMessage).not.toHaveBeenCalled();
+	});
+
+	it('removes a stale card on a platform that deletes answered ones', async () => {
+		const thread = createThread(true);
+		const deleteMessage = vi.fn().mockResolvedValue(undefined);
+		const handler = createHandler({
+			agentService: {
+				resumeForChat: vi.fn(() => (async function* () {})()),
+				isResumable: async () => false,
+			},
+			deleteActionMessageBeforeResume: true,
+		});
+
+		await handler.handleAction({
+			actionId: 'resume:run-1:tool-1:0',
+			value: JSON.stringify({ approved: true }),
+			thread,
+			threadId: THREAD_ID,
+			messageId: 'message-1',
+			user: ALICE,
+			adapter: { deleteMessage },
+			raw: {},
+		} as never);
+
+		expect(deleteMessage).toHaveBeenCalledWith(THREAD_ID, 'message-1');
 	});
 
 	it('resumes when the run is still resumable', async () => {

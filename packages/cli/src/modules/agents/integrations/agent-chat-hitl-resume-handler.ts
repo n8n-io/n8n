@@ -90,6 +90,9 @@ export class AgentChatHitlResumeHandler {
 		// not. Check before the card is settled, so a stale one is answered rather
 		// than relabelled with a decision that never took effect.
 		if (!(await this.isRunResumable(parsed.runId))) {
+			// Remove the card where the platform removes answered ones — settling
+			// is not an option here, because there is no decision to name.
+			if (this.options.deleteActionMessageBeforeResume) await this.deleteActionMessage(event);
 			await postToUserOrThread(thread, event.user, STALE_ACTION_NOTICE);
 			return;
 		}
@@ -185,13 +188,7 @@ export class AgentChatHitlResumeHandler {
 		callbackData: { label?: string },
 	): Promise<void> {
 		if (this.options.deleteActionMessageBeforeResume) {
-			try {
-				await event.adapter.deleteMessage(event.threadId, event.messageId);
-			} catch (deleteError) {
-				this.options.logger.warn('[AgentChatBridge] Failed to delete card message', {
-					error: deleteError instanceof Error ? deleteError.message : String(deleteError),
-				});
-			}
+			await this.deleteActionMessage(event);
 			return;
 		}
 
@@ -222,6 +219,16 @@ export class AgentChatHitlResumeHandler {
 		} catch (editError) {
 			this.options.logger.warn('[AgentChatBridge] Failed to settle action card', {
 				error: editError instanceof Error ? editError.message : String(editError),
+			});
+		}
+	}
+
+	private async deleteActionMessage(event: ActionEvent): Promise<void> {
+		try {
+			await event.adapter.deleteMessage(event.threadId, event.messageId);
+		} catch (deleteError) {
+			this.options.logger.warn('[AgentChatBridge] Failed to delete card message', {
+				error: deleteError instanceof Error ? deleteError.message : String(deleteError),
 			});
 		}
 	}

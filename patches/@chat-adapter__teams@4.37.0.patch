@@ -1,5 +1,5 @@
 diff --git a/dist/index.js b/dist/index.js
-index 5278d648103068f1f3875c27e42c775ab02238ed..3e5956347d7df5c0ee080184bab1b290e9b6d01d 100644
+index 5278d648103068f1f3875c27e42c775ab02238ed..c0f0a7302a731e79951a972f6e18e91b90b066c9 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -1622,6 +1622,9 @@ var MESSAGEID_STRIP_PATTERN2 = /;messageid=\d+/;
@@ -28,7 +28,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..3e5956347d7df5c0ee080184bab1b290
        this.logger.debug("Teams API: targeted send response", {
          messageId: sent.id
        });
-@@ -2467,6 +2472,47 @@ var TeamsAdapter = class {
+@@ -2467,6 +2472,61 @@ var TeamsAdapter = class {
        handleTeamsError(error, "postEphemeral");
      }
    }
@@ -36,8 +36,11 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..3e5956347d7df5c0ee080184bab1b290
 +  // for a targeted activity only through ?isTargetedActivity=true; the plain
 +  // endpoint answers 400. Nothing on the wire says afterwards which activities
 +  // were targeted and editMessage/deleteMessage receive only a message id, so
-+  // the ids sent targeted are recorded in the Chat state adapter (shared across
-+  // instances, unlike process memory) and read back on mutation.
++  // the ids sent targeted are recorded here and read back on mutation.
++  //
++  // The record is only a fast path. n8n backs the Chat state adapter with
++  // process memory, so a restart or a second main loses it — mutateActivity
++  // therefore tries the other endpoint rather than trusting the lookup.
 +  targetedActivityKey(conversationId, messageId) {
 +    return `teams:targetedActivity:${conversationId}:${messageId}`;
 +  }
@@ -73,40 +76,51 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..3e5956347d7df5c0ee080184bab1b290
 +      // The TTL clears it anyway.
 +    }
 +  }
++  // A lost record must not leave an answered card in the channel, so fall back
++  // to the endpoint we did not pick. A 1:1 chat has no targeted variant, so its
++  // failure is real and propagates.
++  async mutateActivity(threadId, preferTargeted, targetedCall, plainCall) {
++    try {
++      return await (preferTargeted ? targetedCall() : plainCall());
++    } catch (error) {
++      if (this.isDM(threadId)) throw error;
++      return await (preferTargeted ? plainCall() : targetedCall());
++    }
++  }
    createTargetedRecipient(userId) {
      return {
        id: userId,
-@@ -2511,7 +2557,8 @@ var TeamsAdapter = class {
+@@ -2511,7 +2571,8 @@ var TeamsAdapter = class {
          messageId
        });
        try {
 -        await this.app.api.conversations.activities(conversationId).update(messageId, activity2);
 +        const activities2 = this.app.api.conversations.activities(conversationId);
-+        await (!this.isDM(threadId) && await this.isTargetedActivity(conversationId, messageId) ? activities2.updateTargeted(messageId, activity2) : activities2.update(messageId, activity2));
++        await this.mutateActivity(threadId, !this.isDM(threadId) && await this.isTargetedActivity(conversationId, messageId), () => activities2.updateTargeted(messageId, activity2), () => activities2.update(messageId, activity2));
        } catch (error) {
          this.logger.error("Teams API: updateActivity failed", {
            conversationId,
-@@ -2534,7 +2581,8 @@ var TeamsAdapter = class {
+@@ -2534,7 +2595,8 @@ var TeamsAdapter = class {
        textLength: text.length
      });
      try {
 -      await this.app.api.conversations.activities(conversationId).update(messageId, activity);
 +      const activities2 = this.app.api.conversations.activities(conversationId);
-+      await (!this.isDM(threadId) && await this.isTargetedActivity(conversationId, messageId) ? activities2.updateTargeted(messageId, activity) : activities2.update(messageId, activity));
++      await this.mutateActivity(threadId, !this.isDM(threadId) && await this.isTargetedActivity(conversationId, messageId), () => activities2.updateTargeted(messageId, activity), () => activities2.update(messageId, activity));
      } catch (error) {
        this.logger.error("Teams API: updateActivity failed", {
          conversationId,
-@@ -2553,7 +2601,8 @@ var TeamsAdapter = class {
+@@ -2553,7 +2615,8 @@ var TeamsAdapter = class {
        messageId
      });
      try {
 -      await this.app.api.conversations.activities(conversationId).delete(messageId);
 +      const activities2 = this.app.api.conversations.activities(conversationId);
-+      await (!this.isDM(threadId) && await this.isTargetedActivity(conversationId, messageId) ? activities2.deleteTargeted(messageId) : activities2.delete(messageId));
++      await this.mutateActivity(threadId, !this.isDM(threadId) && await this.isTargetedActivity(conversationId, messageId), () => activities2.deleteTargeted(messageId), () => activities2.delete(messageId));
      } catch (error) {
        this.logger.error("Teams API: deleteActivity failed", {
          conversationId,
-@@ -2562,6 +2611,7 @@ var TeamsAdapter = class {
+@@ -2562,6 +2625,7 @@ var TeamsAdapter = class {
        });
        handleTeamsError(error, "deleteMessage");
      }

@@ -121,8 +121,14 @@ export async function postToUserOrThread(
 	user: string | Author,
 	payload: EphemeralPostable,
 ): Promise<void> {
-	const sent = await thread.postEphemeral(user, payload, { fallbackToDM: false });
-	if (!sent) await thread.post(payload);
+	try {
+		const sent = await thread.postEphemeral(user, payload, { fallbackToDM: false });
+		if (sent) return;
+	} catch {
+		// A rejected ephemeral post — rate limit, the user having left, a
+		// conversation that refuses targeting — must not cost the message.
+	}
+	await thread.post(payload);
 }
 
 export interface BridgeExecutionContext {
