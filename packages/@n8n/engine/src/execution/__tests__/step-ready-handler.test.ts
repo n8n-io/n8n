@@ -57,8 +57,8 @@ function makeHandler(
 	queue: WorkQueue<OrchestrationMessage>,
 	dependencies: ExternalDependencies,
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
-	onStepSuspended?: () => void,
 	responseSender: ExecutionResponseSender = noopExecutionResponseSender,
+	onStepSuspended?: () => void,
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
@@ -762,6 +762,7 @@ describe('StepReadyHandler waits', () => {
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
 			makeLifecycleEventPublisher(),
+			noopExecutionResponseSender,
 			onStepSuspended,
 		);
 
@@ -780,6 +781,7 @@ describe('StepReadyHandler waits', () => {
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
 			makeLifecycleEventPublisher(),
+			noopExecutionResponseSender,
 			onStepSuspended,
 		);
 

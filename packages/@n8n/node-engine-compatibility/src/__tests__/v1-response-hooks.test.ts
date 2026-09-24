@@ -53,6 +53,19 @@ describe('attachResponseHooks', () => {
 		expect(respond.send).toHaveBeenCalledWith({ body: { ok: true }, statusCode: 200 });
 	});
 
+	it('surfaces errors from the response channel', async () => {
+		const { request, respond } = newRequest();
+		const error = new Error('Response failed');
+		vi.mocked(respond.send).mockReturnValue({ ok: false, error });
+		const additionalData = newAdditionalData();
+
+		attachResponseHooks(additionalData, request);
+		await expect(
+			additionalData.hooks?.runHook('sendResponse', [{ body: { ok: true }, statusCode: 200 }]),
+		).rejects.toBe(error);
+		expect(respond.send).toHaveBeenCalledOnce();
+	});
+
 	it.each([
 		['a buffer body', { body: Buffer.from('hi') }],
 		['a stream body', { body: { pipe: () => {} } }],

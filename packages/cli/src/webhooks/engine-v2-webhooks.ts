@@ -126,7 +126,6 @@ export class EngineV2Webhooks {
 			);
 		}
 
-		// TODO(CAT-4079): Support `responseNode`.
 		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 			throw new UserError(
 				`Engine 2.0 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
