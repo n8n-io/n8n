@@ -1,3 +1,4 @@
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -149,6 +150,7 @@ function makeService() {
 			executionService,
 			mock<AgentChatExecutionService>(),
 			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
 		),
 		telemetry,
 		credentialsService,

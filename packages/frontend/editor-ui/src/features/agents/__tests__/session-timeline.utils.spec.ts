@@ -660,6 +660,51 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(items[0]).toMatchObject({ kind: 'agent', content: 'hi there', timestamp: 1234 });
 	});
 
+	it.each([
+		{
+			label: 'text and attachments',
+			text: [{ type: 'text', text: 'Use this image' }],
+			content: 'Use this image',
+		},
+		{ label: 'attachments only', text: [], content: '' },
+	])('maps steered $label between agent output', ({ text, content }) => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{ type: 'text', content: 'Before steering', timestamp: 100 },
+					{
+						type: 'input',
+						queueId: 'q-1',
+						timestamp: 200,
+						message: {
+							id: 'steered-user-message',
+							role: 'user',
+							content: [
+								...text,
+								{
+									type: 'file',
+									fileId: attachment.id,
+									fileName: attachment.fileName,
+									mimeType: attachment.mimeType,
+									sizeBytes: attachment.sizeBytes,
+								},
+							],
+						},
+					},
+					{ type: 'text', content: 'After steering', timestamp: 300 },
+				],
+				{ userMessage: 'Original request' },
+			),
+		]);
+
+		expect(items).toMatchObject([
+			{ kind: 'user', content: 'Original request', executionId: 'e-1' },
+			{ kind: 'agent', content: 'Before steering', timestamp: 100 },
+			{ kind: 'user', content, executionId: 'e-1', timestamp: 200, attachments: [attachment] },
+			{ kind: 'agent', content: 'After steering', timestamp: 300 },
+		]);
+	});
+
 	it('maps a workflow tool-call timeline event to kind:workflow with metadata', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([

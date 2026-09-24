@@ -71,13 +71,19 @@ async function mockModel(stack: N8NStack) {
 	for (const { marker, delay } of [
 		{ marker: 'fifo-blocked', delay: 300 },
 		{ marker: 'fifo-crash', delay: 300 },
-		{ marker: 'fifo-remote', delay: 5 },
+		{ marker: 'fifo-remote', delay: 15 },
+		{ marker: 'steer-boundary', delay: 15 },
+		{ marker: 'steer-committed', delay: 300 },
 	]) {
+		const excludeLaterMessage = marker === 'steer-committed' ? '(?!.*ordinary after crash)' : '';
 		await stack.services.proxy.createExpectation({
 			httpRequest: {
 				method: 'POST',
 				path: '/v1/messages',
-				body: { type: 'REGEX', regex: `(?s)(?=.*"stream"\\s*:\\s*true)(?=.*${marker}).*` },
+				body: {
+					type: 'REGEX',
+					regex: `(?s)(?=.*"stream"\\s*:\\s*true)(?=.*${marker})${excludeLaterMessage}.*`,
+				},
 			},
 			httpResponse: {
 				statusCode: 200,
@@ -120,12 +126,11 @@ test.describe(
 	'Agent message queue @mode:multi-main',
 	{ annotation: [{ type: 'owner', description: 'Agent' }] },
 	() => {
-		test('preserves FIFO, relays remote output, and recovers accepted messages after a main crash', async ({
+		test('preserves FIFO and remote steering across crashes before and after consumption', async ({
 			n8nContainer,
 			createApiForMain,
-			mainUrls,
 		}) => {
-			test.setTimeout(360_000);
+			test.setTimeout(660_000);
 			assert(n8nContainer, 'This test needs a container stack');
 			const ingress = await createApiForMain(0);
 			const consumer = await createApiForMain(1);
@@ -146,7 +151,10 @@ test.describe(
 			const streams: Array<Awaited<ReturnType<typeof ingress.agents.openChat>>> = [];
 			const open = async (main: 0 | 1, sessionId: string, message: string, newSession?: true) => {
 				const api = clients[main];
-				const stream = await api.agents.openChat(mainUrls[main], project.id, agent.id, {
+				const [container] = n8nContainer.findContainers(`-n8n-main-${main + 1}$`);
+				// Docker can change the mapped port after a restart.
+				const baseUrl = `http://${container.getHost()}:${container.getMappedPort(5678)}`;
+				const stream = await api.agents.openChat(baseUrl, project.id, agent.id, {
 					sessionId,
 					message,
 					newSession,
@@ -216,6 +224,26 @@ test.describe(
 					)
 					.toEqual(['cancelled', 'running']);
 				await signalMain(n8nContainer, 0, 'SIGCONT');
+				await expect.poll(() => executionId(second.events)).toBeTruthy();
+				const steered = await open(0, threadId, 'additional input');
+				await expect
+					.poll(() => steered.events.find((event) => event.type === 'message-queued'))
+					.toBeTruthy();
+				const pending = await ingress.agents.queuedMessages(project.id, agent.id, threadId);
+				const steerId = pending.items.find(({ message }) => message === 'additional input')?.id;
+				assert(steerId);
+				await ingress.agents.steerQueuedMessage(
+					project.id,
+					agent.id,
+					threadId,
+					steerId,
+					executionId(second.events)!,
+				);
+				expect(
+					(await consumer.agents.queuedMessages(project.id, agent.id, threadId)).items.find(
+						({ id }) => id === steerId,
+					)?.steeringExecutionId,
+				).toBe(executionId(second.events));
 				await expect
 					.poll(
 						async () =>
@@ -234,7 +262,18 @@ test.describe(
 						.filter((event) => event.type === 'text-delta')
 						.map(({ delta }) => delta)
 						.join(''),
-				).toBe('Controlled reply.');
+				).toBe('Controlled reply.Controlled reply.');
+				expect(second.events).toContainEqual(
+					expect.objectContaining({
+						type: 'message-steered',
+						queueId: steerId,
+						executionId: executionId(second.events),
+					}),
+				);
+				const history = await ingress.agents.history(project.id, agent.id, threadId);
+				expect(
+					history.messages.filter(({ role }) => role === 'user').flatMap(({ content }) => content),
+				).toContainEqual({ type: 'text', text: 'additional input' });
 				expect(second.events).toContainEqual(
 					expect.objectContaining({ type: 'done', sessionId: threadId }),
 				);
@@ -251,6 +290,18 @@ test.describe(
 				await signalMain(n8nContainer, 0, 'SIGCONT');
 				const afterCrash = await open(0, crashThread, 'survives restart');
 				await expect.poll(async () => await queued(crashThread)).toBe(1);
+				const beforeCrashQueue = await ingress.agents.queuedMessages(
+					project.id,
+					agent.id,
+					crashThread,
+				);
+				await ingress.agents.steerQueuedMessage(
+					project.id,
+					agent.id,
+					crashThread,
+					beforeCrashQueue.items[0].id,
+					executionId(interrupted.events)!,
+				);
 				const [main] = n8nContainer.findContainers('-n8n-main-2$');
 				await main.restart({ timeout: 0 });
 				await expect
@@ -272,6 +323,65 @@ test.describe(
 					),
 				).toEqual(['fifo-crash', 'survives restart']);
 				expect(await queued(crashThread)).toBe(0);
+
+				const committedThread = randomUUID();
+				await signalMain(n8nContainer, 0, 'SIGSTOP');
+				const beforeCommit = await open(1, committedThread, 'steer-boundary', true);
+				await expect.poll(() => executionId(beforeCommit.events), { timeout: 30_000 }).toBeTruthy();
+				await signalMain(n8nContainer, 0, 'SIGCONT');
+				const ordinary = await open(0, committedThread, 'ordinary after crash');
+				const committedInput = await open(0, committedThread, 'steer-committed');
+				await expect
+					.poll(() => committedInput.events.find((event) => event.type === 'message-queued'))
+					.toBeTruthy();
+				const commitQueue = await ingress.agents.queuedMessages(
+					project.id,
+					agent.id,
+					committedThread,
+				);
+				const committedId = commitQueue.items.find(
+					({ message }) => message === 'steer-committed',
+				)?.id;
+				assert(committedId);
+				await ingress.agents.steerQueuedMessage(
+					project.id,
+					agent.id,
+					committedThread,
+					committedId,
+					executionId(beforeCommit.events)!,
+				);
+				await expect
+					.poll(() => beforeCommit.events.find((event) => event.type === 'message-steered'), {
+						timeout: 30_000,
+					})
+					.toBeTruthy();
+				await main.restart({ timeout: 0 });
+				await expect
+					.poll(
+						async () =>
+							(await ingress.agents.executions(project.id, agent.id, committedThread)).map(
+								({ status }) => status,
+							),
+						{ timeout: 270_000, intervals: [2_000] },
+					)
+					.toEqual(['interrupted', 'success']);
+				expect(await ordinary.done).toBeUndefined();
+				const recovered = await ingress.agents.history(project.id, agent.id, committedThread);
+				expect(
+					recovered.messages
+						.filter(({ role }) => role === 'user')
+						.flatMap(({ content }) => content),
+				).toEqual([
+					{ type: 'text', text: 'steer-boundary' },
+					{ type: 'text', text: 'steer-committed' },
+					{ type: 'text', text: 'ordinary after crash' },
+				]);
+				expect(
+					(await ingress.agents.executions(project.id, agent.id, committedThread)).map(
+						({ userMessage }) => userMessage,
+					),
+				).toEqual(['steer-boundary', 'ordinary after crash']);
+				expect(await queued(committedThread)).toBe(0);
 			} finally {
 				await signalMain(n8nContainer, 0, 'SIGCONT');
 				for (const stream of streams) stream.disconnect();

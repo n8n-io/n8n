@@ -140,6 +140,40 @@ function assistantContentFromExecution(
 }
 
 export function executionToMessagesDto(execution: ExecutionTranscript): AgentPersistedMessageDto[] {
+	if (!execution.timeline?.some((event) => event.type === 'input')) {
+		return executionSegmentToMessagesDto(execution);
+	}
+	const messages: AgentPersistedMessageDto[] = [];
+	let segment: ExecutionTranscript = { ...execution, timeline: [] };
+	let suffix = '';
+	const appendSegment = (value: ExecutionTranscript) => {
+		for (const message of executionSegmentToMessagesDto(value)) {
+			if (message.role === 'assistant') message.id += suffix;
+			messages.push(message);
+		}
+	};
+	for (const event of execution.timeline) {
+		if (event.type !== 'input') {
+			segment.timeline?.push(event);
+			continue;
+		}
+		appendSegment({ ...segment, status: 'success', error: null });
+		messages.push({ ...event.message, executionId: execution.id });
+		suffix = `:${event.message.id}`;
+		segment = {
+			...execution,
+			userMessage: null,
+			attachments: null,
+			author: null,
+			timeline: [],
+			createdAt: new Date(event.timestamp),
+		};
+	}
+	appendSegment(segment);
+	return messages;
+}
+
+function executionSegmentToMessagesDto(execution: ExecutionTranscript): AgentPersistedMessageDto[] {
 	const messages: AgentPersistedMessageDto[] = [];
 
 	// Message `id` stays `${execution.id}:role` for stable client keys. Turn

@@ -264,6 +264,10 @@ export class AgentChatQueueUpdateDto extends Z.class({
 	message: z.string(),
 }) {}
 
+export class AgentChatQueueSteerDto extends Z.class({
+	executionId: z.string().min(1).max(36),
+}) {}
+
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),

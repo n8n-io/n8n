@@ -9,9 +9,9 @@
  * - `start-step` / `finish-step` mark LLM iteration boundaries.
  *
  * The frontend groups deltas by these ids and uses `start-step` / `finish-step`
- * to decide when a new ChatMessage cursor should open. There is no
- * server-minted `messageId` — the FE generates its own UUID per ChatMessage
- * for v-for keys only.
+ * to decide when a new ChatMessage cursor should open. The frontend assigns
+ * display IDs to assistant messages. `message-steered` carries a persisted
+ * user-message ID so the client can ignore repeated deliveries.
  *
  * `runId` is included on `ToolSuspendedPayload` and echoed back by the
  * frontend on resume. The SDK stores `runId` on each `PendingToolCall` and
@@ -25,7 +25,7 @@
  *
  */
 
-import type { AgentPersistedMessageContentPart } from './agents';
+import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from './agents';
 
 export interface ToolSuspendedPayload {
 	toolCallId: string;
@@ -74,6 +74,12 @@ export type ForwardedChildChunkWire =
 
 export type AgentSseEvent =
 	| { type: 'message-queued'; queueId: string; sessionId: string }
+	| {
+			type: 'message-steered';
+			queueId: string;
+			executionId: string;
+			message: AgentPersistedMessageDto;
+	  }
 	| { type: 'execution-started'; executionId: string; sessionId: string; message?: string }
 	| { type: 'start-step' }
 	| { type: 'finish-step' }

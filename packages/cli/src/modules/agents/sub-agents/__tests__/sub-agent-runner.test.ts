@@ -1,3 +1,4 @@
+import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import {
 	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
@@ -145,6 +146,7 @@ describe('SubAgentRunner', () => {
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),
 				mock<AgentMessageQueueService>(),
+				mock<AgentMessageSteeringService>(),
 			),
 			checkpointStorage,
 			logger,
