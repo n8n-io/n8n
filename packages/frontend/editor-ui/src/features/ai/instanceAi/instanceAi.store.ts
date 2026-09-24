@@ -432,6 +432,18 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		clearCanvasSelectionRequest.value++;
 	}
 
+	// ponytail: what "leaving the onboarding" means is not defined yet, so the exit is
+	// session-only state. Move it into thread metadata when the exit exists.
+	const leftOnboardingThreadIds = ref(new Set<string>());
+	/** An onboarding thread hides the host chrome (chat header, sidebar) until the user leaves it. */
+	function isOnboardingChromeHidden(threadId: string): boolean {
+		if (leftOnboardingThreadIds.value.has(threadId)) return false;
+		return localThreadEntries(threadId).some((t) => t.metadata?.source === 'onboarding');
+	}
+	function leaveOnboarding(threadId: string): void {
+		leftOnboardingThreadIds.value.add(threadId);
+	}
+
 	return {
 		// Instance-level state
 		threads,
@@ -473,6 +485,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		composerFocusRequest,
 		requestComposerFocus,
 		clearCanvasSelectionRequest,
+		isOnboardingChromeHidden,
+		leaveOnboarding,
 		requestClearCanvasSelection,
 	};
 });

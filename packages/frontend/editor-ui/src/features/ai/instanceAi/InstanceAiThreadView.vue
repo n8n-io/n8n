@@ -185,6 +185,9 @@ const currentThreadTitle = computed<string | undefined>(() =>
 	),
 );
 
+// An onboarding thread hides the header until the user leaves the onboarding.
+const isOnboardingChromeHidden = computed(() => store.isOnboardingChromeHidden(props.threadId));
+
 // The tab names the conversation, not the workflow previewed inside it — the
 // parent view claims the title so the embedded canvas can't overwrite this.
 const documentTitle = useDocumentTitle();
@@ -727,7 +730,11 @@ function handleNewThreadClick() {
 			:data-layout-animated="shouldAnimatePreviewLayout"
 			data-test-id="instance-ai-builder-chat"
 		>
-			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
+			<div
+				v-if="!isOnboardingChromeHidden"
+				:class="$style.builderChatHeader"
+				data-test-id="instance-ai-builder-chat-header"
+			>
 				<InstanceAiViewHeader :show-thread-history-label="!currentThreadTitle">
 					<template #title>
 						<N8nHeading
