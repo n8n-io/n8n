@@ -1,6 +1,6 @@
 import isPlainObject from 'lodash/isPlainObject';
 import type { INode } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { isSafeObjectProperty, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 /** Just enough of the node context to raise an error against the right node. */
 type NodeContext = { getNode: () => INode };
@@ -33,6 +33,21 @@ export function parseExtraBody(
 			ctx.getNode(),
 			'The value in the "Extra Body" field must be a JSON object',
 			{ itemIndex },
+		);
+	}
+
+	// `JSON.parse` keeps a key like `__proto__` as an own property, and merging that into the
+	// request options with `Object.assign` replaces the prototype of the options object. No model
+	// parameter has one of these names, so refuse the key instead of silently dropping it.
+	const unsafeKey = Object.keys(extraBody).find((key) => !isSafeObjectProperty(key));
+	if (unsafeKey) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`The "Extra Body" field cannot set "${unsafeKey}"`,
+			{
+				itemIndex,
+				description: 'This name changes the request object itself, not a model parameter.',
+			},
 		);
 	}
 

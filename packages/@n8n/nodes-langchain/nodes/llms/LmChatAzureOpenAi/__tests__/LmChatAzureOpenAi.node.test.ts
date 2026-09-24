@@ -125,7 +125,7 @@ describe('LmChatAzureOpenAi', () => {
 			expect(vi.mocked(AzureChatOpenAI).mock.calls[0][0]).not.toHaveProperty('extraBody');
 		});
 
-		it('should keep Response Format when both are set, and let Extra Body win a collision', async () => {
+		it('should keep Response Format alongside an unrelated Extra Body key', async () => {
 			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, {
 				responseFormat: 'json_object',
 				extraBody: '{"seed":7}',
@@ -135,6 +135,20 @@ describe('LmChatAzureOpenAi', () => {
 
 			expect(vi.mocked(AzureChatOpenAI).mock.calls[0][0]).toMatchObject({
 				modelKwargs: { response_format: { type: 'json_object' }, seed: 7 },
+			});
+		});
+
+		// Extra Body is the escape hatch, so it has to override the option it overlaps with.
+		it('should let Extra Body win when it sets the same key as Response Format', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, {
+				responseFormat: 'json_object',
+				extraBody: '{"response_format":{"type":"text"}}',
+			});
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(AzureChatOpenAI).mock.calls[0][0]).toMatchObject({
+				modelKwargs: { response_format: { type: 'text' } },
 			});
 		});
 
@@ -151,6 +165,17 @@ describe('LmChatAzureOpenAi', () => {
 		it.each([
 			['not valid JSON', 'not json', 'The value in the "Extra Body" field is not valid JSON'],
 			['not an object', '[1,2]', 'The value in the "Extra Body" field must be a JSON object'],
+			// These names would change the options object itself rather than add a model parameter
+			[
+				'a prototype key',
+				'{"__proto__":{"polluted":true}}',
+				'The "Extra Body" field cannot set "__proto__"',
+			],
+			[
+				'a constructor key',
+				'{"constructor":{"x":1}}',
+				'The "Extra Body" field cannot set "constructor"',
+			],
 		])('should reject a value that is %s', async (_, extraBody, message) => {
 			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, { extraBody });
 
