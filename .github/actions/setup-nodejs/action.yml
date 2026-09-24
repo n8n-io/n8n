@@ -194,7 +194,7 @@ runs:
       run: |
         # SafeChain only reads configs from this directory https://github.com/AikidoSec/safe-chain#configuration-options-1
         mkdir -p "$HOME/.safe-chain"
-        cp "${{ github.action_path }}/safe-chain.config.json" "$HOME/.safe-chain/config.json"
+        cp "$GITHUB_WORKSPACE/.github/actions/setup-nodejs/safe-chain.config.json" "$HOME/.safe-chain/config.json"
 
     # Cache the SafeChain binary keyed on version + platform. The binary path
     # is deterministic, so subsequent jobs across the CI fanout (E2E shards,
