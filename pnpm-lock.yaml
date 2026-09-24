@@ -2759,6 +2759,9 @@ importers:
       '@n8n/tournament':
         specifier: workspace:*
         version: link:../tournament
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       isolated-vm:
         specifier: 'catalog:'
         version: 7.0.1
