@@ -545,7 +545,7 @@ describe('build-agent cascade restart (real SDK)', () => {
 		);
 		const phase3Chunks = await collectStreamChunks(phase3Run.stream);
 
-		expect(observedApprovalResumeData).toEqual({ approved: false });
+		expect(observedApprovalResumeData).toEqual({ approved: false, scope: 'session' });
 		const toolResultChunks = chunksOfType(phase3Chunks, 'tool-result').filter(
 			(c) => c.toolName === ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 		);
