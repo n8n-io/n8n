@@ -1004,7 +1004,7 @@ describe('PreferenceCard', () => {
 			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeDisabled();
 		});
 
-		it('records the row a save returned, so no second read is needed', async () => {
+		it('hands the store the row a save returned', async () => {
 			const contextStore = resolvedRows();
 			const saved = preferenceRow({ content: 'Keep replies brief.' });
 			editPreferenceCard.mockResolvedValue({ preference: saved, event: editedEvent });
@@ -1018,7 +1018,7 @@ describe('PreferenceCard', () => {
 			await waitFor(() => expect(contextStore.setRow).toHaveBeenCalledWith(saved));
 		});
 
-		it('drops the row a removal deleted', async () => {
+		it('tells the store to drop the row a removal deleted', async () => {
 			const contextStore = resolvedRows(preferenceRow());
 			undoPreferenceCard.mockResolvedValue({ ok: true, event: undoneEvent });
 			renderActive();

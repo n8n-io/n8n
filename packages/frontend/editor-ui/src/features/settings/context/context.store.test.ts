@@ -207,6 +207,51 @@ describe('context.store', () => {
 		expect(result.failed).toHaveLength(2);
 	});
 
+	// The settings page and a chat card read the same row. A write on one must not leave the
+	// other painting the state it replaced.
+	describe('settings writes and the lookup cache', () => {
+		it('records the row an update returned', async () => {
+			const store = useContextStore();
+			update.mockResolvedValue(row({ id: 'a', userId: null, projectId: 'p-1' }));
+
+			await store.updatePreference('a', { content: 'Rule.', scope: 'project', projectId: 'p-1' });
+
+			expect(store.rowById.get('a')).toMatchObject({ projectId: 'p-1' });
+		});
+
+		it('records the row a create returned', async () => {
+			const store = useContextStore();
+			create.mockResolvedValue(row({ id: 'a' }));
+
+			await store.createPreference({ content: 'Rule.', scope: 'user' });
+
+			expect(store.rowById.get('a')?.id).toBe('a');
+		});
+
+		it('drops a row a delete removed', async () => {
+			const store = useContextStore();
+			store.setRow(row({ id: 'a' }));
+
+			await store.deletePreference('a');
+
+			expect(store.rowById.has('a')).toBe(false);
+		});
+
+		it('drops every row a bulk delete removed, and keeps the ones that failed', async () => {
+			const store = useContextStore();
+			store.setRow(row({ id: 'a' }));
+			store.setRow(row({ id: 'b' }));
+			remove.mockImplementation(async (_ctx: unknown, id: string) => {
+				if (id === 'b') throw new Error('gone');
+			});
+
+			await store.deletePreferences(['a', 'b']);
+
+			expect(store.rowById.has('a')).toBe(false);
+			expect(store.rowById.has('b')).toBe(true);
+		});
+	});
+
 	describe('resolveRows', () => {
 		it('turns every ask in the same tick into one read', async () => {
 			const store = useContextStore();
@@ -249,6 +294,36 @@ describe('context.store', () => {
 			await store.resolveRows(['b']);
 
 			expect(store.rowById.get('a')?.id).toBe('a');
+		});
+
+		// A read begun before a write must not put back what the write replaced.
+		it('does not let a read in flight undo a save that landed while it ran', async () => {
+			const store = useContextStore();
+			const { promise, settle } = deferred<{ count: number; data: Preference[] }>();
+			list.mockReturnValueOnce(promise);
+
+			const reading = store.resolveRows(['a']);
+			// The save lands first, with the row in its new project.
+			store.setRow(row({ id: 'a', userId: null, projectId: 'p-1' }));
+			// The read answers with the row as it was before that save.
+			settle({ count: 1, data: [row({ id: 'a', userId: 'user-1', projectId: null })] });
+			await reading;
+
+			expect(store.rowById.get('a')).toMatchObject({ userId: null, projectId: 'p-1' });
+		});
+
+		it('does not let a read in flight bring back a row a removal deleted', async () => {
+			const store = useContextStore();
+			const { promise, settle } = deferred<{ count: number; data: Preference[] }>();
+			list.mockReturnValueOnce(promise);
+
+			const reading = store.resolveRows(['a']);
+			// Nothing is cached yet, so the removal has no entry to drop, only a write to record.
+			store.forgetRow('a');
+			settle({ count: 1, data: [row({ id: 'a' })] });
+			await reading;
+
+			expect(store.rowById.has('a')).toBe(false);
 		});
 
 		it('records a row a write returned and drops one a write removed', () => {
