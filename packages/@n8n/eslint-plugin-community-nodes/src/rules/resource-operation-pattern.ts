@@ -7,6 +7,7 @@ import {
 	findObjectProperty,
 	getStringLiteralValue,
 	isFileType,
+	isTriggerNode,
 	createRule,
 } from '../utils/index.js';
 
@@ -18,6 +19,8 @@ export const ResourceOperationPatternRule = createRule({
 			description: 'Enforce proper resource/operation pattern for better UX in n8n nodes',
 		},
 		messages: {
+			missingActions:
+				'Node must define an operation with an action so it appears in node search and can be used by AI.',
 			tooManyOperationsWithoutResources:
 				'Node has {{ operationCount }} operations without resources. Use resources to organize operations when there are more than 5 operations.',
 		},
@@ -43,6 +46,7 @@ export const ResourceOperationPatternRule = createRule({
 			let hasResources = false;
 			let operationCount = 0;
 			let operationNode: TSESTree.Node | null = null;
+			let hasActions = false;
 
 			for (const property of propertiesArray.elements) {
 				if (property?.type !== AST_NODE_TYPES.ObjectExpression) {
@@ -68,8 +72,20 @@ export const ResourceOperationPatternRule = createRule({
 					const optionsProperty = findObjectProperty(property, 'options');
 					if (optionsProperty?.value?.type === AST_NODE_TYPES.ArrayExpression) {
 						operationCount = optionsProperty.value.elements.length;
+						hasActions ||= optionsProperty.value.elements.some(
+							(option) =>
+								option?.type === AST_NODE_TYPES.ObjectExpression &&
+								findObjectProperty(option, 'action') !== null,
+						);
 					}
 				}
+			}
+
+			if (!hasActions) {
+				context.report({
+					node: operationNode ?? descriptionValue,
+					messageId: 'missingActions',
+				});
 			}
 
 			if (operationCount > 5 && !hasResources && operationNode) {
@@ -90,7 +106,11 @@ export const ResourceOperationPatternRule = createRule({
 				}
 
 				const descriptionProperty = findClassProperty(node, 'description');
-				if (!descriptionProperty) {
+				if (descriptionProperty?.value?.type !== AST_NODE_TYPES.ObjectExpression) {
+					return;
+				}
+
+				if (isTriggerNode(node, descriptionProperty.value)) {
 					return;
 				}
 

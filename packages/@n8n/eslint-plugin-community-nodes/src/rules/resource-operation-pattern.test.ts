@@ -1,17 +1,10 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import type { RuleModule } from '@typescript-eslint/utils/ts-eslint';
 
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 
 const ruleTester = new RuleTester();
 
-// CE-2057: The expected message is absent until the rule handles missing actions.
-const ruleWithExpectedMessage = ResourceOperationPatternRule as RuleModule<
-	'missingActions' | 'tooManyOperationsWithoutResources',
-	[]
->;
-
-ruleTester.run('resource-operation-pattern', ruleWithExpectedMessage, {
+ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 	valid: [
 		{
 			name: 'node with resources and operations (good pattern)',
