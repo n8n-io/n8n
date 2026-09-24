@@ -46,6 +46,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
 import FindingStateSelect from './components/FindingStateSelect.vue';
+import HowToFixPanel from './components/HowToFixPanel.vue';
 import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
 import {
@@ -835,6 +836,14 @@ const sortedWorkflows = computed(() => {
 			</template>
 		</N8nSettingsPageHeader>
 
+		<HowToFixPanel
+			v-if="!isLoading"
+			:class="$style.howToFix"
+			:recommendations="state.recommendations"
+			:documentation-url="state.ruleDocumentationUrl"
+			:migratable="state.migratable"
+		/>
+
 		<div
 			v-if="!isLoading && unusedOpenWorkflows.length > 0"
 			:class="$style.unusedCallout"
@@ -1143,6 +1152,10 @@ const sortedWorkflows = computed(() => {
 	width: 100%;
 	max-width: var(--settings-content--max-width, 45rem);
 	margin-inline: auto;
+}
+
+.howToFix {
+	margin-bottom: var(--spacing--md);
 }
 
 .unusedCallout {
