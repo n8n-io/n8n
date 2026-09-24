@@ -647,27 +647,24 @@ describe('LmChatOpenAi', () => {
 			},
 		);
 
-		// This node merges with `Object.assign`, which runs the `__proto__` setter and would swap
-		// the prototype of the options object sent to the client.
+		// Reserved names, refused whatever the caller does with them: this node merges with
+		// `Object.assign`, so `__proto__` would repoint the prototype of the options object.
 		it.each([
 			['{"__proto__":{"polluted":true}}', '__proto__'],
 			['{"constructor":{"x":1}}', 'constructor'],
-		])(
-			'should reject an extraBody key that targets the object itself: %s',
-			async (extraBody, key) => {
-				const mockContext = setupMockContext();
+		])('should reject a reserved extraBody key: %s', async (extraBody, key) => {
+			const mockContext = setupMockContext();
 
-				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-					if (paramName === 'model.value') return 'gpt-4o-mini';
-					if (paramName === 'options') return { extraBody };
-					return undefined;
-				});
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return { extraBody };
+				return undefined;
+			});
 
-				const result = lmChatOpenAi.supplyData.call(mockContext, 0);
-				await expect(result).rejects.toThrow(`The "Extra Body" field cannot set "${key}"`);
-				await expect(result).rejects.toThrow(NodeOperationError);
-			},
-		);
+			const result = lmChatOpenAi.supplyData.call(mockContext, 0);
+			await expect(result).rejects.toThrow(`The "Extra Body" field cannot set "${key}"`);
+			await expect(result).rejects.toThrow(NodeOperationError);
+		});
 
 		it('should wrap Chat Completions models to normalize empty tool-call content', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.2 });

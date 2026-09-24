@@ -90,6 +90,19 @@ describe('LmChatAzureOpenAi', () => {
 			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
 		};
 
+		// supplyData reads this by name, so the suite stays green if the field is deleted.
+		// `getConnectionHintNoticeField` is auto-mocked to undefined, hence the optional chain.
+		it('should expose Extra Body as a JSON option', () => {
+			const options = new LmChatAzureOpenAi().description.properties.find(
+				(p) => p?.name === 'options',
+			);
+			const extraBody = options?.options?.find((o) => 'name' in o && o.name === 'extraBody');
+
+			expect(extraBody).toEqual(
+				expect.objectContaining({ displayName: 'Extra Body', type: 'json', default: '{}' }),
+			);
+		});
+
 		it('should reach modelKwargs on the classic deployment', async () => {
 			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, {
 				extraBody: '{"logit_bias":{"50256":-100}}',
@@ -165,7 +178,8 @@ describe('LmChatAzureOpenAi', () => {
 		it.each([
 			['not valid JSON', 'not json', 'The value in the "Extra Body" field is not valid JSON'],
 			['not an object', '[1,2]', 'The value in the "Extra Body" field must be a JSON object'],
-			// These names would change the options object itself rather than add a model parameter
+			// Reserved names. This node merges with a spread, so they would reach the request body
+			// as literal keys rather than repoint anything, but they are still not model parameters.
 			[
 				'a prototype key',
 				'{"__proto__":{"polluted":true}}',
