@@ -143,6 +143,31 @@ function layoutGroupInterior(
 }
 
 /**
+ * Checks whether layout knows where a member sticky will sit. The editor frames every member,
+ * so a chip is only right when it does: the sticky wraps its group's nodes, with no own position or size.
+ */
+function canLayoutPlaceSticky(
+	sticky: GraphNode,
+	groupNodeIds: ReadonlySet<string>,
+	{ declaresOwnHeight, declaresOwnWidth }: GroupStickyGeometry,
+): boolean {
+	const { instance } = sticky;
+	if (instance.config?.position !== undefined) {
+		return false;
+	}
+
+	if (declaresOwnWidth(sticky) || declaresOwnHeight(sticky)) {
+		return false;
+	}
+
+	if (!isAnchoredStickyNote(instance) || instance.stickyAnchorIds.length === 0) {
+		return false;
+	}
+
+	return instance.stickyAnchorIds.every((anchorId) => groupNodeIds.has(anchorId));
+}
+
+/**
  * Creates a temporary dagre node id for a synthetic collapsed group chip.
  * Frontend counterpart: createCanvasGroupNodeId, but it uses real persisted group ids.
  */
@@ -168,6 +193,7 @@ export function resolveEligibleLayoutGroups({
 	getAiConfigNodeIds,
 	getGroupInteriorBoxes,
 	compositeBoundingBox,
+	stickyGeometry,
 }: {
 	groups: readonly LayoutNodeGroup[] | undefined;
 	nodes: ReadonlyMap<string, GraphNode>;
@@ -177,6 +203,7 @@ export function resolveEligibleLayoutGroups({
 	getAiConfigNodeIds: (aiParentName: string) => string[];
 	getGroupInteriorBoxes: (memberKeys: string[]) => Map<string, BoundingBox>;
 	compositeBoundingBox: (boxes: BoundingBox[]) => BoundingBox;
+	stickyGeometry: GroupStickyGeometry;
 }): EligibleLayoutGroup[] {
 	const membershipCounts = countNonStickyGroupMemberships(groups, nodes, nonStickySet);
 	const aiSubtreeNodeIds = getAiSubtreeNodeIds(parentGraph, aiParentNames, getAiConfigNodeIds);
@@ -185,36 +212,64 @@ export function resolveEligibleLayoutGroups({
 	for (const [index, group] of (groups ?? []).entries()) {
 		const memberKeys = new Set(group.memberKeys.filter((memberKey) => nodes.has(memberKey)));
 		const nonStickyMemberKeys = [...memberKeys].filter((memberKey) => nonStickySet.has(memberKey));
-		if (nonStickyMemberKeys.length === 0) continue;
+		if (nonStickyMemberKeys.length === 0) {
+			continue;
+		}
+
+		const stickyMemberKeys = [...memberKeys].filter(
+			(memberKey) => nodes.get(memberKey)?.instance.type === STICKY_NODE_TYPE,
+		);
 
 		const hasOverlappingMember = nonStickyMemberKeys.some(
 			(memberKey) => (membershipCounts.get(memberKey) ?? 0) > 1,
 		);
+
 		// Invalid overlapping groups fall back together. Picking one would move the shared node.
-		if (hasOverlappingMember) continue;
+		if (hasOverlappingMember) {
+			continue;
+		}
 
 		const hasExplicitlyPositionedMember = nonStickyMemberKeys.some(
 			(memberKey) => nodes.get(memberKey)?.instance.config?.position !== undefined,
 		);
-		if (hasExplicitlyPositionedMember) continue;
 
-		if (splitsAiSubtree(new Set(nonStickyMemberKeys), aiSubtreeNodeIds)) continue;
+		if (hasExplicitlyPositionedMember) {
+			continue;
+		}
+
+		const groupNodeIds = new Set(
+			nonStickyMemberKeys.flatMap((memberKey) => nodes.get(memberKey)?.instance.id ?? []),
+		);
+
+		const stickyMembers = stickyMemberKeys.flatMap((stickyKey) => nodes.get(stickyKey) ?? []);
+		const everyStickyCanBePlaced = stickyMembers.every((sticky) =>
+			canLayoutPlaceSticky(sticky, groupNodeIds, stickyGeometry),
+		);
+
+		if (!everyStickyCanBePlaced) {
+			continue;
+		}
+
+		if (splitsAiSubtree(new Set(nonStickyMemberKeys), aiSubtreeNodeIds)) {
+			continue;
+		}
 
 		const interiorBoxesByNodeId = layoutGroupInterior(
 			nonStickyMemberKeys,
 			getGroupInteriorBoxes,
 			compositeBoundingBox,
 		);
-		if (interiorBoxesByNodeId.size === 0) continue;
+
+		if (interiorBoxesByNodeId.size === 0) {
+			continue;
+		}
 
 		eligibleGroups.push({
 			chipId: createGroupChipId(index, parentGraph),
 			name: group.name,
 			memberKeys,
 			nonStickyMemberKeys,
-			stickyMemberKeys: [...memberKeys].filter(
-				(memberKey) => nodes.get(memberKey)?.instance.type === STICKY_NODE_TYPE,
-			),
+			stickyMemberKeys,
 			interiorBoxesByNodeId,
 		});
 	}
@@ -310,41 +365,22 @@ function deterministicMemberStickyBoxes(
 	nodes: ReadonlyMap<string, GraphNode>,
 	nameById: ReadonlyMap<string, string>,
 	memberBoxesByNodeId: ReadonlyMap<string, BoundingBox>,
-	{ declaresOwnHeight, declaresOwnWidth, wrappingBoxFor }: GroupStickyGeometry,
-): BoundingBox[] | undefined {
-	const stickyBoxes: BoundingBox[] = [];
-
-	for (const stickyName of group.stickyMemberKeys) {
-		const graphNode = nodes.get(stickyName);
-		if (!graphNode) continue;
-
-		if (
-			graphNode.instance.config?.position !== undefined ||
-			declaresOwnWidth(graphNode) ||
-			declaresOwnHeight(graphNode) ||
-			!isAnchoredStickyNote(graphNode.instance)
-		) {
-			return undefined;
+	wrappingBoxFor: GroupStickyGeometry['wrappingBoxFor'],
+): BoundingBox[] {
+	return group.stickyMemberKeys.flatMap((stickyName) => {
+		const sticky = nodes.get(stickyName);
+		if (!sticky || !isAnchoredStickyNote(sticky.instance)) {
+			return [];
 		}
 
-		const anchorBoxes: BoundingBox[] = [];
-		for (const anchorId of graphNode.instance.stickyAnchorIds) {
+		const anchorBoxes = sticky.instance.stickyAnchorIds.flatMap((anchorId) => {
 			const anchorName = nameById.get(anchorId);
-			if (!anchorName || !group.memberKeys.has(anchorName)) return undefined;
+			const anchorBox = anchorName ? memberBoxesByNodeId.get(anchorName) : undefined;
+			return anchorBox ? [anchorBox] : [];
+		});
 
-			const anchorBox = memberBoxesByNodeId.get(anchorName);
-			if (!anchorBox) return undefined;
-
-			anchorBoxes.push(anchorBox);
-		}
-
-		const stickyBox = wrappingBoxFor(anchorBoxes);
-		if (!stickyBox) return undefined;
-
-		stickyBoxes.push(stickyBox);
-	}
-
-	return stickyBoxes;
+		return wrappingBoxFor(anchorBoxes) ?? [];
+	});
 }
 
 /**
@@ -382,10 +418,10 @@ export function reExpandLayoutGroups({
 			nodes,
 			nameById,
 			snappedMemberBoxesAtOrigin,
-			stickyGeometry,
+			stickyGeometry.wrappingBoxFor,
 		);
 
-		if (stickyBoxes && stickyBoxes.length > 0) {
+		if (stickyBoxes.length > 0) {
 			const inclusiveBox = compositeBoundingBox([
 				...snappedMemberBoxesAtOrigin.values(),
 				...stickyBoxes,

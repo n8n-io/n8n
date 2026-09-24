@@ -7,13 +7,15 @@ import {
 
 import { generateWorkflowCode } from './codegen';
 import { parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
-import type { GroupOptions, WorkflowJSON } from './types/base';
+import type { GroupOptions, NodeInstance, WorkflowJSON } from './types/base';
 import { workflow } from './workflow-builder';
 import { DEFAULT_NODE_SIZE, NODE_X_SPACING } from './workflow-builder/constants';
-import { node, trigger } from './workflow-builder/node-builders/node-builder';
+import { node, sticky, trigger } from './workflow-builder/node-builders/node-builder';
 import { generateDeterministicGroupId } from './workflow-builder/string-utils';
 
 const WF_ID = 'wf-groups-1';
+
+type AnyNode = NodeInstance<string, string, unknown>;
 
 function buildGroupedWorkflow(options?: GroupOptions) {
 	const start = trigger({
@@ -130,6 +132,53 @@ describe('SDK node groups', () => {
 
 			expect(deliverChip.y).toBe(intakeChip.y);
 			expect(deliverChip.x - intakeChip.x).toBe(GROUP_HEADER_WIDTH_COLLAPSED + NODE_X_SPACING);
+		});
+
+		it.each<{
+			case: string;
+			note: (members: { b: AnyNode; c: AnyNode; d: AnyNode }) => AnyNode;
+		}>([
+			{
+				case: 'has its own position',
+				note: ({ b, c }) => sticky('Note', [b, c], { name: 'Note', position: [-2000, -2000] }),
+			},
+			{
+				case: 'has its own width',
+				note: ({ b, c }) => sticky('Note', [b, c], { name: 'Note', width: 600 }),
+			},
+			{
+				case: 'wraps a node outside the group',
+				note: ({ d }) => sticky('Note', [d], { name: 'Note' }),
+			},
+			{
+				case: 'wraps no node',
+				note: () => sticky('Note', { name: 'Note' }),
+			},
+		])('lays out the group node by node when a member sticky $case', ({ note }) => {
+			const build = (grouped: boolean) => {
+				const start = trigger({
+					type: MANUAL_TRIGGER_NODE_TYPE,
+					version: 1,
+					config: { name: 'Start' },
+				});
+				const b = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B' } });
+				const c = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'C' } });
+				const d = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'D' } });
+				const stickyNote = note({ b, c, d });
+				const builder = workflow(WF_ID, 'wf').add(start).to(b).to(c).to(d).add(stickyNote);
+
+				return (grouped ? builder.group('G', [b, c, stickyNote]) : builder).toJSON({
+					tidyUp: true,
+				});
+			};
+
+			// Without a chip, the group must not change where its members land.
+			const positionsByName = (json: WorkflowJSON) =>
+				Object.fromEntries(
+					json.nodes.filter((n) => n.name !== 'Note').map((n) => [n.name ?? '', n.position]),
+				);
+
+			expect(positionsByName(build(true))).toEqual(positionsByName(build(false)));
 		});
 	});
 

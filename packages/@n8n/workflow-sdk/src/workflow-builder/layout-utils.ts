@@ -835,6 +835,8 @@ export function calculateNodePositionsDagre(
 	// Groups and sticky anchors refer to persisted node ids; layout maps are keyed by node name.
 	const nameById = mapNodeIdsToKeys(nodes);
 
+	const stickyGeometry = { declaresOwnHeight, declaresOwnWidth, wrappingBoxFor };
+
 	// Select groups that can safely enter dagre as collapsed chips.
 	const eligibleGroups = resolveEligibleLayoutGroups({
 		groups,
@@ -851,6 +853,7 @@ export function calculateNodePositionsDagre(
 			return boxes;
 		},
 		compositeBoundingBox,
+		stickyGeometry,
 	});
 
 	// Replace eligible group members with collapsed chip placeholders before dagre layout.
@@ -906,7 +909,7 @@ export function calculateNodePositionsDagre(
 		nodes,
 		nameById,
 		geometry: { compositeBoundingBox, snapToGrid },
-		stickyGeometry: { declaresOwnHeight, declaresOwnWidth, wrappingBoxFor },
+		stickyGeometry,
 	});
 
 	// Snap to grid and build result (skip nodes with explicit positions)
