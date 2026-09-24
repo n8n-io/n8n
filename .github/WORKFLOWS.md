@@ -692,7 +692,8 @@ Chromium, its system libraries and Docker CLI. It publishes the image to GHCR
 and seeds Blacksmith's image cache on `master` and the pilot branch. It does not
 include repository dependencies or build outputs. Update its tag in the build
 workflow, `ci-pull-requests.yml` and `test-e2e-reusable.yml` together when a
-pin changes.
+pin changes. A manual dispatch runs a container smoke and Format check without
+republishing the image, so repeated runs can measure image-cache behavior.
 
 The PR Format check and E2E shard 1 use this image. Other E2E shards use their
 current setup. The jobs still install dependencies from the lockfile, build,
