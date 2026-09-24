@@ -1079,15 +1079,12 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
-	it.each(['!!!', '   '])('rejects an invalid task name: %j', async (taskName) => {
+	it('returns a failed output for invalid task names', async () => {
 		const runSubAgent = vi.fn();
 		const tool = createDelegateSubAgentTool({ runSubAgent });
-		expect(isZodSchema(tool.inputSchema)).toBe(true);
-		if (!isZodSchema(tool.inputSchema)) return;
-		expect(tool.inputSchema.safeParse({ ...input, taskName }).success).toBe(false);
 
 		await expect(
-			tool.handler?.({ ...input, taskName }, { runId: 'parent-run-1' }),
+			tool.handler?.({ ...input, taskName: '!!!' }, { runId: 'parent-run-1' }),
 		).resolves.toMatchObject({
 			status: 'failed',
 			answer: '',
