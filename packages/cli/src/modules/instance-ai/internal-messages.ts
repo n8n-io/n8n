@@ -262,6 +262,9 @@ export interface OnboardingAnswer {
  * that turn from the UI.
  */
 export function buildOnboardingAnswerMessage(answers: OnboardingAnswer[]): string {
+	// Free text skips the host follow-up: only the agent can tell a tool name from a task or a
+	// wish to stop, so it gets the answers as the first turn and hears that no question is open.
+	const freeText = answers.some((answer) => answer.customText?.trim());
 	return [
 		AUTO_FOLLOW_UP_MESSAGE,
 		'',
@@ -269,14 +272,19 @@ export function buildOnboardingAnswerMessage(answers: OnboardingAnswer[]): strin
 		'The user answered the opening questions:',
 		...answers.map((answer) => `- ${answer.question} ${formatOnboardingAnswer(answer)}`),
 		'These answers are final: use them as they are and do not ask these questions again.',
+		...(freeText
+			? [
+					'The typed answer is free text the user wrote into the card in place of a pick. Nobody has asked them about a task yet.',
+				]
+			: []),
 		'</onboarding-answer>',
 	].join('\n');
 }
 
-/** The selected options plus the free text; `(not answered)` when the card had neither. */
+/** The selected options, then the free text as `typed "…"`; `(not answered)` when the card had neither. */
 function formatOnboardingAnswer({ selectedOptions, customText }: OnboardingAnswer): string {
 	const text = customText?.trim();
-	const values = [...selectedOptions, ...(text ? [text] : [])];
+	const values = [...selectedOptions, ...(text ? [`typed "${text}"`] : [])];
 	return values.length > 0 ? values.join(', ') : '(not answered)';
 }
 

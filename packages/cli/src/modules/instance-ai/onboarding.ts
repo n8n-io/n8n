@@ -158,7 +158,8 @@ export async function loadOnboarding(): Promise<Onboarding> {
  * agent's first turn, the card as a finished synthetic run whose `ask-user` call still waits
  * for an answer. The UI shows, answers and restores the card through the same HITL path as a
  * live one. The answer settles the card and posts the follow-up question the same way, with no
- * model turn; the task the user types next starts the first real turn.
+ * model turn; the task the user types next starts the first real turn. Free text in the card
+ * starts that turn at once instead, with the answers as the message.
  */
 @Service()
 export class InstanceAiOnboardingService {
@@ -207,15 +208,19 @@ export class InstanceAiOnboardingService {
 
 	/**
 	 * Settle the host-seeded card with the user's answers, then post the follow-up question as a
-	 * second finished synthetic run and return its id. Returns `undefined` when `requestId` is
-	 * not that card (the HITL path owns it then, and answers a consumed request with 404 like for
-	 * any card).
+	 * second finished synthetic run and return its id. Free text in an answer returns the answers
+	 * as `firstMessage` instead, for the caller to start the first turn with: only the agent can
+	 * tell a tool name from a task or a wish to stop. Returns `undefined` when `requestId` is not
+	 * that card (the HITL path owns it then, and answers a consumed request with 404 like for any
+	 * card).
 	 */
 	async answerCard(
 		userId: string,
 		requestId: string,
 		request: InstanceAiConfirmRequest,
-	): Promise<{ threadId: string; runId: string } | undefined> {
+	): Promise<
+		{ threadId: string; runId: string } | { threadId: string; firstMessage: string } | undefined
+	> {
 		if (!requestId.startsWith(CARD_REQUEST_ID_PREFIX)) return undefined;
 		const row = await this.pendingConfirmationRepo.claim(requestId, userId);
 		if (!row?.toolCallId) return undefined;
@@ -256,16 +261,21 @@ export class InstanceAiOnboardingService {
 				? { question: question.question, selectedOptions: [fromSurvey] }
 				: answerFor(question);
 		});
+		const answerMessage = buildOnboardingAnswerMessage(lines);
+		// Free text is the user's own words: a tool the list lacks, a task, or a wish to stop. The
+		// caller starts the first turn with the answers, and the host posts no follow-up.
+		if (given.some((answer) => answer.customText?.trim())) {
+			return { threadId: row.threadId, firstMessage: answerMessage };
+		}
 		// The LLM history reads the answers as the hidden user turn under the follow-up, so the
 		// task the user types next is a normal first turn.
-		// ponytail: a free-text app (customText) counts as no pick: "your tools".
 		const apps = answers.find((answer) => answer.questionId === 'apps')?.selectedOptions ?? [];
 		const followUp = opening.followUp.replace('{{apps}}', mentionApps(apps));
 		const { userMessageId } = await this.memoryService.seedOpeningMessages(
 			row.threadId,
 			userId,
 			followUp,
-			buildOnboardingAnswerMessage(lines),
+			answerMessage,
 		);
 		const runId = await this.seedTurn({
 			threadId: row.threadId,

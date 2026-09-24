@@ -575,8 +575,15 @@ export class InstanceAiController {
 
 		// The host-seeded onboarding card has no run to resume: settle it and post the follow-up
 		// question as a finished synthetic run. The user's next chat message starts the first turn.
+		// Free text in the card starts that turn now, with the answers as the message.
 		const card = await this.onboarding.answerCard(req.user.id, requestId, parseResult.data);
-		if (card) return { ok: true, runId: card.runId };
+		if (card) {
+			const runId =
+				'firstMessage' in card
+					? this.instanceAiService.startRun(req.user, card.threadId, card.firstMessage)
+					: card.runId;
+			return { ok: true, runId };
+		}
 
 		const resolved = await this.instanceAiService.resolveConfirmation(
 			req.user.id,

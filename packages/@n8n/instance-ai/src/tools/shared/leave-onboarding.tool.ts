@@ -5,7 +5,9 @@ import { DOMAIN_TOOL_IDS } from '../tool-ids';
 
 /**
  * The agent's explicit exit from the onboarding flow. The host reacts to the tool call
- * itself and restores the normal chat chrome, so the handler has nothing to do.
+ * itself and restores the normal chat chrome. The result tells the agent that the
+ * onboarding rules end here: the skill block stays in context for the rest of the turn,
+ * and its card-only questions would otherwise leak into the help that follows.
  */
 export function createLeaveOnboardingTool() {
 	return (
@@ -16,10 +18,15 @@ export function createLeaveOnboardingTool() {
 					'them with what they asked. Not needed before a build: a build ends the onboarding by itself.',
 			)
 			.input(z.object({}))
-			.output(z.object({ left: z.boolean() }))
+			.output(z.object({ left: z.boolean(), note: z.string() }))
 			// ponytail: the frontend persists the exit (thread metadata `onboardingLeft`) when it sees
 			// this call. Persist it here once the backend must know without a connected client.
-			.handler(async () => ({ left: true }))
+			.handler(async () => ({
+				left: true,
+				note:
+					'The onboarding rules no longer apply. Continue as on a normal thread. Ask for files ' +
+					'in plain text: a card cannot take attachments.',
+			}))
 			.build()
 	);
 }
