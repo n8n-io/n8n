@@ -26,10 +26,7 @@ export async function setupOAuth2Authentication(
 
 		// Use getBearerTokenProvider to create the function LangChain expects
 		// Pass the required scope for Azure Cognitive Services
-		const azureADTokenProvider = getBearerTokenProvider(
-			entraTokenCredential,
-			AZURE_OPENAI_SCOPE,
-		);
+		const azureADTokenProvider = getBearerTokenProvider(entraTokenCredential, AZURE_OPENAI_SCOPE);
 
 		this.logger.debug('Successfully created Azure AD Token Provider.');
 
