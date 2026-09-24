@@ -291,6 +291,41 @@ describe('ExecutionRecorder', () => {
 			]);
 		});
 
+		it('keeps committed inputs in order when restored markers repeat', () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+			const inputC = {
+				type: 'input',
+				queueId: 'queue-c',
+				message: { id: 'c', role: 'user', content: [{ type: 'text', text: 'C' }] },
+				timestamp: 2_000,
+			} satisfies TimelineEvent;
+			const inputD = {
+				type: 'input',
+				queueId: 'queue-d',
+				message: { id: 'd', role: 'user', content: [{ type: 'text', text: 'D' }] },
+				timestamp: 3_000,
+			} satisfies TimelineEvent;
+
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Before C' });
+			vi.setSystemTime(2_000);
+			recorder.recordInputs([inputC]);
+			recorder.record({ type: 'text-delta', id: 't2', delta: 'After C' });
+			vi.setSystemTime(3_000);
+			recorder.recordInputs([structuredClone(inputC), inputD]);
+			recorder.record({ type: 'text-delta', id: 't3', delta: 'After D' });
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+
+			expect(recorder.getMessageRecord().timeline).toEqual([
+				{ type: 'text', content: 'Before C', timestamp: 1_000, endTime: 2_000 },
+				inputC,
+				{ type: 'text', content: 'After C', timestamp: 2_000, endTime: 3_000 },
+				inputD,
+				{ type: 'text', content: 'After D', timestamp: 3_000, endTime: 3_000 },
+			]);
+		});
+
 		it('does not create empty text events for whitespace-only segments', () => {
 			const recorder = new ExecutionRecorder();
 
