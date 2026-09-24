@@ -14,10 +14,9 @@ import { InMemoryExecutionResponseReceiver } from '../response-channel/in-memory
 import { InMemoryExecutionResponseSender } from '../response-channel/in-memory-execution-response-sender';
 
 /**
- * The whole path a Buffer webhook response takes between the planes: the v1
- * `sendResponse` hook on the data plane, the in-memory sender and receiver, and
- * the responder that settles the pending request on the control plane. The
- * HTTP write itself is covered by the webhook helper tests.
+ * Runs `sendResponse` through the real hook, sender, receiver and responder.
+ * The unit tests for each of them check one step. This checks that the Buffer
+ * body that goes in is the one that comes out.
  */
 describe('a Buffer webhook response through the response channel', () => {
 	const bytes = Buffer.from([0x00, 0xff, 0x10, 0x80]);

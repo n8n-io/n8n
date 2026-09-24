@@ -54,8 +54,8 @@ export function attachResponseHooks(
  * form fails here rather than arriving silently mangled.
  *
  * A top-level Buffer body is base64-encoded into the envelope
- * which the control plane decodes, the same one Engine 1 queue mode uses.
- * Nested Buffers and streams are not supported, as in Engine 1 queue mode.
+ * which the control plane decodes, the same one Engine v1 queue mode uses.
+ * Nested Buffers and streams are not supported, as in Engine v1 queue mode.
  */
 function toJsonPayload(value: unknown): JsonValue {
 	assertCarriable(value);
