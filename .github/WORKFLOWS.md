@@ -695,10 +695,11 @@ lockfile-driven root install. Manual dispatch runs the smoke job without
 republishing the image, so it can check a warm pull. Update the image tag in
 the publish workflow when a tool pin changes.
 
-The `ci/pilot-toolchain-pr` branch tests the image in PR Format check and E2E
-shard 1. Other PRs use their current setup. The image jobs keep checkout,
-lockfile installation and build steps. Shard 1 uses the Chromium in the image
-and checks browser lookup, Turbo cache setup and Docker access before tests.
+The `ci/pilot-toolchain-pr` branch tests the image in PR Install & Build,
+Format check and E2E shard 1. Other PRs use their current setup. The image
+jobs keep checkout, lockfile installation and build steps. Shard 1 uses the
+Chromium in the image and checks browser lookup, Turbo cache setup and Docker
+access before tests.
 Compare `Initialize containers` in the job timeline and time to Format check
 or E2E tests in the job summary. Remove the branch condition before a wider
 rollout.

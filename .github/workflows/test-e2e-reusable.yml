@@ -97,7 +97,13 @@ jobs:
     steps:
       - name: Mark first pilot step
         if: inputs.use-toolchain-pilot && matrix.shard == 1
-        run: echo "CI_FIRST_STEP=$(date +%s)" >> "$GITHUB_ENV"
+        run: |
+          {
+            echo "CI_FIRST_STEP=$(date +%s)"
+            echo 'GIT_CONFIG_COUNT=1'
+            echo 'GIT_CONFIG_KEY_0=safe.directory'
+            echo "GIT_CONFIG_VALUE_0=$GITHUB_WORKSPACE"
+          } >> "$GITHUB_ENV"
 
       - name: Checkout
         uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
