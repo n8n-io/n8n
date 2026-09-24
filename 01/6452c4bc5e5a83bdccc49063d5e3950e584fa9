@@ -1,0 +1,42 @@
+packages/@n8n/inbound-auth/src/trusted-source-config.ts
+  s_bee76d9758e68b::t_b9f76f60187354 1,22,24-26,28,74-77,95-101,130,153-167,171-184,191,198-220,258-270,278-282,297-302
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-config.test.ts
+  s_bee76d9758e68b::t_680e85611824d4 2,6-7,56-71,74,78,80,82-84,87-114,116-121,125,128-137,139-176,180-214,222-223,227-228,232-233,238,241,245-256,262-265,267,273-276,278,283-285,295-297,302-311,313,315-330,335-337,344-359
+  s_bee76d9758e68b::t_84c14ecf62ac66 360
+packages/cli/src/modules/token-exchange/token-exchange.schemas.ts
+  s_bee76d9758e68b::t_320dae1c13fe40 2,8
+packages/@n8n/inbound-auth/src/__tests__/fixtures/trusted-source-config.v1.ts
+  s_b3d3f939a06edd::t_0c67cd5cec6a51 1-2
+  s_b3d3f939a06edd::t_cb99537f5811ec 30
+  s_bee76d9758e68b::t_680e85611824d4 15
+packages/@n8n/inbound-auth/tsconfig.json
+  s_bee76d9758e68b::t_21bca0cf319312 9-10
+packages/@n8n/inbound-auth/package.json
+  s_bee76d9758e68b::t_b9f76f60187354 26
+pnpm-lock.yaml
+  s_bee76d9758e68b::t_9f4c309db1f757 2912-2914
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "016452c4bc5e5a83bdccc49063d5e3950e584fa9",
+  "prompts": {},
+  "sessions": {
+    "s_b3d3f939a06edd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92dbbbde-9720-4f72-b1ad-54b8703aa822",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_bee76d9758e68b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54a02f6b-b851-4364-933c-ebfaa555d7b8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
