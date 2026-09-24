@@ -305,6 +305,11 @@ export class InsightsService {
 		}));
 	}
 
+	/** See {@link InsightsByPeriodRepository.getDailyDataStart}. */
+	async getDailyDataStart() {
+		return await this.insightsByPeriodRepository.getDailyDataStart();
+	}
+
 	private async queryInsightsByTime({
 		user,
 		startDate,

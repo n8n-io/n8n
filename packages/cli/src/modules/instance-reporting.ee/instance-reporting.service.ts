@@ -11,6 +11,7 @@ import { OperationalError } from 'n8n-workflow';
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
+import { INSIGHTS_MAX_AGE_DAYS_CAP } from '@/modules/insights/insights.constants';
 import { InsightsService } from '@/modules/insights/insights.service';
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -51,14 +52,17 @@ const SKIP_MESSAGES: Record<SkipReason, string> = {
 export const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
 
 /**
- * How many missed days one report may carry.
- *
- * Insights buckets a range of more than 30 days by week, which cannot fill a
- * daily point, so a longer gap is unrecoverable. The oldest days are dropped and
- * the report still ends at yesterday, rather than the instance retrying a window
- * it can never read.
+ * How many days one report may carry. Insights keeps no data for longer, so
+ * this only bounds the payload, in case that limit changes. Older days are
+ * dropped and the report still ends at yesterday.
  */
-const MAX_BACKFILL_DAYS = 30;
+const MAX_REPORT_DAYS = INSIGHTS_MAX_AGE_DAYS_CAP;
+
+/**
+ * Insights buckets a range of up to 30 days by day and a longer one by week,
+ * which cannot fill a daily point. A longer report reads in chunks of this size.
+ */
+const MAX_DAYS_PER_INSIGHTS_READ = 30;
 
 /**
  * Measures and delivers one instance report. *When* that happens is
@@ -150,7 +154,9 @@ export class InstanceReportingService {
 
 			if (days.length > 1) {
 				this.logger.info('Reporting days missed since the last delivered instance report', {
-					days,
+					firstDay: days[0],
+					lastDay: days.at(-1),
+					count: days.length,
 				});
 			}
 
@@ -253,23 +259,55 @@ export class InstanceReportingService {
 	 * The UTC days this report must carry a daily point for, oldest first, ending
 	 * yesterday. Empty when yesterday is already reported.
 	 *
-	 * A day the instance was down for is still unreported once it comes back, so
-	 * the whole gap since the last delivered report is collected. Without that,
-	 * downtime silently loses days from the daily series.
+	 * Every day after the last delivered one is still owed, whatever happened to
+	 * the reports in between, so neither downtime nor skipped reports lose days
+	 * from the daily series. A first report carries the history insights holds.
 	 */
 	private async missedDays(now: Date): Promise<string[]> {
+		const yesterday = utcDayBefore(now, 1);
 		const lastCoveredDay = await this.reportRepository.findLastCoveredDay();
-		const days: string[] = [];
+		if (lastCoveredDay && lastCoveredDay >= yesterday) return [];
 
-		// No last covered day means this is the first report: send yesterday alone
-		// rather than importing however much history insights happens to hold.
-		for (let back = 1; back <= (lastCoveredDay ? MAX_BACKFILL_DAYS : 1); back++) {
-			const day = utcDayBefore(now, back);
-			if (lastCoveredDay && day <= lastCoveredDay) break;
-			days.unshift(day);
+		const firstDay = minDay(await this.firstOwedDay(lastCoveredDay, yesterday), yesterday);
+		const oldestAllowedDay = utcDayBefore(now, MAX_REPORT_DAYS);
+
+		if (firstDay < oldestAllowedDay) {
+			this.logger.warn('Dropping the oldest days, which exceed what one instance report carries', {
+				firstDroppedDay: firstDay,
+				lastDroppedDay: addUtcDays(oldestAllowedDay, -1),
+			});
+		}
+
+		const days: string[] = [];
+		for (let day = maxDay(firstDay, oldestAllowedDay); day <= yesterday; day = addUtcDays(day, 1)) {
+			days.push(day);
 		}
 
 		return days;
+	}
+
+	/**
+	 * The oldest day the next report can carry an exact daily point for.
+	 *
+	 * Days that insights has folded into weekly totals have no exact value, so
+	 * they are never reported.
+	 */
+	private async firstOwedDay(lastCoveredDay: string | null, yesterday: string): Promise<string> {
+		const dayAfterCovered = lastCoveredDay ? addUtcDays(lastCoveredDay, 1) : null;
+
+		// Only yesterday is owed, which is the everyday case: skip the history read.
+		if (dayAfterCovered === yesterday) return yesterday;
+
+		const { firstExactDay, firstDataDay } = await this.insightsService.getDailyDataStart();
+
+		// A delivered report proves insights was collecting from then on, since this
+		// module cannot run without it. So a day without data there saw no executions.
+		if (dayAfterCovered) return maxDay(dayAfterCovered, firstExactDay);
+
+		// Nothing proves insights was collecting before its first data, so start
+		// there rather than report zeros. Without any data, still report yesterday,
+		// so that a new instance shows up on the receiver.
+		return firstDataDay ?? yesterday;
 	}
 
 	/**
@@ -280,30 +318,12 @@ export class InstanceReportingService {
 	 * cumulative ones.
 	 */
 	private async collectDataPoints(days: string[]): Promise<InstanceReportDataPoint[]> {
-		const startDate = new Date(`${days[0]}T00:00:00.000Z`);
-		const endDate = new Date(
-			new Date(`${days.at(-1)}T00:00:00.000Z`).getTime() + Time.days.toMilliseconds,
-		);
-
-		// Report instance-wide numbers, so read as the instance owner, whose global
-		// role grants access to every workflow.
-		const owner = await this.ownershipService.getInstanceOwner();
-
-		const [byDay, { productionRootExecutions }] = await Promise.all([
-			// Per day rather than one total for the range, since a report may cover
-			// several days. A range of 1 to 30 days buckets by day; see MAX_BACKFILL_DAYS.
-			this.insightsService.getInsightsByTime({
-				user: owner,
-				startDate,
-				endDate,
-				timeZone: 'UTC',
-			}),
+		const [totals, { productionRootExecutions }] = await Promise.all([
+			this.dailyTotals(days),
 			// Same source as the `productionRootExecutions` license metric, so the
 			// reported total matches what the license server sees.
 			this.licenseMetricsRepository.getLicenseRenewalMetrics(),
 		]);
-
-		const totals = new Map(byDay.map((row) => [row.date.slice(0, 10), row.values.total ?? 0]));
 
 		return [
 			{ kind: 'cumulative', name: 'billableExecutions', value: productionRootExecutions },
@@ -317,9 +337,52 @@ export class InstanceReportingService {
 			})),
 		];
 	}
+
+	/**
+	 * Billable executions for each of `days`, keyed by day. A day with no
+	 * executions has no entry.
+	 *
+	 * Reads one chunk at a time, so a long report still gets daily buckets and a
+	 * backfill holds only one database connection.
+	 */
+	private async dailyTotals(days: string[]): Promise<Map<string, number>> {
+		// Report instance-wide numbers, so read as the instance owner, whose global
+		// role grants access to every workflow.
+		const owner = await this.ownershipService.getInstanceOwner();
+		const totals = new Map<string, number>();
+
+		for (let start = 0; start < days.length; start += MAX_DAYS_PER_INSIGHTS_READ) {
+			const chunk = days.slice(start, start + MAX_DAYS_PER_INSIGHTS_READ);
+			const byDay = await this.insightsService.getInsightsByTime({
+				user: owner,
+				startDate: new Date(`${chunk[0]}T00:00:00.000Z`),
+				endDate: new Date(`${addUtcDays(chunk[chunk.length - 1], 1)}T00:00:00.000Z`),
+				timeZone: 'UTC',
+			});
+
+			for (const row of byDay) totals.set(row.date.slice(0, 10), row.values.total ?? 0);
+		}
+
+		return totals;
+	}
 }
 
 /** The UTC calendar day `count` days before `instant`, as `YYYY-MM-DD`. */
 function utcDayBefore(instant: Date, count: number): string {
 	return new Date(instant.getTime() - count * Time.days.toMilliseconds).toISOString().slice(0, 10);
+}
+
+/** The UTC calendar day `count` days after `day`, as `YYYY-MM-DD`. */
+function addUtcDays(day: string, count: number): string {
+	return utcDayBefore(new Date(`${day}T00:00:00.000Z`), -count);
+}
+
+/** The later of two `YYYY-MM-DD` days; `null` counts as no bound. */
+function maxDay(day: string, other: string | null): string {
+	return other && other > day ? other : day;
+}
+
+/** The earlier of two `YYYY-MM-DD` days. */
+function minDay(day: string, other: string): string {
+	return other < day ? other : day;
 }

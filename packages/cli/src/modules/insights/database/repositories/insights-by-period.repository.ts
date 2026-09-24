@@ -65,20 +65,23 @@ const optionalNumberLike = z
 	.optional()
 	.transform((value) => (value !== undefined ? Number(value) : undefined));
 
+/** A raw `periodStart`: a `Date` on Postgres, a UTC SQL datetime string on SQLite. */
+const periodStartParser = z.union([z.date(), z.string()]).transform((value): string => {
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+
+	const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
+	if (parsedDatetime.isValid) {
+		return parsedDatetime.toISO() ?? new Date(value).toISOString();
+	}
+
+	return new Date(value).toISOString();
+});
+
 const aggregatedInsightsByTimeParser = z
 	.object({
-		periodStart: z.union([z.date(), z.string()]).transform((value): string => {
-			if (value instanceof Date) {
-				return value.toISOString();
-			}
-
-			const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
-			if (parsedDatetime.isValid) {
-				return parsedDatetime.toISO() ?? new Date(value).toISOString();
-			}
-
-			return new Date(value).toISOString();
-		}),
+		periodStart: periodStartParser,
 		runTime: optionalNumberLike,
 		succeeded: optionalNumberLike,
 		failed: optionalNumberLike,
@@ -575,5 +578,68 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.select('MIN(ibp.periodStart)', 'minDate')
 			.getRawOne<{ minDate: Date | string | null }>();
 		return result?.minDate ? new Date(result.minDate) : null;
+	}
+
+	/**
+	 * Where exact per-day values start, as UTC days (`YYYY-MM-DD`).
+	 *
+	 * Compaction folds old days into one row per week, dated on the week's Monday.
+	 * A day-bucketed read puts such a row's whole week on its Monday, so a day is
+	 * exact only when no weekly row can hold it.
+	 *
+	 * - `firstExactDay`: the Monday after the newest weekly row, or `null` when no
+	 *   day was folded into a week yet. No day from here on is in a weekly row.
+	 * - `firstDataDay`: the oldest exact day with hourly or daily data, or `null`
+	 *   when there is none.
+	 */
+	async getDailyDataStart(): Promise<{
+		firstExactDay: string | null;
+		firstDataDay: string | null;
+	}> {
+		const periodStart = this.escapeField('periodStart');
+		const periodUnit = this.escapeField('periodUnit');
+
+		// ORDER BY with LIMIT rather than MIN or MAX: the unique index leads with
+		// periodStart, so each read stops at the first matching row.
+		const oldestDaily = await this.createQueryBuilder('daily')
+			.select(`daily.${periodStart}`, 'periodStart')
+			.where(`daily.${periodUnit} IN (:...dailyUnits)`, {
+				dailyUnits: [PeriodUnitToNumber.hour, PeriodUnitToNumber.day],
+			})
+			.orderBy(`daily.${periodStart}`, 'ASC')
+			.limit(1)
+			.getRawOne<{ periodStart: Date | string }>();
+
+		// Compaction folds the oldest days first, so every weekly row is older than
+		// the oldest daily one. Bounding the read to that range keeps it off the
+		// newer rows, which are most of the table.
+		const newestWeeklyQuery = this.createQueryBuilder('weekly')
+			.select(`weekly.${periodStart}`, 'periodStart')
+			.where(`weekly.${periodUnit} = :weekUnit`, { weekUnit: PeriodUnitToNumber.week })
+			.orderBy(`weekly.${periodStart}`, 'DESC')
+			.limit(1);
+		if (oldestDaily) {
+			newestWeeklyQuery.andWhere(`weekly.${periodStart} <= :oldestDaily`, {
+				oldestDaily: oldestDaily.periodStart,
+			});
+		}
+		const newestWeekly = await newestWeeklyQuery.getRawOne<{ periodStart: Date | string }>();
+
+		const firstExactDay = newestWeekly
+			? DateTime.fromISO(periodStartParser.parse(newestWeekly.periodStart), { zone: 'utc' })
+					.plus({ weeks: 1 })
+					.toISODate()
+			: null;
+		const oldestDailyDay = oldestDaily
+			? periodStartParser.parse(oldestDaily.periodStart).slice(0, 10)
+			: null;
+
+		if (!oldestDailyDay) return { firstExactDay, firstDataDay: null };
+
+		return {
+			firstExactDay,
+			firstDataDay:
+				firstExactDay && firstExactDay > oldestDailyDay ? firstExactDay : oldestDailyDay,
+		};
 	}
 }

@@ -76,15 +76,40 @@ Scope: no `pending` row is the newest, but one or more calendar days have no
 
 - `InstanceMonitoringReportRepository.findLastCoveredDay()` counts only
   `delivered` rows. A day whose row was skipped, or a day the instance was down
-  for, is still owed.
-- `InstanceReportingService.missedDays()` walks back from yesterday to the day
-  after the last delivered day. It stops at `MAX_BACKFILL_DAYS` (30) because
-  `insights` buckets a longer range by week, which cannot fill a daily point.
-  Older days are dropped.
+  for, is still owed. Skipped rows never shorten the window: only a delivered
+  row moves its start.
+- `InstanceReportingService.missedDays()` returns every day from the first
+  owed day to yesterday. Yesterday is always included.
+- The first owed day depends on whether a report was ever delivered.
+  `InsightsService.getDailyDataStart()` supplies the bounds:
+  - **After a delivered report:** the day after the last delivered day. A
+    delivered report proves that `insights` was collecting, so a day without
+    data inside the window is reported as `0`.
+  - **Before the first delivered report:** the first day with `insights` data.
+    Days before it are not reported, because nothing shows that `insights` was
+    collecting then. Without any data, the report carries only yesterday, so a
+    new instance still shows up on the receiver.
+  - **In both cases:** never a day older than the Monday after the newest weekly
+    row. Compaction folds old days into one row per week, so those days have no
+    exact value. With the default settings, that bound is about 180 days back.
+- The first report is no special case. It backfills the history that `insights`
+  holds instead of sending yesterday alone.
+- A report carries at most `MAX_REPORT_DAYS` (730, the `insights` pruning cap).
+  Older days are dropped and logged. This keeps a report far below the
+  receiver's size limit, so it can never be rejected with `413` again and again.
+- `collectDataPoints()` reads `insights` in chunks of up to 30 days, one after
+  the other. `insights` buckets a longer range by week, which cannot fill a
+  daily point.
 - The next report creates one new row. It carries one `daily` point for every
   missed day and one `cumulative` point. The cumulative point is a fresh
   lifetime total, not one per missed day.
 - That new row is then subject to type 1 if its own delivery fails.
+
+Example: the module is enabled, but the receiver cannot be reached for three
+days. Each day's report fails three times and is skipped. No row is delivered,
+so each new report starts again at the first day with `insights` data. When the
+receiver is reachable again, the next delivered report holds every day, from
+that first day to yesterday.
 
 Type 2 is the catch-up layer. It reacts to type 1 giving up, and to any other
 gap in delivered rows.
@@ -108,7 +133,7 @@ flowchart TD
     G --> I["Day stays uncovered\n(not delivered)"]
 
     subgraph T2["Type 2: missed-day backfill"]
-        J["Next cycle: newest row not pending"] --> K["missedDays() = every day after\nlast DELIVERED day, up to 30"]
+        J["Next cycle: newest row not pending"] --> K["missedDays() = every day after\nlast DELIVERED day (or since first\ninsights data), exact days only"]
         K --> L{"any missed days?"}
         L -- no --> M["nothing to send"]
         L -- yes --> N["new row: one daily point per\nmissed day + 1 cumulative point"]

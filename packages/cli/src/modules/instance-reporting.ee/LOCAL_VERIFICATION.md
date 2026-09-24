@@ -161,6 +161,12 @@ with:
 Confirm the numbers match what you recorded in step 2, and that `date` is
 yesterday's UTC date, not today's.
 
+"Exactly two entries" holds when `insights_by_period` has no rows older than
+yesterday, as on a fresh `~/.n8n`. The first report backfills the `insights`
+history, so an older database gives one `daily` point for every day from the
+oldest row to yesterday, oldest first. Days without rows inside that range
+carry `0`.
+
 **n8n side.**
 
 ```bash

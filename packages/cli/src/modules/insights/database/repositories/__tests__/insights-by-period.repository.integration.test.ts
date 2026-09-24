@@ -525,6 +525,90 @@ describe('InsightsByPeriodRepository', () => {
 		);
 	});
 
+	describe('getDailyDataStart', () => {
+		let repository: InsightsByPeriodRepository;
+		let workflow: WorkflowEntity;
+
+		async function truncateInsights(): Promise<void> {
+			await testDb.truncate(['InsightsByPeriod', 'InsightsMetadata', 'WorkflowEntity', 'Project']);
+		}
+
+		async function seed(periodUnit: InsightsByPeriod['periodUnit'], periodStart: string) {
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit,
+				periodStart: DateTime.fromISO(periodStart, { zone: 'utc' }),
+			});
+		}
+
+		beforeAll(() => {
+			repository = Container.get(InsightsByPeriodRepository);
+		});
+
+		beforeEach(async () => {
+			await truncateInsights();
+			workflow = await createWorkflow({}, await createTeamProject());
+		});
+
+		// Later blocks query a recent window, so leave none of these rows.
+		afterAll(async () => {
+			await truncateInsights();
+		});
+
+		test('returns no bounds without any data', async () => {
+			await expect(repository.getDailyDataStart()).resolves.toEqual({
+				firstExactDay: null,
+				firstDataDay: null,
+			});
+		});
+
+		test('starts at the oldest hourly or daily row when nothing was folded into weeks', async () => {
+			await seed('hour', '2026-02-10T13:00:00');
+			await seed('day', '2026-02-11');
+			await seed('hour', '2026-03-01T08:00:00');
+
+			await expect(repository.getDailyDataStart()).resolves.toEqual({
+				firstExactDay: null,
+				firstDataDay: '2026-02-10',
+			});
+		});
+
+		test('starts at the Monday after the newest weekly row, skipping a partly folded week', async () => {
+			await seed('week', '2026-03-16');
+			// Compaction folded Monday to Thursday into this week and left the rest.
+			await seed('week', '2026-03-23');
+			await seed('day', '2026-03-27');
+			await seed('day', '2026-03-28');
+			await seed('hour', '2026-06-01T10:00:00');
+
+			await expect(repository.getDailyDataStart()).resolves.toEqual({
+				firstExactDay: '2026-03-30',
+				firstDataDay: '2026-03-30',
+			});
+		});
+
+		test('starts at the oldest daily row when it comes after the weekly rows', async () => {
+			await seed('week', '2026-03-23');
+			await seed('day', '2026-04-08');
+
+			await expect(repository.getDailyDataStart()).resolves.toEqual({
+				firstExactDay: '2026-03-30',
+				firstDataDay: '2026-04-08',
+			});
+		});
+
+		test('returns only the weekly bound when every row was folded into weeks', async () => {
+			await seed('week', '2026-03-16');
+			await seed('week', '2026-03-23');
+
+			await expect(repository.getDailyDataStart()).resolves.toEqual({
+				firstExactDay: '2026-03-30',
+				firstDataDay: null,
+			});
+		});
+	});
+
 	describe('access filter', () => {
 		let member: User;
 		let accessibleProject: Project;
