@@ -157,6 +157,7 @@ packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.t
 packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
   s_c5954c3047b5ed::t_bb51301b0ac36b 99-101,159-162,165,168-174,826-832,834-840,885-895,901
   s_c5954c3047b5ed::t_db2a507e453d78 896-898,900,902,905,912,923,930
+  s_c5954c3047b5ed::t_af0c652858fee0 899
 packages/cli/src/modules/agents/agent-execution.service.ts
   s_c5954c3047b5ed::t_f7c5a8b1f1df76 88,143,182,278-289,435,449
 packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
@@ -180,6 +181,8 @@ packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
   s_c5954c3047b5ed::t_781d14d0d00674 32-34,204-206,250-251
   s_c5954c3047b5ed::t_fcd5c43c21ea89 296-300,428,441,449-450,452,461-466,475-477,481-483,493-498
   s_c5954c3047b5ed::t_c15d0c36d7fa22 295
+  s_c5954c3047b5ed::t_610d6f76a1cf1f 456
+  s_c5954c3047b5ed::t_af0c652858fee0 351,423-427,429-430,432-434,439-440,443-446,448,451,453,455
 packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
   s_c5954c3047b5ed::t_017ad93430781a 8,594,601
   s_c5954c3047b5ed::t_fcd5c43c21ea89 595-600,602-607
