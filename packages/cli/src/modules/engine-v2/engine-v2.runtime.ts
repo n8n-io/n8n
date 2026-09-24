@@ -1,21 +1,28 @@
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EngineRuntime } from '@n8n/engine';
+import type { EngineRuntime, ExecutionResponseSender } from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
+import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
+import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsHelper } from '@/credentials-helper';
 import { NodeTypes } from '@/node-types';
+
+import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneClient } from './engine-control-plane-client';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { EngineCredentialsClient } from './engine-credentials-client';
+import { RemoteCredentialsHelper } from './remote-credentials-helper';
 
 /**
  * Runs the engine 2.0 data plane inside the n8n process.
@@ -33,20 +40,31 @@ export class EngineV2Runtime {
 
 	private server?: Server;
 
+	/**
+	 * Shared by every credential request. Aborted after the engine has stopped,
+	 * so no request outlives it.
+	 * TODO(CAT-4526): replace with a per-step signal once the engine produces one.
+	 */
+	private stopping?: AbortController;
+
 	constructor(
 		private readonly engineConfig: EngineConfig,
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
 		private readonly controlPlaneClient: EngineControlPlaneClient,
+		private readonly credentialsClient: EngineCredentialsClient,
+		private readonly credentialsHelper: CredentialsHelper,
+		private readonly credentialTypes: CredentialTypes,
+		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 	}
 
-	async init(): Promise<void> {
+	async init(responseSender: ExecutionResponseSender): Promise<void> {
 		try {
 			await this.initDb();
 
-			this.initEngine();
+			this.initEngine(responseSender);
 
 			await this.initServer();
 		} catch (error) {
@@ -75,8 +93,11 @@ export class EngineV2Runtime {
 		await this.dataSource.runMigrations();
 	}
 
-	private initEngine(): void {
+	private initEngine(responseSender: ExecutionResponseSender): void {
 		assert(this.dataSource, 'Engine 2.0 cannot start without a data source');
+
+		const stopping = new AbortController();
+		this.stopping = stopping;
 
 		const engine = createEngineRuntime({
 			dataSource: this.dataSource,
@@ -85,24 +106,13 @@ export class EngineV2Runtime {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
 			logger: this.logger,
+			responseSender,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: async (events, signal) =>
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,
-					// TODO(CAT-2926): credentials resolve in this process, through the
-					// `CredentialsHelper` that `getBase` attaches, which works only while
-					// the engine runs inside the control plane. Intended for now; a helper
-					// that asks the control plane over HTTP replaces it.
-					additionalDataFactory: async ({ executionId }) => {
-						const additionalData = await WorkflowExecuteAdditionalData.getBase();
-
-						// The task runner keys its tasks by execution id, so it needs the engine's
-						// id to cancel them. `$execution.id` also reads it.
-						additionalData.executionId = executionId;
-
-						return additionalData;
-					},
+					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
 					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
 				}),
 			}),
@@ -110,6 +120,21 @@ export class EngineV2Runtime {
 		engine.start();
 
 		this.engine = engine;
+	}
+
+	private buildAdditionalData(
+		context: AdditionalDataContext,
+		stopping: AbortController,
+	): IWorkflowExecuteAdditionalData {
+		const credentialsHelper = new RemoteCredentialsHelper(
+			this.credentialsClient,
+			this.credentialsHelper,
+			this.credentialTypes,
+			context,
+			stopping.signal,
+		);
+
+		return this.additionalDataBuilder.build(context, credentialsHelper);
 	}
 
 	private async initServer(): Promise<void> {
@@ -170,6 +195,8 @@ export class EngineV2Runtime {
 
 		await this.engine.stop();
 		this.engine = undefined;
+		this.stopping?.abort();
+		this.stopping = undefined;
 	}
 
 	private async destroyDataSource(): Promise<void> {

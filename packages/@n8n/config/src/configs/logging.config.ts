@@ -32,7 +32,7 @@ export const LOG_SCOPES = [
 	'breaking-changes',
 	'circuit-breaker',
 	'source-control',
-	'git-connections',
+	'promotions',
 	'dynamic-credentials',
 	'workflow-history-compaction',
 	'data-table-csv-import',

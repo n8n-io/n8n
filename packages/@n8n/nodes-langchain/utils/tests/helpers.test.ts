@@ -9,10 +9,33 @@ import {
 	escapeSingleCurlyBrackets,
 	getConnectedTools,
 	mergeCustomHeaders,
+	parseJsonParameter,
 	unwrapNestedOutput,
 	getSessionId,
 } from '../helpers';
 import { N8nTool } from '../N8nTool';
+
+describe('parseJsonParameter', () => {
+	it('should parse a JSON string', () => {
+		expect(parseJsonParameter('{"a":1}', 'failed')).toEqual({ a: 1 });
+	});
+
+	it('should return an object value as-is', () => {
+		const value = { type: 'object', properties: { a: { type: 'number' } } };
+		expect(parseJsonParameter(value, 'failed')).toBe(value);
+	});
+
+	it('should return an array value as-is', () => {
+		const value = ['vs_1', 'vs_2'];
+		expect(parseJsonParameter(value, 'failed')).toBe(value);
+	});
+
+	it('should throw the given error message on invalid JSON', () => {
+		expect(() => parseJsonParameter('not json', 'Failed to parse schema')).toThrow(
+			'Failed to parse schema',
+		);
+	});
+});
 
 describe('escapeSingleCurlyBrackets', () => {
 	it('should return undefined when input is undefined', () => {
@@ -675,6 +698,55 @@ describe('getSessionId', () => {
 
 		const sessionId = getSessionId(mockCtx, 0);
 		expect(sessionId).toBe('12345');
+	});
+
+	it('should reject a non-primitive sessionId from bodyData', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: { $ne: null } });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should reject an array sessionId from bodyData', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: [{ $regex: '^a' }] });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should coerce a numeric sessionId from bodyData to a string', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: 12345 });
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('12345');
+	});
+
+	it('should coerce a boolean sessionId from bodyData to a string', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: false });
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('false');
+	});
+
+	it('should throw "No session ID found" for a null sessionId from bodyData', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: null });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should reject a non-primitive sessionId resolved from an expression', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue({ $ne: null });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
 	});
 
 	it('should retrieve sessionId from chat trigger', () => {

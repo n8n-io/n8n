@@ -122,6 +122,7 @@ export function createReadToolResultTool(filesystem: WorkspaceFilesystem): Built
 		.input(inputSchema)
 		.output(outputSchema)
 		.handler(async (input, ctx) => await readToolResult(filesystem, input, ctx.abortSignal))
+		.untrustedOutput()
 		.build();
 }
 

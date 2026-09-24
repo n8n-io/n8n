@@ -20,7 +20,7 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nCheckbox,
-	N8nIcon,
+	N8nBadge,
 	N8nTableBase,
 	N8nText,
 } from '@n8n/design-system';
@@ -155,6 +155,7 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 		case 'telegram':
 		case 'linear':
 		case 'discord':
+		case 'teams':
 			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
 		case 'chat':
 		case 'n8n_chat':
@@ -311,10 +312,12 @@ async function onFiltersChange(value: AgentSessionFilters) {
 							</button>
 						</td>
 						<td :class="$style.originCell" data-test-id="agent-session-origin">
-							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
-								<N8nIcon :icon="originPresentation(thread).icon" size="large" />
-								<span>{{ originPresentation(thread).label }}</span>
-							</span>
+							<N8nBadge
+								:leading-icon="originPresentation(thread).icon"
+								data-test-id="agent-session-origin-pill"
+							>
+								{{ originPresentation(thread).label }}
+							</N8nBadge>
 						</td>
 						<td :class="$style.dateCell" data-test-id="agent-session-updated-at">
 							{{ formatDate(thread.updatedAt) }}
@@ -346,13 +349,22 @@ async function onFiltersChange(value: AgentSessionFilters) {
 					>
 						<td :colspan="5" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
-								<span data-test-id="agent-sessions-empty">
-									{{
-										i18n.baseText(
-											hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
-										)
-									}}
-								</span>
+								<div :class="$style.emptyState">
+									<span data-test-id="agent-sessions-empty">
+										{{
+											i18n.baseText(
+												hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
+											)
+										}}
+									</span>
+									<span
+										v-if="!hasActiveFilters"
+										:class="$style.emptyStateDescription"
+										data-test-id="agent-sessions-empty-description"
+									>
+										{{ i18n.baseText('agentSessions.emptyDescription') }}
+									</span>
+								</div>
 							</template>
 						</td>
 					</tr>
@@ -576,5 +588,19 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	&:hover {
 		background-color: transparent;
 	}
+}
+
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	text-align: center;
+}
+
+.emptyStateDescription {
+	max-width: 100%;
+	color: var(--text-color--subtler);
+	white-space: normal;
 }
 </style>

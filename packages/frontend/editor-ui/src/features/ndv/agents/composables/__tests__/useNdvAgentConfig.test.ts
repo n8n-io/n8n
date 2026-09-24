@@ -54,6 +54,10 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	} as AgentJsonConfig;
 }
 
+function makeConfigResponse(overrides: Partial<AgentJsonConfig> = {}) {
+	return { config: makeConfig(overrides), configHash: 'config-hash' };
+}
+
 function makeAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 	return {
 		id: 'agent-1',
@@ -133,7 +137,7 @@ describe('useNdvAgentConfig', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		getAgentMock.mockReset().mockResolvedValue(makeAgent());
-		getAgentConfigMock.mockReset().mockResolvedValue(makeConfig());
+		getAgentConfigMock.mockReset().mockResolvedValue(makeConfigResponse());
 	});
 
 	afterEach(() => {
@@ -154,7 +158,9 @@ describe('useNdvAgentConfig', () => {
 
 	describe('referenced mode', () => {
 		it('fetches config + agent on mount and populates the summary / isPublished', async () => {
-			getAgentConfigMock.mockResolvedValue(makeConfig({ instructions: 'Fetched instructions.' }));
+			getAgentConfigMock.mockResolvedValue(
+				makeConfigResponse({ instructions: 'Fetched instructions.' }),
+			);
 			getAgentMock.mockResolvedValue(makeAgent({ activeVersionId: 'published-v1' }));
 
 			const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
@@ -184,7 +190,7 @@ describe('useNdvAgentConfig', () => {
 
 		it('loads agent B after switching A→B and never applies A load onto B', async () => {
 			getAgentConfigMock.mockImplementation(async (_ctx, _pid, aid: string) =>
-				makeConfig({ instructions: `config-${aid}` }),
+				makeConfigResponse({ instructions: `config-${aid}` }),
 			);
 			getAgentMock.mockImplementation(async (_ctx, _pid, aid: string) =>
 				makeAgent({ id: aid, name: `agent-${aid}` }),
@@ -242,7 +248,7 @@ describe('useNdvAgentConfig', () => {
 
 		it('resolves skill names from the agent record for the summary chips', async () => {
 			getAgentConfigMock.mockResolvedValue(
-				makeConfig({ skills: [{ type: 'skill', id: 'triage' }] }),
+				makeConfigResponse({ skills: [{ type: 'skill', id: 'triage' }] }),
 			);
 			getAgentMock.mockResolvedValue(
 				makeAgent({

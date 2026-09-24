@@ -40,3 +40,10 @@ export type ResolveCredentialRequest = z.infer<typeof resolveCredentialRequestSc
 export interface ResolveCredentialResponse {
 	data: ICredentialDataDecryptedObject;
 }
+
+/** Narrows a parsed response body. The client trusts nothing else about it. */
+export function isResolveCredentialResponse(body: unknown): body is ResolveCredentialResponse {
+	if (typeof body !== 'object' || body === null || !('data' in body)) return false;
+	const { data } = body;
+	return typeof data === 'object' && data !== null && !Array.isArray(data);
+}

@@ -64,6 +64,15 @@ function getConditionAndParams(
 		? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
 		: quoteIdentifier(filter.columnName, dbType);
 
+	// Empty/not-empty treat a value as empty when it is NULL or an empty string.
+	// Only string columns expose these conditions, so the `= ''` comparison is safe.
+	switch (filter.condition) {
+		case 'isEmpty':
+			return [`(${columnRef} IS NULL OR ${columnRef} = '')`, {}];
+		case 'isNotEmpty':
+			return [`(${columnRef} IS NOT NULL AND ${columnRef} != '')`, {}];
+	}
+
 	if (filter.value === null) {
 		switch (filter.condition) {
 			case 'eq':

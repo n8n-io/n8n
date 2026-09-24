@@ -32,6 +32,7 @@ function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView 
 		createdAt: new Date('2026-08-26T10:00:00Z'),
 		timeoutAt: null,
 		settledAt: null,
+		notifiedAt: null,
 		childExecutionId: null,
 		...overrides,
 	};
@@ -68,6 +69,19 @@ describe('spawn_background_subagent', () => {
 			parentThreadId: 'thread-1',
 			parentResourceId: 'resource-1',
 		});
+	});
+
+	it('rejects background jobs in task sessions', async () => {
+		const { backgroundRunner, options } = setup();
+		const tool = createSpawnBackgroundSubAgentTool(options);
+
+		const output = await tool.handler!(
+			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ persistence: { ...persistence, resourceId: 'task:task-1' } },
+		);
+
+		expect(output).toMatchObject({ status: 'rejected' });
+		expect(backgroundRunner.spawn).not.toHaveBeenCalled();
 	});
 
 	it('rejects when the thread carries no host metadata', async () => {
@@ -235,6 +249,20 @@ describe('check_background_jobs', () => {
 		expect(output).toMatchObject({
 			jobs: [expect.objectContaining({ executionId: 'exec-1' })],
 		});
+	});
+
+	it('marks only the returned settled jobs as delivered', async () => {
+		const { jobService, options } = setup();
+		jobService.listForThread.mockResolvedValue([
+			jobView(),
+			jobView({ id: 'job-2', status: 'completed', settledAt: new Date() }),
+			jobView({ id: 'job-3', status: 'failed', settledAt: new Date() }),
+		]);
+		const tool = createCheckBackgroundJobsTool(options.jobService);
+
+		await tool.handler!({}, { persistence });
+
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-2', 'job-3']);
 	});
 
 	it('truncates oversized results in the echo', async () => {

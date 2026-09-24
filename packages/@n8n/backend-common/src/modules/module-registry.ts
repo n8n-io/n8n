@@ -42,6 +42,9 @@ export class ModuleRegistry {
 	) {}
 
 	private readonly defaultModules: ModuleName[] = [
+		// policy-infrastructure leads: it registers the enforcement implementation
+		// that every policy feature's checks are run by.
+		'policy-infrastructure',
 		'insights',
 		'external-secrets',
 		'community-packages',
@@ -74,6 +77,7 @@ export class ModuleRegistry {
 		'mcp-registry',
 		'workflow-reviews',
 		'instance-ai',
+		'agents',
 	];
 
 	private readonly activeModules: string[] = [];

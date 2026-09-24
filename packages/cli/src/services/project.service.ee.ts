@@ -1,6 +1,5 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	type User,
 	FolderRepository,
@@ -8,8 +7,10 @@ import {
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
+	ProjectIdConflictError,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 	type ProjectListOptions,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -21,6 +22,8 @@ import {
 	type GlobalRole,
 	type ProjectRole,
 	AssignableProjectRole,
+	GLOBAL_ADMIN_ROLE_SLUG,
+	GLOBAL_OWNER_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_ADMIN_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
@@ -30,6 +33,7 @@ import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -37,6 +41,11 @@ import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
 import { RoleService } from './role.service';
+
+const INSTANCE_ACCESS_ROLE_ERROR =
+	"This user has access through their instance role. Project roles can't change their access in this project.";
+const INSTANCE_ACCESS_REMOVE_ERROR =
+	"This user has access through their instance role and can't be removed from the project.";
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -93,6 +102,7 @@ export class ProjectService {
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	private get workflowService() {
@@ -414,6 +424,7 @@ export class ProjectService {
 		const [projects, count] = await this.projectRepository.findAndCount({
 			skip: offset,
 			take: limit,
+			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 		return { projects, count };
 	}
@@ -479,49 +490,30 @@ export class ProjectService {
 		return results;
 	}
 
-	private async createTeamProjectWithEntityManager(
-		adminUser: User,
-		data: CreateProjectDto,
-		trx: EntityManager,
-		overrides: ProjectCreateOverrides = {},
-	) {
-		const limit = this.licenseState.getMaxTeamProjects();
-		if (limit !== UNLIMITED_LICENSE_QUOTA) {
-			const teamProjectCount = await trx.count(Project, { where: { type: 'team' } });
-			if (teamProjectCount >= limit) {
-				throw new TeamProjectOverQuotaError(limit);
-			}
-		}
-
-		const project = await trx.save(
-			Project,
-			this.projectRepository.create({
-				...data,
-				...overrides,
-				type: 'team',
-				creatorId: adminUser.id,
-			}),
-		);
-
-		// Link admin
-		await this.addUser(project.id, { userId: adminUser.id, role: 'project:admin' }, trx);
-
-		return project;
-	}
-
 	async createTeamProject(
 		adminUser: User,
 		data: CreateProjectDto,
 		overrides: ProjectCreateOverrides = {},
 	): Promise<Project> {
-		// This needs to be SERIALIZABLE otherwise the count would not block a
-		// concurrent transaction and we could insert multiple projects.
-		const project = await this.projectRepository.manager.transaction(
-			'SERIALIZABLE',
-			async (trx) => {
-				return await this.createTeamProjectWithEntityManager(adminUser, data, trx, overrides);
-			},
-		);
+		const limit = this.licenseState.getMaxTeamProjects();
+		let project: Project | null;
+		try {
+			project = await this.projectRepository.insertTeamProjectWithAdmin(
+				{
+					name: data.name,
+					icon: data.icon ?? null,
+					id: overrides.id,
+					description: overrides.description ?? null,
+					customTelemetryTags: overrides.customTelemetryTags ?? [],
+				},
+				adminUser.id,
+				limit,
+			);
+		} catch (error) {
+			if (error instanceof ProjectIdConflictError) throw new ConflictError(error.message);
+			throw error;
+		}
+		if (!project) throw new TeamProjectOverQuotaError(limit);
 
 		this.eventService.emit('team-project-created', {
 			userId: adminUser.id,
@@ -536,14 +528,17 @@ export class ProjectService {
 		user: User,
 		projectId: string,
 		{ name, icon, description, customTelemetryTags }: UpdateProjectDto,
+		{ preserveCustomTelemetryTags = false }: { preserveCustomTelemetryTags?: boolean } = {},
 	): Promise<void> {
-		const trimmedTags = customTelemetryTags
-			?.map(({ key, value }) => ({ key: key.trim(), value }))
-			.filter(({ key }) => key !== '');
+		const tags = preserveCustomTelemetryTags
+			? customTelemetryTags
+			: customTelemetryTags
+					?.map(({ key, value }) => ({ key: key.trim(), value }))
+					.filter(({ key }) => key !== '');
 
 		const result = await this.projectRepository.update(
 			{ id: projectId, type: 'team' },
-			{ name, icon, description, customTelemetryTags: trimmedTags },
+			{ name, icon, description, customTelemetryTags: tags },
 		);
 		if (!result.affected) {
 			throw new ProjectNotFoundError(projectId);
@@ -675,11 +670,13 @@ export class ProjectService {
 			throw new ForbiddenError("Can't add a personalOwner to a team project.");
 		}
 
+		const memberRelations = await this.withoutInstanceAdmins(relations);
+
 		const existingUserIds = new Set(project.projectRelations.map((pr) => pr.userId));
-		const newSharees = relations.filter((relation) => !existingUserIds.has(relation.userId));
+		const newSharees = memberRelations.filter((relation) => !existingUserIds.has(relation.userId));
 
 		await this.projectRelationRepository.save(
-			relations.map((relation) => ({
+			memberRelations.map((relation) => ({
 				projectId,
 				userId: relation.userId,
 				role: { slug: relation.role },
@@ -718,6 +715,8 @@ export class ProjectService {
 			'project',
 		);
 
+		const memberRelations = await this.withoutInstanceAdmins(relations);
+
 		const existingByUserId = new Map(project.projectRelations.map((r) => [r.userId, r]));
 		const added: Array<{ userId: string; role: AssignableProjectRole }> = [];
 		const conflicts: Array<{
@@ -726,7 +725,7 @@ export class ProjectService {
 			requestedRole: AssignableProjectRole;
 		}> = [];
 
-		for (const rel of relations) {
+		for (const rel of memberRelations) {
 			const existing = existingByUserId.get(rel.userId);
 			if (!existing) continue; // will be inserted below
 			const current = existing.role?.slug;
@@ -736,7 +735,7 @@ export class ProjectService {
 		}
 
 		// Insert only non-existing users
-		const toInsert = relations.filter((rel) => !existingByUserId.has(rel.userId));
+		const toInsert = memberRelations.filter((rel) => !existingByUserId.has(rel.userId));
 		if (toInsert.length > 0) {
 			// Use insert to avoid accidental upsert of different role
 			await this.projectRelationRepository.insert(
@@ -779,6 +778,38 @@ export class ProjectService {
 		}
 	}
 
+	/**
+	 * Ids of enabled instance owners and admins. Their project access comes from
+	 * their global role, so project membership does not apply to them.
+	 */
+	private async findInstanceAdminIds(userIds: string[]): Promise<Set<string>> {
+		if (userIds.length === 0) return new Set();
+		const users = await this.userRepository.findManyByIds(userIds, { includeRole: true });
+		return new Set(
+			users
+				.filter(
+					(u) =>
+						!u.disabled &&
+						(u.role?.slug === GLOBAL_OWNER_ROLE_SLUG || u.role?.slug === GLOBAL_ADMIN_ROLE_SLUG),
+				)
+				.map((u) => u.id),
+		);
+	}
+
+	/**
+	 * Drops instance owners and admins from an add request. They already have
+	 * access, so they are treated like members who already hold the role.
+	 */
+	private async withoutInstanceAdmins<T extends { userId: string }>(relations: T[]): Promise<T[]> {
+		const instanceAdminIds = await this.findInstanceAdminIds(relations.map((r) => r.userId));
+		return relations.filter((r) => !instanceAdminIds.has(r.userId));
+	}
+
+	private async assertNoInstanceAdmins(userIds: string[], message: string) {
+		const instanceAdminIds = await this.findInstanceAdminIds(userIds);
+		if (instanceAdminIds.size > 0) throw new ForbiddenError(message);
+	}
+
 	private isUserProjectOwner(project: Project, userId: string) {
 		return project.projectRelations.some(
 			(pr) => pr.userId === userId && pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
@@ -792,6 +823,8 @@ export class ProjectService {
 		if (this.isUserProjectOwner(project, userId)) {
 			throw new ForbiddenError('Project owner cannot be removed from the project');
 		}
+
+		await this.assertNoInstanceAdmins([userId], INSTANCE_ACCESS_REMOVE_ERROR);
 
 		const proxy = await this.connectionStatusProxy;
 
@@ -819,6 +852,10 @@ export class ProjectService {
 		await this.roleService.checkRolesExist([role], 'project');
 
 		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+
+		// Instance owners and admins are listed as members without a relation, so
+		// check them first to return the reason instead of "not found".
+		await this.assertNoInstanceAdmins([userId], INSTANCE_ACCESS_ROLE_ERROR);
 
 		const projectUserExists = project.projectRelations.some((r) => r.userId === userId);
 		if (!projectUserExists) {
@@ -994,6 +1031,21 @@ export class ProjectService {
 		});
 	}
 
+	/**
+	 * Users who always reach this project through their global role, whether or
+	 * not a project relation exists for them. Personal projects are never shared
+	 * this way, so they return an empty list.
+	 */
+	async getImplicitProjectMembers(project: Pick<Project, 'id' | 'type'>): Promise<User[]> {
+		if (project.type !== 'team') return [];
+
+		return await this.userRepository.findEligibleByProjectOrGlobalRoles({
+			projectId: project.id,
+			projectRoleSlugs: [],
+			globalRoleSlugs: [GLOBAL_OWNER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG],
+		});
+	}
+
 	async findUserIdsByProjectId(projectId: string): Promise<string[]> {
 		return await this.projectRelationRepository.findUserIdsByProjectId(projectId);
 	}
@@ -1015,6 +1067,7 @@ export class ProjectService {
 		const [members, count] = await this.projectRelationRepository.findAndCount({
 			where: { projectId },
 			relations: { user: true, role: true },
+			order: { createdAt: 'ASC', userId: 'ASC' },
 			skip: offset,
 			take: limit,
 		});

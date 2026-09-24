@@ -14,6 +14,8 @@ import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from 
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
+import { SystemTaskMetadata } from '@n8n/decorators';
+import type { SystemTaskClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
@@ -46,6 +48,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
@@ -247,8 +250,16 @@ export abstract class BaseCommand<F = never> {
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
 		if (this.needsExpressionEngine) {
-			const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
-				this.globalConfig.expressionEngine;
+			const {
+				engine,
+				poolSize,
+				maxCodeCacheSize,
+				bridgeTimeout,
+				bridgeMemoryLimit,
+				idleTimeout,
+				lazyAcquire,
+				compileCache,
+			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
 			try {
 				await Expression.initExpressionEngine({
@@ -258,6 +269,8 @@ export abstract class BaseCommand<F = never> {
 					bridgeTimeout,
 					bridgeMemoryLimit,
 					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+					lazyAcquire,
+					compileCache,
 					observability,
 				});
 			} catch (error) {
@@ -271,6 +284,22 @@ export abstract class BaseCommand<F = never> {
 			// vm-configured instance fails loudly instead of silently using the legacy engine
 			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
 		}
+	}
+
+	/**
+	 * Registers the system tasks this command runs and hands the registry to the
+	 * runner, which routes them. `ownTasks` are the tasks only this command runs,
+	 * on top of the ones every server command runs.
+	 */
+	protected async initSystemTasks(ownTasks: SystemTaskClass[] = []): Promise<void> {
+		const metadata = Container.get(SystemTaskMetadata);
+		for (const taskClass of [...(await instanceSystemTasks(this.globalConfig)), ...ownTasks]) {
+			metadata.register(taskClass);
+		}
+
+		// Imported here so one-off CLI commands do not load the runner's scheduler graph.
+		const { SystemTaskRunner } = await import('@/scheduling/system-tasks/system-task-runner.js');
+		await Container.get(SystemTaskRunner).init();
 	}
 
 	/**
@@ -329,6 +358,15 @@ export abstract class BaseCommand<F = never> {
 
 	protected error(message: string) {
 		throw new UnexpectedError(message);
+	}
+
+	/** Print an error banner, optionally preceded by a command-specific summary. */
+	protected logError(error: Error, summary?: string) {
+		if (summary) this.logger.error(summary);
+		this.logger.error('\nGOT ERROR');
+		this.logger.error('====================================');
+		this.logger.error(error.message);
+		this.logger.error(error.stack!);
 	}
 
 	async initBinaryDataService() {

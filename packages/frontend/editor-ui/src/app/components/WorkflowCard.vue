@@ -364,7 +364,7 @@ const hasDynamicCredentials = computed(() => {
 	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
 
-const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
+const workflowHasDependencies = computed(() => hasDependencies(props.data.id, 'workflow'));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	// Experiment cleanup: remove with openWorkflowInAssistant.
@@ -662,7 +662,7 @@ const tags = computed(
 				data-test-id="workflow-card-name"
 			>
 				{{ data.name }}
-				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" variant="outline">
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
 			</N8nText>
@@ -791,6 +791,8 @@ const tags = computed(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -861,6 +863,7 @@ const tags = computed(
 
 .cardBadge {
 	background-color: var(--color--background--light-3);
+	border-radius: var(--radius--full);
 }
 
 .cardBadge.with-breadcrumbs {
@@ -878,7 +881,7 @@ const tags = computed(
 	color: var(--color--text);
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;
@@ -898,7 +901,7 @@ const tags = computed(
 	}
 }
 
-@include mixins.breakpoint('xs-only') {
+@include breakpoints.breakpoint('xs-only') {
 	.breadcrumbs > div {
 		flex-direction: column;
 	}

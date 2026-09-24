@@ -37,6 +37,7 @@ CREATE TABLE "instance_ai_threads" ("id" varchar PRIMARY KEY NOT NULL, "resource
 | ---- | ---------- |
 | IDX_instance_ai_threads_projectId | CREATE INDEX "IDX_instance_ai_threads_projectId" ON "instance_ai_threads" ("projectId")  |
 | IDX_instance_ai_threads_resourceId | CREATE INDEX "IDX_instance_ai_threads_resourceId" ON "instance_ai_threads" ("resourceId")  |
+| IDX_instance_ai_threads_resourceId_updatedAt_id | CREATE INDEX "IDX_instance_ai_threads_resourceId_updatedAt_id" ON "instance_ai_threads" ("resourceId", "updatedAt", "id")  |
 | sqlite_autoindex_instance_ai_threads_1 | PRIMARY KEY (id) |
 
 ## Relations

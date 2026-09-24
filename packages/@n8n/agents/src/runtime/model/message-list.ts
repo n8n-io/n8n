@@ -23,7 +23,7 @@ export type { SerializedMessageList };
  * never added to the list, persisted, or serialized.
  */
 export const OBSERVATION_CONTINUATION_REMINDER =
-	'<system-reminder>Earlier conversation was compacted into the observation log in your system prompt. Continue the task naturally from where the log leaves off. Do not repeat work the log records as completed, and do not mention this compaction or your memory to the user.</system-reminder>';
+	'<system-reminder>Earlier conversation was reviewed for memory. Use the observation log in your system prompt if one is present. Continue the task from the available context. Do not repeat completed work. Do not mention this memory processing to the user.</system-reminder>';
 
 export type LlmContext = {
 	system: SystemModelMessage | SystemModelMessage[];
@@ -37,7 +37,8 @@ export type LlmContext = {
  * are both kept out of it and folded into a second, uncached system message
  * instead — either would otherwise change the bytes under the instruction
  * cache breakpoint (and OpenAI's automatic prefix cache) on nearly every
- * call, for no future read.
+ * call, for no future read. Providers that do not support multiple system
+ * messages receive one merged message instead.
  */
 export function buildSystemMessages(
 	baseInstructions: string,
@@ -45,6 +46,7 @@ export function buildSystemMessages(
 	instructionProviderOptions?: ProviderOptions,
 	volatileInstructions?: string,
 	mcpConnectionNote?: string,
+	splitSystemMessages = true,
 ): SystemModelMessage | SystemModelMessage[] {
 	const cacheOptions = instructionProviderOptions
 		? { providerOptions: instructionProviderOptions }
@@ -55,10 +57,10 @@ export function buildSystemMessages(
 		observationLogMemory?.trim(),
 	].filter((s): s is string => Boolean(s));
 
-	if (volatileSections.length === 0) {
+	if (volatileSections.length === 0 || !splitSystemMessages) {
 		return {
 			role: 'system',
-			content: baseInstructions,
+			content: [baseInstructions, ...volatileSections].join('\n\n'),
 			...cacheOptions,
 		};
 	}
@@ -94,6 +96,8 @@ type MessageSource = 'history' | 'input' | 'response';
  * the full three-way source distinction survives a round-trip.
  */
 export class AgentMessageList {
+	activeSkillIds?: string[];
+
 	private all: AgentDbMessage[] = [];
 
 	private historySet = new Set<AgentDbMessage>();
@@ -287,8 +291,26 @@ export class AgentMessageList {
 		const host = this.findToolCallHost(toolCallId);
 		if (!host) return;
 		const block = this.findToolCallBlock(host, toolCallId);
-		if (!block || block.state !== 'pending') return;
+		if (block?.state !== 'pending') return;
 		block.suspension = suspension;
+	}
+
+	/**
+	 * Record that a tool programmatically activated a skill on its own result, so
+	 * `ActiveSkills` can re-anchor the skill body there on a later turn instead
+	 * of falling back to the `<active_skills>` system prompt. The stamp rides on
+	 * the persisted message; it is metadata only and never reaches the model
+	 * (`toAiMessages` ignores it). No-op when the tool call is unknown.
+	 */
+	stampActivatedSkill(toolCallId: string, skillId: string): void {
+		const host = this.findToolCallHost(toolCallId);
+		if (!host) return;
+		const block = this.findToolCallBlock(host, toolCallId);
+		if (!block) return;
+		const current = block.activatedSkillIds ?? [];
+		if (current.includes(skillId)) return;
+		block.activatedSkillIds = [...current, skillId];
+		this.responseSet.add(host);
 	}
 
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
@@ -317,13 +339,14 @@ export class AgentMessageList {
 	 * Full LLM context for a generateText / streamText call.
 	 * Returns the system prompt separately (observation-log memory and any
 	 * volatile tool-instruction fragments in their own uncached system
-	 * message when present) and conversation messages stripped via
-	 * filterLlmMessages.
+	 * message when the provider supports split system messages) and
+	 * conversation messages stripped via filterLlmMessages.
 	 */
 	forLlm(
 		baseInstructions: string,
 		instructionProviderOptions?: ProviderOptions,
 		volatileInstructions?: string,
+		splitSystemMessages = true,
 	): LlmContext {
 		const messages = toAiMessages(
 			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
@@ -340,6 +363,7 @@ export class AgentMessageList {
 				instructionProviderOptions,
 				volatileInstructions,
 				this.mcpConnectionNote,
+				splitSystemMessages,
 			),
 			messages,
 		};
@@ -402,6 +426,11 @@ export class AgentMessageList {
 		return this.all.filter((m) => this.inputSet.has(m));
 	}
 
+	removeInput(): void {
+		this.all = this.all.filter((message) => !this.inputSet.has(message));
+		this.inputSet.clear();
+	}
+
 	/** All messages currently in the list, as live references. */
 	messages(): readonly AgentDbMessage[] {
 		return this.all;
@@ -414,11 +443,13 @@ export class AgentMessageList {
 			historyIds: toIds(this.historySet),
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
+			...(this.activeSkillIds !== undefined ? { activeSkillIds: [...this.activeSkillIds] } : {}),
 		};
 	}
 
 	static deserialize(data: SerializedMessageList): AgentMessageList {
 		const list = new AgentMessageList();
+		list.activeSkillIds = data.activeSkillIds ? [...data.activeSkillIds] : undefined;
 		const historyIdSet = new Set(data.historyIds);
 		const inputIdSet = new Set(data.inputIds);
 		const responseIdSet = new Set(data.responseIds);

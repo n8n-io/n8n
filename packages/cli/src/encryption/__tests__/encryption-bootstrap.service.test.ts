@@ -10,6 +10,7 @@ describe('EncryptionBootstrapService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		keyManager.repairLegacyDataEncryptionKeys.mockResolvedValue(undefined);
 		keyManager.bootstrapLegacyCbcKey.mockResolvedValue(undefined);
 		keyManager.bootstrapGcmKey.mockResolvedValue(undefined);
 	});
@@ -64,6 +65,15 @@ describe('EncryptionBootstrapService', () => {
 		expect(keyManager.bootstrapLegacyCbcKey).not.toHaveBeenCalled();
 		expect(keyManager.bootstrapGcmKey).not.toHaveBeenCalled();
 		expect(encryptionKeyProxy.setProvider).toHaveBeenCalledWith(keyManager);
+	});
+
+	it('repairs legacy keys before seeding', async () => {
+		await createService().run();
+
+		expect(keyManager.repairLegacyDataEncryptionKeys).toHaveBeenCalled();
+		expect(keyManager.repairLegacyDataEncryptionKeys.mock.invocationCallOrder[0]).toBeLessThan(
+			keyManager.bootstrapGcmKey.mock.invocationCallOrder[0],
+		);
 	});
 
 	it('bootstraps CBC before GCM', async () => {

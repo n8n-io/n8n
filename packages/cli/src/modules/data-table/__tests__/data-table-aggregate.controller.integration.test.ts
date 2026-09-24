@@ -9,7 +9,8 @@ import type { Project, User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
 import { createDataTable } from '@test-integration/db/data-tables';
-import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
+import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import { createOwner, createMember, createAdmin, createUser } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
@@ -99,6 +100,19 @@ describe('GET /data-tables-global', () => {
 		expect(response.body.data.count).toBe(1);
 		expect(response.body.data.data).toHaveLength(1);
 		expect(response.body.data.data[0].name).toBe('Test Data Table');
+	});
+
+	test('should not list data tables from a project where user only has project:chatUser role', async () => {
+		// project:chatUser grants no dataTable:listProject scope — membership in the
+		// project alone must not be enough to surface its data tables here.
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:chatUser');
+		await createDataTable(project, { name: 'Test Data Table' });
+
+		const response = await authMemberAgent.get('/data-tables-global').expect(200);
+
+		expect(response.body.data.count).toBe(0);
+		expect(response.body.data.data).toHaveLength(0);
 	});
 
 	test("should list data tables from user's own personal project", async () => {
@@ -361,5 +375,60 @@ describe('GET /data-tables-global', () => {
 		expect(response.body.data.count).toBe(1);
 		expect(response.body.data.data).toHaveLength(1);
 		expect(response.body.data.data[0].columns).toHaveLength(2);
+	});
+});
+
+// IAM-1197: a custom instance role built from Member + Insights View (no Instance
+// Settings) used to lose `dataTable:list` — the only scope that satisfied the old
+// `@GlobalScope('dataTable:list')` gate on this controller — because that scope
+// was only ever bundled inside the "Instance Settings" custom-role group. The
+// controller no longer gates on a scope at all; the service filters by the
+// project roles the user actually holds instead.
+describe('GET /data-tables-global — custom instance roles (IAM-1197)', () => {
+	afterEach(async () => {
+		// Users hold an FK ref to their custom role (User.roleSlug), so they must be
+		// gone — along with everything that in turn references the user — before the
+		// role delete in cleanupRolesAndScopes() runs, or that delete FK-fails.
+		await testDb.truncate(['DataTableColumn', 'DataTable', 'ProjectRelation', 'Project', 'User']);
+		await cleanupRolesAndScopes();
+	});
+
+	test('returns 200 with an empty list for a role with only Insights View and no team project access', async () => {
+		const role = await createCustomRoleWithScopeSlugs(['insights:read', 'insights:list'], {
+			roleType: 'global',
+			displayName: 'Insights Viewer (IAM-1197, no project access)',
+		});
+		const insightsViewer = await createUser({ role });
+		const authInsightsViewerAgent = testServer.authAgentFor(insightsViewer);
+
+		// Only accessible project is their own (empty) personal project — no error,
+		// just nothing to show.
+		const response = await authInsightsViewerAgent.get('/data-tables-global').expect(200);
+		expect(response.body.data.count).toBe(0);
+		expect(response.body.data.data).toHaveLength(0);
+
+		await authInsightsViewerAgent.get('/data-tables-global/limits').expect(200);
+	});
+
+	test('returns 200 with the data table for a role with only Insights View that also has project access to it', async () => {
+		const role = await createCustomRoleWithScopeSlugs(['insights:read', 'insights:list'], {
+			roleType: 'global',
+			displayName: 'Insights Viewer (IAM-1197, with project access)',
+		});
+		const insightsViewer = await createUser({ role });
+		const authInsightsViewerAgent = testServer.authAgentFor(insightsViewer);
+
+		const project = await createTeamProject('IAM-1197 project', insightsViewer);
+		await createDataTable(project, { name: 'Reachable Data Table' });
+
+		// The customer's report: the table is reachable directly from the project,
+		// so both aggregate endpoints (used by Overview and the Data Tables tab)
+		// should surface it too, without needing an unrelated instance-wide scope.
+		const response = await authInsightsViewerAgent.get('/data-tables-global').expect(200);
+		expect(response.body.data.count).toBe(1);
+		expect(response.body.data.data).toHaveLength(1);
+		expect(response.body.data.data[0].name).toBe('Reachable Data Table');
+
+		await authInsightsViewerAgent.get('/data-tables-global/limits').expect(200);
 	});
 });

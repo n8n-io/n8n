@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
 import { OperationalError } from 'n8n-workflow';
 
 import {
@@ -37,6 +37,11 @@ export type AgentBackgroundJobSettlement = {
 	result?: string | null;
 	error?: string | null;
 };
+
+export type BackgroundJobGroupItem = Pick<
+	AgentBackgroundJob,
+	'id' | 'kind' | 'title' | 'status' | 'createdAt' | 'settledAt' | 'notifiedAt'
+>;
 
 @Service()
 export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob> {
@@ -79,6 +84,17 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 	async findByParentThread(parentThreadId: string, ids?: string[]): Promise<AgentBackgroundJob[]> {
 		return await this.find({
 			where: ids?.length ? { parentThreadId, id: In(ids) } : { parentThreadId },
+			order: { createdAt: 'ASC' },
+		});
+	}
+
+	async findGroupCandidates(
+		parentAgentId: string,
+		parentThreadId: string,
+	): Promise<BackgroundJobGroupItem[]> {
+		return await this.find({
+			where: { parentAgentId, parentThreadId },
+			select: ['id', 'kind', 'title', 'status', 'createdAt', 'settledAt', 'notifiedAt'],
 			order: { createdAt: 'ASC' },
 		});
 	}
@@ -158,8 +174,12 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		return result.affected === 1;
 	}
 
-	/** Retention: drop settled rows past the cutoff. */
+	/** Delete settled jobs older than the cutoff only if their results are marked as delivered. */
 	async deleteSettledBefore(cutoff: Date): Promise<void> {
-		await this.delete({ status: Not('running'), settledAt: LessThan(cutoff) });
+		await this.delete({
+			status: Not('running'),
+			settledAt: LessThan(cutoff),
+			notifiedAt: Not(IsNull()),
+		});
 	}
 }

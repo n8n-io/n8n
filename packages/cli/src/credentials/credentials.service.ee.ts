@@ -112,6 +112,8 @@ export class EnterpriseCredentialsService {
 					user,
 					// TODO: replace credential:update with credential:decrypt once it lands
 					// see: https://n8nio.slack.com/archives/C062YRE7EG4/p1708531433206069?thread_ts=1708525972.054149&cid=C062YRE7EG4
+					// `credential:update` is its own gate: a see-only instance role never
+					// holds it, so this decrypt branch is unreachable for one.
 					['credential:read', 'credential:update'],
 					{ includeInstanceCredentials: true },
 				)
@@ -128,7 +130,9 @@ export class EnterpriseCredentialsService {
 				credentialId,
 				user,
 				['credential:read'],
-				{ includeInstanceCredentials: true },
+				// Detail-page metadata only — no `data` is returned on this branch, so
+				// seeing a credential you are not a member of is enough.
+				{ includeInstanceCredentials: true, visibilityOnly: true },
 			);
 
 			// Connect-capable users of a private credential need the redacted blueprint

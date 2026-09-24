@@ -1,21 +1,25 @@
 import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	buildMicrosoftGraphPath,
 	createMicrosoftGraphTransport,
 	type MicrosoftGraphCredentialType,
+	type MicrosoftGraphPathSegment,
 	rewriteNotFound,
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
 	validateMicrosoftGraphId,
 } from '@utils/microsoft/transport';
 
-// Thin facade over the shared Microsoft Graph transport kernel. The export
-// surface is unchanged so operations, listSearch and the Trigger keep
-// importing from this path.
+import { TEAMS_FORBIDDEN_HINTS } from './forbiddenHints';
+
+// Thin facade over the shared Microsoft Graph transport kernel: operations,
+// listSearch and the Trigger all import the transport from this path.
 export {
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
+	type MicrosoftGraphPathSegment,
 	buildMicrosoftGraphPath as buildTeamsPath,
 	rewriteNotFound,
 	validateMicrosoftGraphId as validateTeamsId,
@@ -28,7 +32,10 @@ const {
 	getGraphBaseUrl,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
-} = createMicrosoftGraphTransport({ defaultCredentialType: 'microsoftTeamsOAuth2Api' });
+} = createMicrosoftGraphTransport({
+	defaultCredentialType: 'microsoftTeamsOAuth2Api',
+	forbiddenHints: TEAMS_FORBIDDEN_HINTS,
+});
 
 export {
 	getTeamsCredentialType,
@@ -65,4 +72,20 @@ export function validateTaskBodyIdsUnderSp(
 	const node = this.getNode();
 	if (ids.planId !== undefined) validateMicrosoftGraphId(ids.planId, node);
 	if (ids.bucketId !== undefined) validateMicrosoftGraphId(ids.bucketId, node);
+}
+
+// The kernel's app-only 403 is generic; call sites name the missing permission or policy.
+export function rewriteForbiddenUnderSp(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	error: unknown,
+	message: string,
+	description: string,
+): unknown {
+	if (getTeamsCredentialType.call(this) !== SERVICE_PRINCIPAL_AUTH) return error;
+	if (!(error instanceof NodeApiError) || error.httpCode !== '403') return error;
+	return new NodeApiError(
+		this.getNode(),
+		{ message, description },
+		{ message, description, httpCode: '403' },
+	);
 }

@@ -15,7 +15,7 @@ import {
 } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
-import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
+import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
 import type {
 	AgentResource,
@@ -85,6 +85,18 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * Hosts whose agent always exists omit it.
 	 */
 	ensureAgentPersisted?: () => Promise<void>;
+	/**
+	 * Flushes pending agent edits before an API mutation that also writes the
+	 * agent config. This prevents the mutation from advancing the config hash
+	 * ahead of a queued config save.
+	 */
+	beforeAgentMutation?: () => Promise<void>;
+	/**
+	 * Reloads agent-owned state after an API mutation that writes both a sidecar
+	 * resource and the agent config. The reload updates the config hash without
+	 * scheduling a duplicate config write.
+	 */
+	refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
 	validationIssues?: Ref<AgentConfigValidationIssue[]> | ComputedRef<AgentConfigValidationIssue[]>;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
@@ -107,6 +119,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		localSkills,
 		supportsToolApproval,
 		ensureAgentPersisted,
+		beforeAgentMutation,
+		refreshAgentAfterMutation,
 		validationIssues,
 		telemetry,
 	} = deps;
@@ -117,7 +131,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const nodeTypesStore = useNodeTypesStore();
 	const { showError, showMessage } = useToast();
 
-	function onOpenAddToolModal() {
+	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
 		// switch must not write the old agent's tool list into the new one.
 		const targetAgentId = agentId.value;
@@ -125,6 +139,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		uiStore.openModalWithData({
 			name: AGENT_TOOLS_MODAL_KEY,
 			data: {
+				mode,
 				tools: localConfig.value?.tools ?? [],
 				mcpServers: localConfig.value?.mcpServers ?? [],
 				projectId: projectId.value,
@@ -413,6 +428,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		// still the current one.
 		const targetProjectId = projectId.value;
 		const targetAgentId = agentId.value;
+		const isCurrentTarget = () =>
+			projectId.value === targetProjectId && agentId.value === targetAgentId;
 
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
@@ -423,7 +440,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				existingSkillNames: appliedSkillNames(),
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 					if (localSkills) {
-						if (agentId.value !== targetAgentId) return;
+						if (!isCurrentTarget()) return;
 						const sanitizedSkill = filterSkillAllowedTools(skill);
 						if (hasDuplicateSkillName(sanitizedSkill.name)) {
 							showDuplicateSkillNameError(sanitizedSkill.name);
@@ -432,20 +449,26 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 						// The host mints the skill id and writes body + ref together.
 						localSkills.createSkill(sanitizedSkill);
-						showMessage({
-							title: locale.baseText('agents.builder.skills.added'),
-							type: 'success',
-						});
 						return;
 					}
 
 					void (async () => {
 						const sanitizedSkill = filterSkillAllowedTools(skill);
 						let created: AgentSkill;
+						let skillHash: string;
 						let versionId: string | null;
 						let skillId: string;
 						try {
+							await beforeAgentMutation?.();
+						} catch {
+							// The host owns the autosave error message. Do not also report
+							// this as a skill-creation failure.
+							return;
+						}
+						if (!isCurrentTarget()) return;
+						try {
 							await ensureAgentPersisted?.();
+							if (!isCurrentTarget()) return;
 							const result = await createAgentSkill(
 								rootStore.restApiContext,
 								targetProjectId,
@@ -454,27 +477,42 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							);
 							skillId = result.id;
 							created = result.skill;
+							skillHash = result.skillHash;
 							versionId = result.versionId;
 						} catch (error) {
 							showError(error, locale.baseText('agents.builder.skills.create.error'));
 							return;
 						}
-						if (agent.value?.id !== targetAgentId) return;
+						if (!isCurrentTarget() || agent.value?.id !== targetAgentId) return;
 						agent.value = {
 							...agent.value,
 							versionId,
+							skillHashes: {
+								...(agent.value.skillHashes ?? {}),
+								[skillId]: skillHash,
+							},
 							skills: {
 								...(agent.value.skills ?? {}),
 								[skillId]: created,
 							},
 						};
-						scheduleConfigUpdate({
-							skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id: skillId }],
-						});
-						showMessage({
-							title: locale.baseText('agents.builder.skills.added'),
-							type: 'success',
-						});
+						let refreshed = true;
+						try {
+							refreshed =
+								(await refreshAgentAfterMutation?.(targetProjectId, targetAgentId)) ?? true;
+						} catch (error) {
+							showError(error, locale.baseText('agents.builder.loadError'));
+							return;
+						}
+						if (refreshed && isCurrentTarget() && localConfig.value) {
+							localConfig.value = {
+								...localConfig.value,
+								skills: [
+									...(localConfig.value.skills ?? []).filter((ref) => ref.id !== skillId),
+									{ type: 'skill', id: skillId },
+								],
+							};
+						}
 					})();
 				},
 			},

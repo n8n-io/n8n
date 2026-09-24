@@ -60,7 +60,7 @@ const hrefFor = (dep: ResolvedDependency): string | undefined => {
 };
 
 const affectedGroups = computed(() => {
-	const dependencies = getDependencies(props.data.workflowId)?.dependencies ?? [];
+	const dependencies = getDependencies(props.data.workflowId, 'workflow')?.dependencies ?? [];
 	return AFFECTED_TYPES.map((group) => ({
 		...group,
 		items: dependencies
@@ -71,7 +71,7 @@ const affectedGroups = computed(() => {
 
 // The counts include dependents the user cannot see; the details list does not.
 const hiddenAffectedCount = computed(() => {
-	const counts = getDependencyCounts(props.data.workflowId);
+	const counts = getDependencyCounts(props.data.workflowId, 'workflow');
 	if (!counts) return 0;
 	const total = AFFECTED_TYPES.reduce((sum, { type }) => sum + counts[type], 0);
 	const visible = affectedGroups.value.reduce((sum, group) => sum + group.items.length, 0);

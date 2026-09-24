@@ -18,6 +18,7 @@ import { channelIntegrationRecorder } from './integrations/recording/channel-int
 import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -29,6 +30,7 @@ export class AgentIntegrationsController {
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly channelStatusRepository: AgentChannelStatusRepository,
 		private readonly statusReporter: AgentChannelStatusReporter,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@Post('/:agentId/integrations/connect')
@@ -42,6 +44,14 @@ export class AgentIntegrationsController {
 		await this.integrationManagementService.validateConfig(req.body);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			req.params.projectId,
+			agentId,
+			'connect integration for',
+		);
 		const { savedAgent } = await this.integrationManagementService.connect({
 			agent,
 			user: req.user,
@@ -49,10 +59,9 @@ export class AgentIntegrationsController {
 			...(payload.replaces
 				? { replaces: { type: payload.type, credentialId: payload.replaces.credentialId } }
 				: {}),
+			pushRef: req.headers?.['push-ref'],
 		});
-		if (savedAgent.activeVersionId === null) return { status: 'configured' };
-
-		return { status: 'connected' };
+		return { status: savedAgent.activeVersionId === null ? 'configured' : 'connected' };
 	}
 
 	@Post('/:agentId/integrations/disconnect')
@@ -66,14 +75,22 @@ export class AgentIntegrationsController {
 		const { type, credentialId, deleteExternalResource } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			req.params.projectId,
+			agentId,
+			'disconnect integration for',
+		);
 		const { warning } = await this.integrationManagementService.disconnect({
 			agent,
 			user: req.user,
 			type,
 			credentialId,
 			deleteExternalResource,
+			pushRef: req.headers?.['push-ref'],
 		});
-
 		return { status: 'disconnected', ...(warning ? { warning } : {}) };
 	}
 

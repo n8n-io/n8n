@@ -12,6 +12,8 @@ import type { AgentChannelStatusReporter } from '../integrations/agent-channel-s
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -26,6 +28,7 @@ function makeController({
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
+	collaborationService = mock<CollaborationService>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -33,6 +36,7 @@ function makeController({
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
+	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -45,12 +49,14 @@ function makeController({
 			chatIntegrationRegistry,
 			channelStatusRepository,
 			statusReporter,
+			collaborationService,
 		),
 		managementService,
 		chatIntegrationService,
 		agentRepository,
 		channelStatusRepository,
 		statusReporter,
+		collaborationService,
 	};
 }
 
@@ -91,6 +97,7 @@ describe('AgentIntegrationsController integration management', () => {
 				params: { projectId: agent.projectId },
 				user,
 				body: integration,
+				headers: { 'push-ref': 'sender-1' },
 			} as never,
 			undefined as never,
 			agent.id,
@@ -98,11 +105,9 @@ describe('AgentIntegrationsController integration management', () => {
 		);
 
 		expect(managementService.validateConfig).toHaveBeenCalledWith(integration);
-		expect(managementService.connect).toHaveBeenCalledWith({
-			agent,
-			user,
-			integration,
-		});
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration, pushRef: 'sender-1' }),
+		);
 		expect(result).toEqual({ status: 'connected' });
 	});
 
@@ -126,12 +131,14 @@ describe('AgentIntegrationsController integration management', () => {
 			{ ...integration, replaces: { credentialId: 'credential-0' } } as never,
 		);
 
-		expect(managementService.connect).toHaveBeenCalledWith({
-			agent,
-			user,
-			integration: { ...integration, replaces: { credentialId: 'credential-0' } },
-			replaces: { type: 'slack', credentialId: 'credential-0' },
-		});
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agent,
+				user,
+				integration: { ...integration, replaces: { credentialId: 'credential-0' } },
+				replaces: { type: 'slack', credentialId: 'credential-0' },
+			}),
+		);
 	});
 
 	it('passes platform settings through the envelope untouched', async () => {
@@ -155,7 +162,9 @@ describe('AgentIntegrationsController integration management', () => {
 			integration as never,
 		);
 
-		expect(managementService.connect).toHaveBeenCalledWith({ agent, user, integration });
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration }),
+		);
 	});
 
 	it('reports configured when the saved agent is unpublished', async () => {
@@ -193,6 +202,7 @@ describe('AgentIntegrationsController integration management', () => {
 		const result = await controller.disconnectIntegration(
 			{
 				params: { projectId: agent.projectId },
+				headers: { 'push-ref': 'sender-1' },
 				user,
 			} as never,
 			undefined as never,
@@ -200,13 +210,75 @@ describe('AgentIntegrationsController integration management', () => {
 			{ type: 'slack', credentialId: 'credential-1' },
 		);
 
-		expect(managementService.disconnect).toHaveBeenCalledWith({
-			agent,
-			user,
+		expect(managementService.disconnect).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agent,
+				user,
+				type: 'slack',
+				credentialId: 'credential-1',
+				pushRef: 'sender-1',
+			}),
+		);
+		expect(result).toEqual({ status: 'disconnected' });
+	});
+
+	it('validates the write lock before connecting an integration', async () => {
+		const { controller, collaborationService, agentRepository, managementService } =
+			makeController();
+		const integration = {
 			type: 'slack',
 			credentialId: 'credential-1',
-		});
-		expect(result).toEqual({ status: 'disconnected' });
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: integration,
+				headers: { 'push-ref': 'push-ref-1' },
+			} as never,
+			undefined as never,
+			agent.id,
+			integration as never,
+		);
+
+		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+			'user-1',
+			'push-ref-1',
+			agent.projectId,
+			agent.id,
+			'connect integration for',
+		);
+	});
+
+	it('propagates a LockedError from validateAgentWriteLock on connect', async () => {
+		const { controller, collaborationService, agentRepository } = makeController();
+		const integration = {
+			type: 'slack',
+			credentialId: 'credential-1',
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		collaborationService.validateAgentWriteLock.mockRejectedValue(
+			new LockedError(
+				'Cannot connect integration for agent - another user currently has write access',
+			),
+		);
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: agent.projectId },
+					user,
+					body: integration,
+					headers: { 'push-ref': 'push-ref-1' },
+				} as never,
+				undefined as never,
+				agent.id,
+				integration as never,
+			),
+		).rejects.toThrow(LockedError);
 	});
 
 	it('returns a platform webhook rejection without looking up a handler', async () => {

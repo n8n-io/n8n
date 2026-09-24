@@ -1,6 +1,11 @@
-import type { WorkflowGraph } from '@n8n/engine';
+import type { StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
-import type { IConnections, IDataObject } from 'n8n-workflow';
+import type {
+	IConnections,
+	IDataObject,
+	INodeType,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import { Expression, ExpressionError } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -39,6 +44,12 @@ const graphWith = (type: string, parameters = {}): WorkflowGraph =>
 			manualTriggerTo('Subject'),
 		),
 	);
+
+/** The outputs of a result, for a test that feeds one step's output into the next. */
+function outputsOf(result: StepExecutionResult): StepSlots {
+	if (result.wait) throw new Error('the step declared a wait, but the test expects outputs');
+	return result.outputs;
+}
 
 describe('V1StepExecutor', () => {
 	it('rejects legacy expression engine', async () => {
@@ -276,8 +287,9 @@ describe('V1StepExecutor', () => {
 			const graph = expressionWorkflow({ message: "={{ $('A').first().json.message }}" });
 
 			const aResult = await testStepExecutor(graph).execute(stepRequest(graph, 'a', items({})));
-			const bResult = await testStepExecutor(graph, { a: aResult.outputs }).execute(
-				stepRequest(graph, 'b', aResult.outputs),
+			const aOutputs = outputsOf(aResult);
+			const bResult = await testStepExecutor(graph, { a: aOutputs }).execute(
+				stepRequest(graph, 'b', aOutputs),
 			);
 
 			expect(bResult.outputs).toEqual([[{ json: { message: 'from-A' } }]]);
@@ -343,5 +355,46 @@ describe('V1StepExecutor', () => {
 			stepRequest(graph, 'n', items({ keep: 'me' })),
 		);
 		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+	});
+});
+
+describe('the v1 execution mode a node sees', () => {
+	const graph = graphWith('test.echoParam');
+
+	/** Runs `Subject` and reports the mode its context exposed. */
+	const modeSeenBy = async (hostMode: string): Promise<string> => {
+		let seen = '';
+		const reportsMode = {
+			description: testNodeTypes.getByName('test.echoParam').description,
+			async execute(this: { getMode: () => string }) {
+				seen = this.getMode();
+				return await Promise.resolve([]);
+			},
+		} as unknown as INodeType;
+
+		const executor = new V1StepExecutor({
+			nodeTypes: { ...testNodeTypes, getByNameAndVersion: () => reportsMode },
+			additionalDataFactory: async (): Promise<IWorkflowExecuteAdditionalData> =>
+				await testAdditionalDataFactory({
+					executionId: 'exec-1',
+					workflowId: 'wf-1',
+					mode: 'manual',
+				}),
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+		});
+
+		const request = stepRequest(graph, 'n', items({ a: 1 }));
+		await executor.execute({
+			...request,
+			context: { ...request.context, callerContext: { hostMode } },
+		});
+
+		return seen;
+	};
+
+	// The coarse engine mode would report a production run as 'trigger', and
+	// `isStreaming()` accepts only a few v1 modes, so a webhook run could not stream.
+	it.each(['webhook', 'trigger', 'manual'])('is the host mode %s', async (hostMode) => {
+		await expect(modeSeenBy(hostMode)).resolves.toBe(hostMode);
 	});
 });

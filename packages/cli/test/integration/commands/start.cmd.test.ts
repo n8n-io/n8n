@@ -81,14 +81,10 @@ afterAll(async () => {
 	const { WorkflowPublicationOutboxConsumer } = await import(
 		'@/workflows/publication/workflow-publication-outbox-consumer.js'
 	);
-	const { WorkflowPublicationOutboxCleanupService } = await import(
-		'@/workflows/publication/workflow-publication-outbox-cleanup.service.js'
-	);
 	const { WorkflowPublicationReconciler } = await import(
 		'@/workflows/publication/workflow-publication-reconciler.service.js'
 	);
 	Container.get(WorkflowPublicationOutboxConsumer).stopPolling();
-	Container.get(WorkflowPublicationOutboxCleanupService).stopCleanup();
 	Container.get(WorkflowPublicationReconciler).shutdown();
 	await Container.get(ActiveWorkflowManager).removeAll();
 	await testDb.terminate();

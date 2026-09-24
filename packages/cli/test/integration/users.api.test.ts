@@ -1165,7 +1165,7 @@ describe('DELETE /users/:id', () => {
 					projectId: transfereePersonalProject.id,
 					role: 'workflow:owner',
 				}),
-			).resolves.not.toBeNull,
+			).resolves.not.toBeNull(),
 			expect(
 				sharedCredentialsRepository.findOneBy({
 					credentialsId: ownedCredential.id,
@@ -1188,7 +1188,7 @@ describe('DELETE /users/:id', () => {
 					projectId: transfereePersonalProject.id,
 					role: 'credential:user',
 				}),
-			),
+			).resolves.not.toBeNull(),
 
 			// the transferee is still owner of the workflow and credential they shared with the user to delete
 			expect(
@@ -1390,13 +1390,13 @@ describe('PATCH /users/:id/role', () => {
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
 
-		[owner, admin, otherAdmin, member, otherMember] = await Promise.all([
+		[owner, admin, otherAdmin, member, otherMember] = [
 			await createOwner(),
 			await createAdmin(),
 			await createAdmin(),
 			await createMember(),
 			await createMember(),
-		]);
+		];
 
 		ownerAgent = testServer.authAgentFor(owner);
 		adminAgent = testServer.authAgentFor(admin);

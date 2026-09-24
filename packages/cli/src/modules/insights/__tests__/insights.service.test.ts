@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-import { TypeToNumber } from '../database/entities/insights-shared';
+import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsService } from '../insights.service';
 
@@ -107,7 +107,7 @@ describe('InsightsService', () => {
 		}) => {
 			const aggregates: Array<{
 				period: 'previous' | 'current';
-				type: 0 | 1 | 2 | 3;
+				type: TypeUnitNumber;
 				total_value: string | number;
 			}> = [];
 
@@ -832,6 +832,33 @@ describe('InsightsService', () => {
 			});
 		});
 
+		it('does not expose stored billable aggregates on the summary', async () => {
+			mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+				createMockAggregates({
+					currentSuccess: 8,
+					currentFailure: 4,
+					previousSuccess: 6,
+					previousFailure: 2,
+				}).concat([
+					{ period: 'current', type: TypeToNumber.billable, total_value: 10 },
+					{ period: 'previous', type: TypeToNumber.billable, total_value: 7 },
+				]),
+			);
+
+			const result = await insightsService.getInsightsSummary({
+				user,
+				startDate,
+				endDate,
+			});
+
+			expect(result.total).toEqual({
+				value: 12,
+				unit: 'count',
+				deviation: 4,
+			});
+			expect(result).not.toHaveProperty('billable');
+		});
+
 		describe('project access', () => {
 			beforeEach(() => {
 				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
@@ -1125,6 +1152,29 @@ describe('InsightsService', () => {
 					}),
 				);
 			});
+		});
+	});
+
+	describe('getTimeSavedInsightsByTime', () => {
+		const startDate = new Date('2024-01-01');
+		const endDate = new Date('2024-01-07');
+
+		beforeEach(() => {
+			mockInsightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+		});
+
+		it('requests only time saved', async () => {
+			await insightsService.getTimeSavedInsightsByTime({
+				user,
+				startDate,
+				endDate,
+			});
+
+			expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
+				expect.objectContaining({
+					insightTypes: ['time_saved_min'],
+				}),
+			);
 		});
 	});
 });

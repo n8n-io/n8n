@@ -14,6 +14,7 @@ import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } f
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceSettings } from '@/instance-settings';
+import { validateUrlSignature } from '@/utils/signature-helpers';
 
 import { NodeExecutionContext } from '../node-execution-context';
 
@@ -275,6 +276,7 @@ describe('NodeExecutionContext', () => {
 				undefined,
 				false,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -326,6 +328,9 @@ describe('NodeExecutionContext', () => {
 				{ id: null, name: 'slackApi' },
 				'slackApi',
 				'internal',
+				undefined,
+				undefined,
+				undefined,
 				undefined,
 			);
 		});
@@ -381,6 +386,39 @@ describe('NodeExecutionContext', () => {
 			);
 
 			await expect(ctx['_getCredentials']('someCred')).resolves.toEqual({ token: 'ok' });
+		});
+	});
+
+	describe('_getRunlessCredentials', () => {
+		it('should pass placeholder execute data that only carries the node', async () => {
+			const credentialDetails = { id: 'cred-runless', name: 'Runless Cred' };
+			const runlessNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			runlessNode.credentials = { someCred: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn().mockResolvedValue({ token: 'ok' }),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				runlessNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getRunlessCredentials']('someCred')).resolves.toEqual({ token: 'ok' });
+			expect(mockCredentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'someCred',
+				mode,
+				{ data: {}, node: runlessNode, source: null },
+				false,
+				undefined,
+				undefined,
+			);
 		});
 	});
 
@@ -604,6 +642,48 @@ describe('NodeExecutionContext', () => {
 			const token2 = new URL(result2).searchParams.get('signature');
 
 			expect(token1).toBe(token2);
+		});
+
+		describe('when the node id is not a plain path segment', () => {
+			const NODE_ID = '../43/dddd2020-0000-4000-8000-000000002099';
+
+			const signedUrlForNodeId = (nodeId: string) =>
+				new URL(
+					new TestContext(
+						workflow,
+						mock<INode>({ id: nodeId }),
+						mock<IWorkflowExecuteAdditionalData>({
+							executionId: '123',
+							webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+							formWaitingBaseUrl: 'http://localhost/form-waiting',
+						}),
+						mode,
+						createRunExecutionData({ resultData: { runData: {} } }),
+					).getSignedResumeUrl({ approved: 'true' }),
+				);
+
+			it('should keep the node id inside its own path segment', () => {
+				expect(signedUrlForNodeId(NODE_ID).pathname).toBe(
+					'/waiting-webhook/123/..%2F43%2Fdddd2020-0000-4000-8000-000000002099',
+				);
+			});
+
+			it('should keep the signature scoped to the escaped path', () => {
+				const signature = signedUrlForNodeId(NODE_ID).searchParams.get('signature')!;
+
+				// Unescaped, the same ids normalise to a different path, so the signature over the
+				// escaped one must not validate against it.
+				const normalisedUrl = new URL(
+					`http://localhost/waiting-webhook/123/${NODE_ID}?approved=true&signature=${signature}`,
+				);
+				expect(normalisedUrl.pathname).toBe(
+					'/waiting-webhook/43/dddd2020-0000-4000-8000-000000002099',
+				);
+
+				expect(
+					validateUrlSignature(signature, normalisedUrl, instanceSettings.hmacSignatureSecret),
+				).toBe(false);
+			});
 		});
 	});
 

@@ -259,7 +259,7 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 			...base,
 			...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
 			...(providerOptions && { providerOptions }),
-		} as AiContentPart;
+		};
 	}
 	return base;
 }
@@ -429,7 +429,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 						...toolCallPart,
 						...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
 						...(block.providerOptions && { providerOptions: block.providerOptions }),
-					} as ToolCallPart);
+					});
 					// Emit corresponding tool-result message immediately after. A
 					// provider-executed result belongs in the assistant message itself.
 					const resultPart = toolCallToResultPart(block);
@@ -521,7 +521,7 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 			if (output.type === 'json' || output.type === 'text') {
 				const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
 				mutableBlock.state = 'resolved';
-				mutableBlock.output = output.value as JSONValue;
+				mutableBlock.output = output.value;
 			} else if (output.type === 'content') {
 				const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
 				mutableBlock.state = 'resolved';

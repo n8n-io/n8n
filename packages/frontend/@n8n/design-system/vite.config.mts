@@ -3,13 +3,17 @@ import { cpSync, readFileSync } from 'node:fs';
 import { resolve } from 'path';
 import { build, defineConfig, mergeConfig, type InlineConfig, type Plugin } from 'vite';
 import icons from 'unplugin-icons/vite';
-import dts from 'vite-plugin-dts';
+import dts from 'unplugin-dts/vite';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import svgLoader from 'vite-svg-loader';
 import { lucideIconsPlugin } from './src/icons/lucide/vite';
 
 const srcDir = resolve(__dirname, 'src');
 const distDir = resolve(__dirname, 'dist');
+
+// Only the published package reads these declarations, and the emit is ~10s of a ~14s build.
+// Every consumer in this repo reads `src` instead. `RELEASE` marks the paths that ship `dist`.
+const emitDeclarations = !!process.env.RELEASE;
 
 const manifest = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8')) as {
 	dependencies?: Record<string, string>;
@@ -130,17 +134,19 @@ export default mergeConfig(
 			// directly, vue-tsc exits 0 and silently writes nothing for a component
 			// whose template context reaches a type it cannot name (54 of them during
 			// the spike). Acceptance counts emitted files, not the exit code.
-			dts({
-				// `tsconfig.build.json` rather than `tsconfig.json`: the latter maps the
-				// sibling `@n8n/*` packages to their `src`, which pulls files outside
-				// `rootDir` into the program (TS6059) and points the declarations at
-				// another package's sources instead of its published types.
-				tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
-				// Per-file declarations, not a rollup: api-extractor cannot follow `.vue`
-				// module specifiers and leaves the imports dangling. Rejected in ADR-0002.
-				rollupTypes: false,
-				entryRoot: resolve(__dirname, 'src'),
-			}),
+			...(emitDeclarations
+				? [
+						dts({
+							// `tsconfig.build.json` rather than `tsconfig.json`: the latter maps the
+							// sibling `@n8n/*` packages to their `src`, which pulls files outside
+							// `rootDir` into the program (TS6059) and points the declarations at
+							// another package's sources instead of its published types.
+							tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
+							entryRoot: resolve(__dirname, 'src'),
+							processor: 'vue',
+						}),
+					]
+				: []),
 		],
 		resolve: {
 			alias: {

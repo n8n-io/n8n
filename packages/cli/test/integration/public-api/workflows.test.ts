@@ -78,7 +78,12 @@ const getStoredParentFolderId = async (workflowId: string) => {
 	return stored?.parentFolder?.id ?? null;
 };
 
+// This suite runs a real `ActiveWorkflowManager` and asserts on the legacy activation
+// path; the one publication-service case below enables the service itself.
+const originalUseWorkflowPublicationService = globalConfig.workflows.useWorkflowPublicationService;
+
 beforeAll(async () => {
+	globalConfig.workflows.useWorkflowPublicationService = false;
 	owner = await createOwnerWithApiKey();
 	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -143,6 +148,10 @@ beforeEach(async () => {
 	authMemberAgent = testServer.publicApiAgentFor(member);
 
 	globalConfig.tags.disabled = false;
+});
+
+afterAll(() => {
+	globalConfig.workflows.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
 afterEach(async () => {
@@ -424,7 +433,7 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return all owned workflows filtered by tags', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 		const tagNames = tags.map((tag) => tag.name).join(',');
 
 		const [workflow1, workflow2] = await Promise.all([
@@ -1142,7 +1151,7 @@ describe('GET /workflows/:id/:versionId', () => {
 	});
 });
 
-describe('GET /workflows/:workflowId/versions/:versionId', () => {
+describe('GET /workflows/:workflowId/versions/:workflowVersionId', () => {
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/versions/version-123');
 
@@ -1453,7 +1462,13 @@ describe('DELETE /workflows/:id', () => {
 	});
 
 	test('should not return activeVersion', async () => {
-		const workflow = await createActiveWorkflow({}, member);
+		// Active on the legacy path only: `createActiveWorkflow` also records a published
+		// version, whose RESTRICT FK would block the delete.
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await workflowRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: workflow.versionId,
+		});
 
 		const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
 
@@ -3748,7 +3763,7 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should return all tags of owned workflow', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 
 		const workflow = await createWorkflowWithHistory({ tags }, member);
 
@@ -3823,7 +3838,7 @@ describe('PUT /workflows/:id/tags', () => {
 
 	test('should add the tags, workflow have not got tags previously', async () => {
 		const workflow = await createWorkflow({}, member);
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 
 		const payload = [
 			{
@@ -3881,7 +3896,7 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should add the tags, workflow have some tags previously', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({}), await createTag({})];
 		const oldTags = [tags[0], tags[1]];
 		const newTags = [tags[0], tags[2]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);
@@ -3967,7 +3982,7 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should fail to add the tags as one does not exist, workflow should maintain previous tags', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 		const oldTags = [tags[0], tags[1]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);
 

@@ -53,6 +53,20 @@ describe('ResourceLocatorRequestDto', () => {
 			const result = ResourceLocatorRequestDto.safeParse(request);
 			expect(result.success).toBe(true);
 		});
+
+		test.each([
+			{ name: 'a numeric pagination token', token: 5, expected: '5' },
+			{ name: 'a zero pagination token', token: 0, expected: '0' },
+			{ name: 'a string pagination token', token: '5', expected: '5' },
+		])('should coerce $name to a string', ({ token, expected }) => {
+			const result = ResourceLocatorRequestDto.safeParse({
+				...baseValidRequest,
+				paginationToken: token,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data?.paginationToken).toBe(expected);
+		});
 	});
 
 	describe('Invalid requests', () => {

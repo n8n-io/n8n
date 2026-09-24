@@ -22,7 +22,7 @@ test.use({
 });
 
 test.describe(
-	'Poll Trigger cursor (unmigrated) @capability:proxy',
+	'Poll Trigger cursor (unmigrated)',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

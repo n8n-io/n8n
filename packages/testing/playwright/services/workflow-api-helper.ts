@@ -1,6 +1,7 @@
+import type { WorkflowPublicationStatus } from '@n8n/api-types';
 import type { APIResponse } from '@playwright/test';
 import { readFileSync } from 'fs';
-import type { IWorkflowBase, ExecutionSummary } from 'n8n-workflow';
+import { isTerminalExecutionStatus, type IWorkflowBase, type ExecutionSummary } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 // Type for execution responses from the n8n API
@@ -23,12 +24,16 @@ type WorkflowImportResult = {
 	webhookMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
 };
 
+/** Engine 2.0 mints uuidv7 execution ids; the legacy engine mints numbers. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
 	async createWorkflow(workflow: Partial<IWorkflowBase>, projectId?: string) {
+		const data = this.withDefaultSettings(workflow);
 		const response = await this.api.request.post('/rest/workflows', {
-			data: projectId ? { ...workflow, projectId } : workflow,
+			data: projectId ? { ...data, projectId } : data,
 		});
 
 		if (!response.ok()) {
@@ -49,7 +54,7 @@ export class WorkflowApiHelper {
 	): Promise<{ name: string; id: string; versionId: string }> {
 		const workflowName = options?.name ?? `Test Workflow ${nanoid(8)}`;
 
-		const workflow = {
+		const workflow = this.withDefaultSettings({
 			name: workflowName,
 			nodes: [],
 			connections: {},
@@ -57,7 +62,7 @@ export class WorkflowApiHelper {
 			active: false,
 			projectId: project,
 			...(options?.folder && { parentFolderId: options.folder }),
-		};
+		});
 
 		const response = await this.api.request.post('/rest/workflows', { data: workflow });
 
@@ -75,6 +80,14 @@ export class WorkflowApiHelper {
 		};
 	}
 
+	/** The stack-wide defaults win, so a spec proves parity on whatever engine the stack runs. */
+	private withDefaultSettings<T extends Partial<IWorkflowBase>>(workflow: T): T {
+		const defaults = this.api.options.workflowSettings;
+		if (!defaults) return workflow;
+
+		return { ...workflow, settings: { ...workflow.settings, ...defaults } };
+	}
+
 	async activate(workflowId: string, versionId: string) {
 		const response = await this.api.request.post(`/rest/workflows/${workflowId}/activate`, {
 			data: { versionId },
@@ -83,6 +96,17 @@ export class WorkflowApiHelper {
 		if (!response.ok()) {
 			throw new TestError(`Failed to activate workflow: ${await response.text()}`);
 		}
+	}
+
+	async getPublicationStatus(workflowId: string): Promise<WorkflowPublicationStatus> {
+		const response = await this.api.request.get(`/rest/workflows/${workflowId}/publication-status`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get workflow publication status: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
 	}
 
 	async update(
@@ -118,7 +142,48 @@ export class WorkflowApiHelper {
 		}
 
 		const result = await response.json();
-		return result.data ?? result;
+		const run = (result.data ?? result) as { executionId: string };
+		this.assertRoutedToEngine(run.executionId);
+		return run;
+	}
+
+	/**
+	 * Fails a run that the stack meant for engine 2.0 but the control plane kept.
+	 * A v1 id is numeric and a v2 id is a uuid, which the engine validates on the
+	 * wire (`packages/cli/src/executions/execution-id.ts`), so the shape says
+	 * which plane ran it. Without this a workflow that missed `engineType` runs
+	 * on v1 and the spec still passes, which is parity evidence that proves
+	 * nothing.
+	 *
+	 * Only {@link runManually} checks on the way in. A spec that starts a run
+	 * elsewhere, such as from the canvas or through a webhook, calls
+	 * {@link assertLatestExecutionRoutedToEngine} after the run.
+	 */
+	private assertRoutedToEngine(executionId: string): void {
+		if (this.api.options.workflowSettings?.engineType !== 'v2') return;
+		if (UUID.test(executionId)) return;
+
+		throw new TestError(
+			`Expected an engine 2.0 execution id, got "${executionId}", so the run stayed on the ` +
+				'legacy engine. Either the workflow missed `settings.engineType`, which ' +
+				'`api.workflows` applies from the stack, or this main does not run the `engine-v2` ' +
+				'module.',
+		);
+	}
+
+	/**
+	 * {@link assertRoutedToEngine} for a run the spec started outside
+	 * {@link runManually}. Reads the workflow's latest execution and checks the
+	 * shape of its id. A no-op on a stack without engine 2.0.
+	 */
+	async assertLatestExecutionRoutedToEngine(workflowId: string): Promise<void> {
+		if (this.api.options.workflowSettings?.engineType !== 'v2') return;
+
+		const [execution] = await this.getExecutions(workflowId, 1);
+		if (!execution) {
+			throw new TestError(`Workflow ${workflowId} has no execution to check the engine of`);
+		}
+		this.assertRoutedToEngine(execution.id);
 	}
 
 	/**
@@ -406,6 +471,35 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
+	/**
+	 * Polls one execution by id until it settles. {@link waitForExecution} watches
+	 * the list for a row that was not there before and matches it by mode, which
+	 * needs the list to page and order the way it expects. This takes the id the
+	 * run already returned, so nothing about the list can mislead it.
+	 */
+	async waitForExecutionById(
+		executionId: string,
+		timeoutMs = 10000,
+		pollIntervalMs = 250,
+	): Promise<ExecutionListResponse> {
+		const deadline = Date.now() + timeoutMs;
+
+		let execution = await this.getExecution(executionId);
+		while (!isTerminalExecutionStatus(execution.status)) {
+			// Stryker disable next-line EqualityOperator: `>` differs only on the exact
+			// deadline millisecond, which costs fake timers to reach and proves nothing.
+			if (Date.now() >= deadline) {
+				throw new TestError(
+					`Execution ${executionId} did not settle within ${timeoutMs}ms (status: ${execution.status})`,
+				);
+			}
+			await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+			execution = await this.getExecution(executionId);
+		}
+
+		return execution;
+	}
+
 	/** Stops a running or waiting execution and returns the stopped execution summary. */
 	async stopExecution(executionId: string): Promise<ExecutionListResponse> {
 		const response = await this.api.request.post(`/rest/executions/${executionId}/stop`);
@@ -489,7 +583,7 @@ export class WorkflowApiHelper {
 			const executions = await this.getExecutions(workflowId);
 			const execution = executions.find((e) => e.workflowId === workflowId);
 
-			if (execution && execution.status === expectedStatus) {
+			if (execution?.status === expectedStatus) {
 				return execution;
 			}
 

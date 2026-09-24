@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, useCssModule, watch } from 'vue';
+import { computed, useCssModule, watch, watchEffect } from 'vue';
+import { useVueFlow } from '@vue-flow/core';
 import type { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeAgentRender } from '../../../../canvas.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
@@ -19,7 +21,7 @@ import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
 import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
-import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 // Width comes from the shared constant so canvas placement and tidy-up layout
@@ -87,7 +89,7 @@ const isConfigured = computed(() => isInline.value || agentId.value !== '');
 // the same agent record).
 const projectId = useAgentScopeProjectId();
 
-const { summary: fetchedSummary, error } = useAgentCapabilitySummary(projectId, agentId);
+const { summary: fetchedSummary, isLoading, error } = useAgentCapabilitySummary(projectId, agentId);
 
 // Inline cards render from the pre-projected summary in the render options —
 // no fetch, no event-bus refresh; reactivity comes from the render options.
@@ -96,6 +98,22 @@ const summary = computed(() =>
 );
 
 const hasError = computed(() => !isInline.value && Boolean(error.value));
+
+// The canvas re-centers the card when new content (a picked or edited agent)
+// changes its height, but must not move it while load-time rendering settles.
+// Report the content by value: a refetch that returns the same summary is not
+// new content. `undefined` while nothing is loaded yet.
+const { id: canvasId } = useVueFlow();
+const geometryStore = useAgentNodeCanvasGeometryStore();
+const contentKey = computed(() => {
+	if (isLoading.value) return undefined;
+	if (summary.value) return JSON.stringify(summary.value);
+	if (hasError.value) return 'error';
+	return isConfigured.value ? undefined : 'empty';
+});
+watchEffect(() => {
+	geometryStore.setNodeContentKey(canvasId, id.value, contentKey.value);
+});
 
 const agentName = computed(
 	() =>

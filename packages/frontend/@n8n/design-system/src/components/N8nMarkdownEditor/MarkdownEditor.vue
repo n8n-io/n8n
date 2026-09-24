@@ -6,8 +6,18 @@ import { computed, nextTick, ref, watch } from 'vue';
 
 import { useMarkdownEditor } from './composables/useMarkdownEditor';
 import type { N8nMarkdownEditorEmits, N8nMarkdownEditorProps } from './MarkdownEditor.types';
+import MarkdownEditorExpandedViewButton from './MarkdownEditorExpandedViewButton.vue';
 import MarkdownEditorToolbar from './MarkdownEditorToolbar.vue';
 import { setEditorContent } from './markdownEditorUtils';
+import { useI18n } from '../../composables/useI18n';
+import N8nButton from '../N8nButton';
+import { N8nDialog } from '../N8nDialog';
+import N8nTooltip from '../N8nTooltip';
+
+const COLLAPSED_MAX_HEIGHT_OVERRIDE = 256;
+const EXPANDED_VIEW_MAX_HEIGHT_OVERRIDE = '75dvh';
+
+defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
 	modelValue: '',
@@ -17,19 +27,45 @@ const props = withDefaults(defineProps<N8nMarkdownEditorProps>(), {
 	readonly: false,
 	showToolbar: 'always',
 	maxHeight: '480px',
+	isCollapsible: false,
+	allowExpandedView: false,
 	containerClass: '',
 });
 
 const emit = defineEmits<N8nMarkdownEditorEmits>();
 
-const maxHeightStyle = computed(() => ({
-	'--markdown-editor-max-height':
-		typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
-}));
+const collapsed = ref(true);
+const isExpandedViewOpen = ref(false);
+const dialogContainer = ref<HTMLElement>();
+const isExpandedViewActive = computed(function getIsExpandedViewActive() {
+	return isExpandedViewOpen.value && !!dialogContainer.value;
+});
+const { t } = useI18n();
+const explicitHeight = ref<string>();
 
-const shouldShowInlineToolbar = computed(() => ['always', 'hover'].includes(props.showToolbar));
-const toolbarMode = computed(() => (props.showToolbar === 'always' ? 'always' : 'hover'));
-const shouldPadContentTop = computed(() => props.showToolbar === 'always');
+const maxHeight = computed(() =>
+	typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
+);
+
+const containerHeightStyle = computed(() =>
+	explicitHeight.value ? { height: explicitHeight.value } : undefined,
+);
+const expandButtonLabel = computed(() =>
+	collapsed.value ? t('markdownEditor.expand') : t('markdownEditor.collapse'),
+);
+const expandButtonIcon = computed(() => (collapsed.value ? 'arrow-down' : 'arrow-up'));
+
+const toolbarMode = computed(function getToolbarMode() {
+	if (isExpandedViewActive.value && props.expandedViewToolbarMode) {
+		return props.expandedViewToolbarMode;
+	}
+	return props.showToolbar ?? 'always';
+});
+const fixedToolbarMode = computed(function getFixedToolbarMode() {
+	const mode = toolbarMode.value;
+	return mode === 'always' || mode === 'hover' ? mode : undefined;
+});
+const shouldPadContentTop = computed(() => !!fixedToolbarMode.value);
 
 const editor = useMarkdownEditor(props, emit);
 const isRawMode = ref(false);
@@ -37,6 +73,12 @@ const rawMarkdown = ref(props.modelValue);
 const container = ref<HTMLElement>();
 const rawEditor = ref<HTMLTextAreaElement>();
 const rawContentHeight = ref<string>();
+
+function getScrollableElement() {
+	return isRawMode.value
+		? rawEditor.value
+		: container.value?.querySelector<HTMLElement>('.n8n-markdown');
+}
 
 watch(
 	() => props.modelValue,
@@ -47,14 +89,147 @@ watch(
 	},
 );
 
-function getRenderedContentHeight() {
-	const renderedContent = container.value?.querySelector<HTMLElement>('.n8n-markdown');
-
-	return renderedContent ? `${renderedContent.clientHeight}px` : undefined;
+function getBubbleMenuContainer() {
+	return isExpandedViewActive.value ? dialogContainer.value : document.body;
 }
 
-function getBubbleMenuContainer() {
-	return document.body;
+const contentExceedsCollapsedHeight = ref(false);
+const expandedContentHeight = ref(COLLAPSED_MAX_HEIGHT_OVERRIDE);
+const shouldBeCollapsable = computed(function getShouldBeCollapsable() {
+	return props.isCollapsible && contentExceedsCollapsedHeight.value;
+});
+
+watch(
+	[
+		container,
+		isExpandedViewActive,
+		editor,
+		isRawMode,
+		rawMarkdown,
+		function getModelValue() {
+			return props.modelValue;
+		},
+		function getIsCollapsible() {
+			return props.isCollapsible;
+		},
+		function getShowToolbar() {
+			return props.showToolbar;
+		},
+	],
+	function observeContentHeight(_value, _oldValue, onCleanup) {
+		if (!props.isCollapsible || !container.value) {
+			contentExceedsCollapsedHeight.value = false;
+			return;
+		}
+		const root = container.value;
+
+		function updateContentHeight() {
+			const scrollable = getScrollableElement();
+			if (!scrollable) {
+				contentExceedsCollapsedHeight.value = false;
+				return;
+			}
+
+			const { height, maxHeight } = scrollable.style;
+			const { scrollTop } = scrollable;
+
+			/** Measure the content without the fixed textarea or transition height. */
+			scrollable.style.height = isRawMode.value ? '0' : 'auto';
+			scrollable.style.maxHeight = 'none';
+			expandedContentHeight.value = scrollable.scrollHeight;
+			contentExceedsCollapsedHeight.value =
+				expandedContentHeight.value > COLLAPSED_MAX_HEIGHT_OVERRIDE;
+			scrollable.style.height = height;
+			scrollable.style.maxHeight = maxHeight;
+			scrollable.scrollTop = scrollTop;
+		}
+
+		const resizeObserver = new ResizeObserver(updateContentHeight);
+		function observeContentElements() {
+			resizeObserver.disconnect();
+			resizeObserver.observe(root);
+			const scrollable = getScrollableElement();
+			if (scrollable) {
+				resizeObserver.observe(scrollable);
+				for (const child of scrollable.children) {
+					resizeObserver.observe(child);
+				}
+			}
+			updateContentHeight();
+		}
+
+		/** Tiptap inserts the editor DOM after the parent component renders. */
+		const mutationObserver = new MutationObserver(observeContentElements);
+		mutationObserver.observe(root, { childList: true, characterData: true, subtree: true });
+		observeContentElements();
+
+		onCleanup(function stopObservingContent() {
+			resizeObserver.disconnect();
+			mutationObserver.disconnect();
+		});
+	},
+	{ flush: 'post', immediate: true },
+);
+
+/** Override maxHeight for collapsible state to ensure we properly trim the content */
+const setMaxHeight = computed(function getMaxHeightStyle() {
+	if (isExpandedViewActive.value)
+		return `--markdown-editor-max-height: ${EXPANDED_VIEW_MAX_HEIGHT_OVERRIDE}`;
+	if (!props.isCollapsible) return `--markdown-editor-max-height: ${maxHeight.value}`;
+
+	const collapsibleMaxHeight = collapsed.value
+		? `${COLLAPSED_MAX_HEIGHT_OVERRIDE}px`
+		: `${expandedContentHeight.value}px`;
+	return `--markdown-editor-max-height: ${collapsibleMaxHeight}`;
+});
+
+function hasHeightTransition(element: HTMLElement) {
+	const styles = window.getComputedStyle(element);
+	const properties = styles.transitionProperty.split(',').map(function trimProperty(property) {
+		return property.trim();
+	});
+	const durations = styles.transitionDuration.split(',').map(function parseDuration(duration) {
+		const value = Number.parseFloat(duration);
+		return duration.trim().endsWith('ms') ? value : value * 1000;
+	});
+
+	return properties.some(function isActiveHeightTransition(property, index) {
+		const duration = durations[index % durations.length];
+		return (property === 'height' || property === 'all') && duration > 0;
+	});
+}
+
+async function toggleCollapsed() {
+	const transitionElement = container.value;
+	const scrollable = getScrollableElement();
+	if (!transitionElement || !scrollable) return;
+
+	explicitHeight.value = `${transitionElement.getBoundingClientRect().height}px`;
+	await nextTick();
+	void transitionElement.offsetHeight;
+
+	collapsed.value = !collapsed.value;
+	emit('update:collapsed', collapsed.value);
+	await nextTick();
+
+	const contentTargetHeight = collapsed.value
+		? scrollable.getBoundingClientRect().height
+		: scrollable.scrollHeight;
+	if (isRawMode.value) {
+		rawContentHeight.value = `${contentTargetHeight}px`;
+		await nextTick();
+	}
+
+	explicitHeight.value = `${transitionElement.scrollHeight}px`;
+	if (!hasHeightTransition(transitionElement)) {
+		explicitHeight.value = undefined;
+	}
+}
+
+function onHeightTransitionEnd(event: TransitionEvent) {
+	if (event.propertyName === 'height' && event.target === container.value) {
+		explicitHeight.value = undefined;
+	}
 }
 
 const bubbleMenuOptions = computed(function getBubbleMenuOptions() {
@@ -68,6 +243,12 @@ const bubbleMenuOptions = computed(function getBubbleMenuOptions() {
 });
 
 async function toggleRawMode(value: boolean) {
+	const getRenderedContentHeight = () => {
+		const renderedContent = container.value?.querySelector<HTMLElement>('.n8n-markdown');
+
+		return renderedContent ? `${renderedContent.clientHeight}px` : undefined;
+	};
+
 	if (value) {
 		rawMarkdown.value = editor.value?.getMarkdown() ?? props.modelValue;
 		rawContentHeight.value = getRenderedContentHeight();
@@ -101,6 +282,12 @@ function handleRawFocus(event: FocusEvent) {
 
 function handleRawBlur(event: FocusEvent) {
 	emit('blur', rawMarkdown.value, event);
+}
+
+async function handleExpandedOpenAutoFocus(event: Event) {
+	event.preventDefault();
+	await nextTick();
+	focus();
 }
 
 function focus() {
@@ -137,63 +324,131 @@ defineExpose({
 });
 </script>
 <template>
-	<div
-		ref="container"
-		:class="[
-			'n8n-markdown-editor-container',
-			$style.container,
-			props.variant === 'ghost' ? $style.ghost : $style.contained,
-			props.containerClass,
-			props.disabled ? $style.disabled : '',
-		]"
-		:style="maxHeightStyle"
-		data-test-id="n8n-markdown-editor"
-	>
-		<div v-if="isRawMode" :class="[$style.content, shouldPadContentTop ? $style.padTop : '']">
-			<textarea
-				ref="rawEditor"
-				:value="rawMarkdown"
-				:class="[$style.rawContent, shouldPadContentTop ? $style.padTop : '']"
-				:style="{ '--markdown-editor-raw-height': rawContentHeight }"
-				:placeholder="props.placeholder"
-				:disabled="props.disabled"
-				:readonly="props.readonly"
-				data-test-id="n8n-markdown-editor-raw-content"
-				@input="updateRawMarkdown"
-				@focus="handleRawFocus"
-				@blur="handleRawBlur"
-			/>
-		</div>
-		<EditorContent
-			v-else
-			:editor="editor"
-			:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
-		/>
-		<MarkdownEditorToolbar
-			v-if="shouldShowInlineToolbar && editor"
-			:editor="editor"
-			:disabled="props.disabled || props.readonly"
-			:is-raw-mode="isRawMode"
-			:mode="toolbarMode"
-			:variant="props.variant"
-			@update:is-raw-mode="toggleRawMode"
-		/>
-		<BubbleMenu
-			v-if="props.showToolbar === 'floating' && editor && !isRawMode"
-			:editor="editor"
-			:options="bubbleMenuOptions"
-			:append-to="getBubbleMenuContainer"
-			:class="$style.bubbleMenu"
+	<div :class="$style.root">
+		<Teleport :to="dialogContainer ?? 'body'" :disabled="!isExpandedViewActive">
+			<div
+				ref="container"
+				v-bind="$attrs"
+				:class="[
+					'n8n-markdown-editor-container',
+					$style.container,
+					isExpandedViewActive && $style.expandedContainer,
+					isExpandedViewActive && toolbarMode === 'floating' && $style.floatingToolbar,
+					props.variant === 'ghost' ? $style.ghost : $style.contained,
+					props.containerClass,
+					props.disabled ? $style.disabled : '',
+					shouldBeCollapsable && collapsed && !isExpandedViewActive ? $style.collapsed : '',
+				]"
+				:style="[setMaxHeight, isExpandedViewActive ? undefined : containerHeightStyle]"
+				data-test-id="n8n-markdown-editor"
+				@transitionend="onHeightTransitionEnd"
+			>
+				<div
+					v-if="isRawMode"
+					data-markdown-editor-content-wrapper
+					:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
+				>
+					<textarea
+						ref="rawEditor"
+						:value="rawMarkdown"
+						:class="[$style.rawContent, shouldPadContentTop ? $style.padTop : '']"
+						:style="{ '--markdown-editor-raw-height': rawContentHeight }"
+						:placeholder="props.placeholder"
+						:disabled="props.disabled"
+						:readonly="props.readonly"
+						data-test-id="n8n-markdown-editor-raw-content"
+						@input="updateRawMarkdown"
+						@focus="handleRawFocus"
+						@blur="handleRawBlur"
+					/>
+				</div>
+				<EditorContent
+					v-else
+					data-markdown-editor-content-wrapper
+					:editor="editor"
+					:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
+				/>
+				<MarkdownEditorToolbar
+					v-if="fixedToolbarMode && editor"
+					:editor="editor"
+					:disabled="props.disabled || props.readonly"
+					:is-raw-mode="isRawMode"
+					:mode="fixedToolbarMode"
+					:variant="props.variant"
+					:allow-expanded-view="props.allowExpandedView"
+					:is-expanded-view="isExpandedViewOpen"
+					@update:is-raw-mode="toggleRawMode"
+					@toggle-expanded-view="isExpandedViewOpen = !isExpandedViewOpen"
+				/>
+				<div v-if="toolbarMode === 'floating' && editor && !isRawMode">
+					<BubbleMenu
+						:editor="editor"
+						:options="bubbleMenuOptions"
+						:append-to="getBubbleMenuContainer"
+						:class="$style.bubbleMenu"
+					>
+						<MarkdownEditorToolbar
+							:editor="editor"
+							:disabled="props.disabled || props.readonly"
+							:is-raw-mode="false"
+							mode="floating"
+							:variant="props.variant"
+							:allow-expanded-view="props.allowExpandedView"
+							:is-expanded-view="isExpandedViewOpen"
+							@update:is-raw-mode="toggleRawMode"
+							@toggle-expanded-view="isExpandedViewOpen = !isExpandedViewOpen"
+						/>
+					</BubbleMenu>
+				</div>
+				<div
+					v-if="props.allowExpandedView && toolbarMode === 'floating'"
+					:class="[
+						$style.floatingExpandedViewButton,
+						isExpandedViewOpen ? $style.floatingExpandedViewButtonVisible : '',
+					]"
+				>
+					<MarkdownEditorExpandedViewButton
+						:is-expanded-view="isExpandedViewOpen"
+						variant="subtle"
+						icon-size="medium"
+						@toggle="isExpandedViewOpen = !isExpandedViewOpen"
+					/>
+				</div>
+				<div
+					v-if="shouldBeCollapsable && !isExpandedViewOpen"
+					:class="$style.expandButtonContainer"
+				>
+					<N8nTooltip :content="expandButtonLabel">
+						<N8nButton
+							size="small"
+							:icon="expandButtonIcon"
+							icon-only
+							icon-size="medium"
+							variant="subtle"
+							:class="$style.expandButton"
+							:aria-label="expandButtonLabel"
+							@click="toggleCollapsed"
+						/>
+					</N8nTooltip>
+				</div>
+			</div>
+		</Teleport>
+
+		<N8nDialog
+			v-if="props.allowExpandedView"
+			v-model:open="isExpandedViewOpen"
+			:aria-label="t('markdownEditor.expandedViewTitle')"
+			:show-close-button="false"
+			size="2xlarge"
+			:container-class="$style.dialog"
+			@open-auto-focus="handleExpandedOpenAutoFocus"
 		>
-			<MarkdownEditorToolbar
-				:editor="editor"
-				:disabled="props.disabled || props.readonly"
-				:is-raw-mode="false"
-				mode="floating"
-				:variant="props.variant"
-				@update:is-raw-mode="toggleRawMode"
+			<div
+				ref="dialogContainer"
+				data-test-id="n8n-markdown-editor-expanded"
+				@keydown.esc.capture="isExpandedViewOpen = false"
 			/>
-		</BubbleMenu>
+		</N8nDialog>
 	</div>
 </template>
 
@@ -204,9 +459,20 @@ defineExpose({
 <style lang="scss" module>
 @use '../../css/common/var';
 @use '../../css/mixins/focus';
+@use '../../css/mixins/motion';
+@use '../../css/mixins/mixins' as scrollMixins;
+
+.root {
+	display: contents;
+}
 
 .bubbleMenu {
 	z-index: var.$index-popper;
+}
+
+.dialog {
+	--n8n-dialog-content--padding: var(--spacing--5xs) 0 0 0;
+	max-height: var(--markdown-editor-max-height);
 }
 
 .disabled {
@@ -222,9 +488,28 @@ defineExpose({
 	background-color: transparent;
 }
 
+.floatingExpandedViewButton {
+	position: absolute;
+	top: var(--spacing--xs);
+	right: var(--spacing--xs);
+	z-index: 2;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition:
+		opacity var(--duration--snappy) var(--easing--ease-out),
+		visibility var(--duration--snappy) var(--easing--ease-out);
+}
+
+.container:hover .floatingExpandedViewButton,
+.floatingExpandedViewButtonVisible {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+}
+
 .ghost {
 	--n8n--markdown-editor--background-color: transparent;
-
 	background-color: transparent;
 }
 
@@ -260,7 +545,9 @@ defineExpose({
 		box-shadow: var(--input--shadow--focus), var(--input--border--shadow--focus);
 	}
 }
+
 .content {
+	@include motion.max-height-transition;
 	height: 100%;
 	max-height: var(--markdown-editor-max-height);
 	overflow: hidden;
@@ -302,7 +589,76 @@ defineExpose({
 	}
 }
 
+.collapsed {
+	@include scrollMixins.scroll-mask(bottom);
+	overflow-y: hidden;
+
+	> *,
+	:global(.n8n-markdown) {
+		overflow-y: hidden;
+	}
+}
+
+/** Hide visual focus ring in expanded as dialog implies focus anyway **/
+.expandedContainer,
+.expandedContainer:hover:not(.disabled):not(:focus-within),
+.expandedContainer:focus-within {
+	padding: 0;
+	outline: none;
+	box-shadow: none;
+}
+
+.expandedContainer {
+	max-height: var(--markdown-editor-max-height);
+}
+
+.expandedContainer.ghost,
+.expandedContainer.floatingToolbar {
+	padding-inline: var(--spacing--xs);
+	padding-block-start: var(--spacing--sm);
+}
+
+.expandButtonContainer {
+	display: grid;
+	place-items: center;
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 2;
+	padding: var(--spacing--xs);
+	pointer-events: none;
+}
+
+.expandButton {
+	opacity: 0;
+	pointer-events: auto;
+	background-color: var(--color--neutral-black);
+	color: var(--color--neutral-white);
+
+	--button--color--background: var(--color--neutral-black);
+	--button--color: var(--color--neutral-white);
+
+	&:hover {
+		background-color: color-mix(
+			in oklch,
+			var(--color--neutral-black) 90%,
+			var(--color--neutral-white) 10%
+		);
+	}
+}
+.collapsed .expandButton {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.container:hover .expandButton {
+	opacity: 1;
+	transition: opacity var(--duration--snappy) var(--easing--ease-out);
+}
+
 .rawContent {
+	@include motion.max-height-transition;
 	display: block;
 	box-sizing: border-box;
 	width: 100%;

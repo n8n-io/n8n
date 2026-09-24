@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "2.38.0",
+  "version": "2.40.0",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -58,11 +58,11 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@storybook/addon-docs": "catalog:storybook",
-    "@storybook/vue3": "catalog:storybook",
     "@storybook/vue3-vite": "catalog:storybook",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
+    "@types/dateformat": "^3.0.0",
     "@types/lodash": "catalog:",
     "@types/markdown-it": "catalog:",
     "@types/markdown-it-emoji": "^2.0.2",
@@ -72,7 +72,6 @@
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "catalog:frontend",
     "autoprefixer": "catalog:frontend",
-    "emojibase-data": "^17.0.0",
     "eslint-plugin-storybook": "catalog:storybook",
     "pinia": "catalog:frontend",
     "postcss": "^8.4.38",
@@ -80,14 +79,12 @@
     "storybook": "catalog:storybook",
     "storybook-addon-vue-mdx": "3.0.0",
     "stylelint": "catalog:",
-    "tailwindcss": "^3.4.3",
     "typescript": "catalog:",
+    "unplugin-dts": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
@@ -114,6 +111,7 @@
     "@tiptap/vue-3": "catalog:",
     "@vueuse/core": "catalog:frontend",
     "clsx": "^2.1.1",
+    "dateformat": "^3.0.3",
     "element-plus": "catalog:frontend",
     "highlight.js": "catalog:frontend",
     "is-emoji-supported": "^0.0.5",
@@ -125,12 +123,14 @@
     "parse-diff": "^0.11.1",
     "reka-ui": "^2.5.0",
     "sanitize-html": "catalog:",
+    "timeago.js": "^4.0.2",
     "vue-boring-avatars": "^1.3.0",
     "xss": "catalog:"
   },
   "peerDependencies": {
     "vue": "catalog:frontend",
-    "vue-router": "catalog:frontend"
+    "vue-router": "catalog:frontend",
+    "@vue/language-core": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -18,13 +18,18 @@ import {
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
 
-const props = withDefaults(defineProps<{ disabled?: boolean }>(), { disabled: false });
+const props = withDefaults(defineProps<{ disabled?: boolean; threadId?: string }>(), {
+	disabled: false,
+	threadId: undefined,
+});
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(() =>
-	emit('attachFiles'),
-);
+const { menuItems, disconnectedConnectionCount, refreshAppliedPreferences } =
+	useInstanceAiInputMenuItems(
+		() => emit('attachFiles'),
+		() => props.threadId,
+	);
 
 const tooltip = computed(() => {
 	const count = disconnectedConnectionCount.value;
@@ -61,6 +66,8 @@ function trackInputPlusButtonClick() {
 function handleUpdateDropdownModelValue(open: boolean) {
 	if (open) {
 		trackInputPlusButtonClick();
+		// A preference edited in settings while this chat sat open should read as edited.
+		void refreshAppliedPreferences();
 	}
 }
 </script>
@@ -79,8 +86,9 @@ function handleUpdateDropdownModelValue(open: boolean) {
 				<span :class="$style.trigger">
 					<N8nIconButton
 						icon="plus"
-						variant="outline"
+						variant="ghost"
 						size="medium"
+						icon-size="large"
 						:disabled="props.disabled"
 						:aria-label="tooltip"
 					/>
@@ -112,10 +120,19 @@ function handleUpdateDropdownModelValue(open: boolean) {
 			<template #item-label="{ item, ui }">
 				<N8nText
 					size="medium"
-					:color="item.disabled ? 'text-xlight' : 'text-dark'"
-					:class="[ui.class, $style.itemLabel, !item.children?.length && $style.itemLabelLeaf]"
+					:color="
+						item.disabled || (item.data?.preference && item.data.preference !== 'applied')
+							? 'text-xlight'
+							: 'text-dark'
+					"
+					:class="[
+						ui.class,
+						$style.itemLabel,
+						!item.children?.length && $style.itemLabelLeaf,
+						item.data?.preference && $style.preferenceItem,
+					]"
 				>
-					<span>{{ item.label }}</span>
+					<span :class="item.data?.preference && $style.preferenceText">{{ item.label }}</span>
 					<span
 						v-if="
 							item.data?.status &&
@@ -182,6 +199,21 @@ function handleUpdateDropdownModelValue(open: boolean) {
 
 .itemLabelLeaf {
 	padding-right: var(--spacing--xs);
+}
+
+// A preference is a sentence the user wrote, not a menu verb: let it wrap to two lines.
+.preferenceItem {
+	max-width: 320px;
+	white-space: normal;
+}
+
+.preferenceText {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+	overflow-wrap: anywhere;
 }
 
 .statusDot {

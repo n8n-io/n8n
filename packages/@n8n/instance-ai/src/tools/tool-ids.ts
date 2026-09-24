@@ -10,12 +10,15 @@ export const DOMAIN_TOOL_IDS = {
 	RESEARCH: 'research',
 	N8N_DOCS: 'n8n-docs',
 	NODES: 'nodes',
+	SEARCH_MODELS: 'searchModels',
 	ASK_USER: 'ask-user',
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',
 	AGENTS: 'agents',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
+	ACTIVITY: 'activity',
+	SAVE_USER_PREFERENCE: 'save_user_preference',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -74,6 +77,15 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// to surface and the agent concludes the integration is unavailable.
 	DOMAIN_TOOL_IDS.MCP_SERVERS,
 	DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
+	// The instance-context block hands the agent ids and tells it to expand them, so deferring
+	// this would price every expand at search_tools + load_tool. It is only registered when the
+	// reader is enabled, so an instance without the feature pays nothing for the entry.
+	DOMAIN_TOOL_IDS.ACTIVITY,
+	// A user can state a preference at any point in a conversation. Deferring this
+	// behind search_tools would mean the model has to know the tool exists before it
+	// can react, which is exactly the moment it does not. Registered only when the
+	// preferences service is wired, so an instance without the feature pays nothing.
+	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 	'web-search',
 	'fetch-url',
 	// build-agent is the primary route for agent-anchored intents; deferring it

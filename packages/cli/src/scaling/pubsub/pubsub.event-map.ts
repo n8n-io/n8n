@@ -46,11 +46,13 @@ export type PubSubCommandMap = {
 	'community-package-install': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-update': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-uninstall': {
@@ -130,6 +132,25 @@ export type PubSubCommandMap = {
 		userIds: string[];
 	};
 
+	'cancel-agent-chat-execution': {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		executionId: string;
+		userId: string;
+	};
+
+	'relay-agent-background-tasks-update': {
+		data: PushPayload<'agentBackgroundTasksUpdated'>;
+		userIds: string[];
+	};
+
+	'relay-agent-update': {
+		data: PushPayload<'agentUpdated'>;
+		userIds: string[];
+		excludePushRef?: string;
+	};
+
 	/** Ask mains to wake the agent run a finished sub-execution was parked on. */
 	'resume-agent-workflow-tool': {
 		agentRun: RelatedAgentRun;
@@ -143,6 +164,11 @@ export type PubSubCommandMap = {
 	 */
 	'cancel-agent-background-job': {
 		jobId: string;
+	};
+
+	/** Ask main instances to deliver background job results to the parent thread. */
+	'wake-agent-background-job': {
+		threadId: string;
 	};
 
 	'clear-test-webhooks': {
@@ -206,6 +232,7 @@ export type PubSubCommandMap = {
 	 */
 	'relay-instance-ai-task-control': {
 		threadId: string;
+		userId?: string;
 		taskId?: string;
 		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
 		correction?: string;

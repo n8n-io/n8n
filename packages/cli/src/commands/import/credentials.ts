@@ -1,3 +1,4 @@
+import { credentialDescriptionSchema } from '@n8n/api-types';
 import {
 	CredentialsEntity,
 	DbLock,
@@ -21,6 +22,7 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, UserError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -131,8 +133,8 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				const result = await this.checkRelations(
 					transactionManager,
 					credentials,
-					flags.projectId,
-					flags.userId,
+					project.id,
+					flags,
 				);
 
 				if (!result.success) {
@@ -167,6 +169,19 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		project: Project,
 		ctx: OperationContext,
 	) {
+		await Container.get(CredentialDescriptionsService).stripIfDisabled(credential);
+		if (credential.description !== undefined) {
+			const parsed = credentialDescriptionSchema.safeParse(credential.description);
+
+			if (!parsed.success) {
+				throw new UserError(
+					`Credential "${credential.id ?? credential.name ?? 'unknown'}": ${parsed.error.issues[0].message}`,
+				);
+			}
+
+			credential.description = parsed.data;
+		}
+
 		// UsageScope is instance-local state; imports never change it for existing credentials.
 		let existing: Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'> | null = null;
 		if (credential.id) {
@@ -281,8 +296,8 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	private async checkRelations(
 		transactionManager: EntityManager,
 		credentials: Array<Pick<Partial<CredentialsEntity>, 'id'>>,
-		projectId?: string,
-		userId?: string,
+		targetProjectId: string,
+		{ userId, projectId }: { userId?: string; projectId?: string },
 	) {
 		// The credential is not supposed to be re-owned.
 		if (!projectId && !userId) {
@@ -310,7 +325,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				continue;
 			}
 
-			if (ownerProject.id !== projectId) {
+			if (ownerProject.id !== targetProjectId) {
 				const currentOwner =
 					ownerProject.type === 'personal'
 						? `the user with the ID "${user.id}"`
@@ -453,6 +468,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			updatedAt: true,
 			id: true,
 			name: true,
+			description: true,
 			data: true,
 			type: true,
 			isManaged: true,

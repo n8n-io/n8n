@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
-import { SystemTask, wholeSeconds } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import { SystemTask } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InsightsPruningService } from './insights-pruning.service';
 import { InsightsConfig } from './insights.config';
@@ -15,15 +15,14 @@ export class InsightsPruningTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = {
 		kind: 'interval',
-		intervalSeconds: wholeSeconds(
-			this.insightsConfig.pruneCheckIntervalHours * Time.hours.toSeconds,
-		),
+		intervalSeconds: this.insightsConfig.pruneCheckIntervalHours * Time.hours.toSeconds,
 	};
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
+	/** Only the in-memory timer, which runs whenever the task does not run durably, honors this. */
 	readonly retryDelaySeconds = 1;
 
 	constructor(

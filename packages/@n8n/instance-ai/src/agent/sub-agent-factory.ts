@@ -1,6 +1,10 @@
 import { Agent, type CheckpointStore, type RuntimeSkillSource, type Workspace } from '@n8n/agents';
 
-import { SECRET_ASK_GUARDRAIL, SECRET_PASTE_GUARDRAIL } from './credential-guardrails.prompt';
+import {
+	SCOPE_GROUNDING_GUARDRAIL,
+	SECRET_ASK_GUARDRAIL,
+	SECRET_PASTE_GUARDRAIL,
+} from './credential-guardrails.prompt';
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import {
 	ASK_USER_FALLBACK,
@@ -9,7 +13,12 @@ import {
 } from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
 import { toolRegistryValues } from '../tool-registry';
-import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
+import {
+	buildAgentTraceInputs,
+	mergeTraceRunInputs,
+	modelIdTraceMetadata,
+	setTraceModelId,
+} from '../tracing/langsmith-tracing';
 import type {
 	InstanceAiToolRegistry,
 	InstanceAiTraceContext,
@@ -64,7 +73,8 @@ Keep diagnostics to 2-3 sentences maximum. Omit entirely when the task succeeded
 - ${ASK_USER_FALLBACK}
 - ${UNTRUSTED_CONTENT_DOCTRINE}
 - ${SECRET_ASK_GUARDRAIL}
-- ${SECRET_PASTE_GUARDRAIL}`;
+- ${SECRET_PASTE_GUARDRAIL}
+- ${SCOPE_GROUNDING_GUARDRAIL}`;
 
 export { SUB_AGENT_PROTOCOL };
 
@@ -96,12 +106,13 @@ export function createSubAgent(options: SubAgentOptions): Agent {
 		workspace: options.workspace,
 		runtimeSkills: options.runtimeSkills,
 	});
+	setTraceModelId(options.tracing, modelId);
 	const telemetry = options.tracing?.getTelemetry?.({
 		agentRole: role,
 		functionId: `instance-ai.subagent.${role.replace(/[^a-zA-Z0-9._-]+/g, '-')}`,
 		executionMode:
 			options.tracing.traceKind === 'background_subagent' ? 'background_subagent' : 'background',
-		metadata: { agent_id: options.agentId },
+		metadata: { agent_id: options.agentId, ...modelIdTraceMetadata(modelId) },
 	});
 	if (telemetry) {
 		agent.telemetry(telemetry);

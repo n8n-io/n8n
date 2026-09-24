@@ -249,6 +249,27 @@ describe('SessionTimelineChart', () => {
 		}
 	});
 
+	it('shows the skill label and name in the block details', async () => {
+		vi.useFakeTimers();
+		const w = mountChart({
+			items: [item({ kind: 'skill', skillName: 'Triage', timestamp: 1000, endTimestamp: 1200 })],
+		});
+
+		try {
+			const block = w.get('[data-test-id="timeline-block"]');
+			expect(block.attributes('aria-label')).toContain('Skill');
+			expect(block.attributes('aria-label')).toContain('Triage');
+
+			await block.trigger('focus');
+			await vi.runAllTimersAsync();
+
+			expect(w.get('[data-test-id="timeline-hover-card"]').text()).toContain('Triage');
+		} finally {
+			w.unmount();
+			vi.useRealTimers();
+		}
+	});
+
 	it('exposes a failed tool call as an error in the block label and hover card', async () => {
 		vi.useFakeTimers();
 		const w = mountChart({
@@ -277,4 +298,31 @@ describe('SessionTimelineChart', () => {
 			vi.useRealTimers();
 		}
 	});
+});
+
+it('shows the signal label and task status in the chart popover', async () => {
+	vi.useFakeTimers();
+	const wrapper = mountChart({
+		items: [
+			item({
+				kind: 'background-task-signal',
+				timestamp: 1000,
+				backgroundJobSignal: {
+					tasks: [{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'failed' }],
+				},
+			}),
+		],
+	});
+	try {
+		await wrapper.get('[data-test-id="timeline-block"]').trigger('focus');
+		await vi.runAllTimersAsync();
+		expect(wrapper.get('[data-test-id="timeline-hover-card"]').attributes('data-open')).toBe(
+			'true',
+		);
+		expect(wrapper.text()).toContain('Background task results received');
+		expect(wrapper.text()).toContain('Check invoices — Failed');
+	} finally {
+		wrapper.unmount();
+		vi.useRealTimers();
+	}
 });

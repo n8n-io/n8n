@@ -1,7 +1,5 @@
 Error:
   $ref: './error.yml'
-Role:
-  $ref: './../../../handlers/users/spec/schemas/role.yml'
 Node:
   $ref: './../../../handlers/workflows/spec/schemas/node.yml'
 WorkflowNodeGroup:
@@ -14,19 +12,5 @@ WorkflowSettings:
   $ref: './../../../handlers/workflows/spec/schemas/workflowSettings.yml'
 WorkflowList:
   $ref: './../../../handlers/workflows/spec/schemas/workflowList.yml'
-Credential:
-  $ref: './../../../handlers/credentials/spec/schemas/credential.yml'
-CredentialType:
-  $ref: './../../../handlers/credentials/spec/schemas/credentialType.yml'
 Audit:
   $ref: './../../../handlers/audit/spec/schemas/audit.yml'
-Pull:
-  $ref: './../../../handlers/source-control/spec/schemas/pull.yml'
-PullResult:
-  $ref: './../../../handlers/source-control/spec/schemas/pullResult.yml'
-SourceControlledFile:
-  $ref: './../../../handlers/source-control/spec/schemas/sourceControlledFile.yml'
-UserList:
-  $ref: './../../../handlers/users/spec/schemas/userList.yml'
-User:
-  $ref: './../../../handlers/users/spec/schemas/user.yml'

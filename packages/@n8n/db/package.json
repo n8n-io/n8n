@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "1.39.0",
+  "version": "1.41.0",
   "scripts": {
     "clean": "rimraf dist .turbo .tmp-schema-docs",
     "gen:migration-index": "node scripts/generate-migration-index.mjs",
@@ -47,7 +47,6 @@
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "p-lazy": "3.1.0",
-    "reflect-metadata": "catalog:",
     "uuid": "catalog:",
     "xss": "catalog:",
     "zod": "catalog:"

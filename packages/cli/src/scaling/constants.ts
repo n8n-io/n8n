@@ -1,3 +1,5 @@
+import { Time } from '@n8n/constants';
+
 import type { PubSub } from './pubsub/pubsub.types';
 
 export const JOB_TYPE_NAME = 'job';
@@ -10,6 +12,12 @@ export const WORKER_RESPONSE_PUBSUB_CHANNEL = 'n8n.worker-response';
 
 /** Pubsub channel for MCP relay messages between main instances in multi-main queue mode. */
 export const MCP_RELAY_PUBSUB_CHANNEL = 'n8n.mcp-relay';
+
+/** How often to re-issue SUBSCRIBE on the pubsub subscriber connection. Short enough to keep idle NAT/IPVS flows alive. */
+export const SUBSCRIBER_LIVENESS_INTERVAL_MS = 30 * Time.seconds.toMilliseconds;
+
+/** How long to wait for the SUBSCRIBE reply before dropping the subscriber connection so ioredis reconnects. */
+export const SUBSCRIBER_LIVENESS_TIMEOUT_MS = 10 * Time.seconds.toMilliseconds;
 
 /**
  * Max allowed size in bytes of a message relayed over the pubsub channel. Events
@@ -37,8 +45,12 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'relay-execution-lifecycle-event',
 	'relay-chat-stream-event',
 	'relay-agent-execution-update',
+	'cancel-agent-chat-execution',
+	'relay-agent-background-tasks-update',
+	'relay-agent-update',
 	'resume-agent-workflow-tool',
 	'cancel-agent-background-job',
+	'wake-agent-background-job',
 	'relay-instance-ai-event',
 	'relay-instance-ai-task-control',
 	'agent-chat-subscription-changed',

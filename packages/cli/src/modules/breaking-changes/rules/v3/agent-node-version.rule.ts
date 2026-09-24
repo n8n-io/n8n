@@ -4,6 +4,7 @@ import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 
 import { getAgentNodesBelowFirstSupportedVersion, getRemovedAgentMode } from './agent-node-mode';
+import { reportAffectedNodes } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
@@ -52,17 +53,10 @@ export class AgentNodeVersionRule implements IBreakingChangeWorkflowRule {
 			(node) => !getRemovedAgentMode(node),
 		);
 
-		if (affectedNodes.length === 0) return { isAffected: false, issues: [] };
-
-		return {
-			isAffected: true,
-			issues: affectedNodes.map((node) => ({
-				title: `Node '${node.name}' uses AI Agent version ${node.typeVersion}`,
-				description: 'After the update, this node will run with version 2 behavior.',
-				level: 'warning',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
+		return reportAffectedNodes(affectedNodes, (node) => ({
+			title: `Node '${node.name}' uses AI Agent version ${node.typeVersion}`,
+			description: 'After the update, this node will run with version 2 behavior.',
+			level: 'warning',
+		}));
 	}
 }

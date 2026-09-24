@@ -500,21 +500,33 @@ jobs:
     name: SLSA Provenance (n8n)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
+      inputs.ref == '' &&
       inputs.create_attestations &&
       needs.create_multi_arch_manifest.result == 'success' &&
       needs.create_multi_arch_manifest.outputs.n8n_digest != ''
+    runs-on: ubuntu-latest
     permissions:
-      id-token: write
-      packages: write
-      actions: read
-    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
-    with:
-      image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
-      digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
-      registry-username: ${{ github.actor }}
-    secrets:
-      registry-password: ${{ secrets.GITHUB_TOKEN }}
+      id-token: write # GitHub OIDC token for the Sigstore signing request
+      attestations: write # write the build provenance attestation
+      packages: write # push the attestation to GHCR next to the image
+      contents: read # read the linked artifact metadata
+    steps:
+      # push-to-registry needs registry credentials in the Docker config file.
+      - name: Login to GHCR
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Attest the multi-arch manifest digest, so one attestation covers every
+      # platform in the published index.
+      - name: Attest build provenance for n8n image
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-name: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
+          subject-digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+          push-to-registry: true
 
   provenance-n8n-pc:
     name: SLSA Provenance (n8n-pc)

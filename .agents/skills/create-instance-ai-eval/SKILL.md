@@ -1,19 +1,21 @@
 ---
 name: n8n:create-instance-ai-eval
 description: >-
-  Authors a new Instance AI workflow eval case — written locally as JSON,
-  calibrated against a real build, then pushed to the LangTracer suite CI runs
-  — build cases, behaviour/process cases, credential cases, and seeded
+  Authors a new Instance AI workflow or Agent eval case — written locally as
+  JSON, calibrated against a real build, then pushed to the LangTracer suite CI
+  runs — build cases, behaviour/process cases, credential cases, and seeded
   (mid-conversation) cases — with intent-driven expectations. Use when adding
-  or changing an Instance AI workflow eval, or debugging why one is flaky.
+  or changing an Instance AI eval, or debugging why one is flaky.
 ---
 
-# Create an Instance AI workflow eval
+# Create an Instance AI eval
 
-Each eval is **one JSON case** — authored locally as a file in
-`packages/@n8n/instance-ai/evaluations/data/workflows/` (the disk loader
-auto-discovers `*.json`, no registration step), with a LangTracer suite as its
-durable home. Cases validate against
+Each eval is **one JSON case**. Author workflow cases in
+`packages/@n8n/instance-ai/evaluations/data/workflows/`. Author standalone Agent
+cases in `packages/@n8n/instance-ai/evaluations/data/agents/` and follow the
+[`create-agent-builder-eval` skill](../create-agent-builder-eval/SKILL.md).
+The disk loader auto-discovers `*.json` in both directories. A LangTracer suite
+is the durable home. Cases validate against
 [`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts)
 (`.strict()` — unknown keys fail at load). The eval
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) is the
@@ -138,7 +140,7 @@ discover → verify → encode workflow.
 
 ## Pick the case shape first
 
-The corpus is four archetypes. Decide which you're writing before you draft — it
+The corpus is five archetypes. Decide which you're writing before you draft — it
 determines the fields, the grading, and how you validate. They compose (a seeded
 case can still assert outcome), but the primary shape drives the work.
 
@@ -148,9 +150,24 @@ case can still assert outcome), but the primary shape drives the work.
 | **Behaviour / process** | Does the agent *converse* correctly (ask the right clarifying question, not re-ask, honour a correction, respect plan approval)? | `processExpectations` + multi-turn director script; often **build-only** |
 | **Credential** | Does the build behave correctly given a specific credential view? | `credentials[]` |
 | **Seeded** | Start mid-thread, with prior work already in place, and drive the turn under test | `seed` (authored `mode: "inline"`; `"replay"` for a local check) |
+| **Context** | Does the agent still work once the conversation is long — does it reuse what it already read, and keep what matters after observational memory compacts the history? | `processExpectations` + a long `seed`; `requiresMemoryCompaction` for the compaction ones |
 
-**Build** is documented in full below. The other three, the director-script
+**Build** is documented in full below. The other four, the director-script
 vocabulary, and the seeding modes are in [`case-shapes.md`](case-shapes.md).
+
+The judge also sees **token ground truth** for workflow-build cases: per-turn
+input and output tokens inline in each transcript turn header, a build-wide
+total, a cache read/write split, and the opening step's cost. So an expectation
+may reference cost or consumption directly ("does not re-read the same node's
+schema in turn 2"). The numbers cover the orchestrator's own LLM steps only. A
+delegated Agent build runs in a sub-agent whose steps are not in the snapshot,
+so do not write cost expectations on an Agent case. Those numbers come from run-debug snapshots, so they need
+`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` on the instance under test; without it
+the judge reads `(no run debug captured)` and cost expectations are ungradeable.
+
+The judge also sees the thread's **observation rows** — what observational
+memory kept after it compacted — so a memory case can grade the summary itself.
+That block is a separate REST read and needs no flag.
 
 ## Core principle (all shapes)
 
@@ -244,11 +261,14 @@ calibration you hand the driver the thread link + login to review the real build
    build has a real gap, or because the harness can't exercise it, **that red is
    the result — keep it and surface why** (see "A red is signal", below). Never
    delete a scenario, weaken an assertion, or drop to build-only just to make the
-   run green.
+   run green. And when the case comes back **green**, that is a result to earn,
+   not to accept: confirm the precondition actually fired, then re-derive it from
+   the raw thread before calling the case a regression guard (see
+   [First reproduce, then reclassify](#first-reproduce-then-reclassify)).
 7. **Push to the suite — do NOT commit the JSON.** Once calibrated, push the case
    into its curated lang-tracer suite with `eval:langtracer-push` (see
    [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)); the suite is the
-   case's home, not the repo. Leave the `data/workflows/*.json` file uncommitted
+   case's home, not the repo. Leave the `data/{workflows,agents}/*.json` file uncommitted
    (or delete it once it's in the suite). Committing new case JSONs into the repo
    is no longer the approach. (An `inline` seed pushes with the case; only a
    `replay` case is refused — it's a local throwaway; see
@@ -282,13 +302,80 @@ and verify X actually materialised — the direct-loop `eval-results.json` does 
 persist per-expectation judge reasoning, so pass/fail alone can't tell you which
 reading you got.
 
-**A sourced failure that no longer reproduces is still worth keeping — it's now a
-regression guard.** When you encode a real failure and calibration shows the
-current build handling it correctly (behaviour drifts across versions), the case
-doesn't lose value: it flips from *capability-gap* (currently red) to *regression
-guard* (currently green, catches a re-introduction). Keep it — but only after the
-non-vacuous check above proves it *would* turn red on the bad behaviour, else the
-"guard" guards nothing.
+**The negative form is the easiest to fool yourself with.** An assertion phrased
+as "the agent did NOT call `X` with a bad argument" passes when the agent called
+`X` correctly *and* when **it never called `X` at all**. Those are opposite
+results and the judge reports the same green. So for any assertion about tool
+misuse, confirm the tool was actually invoked before believing the pass: parse
+`testCases[].transcriptPerRun[][].steps[]` for the call. Note the transcript
+groups multi-action tools under a bare `toolName` (`nodes`, `workflows`,
+`credentials`), so read `args.action` to get the real one — filtering on
+`nodes[explore-resources]` finds nothing and looks like a clean pass. Measured on
+this corpus: a batch of five tool-misuse cases scored 100% on its first
+calibration run, and three of them were passing vacuously because the tool under
+test was never called.
+
+**A sourced failure that does not reproduce is not yet a regression guard — first
+re-derive the precondition.** Behaviour does drift across versions, and a case
+that flips from *capability-gap* (red) to *regression guard* (green, catches a
+re-introduction) is a legitimate and valuable outcome. But reach it by
+elimination, not by default: a green far more often means *your case never set up
+the situation* than *the builder improved*. See below.
+
+## First reproduce, then reclassify
+
+A case built from a real failure that comes back green is the most common
+outcome of a first calibration run, and "the build must have improved" is the
+most common wrong conclusion. The usual cause is that you authored from a
+*summary* of the thread — the theme label, the observation description, your own
+one-line note — and the trigger you assumed is not the trigger that fired. Go
+back to the raw thread before you downgrade anything.
+
+**Find the turn, not the topic.** Locate the exact tool call that failed, then
+read the assistant text immediately before it. The agent usually states its
+intent in the open, and that sentence is the precondition. Then ask what *state*
+made that call necessary — not what the conversation was about.
+
+Worked example from this corpus. Sourced finding: "the agent invents
+`nodes[explore-resources]` method names." Assumed trigger: the user swaps model
+provider. A case built on a clean provider swap came back green — the agent set
+the model id directly and never called the tool at all. The raw thread said it
+plainly:
+
+> "The **Groq Chat Model** has an invalid model (`llama3-8b-8192` isn't offered
+> by your Groq credential). **Let me list valid models and fix it.**"
+
+The precondition was never the swap. It was *an existing model id that the
+provider rejects at runtime, with a credential already connected* — that is the
+state that makes enumerating models necessary. Rebuilt on it, the same case
+reproduced the failure on the first run, with the agent inventing two method
+names in a row.
+
+Three moves turn a non-reproducing case into a reproducing one. Try them in
+order before settling for a guard:
+
+1. **Fix the precondition.** Rebuild the seed and the live turn to recreate the
+   state the source thread was in, not the subject it was discussing.
+2. **Move the assertion to the first call.** A mechanism where the agent
+   *self-corrects* grades green on the end state and is still a real defect — the
+   wasted round-trip and the guessed schema are the finding. Grading first-call
+   correctness turned a mechanism previously dismissed as "self-corrects, weak
+   eval" into a gap that reproduced in 2 of 2 runs.
+3. **Keep what the attempt actually caught.** A reproduction run often reds on a
+   *different* real defect than the one you targeted. That is still a
+   capability-gap finding — keep the red, retarget the description, and say
+   plainly in it that the originally targeted mechanism did not reproduce.
+
+**Know when to stop.** Some mechanisms are structurally unreachable in this
+harness, and no amount of re-deriving fixes that. The clearest example: a seed
+restores a **fresh** workspace file at the start of the graded turn, so the
+agent's first `old_str` always comes from a file it just read. Failures that need
+*accumulated drift* across many turns — the `str_replace` byte-fidelity family,
+the largest agent-caused tool-call failure in production at 15% of threads — do
+not reproduce even in a multi-turn chain of edits, each followed by a build. Cap
+the effort at about three attempts, then write the negative result into the case
+`description` as the finding it is, and ask whether the real defect belongs in a
+ticket rather than an eval.
 
 ## A red is signal — surface it, don't work around it
 
@@ -733,7 +820,10 @@ concluding whether the failure is your case, the build, or the harness.
 
 ```bash
 cd packages/@n8n/instance-ai
-npx tsx -e "import {loadWorkflowTestCasesWithFiles} from './evaluations/data/workflows/index.ts'; console.log(loadWorkflowTestCasesWithFiles('<slug>')[0].fileSlug)"
+pnpm exec tsx -e "import {loadWorkflowTestCasesWithFiles} from './evaluations/data/workflows/index.ts'; console.log(loadWorkflowTestCasesWithFiles('<slug>')[0].fileSlug)"
+
+# For a standalone Agent case:
+pnpm exec tsx -e "import {loadAgentEvalTestCasesWithFiles} from './evaluations/data/agents/index.ts'; console.log(loadAgentEvalTestCasesWithFiles('<slug>')[0].fileSlug)"
 ```
 
 ## Push to a lang-tracer suite
@@ -746,24 +836,24 @@ drifted, leaves the rest unchanged, and never prunes. It's the inverse of
 
 ```bash
 cd packages/@n8n/instance-ai
-# preview first — no writes (use `npx dotenvx`; the bare `dotenvx` binary is usually not on PATH):
-npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
+# preview first — no writes:
+pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
 # then push (drop --dry-run):
-npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
+pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
 ```
 
 - **Selectors** (at least one required — no accidental push-all): positional
   `<slugs...>` (exact file slugs), `--changed` (new/untracked + staged + modified
-  `data/workflows/*.json`, ideal right after authoring an uncommitted case),
+  `data/{workflows,agents}/*.json`, ideal right after authoring an uncommitted case),
   `--filter`/`--tier` (with `--exclude` as a modifier).
 - **Multiple positional slugs? Skip pnpm — call the script directly.** `pnpm
   eval:langtracer-push … slugA slugB` forwards the slugs as one joined argument
   (`"slugA slugB"`), so no case file matches and nothing is pushed. Either use a
   no-positional selector through pnpm (`--changed`), or run the script directly so
-  each slug is its own argv: `npx dotenvx run -f .env.eval -- npx tsx
+  each slug is its own argv: `pnpm exec dotenvx run -f .env.eval -- pnpm exec tsx
   evaluations/cli/langtracer-push.ts --suite <slug> <slug1> <slug2> …`.
 - **Env:** `LANGTRACER_URL` + `LANGTRACER_API_KEY` (an `lt_` bearer; one key works
-  for MCP + REST) — put them in `.env.eval` and run under `npx dotenvx`.
+  for MCP + REST) — put them in `.env.eval` and run under `pnpm exec dotenvx`.
 - **Options:** `--set-kind regression|capability_gap` (default `regression`, must
   match the suite's kind), `--contains-user-data` (default is `synthetic`). A case
   whose **build is correct** (outcome expectations green) but that carries a
@@ -833,8 +923,9 @@ in *checkpoint* mode calibration this is how the driver opens the built thread
 
 ## Other eval harnesses (not this skill)
 
-This skill is for `data/workflows/` cases. Three siblings exist with their own
-data dirs and CLIs: **`eval:subagent`** (workflow-build compatibility corpus,
+Use the [`create-agent-builder-eval` skill](../create-agent-builder-eval/SKILL.md)
+for standalone Agent cases. Three other harnesses have their own data dirs and
+CLIs: **`eval:subagent`** (workflow-build compatibility corpus,
 binary-check scored), **`eval:discovery`** (asserts first-hop tool/dispatch
 routing, no n8n server), **`eval:pairwise`** (head-to-head build comparison vs
 `ai-workflow-builder.ee`). Authoring them is out of scope here — see the README

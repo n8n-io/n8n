@@ -1,10 +1,12 @@
+import { mock } from 'vitest-mock-extended';
+
 import {
 	createOrchestrationTools,
 	createOrchestratorDomainTools,
 	getActiveOrchestratorDomainToolNames,
 } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
-import type { InstanceAiContext } from '../../types';
+import type { InstanceAiContext, OrchestrationContext } from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
 
 vi.mock('../../parsers/structured-file-parser', () => ({
@@ -35,6 +37,10 @@ vi.mock('../nodes.tool', () => ({
 	createNodesTool: vi.fn((_context: unknown, scope?: string) => ({
 		id: scope ? `nodes-${scope}` : 'nodes',
 	})),
+}));
+
+vi.mock('../search-models.tool', () => ({
+	createSearchModelsTool: vi.fn(() => ({ id: 'searchModels' })),
 }));
 
 vi.mock('../n8n-docs.tool', () => ({
@@ -133,6 +139,7 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
 			nodes: { id: 'nodes' },
+			searchModels: { id: 'searchModels' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
@@ -141,10 +148,17 @@ describe('domain tool construction', () => {
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
 		const { createNodesTool } = await import('../nodes.tool.js');
+		const { createSearchModelsTool } = await import('../search-models.tool.js');
 		const { createDataTablesTool } = await import('../data-tables.tool.js');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
 		expect(createNodesTool).toHaveBeenCalledWith(context);
+		expect(createSearchModelsTool).toHaveBeenCalledOnce();
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
+	});
+
+	it('makes model catalog search discoverable without loading it for every turn', () => {
+		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('searchModels');
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('searchModels')).toBe(false);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {
@@ -207,6 +221,32 @@ describe('domain tool construction', () => {
 		);
 	});
 
+	it('gates the activity tool on the host-wired activityService', () => {
+		// Gates off: the adapter leaves activityService unset when the reader is disabled.
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('activity')).toBeUndefined();
+
+		const enabled = makeContext({
+			activityService: {} as InstanceAiContext['activityService'],
+		});
+		expect(createOrchestratorDomainTools(enabled).get('activity')).toBeDefined();
+		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('activity');
+	});
+
+	it('never defers activity behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('activity')).toBe(true);
+	});
+
+	it('registers save_user_preference only when the preference service is wired', () => {
+		const without = getActiveOrchestratorDomainToolNames(makeContext());
+		expect(without.has('save_user_preference')).toBe(false);
+
+		const context = makeContext();
+		context.aiPreferenceService = { create: vi.fn(), recordRejection: vi.fn() };
+		const withService = getActiveOrchestratorDomainToolNames(context);
+		expect(withService.has('save_user_preference')).toBe(true);
+	});
+
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});
@@ -220,13 +260,10 @@ describe('domain tool construction', () => {
 		);
 	});
 
-	it('registers create-tasks but not the removed plan orchestration tool', () => {
-		const context = makeContext({
-			workflowTaskService: {},
-			domainContext: {},
-		} as Partial<InstanceAiContext>);
+	it('constructs create-tasks for the agent to apply profile exclusions', () => {
+		const context = mock<OrchestrationContext>();
 
-		const orchestrationTools = createOrchestrationTools(context as never);
+		const orchestrationTools = createOrchestrationTools(context);
 
 		expect(orchestrationTools.has('create-tasks')).toBe(true);
 		expect(orchestrationTools.has('plan')).toBe(false);

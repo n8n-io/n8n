@@ -73,6 +73,7 @@ describe('useWorkflowPublicationStatusSync', () => {
 		settingsStore = mockedStore(useSettingsStore);
 		workflowDocumentStore = useWorkflowDocumentStore(TEST_DOCUMENT_ID);
 
+		workflowsStore.isNewWorkflow = false;
 		settingsStore.isWorkflowPublicationServiceEnabled = true;
 
 		vi.spyOn(workflowsStore, 'fetchPublicationStatus').mockResolvedValue(makeStatus('published'));

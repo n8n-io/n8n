@@ -3,6 +3,7 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
+	InstanceAiWorkflowSetupNode,
 } from '@n8n/api-types';
 import {
 	buildTimelineBlocks,
@@ -415,6 +416,52 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
 	});
 
+	test('text before a tool call that suspended on a setup card stays user-facing', () => {
+		const setupCard = makeToolCall({
+			toolCallId: 'tc-setup',
+			toolName: 'workflows',
+			args: { action: 'setup', workflowId: 'wf-1' },
+			isLoading: true,
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: 'Set up credentials',
+				setupRequests: [{ nodeName: 'Slack' } as unknown as InstanceAiWorkflowSetupNode],
+			},
+		});
+		const blocks = blocksOf(
+			[
+				reasoning('r1'),
+				text('This first version posts to Slack; Gmail comes next.', 'r1'),
+				toolEntry('tc-setup', 'r1'),
+			],
+			[setupCard],
+			'active',
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'thinking']);
+	});
+
+	test('text before an approval-gated tool call stays user-facing', () => {
+		const approval = makeToolCall({
+			toolCallId: 'tc-run',
+			toolName: 'executions',
+			args: { action: 'run', workflowId: 'wf-1' },
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: 'Run?',
+				inputType: 'approval',
+			},
+		});
+		const blocks = blocksOf(
+			[reasoning('r1'), text('Running it live now.', 'r1'), toolEntry('tc-run', 'r1')],
+			[approval],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'thinking']);
+	});
+
 	test('trailing text of a response is user-facing and splits blocks', () => {
 		const blocks = blocksOf(
 			[reasoning('r1'), toolEntry('tc-1', 'r1'), text('Here is your answer.', 'r1')],
@@ -770,6 +817,32 @@ describe('buildTimelineBlocks', () => {
 		const completed = blocksOf([reasoning('r1')], [], 'completed');
 		expect(completed[0].type === 'thinking' && completed[0].active).toBe(false);
 	});
+
+	describe('save_user_preference', () => {
+		const base: Partial<InstanceAiToolCallState> = {
+			toolCallId: 'tc-1',
+			toolName: 'save_user_preference',
+		};
+
+		test('renders a preference block once the result is a saved preference', () => {
+			const tc = makeToolCall({
+				...base,
+				result: { ok: true, preference: { id: 'p', content: 'x', scope: 'user' } },
+			});
+			const blocks = blocksOf([toolEntry('tc-1', 'r1')], [tc]);
+
+			expect(blocks).toEqual([{ type: 'preference', key: 'preference-0', toolCall: tc }]);
+		});
+
+		test('hides the call while loading and when the write was rejected', () => {
+			for (const tc of [
+				makeToolCall({ ...base, isLoading: true }),
+				makeToolCall({ ...base, result: { ok: false, reason: 'duplicate', message: 'dup' } }),
+			]) {
+				expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([]);
+			}
+		});
+	});
 });
 
 describe('isStreamingTimelineEntry', () => {
@@ -804,5 +877,50 @@ describe('isStreamingTimelineEntry', () => {
 		const node = makeAgentNode({ status: 'active', timeline: [tail] });
 
 		expect(isStreamingTimelineEntry(node, { ...tail })).toBe(false);
+	});
+});
+
+describe('buildTimelineBlocks — instance context', () => {
+	const contextEntry: InstanceAiTimelineEntry = {
+		type: 'instance-context',
+		runId: 'run-1',
+		injection: {
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 2, events: 1, runs: 0 },
+			chars: 90,
+		},
+	};
+
+	/** Inside the collapsible trace, not beside it — standalone it reads as its own message. */
+	test('puts the entry inside a thinking block rather than standing it alone', () => {
+		const blocks = buildTimelineBlocks([contextEntry], {}, {}, 'completed');
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type).toBe('thinking');
+		if (blocks[0].type !== 'thinking') throw new Error('unreachable');
+		expect(blocks[0].entries).toEqual([contextEntry]);
+	});
+
+	test('keeps it in the same block as the reasoning that follows it', () => {
+		const reasoning: InstanceAiTimelineEntry = {
+			type: 'reasoning',
+			content: 'checking the failed run',
+			responseId: 'r1',
+		};
+
+		const blocks = buildTimelineBlocks([contextEntry, reasoning], {}, {}, 'completed');
+
+		expect(blocks).toHaveLength(1);
+		if (blocks[0].type !== 'thinking') throw new Error('unreachable');
+		expect(blocks[0].entries).toEqual([contextEntry, reasoning]);
+	});
+
+	test('leads the trace, so the turn reads in the order things happened', () => {
+		const answer: InstanceAiTimelineEntry = { type: 'text', content: 'Here is what failed.' };
+
+		const blocks = buildTimelineBlocks([contextEntry, answer], {}, {}, 'completed');
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
 	});
 });

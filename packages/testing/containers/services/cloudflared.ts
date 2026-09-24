@@ -78,6 +78,7 @@ export const cloudflared: Service<CloudflaredResult> = {
 			}
 
 			const container = await builder.start();
+			ctx?.registerContainer?.(container);
 
 			const hostPort = container.getMappedPort(METRICS_PORT);
 			const response = await fetch(`http://${container.getHost()}:${hostPort}/quicktunnel`);

@@ -63,6 +63,16 @@ describe('formatValidationError', () => {
 		expect(message).toBe('request/query/limit Expected number, received nan');
 	});
 
+	it('uses the params location for a path parameter', () => {
+		const params = z.object({
+			executionId: z.string().regex(/^\d+$/, 'must be a positive integer'),
+		});
+
+		const message = formatValidationError('params', errorFrom(params, { executionId: 'abc' }));
+
+		expect(message).toBe('request/params/executionId must be a positive integer');
+	});
+
 	describe('a missing field keeps the legacy shape', () => {
 		it('blames the containing object and names the field', () => {
 			const message = formatValidationError('body', errorFrom(widget, {}));

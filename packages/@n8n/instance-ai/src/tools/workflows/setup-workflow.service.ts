@@ -14,12 +14,7 @@ import {
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
-import type { IConnections, ICredentialsDisplayOptions, INode } from 'n8n-workflow';
-import {
-	getCredentialActivationParameters as getCredentialActivationParametersByDisplayOptions,
-	getParentNodes,
-	mapConnectionsByDestination,
-} from 'n8n-workflow';
+import { getCredentialActivationParameters as getCredentialActivationParametersByDisplayOptions } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { computeUnavailableLocatorIssues } from './chat-model-validation';
@@ -36,9 +31,12 @@ import {
 	type SetupNodeCredential,
 } from './credential-utils';
 import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
+import { describeSavedPublishState, type SavedWorkflowState } from './saved-workflow-state';
 import type { SetupRequest } from './setup-workflow.schema';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { InstanceAiContext } from '../../types';
+
+type SetupValidationMode = 'live' | 'configuration';
 
 // ── Credential cache ────────────────────────────────────────────────────────
 
@@ -95,7 +93,7 @@ export async function getValidCredentialTypes(
 				node.type,
 				typeVersion,
 				parameters,
-				node.credentials as Record<string, unknown> | undefined,
+				node.credentials,
 			);
 			for (const t of dynamic) types.add(t);
 		} catch (error) {
@@ -119,12 +117,7 @@ export async function getValidCredentialTypes(
 				types.add(c.name);
 				continue;
 			}
-			if (
-				matchesDisplayOptions(
-					{ parameters, nodeVersion: typeVersion },
-					c.displayOptions as DisplayOptions,
-				)
-			) {
+			if (matchesDisplayOptions({ parameters, nodeVersion: typeVersion }, c.displayOptions)) {
 				types.add(c.name);
 			}
 		}
@@ -153,9 +146,7 @@ export async function getValidCredentialTypes(
 export function getCredentialActivationParameters(
 	displayOptions: Record<string, unknown> | undefined,
 ): IDataObject {
-	return getCredentialActivationParametersByDisplayOptions(
-		displayOptions as ICredentialsDisplayOptions | undefined,
-	);
+	return getCredentialActivationParametersByDisplayOptions(displayOptions);
 }
 
 export type CredentialActivationState = 'active' | 'activatable' | 'unreachable';
@@ -302,11 +293,7 @@ function buildEditableParameters(
 			...(prop.default !== undefined ? { default: prop.default } : {}),
 			...(prop.options
 				? {
-						options: prop.options as SetupRequest['editableParameters'] extends Array<infer T>
-							? T extends { options?: infer O }
-								? O
-								: never
-							: never,
+						options: prop.options,
 					}
 				: {}),
 		});
@@ -348,10 +335,7 @@ async function resolveCredentialTypes(
 		credentialTypes = nodeDesc.credentials
 			.filter((c: { name?: string; displayOptions?: unknown }) => {
 				if (!c.displayOptions) return true;
-				return matchesDisplayOptions(
-					{ parameters, nodeVersion: typeVersion },
-					c.displayOptions as DisplayOptions,
-				);
+				return matchesDisplayOptions({ parameters, nodeVersion: typeVersion }, c.displayOptions);
 			})
 			.map((c: { name?: string }) => c.name)
 			.filter((n): n is string => n !== undefined);
@@ -443,6 +427,7 @@ async function resolveCredentialState(
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
 	prefersNewCredential = false,
+	validationMode: SetupValidationMode = 'live',
 ): Promise<CredentialState> {
 	// Use cache to avoid duplicate fetches for the same credential type across nodes.
 	// Scope to the workflow so we list only credentials the save path will accept —
@@ -474,6 +459,14 @@ async function resolveCredentialState(
 		typeof existingOnNode?.id === 'string' && existingOnNode.id ? existingOnNode.id : undefined;
 	const hasExistingOnNode =
 		existingCredentialId !== undefined || isAiGatewayManagedCredential(existingOnNode);
+	if (validationMode === 'configuration') {
+		const effectiveCredential = existingCredentials.find((c) => c.id === existingCredentialId);
+		return {
+			existingCredentials,
+			isAutoApplied: false,
+			...(effectiveCredential ? { effectiveCredential } : {}),
+		};
+	}
 	let isAutoApplied = false;
 	let autoAppliedGateway: true | undefined;
 
@@ -576,13 +569,11 @@ function buildRequestCredentials(
 
 	if (nodeCredentials && Object.keys(nodeCredentials).length > 0) {
 		return {
-			credentials: (autoCredential
-				? { ...nodeCredentials, ...autoCredential }
-				: nodeCredentials) as RequestNodeCredentials,
+			credentials: autoCredential ? { ...nodeCredentials, ...autoCredential } : nodeCredentials,
 		};
 	}
 
-	return autoCredential ? { credentials: autoCredential as RequestNodeCredentials } : {};
+	return autoCredential ? { credentials: autoCredential } : {};
 }
 
 /**
@@ -600,6 +591,7 @@ async function resolveAppliedCredentialState(
 	workflowId: string | undefined,
 	nodeCredentials: Record<string, SetupNodeCredential> | undefined,
 	prefersNewCredential = false,
+	validationMode: SetupValidationMode = 'live',
 ): Promise<CredentialState> {
 	if (!credentialType) {
 		return { existingCredentials: [], isAutoApplied: false };
@@ -611,6 +603,7 @@ async function resolveAppliedCredentialState(
 		cache,
 		workflowId,
 		prefersNewCredential,
+		validationMode,
 	);
 	if (state.isAutoApplied && nodeCredentials) {
 		if (state.autoAppliedGateway) {
@@ -629,6 +622,7 @@ async function resolveAppliedCredentialState(
 }
 
 interface NodeSetupContext {
+	validationMode: SetupValidationMode;
 	nodeName: string;
 	isTrigger: boolean;
 	isTestable: boolean;
@@ -687,6 +681,7 @@ async function buildRequestForCredentialType(
 		workflowId,
 		nodeCredentials,
 		prefersNewCredential,
+		nodeCtx.validationMode,
 	);
 
 	// The connected credential can rule out a parameter value chosen before it existed
@@ -701,7 +696,7 @@ async function buildRequestForCredentialType(
 			? { id: AI_GATEWAY_MANAGED_TAG, name: N8N_CONNECT_DISPLAY_NAME }
 			: undefined);
 	const unavailableIssues =
-		credentialType && locatorCredential
+		nodeCtx.validationMode === 'live' && credentialType && locatorCredential
 			? await computeUnavailableLocatorIssues(
 					context,
 					node,
@@ -794,6 +789,7 @@ export async function buildSetupRequests(
 	workflowId?: string,
 	preferNewCredentialTypes?: ReadonlySet<string>,
 	appliedCredentialIds?: ReadonlySet<string>,
+	validationMode: SetupValidationMode = 'live',
 ): Promise<SetupRequest[]> {
 	if (!node.name) return [];
 	if (node.disabled) return [];
@@ -801,9 +797,10 @@ export async function buildSetupRequests(
 	const typeVersion = node.typeVersion ?? 1;
 	const parameters = (node.parameters as Record<string, unknown>) ?? {};
 
-	const nodeDesc = await context.nodeService
-		.getDescription(node.type, typeVersion)
-		.catch(() => undefined);
+	const nodeDesc = await (validationMode === 'configuration'
+		? context.nodeService.getDescription(node.type, typeVersion, { includeGatewayMetadata: false })
+		: context.nodeService.getDescription(node.type, typeVersion)
+	).catch(() => undefined);
 
 	const isTrigger = nodeDesc?.group?.includes('trigger') ?? false;
 	const isTestable =
@@ -828,6 +825,7 @@ export async function buildSetupRequests(
 	const requests: SetupRequest[] = [];
 	const processedCredTypes = credentialTypes.length > 0 ? credentialTypes : [undefined];
 	const nodeCtx: NodeSetupContext = {
+		validationMode,
 		nodeName: node.name,
 		isTrigger,
 		isTestable,
@@ -1020,7 +1018,7 @@ export function sortByExecutionOrder(
 // ── Workflow mutation ───────────────────────────────────────────────────────
 
 /** Result of applying credentials or parameters to workflow nodes. */
-export interface ApplyResult {
+export interface ApplyResult extends SavedWorkflowState {
 	applied: string[];
 	failed: Array<{ nodeName: string; error: string }>;
 }
@@ -1086,6 +1084,7 @@ export async function applyNodeCredentials(
 			versionId: saved.versionId,
 			checksum: saved.checksum,
 		});
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		// If the final save fails, mark all previously-applied nodes as failed
 		const saveError = `Failed to save workflow after credential apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -1133,6 +1132,7 @@ export async function applyNodeParameters(
 			versionId: saved.versionId,
 			checksum: saved.checksum,
 		});
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		const saveError = `Failed to save workflow after parameter apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of result.applied) {
@@ -1306,6 +1306,7 @@ export async function applyNodeChanges(
 			checksum: saved.checksum,
 		});
 		result.applied = [...appliedNodes];
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		const saveError = `Failed to save workflow: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of appliedNodes) {
@@ -1371,77 +1372,6 @@ export function buildCompletedReport(
 	return result;
 }
 
-// ── Sub-node grouping ───────────────────────────────────────────────────────
-type SubnodeRootNode = Pick<INode, 'name' | 'type' | 'typeVersion' | 'id'>;
-
-export function buildSubnodeToRootNodeMap(
-	nodes: NodeJSON[],
-	connections: IConnections,
-	executionOrder: string[],
-): Map<string, SubnodeRootNode> {
-	const connectionsByDestination = mapConnectionsByDestination(connections);
-
-	const directSubnodesByNodeName = new Map<string, string[]>();
-	for (const node of nodes) {
-		if (!node.name) continue;
-		// Non-main upstream nodes are direct sub-nodes of this node.
-		const subs = getParentNodes(connectionsByDestination, node.name, 'ALL_NON_MAIN', 1);
-		if (subs.length > 0) directSubnodesByNodeName.set(node.name, subs);
-	}
-	if (directSubnodesByNodeName.size === 0) return new Map();
-
-	const allSubnodeNames = new Set<string>();
-	for (const subs of directSubnodesByNodeName.values()) {
-		for (const name of subs) allSubnodeNames.add(name);
-	}
-	const rootNodeNames = [...directSubnodesByNodeName.keys()].filter((n) => !allSubnodeNames.has(n));
-	if (rootNodeNames.length === 0) return new Map();
-
-	const nodeByName = new Map<string, NodeJSON>();
-	for (const node of nodes) {
-		if (node.name) nodeByName.set(node.name, node);
-	}
-
-	// Sort root nodes by execution order so the first to claim a sub-node
-	// is the deterministic "owner" when multi-root ambiguity exists.
-	const orderIndex = new Map<string, number>();
-	for (let i = 0; i < executionOrder.length; i++) {
-		orderIndex.set(executionOrder[i], i);
-	}
-	const sortedRootNodes = [...rootNodeNames].sort(
-		(a, b) =>
-			(orderIndex.get(a) ?? Number.MAX_SAFE_INTEGER) -
-			(orderIndex.get(b) ?? Number.MAX_SAFE_INTEGER),
-	);
-
-	const subnodeToRootNode = new Map<string, SubnodeRootNode>();
-
-	for (const rootNodeName of sortedRootNodes) {
-		const rootNode = nodeByName.get(rootNodeName);
-		if (!rootNode) continue;
-
-		const subnodeRootNode: SubnodeRootNode = {
-			name: rootNodeName,
-			type: rootNode.type,
-			typeVersion: rootNode.typeVersion ?? 1,
-			id: rootNode.id ?? '',
-		};
-
-		const transitiveSubs = getParentNodes(
-			connectionsByDestination,
-			rootNodeName,
-			'ALL_NON_MAIN',
-			-1,
-		);
-		for (const subName of transitiveSubs) {
-			if (subnodeToRootNode.has(subName)) continue;
-			subnodeToRootNode.set(subName, subnodeRootNode);
-		}
-	}
-
-	return subnodeToRootNode;
-}
-
 // ── Full workflow analysis ──────────────────────────────────────────────────
 
 /**
@@ -1453,6 +1383,8 @@ export async function analyzeWorkflow(
 	workflowId: string,
 	triggerResults?: Record<string, { status: 'success' | 'error' | 'listening'; error?: string }>,
 	options?: {
+		/** Passive observation reads saved configuration without provider calls. Defaults to live validation. */
+		validationMode?: SetupValidationMode;
 		/** Keep settled requests (needsAction=false) in the result. For reporting
 		 *  consumers only (e.g. the apply path surfacing a just-applied credential
 		 *  whose test failed) — never for card rendering, where settled slots must
@@ -1488,6 +1420,7 @@ export async function analyzeWorkflow(
 				workflowId,
 				preferNewCredentialTypes,
 				appliedCredentialIds,
+				options?.validationMode,
 			);
 		}),
 	);
@@ -1506,28 +1439,7 @@ export async function analyzeWorkflow(
 		// already-complete credential card as if it were pending work.
 		.filter((req) => options?.includeSettled === true || !!req.needsAction);
 
-	sortByExecutionOrder(
-		setupRequests,
-		workflowJson.connections as unknown as Record<string, unknown>,
-	);
-
-	// Stamp `subnodeRootNode` on every sub-node setup request so the frontend can
-	// render the group header even when the root node has no setup request of
-	// its own. Sub-node membership is derived from the full workflow graph,
-	// not just the (filtered) setup requests.
-	const subnodeToRootNode = buildSubnodeToRootNodeMap(
-		workflowJson.nodes,
-		workflowJson.connections as unknown as IConnections,
-		setupRequests.map((req) => req.node.name),
-	);
-	if (subnodeToRootNode.size > 0) {
-		for (const req of setupRequests) {
-			const subnodeRootNode = subnodeToRootNode.get(req.node.name);
-			if (subnodeRootNode) {
-				req.subnodeRootNode = subnodeRootNode;
-			}
-		}
-	}
+	sortByExecutionOrder(setupRequests, workflowJson.connections);
 
 	return setupRequests;
 }

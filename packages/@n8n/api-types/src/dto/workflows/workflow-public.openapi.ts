@@ -297,7 +297,7 @@ export const metaOpenApi: ZodOpenAPIMetadata = alsoNullable({
 
 /** `ZodOpenAPIMetadata` is a union, which will not assign into a nested `properties` slot. */
 function nestingDescriptor(schema: Record<string, unknown>): ZodOpenAPIMetadata {
-	return schema as ZodOpenAPIMetadata;
+	return schema;
 }
 
 export const readOnlyTimestampOpenApi = {

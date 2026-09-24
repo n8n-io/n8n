@@ -197,11 +197,14 @@ describe('SnapshotManager.ensureImage', () => {
 			'mkdir -p /home/daytona/workspace/src /home/daytona/workspace/chunks /home/daytona/workspace/node-types',
 		);
 		expect(image.dockerfile).toContain(
-			'npm install --ignore-scripts --no-audit --no-fund --prefer-online',
+			'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
 		);
 
 		const stagingDir = image.contextList[0]?.sourcePath;
 		expect(stagingDir).toBeDefined();
+		await expect(readFile(join(stagingDir, 'workflow-diagnostics.mts'), 'utf8')).resolves.toContain(
+			'typescript/unstable/async',
+		);
 		expect(stagingDir).toContain('n8n-snapshot-context-1.123.0');
 		await expect(
 			readFile(join(stagingDir, 'skills/data-table-manager/SKILL.md'), 'utf-8'),

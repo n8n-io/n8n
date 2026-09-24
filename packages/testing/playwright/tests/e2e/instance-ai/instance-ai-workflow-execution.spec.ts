@@ -71,7 +71,7 @@ async function getSuccessfulExecutionCountForWorkflow(
 }
 
 test.describe(
-	'Instance AI workflow execution @capability:proxy',
+	'Instance AI workflow execution',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},

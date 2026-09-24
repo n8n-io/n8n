@@ -4,6 +4,7 @@ import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 
 import { getAgentNodesBelowFirstSupportedVersion, getRemovedAgentMode } from './agent-node-mode';
+import { reportAffectedNodes } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
@@ -52,21 +53,14 @@ export class AgentRemovedModesRule implements IBreakingChangeWorkflowRule {
 			(node) => {
 				const removedMode = getRemovedAgentMode(node);
 
-				return removedMode ? [{ node, removedMode }] : [];
+				return removedMode ? [{ ...node, removedMode }] : [];
 			},
 		);
 
-		if (affectedNodes.length === 0) return { isAffected: false, issues: [] };
-
-		return {
-			isAffected: true,
-			issues: affectedNodes.map(({ node, removedMode }) => ({
-				title: `Node '${node.name}' uses the "${removedMode}" mode of AI Agent version ${node.typeVersion}`,
-				description: `The "${removedMode}" mode is no longer available. After the update, this node will fail when executed until it is replaced with an AI Agent on the latest version.`,
-				level: 'error',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
+		return reportAffectedNodes(affectedNodes, ({ name, typeVersion, removedMode }) => ({
+			title: `Node '${name}' uses the "${removedMode}" mode of AI Agent version ${typeVersion}`,
+			description: `The "${removedMode}" mode is no longer available. After the update, this node will fail when executed until it is replaced with an AI Agent on the latest version.`,
+			level: 'error',
+		}));
 	}
 }

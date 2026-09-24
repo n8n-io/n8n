@@ -67,6 +67,11 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 
 const editor = ref<HTMLDivElement | undefined>(undefined);
 
+// The shared `.n8n-markdown` styles (css/markdown.scss) change markdown's
+// vertical rhythm. Stickies opt out to keep their legacy layout, so hand-sized
+// notes in saved workflows don't clip or overlap nodes (ADO-5800).
+const applyGlobalMarkdownStyles = computed(() => props.theme !== 'sticky');
+
 const { options } = props;
 const md = new Markdown(options.markdown)
 	.use(markdownLink, options.linkAttributes)
@@ -106,11 +111,10 @@ const htmlContent = computed(() => {
 	const fileIdRegex = new RegExp('fileId:([0-9]+)');
 	let contentToRender = props.content;
 	if (props.withMultiBreaks) {
-		// Turn blank lines between plain text into &nbsp; soft breaks so they render
-		// as one paragraph (avoids UA <p> margins stacking on top of theme spacing).
-		// Keep them as real paragraph breaks when adjacent to block-level markdown
-		// (list, heading, blockquote, code fence, hr) so structures parse correctly,
-		// and leave blank lines inside fenced code blocks untouched so they stay literal.
+		// Stickies in saved workflows were laid out against the legacy spacing
+		// semantics: a single blank line is a real paragraph break, and each extra
+		// blank line in a run renders as an &nbsp; line (ADO-5800). Fenced code
+		// blocks are excluded so &nbsp; never leaks into rendered code.
 		// Parse a code-fence line into its fence char and run length (>= 3). A fence
 		// can be made of 3+ backticks or tildes; the closing fence must use the same
 		// char and be at least as long, and carry no info string after it.
@@ -118,39 +122,43 @@ const htmlContent = computed(() => {
 			const match = /^\s*(`{3,}|~{3,})(.*)$/.exec(line);
 			return match ? { char: match[1][0], length: match[1].length, rest: match[2] } : null;
 		};
-		const isBlockStart = (line: string) =>
-			/^\s*([-*+]|\d+\.)\s/.test(line) ||
-			/^#{1,6}\s/.test(line) ||
-			/^>/.test(line) ||
-			parseFence(line) !== null ||
-			/^---+\s*$/.test(line);
-		const lines = contentToRender.split('\n');
+		const renderExtraBlankLines = (text: string) =>
+			text.replace(/\n{3,}/g, (match) => {
+				// Keep \n\n for the paragraph break, add &nbsp;\n for each extra blank line
+				return '\n\n' + '&nbsp;\n'.repeat(match.length - 2);
+			});
+		const segments: Array<{ isCode: boolean; lines: string[] }> = [];
 		let openFence: { char: string; length: number } | null = null;
-		contentToRender = lines
-			.map((line, i) => {
-				const fence = parseFence(line);
-				if (openFence) {
-					// A closing fence matches the opening char, is at least as long, and
-					// has no trailing content; shorter/different fences stay code content.
-					if (
-						fence &&
-						fence.char === openFence.char &&
-						fence.length >= openFence.length &&
-						fence.rest.trim() === ''
-					) {
-						openFence = null;
-					}
-					return line;
+		for (const line of contentToRender.split('\n')) {
+			const fence = parseFence(line);
+			let isCode = false;
+			if (openFence) {
+				isCode = true;
+				// A closing fence matches the opening char, is at least as long, and
+				// has no trailing content; shorter/different fences stay code content.
+				if (
+					fence &&
+					fence.char === openFence.char &&
+					fence.length >= openFence.length &&
+					fence.rest.trim() === ''
+				) {
+					openFence = null;
 				}
-				if (fence) {
-					openFence = { char: fence.char, length: fence.length };
-					return line;
-				}
-				if (line !== '') return line;
-				const prev = lines[i - 1] ?? '';
-				const next = lines[i + 1] ?? '';
-				return isBlockStart(prev) || isBlockStart(next) ? '' : '&nbsp;';
-			})
+			} else if (fence) {
+				openFence = { char: fence.char, length: fence.length };
+				isCode = true;
+			}
+			const previous = segments[segments.length - 1];
+			if (previous && previous.isCode === isCode) {
+				previous.lines.push(line);
+			} else {
+				segments.push({ isCode, lines: [line] });
+			}
+		}
+		contentToRender = segments
+			.map(({ isCode, lines }) =>
+				isCode ? lines.join('\n') : renderExtraBlankLines(lines.join('\n')),
+			)
 			.join('\n');
 	}
 	const html = md.render(contentToRender);
@@ -268,7 +276,7 @@ const onCheckboxChange = (index: number) => {
 </script>
 
 <template>
-	<div class="n8n-markdown">
+	<div :class="{ 'n8n-markdown': applyGlobalMarkdownStyles }">
 		<!-- Needed to support YouTube player embeds. HTML rendered here is sanitized. -->
 		<!-- eslint-disable vue/no-v-html -->
 		<div
@@ -370,11 +378,6 @@ input[type='checkbox'] + label {
 	color: var(--sticky--color--text);
 	overflow-wrap: break-word;
 
-	// First rendered block sits flush with the top; container padding supplies the gap.
-	> :first-child {
-		margin-top: 0;
-	}
-
 	h1,
 	h2,
 	h3,
@@ -441,14 +444,91 @@ input[type='checkbox'] + label {
 
 	pre > code,
 	li > code,
-	p > code {
+	p > code,
+	td > code {
 		color: var(--sticky--code--color--text);
 	}
 
-	a {
+	// Shared markdown link look, minus `font-weight: medium`: a weight change
+	// shifts wrap points and note heights must stay stable (ADO-5800).
+	// Links inside headings keep the heading style, like the shared skin.
+	a:not(:where(h1, h2, h3, h4, h5, h6) *) {
+		color: var(--color--text--shade-1);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		text-decoration-thickness: 1px;
+		transition: color 0.15s ease;
+
 		&:hover {
-			text-decoration: underline;
+			color: var(--color--primary);
 		}
+	}
+
+	// Shared markdown blockquote look with the sticky's compact vertical
+	// rhythm, and sticky-aware colors so it stays visible on all note colors.
+	blockquote {
+		margin-bottom: var(--spacing--2xs);
+		padding-left: var(--spacing--sm);
+		border-left: var(--spacing--4xs) solid var(--sticky--border-color, currentColor);
+		font-style: italic;
+
+		// The blockquote carries the bottom spacing; don't stack the paragraph's.
+		// No open-quote/close-quote pseudos here: the app reset sets
+		// `blockquote { quotes: none }`, so they never render inside n8n.
+		p:last-of-type {
+			margin-bottom: 0;
+		}
+	}
+
+	// Shared markdown table look with the sticky's compact vertical rhythm,
+	// and sticky-aware colors so borders stay visible on all note colors.
+	table {
+		width: 100%;
+		table-layout: auto;
+		margin-bottom: var(--spacing--2xs);
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--lg);
+	}
+
+	thead {
+		border-bottom: 1px solid var(--sticky--border-color, currentColor);
+	}
+
+	thead th {
+		color: var(--sticky--color--text);
+		font-weight: var(--font-weight--bold);
+		vertical-align: bottom;
+		padding: 0 0.6em 0.8em;
+	}
+
+	tbody tr {
+		border-bottom: 1px solid var(--sticky--border-color, currentColor);
+
+		&:last-child {
+			border-bottom-width: 0;
+		}
+	}
+
+	tbody td {
+		vertical-align: baseline;
+		padding: 0.8em 0.6em;
+	}
+
+	thead th,
+	tbody td {
+		text-align: start;
+
+		&:first-child {
+			padding-inline-start: 0;
+		}
+
+		&:last-child {
+			padding-inline-end: 0;
+		}
+	}
+
+	td code {
+		font-size: var(--font-size--xs);
 	}
 
 	img {

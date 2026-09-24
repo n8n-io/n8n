@@ -90,8 +90,10 @@ skill.
   includes reference paths and sizes but omits reference content; request
   specific \`referencePaths\` only when that content is needed.
 - Call \`update_skill\` for an existing capability, changing only the supplied
-  fields and preserving its id and existing config reference. Do not create a
-  replacement skill. Pass \`null\` for \`allowedTools\` to remove the tool
+  fields and preserving its id and existing config reference. Pass the
+  \`skillHash\` from the \`read_skill\` result you based the change on as
+  \`baseSkillHash\`; on a stale skill error, read the skill again and retry once.
+  Do not create a replacement skill. Pass \`null\` for \`allowedTools\` to remove the tool
   restriction or for \`references\` to remove all references; do not pass empty
   arrays. When replacing \`references\`, first read the content of every existing
   reference that must be preserved, because the field is replaced as a whole.

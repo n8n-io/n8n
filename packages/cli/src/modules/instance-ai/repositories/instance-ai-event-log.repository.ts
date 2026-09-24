@@ -1,4 +1,9 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type {
+	AiPreferencesAppliedPayload,
+	InstanceAiEvent,
+	InstanceAiPreferencesAppliedEvent,
+	InstanceAiSetupItem,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { DataSource, MoreThan, Repository } from '@n8n/typeorm';
@@ -179,6 +184,67 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		const { langsmithRunId, langsmithTraceId } = anchor.payload;
 		if (!langsmithRunId || !langsmithTraceId) return undefined;
 		return { langsmithRunId, langsmithTraceId };
+	}
+
+	/**
+	 * The thread's latest `setup-items` snapshot per workflow, oldest workflow
+	 * first. A later snapshot for the same workflow replaces the earlier one,
+	 * matching the reducer's last-wins fold. Snapshots are sparse (one per
+	 * changed checklist), so the whole-thread read stays small.
+	 */
+	async getSetupItemsSnapshots(
+		threadId: string,
+	): Promise<Array<{ workflowId: string; items: InstanceAiSetupItem[] }>> {
+		const rows = await this.find({
+			where: { threadId, type: 'setup-items' },
+			order: { seq: 'ASC' },
+		});
+		const latest = new Map<string, InstanceAiSetupItem[]>();
+		for (const row of rows) {
+			const event = this.toEvent(row);
+			if (event.type !== 'setup-items') continue;
+			const items = event.payload.items.filter(
+				(item): item is InstanceAiSetupItem => item !== null,
+			);
+			latest.delete(event.payload.workflowId);
+			latest.set(event.payload.workflowId, items);
+		}
+		return [...latest.entries()].map(([workflowId, items]) => ({ workflowId, items }));
+	}
+
+	/**
+	 * The run that sent the ai-preferences block the conversation still carries, from the
+	 * thread's latest `preferences-applied` fact: an injecting turn names itself, a carrying
+	 * turn names the run it carried from. `undefined` when no turn has reported preferences
+	 * (which includes a block injected before the event existed).
+	 */
+	async getLastPreferencesInjectionRunId(threadId: string): Promise<string | undefined> {
+		const event = await this.findLastPreferencesApplied(threadId);
+		if (!event) return undefined;
+		return event.payload.injectedThisTurn ? event.runId : event.payload.carriedFromRunId;
+	}
+
+	/**
+	 * What the thread's latest turn reported as applied, for a reader that opens the thread
+	 * later. `undefined` when no turn has reported preferences, which differs from a turn
+	 * that reported an empty list.
+	 */
+	async getLastAppliedPreferences(
+		threadId: string,
+	): Promise<AiPreferencesAppliedPayload | undefined> {
+		return (await this.findLastPreferencesApplied(threadId))?.payload;
+	}
+
+	private async findLastPreferencesApplied(
+		threadId: string,
+	): Promise<InstanceAiPreferencesAppliedEvent | undefined> {
+		const row = await this.findOne({
+			where: { threadId, type: 'preferences-applied' },
+			order: { seq: 'DESC' },
+		});
+		if (!row) return undefined;
+		const event = this.toEvent(row);
+		return event.type === 'preferences-applied' ? event : undefined;
 	}
 
 	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */

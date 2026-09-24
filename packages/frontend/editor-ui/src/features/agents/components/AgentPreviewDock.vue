@@ -1,85 +1,81 @@
 <script setup lang="ts">
 import {
 	N8nButton,
-	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
 	N8nTooltip,
-	N8nText,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, nextTick, useTemplateRef, watch, ref } from 'vue';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
-import { useRouter } from 'vue-router';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
-import { AGENT_PREVIEW_VIEW, CONTINUE_SESSION_ID_PARAM } from '../constants';
+
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
-import AgentSessionTimelinePanel from './AgentSessionTimelinePanel.vue';
-
-type DockBody = 'chat' | 'timeline';
-const dockView = ref<DockBody>('chat');
+import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
+import AgentSessionHistoryDropdown from './AgentSessionHistoryDropdown.vue';
 
 interface SessionOption {
 	id: string;
 	title: string;
 	disabled?: boolean;
 	label?: string;
-	when?: string;
+	updatedAt?: string;
 }
 
-interface SessionOptionData {
-	when?: string;
-}
-
-enum PreviewLayout {
+const enum PreviewLayout {
 	Docked = 'docked',
 	Fullpage = 'fullpage',
 }
 
-const OPEN_IN_NEW_TAB = 'open-in-new-tab';
-
-const props = defineProps<{
-	sessionTitle: string;
-	sessionOptions: SessionOption[];
-	hasSession: boolean;
-	initialized: boolean;
-	projectId: string;
-	agentId: string;
-	agent: AgentResource | null;
-	localConfig: AgentJsonConfig | null;
-	connectedTriggers: string[];
-	isOpen: boolean;
-	effectiveSessionId?: string;
-	initialPrompt?: string;
-	canSendToAssistant?: boolean;
-	beforeSend?: () => Promise<void> | void;
-}>();
+const props = withDefaults(
+	defineProps<{
+		sessionTitle: string;
+		sessionOptions: SessionOption[];
+		hasSession: boolean;
+		initialized: boolean;
+		projectId: string;
+		agentId: string;
+		agent: AgentResource | null;
+		localConfig: AgentJsonConfig | null;
+		connectedTriggers: string[];
+		isOpen: boolean;
+		effectiveSessionId?: string;
+		newSession?: boolean;
+		initialPrompt?: string;
+		canSendToAssistant?: boolean;
+		canDeleteSession?: boolean;
+		beforeSend?: () => Promise<void> | void;
+		isDeletingSession?: boolean;
+	}>(),
+	{ newSession: false, canDeleteSession: false, isDeletingSession: false },
+);
 
 const emit = defineEmits<{
 	'view-trace': [];
 	'new-session': [];
+	'delete-session': [sessionId: string];
 	'session-select': [sessionId: string];
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'session-created': [sessionId: string];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	'initial-consumed': [];
 }>();
 
 const i18n = useI18n();
-const router = useRouter();
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -93,59 +89,22 @@ const layout = computed<PreviewLayout>(() =>
 	storedLayout.value === PreviewLayout.Fullpage ? PreviewLayout.Fullpage : PreviewLayout.Docked,
 );
 
-const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, SessionOptionData>>>(
-	() =>
-		props.sessionOptions.map((option) => ({
-			id: option.id,
-			label: option.label ?? option.title,
-			disabled: option.disabled,
-			data: { when: option.when },
-		})),
-);
-
-const layoutOptions = computed<Array<DropdownMenuItemProps<string>>>(() => [
-	{
-		id: PreviewLayout.Docked,
-		label: i18n.baseText('agents.builder.preview.layout.docked'),
-		checked: layout.value === PreviewLayout.Docked,
-		icon: { type: 'icon', value: 'panel-right' },
-	},
-	{
-		id: PreviewLayout.Fullpage,
-		label: i18n.baseText('agents.builder.preview.layout.fullpage' as BaseTextKey),
-		checked: layout.value === PreviewLayout.Fullpage,
-		icon: { type: 'icon', value: 'maximize-2' },
-	},
-	{
-		id: OPEN_IN_NEW_TAB,
-		label: i18n.baseText('agents.builder.preview.layout.openInNewTab' as BaseTextKey),
-		icon: { type: 'icon', value: 'external-link' },
-		divided: true,
-	},
-]);
-
-function getLayoutIcon() {
-	return layout.value === PreviewLayout.Fullpage ? 'maximize-2' : 'panel-right';
-}
-
-function getLayoutAriaLabel() {
-	if (layout.value === PreviewLayout.Fullpage) {
-		return i18n.baseText('agents.builder.preview.layout.fullpage.ariaLabel' as BaseTextKey);
-	}
-	return i18n.baseText('agents.builder.preview.layout.docked.ariaLabel');
+function requestActiveSessionDeletion() {
+	if (
+		!props.canDeleteSession ||
+		!props.hasSession ||
+		!props.effectiveSessionId ||
+		props.isDeletingSession
+	)
+		return;
+	emit('delete-session', props.effectiveSessionId);
 }
 
 function viewTrace() {
 	if (!props.hasSession || !props.effectiveSessionId) return;
-	if (layout.value === PreviewLayout.Fullpage) {
-		dockView.value = 'timeline';
-		return;
-	}
+	/** Dock the chat so it does not cover the session view after navigation. */
+	storedLayout.value = PreviewLayout.Docked;
 	emit('view-trace');
-}
-
-function showChat() {
-	dockView.value = 'chat';
 }
 
 function exportSession() {
@@ -158,7 +117,6 @@ function exportSession() {
 }
 
 function createNewSession() {
-	showChat();
 	emit('new-session');
 }
 
@@ -166,31 +124,14 @@ function close() {
 	emit('close');
 }
 
-function setLayout(nextLayout: string) {
-	if (nextLayout === OPEN_IN_NEW_TAB) {
-		const route = router.resolve({
-			name: AGENT_PREVIEW_VIEW,
-			params: { projectId: props.projectId, agentId: props.agentId },
-			query: { [CONTINUE_SESSION_ID_PARAM]: props.effectiveSessionId },
-		});
-		window.open(route.href, '_blank', 'noopener');
-	} else if (nextLayout === PreviewLayout.Docked || nextLayout === PreviewLayout.Fullpage) {
-		storedLayout.value = nextLayout;
-	}
+function getConversationMarkdown() {
+	return previewChatPage.value?.getConversationMarkdown() ?? '';
 }
 
-function isFocusWithinDock() {
-	return dock.value?.contains(document.activeElement) === true;
+function toggleFullWidth() {
+	storedLayout.value =
+		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
 }
-
-watch(
-	[layout, () => props.isOpen, () => props.hasSession],
-	function resetDockView([nextLayout, isOpen, hasSession]) {
-		if (nextLayout !== PreviewLayout.Fullpage || !isOpen || !hasSession) {
-			showChat();
-		}
-	},
-);
 
 watch(
 	[() => props.isOpen, () => props.initialized, () => props.effectiveSessionId],
@@ -204,10 +145,14 @@ watch(
 	{ flush: 'post' },
 );
 
+function isEscapeDisabled() {
+	return !props.isOpen || dock.value?.contains(document.activeElement) !== true;
+}
+
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
 	Escape: {
-		disabled: () => !isFocusWithinDock(),
+		disabled: isEscapeDisabled,
 		run: close,
 	},
 });
@@ -225,12 +170,12 @@ useKeybindings({
 	>
 		<div :class="[$style.dockInner, { [$style.fullpage]: layout === PreviewLayout.Fullpage }]">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
-				<N8nDropdownMenu
-					:items="sessionDropdownOptions"
-					placement="bottom-start"
-					:extra-popper-class="$style.sessionDropdownMenu"
-					data-testid="agent-preview-session-switcher"
+				<AgentSessionHistoryDropdown
+					:session-options="props.sessionOptions"
+					:can-delete-session="props.canDeleteSession"
+					:is-deleting-session="props.isDeletingSession"
 					@select="emit('session-select', $event)"
+					@delete="emit('delete-session', $event)"
 				>
 					<template #trigger>
 						<N8nButton
@@ -250,32 +195,17 @@ useKeybindings({
 							<N8nIcon icon="chevron-down" color="text-light" :size="12" />
 						</N8nButton>
 					</template>
-					<template #item-label="{ item }">
-						<N8nText bold :class="$style.sessionDropdownName">{{ item.label }}</N8nText>
-					</template>
-					<template #item-trailing="{ item }">
-						<N8nText v-if="item.data?.when" :class="$style.sessionDropdownDate">
-							{{ item.data.when }}
-						</N8nText>
-					</template>
-				</N8nDropdownMenu>
+				</AgentSessionHistoryDropdown>
 
 				<div :class="$style.actions">
 					<N8nTooltip
 						v-if="props.hasSession && props.effectiveSessionId"
-						:content="
-							i18n.baseText(
-								dockView === 'chat'
-									? 'agents.builder.preview.viewSession'
-									: ('agents.builder.preview.showChat' as BaseTextKey),
-							)
-						"
+						:content="i18n.baseText('agents.builder.preview.viewSession')"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
 						data-testid="agent-preview-view-session-tooltip"
 					>
 						<N8nIconButton
-							v-if="dockView === 'chat'"
 							icon="list-tree"
 							variant="ghost"
 							size="small"
@@ -283,35 +213,6 @@ useKeybindings({
 							:aria-label="i18n.baseText('agents.builder.preview.viewSession')"
 							data-testid="agent-preview-view-session-btn"
 							@click="viewTrace"
-						/>
-						<N8nIconButton
-							v-else
-							icon="message-circle"
-							variant="ghost"
-							size="small"
-							icon-size="large"
-							:aria-label="i18n.baseText('agents.builder.preview.showChat' as BaseTextKey)"
-							data-testid="agent-preview-show-chat-btn"
-							@click="showChat"
-						/>
-					</N8nTooltip>
-
-					<N8nTooltip
-						v-if="isLangSmithExportEnabled && props.hasSession && props.effectiveSessionId"
-						:content="i18n.baseText('agentSessions.langsmithExport.button')"
-						placement="bottom"
-						:show-after="TOOLTIP_DELAY_MS"
-						data-testid="agent-preview-langsmith-export-tooltip"
-					>
-						<N8nIconButton
-							icon="bug"
-							variant="ghost"
-							size="small"
-							icon-size="large"
-							:loading="isExporting"
-							:aria-label="i18n.baseText('agentSessions.langsmithExport.button')"
-							data-testid="agent-preview-langsmith-export-btn"
-							@click="exportSession"
 						/>
 					</N8nTooltip>
 
@@ -331,29 +232,42 @@ useKeybindings({
 						/>
 					</KeyboardShortcutTooltip>
 
-					<N8nTooltip
+					<AgentPreviewMoreMenu
+						:project-id="props.projectId"
+						:agent-id="props.agentId"
+						:effective-session-id="props.effectiveSessionId"
+						:has-session="props.hasSession"
+						:can-delete-session="props.canDeleteSession"
+						:is-deleting-session="props.isDeletingSession"
+						:is-full-width="layout === PreviewLayout.Fullpage"
+						:is-lang-smith-export-enabled="isLangSmithExportEnabled"
+						:is-exporting="isExporting"
+						:get-conversation-markdown="getConversationMarkdown"
+						@toggle-full-width="toggleFullWidth"
+						@export-session="exportSession"
+						@delete-session="requestActiveSessionDeletion"
+					/>
+					<KeyboardShortcutTooltip
 						placement="bottom"
-						:content="i18n.baseText('agents.builder.preview.layout.change')"
+						:label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+						:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 					>
-						<N8nDropdownMenu :items="layoutOptions" placement="bottom-end" @select="setLayout">
-							<template #trigger>
-								<N8nIconButton
-									:icon="getLayoutIcon()"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									:aria-label="getLayoutAriaLabel()"
-									data-testid="agent-preview-layout-btn"
-								/>
-							</template>
-						</N8nDropdownMenu>
-					</N8nTooltip>
+						<N8nIconButton
+							icon="chevrons-right"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+							data-testid="agent-preview-close-btn"
+							@click="close"
+						/>
+					</KeyboardShortcutTooltip>
 				</div>
 			</header>
 
 			<AgentPreviewChatPage
-				v-show="dockView === 'chat'"
 				ref="previewChatPage"
+				:visible="props.isOpen"
 				:initialized="props.initialized"
 				:project-id="props.projectId"
 				:agent-id="props.agentId"
@@ -361,20 +275,15 @@ useKeybindings({
 				:local-config="props.localConfig"
 				:connected-triggers="props.connectedTriggers"
 				:effective-session-id="props.effectiveSessionId"
+				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:before-send="props.beforeSend"
-				layout="dock"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
-			/>
-			<AgentSessionTimelinePanel
-				v-if="dockView === 'timeline' && props.effectiveSessionId"
-				:project-id="props.projectId"
-				:agent-id="props.agentId"
-				:thread-id="props.effectiveSessionId"
-				data-testid="agent-preview-session-timeline"
+				@initial-consumed="emit('initial-consumed')"
 			/>
 		</div>
 	</aside>
@@ -435,39 +344,31 @@ useKeybindings({
 }
 
 .sessionTitle {
+	width: 100%;
 	min-width: 0;
+	max-width: 100%;
 	flex: 1 1 auto;
 	margin-left: calc(var(--spacing--3xs) * -1);
 	padding-inline: var(--spacing--2xs);
 }
 
-.sessionTitleLabel,
-.sessionDropdownName {
+.sessionTitleLabel {
 	display: block;
+	min-width: 0;
+	flex: 1 1 auto;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-size: var(--font-size--xs);
 }
 
-.sessionDropdownMenu {
-	width: max(var(--reka-dropdown-menu-trigger-width), 12rem);
-}
-
-.sessionDropdownName {
-	max-width: 80%;
-}
-
-.sessionDropdownDate {
-	margin-left: auto;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--xs);
-	text-align: right;
-	white-space: nowrap;
+/** Let the button's inner container shrink so the session title can truncate. */
+.sessionTitle > div {
+	min-width: 0;
 }
 
 .actions {
-	margin-left: auto;
+	margin-inline-start: auto;
 	min-width: max-content;
 	flex: 0 0 auto;
 	display: flex;

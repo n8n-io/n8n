@@ -215,7 +215,7 @@ export class IdRemapper {
 		if (Array.isArray(recorded) || Array.isArray(actual)) return;
 
 		for (const [key, recordedValue] of Object.entries(recorded as Record<string, unknown>)) {
-			if (Object.hasOwn(actual as Record<string, unknown>, key)) {
+			if (Object.hasOwn(actual, key)) {
 				this.learnFromMatchingStrings(recordedValue, (actual as Record<string, unknown>)[key]);
 			}
 		}

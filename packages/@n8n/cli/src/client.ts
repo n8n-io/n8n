@@ -61,13 +61,6 @@ export interface ExportPackageResult {
 	counts?: ExportPackageCounts;
 }
 
-/** Outcome of pushing a Git connection's projects to its working copy. */
-export type PushGitConnectionResult = {
-	connectionId: string;
-	counts: ExportPackageCounts;
-	commitSha: string;
-};
-
 export interface ImportPackageCounts {
 	projects: { created: number; updated: number; skipped: number; deleted: number };
 	folders: { created: number; skipped: number; removed: number };
@@ -97,10 +90,45 @@ export interface ImportPackageCounts {
 	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
 }
 
-export type PullGitConnectionResult = {
-	connectionId: string;
-	counts: ImportPackageCounts;
+/** The direction a promotion config, checkout, or operation works in. */
+export type PromotionDirection = 'apply' | 'promote';
+
+/** The Git part of a promotion operation result. */
+export interface PromotionGitResult {
 	commitSha: string;
+	/** For Promote the branch it pushed to, for Apply the branch the package came from. */
+	branchName: string;
+}
+
+/** Outcome of promoting the team projects of a connection. */
+export type PromotePackageResult = {
+	connectionId: string;
+	configId: string;
+	counts: ExportPackageCounts;
+	git: PromotionGitResult;
+};
+
+/** Outcome of applying a package to the instance. */
+export type ApplyPackageResult = {
+	connectionId: string;
+	configId: string;
+	counts: ImportPackageCounts;
+	git: PromotionGitResult;
+};
+
+/** State of one direction's local checkout, after a clone or a disconnect. */
+export type PromotionCheckoutResult = {
+	connectionId: string;
+	configId: string;
+	direction: PromotionDirection;
+	branchName: string;
+	hasCheckout: boolean;
+};
+
+/** A new provider, with the generated public key for SSH providers. */
+export type PromotionProviderCreatedResult = {
+	provider: Record<string, unknown>;
+	publicKey: string | null;
 };
 
 export class ApiError extends Error {
@@ -259,56 +287,94 @@ export class N8nClient {
 		return limit !== undefined ? results.slice(0, limit) : results;
 	}
 
-	// ─── Git connections ───────────────────────────────────────────
+	// ─── Promotion providers ───────────────────────────────────────
 
-	async listGitConnections(limit?: number) {
-		return await this.paginate<Record<string, unknown>>('/git-connections', {}, limit);
+	async listPromotionProviders(limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/promotions/providers', {}, limit);
 	}
 
-	async getGitConnection(id: string) {
-		return await this.get<Record<string, unknown>>(`/git-connections/${id}`);
+	async getPromotionProvider(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/providers/${id}`);
 	}
 
-	async createGitConnection(body: unknown) {
-		return await this.post<Record<string, unknown>>('/git-connections', body);
+	async createPromotionProvider(body: unknown) {
+		return await this.post<PromotionProviderCreatedResult>('/promotions/providers', body);
 	}
 
-	async updateGitConnection(id: string, body: unknown) {
-		return await this.put<Record<string, unknown>>(`/git-connections/${id}`, body);
+	async updatePromotionProvider(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/promotions/providers/${id}`, body);
 	}
 
-	async cloneGitConnection(id: string, branchName?: string) {
-		return await this.post<Record<string, unknown>>(`/git-connections/${id}/clone`, {
-			...(branchName ? { branchName } : {}),
-		});
+	async deletePromotionProvider(id: string) {
+		return await this.del<undefined>(`/promotions/providers/${id}`);
 	}
 
-	async disconnectGitConnection(id: string) {
-		return await this.post<Record<string, unknown>>(`/git-connections/${id}/disconnect`);
+	// ─── Promotion connections ─────────────────────────────────────
+
+	async listPromotionConnections(query: Record<string, string> = {}, limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/promotions/connections', query, limit);
 	}
 
-	async deleteGitConnection(id: string) {
-		return await this.del<undefined>(`/git-connections/${id}`);
+	async getPromotionConnection(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/connections/${id}`);
 	}
 
-	async pushGitConnectionProjects(id: string, body: { commitMessage: string; force?: boolean }) {
-		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`, body);
+	async createPromotionConnection(body: unknown) {
+		return await this.post<Record<string, unknown>>('/promotions/connections', body);
 	}
 
-	async listGitConnectionProjects(id: string) {
-		return await this.get<{ projectIds: string[] }>(`/git-connections/${id}/projects`);
+	async updatePromotionConnection(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/promotions/connections/${id}`, body);
 	}
 
-	async addProjectToGitConnection(id: string, projectId: string) {
-		return await this.post<Record<string, unknown>>(`/git-connections/${id}/projects/${projectId}`);
+	async deletePromotionConnection(id: string) {
+		return await this.del<undefined>(`/promotions/connections/${id}`);
 	}
 
-	async removeProjectFromGitConnection(id: string, projectId: string) {
-		return await this.del<undefined>(`/git-connections/${id}/projects/${projectId}`);
+	/** Creates the config of one direction, or replaces it with the settings sent. */
+	async setPromotionConfig(id: string, direction: PromotionDirection, body: unknown) {
+		return await this.put<Record<string, unknown>>(
+			`/promotions/connections/${id}/configs/${direction}`,
+			body,
+		);
 	}
 
-	async pullGitConnectionProjects(id: string) {
-		return await this.post<PullGitConnectionResult>(`/git-connections/${id}/pull`);
+	async deletePromotionConfig(id: string, direction: PromotionDirection) {
+		return await this.del<undefined>(`/promotions/connections/${id}/configs/${direction}`);
+	}
+
+	async clonePromotionCheckout(id: string, direction: PromotionDirection) {
+		return await this.post<PromotionCheckoutResult>(
+			`/promotions/connections/${id}/${direction}/clone`,
+		);
+	}
+
+	async disconnectPromotionCheckout(id: string, direction: PromotionDirection) {
+		return await this.post<PromotionCheckoutResult>(
+			`/promotions/connections/${id}/${direction}/disconnect`,
+		);
+	}
+
+	async listPromotionConnectionProjects(id: string) {
+		return await this.get<{ projectIds: string[] }>(`/promotions/connections/${id}/projects`);
+	}
+
+	async addProjectToPromotionConnection(id: string, projectId: string) {
+		return await this.post<{ connectionId: string; projectId: string }>(
+			`/promotions/connections/${id}/projects/${projectId}`,
+		);
+	}
+
+	async removeProjectFromPromotionConnection(id: string, projectId: string) {
+		return await this.del<undefined>(`/promotions/connections/${id}/projects/${projectId}`);
+	}
+
+	async promotePackage(id: string, body: { commitMessage: string; force?: boolean }) {
+		return await this.post<PromotePackageResult>(`/promotions/connections/${id}/promote`, body);
+	}
+
+	async applyPackage(id: string) {
+		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply`);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────

@@ -47,12 +47,15 @@ import {
 } from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
 import type {
+	BuilderTurnStream,
 	InstanceAiContext,
-	LocalGatewayStatus,
+	InstanceAiBuilderDelegate,
+	ComputerUseState,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
+import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
@@ -122,6 +125,7 @@ export async function runDiscoveryScenario(
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
+			...(isAgentFeatureEnabled() ? { builderDelegate: createStubBuilderDelegate() } : {}),
 			workspace: createStubWorkspace(),
 			workspaceRoot: stubWorkspaceRoot,
 		};
@@ -237,22 +241,27 @@ function applyInstanceState(
 	const state = scenario.instanceState;
 	if (!state) return base;
 
-	const localGateway: LocalGatewayStatus | undefined = state.localGateway;
-	const isConnected = localGateway?.status === 'connected';
-	const capabilities = isConnected ? localGateway.capabilities : [];
+	const computerUse: ComputerUseState | undefined = state.computerUse;
+	// Both channels can serve tools, so the stub server gets the union.
+	const liveToolCategories = computerUse
+		? Object.values(computerUse).flatMap((channel) =>
+				channel.status === 'connected' ? channel.toolCategories : [],
+			)
+		: [];
 
-	const localMcpServer = isConnected
-		? createStubLocalMcpServer({
-				capabilities: capabilities.filter(
-					(c): c is 'browser' | 'filesystem' | 'shell' =>
-						c === 'browser' || c === 'filesystem' || c === 'shell',
-				),
-			})
-		: base.localMcpServer;
+	const localMcpServer =
+		liveToolCategories.length > 0
+			? createStubLocalMcpServer({
+					capabilities: liveToolCategories.filter(
+						(c): c is 'browser' | 'filesystem' | 'shell' =>
+							c === 'browser' || c === 'filesystem' || c === 'shell',
+					),
+				})
+			: base.localMcpServer;
 
 	return {
 		...base,
-		...(localGateway ? { localGatewayStatus: localGateway } : {}),
+		...(computerUse ? { computerUseState: computerUse } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
 		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
 		...(state.folderExploration !== undefined
@@ -263,6 +272,49 @@ function applyInstanceState(
 
 function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+}
+
+function completedBuilderTurn(): BuilderTurnStream {
+	return {
+		fullStream: (async function* () {
+			await Promise.resolve();
+			yield {
+				type: 'tool-call',
+				toolCallId: 'discovery-write',
+				toolName: 'write_config',
+				input: {},
+			};
+			yield { type: 'tool-result', toolCallId: 'discovery-write', output: { ok: true } };
+		})(),
+		text: Promise.resolve('Agent configured for discovery evaluation.'),
+	};
+}
+
+function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+	return {
+		createAgent: async (name) =>
+			await Promise.resolve({
+				agentId: 'discovery-agent',
+				projectId: 'discovery-project',
+				name,
+			}),
+		streamBuild: async () => await Promise.resolve(completedBuilderTurn()),
+		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
+		findOpenSuspensions: async () => await Promise.resolve([]),
+		cancelOpenSuspension: async () => await Promise.resolve(),
+		listAgents: async () => await Promise.resolve([]),
+		listAgentCapabilities: async () =>
+			await Promise.resolve({
+				channels: [],
+				agentCapabilities: [
+					'Use tools',
+					'Run scheduled tasks',
+					'Keep memory across sessions and runs',
+				],
+				limitations: [],
+			}),
+		resolveAgentName: async () => await Promise.resolve(undefined),
+	};
 }
 
 interface StubOrchestrationContextOptions {
@@ -313,6 +365,6 @@ function toCapturedEvent(event: InstanceAiEvent): CapturedEvent {
 		type: event.type,
 		// `extractOutcomeFromEvents` reads `data.payload.toolName` etc. — our
 		// InstanceAiEvent already has that shape, so we pass it through directly.
-		data: event as unknown as Record<string, unknown>,
+		data: event,
 	};
 }

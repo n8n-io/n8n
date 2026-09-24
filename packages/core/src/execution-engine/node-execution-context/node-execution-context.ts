@@ -7,6 +7,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
 	IExecuteData,
+	IGetDecryptedCredentialsOptions,
 	IGetNodeParameterOptions,
 	INode,
 	INodeCredentialDescription,
@@ -37,7 +38,11 @@ import {
 
 import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
-import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
+import {
+	buildResumeUrlSuffix,
+	generateUrlSignature,
+	prepareUrlForSigning,
+} from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { createExecutionCustomData } from './utils/custom-data';
@@ -275,7 +280,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			throw new UnexpectedError('Execution id is missing');
 		}
 
-		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
+		const baseURL = new URL(
+			`${webhookWaitingBaseUrl}${buildResumeUrlSuffix(executionId, this.node.id)}`,
+		);
 
 		for (const [key, value] of Object.entries(parameters)) {
 			baseURL.searchParams.set(key, value);
@@ -322,6 +329,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		executeData?: IExecuteData,
 		connectionInputData?: INodeExecutionData[],
 		itemIndex?: number,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 
@@ -340,6 +348,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 					type,
 					mode,
 					executeData,
+					undefined,
+					undefined,
+					options,
 				)) as T;
 			}
 		}
@@ -435,7 +446,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				runExecutionData,
 				runIndex,
 				workflow,
-			} as ICredentialsExpressionResolveValues;
+			};
 		}
 
 		const nodeCredentials = node.credentials
@@ -467,9 +478,29 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			executeData,
 			false,
 			expressionResolveValues,
+			options,
 		);
 
 		return decryptedDataObject as T;
+	}
+
+	/**
+	 * Returns the requested decrypted credentials for a context that no real task run backs
+	 * (a trigger, a poll, a webhook, and so on). The placeholder execute data only exists to
+	 * surface `node` to the credentials helper (e.g. for policy checks) — `data`/`source` are
+	 * unused.
+	 */
+	protected async _getRunlessCredentials<T extends object = ICredentialDataDecryptedObject>(
+		type: string,
+		options?: IGetDecryptedCredentialsOptions,
+	) {
+		return await this._getCredentials<T>(
+			type,
+			{ data: {}, node: this.node, source: null },
+			undefined,
+			undefined,
+			options,
+		);
 	}
 
 	@Memoized

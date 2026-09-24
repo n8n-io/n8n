@@ -5,6 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | attachments | json |  | true |  |  | Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService |
+| author | json |  | true |  |  | Chat platform user who wrote the turn as {id, name}; null for runs outside chat integrations |
 | completionTokens | integer |  | true |  |  |  |
 | cost | double precision |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -60,6 +61,7 @@ erDiagram
 
 "public.agent_execution" {
   json attachments
+  json author
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt
@@ -82,11 +84,13 @@ erDiagram
   text userMessage
 }
 "public.agent_execution_threads" {
+  varchar_16_ accessScope
   varchar_36_ agentId FK
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
   varchar_128_ id
+  uuid ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK

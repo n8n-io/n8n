@@ -17,9 +17,9 @@ import {
 	WEBHOOK_TRIGGER_SCOPES,
 	methodQueryString,
 	parseMethodParam,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 	webhookResourcePath,
 } from './utils';
 
@@ -67,12 +67,13 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 	readonly scopes = WEBHOOK_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl());
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
-		// Can't throw — `resourceUrlToWebhookPath` already parsed the URL.
+		const pathname = webhookPathFromResourceUrl(
+			resourceUrl,
+			this.urlService.getWebhookBaseUrl(),
+			this.logger,
+		);
+		if (pathname === undefined) return undefined;
+		// Can't throw — `webhookPathFromResourceUrl` already parsed the URL.
 		return await this.resolveByPath(pathname, new URL(resourceUrl).search);
 	}
 

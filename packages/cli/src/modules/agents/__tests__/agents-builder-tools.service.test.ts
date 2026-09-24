@@ -21,10 +21,13 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import type { Telemetry } from '@/telemetry';
@@ -104,6 +107,7 @@ function makeService() {
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
+	const collaborationService = mock<CollaborationService>();
 
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
@@ -128,10 +132,12 @@ function makeService() {
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
+		collaborationService,
 	);
 
 	return {
 		service,
+		collaborationService,
 		agentsService: purposeServices,
 		secureRuntime,
 		attachableWorkflowsService,
@@ -338,6 +344,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
 				config: normalizedConfig,
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -367,6 +374,43 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(result).toEqual(expect.objectContaining({ ok: false }));
 			expect(result).not.toHaveProperty('configMutated');
+		});
+
+		it('write_config returns a locked failure while a user holds the builder write lock', async () => {
+			const { service, agentsService, collaborationService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(baseConfig),
+					json: JSON.stringify({ ...baseConfig, instructions: 'Changed.' }),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [expect.objectContaining({ message: expect.stringMatching(/being edited/) })],
+			});
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+		});
+
+		it('patch_config reports stage "locked" while a user holds the builder write lock', async () => {
+			const { service, agentsService, collaborationService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(baseConfig),
+					operations: JSON.stringify([{ op: 'replace', path: '/instructions', value: 'Changed.' }]),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual(expect.objectContaining({ ok: false, stage: 'locked' }));
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
 		it('list_integration_types returns builder guidance for integration versus node-tool choice', async () => {
@@ -463,6 +507,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
 				config: normalizedConfig,
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -482,9 +527,37 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
+		});
+
+		it('patch_config reports a stale result when the config changes during the write', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockRejectedValue(
+				new ConflictError('Agent config was changed elsewhere; reload to get the latest version'),
+			);
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
+					]),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				stage: 'stale',
+				errors: [expect.objectContaining({ path: '(root)' })],
+			});
 		});
 
 		it('patch_config rejects stale baseConfigHash without updating or echoing the config', async () => {
@@ -534,6 +607,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(agent);
 			agentsService.updateConfig.mockResolvedValue({
 				config: normalizedConfig,
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -553,7 +627,7 @@ describe('AgentsBuilderToolsService', () => {
 					integrations: [currentIntegrations[0], currentIntegrations[2]],
 				}),
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -574,6 +648,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(agent);
 			agentsService.updateConfig.mockResolvedValue({
 				config: { ...currentConfig, integrations: [], instructions: 'Updated instructions' },
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -597,7 +672,7 @@ describe('AgentsBuilderToolsService', () => {
 					instructions: 'Updated instructions',
 				}),
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 		});
 
@@ -614,6 +689,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
 				config: normalizedConfig,
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -631,7 +707,10 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				expect.objectContaining({
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					modifiedBy: 'builder',
+				}),
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -646,6 +725,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
 				config: { ...updatedConfig, integrations: [] },
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -664,7 +744,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ integrations: [] }),
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 		});
 
@@ -779,6 +859,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
 				config: normalizedConfig,
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -797,7 +878,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -828,6 +909,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
 				config: normalizedConfig,
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -846,7 +928,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -871,6 +953,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
 				config: normalizedConfig,
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -889,7 +972,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -914,6 +997,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
 				config: normalizedConfig,
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -934,7 +1018,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				normalizedConfig,
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
@@ -1020,6 +1104,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			agentsService.updateConfig.mockResolvedValue({
 				config: { ...currentDraftConfig, model: '' },
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -1038,7 +1123,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ model: '', instructions: 'Help the user.' }),
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentDraftConfig), modifiedBy: 'builder' },
 			);
 		});
 
@@ -1116,6 +1201,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(makeAgent(draftBase as AgentJsonConfig));
 			agentsService.updateConfig.mockResolvedValue({
 				config: { ...currentConfig, instructions: 'Triage Slack messages.' },
+				configHash: 'config-hash',
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -1136,7 +1222,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ model: '', instructions: 'Triage Slack messages.' }),
 				user,
-				{ modifiedBy: 'builder' },
+				{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 			);
 		});
 
@@ -1200,6 +1286,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 				agentsService.updateConfig.mockResolvedValue({
 					config: normalizedConfig,
+					configHash: 'config-hash',
 					updatedAt: '2026-01-02T00:00:00.000Z',
 					versionId: 'v2',
 				});
@@ -1217,7 +1304,7 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ modifiedBy: 'builder' },
+					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 				);
 			});
 
@@ -1238,6 +1325,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
 				agentsService.updateConfig.mockResolvedValue({
 					config: normalizedConfig,
+					configHash: 'config-hash',
 					updatedAt: '2026-01-02T00:00:00.000Z',
 					versionId: 'v2',
 				});
@@ -1255,7 +1343,7 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ modifiedBy: 'builder' },
+					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 				);
 			});
 
@@ -1284,6 +1372,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
 				agentsService.updateConfig.mockResolvedValue({
 					config: normalizedConfig,
+					configHash: 'config-hash',
 					updatedAt: '2026-01-02T00:00:00.000Z',
 					versionId: 'v2',
 				});
@@ -1301,7 +1390,7 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ modifiedBy: 'builder' },
+					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 				);
 			});
 
@@ -1332,6 +1421,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
 				agentsService.updateConfig.mockResolvedValue({
 					config: normalizedConfig,
+					configHash: 'config-hash',
 					updatedAt: '2026-01-02T00:00:00.000Z',
 					versionId: 'v2',
 				});
@@ -1349,7 +1439,7 @@ describe('AgentsBuilderToolsService', () => {
 					projectId,
 					normalizedConfig,
 					user,
-					{ modifiedBy: 'builder' },
+					{ baseConfigHash: getAgentConfigHash(currentConfig), modifiedBy: 'builder' },
 				);
 			});
 		});
@@ -1543,8 +1633,18 @@ describe('AgentsBuilderToolsService', () => {
 				instructions: 'Summarize next steps and send a draft.',
 			};
 			agentsService.createSkills.mockResolvedValue([
-				{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', skill: skillOne, versionId: 'v2' },
-				{ id: 'skill_1Cd8YkNm4Rz6Wv3M', skill: skillTwo, versionId: 'v2' },
+				{
+					id: 'skill_0Ab9ZkLm3Pq7Xy2N',
+					skill: skillOne,
+					skillHash: 'skill-hash-1',
+					versionId: 'v2',
+				},
+				{
+					id: 'skill_1Cd8YkNm4Rz6Wv3M',
+					skill: skillTwo,
+					skillHash: 'skill-hash-2',
+					versionId: 'v2',
+				},
 			]);
 
 			const result = await getCreateSkillsTool(service).handler!(
@@ -1645,6 +1745,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({
 				ok: true,
 				id: 'skill_create_tickets',
+				skillHash: expect.stringMatching(/^[a-f0-9]{64}$/),
 				skill: {
 					name: 'Create tickets',
 					description: 'Use when creating or updating tickets',
@@ -1684,6 +1785,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({
 				ok: true,
 				id: 'skill_create_tickets',
+				skillHash: expect.any(String),
 				skill: {
 					name: 'Create tickets',
 					description: 'Use when creating or updating tickets',
@@ -1790,6 +1892,7 @@ describe('AgentsBuilderToolsService', () => {
 					description: 'Use when creating or updating tickets',
 					...updates,
 				},
+				skillHash: 'skill-hash',
 				versionId: 'v2',
 			});
 			const tool = service
@@ -1799,7 +1902,10 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool).toBeDefined();
 			if (!tool) throw new Error('Expected update_skill tool');
 
-			const result = await tool.handler!({ skillId: 'skill_create_tickets', updates }, ctx);
+			const result = await tool.handler!(
+				{ skillId: 'skill_create_tickets', baseSkillHash: 'skill-hash-0', updates },
+				ctx,
+			);
 
 			expect(agentsService.updateSkill).toHaveBeenCalledWith(
 				agentId,
@@ -1807,6 +1913,7 @@ describe('AgentsBuilderToolsService', () => {
 				'skill_create_tickets',
 				updates,
 				{ user, modifiedBy: 'builder' },
+				'skill-hash-0',
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -1826,6 +1933,7 @@ describe('AgentsBuilderToolsService', () => {
 					description: 'Use when creating or updating tickets',
 					instructions: 'Create clear, actionable tickets.',
 				},
+				skillHash: 'skill-hash',
 				versionId: 'v2',
 			});
 			const tool = service
@@ -1838,6 +1946,7 @@ describe('AgentsBuilderToolsService', () => {
 			await tool.handler!(
 				{
 					skillId: 'skill_create_tickets',
+					baseSkillHash: 'skill-hash-0',
 					updates: { allowedTools: null, references: null },
 				},
 				ctx,
@@ -1849,20 +1958,23 @@ describe('AgentsBuilderToolsService', () => {
 				'skill_create_tickets',
 				{ allowedTools: undefined, references: undefined },
 				{ user, modifiedBy: 'builder' },
+				'skill-hash-0',
 			);
 
 			const inputSchema = tool.inputSchema as unknown as {
 				safeParse: (input: unknown) => { success: boolean };
 			};
+			const baseInput = { skillId: 'skill_create_tickets', baseSkillHash: 'skill-hash-0' };
+			expect(inputSchema.safeParse({ ...baseInput, updates: { allowedTools: [] } }).success).toBe(
+				false,
+			);
+			expect(inputSchema.safeParse({ ...baseInput, updates: {} }).success).toBe(false);
 			expect(
 				inputSchema.safeParse({
 					skillId: 'skill_create_tickets',
-					updates: { allowedTools: [] },
+					updates: { instructions: 'Updated' },
 				}).success,
 			).toBe(false);
-			expect(inputSchema.safeParse({ skillId: 'skill_create_tickets', updates: {} }).success).toBe(
-				false,
-			);
 		});
 
 		it('soft-fails without a config mutation marker when the skill cannot be updated', async () => {
@@ -2378,7 +2490,7 @@ describe('AgentsBuilderToolsService', () => {
 				sessionId: 'session-1',
 				executionId: 'execution-1',
 				suspensions: [{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'schedule_record' }],
-				previewPath: '/projects/project-1/agents/agent-1/preview',
+				previewPath: '/projects/project-1/agents/agent-1?openPreview=true',
 			});
 		});
 	});
@@ -2468,6 +2580,20 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 
+		it('returns a locked failure on publish while a user holds the builder write lock', async () => {
+			const { service, agentPublishService, collaborationService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [expect.objectContaining({ message: expect.stringMatching(/being edited/) })],
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
 		it('surfaces publish service errors to the model', async () => {
 			const { service, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
@@ -2533,6 +2659,30 @@ describe('AgentsBuilderToolsService', () => {
 				ok: false,
 				errors: [{ message: 'Agent "agent-1" not found' }],
 			});
+		});
+	});
+
+	describe('MCP credential apply path', () => {
+		it('returns { applied: false } when a user holds the builder write lock', async () => {
+			const { service, collaborationService } = makeService();
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			// applyCredentialToMcpServer is private but called from the
+			// verify_mcp_server tool context; invoke it directly to test the
+			// lock gate without spinning up the full MCP verification flow.
+			const result = await (
+				service as unknown as {
+					applyCredentialToMcpServer: (
+						agentId: string,
+						projectId: string,
+						serverName: string,
+						credentialId: string,
+						user: User,
+					) => Promise<{ applied: boolean }>;
+				}
+			).applyCredentialToMcpServer(agentId, projectId, 'server-1', 'cred-1', user);
+
+			expect(result).toEqual({ applied: false });
 		});
 	});
 });

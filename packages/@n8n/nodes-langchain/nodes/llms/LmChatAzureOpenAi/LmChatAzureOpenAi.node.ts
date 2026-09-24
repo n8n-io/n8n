@@ -11,6 +11,7 @@ import {
 
 import { setupApiKeyAuthentication } from './credentials/api-key';
 import { setupOAuth2Authentication } from './credentials/oauth2';
+import { searchModels } from './methods/searchModels';
 import { properties } from './properties';
 import { AuthenticationType } from './types';
 import type {
@@ -20,6 +21,12 @@ import type {
 } from './types';
 
 export class LmChatAzureOpenAi implements INodeType {
+	methods = {
+		listSearch: {
+			searchModels,
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'Azure OpenAI Chat Model',
 
@@ -107,10 +114,14 @@ export class LmChatAzureOpenAi implements INodeType {
 				const configuration: ClientOptions = {
 					baseURL: foundryURL,
 					fetchOptions: {
-						dispatcher: getProxyAgent(foundryURL, {
-							headersTimeout: timeout,
-							bodyTimeout: timeout,
-						}),
+						dispatcher: getProxyAgent(
+							foundryURL,
+							{
+								headersTimeout: timeout,
+								bodyTimeout: timeout,
+							},
+							this.helpers.getSecureEgressFilter(),
+						),
 					},
 				};
 				if (modelConfig.azureADTokenProvider) {
@@ -161,6 +172,7 @@ export class LmChatAzureOpenAi implements INodeType {
 								headersTimeout: timeout,
 								bodyTimeout: timeout,
 							},
+							this.helpers.getSecureEgressFilter(),
 						),
 					},
 				},

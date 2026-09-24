@@ -13,6 +13,25 @@ export { default as N8nActionToggle } from './N8nActionToggle';
 export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
 export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
 export { useDropdownSearch } from './N8nDropdownMenu/composables/useDropdownSearch';
+export { default as N8nContextMenu } from './N8nContextMenu/ContextMenu.vue';
+export { default as N8nContextMenuItem } from './N8nContextMenu/ContextMenuItem.vue';
+export type {
+	ContextMenuId,
+	ContextMenuItem,
+	ContextMenuRadio,
+	ContextMenuCheckbox,
+	ContextMenuGroup,
+	ContextMenuSubmenu,
+	ContextMenuRadioGroup,
+	ContextMenuNode,
+	ContextMenuLeaf,
+	ContextMenuProps,
+	ContextMenuEmits,
+	ContextMenuSlots,
+	ContextMenuItemProps,
+	ContextMenuItemEmits,
+	ContextMenuItemSlots,
+} from './N8nContextMenu/ContextMenu.types';
 export { default as N8nAiModelSelectorDropdown } from './N8nAiModelSelectorDropdown';
 export type {
 	AiModelSelectorMenuItem,
@@ -24,18 +43,27 @@ export type {
 	DropdownMenuSlots,
 	DropdownMenuItemSlots,
 	DropdownMenuEmits,
+	DropdownMenuExposed,
+	DropdownMenuSearchMode,
 	DropdownMenuTrigger,
 	DropdownMenuPlacement,
 } from './N8nDropdownMenu/DropdownMenu.types';
 export { default as N8nAlert } from './N8nAlert';
 export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
+export { BADGE_SIZE, BADGE_VARIANT } from './N8nBadge/Badge.type';
+export type { BadgeProps, BadgeSize, BadgeVariant } from './N8nBadge/Badge.type';
 export { default as N8nBlockUi } from './N8nBlockUi';
 export { default as N8nButton } from './N8nButton';
+export { default as N8nSetupPanel } from './N8nSetupPanel/SetupPanel.vue';
+export type { SetupPanelItem, SetupPanelProps } from './N8nSetupPanel/SetupPanel.types';
+export { default as N8nSetupConnection } from './N8nSetupConnection/SetupConnection.vue';
+export type { SetupConnectionProps } from './N8nSetupConnection/SetupConnection.types';
 export { default as N8nButtonList } from './N8nButtonList';
 export type { ButtonListOrientation, ButtonListProps } from './N8nButtonList';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
+export { default as N8nCanvasPill } from './CanvasPill';
 export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill';
 export { default as N8nCard } from './N8nCard';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
@@ -73,6 +101,7 @@ export { default as N8nLink } from './N8nLink';
 export { default as N8nLogo } from './N8nLogo';
 export { default as N8nLoading } from './N8nLoading';
 export { default as N8nMarkdown } from './N8nMarkdown';
+/** @deprecated Use N8nChatActions with `showRating` instead. */
 export { default as N8nMessageRating } from './AskAssistantChat/messages/MessageRating.vue';
 export { default as N8nMenuItem } from './N8nMenuItem';
 export { default as N8nNavigationDropdown } from './N8nNavigationDropdown';
@@ -83,6 +112,8 @@ export { default as N8nOption } from './N8nOption';
 export { default as N8nPagination } from './N8nPagination';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
+export { default as N8nSelectedItemsInfo } from './N8nSelectedItemsInfo';
+export type { SelectedItemsInfoProps } from './N8nSelectedItemsInfo';
 export { default as N8nSettingsLayout } from './N8nSettingsLayout';
 export type { SettingsLayoutProps } from './N8nSettingsLayout';
 export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
@@ -97,8 +128,7 @@ export { default as N8nSettingsSaveBar } from './N8nSettingsSaveBar';
 export type { SettingsSaveBarProps } from './N8nSettingsSaveBar';
 export { default as N8nSettingsSection } from './N8nSettingsSection';
 export type { SettingsSectionProps } from './N8nSettingsSection';
-export { default as N8nPreviewTag } from './PreviewTag/PreviewTag.vue';
-export { default as N8nActionPill } from './N8nActionPill/ActionPill.vue';
+export { default as N8nPreviewBadge } from './PreviewBadge/PreviewBadge.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
 export {
@@ -108,6 +138,14 @@ export {
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
 export { default as N8nChatMessage } from './N8nChatMessage';
+export { default as N8nChatActions } from './N8nChatActions/ChatActions.vue';
+export type {
+	ChatActionCopyResult,
+	ChatActionCopyStatus,
+	ChatActionReadAloudResult,
+	ChatActionReadAloudStatus,
+	ChatActionsProps,
+} from './N8nChatActions/ChatActions.types';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nSegmentControl } from './N8nSegmentControl';
@@ -132,6 +170,8 @@ export { default as N8nTabs } from './N8nTabs';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
 export { default as N8nText } from './N8nText';
+export { default as N8nTimeAgo } from './N8nTimeAgo';
+export type { TimeAgoProps } from './N8nTimeAgo';
 export { default as N8nTooltip } from './N8nTooltip';
 export type { N8nTooltipProps, N8nTooltipSlots } from './N8nTooltip';
 export { default as N8nAiActivityStepButton } from './N8nAiActivityStepButton';
@@ -165,3 +205,4 @@ export { default as N8nCommandBar } from './N8nCommandBar';
 export type { CommandBarItem } from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';
+export { default as N8nVisuallyHidden } from './N8nVisuallyHidden';

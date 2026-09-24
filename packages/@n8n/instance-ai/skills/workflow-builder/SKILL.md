@@ -9,6 +9,9 @@ description: >-
   data-table-manager first, then this skill. Do not load planning or
   create-tasks first. Load planning only when multiple coordinated workflows
   or shared cross-task data tables require a dependency-aware task graph.
+  Don't use this skill for explicit one-off tasks that can be done by a single
+  node execution: load one-off-operations and run the node with
+  nodes(action="execute").
 recommended_tools:
   - read_file
   - write_file
@@ -99,7 +102,10 @@ resources, channels, credentials, timezone — belong in placeholders or
 unresolved `newCredential()` calls until post-build setup. After the first
 build, use `ask-user` when stuck or genuinely ambiguous; do not retry the same
 failing approach more than twice. Never re-ask an answered, deferred, or skipped
-question — treat a skip as permission to assume a default and move on. Never
+question. A skip grants no additional permission. Choose defaults only for
+unspecified details within the requested task. If a skipped question seeks
+permission to change existing authentication, delete nodes, or expand scope,
+preserve the existing state and report any remaining blocker. Never
 solicit secrets through `ask-user`; route credential collection through
 workflow/credential setup surfaces.
 
@@ -112,7 +118,7 @@ numbers, custom URLs, notification targets, chat IDs) and resource IDs where
 named none. Never hardcode fake values (`user@example.com`, `YOUR_API_KEY`,
 bearer tokens, sample channel/chat IDs or recipient lists) and never ask for
 setup values before the first successful build — placeholders cover them, and
-`workflows(action="setup")` opens an inline setup card in the AI
+`workflows(action="setup")` opens an inline setup card in the n8n
 Assistant panel afterwards for the user to fill in.
 Do not replace concrete user-provided or discoverable values with
 placeholders: if the prompt gives a real URL, channel name, table name, label,
@@ -146,8 +152,7 @@ setup steps or node semantics from memory when those sources can answer.
    instead of improvising.
 3. **Official n8n docs** — for credential setup, product features, hosting, or
    node docs that the knowledge base does not cover, load `n8n-docs-assistant`
-   then load `n8n-docs` via `load_tool` (search "n8n docs" if it is not
-   visible) and call `n8n-docs`. Prefer docs over web search for n8n-specific
+   and call `n8n-docs`. Prefer docs over web search for n8n-specific
    questions.
 
 For workflows with multiple external systems, multiple requested effects,
@@ -199,6 +204,8 @@ follow its build → publish → assign steps.
    method name, method type, credential type, and credential ID — mandatory
    for calendars, spreadsheets, channels, folders, databases, models, and any
    other list-backed parameter when a credential is available.
+   For new model choices, follow `model-selection` before writing code,
+   even without credentials.
 5. Pick a stable workspace `filePath` for the source file, typically
    `src/workflows/main.workflow.ts` for a one-off new workflow, or a clearly
    named `.workflow.ts` file when multiple source files are useful. For an
@@ -217,16 +224,27 @@ follow its build → publish → assign steps.
    and later `fixtureOverrides` can exercise those scenarios. Do not simulate
    every external read by default; use this when branch coverage or deterministic
    proof depends on controlling the upstream data.
+   Decide grouping now, while writing the source: `.group(...)` lives in the code, so
+   it cannot be added after the build. See [Node Groups](#node-groups) for the
+   criteria, and reach a decision either way — groups declared, or this workflow does
+   not warrant them. When the canvas will be over the ceiling and no valid group can hold
+   the remaining nodes, pass `groupingDecision: 'not_warranted'` with a `groupingReason`
+   to `build-workflow`; without groups or that reason the build is refused.
 7. Before the first `build-workflow` (and again after substantive edits), run
    SDK validation on the workspace source file via
    `workspace_execute_command`:
    `node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate <filePath>`
-   Output is lint-style (`line  severity  code  message`); fix every `error`
-   row. Warnings do not block the save and the command may still exit 0, but
-   they flag defects that surface at run time — resolve or consciously dismiss
-   each one. A clean validate run does not guarantee `build-workflow` will
-   succeed (no full node-type registry in the sandbox CLI), so still call
-   `build-workflow`.
+   Output is lint-style (`line  severity  code  message`). For new workflows,
+   fix every `error` row. For edits, fix errors introduced by your change.
+   Preserve unrelated existing nodes and code even if the CLI reports errors
+   on them. The CLI has no saved-workflow baseline; call `build-workflow` to
+   decide which findings still block. It can keep existing authentication and
+   missing-output findings informational when their cause is unchanged.
+   If the save remains blocked, report the blocker without
+   expanding scope. CLI warning rows do not block saves; resolve or consciously dismiss
+   them within the requested scope. A clean validate run does not guarantee
+   `build-workflow` will succeed (no full node-type registry in the sandbox CLI),
+   so still call `build-workflow`.
 8. Call `build-workflow` with the `filePath` you wrote.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
@@ -440,7 +458,8 @@ When choosing a service:
 - When setup completion and popularity clearly support one candidate, choose it
   and continue without asking.
 - When the signals are close or conflict and the user has not delegated the
-  choice, ask exactly one `single` question. If skipped, choose a sensible default.
+  choice, ask exactly one `single` question. If skipped, choose a default within
+  the user's requested scope.
 - When the user explicitly asks you to choose, make a sensible choice and
   continue without asking.
 
@@ -511,7 +530,9 @@ When `nodes(action="explore-resources")` returns no results for a required
 resource:
 
 1. If the resource can be represented as a user choice, use
-   `placeholder('Select <resource>')` and let setup collect it after the build.
+   `placeholder('Select <resource>')` and let setup collect it. When the persistent
+   setup panel is enabled, the user can fill announced requirements during the
+   build. Do not tell them to wait until the build finishes.
 2. If the user explicitly asked you to create the resource and the node type
    definition has a safe create operation, build and verify that
    resource-creation workflow as part of the requested work.
@@ -586,8 +607,12 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Avoid code node where possible, use n8n nodes that help do the same thing.
-  If it makes it simpler, go ahead and use code node.
+- Native node first: shape, compute, default or format fields with
+  **Edit Fields (Set)** and expressions (full JavaScript); **Filter**, **IF** /
+  **Switch**, **Sort**, **Remove Duplicates**, **Aggregate**, **Split Out**,
+  **Limit** and **Merge** cover the rest. A Code node is only for multi-pass
+  algorithms, `$getWorkflowStaticData` state, fence-stripping model output,
+  try/catch around upstream node access, or a step needing three or more nodes.
 - Write Code nodes in JavaScript unless the user explicitly asks for Python.
   `language: 'pythonNative'` runs a locked-down runner that defines only `_items`
   (all-items mode), `_item` (per-item mode) and `print()` — no `_('Node Name')`,
@@ -598,8 +623,8 @@ every reported error and warning before calling `build-workflow`.
   anything the runner would reject.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
-  literals; do runtime joining, aggregation, or transforms in a Code node or
-  `expr()`. Full allowed/forbidden list:
+  literals; do runtime joining, aggregation, or transforms with `expr()` in a
+  native node. Full allowed/forbidden list and "Native node mappings" table:
   `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-sdk-language.md`.
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
@@ -696,18 +721,14 @@ import {
 
 ## Node Groups
 
-Organise multi-stage workflows into named node groups — visual frames on the canvas — so the
-result is readable the first time the user sees it. Group each clear stage (ingest → transform
-→ deliver); small workflows don't need groups. Give every group a one-sentence
-`description` — groups are collapsed by default, so name + description is what the user sees
-first.
+{{GROUPING_GUIDANCE_PLACEHOLDER}}
 
-`.group(name, members, { description })` on the workflow builder; members are the node handles.
-Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
-one connected section, AI sub-nodes stay with their Agent) before creating groups. Agent save
-tools drop an invalid group from the saved workflow and report a warning, so fix the source
-instead of re-emitting it. When editing an existing workflow, keep existing `.group(...)` calls
-and their descriptions intact unless the change is about grouping.
+Declare a group with `.group(name, members, { description })` on the workflow builder; members
+are the node handles. Before you emit a `.group(...)`, read
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/node-groups.md` — it carries the rules that make
+a group valid and the contract for editing an existing workflow's groups. Do not restate those
+rules from memory: an invalid group is dropped from the saved workflow with a warning, so the
+source has to be fixed rather than re-emitted.
 
 ## Workflow Rules
 
@@ -790,10 +811,9 @@ asked for that exact name.
 
 ## Node Configuration Safety Rules
 
-- Fetch `nodes(action="type-definition")` before configuring nodes. Generated
-  definitions and `@builderHint` annotations are the source of truth.
+- Fetch `nodes(action="type-definition")` for parameter names and shapes.
 - Use live `nodes(action="explore-resources")` for resource locator, list, and
-  model fields when credentials are available.
+  model fields when credentials are available, including Gateway credits.
 - If a configuration is unclear after reading the definition, ask for
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type
@@ -921,6 +941,13 @@ isImportant.onFalse(sendHolding);
 For Switch, wire cases the same way — `.to(switchNode).onCase(0, a).onCase(1, b)`
 or inline — using zero-based `.onCase(index, target)` for each rule output.
 
+Error routes work the same way on any node: `.to(fetchNode).onError(notify)`
+routes the error output and leaves the cursor on `fetchNode`, so a following
+`.to(next)` continues the main branch and a second `.onError()` adds another
+handler. The inline form `.to(fetchNode.onError(notify))` is equivalent. Both
+forms set `onError: 'continueErrorOutput'` on the node for you. Call
+`.onError()` once for each handler — it takes one handler, not an array.
+
 For Split in Batches, use it for per-item side effects and loop back with
 `nextBatch`. Do not add a separate IF gate just to check whether items exist.
 
@@ -938,8 +965,9 @@ For AI Agent workflows:
 - `placeholder('hint')`: marks a parameter value for user input (use directly as
   the parameter value; `workflow-sdk validate` flags wrapping it in `expr()`).
 - `.output(n)`: selects a zero-based output index.
-- `.onError(handler)`: connects a node's error output to a handler. Requires
-  `onError: 'continueErrorOutput'` in the node config.
+- `.onError(handler)`: connects a node's error output to a handler, on the node
+  or on the workflow builder. It sets `onError: 'continueErrorOutput'` on the
+  node, so you do not declare that in the config.
 - `nodeJson(node, 'field.path')`: creates an explicit expression reference to a
   specific node's JSON output.
 - Subnode factories follow the same pattern as `languageModel()` and `tool()`:
@@ -982,10 +1010,21 @@ store its own public endpoint.
 
 ## Completion
 
+Do not report a build as done until you have made the grouping decision described in
+[Node Groups](#node-groups) and checked what the build did with it. A dropped-group warning
+names what was invalid — a duplicate name, a member that does not exist, a boundary the rules
+reject: fix what the warning reports and build again. A `GROUPING_DECISION_MISSING` error means
+the build was refused: fix the source, or pass the opt-out with a reason. A
+`GROUP_DROPPED_OVER_CEILING` error also refuses the build: a declared group was invalid and the
+canvas is still over the ceiling. Fix the boundary the message names — the opt-out does not
+apply. If the top level is still above
+{{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} items with groups in place, name each remaining item and
+why it cannot join a group.
+
 For a successful build, finish with one concise sentence naming the workflow and
 what changed. Include the workflow ID when it is available. If setup is
 required, say plainly that setup is needed; do not tell the user to open a setup
-wizard or navigate away from the AI Assistant panel. When the workflow exposes
+wizard or navigate away from the n8n Assistant panel. When the workflow exposes
 a Webhook, Form, or Chat Trigger, follow [Trigger URL Sharing](#trigger-url-sharing)
 and include the correct end-user URL (or in-editor chat guidance) in that
 summary.

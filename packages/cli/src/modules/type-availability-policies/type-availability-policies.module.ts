@@ -1,11 +1,30 @@
+import { LICENSE_FEATURES } from '@n8n/constants';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 
-@BackendModule({ name: 'type-availability-policies' })
+/**
+ * The module-level `licenseFlag` skips `init()` on an unlicensed instance, so neither the
+ * controllers nor the policy checks are loaded there. Each route still carries `@Licensed` and
+ * each check reads the license per decision: modules are initialized once at startup, so only
+ * those cover a license that changes while running.
+ */
+@BackendModule({
+	name: 'type-availability-policies',
+	licenseFlag: LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES,
+})
 export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 	async init() {
-		// Side-effecting import: registers the controller's routes via `@RestController`.
+		// Side-effecting imports: register the controllers' routes via `@RestController`.
 		await import('./type-availability-policy-instance.controller.js');
+		await import('./type-availability-policy-project.controller.js');
+		await import('./credential-type-policy-instance.controller.js');
+		await import('./credential-type-policy-project.controller.js');
+		await import('./available-types.controller.js');
+		await import('./available-credential-types.controller.js');
+
+		// Side-effecting imports: `@PolicyCheck` registers the check on class definition.
+		await import('./node-type-policy.check.js');
+		await import('./credential-type-policy.check.js');
 	}
 
 	async entities() {

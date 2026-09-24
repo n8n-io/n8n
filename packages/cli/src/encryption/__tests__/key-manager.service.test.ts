@@ -3,7 +3,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { DeploymentKey } from '@n8n/db';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Cipher, InstanceSettings } from 'n8n-core';
+import { Cipher, type EncryptionKeyProxy, InstanceSettings } from 'n8n-core';
+import { randomBytes } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -59,7 +60,7 @@ describe('KeyManagerService', () => {
 		it('returns the active key as a prefixed descriptor', async () => {
 			const { service, repo } = makeFreshService();
 			const key = makeKey();
-			repo.find.mockResolvedValue([key]);
+			repo.findActiveDataEncryptionKeys.mockResolvedValue([key]);
 
 			const result = await service.getActiveKey();
 
@@ -73,17 +74,20 @@ describe('KeyManagerService', () => {
 
 		it('throws NotFoundError when no active key exists, without memoizing the absence', async () => {
 			const { service, repo } = makeFreshService();
-			repo.find.mockResolvedValue([]);
+			repo.findActiveDataEncryptionKeys.mockResolvedValue([]);
 
 			await expect(service.getActiveKey()).rejects.toThrow(NotFoundError);
 			// The absence is re-checked, not memoized.
 			await expect(service.getActiveKey()).rejects.toThrow(NotFoundError);
-			expect(repo.find).toHaveBeenCalledTimes(2);
+			expect(repo.findActiveDataEncryptionKeys).toHaveBeenCalledTimes(2);
 		});
 
 		it('throws when multiple active keys exist (invariant violation)', async () => {
 			const { service, repo } = makeFreshService();
-			repo.find.mockResolvedValue([makeKey({ id: 'key-1' }), makeKey({ id: 'key-2' })]);
+			repo.findActiveDataEncryptionKeys.mockResolvedValue([
+				makeKey({ id: 'key-1' }),
+				makeKey({ id: 'key-2' }),
+			]);
 
 			await expect(service.getActiveKey()).rejects.toThrow(
 				'Encryption key invariant violated: multiple active keys found',
@@ -113,7 +117,7 @@ describe('KeyManagerService', () => {
 				format: 'no-prefix',
 			});
 			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledWith('test-instance-key');
-			expect(repository.find).not.toHaveBeenCalled();
+			expect(repository.findActiveDataEncryptionKeys).not.toHaveBeenCalled();
 		});
 
 		it('memoizes the legacy descriptor', async () => {
@@ -132,7 +136,7 @@ describe('KeyManagerService', () => {
 		it('returns KeyInfo when key exists', async () => {
 			const { service, repo } = makeFreshService();
 			const key = makeKey();
-			repo.findOne.mockResolvedValue(key);
+			repo.findDataEncryptionKeyById.mockResolvedValue(key);
 
 			const result = await service.getKeyById('key-1');
 
@@ -142,12 +146,12 @@ describe('KeyManagerService', () => {
 				algorithm: key.algorithm,
 				format: 'prefixed',
 			});
-			expect(repo.findOne).toHaveBeenCalledWith({ where: { id: 'key-1' } });
+			expect(repo.findDataEncryptionKeyById).toHaveBeenCalledWith('key-1');
 		});
 
 		it('returns null when key not found', async () => {
 			const { service, repo } = makeFreshService();
-			repo.findOne.mockResolvedValue(null);
+			repo.findDataEncryptionKeyById.mockResolvedValue(null);
 
 			const result = await service.getKeyById('missing');
 
@@ -156,31 +160,28 @@ describe('KeyManagerService', () => {
 
 		it('serves repeated lookups from the LRU without another database read', async () => {
 			const { service, repo } = makeFreshService();
-			repo.findOne.mockResolvedValue(makeKey());
+			repo.findDataEncryptionKeyById.mockResolvedValue(makeKey());
 
 			const first = await service.getKeyById('key-1');
 			const second = await service.getKeyById('key-1');
 
-			expect(repo.findOne).toHaveBeenCalledTimes(1);
+			expect(repo.findDataEncryptionKeyById).toHaveBeenCalledTimes(1);
 			expect(second).toBe(first);
 		});
 
 		it('does not cache misses, so an unknown id cannot evict real keys', async () => {
 			const { service, repo } = makeFreshService();
-			repo.findOne.mockResolvedValue(null);
+			repo.findDataEncryptionKeyById.mockResolvedValue(null);
 
 			await service.getKeyById('missing');
 			await service.getKeyById('missing');
 
-			expect(repo.findOne).toHaveBeenCalledTimes(2);
+			expect(repo.findDataEncryptionKeyById).toHaveBeenCalledTimes(2);
 		});
 
 		it('caches exactly up to capacity without evicting', async () => {
 			const { service, repo } = makeFreshService();
-			repo.findOne.mockImplementation(async (opts) => {
-				const where = (opts as { where: { id: string } }).where;
-				return makeKey({ id: where.id });
-			});
+			repo.findDataEncryptionKeyById.mockImplementation(async (id) => makeKey({ id }));
 
 			// Fill the LRU to exactly its capacity of 10 — no eviction yet.
 			for (let i = 0; i < 10; i++) {
@@ -189,31 +190,28 @@ describe('KeyManagerService', () => {
 			for (let i = 0; i < 10; i++) {
 				await service.getKeyById(`key-${i}`);
 			}
-			expect(repo.findOne).toHaveBeenCalledTimes(10);
+			expect(repo.findDataEncryptionKeyById).toHaveBeenCalledTimes(10);
 		});
 
 		it('evicts the LEAST RECENTLY USED entry beyond capacity, not the oldest inserted', async () => {
 			const { service, repo } = makeFreshService();
-			repo.findOne.mockImplementation(async (opts) => {
-				const where = (opts as { where: { id: string } }).where;
-				return makeKey({ id: where.id });
-			});
+			repo.findDataEncryptionKeyById.mockImplementation(async (id) => makeKey({ id }));
 
 			for (let i = 0; i < 10; i++) {
 				await service.getKeyById(`key-${i}`);
 			}
 			// Touch the oldest-inserted entry so key-1 becomes least recently used.
 			await service.getKeyById('key-0');
-			expect(repo.findOne).toHaveBeenCalledTimes(10);
+			expect(repo.findDataEncryptionKeyById).toHaveBeenCalledTimes(10);
 
 			// The 11th distinct id evicts key-1 (LRU), not key-0 (refreshed).
 			await service.getKeyById('key-10');
-			expect(repo.findOne).toHaveBeenCalledTimes(11);
+			expect(repo.findDataEncryptionKeyById).toHaveBeenCalledTimes(11);
 
 			await service.getKeyById('key-0');
-			expect(repo.findOne).toHaveBeenCalledTimes(11);
+			expect(repo.findDataEncryptionKeyById).toHaveBeenCalledTimes(11);
 			await service.getKeyById('key-1');
-			expect(repo.findOne).toHaveBeenCalledTimes(12);
+			expect(repo.findDataEncryptionKeyById).toHaveBeenCalledTimes(12);
 		});
 	});
 
@@ -230,18 +228,18 @@ describe('KeyManagerService', () => {
 			vi.useFakeTimers();
 			try {
 				const { service, repo } = makeFreshService();
-				repo.find.mockResolvedValue([makeKey()]);
+				repo.findActiveDataEncryptionKeys.mockResolvedValue([makeKey()]);
 
 				const first = await service.getActiveKey();
 				const second = await service.getActiveKey();
 				expect(second).toBe(first);
-				expect(repo.find).toHaveBeenCalledTimes(1);
+				expect(repo.findActiveDataEncryptionKeys).toHaveBeenCalledTimes(1);
 
 				// Past the memo TTL the database view is re-read — this is also the
 				// propagation window for a rotation done on another instance.
 				vi.advanceTimersByTime(6000);
 				await service.getActiveKey();
-				expect(repo.find).toHaveBeenCalledTimes(2);
+				expect(repo.findActiveDataEncryptionKeys).toHaveBeenCalledTimes(2);
 			} finally {
 				vi.useRealTimers();
 			}
@@ -252,7 +250,7 @@ describe('KeyManagerService', () => {
 		it('returns the stored KeyInfo for the aes-256-cbc key when the store serves it', async () => {
 			const { service, repo, cipherMock } = makeFreshService();
 			const key = makeKey({ algorithm: 'aes-256-cbc' });
-			repo.findOne.mockResolvedValue(key);
+			repo.findDataEncryptionKeyByAlgorithm.mockResolvedValue(key);
 
 			const result = await service.getLegacyKey();
 
@@ -262,26 +260,26 @@ describe('KeyManagerService', () => {
 				algorithm: 'aes-256-cbc',
 				format: 'no-prefix',
 			});
-			expect(repo.findOne).toHaveBeenCalledWith({
-				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
-			});
+			expect(repo.findDataEncryptionKeyByAlgorithm).toHaveBeenCalledWith('aes-256-cbc');
 			expect(cipherMock.encryptDEKWithInstanceKey).not.toHaveBeenCalled();
 		});
 
 		it('memoizes the stored legacy key — the row is immutable once seeded', async () => {
 			const { service, repo } = makeFreshService();
-			repo.findOne.mockResolvedValue(makeKey({ algorithm: 'aes-256-cbc' }));
+			repo.findDataEncryptionKeyByAlgorithm.mockResolvedValue(
+				makeKey({ algorithm: 'aes-256-cbc' }),
+			);
 
 			const first = await service.getLegacyKey();
 			const second = await service.getLegacyKey();
 
-			expect(repo.findOne).toHaveBeenCalledTimes(1);
+			expect(repo.findDataEncryptionKeyByAlgorithm).toHaveBeenCalledTimes(1);
 			expect(second).toBe(first);
 		});
 
 		it('falls back to the instance key when the legacy key is not seeded', async () => {
 			const { service, repo, cipherMock } = makeFreshService();
-			repo.findOne.mockResolvedValue(null);
+			repo.findDataEncryptionKeyByAlgorithm.mockResolvedValue(null);
 			cipherMock.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
 
 			const result = await service.getLegacyKey();
@@ -293,7 +291,7 @@ describe('KeyManagerService', () => {
 
 		it('falls back to the instance key when the store lookup fails', async () => {
 			const { service, repo, cipherMock } = makeFreshService();
-			repo.findOne.mockRejectedValue(new Error('connection refused'));
+			repo.findDataEncryptionKeyByAlgorithm.mockRejectedValue(new Error('connection refused'));
 			cipherMock.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
 
 			const result = await service.getLegacyKey();
@@ -307,7 +305,7 @@ describe('KeyManagerService', () => {
 		// instance key exactly as bootstrap would.
 		it('wraps the instance key only once and reuses the result', async () => {
 			const { service, repo, cipherMock } = makeFreshService();
-			repo.findOne.mockResolvedValue(null);
+			repo.findDataEncryptionKeyByAlgorithm.mockResolvedValue(null);
 			cipherMock.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
 
 			const first = await service.getLegacyKey();
@@ -327,20 +325,18 @@ describe('KeyManagerService', () => {
 
 	describe('bootstrapLegacyCbcKey()', () => {
 		it('is a no-op when a CBC key already exists', async () => {
-			repository.findOne.mockResolvedValue(
+			repository.findDataEncryptionKeyByAlgorithm.mockResolvedValue(
 				makeKey({ algorithm: 'aes-256-cbc', status: 'inactive' }),
 			);
 
 			await Container.get(KeyManagerService).bootstrapLegacyCbcKey('instance-key');
 
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
-			});
+			expect(repository.findDataEncryptionKeyByAlgorithm).toHaveBeenCalledWith('aes-256-cbc');
 			expect(repository.seedLegacyCbcKey).not.toHaveBeenCalled();
 		});
 
 		it('encrypts the instance key and seeds it when no CBC key exists', async () => {
-			repository.findOne.mockResolvedValue(null);
+			repository.findDataEncryptionKeyByAlgorithm.mockResolvedValue(null);
 			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-instance-key');
 
 			await Container.get(KeyManagerService).bootstrapLegacyCbcKey('instance-key');
@@ -349,24 +345,24 @@ describe('KeyManagerService', () => {
 			// The repository seeds inside a DbLock critical section, which keeps
 			// concurrent startups from creating duplicate rows.
 			expect(repository.seedLegacyCbcKey).toHaveBeenCalledWith('encrypted-instance-key');
-			expect(repository.save).not.toHaveBeenCalled();
+			expect(repository.insertInactiveDataEncryptionKey).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('bootstrapGcmKey()', () => {
 		it('is a no-op when an active GCM key already exists', async () => {
-			repository.findOne.mockResolvedValue(makeKey({ algorithm: 'aes-256-gcm', status: 'active' }));
+			repository.findActiveDataEncryptionKeyByAlgorithm.mockResolvedValue(
+				makeKey({ algorithm: 'aes-256-gcm', status: 'active' }),
+			);
 
 			await Container.get(KeyManagerService).bootstrapGcmKey();
 
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { type: 'data_encryption', algorithm: 'aes-256-gcm', status: 'active' },
-			});
-			expect(repository.insertAsActive).not.toHaveBeenCalled();
+			expect(repository.findActiveDataEncryptionKeyByAlgorithm).toHaveBeenCalledWith('aes-256-gcm');
+			expect(repository.seedActiveDataEncryptionKey).not.toHaveBeenCalled();
 		});
 
 		it('generates a 64-char hex key and inserts as active when no active GCM key exists', async () => {
-			repository.findOne.mockResolvedValue(null);
+			repository.findActiveDataEncryptionKeyByAlgorithm.mockResolvedValue(null);
 			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-gcm-key');
 
 			await Container.get(KeyManagerService).bootstrapGcmKey();
@@ -375,54 +371,43 @@ describe('KeyManagerService', () => {
 			const [rawKey] = cipher.encryptDEKWithInstanceKey.mock.calls[0];
 			expect(typeof rawKey).toBe('string');
 			expect(rawKey).toHaveLength(64);
-			expect(repository.insertOrIgnore).toHaveBeenCalledWith({
-				type: 'data_encryption',
-				value: 'encrypted-gcm-key',
-				algorithm: 'aes-256-gcm',
-				status: 'active',
-			});
+			expect(repository.seedActiveDataEncryptionKey).toHaveBeenCalledWith(
+				'encrypted-gcm-key',
+				'aes-256-gcm',
+			);
 		});
 	});
 
 	describe('addKey()', () => {
 		it('encrypts the value and inserts as inactive when setAsActive is not set', async () => {
 			const saved = makeKey({ id: 'new-key', status: 'inactive' });
-			repository.create.mockReturnValue(saved);
-			repository.save.mockResolvedValue(saved);
+			repository.insertInactiveDataEncryptionKey.mockResolvedValue(saved);
 			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-base64');
 
 			const result = await Container.get(KeyManagerService).addKey('secret', 'aes-256-gcm');
 
 			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledWith('secret');
-			expect(repository.insertAsActive).not.toHaveBeenCalled();
-			expect(repository.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					status: 'inactive',
-					type: 'data_encryption',
-					value: 'encrypted-base64',
-				}),
+			expect(repository.insertAndActivateDataEncryptionKey).not.toHaveBeenCalled();
+			expect(repository.insertInactiveDataEncryptionKey).toHaveBeenCalledWith(
+				'encrypted-base64',
+				'aes-256-gcm',
 			);
 			expect(result).toBe(saved);
 		});
 
-		it('encrypts the value and delegates to insertAsActive when setAsActive=true', async () => {
+		it('encrypts the value and inserts it as active when setAsActive=true', async () => {
 			const saved = makeKey({ id: 'new-key', status: 'active' });
-			repository.create.mockReturnValue(saved);
-			repository.insertAsActive.mockResolvedValue(saved);
+			repository.insertAndActivateDataEncryptionKey.mockResolvedValue(saved);
 			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-base64');
 
 			const result = await Container.get(KeyManagerService).addKey('secret', 'aes-256-gcm', true);
 
 			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledWith('secret');
-			expect(repository.save).not.toHaveBeenCalled();
-			expect(repository.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'data_encryption',
-					value: 'encrypted-base64',
-					algorithm: 'aes-256-gcm',
-				}),
+			expect(repository.insertInactiveDataEncryptionKey).not.toHaveBeenCalled();
+			expect(repository.insertAndActivateDataEncryptionKey).toHaveBeenCalledWith(
+				'encrypted-base64',
+				'aes-256-gcm',
 			);
-			expect(repository.insertAsActive).toHaveBeenCalledWith(saved);
 			expect(result).toBe(saved);
 		});
 
@@ -438,8 +423,7 @@ describe('KeyManagerService', () => {
 			it('switches the very next write to the new key after the insert commits', async () => {
 				const { service, repo, cipherMock } = makeFreshService();
 				const saved = makeKey({ id: 'new-key', status: 'active' });
-				repo.create.mockReturnValue(saved);
-				repo.insertAsActive.mockResolvedValue(saved);
+				repo.insertAndActivateDataEncryptionKey.mockResolvedValue(saved);
 				cipherMock.encryptDEKWithInstanceKey.mockReturnValue('encrypted-base64');
 
 				await service.addKey('secret', 'aes-256-gcm', true);
@@ -447,19 +431,18 @@ describe('KeyManagerService', () => {
 
 				expect(active.id).toBe('new-key');
 				// Served from the memo the commit refreshed — no database read.
-				expect(repo.find).not.toHaveBeenCalled();
+				expect(repo.findActiveDataEncryptionKeys).not.toHaveBeenCalled();
 			});
 
 			it('does not update the memo when the insert fails', async () => {
 				const { service, repo, cipherMock } = makeFreshService();
-				repo.create.mockReturnValue(makeKey({ id: 'new-key', status: 'active' }));
-				repo.insertAsActive.mockRejectedValue(new Error('db down'));
+				repo.insertAndActivateDataEncryptionKey.mockRejectedValue(new Error('db down'));
 				cipherMock.encryptDEKWithInstanceKey.mockReturnValue('encrypted-base64');
 
 				await expect(service.addKey('secret', 'aes-256-gcm', true)).rejects.toThrow('db down');
 
 				// The next write must re-read the store, not trust a failed rotation.
-				repo.find.mockResolvedValue([makeKey({ id: 'still-active' })]);
+				repo.findActiveDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'still-active' })]);
 				const active = await service.getActiveKey();
 				expect(active.id).toBe('still-active');
 			});
@@ -467,13 +450,12 @@ describe('KeyManagerService', () => {
 			it('does not touch the memo for an inactive key insert', async () => {
 				const { service, repo, cipherMock } = makeFreshService();
 				const saved = makeKey({ id: 'spare-key', status: 'inactive' });
-				repo.create.mockReturnValue(saved);
-				repo.save.mockResolvedValue(saved);
+				repo.insertInactiveDataEncryptionKey.mockResolvedValue(saved);
 				cipherMock.encryptDEKWithInstanceKey.mockReturnValue('encrypted-base64');
 
 				await service.addKey('secret', 'aes-256-gcm');
 
-				repo.find.mockResolvedValue([makeKey({ id: 'the-active-one' })]);
+				repo.findActiveDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'the-active-one' })]);
 				const active = await service.getActiveKey();
 				expect(active.id).toBe('the-active-one');
 			});
@@ -483,8 +465,7 @@ describe('KeyManagerService', () => {
 	describe('rotateKey()', () => {
 		it('generates a 64-char hex key and inserts it as active with aes-256-gcm', async () => {
 			const saved = makeKey({ id: 'rotated', status: 'active', algorithm: 'aes-256-gcm' });
-			repository.create.mockReturnValue(saved);
-			repository.insertAsActive.mockResolvedValue(saved);
+			repository.insertAndActivateDataEncryptionKey.mockResolvedValue(saved);
 			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-base64');
 
 			const result = await Container.get(KeyManagerService).rotateKey();
@@ -494,21 +475,16 @@ describe('KeyManagerService', () => {
 			expect(typeof rawKey).toBe('string');
 			expect(rawKey.length).toBe(64);
 
-			expect(repository.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'data_encryption',
-					value: 'encrypted-base64',
-					algorithm: 'aes-256-gcm',
-				}),
+			expect(repository.insertAndActivateDataEncryptionKey).toHaveBeenCalledWith(
+				'encrypted-base64',
+				'aes-256-gcm',
 			);
-			expect(repository.insertAsActive).toHaveBeenCalledWith(saved);
 			expect(result).toBe(saved);
 		});
 
 		it('generates a fresh key value on each call', async () => {
 			const saved = makeKey();
-			repository.create.mockReturnValue(saved);
-			repository.insertAsActive.mockResolvedValue(saved);
+			repository.insertAndActivateDataEncryptionKey.mockResolvedValue(saved);
 			cipher.encryptDEKWithInstanceKey.mockImplementation(
 				(data: string | object) => `enc:${String(data)}`,
 			);
@@ -607,33 +583,33 @@ describe('KeyManagerService', () => {
 			delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
 		});
 
-		it('delegates to promoteToActive and invalidates the memo', async () => {
+		it('activates the key and invalidates the memo', async () => {
 			const { service, repo } = makeFreshService();
-			repo.find.mockResolvedValue([makeKey({ id: 'old-active' })]);
+			repo.findActiveDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'old-active' })]);
 			await service.getActiveKey(); // primes the memo
-			repo.promoteToActive.mockResolvedValue(undefined);
+			repo.activateDataEncryptionKey.mockResolvedValue(undefined);
 
 			await service.setActiveKey('target');
 
-			expect(repo.promoteToActive).toHaveBeenCalledWith('target', 'data_encryption');
+			expect(repo.activateDataEncryptionKey).toHaveBeenCalledWith('target');
 			// The memo was dropped: the next write re-reads the store.
-			repo.find.mockResolvedValue([makeKey({ id: 'target' })]);
+			repo.findActiveDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'target' })]);
 			const active = await service.getActiveKey();
 			expect(active.id).toBe('target');
-			expect(repo.find).toHaveBeenCalledTimes(2);
+			expect(repo.findActiveDataEncryptionKeys).toHaveBeenCalledTimes(2);
 		});
 
 		it('keeps the memo when the promotion fails', async () => {
 			const { service, repo } = makeFreshService();
-			repo.find.mockResolvedValue([makeKey({ id: 'old-active' })]);
+			repo.findActiveDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'old-active' })]);
 			await service.getActiveKey();
-			repo.promoteToActive.mockRejectedValue(new Error('not found'));
+			repo.activateDataEncryptionKey.mockRejectedValue(new Error('not found'));
 
 			await expect(service.setActiveKey('ghost')).rejects.toThrow('not found');
 
 			const active = await service.getActiveKey();
 			expect(active.id).toBe('old-active');
-			expect(repo.find).toHaveBeenCalledTimes(1);
+			expect(repo.findActiveDataEncryptionKeys).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -648,28 +624,141 @@ describe('KeyManagerService', () => {
 
 		it('sets status to inactive and invalidates the memo', async () => {
 			const { service, repo } = makeFreshService();
-			repo.find.mockResolvedValue([makeKey({ id: 'old-active' })]);
+			repo.findActiveDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'old-active' })]);
 			await service.getActiveKey(); // primes the memo
 
 			await service.markInactive('old-active');
 
-			expect(repo.update).toHaveBeenCalledWith('old-active', { status: 'inactive' });
+			expect(repo.deactivateDataEncryptionKey).toHaveBeenCalledWith('old-active');
 			// The memo was dropped: the next write re-reads the store.
-			repo.find.mockResolvedValue([]);
+			repo.findActiveDataEncryptionKeys.mockResolvedValue([]);
 			await expect(service.getActiveKey()).rejects.toThrow(NotFoundError);
 		});
 
 		it('keeps the memo when the status update fails', async () => {
 			const { service, repo } = makeFreshService();
-			repo.find.mockResolvedValue([makeKey({ id: 'old-active' })]);
+			repo.findActiveDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'old-active' })]);
 			await service.getActiveKey();
-			repo.update.mockRejectedValue(new Error('db down'));
+			repo.deactivateDataEncryptionKey.mockRejectedValue(new Error('db down'));
 
 			await expect(service.markInactive('old-active')).rejects.toThrow('db down');
 
 			const active = await service.getActiveKey();
 			expect(active.id).toBe('old-active');
-			expect(repo.find).toHaveBeenCalledTimes(1);
+			expect(repo.findActiveDataEncryptionKeys).toHaveBeenCalledTimes(1);
+		});
+
+		it('never deletes the key row', async () => {
+			const { service, repo } = makeFreshService();
+			repo.findActiveDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'old-active' })]);
+
+			await service.markInactive('old-active');
+
+			expect(repo.deactivateDataEncryptionKey).toHaveBeenCalledWith('old-active');
+		});
+	});
+
+	describe('repairLegacyDataEncryptionKeys()', () => {
+		// A real Cipher, so every legacy value is produced by real encryption and the
+		// re-wrap round-trips for real. Only the repository is mocked.
+		const realCipher = (encryptionKey: string) =>
+			new Cipher(mock<InstanceSettings>({ encryptionKey }), mock<EncryptionKeyProxy>());
+
+		const makeRepairService = (encryptionKey = randomBytes(24).toString('base64')) => {
+			const repo = mock<DeploymentKeyRepository>();
+			const cipher = realCipher(encryptionKey);
+			const logger = mock<Logger>();
+			const service = new KeyManagerService(
+				repo,
+				cipher,
+				mock<InstanceSettings>({ encryptionKey }),
+				logger,
+			);
+			return { service, repo, cipher, logger };
+		};
+
+		// A real, freshly generated DEK — never a hand-built constant.
+		const rawKey = randomBytes(32).toString('hex');
+
+		it.each<[string, (cipher: Cipher) => string]>([
+			['raw 2.18.x', () => rawKey],
+			['CBC 2.19.x', (cipher) => cipher.encryptWithInstanceKey(rawKey)],
+		])('recovers a %s key and re-wraps it as GCM', async (_name, build) => {
+			const { service, repo, cipher } = makeRepairService();
+			repo.findDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'k', value: build(cipher) })]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			const [id, , wrapped] = repo.rewrapLegacyDataEncryptionValue.mock.calls[0];
+			expect(id).toBe('k');
+			// The re-wrapped value unwraps back to the exact same key: lossless.
+			expect(cipher.decryptDEKWithInstanceKey(wrapped)).toBe(rawKey);
+		});
+
+		it('recovers a raw instance key stored verbatim and re-wraps it as GCM', async () => {
+			const encryptionKey = randomBytes(24).toString('base64');
+			const { service, repo, cipher } = makeRepairService(encryptionKey);
+			repo.findDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'k', value: encryptionKey })]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			const [id, , wrapped] = repo.rewrapLegacyDataEncryptionValue.mock.calls[0];
+			expect(id).toBe('k');
+			expect(cipher.decryptDEKWithInstanceKey(wrapped)).toBe(encryptionKey);
+		});
+
+		it.each<[string, (cipher: Cipher, other: Cipher) => string]>([
+			['already GCM-wrapped', (cipher) => cipher.encryptDEKWithInstanceKey(rawKey)],
+			[
+				'CBC under a different instance key',
+				(_cipher, other) => other.encryptWithInstanceKey(rawKey),
+			],
+			['CBC that unwraps to a non-key', (cipher) => cipher.encryptWithInstanceKey('not-a-hex-key')],
+		])('leaves a %s value untouched', async (_name, build) => {
+			const { service, repo, cipher } = makeRepairService();
+			const other = realCipher(randomBytes(24).toString('base64'));
+			repo.findDataEncryptionKeys.mockResolvedValue([
+				makeKey({ id: 'k', value: build(cipher, other) }),
+			]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
+		});
+
+		it('warns about an unrecognized value it cannot re-wrap', async () => {
+			const { service, repo, logger } = makeRepairService();
+			repo.findDataEncryptionKeys.mockResolvedValue([
+				makeKey({ id: 'k', value: randomBytes(48).toString('base64') }),
+			]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('unrecognized format'), {
+				error: expect.any(Error),
+			});
+		});
+
+		it('does not warn about an already GCM-wrapped value', async () => {
+			const { service, repo, cipher, logger } = makeRepairService();
+			repo.findDataEncryptionKeys.mockResolvedValue([
+				makeKey({ id: 'k', value: cipher.encryptDEKWithInstanceKey(rawKey) }),
+			]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('is a no-op when there are no data-encryption keys', async () => {
+			const { service, repo } = makeRepairService();
+			repo.findDataEncryptionKeys.mockResolvedValue([]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
 		});
 	});
 });

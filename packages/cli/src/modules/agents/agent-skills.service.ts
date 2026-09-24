@@ -9,17 +9,22 @@ import { Container, Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	AgentModificationTelemetryService,
 	type AgentMutationTelemetryContext,
-	diffAgentConfigParts,
+	buildAgentMutationEvent,
+	captureAgentMutation,
+	type AgentMutationSnapshot,
 } from './agent-modification-telemetry.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
-import { isUnconfiguredAgent } from './utils/agent-capabilities';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
+import { getAgentSkillHash } from './utils/agent-config-hash';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
 @Service()
@@ -28,11 +33,16 @@ export class AgentSkillsService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		return entity.skills ?? {};
 	}
@@ -96,8 +106,12 @@ export class AgentSkillsService {
 			throw new UserError('At least one skill is required.');
 		}
 
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 		if (attach && !entity.schema) throw new UserError('Agent has no JSON config yet.');
 
 		for (const skill of skills) {
@@ -105,32 +119,14 @@ export class AgentSkillsService {
 		}
 		this.assertBatchSkillNamesAreUnique(entity.skills ?? {}, skills);
 
-		const previousSchema = entity.schema ?? null;
-		const previousIntegrations = entity.integrations ?? [];
-		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+		const previous = captureAgentMutation(entity);
 
 		const results = skills.map((skill) => ({ id: this.addSkill(entity, skill), skill }));
 		if (attach) {
 			for (const { id } of results) this.attachSkillRef(entity, id);
 		}
 
-		markAgentDraftDirty(entity);
-		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		await this.clearRuntimes(agentId);
-		this.modificationTelemetry.record({
-			agent: saved,
-			projectId,
-			user: context.user,
-			by: context.modifiedBy,
-			changedParts: diffAgentConfigParts(
-				previousSchema,
-				saved.schema,
-				previousIntegrations,
-				saved.integrations ?? [],
-				{ skills: true },
-			),
-			wasUnconfigured,
-		});
+		const saved = await this.saveSkillChanges(entity, projectId, context, previous);
 
 		this.logger.debug(attach ? 'Created and attached agent skill' : 'Created agent skills', {
 			agentId,
@@ -138,7 +134,11 @@ export class AgentSkillsService {
 			skillIds: results.map((r) => r.id),
 		});
 
-		return results.map((r) => ({ ...r, versionId: saved.versionId }));
+		return results.map((r) => ({
+			...r,
+			skillHash: getAgentSkillHash(r.skill),
+			versionId: saved.versionId,
+		}));
 	}
 
 	async updateSkill(
@@ -147,12 +147,20 @@ export class AgentSkillsService {
 		skillId: string,
 		updates: Partial<AgentSkill>,
 		context: AgentMutationTelemetryContext,
+		baseSkillHash?: string,
 	): Promise<AgentSkillMutationResponse> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		const existing = entity.skills?.[skillId];
 		if (!existing) throw new NotFoundError('Skill not found');
+		if (baseSkillHash !== undefined && baseSkillHash !== getAgentSkillHash(existing)) {
+			throw new ConflictError('Skill was changed elsewhere; reload to get the latest version');
+		}
 
 		const updated = { ...existing, ...updates };
 		if ('allowedTools' in updates && !updates.allowedTools?.length) delete updated.allowedTools;
@@ -161,39 +169,31 @@ export class AgentSkillsService {
 		this.assertSkillNameIsUnique(entity.skills ?? {}, updated.name, skillId);
 
 		if (isEqual(existing, updated)) {
-			return { id: skillId, skill: updated, versionId: entity.versionId };
+			return {
+				id: skillId,
+				skill: updated,
+				skillHash: getAgentSkillHash(updated),
+				versionId: entity.versionId,
+			};
 		}
 
-		const previousSchema = entity.schema ?? null;
-		const previousIntegrations = entity.integrations ?? [];
-		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+		const previous = captureAgentMutation(entity);
 
 		entity.skills = {
 			...(entity.skills ?? {}),
 			[skillId]: updated,
 		};
 
-		markAgentDraftDirty(entity);
-		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		await this.clearRuntimes(agentId);
-		this.modificationTelemetry.record({
-			agent: saved,
-			projectId,
-			user: context.user,
-			by: context.modifiedBy,
-			changedParts: diffAgentConfigParts(
-				previousSchema,
-				saved.schema,
-				previousIntegrations,
-				saved.integrations ?? [],
-				{ skills: true },
-			),
-			wasUnconfigured,
-		});
+		const saved = await this.saveSkillChanges(entity, projectId, context, previous);
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
 
-		return { id: skillId, skill: updated, versionId: saved.versionId };
+		return {
+			id: skillId,
+			skill: updated,
+			skillHash: getAgentSkillHash(updated),
+			versionId: saved.versionId,
+		};
 	}
 
 	async deleteSkill(
@@ -202,15 +202,17 @@ export class AgentSkillsService {
 		skillId: string,
 		context: AgentMutationTelemetryContext,
 	): Promise<void> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		const skills = { ...(entity.skills ?? {}) };
 		if (!skills[skillId]) throw new NotFoundError('Skill not found');
 
-		const previousSchema = entity.schema ?? null;
-		const previousIntegrations = entity.integrations ?? [];
-		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+		const previous = captureAgentMutation(entity);
 
 		delete skills[skillId];
 		entity.skills = skills;
@@ -219,23 +221,7 @@ export class AgentSkillsService {
 			entity.schema.skills = entity.schema.skills.filter((t) => t.id !== skillId);
 		}
 
-		markAgentDraftDirty(entity);
-		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		await this.clearRuntimes(agentId);
-		this.modificationTelemetry.record({
-			agent: saved,
-			projectId,
-			user: context.user,
-			by: context.modifiedBy,
-			changedParts: diffAgentConfigParts(
-				previousSchema,
-				saved.schema,
-				previousIntegrations,
-				saved.integrations ?? [],
-				{ skills: true },
-			),
-			wasUnconfigured,
-		});
+		await this.saveSkillChanges(entity, projectId, context, previous);
 
 		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });
 	}
@@ -320,5 +306,23 @@ export class AgentSkillsService {
 	private async clearRuntimes(agentId: string): Promise<void> {
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService).clearRuntimes(agentId);
+	}
+	private async saveSkillChanges(
+		entity: Agent,
+		projectId: string,
+		context: AgentMutationTelemetryContext,
+		previous: AgentMutationSnapshot,
+	): Promise<Agent> {
+		markAgentDraftDirty(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId, agentId: entity.id, source: context.modifiedBy },
+			context.pushRef,
+		);
+		await this.clearRuntimes(entity.id);
+		this.modificationTelemetry.record(
+			buildAgentMutationEvent(saved, projectId, context, previous, { skills: true }),
+		);
+		return saved;
 	}
 }

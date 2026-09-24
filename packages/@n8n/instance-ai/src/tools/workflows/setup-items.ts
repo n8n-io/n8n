@@ -10,6 +10,7 @@ import {
 	type InstanceAiCredentialSetupHint,
 	type InstanceAiSetupItem,
 } from '@n8n/api-types';
+import { OperationalError } from 'n8n-workflow';
 
 import type { SetupRequest } from './setup-workflow.schema';
 import type { InstanceAiEventBus } from '../../event-bus/event-bus.interface';
@@ -35,10 +36,24 @@ export function createSetupItemsEmitter(options: {
 	threadId: string;
 	runId: string;
 	agentId: string;
+	/**
+	 * The thread's latest persisted snapshot per workflow, oldest first. Seeds
+	 * the dedupe cache so a run that recomputes an unchanged list publishes
+	 * nothing, and lets `merge` build on a snapshot from an earlier run.
+	 */
+	initialSnapshots?: ReadonlyArray<{ workflowId: string; items: InstanceAiSetupItem[] }>;
+	/** The host drains pending events before reading this snapshot. */
+	readPersistedSnapshot?: (workflowId: string) => Promise<InstanceAiSetupItem[] | undefined>;
 }): SetupItemsEmitter {
 	const { eventBus, threadId, runId, agentId } = options;
 	const lastSnapshots = new Map<string, { fingerprint: string; items: InstanceAiSetupItem[] }>();
 	let lastWorkflowId: string | undefined;
+	for (const snapshot of options.initialSnapshots ?? []) {
+		lastSnapshots.set(snapshot.workflowId, {
+			fingerprint: fingerprint(snapshot.items),
+			items: snapshot.items,
+		});
+	}
 
 	const publish = (workflowId: string, items: InstanceAiSetupItem[]): boolean => {
 		const next = fingerprint(items);
@@ -51,6 +66,8 @@ export function createSetupItemsEmitter(options: {
 		});
 		// Cache only what was published, so a failed publish is retried by the
 		// next identical snapshot instead of being treated as already sent.
+		// Re-insert so the most recently announced workflow is last.
+		lastSnapshots.delete(workflowId);
 		lastSnapshots.set(workflowId, { fingerprint: next, items });
 		return true;
 	};
@@ -62,6 +79,26 @@ export function createSetupItemsEmitter(options: {
 			// move it, the agent may announce against an older workflow.
 			lastWorkflowId = workflowId;
 			return publish(workflowId, items);
+		},
+		workflowIds: () => [...lastSnapshots.keys()],
+		async announce(workflowId, items) {
+			if (!options.readPersistedSnapshot) {
+				throw new OperationalError('Setup checklist persistence is unavailable');
+			}
+			let failure: unknown = new OperationalError('Setup checklist was not persisted');
+			for (let attempt = 0; attempt < 2; attempt++) {
+				try {
+					lastWorkflowId = workflowId;
+					publish(workflowId, items);
+					const persisted = await options.readPersistedSnapshot(workflowId);
+					if (persisted && fingerprint(persisted) === fingerprint(items)) return;
+				} catch (error) {
+					failure = error;
+				}
+				// A queued event can fail later in the durable drain. Let the next call retry it.
+				lastSnapshots.delete(workflowId);
+			}
+			throw failure;
 		},
 		merge(workflowId, items) {
 			const byId = new Map<string, InstanceAiSetupItem>();
