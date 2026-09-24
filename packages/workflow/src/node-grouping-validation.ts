@@ -159,7 +159,7 @@ export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 		node: TNode,
 		nodeType: INodeTypeDescription,
 	) => Array<NodeConnectionType | INodeOutputConfiguration>;
-};
+} & NodeGroupRuleOptions;
 
 export type NodeSelectionValidationResult<TNode extends INode = INode> =
 	| { valid: true; subGraph: TNode[]; subGraphData: ExtractableSubgraphData }
@@ -223,8 +223,18 @@ export const NODE_GROUPING_RULES = {
 export function validateNodeSelectionForExtraction<TNode extends INode>(
 	input: NodeGroupingValidationInput<TNode>,
 ): NodeSelectionValidationResult<TNode> {
-	const subgraphResult = validateNodeSelectionSubgraph(input);
-	if (!subgraphResult.valid) return subgraphResult;
+	// Both rules forced off: extraction replaces the selection with one node, which
+	// has one input and one output. Several entries or exits leave nothing to wire
+	// that node back to.
+	const subgraphResult = validateNodeSelectionSubgraph({
+		...input,
+		allowTriggerInGroup: false,
+		allowMultipleBoundaryNodes: false,
+	});
+
+	if (!subgraphResult.valid) {
+		return subgraphResult;
+	}
 
 	const { nodes, getNodeType, getNodeInputs, getNodeOutputs } = input;
 	const { start, end } = subgraphResult.subGraphData;
@@ -320,7 +330,7 @@ export type WorkflowGroupsValidationInput<TNode extends INode = INode> = {
 	 * Pass `null` to run basic checks only.
 	 */
 	getNodeType: ((node: TNode) => INodeTypeDescription | null | undefined) | null;
-};
+} & NodeGroupRuleOptions;
 
 export type WorkflowGroupsValidationResult =
 	| { valid: true }
@@ -367,18 +377,10 @@ export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeFo
  * Note: must be called after node IDs are assigned (see `addNodeIds` in the CLI),
  * since nodes created via the API may not have IDs until that step assigns them.
  */
-export function validateWorkflowGroups<TNode extends INode>({
-	nodes,
-	connectionsBySourceNode,
-	nodeGroups,
-	getNodeType,
-}: WorkflowGroupsValidationInput<TNode>): WorkflowGroupsValidationResult {
-	const result = validateWorkflowGroupsWithGroupIdentity({
-		nodes,
-		connectionsBySourceNode,
-		nodeGroups,
-		getNodeType,
-	});
+export function validateWorkflowGroups<TNode extends INode>(
+	input: WorkflowGroupsValidationInput<TNode>,
+): WorkflowGroupsValidationResult {
+	const result = validateWorkflowGroupsWithGroupIdentity(input);
 
 	if (result.valid) return { valid: true };
 
@@ -397,6 +399,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 	connectionsBySourceNode,
 	nodeGroups,
 	getNodeType,
+	...rules
 }: WorkflowGroupsValidationInput<TNode>):
 	| { valid: true }
 	| {
@@ -482,6 +485,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 				connectionsBySourceNode: connections,
 				getNodeType,
 				existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
+				...rules,
 			});
 			if (!result.valid) {
 				addViolation(group, result.reason, groupRuleViolationMessage(group, result, nodeLabel));
@@ -598,11 +602,16 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 	nodes,
 	connectionsBySourceNode,
 	getNodeType,
+	allowTriggerInGroup,
+	allowMultipleBoundaryNodes,
 }: NodeGroupingValidationInput<TNode>): NodeSelectionValidationResult<TNode> {
-	const triggers = nodes.filter((node) => {
-		const nodeType = getNodeType(node);
-		return nodeType ? isTriggerNode(nodeType) : false;
-	});
+	// A relaxed group may hold its own trigger, together with the nodes that follow it.
+	const triggers = allowTriggerInGroup
+		? []
+		: nodes.filter((node) => {
+				const nodeType = getNodeType(node);
+				return nodeType ? isTriggerNode(nodeType) : false;
+			});
 	if (triggers.length > 0) {
 		return {
 			valid: false,
@@ -613,7 +622,10 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 
 	const adjacencyList = buildAdjacencyList(connectionsBySourceNode);
 	const selectedNodeNames = new Set(nodes.map((node) => node.name));
-	const selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList);
+	// A relaxed group may have several entry and exit nodes
+	const selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList, {
+		relaxBoundaryRules: allowMultipleBoundaryNodes,
+	});
 
 	if (Array.isArray(selection)) {
 		return { valid: false, reason: 'invalid-subgraph', errors: selection };
