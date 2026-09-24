@@ -243,7 +243,10 @@ export class Webhook extends Node {
 		let validationData: IDataObject | undefined;
 		try {
 			if (options.ignoreBots && isbot(req.headers['user-agent']))
-				throw new WebhookAuthorizationError(403);
+				throw new WebhookAuthorizationError(
+					403,
+					'Request rejected: the user agent was detected as a bot and the "Ignore Bots" option is enabled on this webhook',
+				);
 			if (context.getNodeParameter('authentication', 'none') === 'n8nOAuth2') {
 				// Two-step n8n user-auth flow: (1) validate the bearer token and resolve
 				// the caller to an n8n user, then (2) seed the execution context so the
