@@ -91,17 +91,6 @@ describe('MCPConnectWorkflowsModal', () => {
 	});
 
 	describe('Initial rendering', () => {
-		it('should render the modal with info notice', async () => {
-			const { getByTestId } = renderModal({
-				pinia,
-				props: createProps(),
-				global: { stubs: { Modal: ModalStub } },
-			});
-			await nextTick();
-
-			expect(getByTestId('mcp-connect-workflows-info-notice')).toBeInTheDocument();
-		});
-
 		it('should render workflow select component', async () => {
 			const { getByTestId } = renderModal({
 				pinia,

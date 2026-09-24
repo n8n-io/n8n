@@ -146,7 +146,7 @@ export class InstanceAiController {
 	private async requireModelConfigured(): Promise<void> {
 		if (!(await this.settingsService.isModelConfigured())) {
 			throw new BadRequestError(
-				'The n8n Assistant has no model configured. An instance owner can add one in Settings > n8n Assistant.',
+				'The n8n Assistant has no model configured. An instance owner can add one in Settings > Assistant.',
 			);
 		}
 	}
@@ -1035,8 +1035,22 @@ export class InstanceAiController {
 		// already covered by these historical messages (prevents duplicates).
 		// Read from the log, so the cursor is valid across restarts and across
 		// mains sharing the database.
+		//
+		// The applied-preferences payload rides along because the messages
+		// endpoint is what opens a thread: without it a reopened thread could
+		// only claim "none applied" until its next turn.
+		//
+		// Cursor first, payload second, on purpose. A turn that commits its
+		// `preferences-applied` fact between the two reads then lands in the
+		// payload AND replays over SSE (a harmless repeat). The other order
+		// would move the cursor past a fact the payload never saw.
 		const nextEventId = await this.eventLog.getNextEventId(threadId);
-		return { ...result, nextEventId };
+		const appliedPreferences = await this.eventLog.getLastAppliedPreferences(threadId);
+		return {
+			...result,
+			nextEventId,
+			...(appliedPreferences ? { appliedPreferences } : {}),
+		};
 	}
 
 	@Get('/threads/:threadId/status')

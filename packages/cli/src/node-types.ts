@@ -29,7 +29,7 @@ export class NodeTypes implements INodeTypes {
 	 * names like `gmailTool`, and the registry fabricates that node on demand by
 	 * converting the `gmail` base node into an agent tool.
 	 */
-	private resolveBaseName(nodeTypeName: string): { baseName: string; isSyntheticTool: boolean } {
+	resolveBaseName(nodeTypeName: string): { baseName: string; isSyntheticTool: boolean } {
 		const isSyntheticTool =
 			nodeTypeName.endsWith('Tool') && !this.loadNodesAndCredentials.recognizesNode(nodeTypeName);
 		return {

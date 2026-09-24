@@ -161,6 +161,7 @@ export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dt
 export {
 	AiPreferenceListQueryDto,
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
+	AI_PREFERENCES_MAX_IDS_FILTER,
 	AI_PREFERENCES_MAX_PAGE_SIZE,
 } from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
@@ -273,14 +274,17 @@ export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
 export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 export {
+	CreateFolderPublicDto,
+	CreatedFolderPublicDto,
 	DeleteFolderQueryPublicDto,
+	FolderDetailsPublicDto,
 	FolderListPublicDto,
 	FolderPublicDto,
-	FolderDetailsPublicDto,
 	ListFoldersQueryPublicDto,
-	folderPublicSchema,
 	UpdateFolderPublicDto,
 	UpdatedFolderPublicDto,
+	folderProjectIdParamSchema,
+	folderPublicSchema,
 } from './folders/folder-public.dto';
 export type { FolderPublic } from './folders/folder-public.dto';
 
@@ -445,8 +449,9 @@ export {
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
 export {
+	SecurityPolicyPublicDto,
 	UpdateSecurityPolicyDto,
-	type SecurityPolicyResponse,
+	securityPolicyPublicSchema,
 } from './security-settings/security-policy.dto';
 
 export { UpdateProjectPoolSettingsDto } from './worker-pools/update-project-pool-settings.dto';

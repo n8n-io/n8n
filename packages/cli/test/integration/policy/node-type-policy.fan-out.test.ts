@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
@@ -152,6 +153,7 @@ describe('node type policy document fan-out', () => {
 			Container.get(EventService),
 			Container.get(CacheService),
 			Container.get(LoadNodesAndCredentials),
+			Container.get(NodeTypes),
 			Container.get(Logger),
 		);
 
