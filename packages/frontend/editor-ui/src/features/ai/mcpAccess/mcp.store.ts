@@ -366,9 +366,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	/**
 	 * Drops the cached preview. The overview calls this when it unmounts so the
 	 * per-user rows never outlive the page, e.g. into another user's session
-	 * after a soft-redirect logout and login.
+	 * after a soft-redirect logout and login. Bumping the sequence also
+	 * invalidates a fetch still in flight, so its response can't repopulate the
+	 * preview after the page is gone.
 	 */
 	function clearOAuthClientsPreview(): void {
+		oauthClientsPreviewRequestSeq++;
 		oauthClientsPreview.value = [];
 	}
 

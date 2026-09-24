@@ -307,6 +307,22 @@ describe('mcp.store', () => {
 			expect(store.oauthClientsPreview).toEqual([]);
 		});
 
+		it('keeps a fetch that was in flight when the preview was cleared from repopulating it', async () => {
+			let resolveInFlight!: (value: Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>) => void;
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockReturnValue(
+				new Promise((resolve) => {
+					resolveInFlight = resolve;
+				}),
+			);
+
+			const inFlight = store.fetchOAuthClientsPreview();
+			store.clearOAuthClientsPreview(); // e.g. the overview unmounted
+			resolveInFlight({ data: [createOAuthClient()], count: 1, totals: { mine: 1 } });
+			await inFlight;
+
+			expect(store.oauthClientsPreview).toEqual([]);
+		});
+
 		it("leaves the clients page's list state untouched", async () => {
 			const listed = createOAuthClient({ id: 'listed' });
 			vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({

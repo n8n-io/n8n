@@ -205,8 +205,7 @@ const connectedClientsTotal = computed(
 // than the preview shows (more of the user's own, or other users' for managers).
 const showViewAllRow = computed(
 	() =>
-		previewClients.value.length === 0 ||
-		connectedClientsTotal.value > previewClients.value.length,
+		previewClients.value.length === 0 || connectedClientsTotal.value > previewClients.value.length,
 );
 
 const onConnectClient = () => {
