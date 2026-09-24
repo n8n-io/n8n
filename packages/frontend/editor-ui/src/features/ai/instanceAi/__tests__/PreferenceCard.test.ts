@@ -208,6 +208,80 @@ describe('PreferenceCard', () => {
 		});
 	});
 
+	describe('a refused write', () => {
+		const refused: Partial<InstanceAiToolCallState> = {
+			args: { content: 'Keep replies short.', scope: 'user' },
+			result: {
+				ok: false,
+				reason: 'duplicate',
+				message: 'This user already has a preference with the same text',
+			},
+		};
+
+		it('reads "Preference not saved" and shows the attempted text with the server message', () => {
+			renderActive(refused);
+
+			expect(screen.getByText('instanceAi.preferenceCard.notSaved')).toBeInTheDocument();
+			expect(screen.getByTestId('instance-ai-preference-card-text')).toHaveTextContent(STORED_TEXT);
+			expect(screen.getByTestId('instance-ai-preference-card-error')).toHaveTextContent(
+				'This user already has a preference with the same text',
+			);
+		});
+
+		it('offers "Manage preferences" but no "Edit", because nothing was saved', () => {
+			renderActive(refused);
+
+			expect(screen.getByTestId('instance-ai-preference-card-manage')).toBeInTheDocument();
+			expect(screen.queryByTestId('instance-ai-preference-card-edit')).toBeNull();
+			expect(screen.queryByText(/instanceAi\.preferenceCard\.appliesTo/)).toBeNull();
+		});
+
+		it('falls back to a generic line when the result carries no message', () => {
+			renderActive({ ...refused, result: { ok: false, reason: 'failed' } });
+
+			expect(screen.getByTestId('instance-ai-preference-card-error')).toHaveTextContent(
+				'instanceAi.preferenceCard.notSavedFallback',
+			);
+		});
+
+		it('shows the refusal when the tool threw, without the internal error text', () => {
+			renderActive({ ...refused, result: undefined, error: 'ECONNREFUSED' });
+
+			expect(screen.getByText('instanceAi.preferenceCard.notSaved')).toBeInTheDocument();
+			const error = screen.getByTestId('instance-ai-preference-card-error');
+			expect(error).toHaveTextContent('instanceAi.preferenceCard.notSavedFallback');
+			expect(error).not.toHaveTextContent('ECONNREFUSED');
+		});
+
+		it('reads "Preference not confirmed" when the run ended with the call in flight', () => {
+			renderActive({
+				...refused,
+				result: undefined,
+				error: 'Interrupted by a process restart',
+				interrupted: true,
+			});
+
+			expect(screen.getByText('instanceAi.preferenceCard.notConfirmed')).toBeInTheDocument();
+			expect(screen.queryByText('instanceAi.preferenceCard.notSaved')).toBeNull();
+			expect(screen.getByTestId('instance-ai-preference-card-text')).toHaveTextContent(STORED_TEXT);
+			expect(screen.getByTestId('instance-ai-preference-card-error')).toHaveTextContent(
+				'instanceAi.preferenceCard.notConfirmedMessage',
+			);
+			expect(screen.getByTestId('instance-ai-preference-card-manage')).toBeInTheDocument();
+			expect(screen.queryByTestId('instance-ai-preference-card-edit')).toBeNull();
+		});
+
+		it('collapses to the row in history, like a saved card', () => {
+			renderHistory(refused);
+
+			expect(screen.getByTestId('instance-ai-preference-card-header')).toHaveAttribute(
+				'aria-expanded',
+				'false',
+			);
+			expect(screen.queryByTestId('instance-ai-preference-card-error')).toBeNull();
+		});
+	});
+
 	describe('the edit modal', () => {
 		// The same scope label, required mark, cap, and counter as the settings page modal.
 		it('opens with the stored text and a disabled scope that reads as on the settings page', async () => {
