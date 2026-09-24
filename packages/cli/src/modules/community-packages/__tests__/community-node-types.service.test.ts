@@ -416,6 +416,27 @@ describe('CommunityNodeTypesService', () => {
 			communityPackagesServiceMock.getAllInstalledPackages = vi.fn().mockResolvedValue([]);
 		});
 
+		it('should not create an AI tool version for a node type the loader would skip', async () => {
+			globalConfigMock.nodes = { exclude: ['n8n-nodes-test.test'], include: [] };
+			(getCommunityNodeTypes as Mock).mockResolvedValueOnce([
+				{
+					name: 'n8n-nodes-test.test',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-preview',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			]);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result).toEqual([]);
+		});
+
 		it('should create AI tool versions for nodes with usableAsTool flag', async () => {
 			const mockNodeTypes = [
 				{

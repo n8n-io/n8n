@@ -169,6 +169,7 @@ export class CommunityNodeTypesService {
 			(nodeType) =>
 				nodeType.nodeDescription.usableAsTool &&
 				!isToolType(nodeType.name) &&
+				this.isLoadable(nodeType.name) &&
 				!nodeType.nodeDescription.group?.includes('trigger'),
 		);
 		const forbiddenCategories = ['Recommended Tools'];
