@@ -206,6 +206,7 @@ export async function handleMessage(
 	channel: amqplib.Channel,
 	messageTracker: MessageTracker,
 	acknowledgeMode: string,
+	nackRequeue: boolean,
 	options: TriggerOptions,
 ) {
 	try {
@@ -256,7 +257,7 @@ export async function handleMessage(
 			} else {
 				const runData = first.kind === 'run' ? first.data : await responsePromise.promise;
 				if (runData?.data?.resultData?.error) {
-					channel.nack(message, false, options.nackRequeue);
+					channel.nack(message, false, nackRequeue);
 				} else {
 					channel.ack(message);
 				}
@@ -268,7 +269,7 @@ export async function handleMessage(
 				if (data.data.resultData.error) {
 					// The execution did fail
 					if (acknowledgeMode === 'executionFinishesSuccessfully') {
-						channel.nack(message, false, options.nackRequeue);
+						channel.nack(message, false, nackRequeue);
 						messageTracker.answered(message);
 						return;
 					}

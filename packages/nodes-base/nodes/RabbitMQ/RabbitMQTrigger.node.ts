@@ -103,7 +103,8 @@ export class RabbitMQTrigger implements INodeType {
 						name: 'nackRequeue',
 						type: 'boolean',
 						default: true,
-						description: 'Whether the message will be requeue or not when handling failed (Do not requeue if you use dead letter exchange)',
+						description:
+							'Whether the message will be requeue or not when handling failed (Do not requeue if you use dead letter exchange)',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -214,6 +215,7 @@ export class RabbitMQTrigger implements INodeType {
 
 		const messageTracker = new MessageTracker();
 		let acknowledgeMode = options.acknowledge ?? 'immediately';
+		let nackRequeue = options.nackRequeue ?? true;
 		let closeGotCalled = false;
 		let consumerTag: string | undefined;
 
@@ -249,6 +251,7 @@ export class RabbitMQTrigger implements INodeType {
 							channel,
 							messageTracker,
 							acknowledgeMode,
+							nackRequeue,
 							options,
 						);
 					} else {
@@ -298,7 +301,15 @@ export class RabbitMQTrigger implements INodeType {
 
 		const consumerInfo = await channel.consume(queue, async (message) => {
 			if (message !== null) {
-				void handleMessage.call(this, message, channel, messageTracker, acknowledgeMode, options);
+				void handleMessage.call(
+					this,
+					message,
+					channel,
+					messageTracker,
+					acknowledgeMode,
+					nackRequeue,
+					options,
+				);
 			}
 		});
 		consumerTag = consumerInfo.consumerTag;
