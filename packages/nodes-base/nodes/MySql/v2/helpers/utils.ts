@@ -310,12 +310,36 @@ export function prepareOutput(
 
 	return returnData;
 }
-const END_OF_STATEMENT = /;(?=(?:[^'\\]|'[^']*?'|\\[\s\S])*?$)/g;
+
 export const splitQueryToStatements = (query: string, filterOutEmpty = true) => {
-	const statements = query
-		.replace(/\n/g, '')
-		.split(END_OF_STATEMENT)
-		.map((statement) => statement.trim());
+	const statements: string[] = [];
+	let statementStart = 0;
+	let quote: "'" | '"' | undefined;
+	let escaped = false;
+
+	for (let index = 0; index < query.length; index++) {
+		const character = query[index];
+
+		if (quote) {
+			if (escaped) {
+				escaped = false;
+			} else if (character === '\\') {
+				escaped = true;
+			} else if (character === quote) {
+				quote = undefined;
+			}
+			continue;
+		}
+
+		if (character === "'" || character === '"') {
+			quote = character;
+		} else if (character === ';') {
+			statements.push(query.slice(statementStart, index).replace(/\n/g, '').trim());
+			statementStart = index + 1;
+		}
+	}
+
+	statements.push(query.slice(statementStart).replace(/\n/g, '').trim());
 	return filterOutEmpty ? statements.filter((statement) => statement !== '') : statements;
 };
 
