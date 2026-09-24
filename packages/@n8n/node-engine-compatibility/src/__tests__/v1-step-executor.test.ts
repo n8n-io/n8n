@@ -349,23 +349,60 @@ describe('V1StepExecutor', () => {
 	describe('a node that puts the execution to wait', () => {
 		const input = items({ keep: 'me' });
 
-		// v1 passes the node's input through when a timed wait resumes.
-		it('declares a deadline wait that emits the input at the deadline', async () => {
-			const graph = graphWith('test.waitsUntil', { waitTill: '2026-10-01T12:00:00.000Z' });
-			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
-			expect(result).toEqual({
-				wait: {
-					resumeAt: '2026-10-01T12:00:00.000Z',
-					outputsAtDeadline: input,
-					acceptsResumeRequest: true,
-				},
-			});
-		});
+		// The flag defaults to true, as it does in core. The deadline emits the
+		// node's input, which is what v1 passes through on a timed resume.
+		it.each([
+			['omitted', true],
+			['true', true],
+			['false', false],
+		])(
+			'declares a deadline wait with acceptsResumeRequest %s',
+			async (acceptsResumeRequest, declared) => {
+				const graph = graphWith('test.waitsUntil', {
+					waitTill: '2026-10-01T12:00:00.000Z',
+					acceptsResumeRequest,
+				});
+				const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+				expect(result).toEqual({
+					wait: {
+						resumeAt: '2026-10-01T12:00:00.000Z',
+						outputsAtDeadline: input,
+						acceptsResumeRequest: declared,
+					},
+				});
+			},
+		);
 
 		it('fails the step when the node asks to wait until a value that is not a date', async () => {
 			const graph = graphWith('test.waitsUntil', { waitTill: 'not a date' });
 			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
 			await expect(execution).rejects.toThrow(InvalidWaitDateError);
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" asked to wait until a date that is not valid',
+			);
+		});
+
+		// Core's `executeWorkflow` asks to wait when the child went to waiting.
+		it('fails the step when a sub-workflow it ran is itself waiting', async () => {
+			const graph = graphWith('test.runsSubWorkflow');
+			const executor = new V1StepExecutor({
+				nodeTypes: testNodeTypes,
+				additionalDataFactory: async (context) => ({
+					...(await testAdditionalDataFactory(context)),
+					executeWorkflow: vi.fn().mockResolvedValue({
+						executionId: 'child-1',
+						data: [[]],
+						waitTill: new Date('2099-01-01T00:00:00.000Z'),
+					}),
+				}),
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			});
+
+			const execution = executor.execute(stepRequest(graph, 'n', input));
+
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine 2.0 cannot end that wait yet.',
+			);
 		});
 
 		// The v1 hook marks the execution waiting in the host's registry, where a
@@ -387,15 +424,6 @@ describe('V1StepExecutor', () => {
 
 			expect(result.wait).toBeDefined();
 			expect(setExecutionStatus).not.toHaveBeenCalled();
-		});
-
-		it('declares a deadline-only wait when the node says only the deadline ends it', async () => {
-			const graph = graphWith('test.waitsUntil', {
-				waitTill: '2026-10-01T12:00:00.000Z',
-				acceptsResumeRequest: false,
-			});
-			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
-			expect(result.wait?.acceptsResumeRequest).toBe(false);
 		});
 
 		// The Wait node's time modes used to sleep in the process below 65 seconds,

@@ -208,17 +208,46 @@ class WaitsUntil implements INodeType {
 			{
 				displayName: 'Accepts Resume Request',
 				name: 'acceptsResumeRequest',
-				type: 'boolean',
-				default: true,
+				type: 'options',
+				options: [
+					{ name: 'Omitted', value: 'omitted' },
+					{ name: 'True', value: 'true' },
+					{ name: 'False', value: 'false' },
+				],
+				default: 'omitted',
 			},
 		],
 	} as unknown as INodeType['description'];
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		await this.putExecutionToWait(new Date(this.getNodeParameter('waitTill', 0) as string), {
-			acceptsResumeRequest: this.getNodeParameter('acceptsResumeRequest', 0) as boolean,
-		});
+		const waitTill = new Date(this.getNodeParameter('waitTill', 0) as string);
+		const flag = this.getNodeParameter('acceptsResumeRequest', 0) as string;
+		if (flag === 'omitted') {
+			await this.putExecutionToWait(waitTill);
+		} else {
+			await this.putExecutionToWait(waitTill, { acceptsResumeRequest: flag === 'true' });
+		}
 		return [this.getInputData().map((item) => ({ json: { ...item.json, returned: true } }))];
+	}
+}
+
+/** Runs a sub-workflow through the host, as the Execute Workflow node does. */
+class RunsSubWorkflow implements INodeType {
+	description = {
+		displayName: 'Runs Sub Workflow',
+		name: 'runsSubWorkflow',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes a sub-workflow and returns its input',
+		defaults: { name: 'Runs Sub Workflow' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		await this.executeWorkflow({ id: 'child' }, this.getInputData());
+		return [this.getInputData()];
 	}
 }
 
@@ -233,6 +262,7 @@ const registry = new Map<string, INodeType>([
 	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
 	['test.waitsUntil', new WaitsUntil()],
+	['test.runsSubWorkflow', new RunsSubWorkflow()],
 	['n8n-nodes-base.wait', new Wait() as unknown as INodeType],
 ]);
 
