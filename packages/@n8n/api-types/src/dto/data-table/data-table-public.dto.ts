@@ -73,12 +73,16 @@ export class CreateDataTableColumnPublicDto extends Z.class({
 	index: z.number().int().min(0).openapi(createDataTableColumnFieldDocs.index).optional(),
 }) {}
 
-// Legacy `updateColumnRequest.yml` requires at least one of `name`/`index` (an `anyOf`), which a
-// `Z.class` shape can't express. The controller rejects an empty body at runtime instead.
+// Legacy `updateColumnRequest.yml` requires at least one of `name`/`index`. A shape cannot make two
+// fields optional and still require one of them, so the rule sits in the object's OpenAPI metadata,
+// and the controller rejects an empty body at runtime.
 export class UpdateDataTableColumnPublicDto extends Z.class(
 	{
 		name: dataTableColumnNameSchema.openapi(updateDataTableColumnFieldDocs.name).optional(),
 		index: z.number().int().min(0).openapi(updateDataTableColumnFieldDocs.index).optional(),
 	},
-	{ strict: true },
+	{
+		strict: true,
+		openapi: { anyOf: [{ required: ['name'] }, { required: ['index'] }] },
+	},
 ) {}

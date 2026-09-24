@@ -42,6 +42,11 @@ requestBody:
             minimum: 0
             description: New zero-based position for the column
         additionalProperties: false
+        anyOf:
+          - required:
+              - name
+          - required:
+              - index
 responses:
   '200':
     description: Operation successful.
