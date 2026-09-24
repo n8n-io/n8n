@@ -69,6 +69,19 @@ describe('in-memory execution responses', () => {
 		);
 	});
 
+	it('stamps the execution ID on a response from a step', () => {
+		const channel = new InMemoryExecutionResponseChannel();
+		const publish = vi.spyOn(channel, 'publish');
+		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
+
+		sender.emitterFor('exec-1').send({ ok: true });
+
+		expect(publish).toHaveBeenCalledExactlyOnceWith(
+			'exec-1',
+			JSON.stringify({ type: 'response', executionId: 'exec-1', payload: { ok: true } }),
+		);
+	});
+
 	it('validates a response before delivering it', () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
