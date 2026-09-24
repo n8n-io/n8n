@@ -201,6 +201,12 @@ export function resetInternalRegexEngine(): void {
 	internalEngine = createDefaultEngine();
 }
 
+/** @deprecated Renamed to {@link setInternalRegexEngine}. */
+export const setSafeRegexEngine = setInternalRegexEngine;
+
+/** @deprecated Renamed to {@link resetInternalRegexEngine}. */
+export const resetSafeRegexEngine = resetInternalRegexEngine;
+
 export function setUserRegexEngine(regexEngine: RegexEngine): void {
 	userEngine = regexEngine;
 }
@@ -234,6 +240,9 @@ function makeRegexFacade(getEngine: () => RegexEngine): RegexEngine {
  * A pattern a user typed belongs on `safeUserRegex` instead.
  */
 export const safeInternalRegex: RegexEngine = makeRegexFacade(() => internalEngine);
+
+/** @deprecated Renamed to {@link safeInternalRegex}. */
+export const safeRegex: RegexEngine = safeInternalRegex;
 
 /**
  * For a pattern a user wrote. Runs on whichever engine the instance selects, so callers
