@@ -5,7 +5,7 @@ const COLUMN = 'integrationType';
 const VALUES_BEFORE = ['telegram', 'slack', 'linear', 'discord'];
 const VALUES_AFTER = [...VALUES_BEFORE, 'teams'];
 
-export class AllowTeamsAgentChatSubscriptions1789651122666 implements ReversibleMigration {
+export class AllowTeamsAgentChatSubscriptions1790231058977 implements ReversibleMigration {
 	async up({ schemaBuilder }: MigrationContext) {
 		await schemaBuilder.dropEnumCheck(TABLE, COLUMN, { recreatesOnSqlite: true });
 		await schemaBuilder.addEnumCheck(TABLE, COLUMN, VALUES_AFTER, { recreatesOnSqlite: true });

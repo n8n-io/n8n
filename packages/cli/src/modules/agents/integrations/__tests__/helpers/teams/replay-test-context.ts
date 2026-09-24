@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { ChatInstance } from '../../../chat-integration.service';
 import { ComponentMapper } from '../../../component-mapper';
+import type { IntegrationMessageContext } from '../../../integration-tools';
 import { TeamsIntegration } from '../../../platforms/teams-integration';
 import {
 	createReplayContextSetup,
@@ -38,7 +39,7 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	sendWebhook: (payload: unknown) => Promise<Response>;
 	/** Same payload, no Authorization header — proves the token check is live. */
 	sendUnauthenticatedWebhook: (payload: unknown) => Promise<Response>;
-	latestContext: () => ReturnType<ReplayContextSetup['messageContextStore']['latest']>;
+	latestContext: () => IntegrationMessageContext | undefined;
 	latestThreadId: () => string | undefined;
 	lastPost: () => ReplayApiCall | undefined;
 	lastEdit: () => ReplayApiCall | undefined;
@@ -192,8 +193,8 @@ export async function createTeamsReplayContext(
 		chat: chat as unknown as ChatInstance,
 		sendWebhook,
 		sendUnauthenticatedWebhook: async (payload: unknown) => await post(payload, new Headers()),
-		latestContext: () => setup.messageContextStore.latest(),
-		latestThreadId: () => setup.messageContextStore.latestThreadId(),
+		latestContext: setup.latestContext,
+		latestThreadId: setup.latestThreadId,
 		lastPost: () => lastCall('sendActivity'),
 		lastEdit: () => lastCall('updateActivity'),
 		lastPostedMessageId: () => stub.postedMessageIds.at(-1),
