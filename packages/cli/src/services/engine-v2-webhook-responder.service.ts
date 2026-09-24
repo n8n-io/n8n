@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
+import { decodeBufferBody } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -108,7 +109,8 @@ export class EngineV2WebhookResponder {
 				return;
 
 			case 'response':
-				response.resolveResponse(received.payload);
+				// A Buffer body arrives base64-encoded, because the channel is JSON.
+				response.resolveResponse(decodeBufferBody(received.payload));
 				return;
 
 			case 'ended':

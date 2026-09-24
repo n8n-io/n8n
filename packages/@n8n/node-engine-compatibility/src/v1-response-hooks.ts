@@ -1,5 +1,5 @@
 import type { JsonValue, StepExecutionRequest } from '@n8n/engine';
-import { ExecutionLifecycleHooks } from 'n8n-core';
+import { encodeBufferBody, ExecutionLifecycleHooks } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
@@ -52,16 +52,27 @@ export function attachResponseHooks(
 /**
  * A response crosses a process boundary as JSON, so anything without a JSON
  * form fails here rather than arriving silently mangled.
+ *
+ * A top-level Buffer body is base64-encoded into the envelope
+ * which the control plane decodes, the same one Engine v1 queue mode uses.
+ * Nested Buffers and streams are not supported, as in Engine v1 queue mode.
  */
 function toJsonPayload(value: unknown): JsonValue {
 	assertCarriable(value);
 
-	// Match Engine 1 queue mode. Nested Buffers and streams are not supported.
-	if (typeof value === 'object' && value !== null && 'body' in value) {
+	if (!hasBody(value)) return value as JsonValue;
+
+	if (!Buffer.isBuffer(value.body)) {
 		assertCarriable(value.body);
+		return value as JsonValue;
 	}
 
-	return value as JsonValue;
+	// A shallow copy, so a host hook that runs after this one still sees the Buffer.
+	return encodeBufferBody({ ...value }) as JsonValue;
+}
+
+function hasBody(value: unknown): value is { body: unknown } {
+	return typeof value === 'object' && value !== null && 'body' in value;
 }
 
 function assertCarriable(value: unknown): void {

@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
 import type { ExecutionResponse } from '@n8n/engine';
+import { ENCODED_BUFFER_KEY } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
@@ -149,6 +150,29 @@ describe('EngineV2WebhookResponder', () => {
 			status: 'response',
 			response: { body: { ok: true }, headers: {}, statusCode: 200 },
 		});
+	});
+
+	it('restores a Buffer body the data plane sent as a base64 envelope', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2(), true);
+		const bytes = Buffer.from([0x00, 0xff, 0x10]);
+		const headers = { 'content-type': 'application/octet-stream', 'content-length': 3 };
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: {
+				body: { [ENCODED_BUFFER_KEY]: bytes.toString('base64') },
+				headers,
+				statusCode: 201,
+			},
+		});
+
+		const outcome = await pending.settled;
+		expect(outcome).toEqual({
+			status: 'response',
+			response: { body: bytes, headers, statusCode: 201 },
+		});
+		expect(Buffer.isBuffer((outcome as { response: { body: unknown } }).response.body)).toBe(true);
 	});
 
 	it('keeps the first terminal outcome', async () => {
