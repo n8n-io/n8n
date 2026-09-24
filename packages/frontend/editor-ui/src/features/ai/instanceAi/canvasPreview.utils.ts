@@ -240,12 +240,28 @@ const WORKFLOW_LOCKING_TOOLS = new Set([
  *      restore-version / setup action. Read-only `workflows` actions (including
  *      historical get-json events, get, list, …) don't lock.
  */
-export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
+export function isAgentEditingWorkflow(
+	node: InstanceAiAgentNode,
+	workflowId: string,
+	announcement = node.latestSetupAnnouncement,
+): boolean {
+	const announcedBuild =
+		announcement?.workflowId === workflowId &&
+		node.toolCalls.some(
+			(call) =>
+				call.isLoading &&
+				call.toolName === 'build-workflow' &&
+				!call.args?.workflowId &&
+				announcement.agentId === node.agentId &&
+				call.startedAt &&
+				announcement.timestamp >= call.startedAt,
+		);
 	if (
 		node.status === 'active' &&
 		(getLatestBuildResult(node)?.workflowId === workflowId ||
 			getLatestWorkflowSetupResult(node)?.workflowId === workflowId ||
-			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId)
+			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId ||
+			announcedBuild)
 	) {
 		return true;
 	}
@@ -277,7 +293,7 @@ export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: st
 	}
 
 	for (const child of node.children) {
-		if (isAgentEditingWorkflow(child, workflowId)) return true;
+		if (isAgentEditingWorkflow(child, workflowId, announcement)) return true;
 	}
 	return false;
 }

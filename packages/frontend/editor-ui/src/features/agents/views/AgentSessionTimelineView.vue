@@ -24,13 +24,13 @@ import { useAgentBuilderSession } from '@/features/agents/composables/useAgentBu
 import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
+import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import type { AgentResource } from '@/features/agents/types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import { N8nEmptyState } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
-import { useStorage } from '@vueuse/core';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
@@ -50,27 +50,30 @@ const { config: localConfig, fetchConfig } = useAgentConfig();
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 const threadId = computed(() => route.params.threadId as string);
-const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
-	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
-});
 
 // Populated by the timeline panel's `loaded` event so the header can render its
 // title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
 const agent = ref<AgentResource | null>(null);
-const isPreviewOpen = useStorage(previewOpenStorageKey, false);
+const isPreviewOpen = ref(false);
 const previewInitialized = ref(false);
+const { canUpdate } = useAgentPermissions(projectId);
+const canDeleteSession = computed(() => canUpdate.value);
 const {
 	activeChatSessionId,
 	effectiveSessionId,
 	currentSessionHasMessages,
 	currentSessionIsEphemeral,
+	currentSessionIsLocallyMinted,
 	currentSessionTitle,
 	sessionMenu,
+	isDeletingSession,
 	onSessionPick,
 	onNewChat,
-} = useAgentBuilderSession({ routeBacked: computed(() => false) });
+	markSessionCreated,
+	deleteSession,
+} = useAgentBuilderSession({ routeBacked: computed(() => false), projectId, agentId });
 
 /**
  * True while the docked preview sits on a brand-new session that has no thread
@@ -80,7 +83,7 @@ const {
  */
 const isPreviewSessionStale = computed(
 	() =>
-		currentSessionIsEphemeral.value &&
+		currentSessionIsLocallyMinted.value &&
 		effectiveSessionId.value !== undefined &&
 		effectiveSessionId.value !== threadId.value,
 );
@@ -193,6 +196,12 @@ const totalTokens = computed(() => {
 });
 
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
+const canPreviewSession = computed(
+	() =>
+		currentSessionIsLocallyMinted.value ||
+		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
+);
+const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
 const totalCost = computed(() => thread.value?.totalCost ?? 0);
 const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
 
@@ -216,6 +225,18 @@ const dockHasSession = computed(
 function onPanelLoaded(detail: ThreadDetail | null) {
 	thread.value = detail?.thread ?? null;
 	executions.value = detail?.executions ?? [];
+	upsertLoadedPreviewThread(projectId.value, agentId.value);
+}
+
+function upsertLoadedPreviewThread(targetProjectId: string, targetAgentId: string) {
+	const loadedThread = thread.value;
+	if (
+		loadedThread?.canContinueInPreview &&
+		loadedThread.projectId === targetProjectId &&
+		loadedThread.agentId === targetAgentId
+	) {
+		sessionsStore.upsertThread(loadedThread);
+	}
 }
 
 let previewLoadRequestId = 0;
@@ -235,7 +256,10 @@ watch(
 					filters: defaultAgentSessionFilters(),
 				}),
 			]);
-			if (requestId === previewLoadRequestId) agent.value = loadedAgent;
+			if (requestId === previewLoadRequestId) {
+				agent.value = loadedAgent;
+				upsertLoadedPreviewThread(nextProjectId, nextAgentId);
+			}
 		} finally {
 			if (requestId === previewLoadRequestId) previewInitialized.value = true;
 		}
@@ -322,12 +346,15 @@ function onSessionSelect(nextThreadId: string) {
 	});
 }
 
-function onSessionDeleted(sessionId: string) {
-	if (sessionId !== threadId.value) return;
+async function onDeletePreviewSession(sessionId: string) {
+	if (!canDeleteSession.value) return;
+	const deleted = await deleteSession(sessionId);
+	if (!deleted || sessionId !== threadId.value) return;
 	void router.replace(agentExecutionsRoute.value);
 }
 
 function togglePreview() {
+	if (!canPreviewSession.value) return;
 	isPreviewOpen.value = !isPreviewOpen.value;
 }
 
@@ -352,7 +379,8 @@ function viewPreviewTrace() {
 			:duration-label="durationLabel"
 			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
 			:langsmith-export-loading="isExporting"
-			:is-preview-open="isPreviewOpen"
+			:show-preview="canPreviewSession"
+			:is-preview-open="previewVisible"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
@@ -360,7 +388,7 @@ function viewPreviewTrace() {
 			@close="closeTimeline"
 		/>
 
-		<div :class="[$style.content, { [$style.previewOpen]: isPreviewOpen }]">
+		<div :class="[$style.content, { [$style.previewOpen]: previewVisible }]">
 			<AgentSessionTimelinePanel
 				v-if="!isPreviewSessionStale"
 				:project-id="projectId"
@@ -377,7 +405,8 @@ function viewPreviewTrace() {
 			</div>
 
 			<AgentPreviewDock
-				:is-open="isPreviewOpen"
+				v-if="canPreviewSession"
+				:is-open="previewVisible"
 				:session-title="dockSessionTitle"
 				:session-options="sessionMenu"
 				:has-session="dockHasSession"
@@ -388,10 +417,14 @@ function viewPreviewTrace() {
 				:local-config="localConfig"
 				:connected-triggers="[]"
 				:effective-session-id="effectiveSessionId"
+				:new-session="currentSessionIsEphemeral"
+				:can-delete-session="canDeleteSession"
+				:is-deleting-session="isDeletingSession"
 				@view-trace="viewPreviewTrace"
 				@new-session="onNewChat"
-				@session-deleted="onSessionDeleted"
+				@delete-session="onDeletePreviewSession"
 				@session-select="onSessionPick"
+				@session-created="markSessionCreated"
 				@close="togglePreview"
 			/>
 		</div>

@@ -319,6 +319,46 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(activeRuntime(registry).activeRunId).toBe('run-1');
 	});
 
+	test('applyEvent folds a preference-card fact onto its tool call before the stream delivers it', () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', toolName: 'save_user_preference', args: {} },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-result',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					result: {
+						ok: true,
+						preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+					},
+				},
+			}),
+		);
+
+		// The endpoint returned the fact; the card applies it without waiting for SSE.
+		activeRuntime(registry).applyEvent({
+			type: 'preference-card',
+			runId: 'run-1',
+			agentId: 'agent-root',
+			payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+		});
+
+		const toolCall = activeRuntime(registry).messages[0].agentTree?.toolCalls.find(
+			(tc) => tc.toolCallId === 'tc-1',
+		);
+		expect(toolCall?.preferenceCard).toEqual({ state: 'undone', content: undefined });
+		expect(activeRuntime(registry).activeRunId).toBe('run-1');
+	});
+
 	test('setup-items SSE events fold last-wins per workflowId', () => {
 		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
 		capturedOnMessage!(
@@ -361,6 +401,98 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
 	});
 
+	test('preferences-applied SSE events replace the applied payload, empty included', () => {
+		const runtime = activeRuntime(registry);
+		expect(runtime.appliedPreferences).toBeNull();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					preferences: [{ id: 'pref-1', scope: 'user' }],
+					renderedLength: 40,
+					injectedThisTurn: true,
+				},
+			}),
+		);
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['pref-1']);
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-2',
+				agentId: 'agent-root',
+				payload: { preferences: [], renderedLength: 0, injectedThisTurn: false },
+			}),
+		);
+		// An empty payload is an answer: the turn applied none.
+		expect(runtime.appliedPreferences).toEqual({
+			preferences: [],
+			renderedLength: 0,
+			injectedThisTurn: false,
+		});
+	});
+
+	test('the applied payload survives thread restore (GET /messages)', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-restore',
+			messages: [],
+			nextEventId: 10,
+			appliedPreferences: {
+				preferences: [{ id: 'pref-1', scope: 'instance' }],
+				renderedLength: 40,
+				injectedThisTurn: false,
+				carriedFromRunId: 'run-0',
+			},
+		});
+
+		const runtime = registry.getOrCreateRuntime('thread-restore');
+		await runtime.loadHistoricalMessages();
+
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['pref-1']);
+		expect(runtime.appliedPreferences?.carriedFromRunId).toBe('run-0');
+	});
+
+	test('a live payload that arrived during restore is not overwritten by the persisted one', async () => {
+		let resolveMessages!: (value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void;
+		mockFetchThreadMessages.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveMessages = resolve;
+			}),
+		);
+		// The SSE mock is wired to the active thread, so hydrate that one.
+		const runtime = activeRuntime(registry);
+		const hydration = runtime.loadHistoricalMessages();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'preferences-applied',
+				runId: 'run-9',
+				agentId: 'agent-root',
+				payload: {
+					preferences: [{ id: 'live', scope: 'user' }],
+					renderedLength: 12,
+					injectedThisTurn: true,
+				},
+			}),
+		);
+		resolveMessages({
+			threadId: activeThreadId,
+			messages: [],
+			nextEventId: 10,
+			appliedPreferences: {
+				preferences: [{ id: 'stale', scope: 'user' }],
+				renderedLength: 12,
+				injectedThisTurn: true,
+			},
+		});
+		await hydration;
+
+		expect(runtime.appliedPreferences?.preferences.map(({ id }) => id)).toEqual(['live']);
+	});
+
 	test('setup-items snapshots survive thread restore (GET /messages)', async () => {
 		mockFetchThreadMessages.mockResolvedValueOnce({
 			threadId: 'thread-restore',
@@ -390,6 +522,14 @@ describe('createThreadRuntime - SSE and hydration', () => {
 									credentialType: 'slackApi',
 								},
 							],
+							'wf-2': [
+								{ id: 'wf-2:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+							],
+						},
+						latestSetupAnnouncement: {
+							workflowId: 'wf-1',
+							agentId: 'agent-root',
+							timestamp: '2026-09-15T08:00:00.000Z',
 						},
 					},
 				},
@@ -402,7 +542,61 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		expect(runtime.setupItemsByWorkflowId['wf-1']).toHaveLength(1);
 		expect(runtime.setupItemsByWorkflowId['wf-1'][0]).toMatchObject({ credentialType: 'slackApi' });
+		expect(runtime.latestSetupWorkflowId).toBe('wf-1');
 	});
+
+	test.each([
+		{ workflowIds: ['wf-1', 'wf-2'], completed: false, expected: undefined },
+		{ workflowIds: ['wf-1', 'wf-2'], completed: true, expected: undefined },
+		{ workflowIds: ['wf-1'], completed: false, expected: 'wf-1' },
+		{ workflowIds: ['wf-1'], completed: true, expected: 'wf-1' },
+	])(
+		'restores legacy setup selection without inferring key order: %j',
+		async ({ workflowIds, completed, expected }) => {
+			mockFetchThreadMessages.mockResolvedValueOnce({
+				threadId: 'thread-legacy',
+				messages: [
+					{
+						id: 'msg-legacy',
+						role: 'assistant',
+						createdAt: '2026-09-15T08:00:00.000Z',
+						content: '',
+						reasoning: '',
+						isStreaming: false,
+						agentTree: {
+							agentId: 'root',
+							role: 'orchestrator',
+							status: 'completed',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [],
+							children: [],
+							timeline: [],
+							setupItemsByWorkflowId: Object.fromEntries(
+								workflowIds.map((id) => [
+									id,
+									completed && id === 'wf-1'
+										? []
+										: [
+												{
+													id: `${id}:credential:slackApi`,
+													kind: 'credential' as const,
+													credentialType: 'slackApi',
+												},
+											],
+								]),
+							),
+						},
+					},
+				],
+				nextEventId: 10,
+			});
+			const runtime = registry.getOrCreateRuntime('thread-legacy');
+			await runtime.loadHistoricalMessages();
+			expect(runtime.latestSetupWorkflowId).toBe(expected);
+			expect(Object.keys(runtime.setupItemsByWorkflowId)).toEqual(workflowIds);
+		},
+	);
 
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
 		// First, create two assistant messages via normal events
@@ -1143,6 +1337,102 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		warnSpy.mockRestore();
 	});
 
+	describe('setup context on message telemetry', () => {
+		type SetupReader = Parameters<ThreadRuntime['registerSetupChatTelemetryContext']>[0];
+		const setupContext: ReturnType<SetupReader> = {
+			workflow_id: 'workflow-1',
+			pending_credential_count: 1,
+			pending_parameter_count: 2,
+			session_id: 'setup-session',
+			variant: 'variant',
+			'$feature/118_instance_ai_setup_overhaul': 'variant',
+		};
+
+		test('reads current setup context for human sends, including a refused send', async () => {
+			const runtime = activeRuntime(registry);
+			const nextContext = {
+				...setupContext,
+				workflow_id: 'workflow-2',
+				pending_parameter_count: 0,
+			};
+			const reader = vi
+				.fn<SetupReader>()
+				.mockReturnValueOnce(setupContext)
+				.mockReturnValueOnce(nextContext);
+			runtime.registerSetupChatTelemetryContext(reader);
+			mockPostMessage
+				.mockRejectedValueOnce(new Error('post failed'))
+				.mockResolvedValue({ runId: 'run-1' });
+			expect(reader).not.toHaveBeenCalled();
+
+			await expect(runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE })).resolves.toBe(
+				false,
+			);
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ ...setupContext, thread_id: activeThreadId, prefill_type: null }),
+			);
+
+			await runtime.sendMessage('Use this suggestion', {
+				authorship: { kind: 'prefill', prefillType: 'suggestion_catalog' },
+			});
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ ...nextContext, prefill_type: 'suggestion_catalog' }),
+			);
+			expect(reader).toHaveBeenCalledTimes(2);
+		});
+
+		test('omits setup context from the automatic Execute notification', async () => {
+			const runtime = activeRuntime(registry);
+			const reader = vi.fn<SetupReader>().mockReturnValue(setupContext);
+			runtime.registerSetupChatTelemetryContext(reader);
+			mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+			await runtime.sendMessage('Workflow execution finished.', {
+				authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
+			});
+
+			expect(reader).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				{
+					thread_id: activeThreadId,
+					instance_id: 'instance-1',
+					is_first_message: true,
+					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+					prefill_type: 'handoff_setup_panel_execute',
+					prefill_id: null,
+					prompt_modified: false,
+				},
+			);
+		});
+
+		test('keeps the replacement reader when the older reader unregisters and clears it on release', async () => {
+			const runtime = activeRuntime(registry);
+			const olderReader = vi.fn<SetupReader>().mockReturnValue({ workflow_id: 'old-workflow' });
+			const reader = vi.fn<SetupReader>().mockReturnValue(setupContext);
+			const releaseOlder = runtime.registerSetupChatTelemetryContext(olderReader);
+			const release = runtime.registerSetupChatTelemetryContext(reader);
+			mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+			releaseOlder();
+			await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+			expect(olderReader).not.toHaveBeenCalled();
+			expect(reader).toHaveBeenCalledOnce();
+			expect(mockTelemetryTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining(setupContext),
+			);
+
+			release();
+			await runtime.sendMessage('after closing setup', { authorship: USER_TYPED_MESSAGE });
+			expect(reader).toHaveBeenCalledOnce();
+			for (const property of Object.keys(setupContext))
+				expect(mockTelemetryTrack.mock.lastCall?.[1]).not.toHaveProperty(property);
+		});
+	});
+
 	test('sendMessage includes action_source from thread metadata', async () => {
 		const hooks = {
 			onTitleUpdated: vi.fn(),
@@ -1422,6 +1712,248 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 
 		await sendPromise;
+	});
+});
+
+describe('createThreadRuntime - response timing telemetry', () => {
+	let registry: RuntimeRegistry;
+	let visibilitySpy: ReturnType<typeof vi.spyOn>;
+
+	const responseMetricCalls = () =>
+		mockTelemetryTrack.mock.calls.filter(
+			([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+		);
+
+	function finishRun(runId: string, status: 'completed' | 'cancelled' | 'error' | 'interrupted') {
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-finish',
+				runId,
+				agentId: 'agent-root',
+				payload: { status },
+			}),
+		);
+	}
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		capturedOnMessage = null;
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-response-timing';
+		visibilitySpy = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+		activeRuntime(registry).connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+		mockTelemetryTrack.mockClear();
+	});
+
+	afterEach(() => {
+		activeRuntime(registry).closeSSE();
+		visibilitySpy.mockRestore();
+		vi.clearAllMocks();
+	});
+
+	test('tracks completed responses once and classifies first and subsequent messages', async () => {
+		mockPostMessage
+			.mockResolvedValueOnce({ runId: 'run-first' })
+			.mockResolvedValueOnce({ runId: 'run-subsequent' });
+
+		await activeRuntime(registry).sendMessage('first', { authorship: USER_TYPED_MESSAGE });
+		finishRun('run-first', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+
+		await activeRuntime(registry).sendMessage('second', { authorship: USER_TYPED_MESSAGE });
+		finishRun('run-subsequent', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(2));
+
+		expect(responseMetricCalls()).toEqual([
+			[
+				TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+				{
+					instance_id: 'instance-1',
+					thread_id: activeThreadId,
+					run_id: 'run-first',
+					latency_ms: expect.any(Number),
+					is_first_user_message: true,
+					response_kind: 'completed',
+					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+					tab_visible: false,
+				},
+			],
+			[
+				TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+				{
+					instance_id: 'instance-1',
+					thread_id: activeThreadId,
+					run_id: 'run-subsequent',
+					latency_ms: expect.any(Number),
+					is_first_user_message: false,
+					response_kind: 'completed',
+					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+					tab_visible: false,
+				},
+			],
+		]);
+	});
+
+	test('waits for the visible response render frame before tracking', async () => {
+		visibilitySpy.mockReturnValue('visible');
+		let renderFrame: FrameRequestCallback | undefined;
+		const requestAnimationFrameSpy = vi
+			.spyOn(globalThis, 'requestAnimationFrame')
+			.mockImplementation((callback) => {
+				renderFrame = callback;
+				return 1;
+			});
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-visible' });
+
+		await activeRuntime(registry).sendMessage('visible response', {
+			authorship: USER_TYPED_MESSAGE,
+		});
+		finishRun('run-visible', 'completed');
+		await nextTick();
+
+		expect(responseMetricCalls()).toHaveLength(0);
+		expect(renderFrame).toBeDefined();
+		renderFrame?.(performance.now());
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+		expect(responseMetricCalls()[0]?.[1]).toEqual(expect.objectContaining({ tab_visible: true }));
+
+		requestAnimationFrameSpy.mockRestore();
+	});
+
+	test('does not track when posting the message fails', async () => {
+		mockPostMessage.mockRejectedValueOnce(new Error('post failed'));
+
+		await activeRuntime(registry).sendMessage('failed request', { authorship: USER_TYPED_MESSAGE });
+		await nextTick();
+
+		expect(responseMetricCalls()).toHaveLength(0);
+	});
+
+	test.each(['cancelled', 'error', 'interrupted'] as const)(
+		'does not track a %s run',
+		async (status) => {
+			mockPostMessage.mockResolvedValueOnce({ runId: `run-${status}` });
+
+			await activeRuntime(registry).sendMessage('unsuccessful response', {
+				authorship: USER_TYPED_MESSAGE,
+			});
+			finishRun(`run-${status}`, status);
+			await nextTick();
+
+			expect(responseMetricCalls()).toHaveLength(0);
+		},
+	);
+
+	test('tracks a confirmation rendered for user input', async () => {
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-confirmation' });
+		await activeRuntime(registry).sendMessage('needs confirmation', {
+			authorship: USER_TYPED_MESSAGE,
+		});
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-call',
+				runId: 'run-confirmation',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-confirmation', toolName: 'workflows', args: { action: 'run' } },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'confirmation-request',
+				runId: 'run-confirmation',
+				agentId: 'agent-root',
+				payload: {
+					requestId: 'req-confirmation',
+					toolCallId: 'tc-confirmation',
+					toolName: 'workflows',
+					args: { action: 'run' },
+					severity: 'info',
+					message: 'Run this workflow?',
+				},
+			}),
+		);
+
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+		expect(responseMetricCalls()[0]?.[1]).toEqual(
+			expect.objectContaining({
+				run_id: 'run-confirmation',
+				response_kind: 'awaiting_input',
+			}),
+		);
+	});
+
+	test('waits for completion when a confirmation is auto-approved', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-auto-approved' });
+		mockPostConfirmation.mockResolvedValueOnce({ ok: true });
+		await runtime.sendMessage('auto-approved action', { authorship: USER_TYPED_MESSAGE });
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-call',
+				runId: 'run-auto-approved',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-auto', toolName: 'workflows', args: { action: 'run' } },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'confirmation-request',
+				runId: 'run-auto-approved',
+				agentId: 'agent-root',
+				payload: {
+					requestId: 'req-auto',
+					toolCallId: 'tc-auto',
+					toolName: 'workflows',
+					args: { action: 'run' },
+					severity: 'info',
+					message: 'Run this workflow?',
+				},
+			}),
+		);
+		await nextTick();
+		expect(responseMetricCalls()).toHaveLength(0);
+
+		finishRun('run-auto-approved', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+		expect(responseMetricCalls()[0]?.[1]).toEqual(
+			expect.objectContaining({ response_kind: 'completed' }),
+		);
+	});
+
+	test('does not emit another metric for an automated follow-up run', async () => {
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-initial' });
+		await activeRuntime(registry).sendMessage('start grouped response', {
+			authorship: USER_TYPED_MESSAGE,
+		});
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-start',
+				runId: 'run-initial',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'group-1' },
+			}),
+		);
+		finishRun('run-initial', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-start',
+				runId: 'run-follow-up',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'group-1' },
+			}),
+		);
+		finishRun('run-follow-up', 'completed');
+		await nextTick();
+
+		expect(responseMetricCalls()).toHaveLength(1);
 	});
 });
 

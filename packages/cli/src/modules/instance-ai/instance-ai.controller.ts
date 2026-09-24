@@ -5,6 +5,8 @@ import {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
+	InstanceAiPreferenceCardEditRequestDto,
+	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
@@ -26,7 +28,11 @@ import {
 	findSeedFolderIssues,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type { InstanceAiAdminSettingsResponse, InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiEvent,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -46,6 +52,7 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
+import { hasGlobalScope } from '@n8n/permissions';
 import {
 	buildAgentTreeFromEvents,
 	clearedAgentBuilderTargetMetadata,
@@ -72,6 +79,7 @@ import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
+import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -117,6 +125,7 @@ export class InstanceAiController {
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
+		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -137,7 +146,7 @@ export class InstanceAiController {
 	private async requireModelConfigured(): Promise<void> {
 		if (!(await this.settingsService.isModelConfigured())) {
 			throw new BadRequestError(
-				'The n8n Assistant has no model configured. An instance owner can add one in Settings > n8n Assistant.',
+				'The n8n Assistant has no model configured. An instance owner can add one in Settings > Assistant.',
 			);
 		}
 	}
@@ -220,6 +229,15 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
+		// The override is an eval knob. It changes how often the observer runs, so a
+		// plain chat caller must not be able to set it.
+		if (
+			payload.observerThresholdTokens !== undefined &&
+			!hasGlobalScope(req.user, 'instanceAi:eval')
+		) {
+			throw new ForbiddenError('observerThresholdTokens requires the instanceAi:eval scope');
+		}
+
 		const runId = this.instanceAiService.startRun(
 			req.user,
 			threadId,
@@ -232,6 +250,7 @@ export class InstanceAiController {
 			payload.promptVersion,
 			payload.computerUseChannels,
 			payload.threadArtifacts,
+			payload.observerThresholdTokens,
 		);
 		return { runId };
 	}
@@ -640,6 +659,44 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	// ── Preference card (the save_user_preference result in the chat) ────────
+	//
+	// The thread check is the ownership boundary. The row check is inside
+	// AiPreferenceService. The runId and the toolCallId are not verified against
+	// the log on purpose, and the check would cost a log read on every click.
+	// The fold ignores preference-card facts when it anchors a turn, so a wrong
+	// pair can only mis-render that one card's state in the caller's own thread.
+
+	@Post('/threads/:threadId/preferences/:preferenceId/undo')
+	@GlobalScope('instanceAi:message')
+	async undoPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: InstanceAiPreferenceCardUndoRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const event = await this.preferenceCardService.undo(req.user, threadId, preferenceId, payload);
+		// The card applies the fact at once; the stream delivers the same one later.
+		return { ok: true, event };
+	}
+
+	@Post('/threads/:threadId/preferences/:preferenceId/edit')
+	@GlobalScope('instanceAi:message')
+	async editPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: InstanceAiPreferenceCardEditRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.preferenceCardService.edit(req.user, threadId, preferenceId, payload);
+	}
+
 	// ── Credits ──────────────────────────────────────────────────────────────
 
 	@Get('/credits')
@@ -978,8 +1035,22 @@ export class InstanceAiController {
 		// already covered by these historical messages (prevents duplicates).
 		// Read from the log, so the cursor is valid across restarts and across
 		// mains sharing the database.
+		//
+		// The applied-preferences payload rides along because the messages
+		// endpoint is what opens a thread: without it a reopened thread could
+		// only claim "none applied" until its next turn.
+		//
+		// Cursor first, payload second, on purpose. A turn that commits its
+		// `preferences-applied` fact between the two reads then lands in the
+		// payload AND replays over SSE (a harmless repeat). The other order
+		// would move the cursor past a fact the payload never saw.
 		const nextEventId = await this.eventLog.getNextEventId(threadId);
-		return { ...result, nextEventId };
+		const appliedPreferences = await this.eventLog.getLastAppliedPreferences(threadId);
+		return {
+			...result,
+			nextEventId,
+			...(appliedPreferences ? { appliedPreferences } : {}),
+		};
 	}
 
 	@Get('/threads/:threadId/status')
@@ -1072,6 +1143,25 @@ export class InstanceAiController {
 			payload.bypassCredentialTest,
 		);
 		return { ok: true };
+	}
+
+	/**
+	 * Observational memory for a thread, for a context eval to assert on.
+	 *
+	 * Returns the observation text, an LLM-written summary of the user's conversation.
+	 * Gated like every other `/eval/` route: `instanceAi:eval` is owner/admin-only,
+	 * and `assertThreadAccess` keeps a caller to threads they can already read in full.
+	 */
+	@Get('/eval/threads/:threadId/memory')
+	@GlobalScope('instanceAi:eval')
+	async getEvalThreadMemory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.instanceAiService.getThreadMemory(req.user.id, threadId);
 	}
 
 	/**

@@ -31,6 +31,7 @@ import type {
 import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
+	IDisplayOptions,
 	INodeInputConfiguration,
 	INodeTypes,
 	ITaskData,
@@ -337,6 +338,7 @@ export interface CredentialSummary {
 	id: string;
 	name: string;
 	type: string;
+	description?: string | null;
 }
 
 export interface CredentialDetail extends CredentialSummary {
@@ -370,6 +372,7 @@ export interface NodeDescription extends NodeSummary {
 		description?: string;
 		default?: unknown;
 		options?: Array<{ name: string; value: string | number | boolean }>;
+		displayOptions?: IDisplayOptions;
 	}>;
 	credentials?: Array<{
 		name: string;
@@ -557,8 +560,8 @@ export interface InstanceAiWorkflowService {
 	): Promise<WorkflowVersionSummary[]>;
 	/** Get full details of a specific version (including nodes and connections). */
 	getVersion?(workflowId: string, versionId: string): Promise<WorkflowVersionDetail>;
-	/** Restore a workflow to a previous version by overwriting the current draft. */
-	restoreVersion?(workflowId: string, versionId: string): Promise<void>;
+	/** Restore the current draft and return its saved revision and publication state. */
+	restoreVersion?(workflowId: string, versionId: string): Promise<WorkflowDetail>;
 	/** Update name/description of a workflow version (licensed: namedVersions). */
 	updateVersion?(
 		workflowId: string,
@@ -676,6 +679,34 @@ export interface InstanceAiExecutionService {
 		nodeName: string,
 		options?: { itemIndex?: number; runIndex?: number },
 	): Promise<ResolvedNodeParametersResult>;
+}
+
+export type ExecuteNodeResult =
+	| {
+			status: 'success';
+			/** Serialized output items, wrapped in the untrusted-data boundary tag. */
+			output: string;
+			truncated?: { totalItems: number; shownItems: number; message: string };
+			outputSuppressed?: string;
+	  }
+	| { status: 'error'; error: { message: string; description?: string; nodeErrorType?: string } };
+
+/** Executes a single node standalone through the regular execution engine.
+ *  The request mirrors a workflow-sdk node (`{ type, version, config }`). */
+export interface InstanceAiExecuteNodeService {
+	execute(request: {
+		type: string;
+		version: number;
+		config: {
+			parameters: Record<string, unknown>;
+			credentials?: Record<
+				string,
+				{ id: string | null; name: string; __aiGatewayManaged?: boolean }
+			>;
+		};
+		input?: Array<{ json: Record<string, unknown> }>;
+		timeoutMs?: number;
+	}): Promise<ExecuteNodeResult>;
 }
 
 export interface CredentialTypeSearchResult {
@@ -1005,6 +1036,30 @@ export interface DataTableIdOptions {
 }
 
 export type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
+export type InstanceAiPreferenceWriteRejection =
+	| 'too_long'
+	| 'scope_full'
+	| 'duplicate'
+	| 'not_permitted'
+	| 'blocked_by_admin'
+	| 'failed';
+
+export interface InstanceAiSavedPreference {
+	id: string;
+	content: string;
+	scope: 'user';
+}
+
+export type InstanceAiPreferenceWriteResult =
+	| { ok: true; preference: InstanceAiSavedPreference }
+	| { ok: false; reason: InstanceAiPreferenceWriteRejection; message: string };
+
+export interface InstanceAiPreferenceService {
+	create(input: { content: string; scope: 'user' }): Promise<InstanceAiPreferenceWriteResult>;
+	/** Record a rejection the tool decided before calling `create` (blocked, too long, blank). */
+	recordRejection(reason: InstanceAiPreferenceWriteRejection, textLength: number): void;
+}
 
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
@@ -1439,6 +1494,8 @@ export interface InstanceAiConversationHistoryReader {
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
+	/** Instance-wide gate for credential description output and guidance. */
+	credentialDescriptionsEnabled?: boolean;
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration
@@ -1472,11 +1529,16 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
+	/** Optional — presence gates the `execute` action on the `nodes` tool. */
+	executeNodeService?: InstanceAiExecuteNodeService;
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
 	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
 	activityService?: InstanceAiActivityService;
+	/** Present only when saved preferences are enabled for this user; its
+	 *  absence hides the `save_user_preference` tool. */
+	aiPreferenceService?: InstanceAiPreferenceService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

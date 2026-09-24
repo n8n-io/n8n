@@ -22,7 +22,11 @@ import {
 	watch,
 } from 'vue';
 import { useRouter } from 'vue-router';
-import type { InstanceAiHandoffContext, InstanceAiThreadSummary } from '@n8n/api-types';
+import type {
+	InstanceAiHandoffContext,
+	InstanceAiPrefillPayload,
+	InstanceAiThreadSummary,
+} from '@n8n/api-types';
 import { N8nHeading, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -41,6 +45,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from '../components/InstanceAiConversation.vue';
+import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
 import { threadTargetsSubject, type InstanceAiEmbedSubject } from './instanceAiEmbed.types';
 
@@ -58,6 +63,11 @@ const emit = defineEmits<{
 	'update:threadId': [threadId: string];
 	'update:building': [building: boolean];
 	close: [];
+}>();
+
+const slots = defineSlots<{
+	/** A host's welcome state, rendered by the conversation until the thread has its first message. */
+	empty?: () => unknown;
 }>();
 
 const i18n = useI18n();
@@ -156,7 +166,30 @@ function handoff(context: InstanceAiHandoffContext, initialDraft?: PendingCompos
 	return true;
 }
 
-defineExpose({ handoff });
+/**
+ * Puts n8n-authored text into the mounted conversation's composer without
+ * sending it. The host (e.g. the agent builder) owns the wording and the
+ * pre-fill tag. A no-op while no thread is mounted yet.
+ */
+function setPrefill(prefill: InstanceAiPrefillPayload) {
+	conversationRef.value?.setPrefill(prefill);
+}
+
+/**
+ * Sends a prompt to the assistant right away, without staging it in the
+ * composer first. The host (e.g. the agent builder) owns the wording and the
+ * pre-fill tag. A no-op while no thread is mounted yet.
+ */
+function submitSuggestion(payload: SuggestionSelectionPayload) {
+	conversationRef.value?.submitSuggestion(payload);
+}
+
+defineExpose({
+	handoff,
+	/** Forwards to the mounted conversation's composer; a no-op while no thread is mounted. */
+	setPrefill,
+	submitSuggestion,
+});
 
 /** The assistant is actively mutating the subject — the thread list stops
  * accepting select/new while that's true, so a click can't race it. */
@@ -380,14 +413,21 @@ const ThreadScope = defineComponent({
 			{ immediate: true },
 		);
 		return () =>
-			h(InstanceAiConversation, {
-				// Closes over the outer scope's ref directly — `ThreadScope` is
-				// defined inside the panel's own `<script setup>`, and this is the
-				// only place that can reach the mounted conversation for `handoff()`.
-				ref: conversationRef,
-				beforeSend: props.beforeSend,
-				onThreadMissing: () => scopeEmit('thread-missing'),
-			});
+			h(
+				InstanceAiConversation,
+				{
+					// Closes over the outer scope's ref directly — `ThreadScope` is
+					// defined inside the panel's own `<script setup>`, and this is the
+					// only place that can reach the mounted conversation for `handoff()`.
+					ref: conversationRef,
+					// Forward the live subject so the chat-input context chip follows a
+					// host rename instead of the snapshot stashed at thread mint.
+					subject: props.subject,
+					beforeSend: props.beforeSend,
+					onThreadMissing: () => scopeEmit('thread-missing'),
+				},
+				slots.empty ? { empty: slots.empty } : undefined,
+			);
 	},
 });
 </script>
@@ -412,7 +452,7 @@ const ThreadScope = defineComponent({
 					:show-after="TOOLTIP_DELAY_MS"
 				>
 					<N8nIconButton
-						icon="plus"
+						icon="message-circle-plus"
 						variant="ghost"
 						size="small"
 						icon-size="large"

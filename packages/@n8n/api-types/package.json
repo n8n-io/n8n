@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.40.0",
+  "version": "1.41.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -25,6 +25,7 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/validator": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "typescript": "catalog:typescript",
     "vite": "catalog:",
@@ -36,6 +37,7 @@
     "@asteasolutions/zod-to-openapi": "catalog:",
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "n8n-workflow": "workspace:*",
+    "validator": "catalog:",
     "xss": "catalog:",
     "@n8n/permissions": "workspace:*"
   },

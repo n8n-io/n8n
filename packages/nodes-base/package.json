@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.40.0",
+  "version": "2.41.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
@@ -926,6 +926,9 @@
     "@types/ssh2-sftp-client": "^9.0.5",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
+    "@unicode/unicode-18.0.0": "2.0.7",
+    "confusables": "1.1.1",
+    "fast-check": "catalog:",
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
     "nock": "catalog:",

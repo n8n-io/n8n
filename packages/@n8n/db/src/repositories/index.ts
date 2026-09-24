@@ -20,7 +20,11 @@ export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
-export { CredentialsRepository, type CredentialSharingRelation } from './credentials.repository';
+export {
+	CredentialsRepository,
+	CredentialIdConflictError,
+	type CredentialSharingRelation,
+} from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
 	DeploymentKeyRepository,
@@ -51,7 +55,11 @@ export { InstanceCredentialAssignmentRepository } from './instance-credential-as
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectPoolSettingsRepository } from './project-pool-settings.repository.ee';
 export { ProjectRelationRepository } from './project-relation.repository';
-export { ProjectRepository, type ProjectListOptions } from './project.repository';
+export {
+	ProjectRepository,
+	ProjectIdConflictError,
+	type ProjectListOptions,
+} from './project.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
 export { ScheduledJobRepository } from './scheduled-job.repository';
@@ -87,6 +95,7 @@ export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository, agentToolReferenceWhere } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
+export { WorkflowPublicationRetryStateRepository } from './workflow-publication-retry-state.repository';
 export {
 	WorkflowPublicationTriggerStatusRepository,
 	type TriggerStatusRow,

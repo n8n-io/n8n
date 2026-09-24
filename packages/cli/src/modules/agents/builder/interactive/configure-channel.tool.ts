@@ -11,7 +11,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import type { BuilderTrackFn } from '../builder-config-telemetry';
+import type { ChannelSetupDeps } from './setup-tool.types';
 
 const configureChannelInputSchema = z.object({
 	integrationType: z.string().describe('Chat platform type from list_integration_types'),
@@ -19,15 +19,7 @@ const configureChannelInputSchema = z.object({
 
 type ConfigureChannelInput = z.infer<typeof configureChannelInputSchema>;
 
-export interface ConfigureChannelToolDeps {
-	agentId: string;
-	projectId: string;
-	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
-	listChatIntegrationTypes: () => string[];
-	track: BuilderTrackFn;
-}
-
-export function buildConfigureChannelTool(deps: ConfigureChannelToolDeps): BuiltTool {
+export function buildConfigureChannelTool(deps: ChannelSetupDeps): BuiltTool {
 	return new Tool(CONFIGURE_CHANNEL_TOOL_NAME)
 		.description(
 			'Configure one available chat channel for the target agent. First call ' +

@@ -5,9 +5,10 @@ import type { ListModelsFn } from '../types';
  * Keep only chat-capable Gemini models. A chat model reports `generateContent`
  * in `supportedGenerationMethods`; embedding (`embedContent`), Veo
  * (`predictLongRunning`), Imagen (`predict`) and AQA (`generateAnswer`) models
- * do not, so require that method. Image and TTS models report
- * `generateContent` but return non-text output a chat chain cannot use, so drop
- * them by name too.
+ * do not, so require that method. Image, TTS and embedding models are dropped
+ * by name as well: they return output a chat chain cannot use, and the method
+ * check alone does not hold for a proxied list — Gateway credits report
+ * `generateContent` for every model they serve, embeddings included.
  */
 export function shouldIncludeGoogleModel(model: {
 	name: string;
@@ -15,7 +16,12 @@ export function shouldIncludeGoogleModel(model: {
 }): boolean {
 	const methods = model.supportedGenerationMethods;
 	const supportsChat = Array.isArray(methods) && methods.includes('generateContent');
-	return supportsChat && !model.name.includes('image') && !model.name.includes('tts');
+	return (
+		supportsChat &&
+		!model.name.includes('image') &&
+		!model.name.includes('tts') &&
+		!model.name.includes('embedding')
+	);
 }
 
 /**

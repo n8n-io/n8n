@@ -33,6 +33,7 @@ type Props = {
 	documentationUrl?: string;
 	eventSource?: string;
 	label?: IParameterLabel;
+	hideRequiredIndicator?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -175,7 +176,7 @@ defineExpose({
 		<N8nInputLabel
 			:label="i18n.credText(activeCredentialType).inputLabelDisplayName(parameter)"
 			:tooltip-text="i18n.credText(activeCredentialType).inputLabelDescription(parameter)"
-			:required="parameter.required"
+			:required="parameter.required && !hideRequiredIndicator"
 			:show-tooltip="focused"
 			:show-options="menuExpanded"
 			:data-test-id="parameter.name"

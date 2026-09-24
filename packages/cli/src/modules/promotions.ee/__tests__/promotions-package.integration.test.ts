@@ -6,7 +6,6 @@ import {
 	mockInstance,
 	mockLogger,
 	testDb,
-	testModules,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import {
@@ -46,10 +45,9 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
-	workflowMetadataFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
-import { createCredentials, saveCredential } from '@test-integration/db/credentials';
+import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { buildWorkflowReferencingVariables } from '@/modules/n8n-packages/__tests__/utils/test-builders';
@@ -61,10 +59,9 @@ import {
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import { ProjectService } from '@/services/project.service.ee';
 import { createFolder } from '@test-integration/db/folders';
-import { createOwner } from '@test-integration/db/users';
+import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
-import { initNodeTypes } from '@test-integration/utils';
-import { LicenseMocker } from '@test-integration/license';
+import { initNodeTypes, initCredentialsTypes, setupTestServer } from '@test-integration/utils';
 
 import { PromotionConfigRepository } from '../database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from '../database/repositories/promotion-connection-project.repository';
@@ -84,7 +81,12 @@ type TestRemote = {
 	git: SimpleGit;
 };
 
-const licenseMocker = new LicenseMocker();
+const testServer = setupTestServer({
+	endpointGroups: ['publicApi'],
+	modules: ['n8n-packages', 'promotions', 'data-table'],
+	enabledFeatures: ['feat:gitConnections'],
+});
+const licenseMocker = testServer.license;
 
 mockInstance(ActiveWorkflowManager);
 
@@ -101,9 +103,8 @@ let service: PromotionsService;
 let workingDirectory: PromotionWorkingDirectoryService;
 
 beforeAll(async () => {
-	await testModules.loadModules(['n8n-packages', 'promotions', 'data-table']);
-	await testDb.init();
 	await initNodeTypes();
+	await initCredentialsTypes();
 	mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
 
 	providerRepository = Container.get(PromotionProviderRepository);
@@ -116,13 +117,9 @@ beforeAll(async () => {
 
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 	licenseMocker.setDefaults({
-		features: ['feat:projectRole:admin', 'feat:folders'],
+		features: ['feat:projectRole:admin', 'feat:folders', 'feat:gitConnections'],
 		quotas: { 'quota:maxTeamProjects': 100 },
 	});
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 beforeEach(async () => {
@@ -148,7 +145,7 @@ beforeEach(async () => {
 	await Container.get(VariablesService).updateCache();
 	mockDataTableSizeValidator();
 	licenseMocker.reset();
-	owner = await createOwner();
+	owner = await createOwnerWithApiKey();
 	testRoot = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-roundtrip-'));
 
 	// The stored payload is written in plaintext, so the identity cipher can read it back.
@@ -179,6 +176,7 @@ beforeEach(async () => {
 		Container.get(PromotionBindingPreflightService),
 		logger,
 	);
+	Container.set(PromotionsService, service);
 });
 
 afterEach(async () => {
@@ -295,7 +293,14 @@ async function prepareBindingApply() {
 	const connection = await createInstanceConnection(remote.bareDir);
 	await service.clone(connection.id, 'promote');
 	await service.clone(connection.id, 'apply');
-	const project = await createTeamProject('Orders', owner);
+	const project = await projectService.createTeamProject(
+		owner,
+		{
+			name: 'Orders',
+			icon: { type: 'icon', value: 'briefcase' },
+		},
+		{ description: 'Order workflows', customTelemetryTags: [{ key: ' team ', value: 'Sales' }] },
+	);
 	const credential = await saveCredential(
 		{ name: 'Header credential', type: 'httpHeaderAuth', data: {} },
 		{ project, role: 'credential:owner' },
@@ -687,15 +692,21 @@ describe('Promote and Apply', () => {
 	});
 
 	it.each([
-		{ targetValue: '', shadow: false },
-		{ targetValue: 'configured target value', shadow: true },
+		{ targetValue: '', shadow: false, missingProject: true },
+		{ targetValue: 'configured target value', shadow: true, missingProject: false },
 	])(
-		'blocks without writes and continues with target value %j',
-		async ({ targetValue, shadow }) => {
+		'continues after binding setup with missing project: $missingProject',
+		async ({ targetValue, shadow, missingProject }) => {
 			const { connection, credential, variable, project, workflow, removedProject } =
 				await prepareBindingApply();
+			if (missingProject) await projectService.deleteProject(owner, project.id);
 			const before = await snapshotApplyState();
-			const blocked = await service.apply(connection.id, owner);
+			const agent = testServer.publicApiAgentFor(owner);
+			const applyResponse = await agent
+				.post(`/promotions/connections/${connection.id}/apply`)
+				.send({})
+				.expect(200);
+			const blocked = applyResponse.body;
 			assert(blocked.status === 'blocked');
 			expect(blocked.preflight.missingBindings).toEqual(
 				expect.arrayContaining([
@@ -711,23 +722,91 @@ describe('Promote and Apply', () => {
 			expect(blocked).not.toHaveProperty('counts');
 			const request = { expectedSource: { configId: blocked.configId, ...blocked.git } };
 
-			const stillBlocked = await service.continueApply(connection.id, owner, request);
+			const stillBlocked = (
+				await agent
+					.post(`/promotions/connections/${connection.id}/apply/continue`)
+					.send(request)
+					.expect(200)
+			).body;
 			expect(stillBlocked).toEqual(blocked);
 			expect(await snapshotApplyState()).toEqual(before);
 
-			await createCredentials(
-				{ id: credential.id, name: credential.name, type: credential.type, data: credential.data },
-				project,
+			if (missingProject) {
+				expect(blocked.preflight.missingProjects).toEqual([
+					{
+						id: project.id,
+						name: project.name,
+						icon: project.icon,
+						description: project.description,
+						customTelemetryTags: project.customTelemetryTags,
+					},
+				]);
+				await agent.post('/projects').send(blocked.preflight.missingProjects[0]).expect(201);
+				// A failed binding request must leave the created project in place.
+				await agent.post('/credentials').send({ projectId: project.id }).expect(400);
+				expect(await projectRepository.findOneBy({ id: project.id })).toMatchObject(
+					blocked.preflight.missingProjects[0],
+				);
+			} else {
+				await projectRepository.update(project.id, {
+					name: 'Outdated',
+					description: 'Outdated',
+					icon: null,
+					customTelemetryTags: [],
+				});
+			}
+
+			const targetData = { name: 'Authorization', value: 'target-secret' };
+			const createBody = {
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				projectId: project.id,
+				data: targetData,
+			};
+			await agent
+				.post('/credentials')
+				.send({ ...createBody, id: 'different-id' })
+				.expect(200);
+			const wrongId = (
+				await agent
+					.post(`/promotions/connections/${connection.id}/apply/continue`)
+					.send(request)
+					.expect(200)
+			).body;
+			expect(wrongId.status).toBe('blocked');
+			expect(wrongId.preflight.missingBindings).toContainEqual(
+				expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
 			);
+			const created = await agent.post('/credentials').send(createBody).expect(200);
+			expect(created.body.id).toBe(credential.id);
+			expect(created.body).not.toHaveProperty('data');
+			const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+				id: credential.id,
+			});
 			const targetVariable = await createVariable(variable.key, targetValue);
 			const override = shadow
 				? await createProjectVariable(variable.key, 'project override', project)
 				: undefined;
-			const result = await service.continueApply(connection.id, owner, request);
+			const result = (
+				await agent
+					.post(`/promotions/connections/${connection.id}/apply/continue`)
+					.send(request)
+					.expect(200)
+			).body;
 			assert(result.status === 'applied', JSON.stringify(result));
 			expect(result.warnings).toEqual(
 				shadow ? [expect.objectContaining({ code: 'variable-shadowed', name: variable.key })] : [],
 			);
+			expect(await projectRepository.findOneBy({ id: project.id })).toMatchObject({
+				id: project.id,
+				name: project.name,
+				icon: project.icon,
+				description: project.description,
+				customTelemetryTags: project.customTelemetryTags,
+			});
+			expect(result.counts.projects.created).toBe(0);
+
 			expect(result.counts.credentials).toEqual({ matched: 1, stubbed: 0 });
 			expect(result.counts.variables).toMatchObject({ created: 0, updated: 0, stubbed: 0 });
 			expect(
@@ -739,15 +818,31 @@ describe('Promote and Apply', () => {
 				).toMatchObject({ value: 'project override' });
 			expect(
 				await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id }),
-			).toMatchObject({ name: workflow.name });
+			).toMatchObject({
+				name: workflow.name,
+				nodes: [
+					expect.objectContaining({
+						credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
+					}),
+				],
+			});
+			expect(
+				await Container.get(CredentialsRepository).findOneByOrFail({ id: credential.id }),
+			).toEqual(stored);
 			expect(await projectRepository.findOneBy({ id: removedProject.id })).toBeNull();
 		},
 	);
 
 	it('stops Continue when the remote commit changes and permits a new review', async () => {
-		const { connection, remote } = await prepareBindingApply();
+		const { connection, remote, project } = await prepareBindingApply();
+		await projectService.deleteProject(owner, project.id);
 		const blocked = await service.apply(connection.id, owner);
 		assert(blocked.status === 'blocked');
+		await testServer
+			.publicApiAgentFor(owner)
+			.post('/projects')
+			.send(blocked.preflight.missingProjects[0])
+			.expect(201);
 		const before = await snapshotApplyState();
 		await remote.git.pull('origin', 'main');
 		await writeRemoteFile(remote, 'README.md', 'Updated description');
@@ -765,6 +860,30 @@ describe('Promote and Apply', () => {
 		const reviewed = await service.apply(connection.id, owner);
 		expect(reviewed.status).toBe('blocked');
 		expect(reviewed.git).toEqual(result.git);
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('stops the first Apply when the reviewed commit moved and accepts the current one', async () => {
+		const { connection, remote } = await prepareBindingApply();
+		const reviewed = await service.apply(connection.id, owner);
+		assert(reviewed.status === 'blocked');
+		const before = await snapshotApplyState();
+		await remote.git.pull('origin', 'main');
+		await writeRemoteFile(remote, 'README.md', 'Updated description');
+		await commitAndPushRemote(remote, 'Update description');
+		const source = { configId: reviewed.configId, ...reviewed.git };
+
+		const moved = await service.apply(connection.id, owner, source);
+		expect(moved).toEqual({
+			status: 'source-changed',
+			connectionId: connection.id,
+			configId: reviewed.configId,
+			git: { branchName: 'main', commitSha: (await remote.git.revparse(['HEAD'])).trim() },
+		});
+		expect(await snapshotApplyState()).toEqual(before);
+
+		const current = await service.apply(connection.id, owner, { ...source, ...moved.git });
+		expect(current.status).toBe('blocked');
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 
@@ -1254,10 +1373,7 @@ describe('Promotion base branch listing', () => {
 						target === projectEntry.target ||
 						target.startsWith(`${projectEntry.target}/`),
 				)
-				.flatMap(({ target }) => [
-					`n8n-export/${entityFilePath(collection, target)}`,
-					...(collection === 'workflows' ? [`n8n-export/${workflowMetadataFilePath(target)}`] : []),
-				]),
+				.map(({ target }) => `n8n-export/${entityFilePath(collection, target)}`),
 		);
 
 		const files = await listBaseBranchFiles(project.id);

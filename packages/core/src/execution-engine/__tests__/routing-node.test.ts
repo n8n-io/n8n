@@ -2846,6 +2846,21 @@ describe('RoutingNode', () => {
 			expect(requestOptions.allowedDomains).toBeUndefined();
 		});
 
+		test('prepares a dynamic path segment when the base URL is static', async () => {
+			// Regression test for NODE-6014.
+			const result = await runWithCredential(
+				{ apiKey: 'testApiKey' },
+				{
+					routedUrl: '=/tests/{{toPathSegment($parameter["endpoint"])}}',
+					nodeParameters: { endpoint: 'project-123' },
+				},
+			);
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.url).toBe('/tests/project-123');
+		});
+
 		describe('when requestDefaults.baseURL reads an optional override parameter', () => {
 			// Mirrors LmChatOpenAi/LmOpenAi/OpenAiAssistant/EmbeddingsOpenAi's
 			// `$parameter.options?.baseURL || <credential-owned default>` pattern.

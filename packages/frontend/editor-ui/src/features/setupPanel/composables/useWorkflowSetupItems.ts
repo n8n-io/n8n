@@ -1,4 +1,12 @@
-import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import {
+	computed,
+	onScopeDispose,
+	ref,
+	shallowReactive,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+} from 'vue';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
@@ -6,10 +14,13 @@ import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	listenForCredentialChanges,
 	useCredentialsStore,
 } from '@/features/credentials/credentials.store';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import { hasOAuthTokenData } from '@/features/credentials/composables/oauthCallback';
 import {
 	createWorkflowDocumentId,
 	deriveHomeProject,
@@ -20,13 +31,15 @@ import {
 	getNodeParametersIssues,
 } from '@/features/setupPanel/setupPanel.utils';
 
+type OAuthConnectionStatus = 'loading' | 'connected' | 'disconnected' | 'unknown' | 'error';
+
 /**
- * Whether a node's credential slot holds a binding. Legacy workflow JSON may
- * still carry a plain credential name, which `INodeCredentials`' value type
- * doesn't admit (`useNodeHelpers` hedges against the same case).
+ * A legacy credential name must be replaced with a stored credential reference.
  */
 function isBoundCredential(assigned: INodeCredentialsDetails | string | undefined): boolean {
-	return typeof assigned === 'string' ? assigned.length > 0 : Boolean(assigned?.id);
+	return (
+		typeof assigned !== 'string' && (Boolean(assigned?.id) || assigned?.__aiGatewayManaged === true)
+	);
 }
 
 /**
@@ -39,9 +52,8 @@ function isBoundCredential(assigned: INodeCredentialsDetails | string | undefine
  * Node state comes from the live document store while a canvas host has one
  * hydrated, and from the saved workflow (fetched here) otherwise, so the
  * derivation also works on a refreshed thread with no canvas mounted. Pass
- * `paused` while the agent is editing the workflow: fetching waits until the
- * edit settles, then refreshes both the workflow and the usable-credentials
- * slice.
+ * `paused` while the agent is editing to defer workflow reads. Credential
+ * reads continue so connections can start during the build.
  */
 export function useWorkflowSetupItems(
 	workflowId: MaybeRefOrGetter<string | undefined>,
@@ -49,7 +61,21 @@ export function useWorkflowSetupItems(
 ) {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
+	const oauth = useCredentialOAuth();
+	const oauthConnections = shallowReactive(
+		new Map<string, { key: string; status: OAuthConnectionStatus }>(),
+	);
 	const workflowsListStore = useWorkflowsListStore();
+	const workflowsStore = useWorkflowsStore();
+	const credentialsLoadedForWorkflow = ref<string>();
+	const credentialsAvailable = computed(() => {
+		const id = toValue(workflowId);
+		return (
+			id !== undefined &&
+			credentialsLoadedForWorkflow.value === id &&
+			credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
+		);
+	});
 
 	/**
 	 * The canvas host's live document store, if any. Resolved fresh so a host
@@ -67,27 +93,36 @@ export function useWorkflowSetupItems(
 	 * placeholders, which would read as an empty (but "available") workflow.
 	 */
 	const fetchedWorkflow = ref<IWorkflowDb>();
+	const isRefreshingWorkflow = ref(false);
 	let workflowFetchVersion = 0;
-	onScopeDispose(() => workflowFetchVersion++);
+	onScopeDispose(() => {
+		workflowFetchVersion++;
+		oauthConnections.clear();
+	});
 
-	async function refreshWorkflow() {
-		const requestVersion = ++workflowFetchVersion;
+	async function refreshWorkflow({ force = false } = {}) {
 		const id = toValue(workflowId);
-		if (!id) return;
+		if (!id || (!force && (toValue(options.paused) || documentStore.value?.hydrated))) return;
+		const requestVersion = ++workflowFetchVersion;
 		const isCurrentRequest = () =>
 			requestVersion === workflowFetchVersion &&
 			toValue(workflowId) === id &&
-			!toValue(options.paused) &&
-			!documentStore.value?.hydrated;
+			(force || (!toValue(options.paused) && !documentStore.value?.hydrated));
+		if (!isCurrentRequest()) return;
+		isRefreshingWorkflow.value = true;
 		// Retry the current read once. An older response can contain pre-build values.
-		for (let attempt = 0; attempt < 2 && isCurrentRequest(); attempt++) {
-			try {
-				const workflow = await workflowsListStore.fetchWorkflow(id);
-				if (isCurrentRequest()) fetchedWorkflow.value = workflow;
-				return;
-			} catch {
-				// Keep the current rows if both attempts fail.
+		try {
+			for (let attempt = 0; attempt < 2 && isCurrentRequest(); attempt++) {
+				try {
+					const workflow = await workflowsListStore.fetchWorkflow(id);
+					if (isCurrentRequest()) fetchedWorkflow.value = workflow;
+					return;
+				} catch {
+					// Keep the current rows if both attempts fail.
+				}
 			}
+		} finally {
+			if (requestVersion === workflowFetchVersion) isRefreshingWorkflow.value = false;
 		}
 	}
 
@@ -99,8 +134,8 @@ export function useWorkflowSetupItems(
 			: undefined;
 	});
 
-	// (Re)load the derivation's inputs while not paused, and again when an
-	// agent edit settles or a canvas host's document store goes away. Failures
+	// Reload inputs when an edit settles or a canvas document goes away.
+	// Credential and node-type reads also run during builds. Failures
 	// stay silent by design — rows fall back to the thread's event feed until
 	// a later pass succeeds.
 	watch(
@@ -111,10 +146,10 @@ export function useWorkflowSetupItems(
 				documentStore.value?.hydrated === true,
 			] as const,
 		([id, paused, hydrated]) => {
-			if (!id || paused) return;
+			if (!id) return;
 			void nodeTypesStore.loadNodeTypesIfNotLoaded().catch(() => {});
-			void credentialsStore.fetchUsableCredentials({ workflowId: id }).catch(() => {});
-			if (!hydrated) void refreshWorkflow();
+			refreshUsableSlice();
+			if (!paused && !hydrated) void refreshWorkflow();
 		},
 		{ immediate: true },
 	);
@@ -124,24 +159,108 @@ export function useWorkflowSetupItems(
 	// page) would otherwise leave done-ness stale while this stays mounted.
 	// Refetch this workflow's scope, not the store's last one: the slice is
 	// last-writer-wins and another view may have re-anchored it elsewhere.
-	const refreshUsableSlice = () => {
+	function refreshUsableSlice() {
 		const id = toValue(workflowId);
-		if (id) void credentialsStore.fetchUsableCredentials({ workflowId: id }).catch(() => {});
-	};
+		if (id)
+			void credentialsStore
+				.fetchUsableCredentials({ workflowId: id })
+				.then(() => {
+					if (toValue(workflowId) === id) credentialsLoadedForWorkflow.value = id;
+				})
+				.catch(() => {});
+	}
 	listenForCredentialChanges({
 		store: credentialsStore,
 		onCredentialCreated: refreshUsableSlice,
 		onCredentialUpdated: refreshUsableSlice,
 		onCredentialDeleted: refreshUsableSlice,
 	});
+	workflowsStore.$onAction(({ name, args, after }) => {
+		if (name !== 'updateWorkflow' || args[0] !== toValue(workflowId)) return;
+		after((saved) => {
+			if (saved.id !== toValue(workflowId)) return;
+			// Keep the saved values visible when the write queue clears.
+			workflowFetchVersion++;
+			fetchedWorkflow.value = saved;
+			isRefreshingWorkflow.value = false;
+		});
+	});
 
 	/** Live canvas nodes when a host hydrated a document store, else the fetched save's. */
 	const workflowNodes = computed<INodeUi[] | undefined>(() => {
 		const docStore = documentStore.value;
-		if (docStore?.hydrated) return docStore.allNodes;
 		const id = toValue(workflowId);
+		// Setup announcements follow a save, before the canvas receives the build result.
+		if (toValue(options.paused) && fetchedWorkflow.value?.id === id)
+			return fetchedWorkflow.value?.nodes;
+		if (docStore?.hydrated) return docStore.allNodes;
 		return id && fetchedWorkflow.value?.id === id ? fetchedWorkflow.value.nodes : undefined;
 	});
+
+	const boundOAuthCredentials = computed(() => {
+		const ids = new Set(
+			(workflowNodes.value ?? []).flatMap((node) =>
+				Object.values(node.credentials ?? {}).map((credential) => credential.id),
+			),
+		);
+		return [...ids].flatMap((id) => {
+			const credential = getBoundCredential(id);
+			return credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)
+				? [
+						{
+							id: credential.id,
+							key: JSON.stringify([
+								toValue(workflowId),
+								credential.type,
+								credential.updatedAt,
+								[...(credential.scopes ?? [])].sort(),
+							]),
+						},
+					]
+				: [];
+		});
+	});
+	watch(
+		boundOAuthCredentials,
+		async (credentials) => {
+			const ids = new Set(credentials.map(({ id }) => id));
+			for (const id of oauthConnections.keys()) {
+				if (!ids.has(id)) oauthConnections.delete(id);
+			}
+			await Promise.all(
+				credentials.map(async ({ id, key }) => {
+					const cached = oauthConnections.get(id);
+					// Equivalent workflow/store updates must preserve results and in-flight reads.
+					if (cached?.key === key && cached.status !== 'error') return;
+					const connection = { key, status: 'loading' as const };
+					oauthConnections.set(id, connection);
+					let status: OAuthConnectionStatus = 'error';
+					try {
+						const loaded = await credentialsStore.getCredentialData({ id });
+						const data = loaded?.data;
+						if (data && typeof data === 'object') {
+							// Other grants obtain tokens without a user sign-in.
+							status =
+								Boolean(
+									data.grantType && !['authorizationCode', 'pkce'].includes(String(data.grantType)),
+								) || hasOAuthTokenData(loaded)
+									? 'connected'
+									: 'disconnected';
+						} else {
+							// Shared credentials without data keep the existing completion behavior.
+							// Add a scoped status API if setup must verify their authorization.
+							status = 'unknown';
+						}
+					} catch {
+						// A failed read cannot confirm completion. Retry on the next credential refresh.
+					}
+					// A removed or changed credential must not accept an older response.
+					if (oauthConnections.get(id) === connection) oauthConnections.set(id, { key, status });
+				}),
+			);
+		},
+		{ immediate: true },
+	);
 
 	/**
 	 * Node state is available from a hydrated canvas store or the fetched
@@ -278,40 +397,42 @@ export function useWorkflowSetupItems(
 		return items;
 	});
 
-	/**
-	 * Done-ness is always derived, never stored (see `setupItemSchema`): a
-	 * credential item is done once a usable credential of its type exists —
-	 * binding it to the node is the apply path's job — or when every bound
-	 * node already carries one (covers credentials shared with the workflow
-	 * but not usable by the current user). The type-level shortcut only counts
-	 * when the usable slice was fetched for this workflow (it is a single,
-	 * last-writer-wins scope slice) and never for generic auth types, where a
-	 * credential of the type says nothing about this service
-	 * (`shouldAutoResolveCredential` draws the same line). A parameters item
-	 * is done once none of its parameters raise issues on the current
-	 * workflow.
-	 */
-	function isItemDone(item: InstanceAiSetupItem): boolean {
+	function getBoundCredential(credentialId: string | null | undefined) {
+		const id = toValue(workflowId);
+		return credentialId
+			? ((id && credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
+					? credentialsStore.getUsableCredentialById(credentialId)
+					: undefined) ?? credentialsStore.getCredentialById(credentialId))
+			: undefined;
+	}
+
+	function isCredentialConfigured(assigned: INodeCredentialsDetails | string | undefined): boolean {
+		if (!isBoundCredential(assigned)) return false;
+		const credential = getBoundCredential(typeof assigned !== 'string' ? assigned?.id : undefined);
+		if (credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)) {
+			// Wait for the redacted token flag. Missing data remains unknown for shared credentials.
+			const status = oauthConnections.get(credential.id)?.status;
+			return status === 'connected' || status === 'unknown';
+		}
+		return !credential?.isResolvable || credential.connectedByMe !== false;
+	}
+
+	/** Completion requires a binding on every node, not merely an available account. */
+	function isItemDone(
+		item: InstanceAiSetupItem,
+		readNode: (name: string) => INodeUi | undefined = getNodeByName,
+	): boolean {
 		if (item.kind === 'credential') {
-			const id = toValue(workflowId);
-			if (
-				!GENERIC_AUTH_CREDENTIAL_TYPES.has(item.credentialType) &&
-				id !== undefined &&
-				credentialsStore.hasUsableCredentialsForScope({ workflowId: id }) &&
-				credentialsStore.getUsableCredentialByType(item.credentialType).length > 0
-			) {
-				return true;
-			}
 			const nodeNames = (item.nodeBindings ?? []).map((binding) => binding.nodeName);
 			return (
 				nodeNames.length > 0 &&
 				nodeNames.every((nodeName) =>
-					isBoundCredential(nodesByName.value.get(nodeName)?.credentials?.[item.credentialType]),
+					isCredentialConfigured(readNode(nodeName)?.credentials?.[item.credentialType]),
 				)
 			);
 		}
 
-		const node = nodesByName.value.get(item.nodeName);
+		const node = readNode(item.nodeName);
 		if (!node) return false;
 		const pendingNames = getPendingParameterNames(node);
 		return item.parameterNames.every((parameterName) => {
@@ -326,11 +447,14 @@ export function useWorkflowSetupItems(
 	}
 
 	return {
+		credentialsAvailable,
 		isWorkflowAvailable,
 		workflowProjectId,
 		derivedItems,
 		derivedCredentialItems,
 		isItemDone,
+		isCredentialConfigured,
+		isRefreshingWorkflow,
 		getNodeByName,
 		refreshWorkflow,
 	};

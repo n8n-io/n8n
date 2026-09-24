@@ -1,8 +1,14 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
-import { ref } from 'vue';
+import { shallowMount } from '@vue/test-utils';
+import { DropdownMenuContent } from 'reka-ui';
+import { defineComponent, ref } from 'vue';
 
-import type { DropdownMenuItemProps, DropdownMenuPlacement } from './DropdownMenu.types';
+import type {
+	DropdownMenuExposed,
+	DropdownMenuItemProps,
+	DropdownMenuPlacement,
+} from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
 import Tooltip from '../N8nTooltip/Tooltip.vue';
 
@@ -21,6 +27,41 @@ async function getDropdownContent() {
 	});
 
 	return { dropdown };
+}
+
+function renderExternalDropdown(items: DropdownMenuItemProps[] = createItems(3)) {
+	const dropdownRef = ref<DropdownMenuExposed | null>(null);
+	const textareaRef = ref<HTMLTextAreaElement | null>(null);
+	const isOpen = ref(true);
+	const selected: string[] = [];
+
+	const Host = defineComponent({
+		components: { DropdownMenu },
+		setup() {
+			const handleKeydown = (event: KeyboardEvent) => {
+				dropdownRef.value?.handleExternalKeydown(event);
+			};
+
+			return { dropdownRef, textareaRef, isOpen, items, selected, handleKeydown };
+		},
+		template: `
+			<div>
+				<textarea ref="textareaRef" @keydown="handleKeydown" />
+				<DropdownMenu
+					ref="dropdownRef"
+					v-model="isOpen"
+					:items="items"
+					:external-focus-target="textareaRef"
+					searchable
+					search-mode="external"
+					@select="selected.push($event)"
+				/>
+				<button>After menu</button>
+			</div>
+		`,
+	});
+
+	return { ...render(Host), dropdownRef, textareaRef, isOpen, selected };
 }
 
 describe('N8nDropdownMenu', () => {
@@ -433,6 +474,34 @@ describe('N8nDropdownMenu', () => {
 				expect(dropdown).toBeInTheDocument();
 			});
 		});
+
+		it('should preserve the configured width in a portaled loading sub-menu', async () => {
+			const wrapper = render(DropdownMenu, {
+				props: {
+					items: [
+						{
+							id: 'loading-parent',
+							label: 'Loading parent',
+							loading: true,
+							loadingItemCount: 4,
+						},
+					],
+					modelValue: true,
+					width: '20rem',
+				},
+			});
+			const parent = await wrapper.findByRole('menuitem', { name: 'Loading parent' });
+
+			await userEvent.hover(parent);
+
+			const subMenu = await waitFor(() => {
+				const menus = document.querySelectorAll<HTMLElement>('[role="menu"]');
+				if (menus.length < 2) throw new Error('Sub-menu not found');
+				return menus[1];
+			});
+			expect(subMenu.style.getPropertyValue('--n8n--dropdown-menu-width')).toBe('20rem');
+			expect(subMenu.querySelectorAll('.n8n-loading')).toHaveLength(4);
+		});
 	});
 
 	describe('empty state', () => {
@@ -495,6 +564,43 @@ describe('N8nDropdownMenu', () => {
 
 			const trigger = container.querySelector('button');
 			expect(trigger).toMatchSnapshot();
+		});
+	});
+
+	describe('content props', function () {
+		it('should use the fixed positioning props', function () {
+			const wrapper = shallowMount(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					modelValue: true,
+					teleported: false,
+				},
+				global: {
+					renderStubDefaultSlot: true,
+				},
+			});
+
+			expect(wrapper.findComponent(DropdownMenuContent).props()).toMatchObject({
+				sideOffset: 4,
+				prioritizePosition: false,
+			});
+		});
+
+		it('should position the menu relative to a custom reference', function () {
+			const reference = document.createElement('div');
+			const wrapper = shallowMount(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					modelValue: true,
+					teleported: false,
+					reference,
+				},
+				global: {
+					renderStubDefaultSlot: true,
+				},
+			});
+
+			expect(wrapper.findComponent(DropdownMenuContent).props('reference')).toBe(reference);
 		});
 	});
 
@@ -782,6 +888,203 @@ describe('N8nDropdownMenu', () => {
 			});
 			// The header id is never emitted as a selection.
 			expect(wrapper.emitted('select')?.flat()).not.toContain('section');
+		});
+	});
+
+	describe('external search mode', () => {
+		it('should keep focus in the external textarea without rendering an internal search input', async () => {
+			const wrapper = renderExternalDropdown();
+			const textarea = wrapper.getByRole('textbox');
+
+			await getDropdownContent();
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+			expect(document.querySelector('input[type="text"]')).not.toBeInTheDocument();
+
+			const firstItem = document.querySelector('[role="menuitem"]')!;
+			await fireEvent.pointerMove(firstItem);
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			await userEvent.click(textarea);
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+		});
+
+		it('should navigate and select from the external textarea', async () => {
+			const wrapper = renderExternalDropdown();
+			const textarea = wrapper.getByRole('textbox');
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowUp}');
+
+			const firstItem = document.querySelectorAll('[role="menuitem"]')[0];
+			expect(firstItem).toHaveAttribute('aria-selected', 'true');
+			expect(textarea).toHaveAttribute('aria-activedescendant', firstItem.id);
+			expect(document.activeElement).toBe(textarea);
+
+			await userEvent.keyboard('{Enter}');
+
+			expect(wrapper.selected).toEqual(['item-0']);
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument();
+				expect(document.activeElement).toBe(textarea);
+			});
+		});
+
+		it('should leave unhandled editing keys available to the textarea', async () => {
+			const wrapper = renderExternalDropdown();
+			await waitFor(() => expect(wrapper.dropdownRef.value).not.toBeNull());
+
+			const enterEvent = new KeyboardEvent('keydown', {
+				key: 'Enter',
+				cancelable: true,
+			});
+			expect(wrapper.dropdownRef.value?.handleExternalKeydown(enterEvent)).toBe(false);
+			expect(enterEvent.defaultPrevented).toBe(false);
+
+			wrapper.dropdownRef.value?.highlightFirstItem();
+			const shiftEnterEvent = new KeyboardEvent('keydown', {
+				key: 'Enter',
+				shiftKey: true,
+				cancelable: true,
+			});
+			expect(wrapper.dropdownRef.value?.handleExternalKeydown(shiftEnterEvent)).toBe(false);
+			expect(wrapper.selected).toEqual([]);
+
+			const consumedEvent = new KeyboardEvent('keydown', {
+				key: 'ArrowDown',
+				cancelable: true,
+			});
+			consumedEvent.preventDefault();
+			expect(wrapper.dropdownRef.value?.handleExternalKeydown(consumedEvent)).toBe(false);
+		});
+
+		it('should leave arrow keys available when the menu has no navigable items', async () => {
+			const wrapper = renderExternalDropdown([]);
+			await waitFor(() => expect(wrapper.dropdownRef.value).not.toBeNull());
+			const arrowDownEvent = new KeyboardEvent('keydown', {
+				key: 'ArrowDown',
+				cancelable: true,
+			});
+
+			expect(wrapper.dropdownRef.value?.handleExternalKeydown(arrowDownEvent)).toBe(false);
+			expect(arrowDownEvent.defaultPrevented).toBe(false);
+		});
+
+		it('should stop handled keys from reaching the chat input', async () => {
+			const wrapper = renderExternalDropdown();
+			await waitFor(() => expect(wrapper.dropdownRef.value).not.toBeNull());
+			const arrowDownEvent = new KeyboardEvent('keydown', {
+				key: 'ArrowDown',
+				cancelable: true,
+			});
+			const stopPropagation = vi.spyOn(arrowDownEvent, 'stopPropagation');
+
+			expect(wrapper.dropdownRef.value?.handleExternalKeydown(arrowDownEvent)).toBe(true);
+			expect(stopPropagation).toHaveBeenCalled();
+		});
+
+		it('should open and close a selectable parent sub-menu with external arrow keys', async () => {
+			const wrapper = renderExternalDropdown([
+				{
+					id: 'parent',
+					label: 'Parent',
+					selectable: true,
+					children: [{ id: 'child', label: 'Child' }],
+				},
+			]);
+			const textarea = wrapper.getByRole('textbox');
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			await userEvent.keyboard('{ArrowDown}{ArrowRight}');
+			await waitFor(() => expect(document.querySelectorAll('[role="menu"]')).toHaveLength(2));
+
+			await userEvent.keyboard('{ArrowDown}');
+			const child = wrapper.getByText('Child').closest('[role="menuitem"]');
+			expect(child).toHaveAttribute('aria-selected', 'true');
+			expect(document.activeElement).toBe(textarea);
+
+			await userEvent.keyboard('{ArrowLeft}');
+			await waitFor(() => expect(document.querySelectorAll('[role="menu"]')).toHaveLength(1));
+			expect(wrapper.getByText('Parent').closest('[role="menuitem"]')).toHaveAttribute(
+				'aria-selected',
+				'true',
+			);
+
+			await userEvent.keyboard('{Enter}');
+			expect(wrapper.selected).toEqual(['parent']);
+		});
+
+		it('should close on Escape and restore textarea focus', async () => {
+			const wrapper = renderExternalDropdown();
+			const textarea = wrapper.getByRole('textbox');
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			await userEvent.keyboard('{Escape}');
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument();
+				expect(document.activeElement).toBe(textarea);
+			});
+		});
+
+		it('should close on Tab without keeping focus in the textarea', async () => {
+			const wrapper = renderExternalDropdown();
+			const textarea = wrapper.getByRole('textbox');
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			await userEvent.tab();
+
+			await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument());
+			expect(document.activeElement).not.toBe(textarea);
+		});
+
+		it('should not restore textarea focus from a pending frame after Tab', async () => {
+			const wrapper = renderExternalDropdown();
+			const textarea = wrapper.getByRole('textbox');
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			const pendingFrames: FrameRequestCallback[] = [];
+			const requestAnimationFrame = vi
+				.spyOn(window, 'requestAnimationFrame')
+				.mockImplementation((frameHandler) => {
+					pendingFrames.push(frameHandler);
+					return pendingFrames.length;
+				});
+
+			try {
+				const firstItem = document.querySelector('[role="menuitem"]')!;
+				await fireEvent.pointerMove(firstItem);
+				expect(pendingFrames).not.toHaveLength(0);
+
+				await userEvent.tab();
+				await waitFor(() =>
+					expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument(),
+				);
+				expect(document.activeElement).not.toBe(textarea);
+
+				const capturedFrames = pendingFrames.slice();
+				for (const frameHandler of capturedFrames) frameHandler(performance.now());
+				expect(document.activeElement).not.toBe(textarea);
+			} finally {
+				requestAnimationFrame.mockRestore();
+			}
+		});
+
+		it('should ignore keys during IME composition', async () => {
+			const wrapper = renderExternalDropdown();
+			const textarea = wrapper.getByRole('textbox');
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			textarea.dispatchEvent(
+				new KeyboardEvent('keydown', {
+					key: 'Enter',
+					isComposing: true,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+
+			expect(wrapper.selected).toEqual([]);
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
 		});
 	});
 

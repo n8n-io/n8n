@@ -1,4 +1,8 @@
-process.argv[2] = 'worker';
+// `vi.hoisted` runs before the imports below, so `InstanceSettings` reads the
+// worker command name when the container first constructs it.
+vi.hoisted(() => {
+	process.argv[2] = 'worker';
+});
 
 /**
  * Integration test for the `credentialDecrypt` policy enforcement point on a

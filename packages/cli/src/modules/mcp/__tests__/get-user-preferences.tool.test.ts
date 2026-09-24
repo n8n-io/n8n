@@ -20,9 +20,12 @@ const saved = (...texts: string[]) => texts.map((content) => ({ id: `id-${conten
 const DESCRIPTION = [
 	'Returns the preferences saved for this n8n instance, the caller, and their projects: node and credential choices, naming, how work is organised, and patterns to avoid.',
 	'Call this before you create or modify anything in n8n — a workflow, an Agent, a data table, a folder — and apply what it returns to every change you make for the remainder of the task, not only the first one. If a preference conflicts with something the user asks for directly, follow the user and say which preference you set aside.',
+	'When you work inside one project, pass its `projectId` to leave the other projects out.',
 ].join('\n\n');
 
 const NOTHING_SAVED = 'No preferences are saved for this instance, for you, or for your projects.';
+const NOTHING_SAVED_FOR_PROJECT =
+	'No preferences are saved for this instance, for you, or for this project.';
 
 const userWithScopes = (scopeSlugs: string[]) =>
 	Object.assign(new User(), {
@@ -33,9 +36,12 @@ const userWithScopes = (scopeSlugs: string[]) =>
 const empty: ApplicableAiPreferences = { instance: [], user: [], projects: [] };
 
 const createMocks = (result: ApplicableAiPreferences | Error = empty) => {
-	const getApplicableAcrossProjects =
+	const read = () =>
 		result instanceof Error ? vi.fn().mockRejectedValue(result) : vi.fn().mockResolvedValue(result);
-	const aiPreferenceService = mockInstance(AiPreferenceService, { getApplicableAcrossProjects });
+	const aiPreferenceService = mockInstance(AiPreferenceService, {
+		getApplicableAcrossProjects: read(),
+		getApplicableForProject: read(),
+	});
 	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 	return { aiPreferenceService, telemetry };
 };
@@ -65,12 +71,15 @@ describe('get-user-preferences MCP tool', () => {
 			expect(tool.config.description).toBe(DESCRIPTION);
 		});
 
-		test('takes no arguments, because the caller has nothing to choose', () => {
+		test('takes only the optional projectId, so a plain call still reads everything', () => {
 			const { aiPreferenceService, telemetry } = createMocks();
 
 			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
 
-			expect(tool.config.inputSchema).toEqual({});
+			expect(Object.keys(tool.config.inputSchema!)).toEqual(['projectId']);
+			expect(tool.config.inputSchema!.projectId.safeParse(undefined).success).toBe(true);
+			expect(tool.config.inputSchema!.projectId.safeParse('p-1').success).toBe(true);
+			expect(tool.config.inputSchema!.projectId.safeParse('').success).toBe(false);
 		});
 
 		test('is annotated read-only', () => {
@@ -117,7 +126,7 @@ describe('get-user-preferences MCP tool', () => {
 			expect(text && 'text' in text ? text.text : '').toContain('- Keep replies short.');
 			expect(text && 'text' in text ? text.text : '').toContain('- Prefer HubSpot nodes.');
 			// The id travels with each item: an edit has to address a row, and the block
-			// the assistant is given carries text without ids (CONTEXT-137).
+			// the assistant is given carries text without ids.
 			expect(result.structuredContent).toEqual({
 				hasPreferences: true,
 				preferences: [
@@ -151,6 +160,55 @@ describe('get-user-preferences MCP tool', () => {
 			await tool.handler({});
 
 			expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledTimes(2);
+		});
+
+		describe('narrowed to one project (CONTEXT-136)', () => {
+			test('reads the one project instead of every project', async () => {
+				const { aiPreferenceService, telemetry } = createMocks({
+					instance: saved('Use British English.'),
+					user: saved('Keep replies short.'),
+					projects: [{ id: 'p-1', name: 'Marketing', items: saved('Prefer HubSpot nodes.') }],
+				});
+				const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+				const result = await tool.handler({ projectId: 'p-1' });
+
+				expect(aiPreferenceService.getApplicableForProject).toHaveBeenCalledWith(user, 'p-1');
+				expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
+				expect(
+					(result.structuredContent as { preferences: Array<{ scope: string }> }).preferences.map(
+						(item) => item.scope,
+					),
+				).toEqual(['instance', 'user', 'project']);
+			});
+
+			test('answers an empty project definitely, naming the project scope', async () => {
+				const { aiPreferenceService, telemetry } = createMocks(empty);
+				const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+				const result = await tool.handler({ projectId: 'p-1' });
+
+				expect(result.content).toEqual([{ type: 'text', text: NOTHING_SAVED_FOR_PROJECT }]);
+				expect(result.structuredContent).toEqual({ hasPreferences: false, preferences: [] });
+			});
+
+			test('rejects a project the caller cannot read as an error result, not an empty success', async () => {
+				const { aiPreferenceService, telemetry } = createMocks(
+					new Error('Project with id p-9 not found'),
+				);
+				const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+				const result = await tool.handler({ projectId: 'p-9' });
+
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toEqual({
+					hasPreferences: false,
+					preferences: [],
+					error: 'Project with id p-9 not found',
+				});
+				expect(result.content).not.toEqual([{ type: 'text', text: NOTHING_SAVED }]);
+				expect(result.content).not.toEqual([{ type: 'text', text: NOTHING_SAVED_FOR_PROJECT }]);
+			});
 		});
 
 		/**
@@ -317,7 +375,7 @@ describe('get-user-preferences MCP tool', () => {
 			const renderedLength = rendered && 'text' in rendered ? rendered.text.length : 0;
 
 			// Two rows in one project must not report `project` twice, and the length is the
-			// text the caller was actually given: it reviews the caps (CONTEXT-137).
+			// text the caller was actually given: it reviews the caps.
 			expect(telemetry.track).toHaveBeenCalledWith(
 				USER_CALLED_MCP_TOOL_EVENT,
 				expect.objectContaining({
@@ -346,6 +404,34 @@ describe('get-user-preferences MCP tool', () => {
 				tool_name: 'get_user_preferences',
 				parameters: {},
 				results: { success: false, error: 'db down' },
+			});
+		});
+
+		test('reports the projectId a narrowed call passed', async () => {
+			const { aiPreferenceService, telemetry } = createMocks(empty);
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await tool.handler({ projectId: 'p-1' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				USER_CALLED_MCP_TOOL_EVENT,
+				expect.objectContaining({ parameters: { projectId: 'p-1' } }),
+			);
+		});
+
+		test('reports a rejected projectId as a failure that still names the projectId', async () => {
+			const { aiPreferenceService, telemetry } = createMocks(
+				new Error('Project with id p-9 not found'),
+			);
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await tool.handler({ projectId: 'p-9' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: 'user-1',
+				tool_name: 'get_user_preferences',
+				parameters: { projectId: 'p-9' },
+				results: { success: false, error: 'Project with id p-9 not found' },
 			});
 		});
 	});

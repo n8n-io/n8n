@@ -32,17 +32,21 @@ const TOGGLE_FULL_WIDTH = 'toggle-full-width';
 const EXPORT_SESSION = 'export-session';
 const DELETE_SESSION = 'delete-session';
 
-const props = defineProps<{
-	projectId: string;
-	agentId: string;
-	effectiveSessionId?: string;
-	hasSession: boolean;
-	isDeletingSession?: boolean;
-	isFullWidth: boolean;
-	isLangSmithExportEnabled: boolean;
-	isExporting: boolean;
-	getConversationMarkdown: () => string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		projectId: string;
+		agentId: string;
+		effectiveSessionId?: string;
+		hasSession: boolean;
+		canDeleteSession?: boolean;
+		isDeletingSession?: boolean;
+		isFullWidth: boolean;
+		isLangSmithExportEnabled: boolean;
+		isExporting: boolean;
+		getConversationMarkdown: () => string;
+	}>(),
+	{ canDeleteSession: false, isDeletingSession: false },
+);
 
 const emit = defineEmits<{
 	'toggle-full-width': [];
@@ -99,14 +103,18 @@ const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
 				},
 			] satisfies Array<DropdownMenuItemProps<string>>)
 		: []),
-	{
-		id: DELETE_SESSION,
-		label: i18n.baseText('agentSessions.delete' as BaseTextKey),
-		icon: { type: 'icon', value: 'trash' },
-		divided: true,
-		destructive: true,
-		disabled: !props.hasSession || !props.effectiveSessionId || props.isDeletingSession,
-	},
+	...(props.canDeleteSession
+		? ([
+				{
+					id: DELETE_SESSION,
+					label: i18n.baseText('agentSessions.delete' as BaseTextKey),
+					icon: { type: 'icon', value: 'trash' },
+					divided: true,
+					destructive: true,
+					disabled: !props.hasSession || !props.effectiveSessionId || props.isDeletingSession,
+				},
+			] satisfies Array<DropdownMenuItemProps<string>>)
+		: []),
 ]);
 
 const triggerLabel = computed(() => {
@@ -222,7 +230,12 @@ function selectMenuItem(itemId: string) {
 			}
 			break;
 		case DELETE_SESSION:
-			if (props.hasSession && props.effectiveSessionId && !props.isDeletingSession) {
+			if (
+				props.canDeleteSession &&
+				props.hasSession &&
+				props.effectiveSessionId &&
+				!props.isDeletingSession
+			) {
 				emit('delete-session');
 			}
 			break;
