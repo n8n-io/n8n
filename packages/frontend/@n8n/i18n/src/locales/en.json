@@ -5457,6 +5457,7 @@
 	"instanceAi.onboarding.notSet": "Not set",
 	"instanceAi.onboarding.disabled": "Disabled",
 	"instanceAi.onboarding.foundOnServer": "Found in server configuration",
+	"instanceAi.onboardingGreeting.thinkingActivity": "Preparing your first question",
 	"instanceAi.onboarding.recommended": "Recommended",
 	"instanceAi.onboarding.existingConnection.label": "Connection",
 	"instanceAi.onboarding.existingConnection.current": "Current connection",

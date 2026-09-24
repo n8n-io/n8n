@@ -2,15 +2,17 @@
 # and the questions as ONE ask-user card, one step per question in this order. A `required` step
 # has no Skip button; the card's own "Something else" free text is the way out of a `single` or
 # `multi` step. When the card is answered, the host posts `followUp` as plain assistant text,
-# with no model turn, and the user types the task in the chat. The answers reach the agent in an
+# with no model turn, and the user types the task in the chat. Free text in an answer skips the
+# follow-up: the answers start the agent's first turn instead. The answers reach the agent in an
 # <onboarding-answer> block, one line per question, so a new question here needs no code change:
 # add it to the list. The host skips a step the signup survey already answered; that answer
 # still reaches the agent. The next new onboarding thread reads this file again.
 title: Welcome to n8n
-# One sentence per line: the chat renders a newline as a line break.
+# Markdown. A blank line starts a new paragraph; the chat shows the paragraphs one after the
+# other before the first card. {{firstName}} becomes the user's first name, or "there".
 greeting: |-
-  Hi, I'm your Assistant.
-  Think of me as your n8n expert.
+  Hi {{firstName}}, I'm your Assistant. Think of me as your n8n expert.
+
   I'll ask 2 questions to finish your setup and suggest automations based on real workflows.
 # {{apps}} becomes the apps the user picked: one or two names, and "and your other tools" when
 # they picked more ("Gmail, Slack, and your other tools"). No pick: "your tools".

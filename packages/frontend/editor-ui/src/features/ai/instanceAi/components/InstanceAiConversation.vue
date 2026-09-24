@@ -69,6 +69,7 @@ import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
 import AgentSection from './AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builderAgents';
+import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
 const props = defineProps<{
@@ -164,11 +165,60 @@ watch(
 // Show the input disclaimer only once the AI has produced a visible response.
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
+// ponytail: the host-seeded onboarding greeting shows line by line (CSS below), then the shared
+// thinking block plays a thinking beat, then the apps card takes the input slot. Once per
+// mount, so a reload replays it. `isStreaming` on the greeting copy hides the message actions.
+/** The second line has risen at ~1.3 s, the card lands at ~2.3 s. */
+const GREETING_LINES_MS = 1400;
+const GREETING_THINKING_MS = 940;
+const greetingPhase = ref<'lines' | 'thinking' | null>(null);
+let greetingShown = false;
+let greetingTimer: ReturnType<typeof setTimeout> | null = null;
+const onboardingGreeting = computed(() => {
+	const [first, second] = displayedMessages;
+	const alone = first?.role === 'assistant' && !second;
+	return alone && store.isOnboardingChromeHidden(thread.id) ? first : null;
+});
+watch(
+	onboardingGreeting,
+	(greeting) => {
+		if (!greeting || greetingShown) return;
+		greetingShown = true;
+		greetingPhase.value = 'lines';
+		greetingTimer = setTimeout(() => {
+			greetingPhase.value = 'thinking';
+			greetingTimer = setTimeout(() => {
+				greetingPhase.value = null;
+				greetingTimer = null;
+			}, GREETING_THINKING_MS);
+		}, GREETING_LINES_MS);
+	},
+	{ immediate: true },
+);
+onUnmounted(() => {
+	if (greetingTimer) clearTimeout(greetingTimer);
+});
+/**
+ * While the greeting plays: the greeting without its agent tree (the message renders its text
+ * from the tree when it has one). The stored messages otherwise.
+ */
+const renderedMessages = computed(() => {
+	const greeting = onboardingGreeting.value;
+	if (!greeting || greetingPhase.value === null) return displayedMessages;
+	return [{ ...greeting, agentTree: undefined, isStreaming: true }];
+});
+
 // True when at least one pending confirmation should occupy the chat-input
 // slot (questions, generic approvals, or domain/web-search access). Drives
-// the swap between the input and the floating confirmation panel.
-const hasFloatingConfirmation = computed(() =>
-	thread.pendingConfirmations.some(isPendingItemFloating),
+// the swap between the input and the floating confirmation panel. The
+// onboarding card waits until the greeting has played.
+const hasFloatingConfirmation = computed(
+	() => greetingPhase.value === null && thread.pendingConfirmations.some(isPendingItemFloating),
+);
+// ponytail: an onboarding thread hides the chat input until its greeting has hydrated; the phase
+// gate above takes over in the same tick, so the input never shows before the card.
+const awaitingOnboardingGreeting = computed(
+	() => thread.hydrationStatus !== 'ready' && store.isOnboardingChromeHidden(thread.id),
 );
 
 const composerContextChip = computed(() => {
@@ -762,11 +812,25 @@ defineExpose({
 					</N8nChatMessage>
 					<TransitionGroup name="message-slide">
 						<InstanceAiMessage
-							v-for="message in displayedMessages"
+							v-for="message in renderedMessages"
 							:key="message.id"
 							:message="message"
+							:class="{ [$style.greetingLines]: greetingPhase !== null }"
 						/>
 					</TransitionGroup>
+					<Transition name="message-slide">
+						<N8nChatMessage
+							v-if="greetingPhase === 'thinking'"
+							role="assistant"
+							data-test-id="instance-ai-onboarding-thinking"
+						>
+							<AiThinkingBlock
+								:segments="[]"
+								:active="true"
+								:activity-label="i18n.baseText('instanceAi.onboardingGreeting.thinkingActivity')"
+							/>
+						</N8nChatMessage>
+					</Transition>
 					<!-- Builder sub-agents are extracted from their parent assistant
 	     messages and rendered here so they always sit at the bottom
 	     of the conversation. -->
@@ -841,7 +905,7 @@ defineExpose({
 										kind="floating"
 									/>
 									<InstanceAiInput
-										v-else
+										v-else-if="greetingPhase === null && !awaitingOnboardingGreeting"
 										ref="chatInputRef"
 										key="chat-input"
 										:is-streaming="thread.isStreaming"
@@ -1022,6 +1086,33 @@ defineExpose({
 // the cross-fade.
 .inputSwap {
 	position: relative;
+}
+
+// The onboarding greeting's paragraphs rise one after the other while `greetingPhase` is set.
+.greetingLines p {
+	animation: greeting-rise 300ms cubic-bezier(0.2, 0.8, 0.2, 1) 180ms both;
+}
+
+.greetingLines p:nth-of-type(2) {
+	animation: greeting-rise 280ms ease-out 1000ms both;
+}
+
+@keyframes greeting-rise {
+	from {
+		opacity: 0;
+		transform: translateY(9px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.greetingLines p {
+		animation: none;
+	}
 }
 </style>
 
