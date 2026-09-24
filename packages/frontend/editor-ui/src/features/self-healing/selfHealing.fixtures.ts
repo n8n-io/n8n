@@ -268,8 +268,10 @@ export interface BuildReviewOptions {
 	pinned: WorkflowReviewVersionSnapshot;
 	reviewers: WorkflowReviewEligibleReviewer[];
 	createdAt: string;
-	usage: SelfHealingUsage;
+	usage: SelfHealingUsage | null;
 	trace: SelfHealingTraceEntry[];
+	/** Who opened the review. Defaults to the assistant; a person makes it a regular review. */
+	requester?: WorkflowReviewEligibleReviewer;
 	state?: WorkflowReviewRequestState;
 	decision?: WorkflowReviewRequestDecision;
 	/** When set, appends the approval and the publish to the feed. */
@@ -280,6 +282,7 @@ export function buildSelfHealingReview(
 	options: BuildReviewOptions,
 	nextEntryId: () => string,
 ): SelfHealingReview {
+	const author = options.requester ?? SELF_HEALING_ASSISTANT;
 	const state = options.state ?? 'open';
 	const decision = options.decision ?? 'pending';
 	const updatedAt = options.approval?.at ?? options.createdAt;
@@ -297,8 +300,8 @@ export function buildSelfHealingReview(
 		projectId: options.projectId,
 		title: options.title,
 		workflowName: options.workflowName,
-		requester: SELF_HEALING_ASSISTANT,
-		authors: [SELF_HEALING_ASSISTANT],
+		requester: author,
+		authors: [author],
 		reviewers: [...options.reviewers],
 	};
 
@@ -336,7 +339,7 @@ export function buildSelfHealingReview(
 			id: nextEntryId(),
 			typeVersion: 1,
 			type: 'review.opened',
-			createdBy: SELF_HEALING_ASSISTANT,
+			createdBy: author,
 			createdAt: options.createdAt,
 			data: { workflowVersions },
 		},
@@ -344,14 +347,14 @@ export function buildSelfHealingReview(
 			id: nextEntryId(),
 			typeVersion: 1,
 			type: 'comment.created',
-			createdBy: SELF_HEALING_ASSISTANT,
+			createdBy: author,
 			createdAt: options.createdAt,
 			data: null,
 			messages: [
 				{
 					id: `${options.id}-analysis`,
 					body: options.analysis,
-					createdBy: SELF_HEALING_ASSISTANT,
+					createdBy: author,
 					createdAt: options.createdAt,
 					updatedAt: null,
 					deletedAt: null,
@@ -400,6 +403,7 @@ export const SEED_WORKFLOWS = {
 	invoiceReminders: { id: 'self-healing-demo-invoice-reminders', name: 'Invoice reminder emails' },
 	dealAlerts: { id: 'self-healing-demo-deal-alerts', name: 'Deal alerts to Slack' },
 	orderSync: { id: 'self-healing-demo-order-sync', name: 'Order sync to warehouse' },
+	weeklyReport: { id: 'self-healing-demo-weekly-report', name: 'Weekly pipeline report' },
 } as const;
 
 /**
@@ -555,6 +559,28 @@ const ORDER_SYNC_NODES = seedNodes(
 	['n8n-nodes-base.shopifyTrigger', 'n8n-nodes-base.set', 'n8n-nodes-base.httpRequest'],
 );
 
+/** Placeholder teammate who opens the one regular, human-authored review. */
+export const SEED_TEAMMATE: WorkflowReviewEligibleReviewer = {
+	id: 'seed-teammate-alex',
+	email: 'alex.rivera@example.com',
+	firstName: 'Alex',
+	lastName: 'Rivera',
+};
+
+const WEEKLY_REPORT_FIXED_NODES = seedNodes(
+	['Every Monday at 8:00', 'Get open deals', 'Summarise by stage', 'Post to #sales'],
+	[
+		'n8n-nodes-base.scheduleTrigger',
+		'n8n-nodes-base.hubspot',
+		'n8n-nodes-base.code',
+		'n8n-nodes-base.slack',
+	],
+);
+
+const WEEKLY_REPORT_NODES = WEEKLY_REPORT_FIXED_NODES.filter(
+	(node) => node.name !== 'Summarise by stage',
+);
+
 export function createSeedReviews(
 	reviewer: WorkflowReviewEligibleReviewer | null,
 	projectId: string,
@@ -681,6 +707,43 @@ export function createSeedReviews(
 					},
 					{ type: 'event', at: 240, label: 'Fix submitted for review' },
 				],
+			},
+			nextEntryId,
+		),
+		// A regular review from a teammate, so the inbox shows what reviews were built for.
+		buildSelfHealingReview(
+			{
+				id: `${SELF_HEALING_REVIEW_ID_PREFIX}seed-teammate-weekly-report`,
+				requester: SEED_TEAMMATE,
+				title: 'Summarise deals by stage in the Monday sales report',
+				summary: '',
+				description:
+					'Sales asked for totals per stage instead of the raw deal list, so the Monday report is easier to scan.\n\nI added a Code node, "Summarise by stage", that groups open deals by stage and sums their amounts. "Post to #sales" now sends that summary. The workflow still runs every Monday at 8:00.\n\nTested with last week\'s deals: 42 deals across 5 stages, and the totals match HubSpot.',
+				analysis:
+					'Could you check the Slack formatting? I kept the stage names exactly as they are in HubSpot.',
+				changedNode: 'Summarise by stage',
+				executionId: null,
+				workflowId: SEED_WORKFLOWS.weeklyReport.id,
+				workflowName: SEED_WORKFLOWS.weeklyReport.name,
+				projectId,
+				baseline: snapshot(
+					'wr-v5',
+					'Published',
+					WEEKLY_REPORT_NODES,
+					connect('Every Monday at 8:00', 'Get open deals', 'Post to #sales'),
+					daysAgo(14, now),
+				),
+				pinned: snapshot(
+					'wr-v6',
+					'Summarise by stage',
+					WEEKLY_REPORT_FIXED_NODES,
+					connect('Every Monday at 8:00', 'Get open deals', 'Summarise by stage', 'Post to #sales'),
+					daysAgo(1, now),
+				),
+				reviewers,
+				createdAt: daysAgo(1, now),
+				usage: null,
+				trace: [],
 			},
 			nextEntryId,
 		),

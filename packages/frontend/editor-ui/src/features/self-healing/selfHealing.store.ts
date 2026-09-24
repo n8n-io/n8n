@@ -19,6 +19,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import {
+	isSelfHealingAssistant,
 	SELF_HEALING_ASSISTANT,
 	SELF_HEALING_FIX_DURATION_MS,
 	SELF_HEALING_REVIEW_ID_PREFIX,
@@ -477,6 +478,8 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 			detail.viewerCanDecide = false;
 			for (const workflow of detail.workflows) {
 				workflow.publishedVersionId = workflow.workflowVersionId;
+				// A teammate's approved change publishes, but nothing was healed.
+				if (!isSelfHealingAssistant(item.requester)) continue;
 				liveRecords.value[workflow.workflowId] = {
 					state: 'healed',
 					healedAt: decidedAt,

@@ -148,17 +148,34 @@ describe('useSelfHealingStore', () => {
 	});
 
 	describe('reviews', () => {
-		it('seeds one open fix review, two open outcomes and one closed review', () => {
+		it('seeds a fix review, a teammate review, two outcomes and one closed review', () => {
 			const open = store.getInboxItems('open', 'waiting');
 			const closed = store.getInboxItems('closed');
 
-			expect(open).toHaveLength(3);
+			expect(open).toHaveLength(4);
 			expect(closed).toHaveLength(1);
 			expect(open[0].title).toMatch(/^Auto-fix:/);
-			expect(open.every((item) => item.requester?.id === SELF_HEALING_ASSISTANT.id)).toBe(true);
+			const byAssistant = open.filter((item) => item.requester?.id === SELF_HEALING_ASSISTANT.id);
+			expect(byAssistant).toHaveLength(3);
 			// Seeded items are reviewed by the signed-in user.
-			expect(open[0].reviewers[0].id).toBe('user-1');
-			expect(store.countByState('open')).toBe(3);
+			expect(open.every((item) => item.reviewers[0]?.id === 'user-1')).toBe(true);
+			expect(store.countByState('open')).toBe(4);
+		});
+
+		it('publishes an approved teammate review without marking the workflow healed', () => {
+			const teammate = store
+				.getInboxItems('open')
+				.find((item) => item.requester?.id !== SELF_HEALING_ASSISTANT.id);
+			if (!teammate) throw new Error('missing seed');
+			const workflowId = store.getDetail(teammate.id)?.workflows[0].workflowId ?? '';
+
+			const response = store.decide(teammate.id, { decision: 'approved' });
+
+			expect(response.autoPublish).toEqual({ status: 'published' });
+			expect(store.getWorkflowStatus(workflowId, PROJECT_ID)).not.toMatchObject({
+				state: 'healed',
+				reviewId: teammate.id,
+			});
 		});
 
 		it('puts nothing in the authored group', () => {
