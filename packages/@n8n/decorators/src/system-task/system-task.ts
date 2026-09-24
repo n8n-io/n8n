@@ -169,22 +169,25 @@ export function validateSystemTask(task: SystemTask): void {
 }
 
 /**
- * An interval schedule firing every `seconds`.
+ * An interval schedule firing every `seconds`, rounded to the whole second.
  *
- * @throws {UnexpectedError} when `seconds` is not a positive integer. Use {@link intervalFromMilliseconds} for a fractional interval.
+ * @throws {UnexpectedError} when `seconds` is negative or not a number
  */
 export function intervalFromSeconds(seconds: number): IntervalDefinition {
-	if (!Number.isInteger(seconds) || seconds < 1) {
-		throw new UnexpectedError('A system task interval in seconds is not a positive integer', {
+	if (!(seconds >= 0)) {
+		throw new UnexpectedError('A system task interval in seconds is negative or not a number', {
 			extra: { seconds },
 		});
 	}
-	return { kind: 'interval', intervalSeconds: seconds };
+	return { kind: 'interval', intervalSeconds: Math.round(seconds) };
 }
 
-/** An interval schedule firing every `milliseconds`, which may be under a second or fractional. */
+/** An interval schedule firing every `milliseconds`, rounded to the whole millisecond. */
 export function intervalFromMilliseconds(milliseconds: number): IntervalDefinition {
-	return { kind: 'interval', intervalSeconds: milliseconds / Time.seconds.toMilliseconds };
+	return {
+		kind: 'interval',
+		intervalSeconds: Math.round(milliseconds) / Time.seconds.toMilliseconds,
+	};
 }
 
 /**

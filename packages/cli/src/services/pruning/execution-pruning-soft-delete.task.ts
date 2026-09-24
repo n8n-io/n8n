@@ -1,6 +1,6 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { ExecutionsPruningService } from './executions-pruning.service';
@@ -13,8 +13,8 @@ import { ExecutionsPruningService } from './executions-pruning.service';
 export class ExecutionPruningSoftDeleteTask implements SystemTask {
 	readonly name = 'execution-pruning-soft-delete';
 
-	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(
-		this.executionsConfig.pruneDataIntervals.softDelete * Time.minutes.toMilliseconds,
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(
+		this.executionsConfig.pruneDataIntervals.softDelete * Time.minutes.toSeconds,
 	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
