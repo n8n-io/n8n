@@ -32,6 +32,21 @@ export interface ImportPackageFields {
 	tagConflictPolicy?: string;
 }
 
+/**
+ * Fields of a cherry-pick selection import. It carries the selection (a single source project plus
+ * the workflow ids to import and, optionally, destination ids to delete) and only the two
+ * overridable policies; the locked cherry-pick policies are fixed inside the endpoint.
+ */
+export interface ImportPackageSelectionFields {
+	projectId?: string;
+	folderId?: string;
+	selectedProjectId: string;
+	selectedWorkflowIds: string[];
+	deletedWorkflowIds?: string[];
+	workflowConflictPolicy?: string;
+	workflowIdPolicy?: string;
+}
+
 export interface ExportPackageFields {
 	workflowIds?: string[];
 	folderIds?: string[];
@@ -717,6 +732,32 @@ export class N8nClient {
 			if (typeof value === 'string' && value !== '') form.append(key, value);
 		}
 		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import', {
+			formData: form,
+		});
+	}
+
+	async importPackageSelection(
+		file: { buffer: Buffer; filename: string },
+		fields: ImportPackageSelectionFields,
+	): Promise<Record<string, unknown>> {
+		const form = new FormData();
+		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
+		const stringFields: Record<string, string | undefined> = {
+			projectId: fields.projectId,
+			folderId: fields.folderId,
+			selectedProjectId: fields.selectedProjectId,
+			workflowConflictPolicy: fields.workflowConflictPolicy,
+			workflowIdPolicy: fields.workflowIdPolicy,
+		};
+		for (const [key, value] of Object.entries(stringFields)) {
+			if (typeof value === 'string' && value !== '') form.append(key, value);
+		}
+		// The endpoint parses the id lists as JSON-string arrays (the `bindings` precedent).
+		form.append('selectedWorkflowIds', JSON.stringify(fields.selectedWorkflowIds));
+		if (fields.deletedWorkflowIds !== undefined) {
+			form.append('deletedWorkflowIds', JSON.stringify(fields.deletedWorkflowIds));
+		}
+		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import-selection', {
 			formData: form,
 		});
 	}
