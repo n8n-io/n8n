@@ -9,6 +9,8 @@
 | id | bigint |  | false |  |  | Acceptance order; IDs are not reused |
 | payload | json |  | false |  |  | Input, attachment references, identity, and reply context |
 | source | varchar(32) |  | false |  |  | Preview or integration source |
+| steeringExecutionId | varchar(36) |  | true |  | [public.agent_execution](public.agent_execution.md) | Execution reserved to consume this input |
+| steeringOrder | integer |  | true |  |  | Acceptance order among outstanding steers |
 | threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -18,6 +20,7 @@
 | ---- | ---- | ---------- |
 | FK_2349d84b4f2a660fc264f38fef3 | FOREIGN KEY | FOREIGN KEY ("executionId") REFERENCES agent_execution(id) |
 | FK_a74f9154a59430986112d70cb16 | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
+| FK_eff54787927c2968dc24495c911 | FOREIGN KEY | FOREIGN KEY ("steeringExecutionId") REFERENCES agent_execution(id) |
 | PK_733d8c959a6057f04f4da5ab721 | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_message_queue_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_message_queue_id_not_null | n | NOT NULL id |
@@ -31,6 +34,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_2349d84b4f2a660fc264f38fef | CREATE INDEX "IDX_2349d84b4f2a660fc264f38fef" ON public.agent_message_queue USING btree ("executionId") |
+| IDX_agent_message_queue_steeringExecutionId_steeringOrder | CREATE UNIQUE INDEX "IDX_agent_message_queue_steeringExecutionId_steeringOrder" ON public.agent_message_queue USING btree ("steeringExecutionId", "steeringOrder") WHERE ("steeringExecutionId" IS NOT NULL) |
 | IDX_agent_message_queue_threadId | CREATE UNIQUE INDEX "IDX_agent_message_queue_threadId" ON public.agent_message_queue USING btree ("threadId") WHERE ("executionId" IS NOT NULL) |
 | IDX_c1db6ea2d031cc49100535e6c6 | CREATE INDEX "IDX_c1db6ea2d031cc49100535e6c6" ON public.agent_message_queue USING btree ("threadId", id) |
 | PK_733d8c959a6057f04f4da5ab721 | CREATE UNIQUE INDEX "PK_733d8c959a6057f04f4da5ab721" ON public.agent_message_queue USING btree (id) |
@@ -41,6 +45,7 @@
 erDiagram
 
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
+"public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
 "public.agent_message_queue" {
@@ -49,10 +54,13 @@ erDiagram
   bigint id
   json payload
   varchar_32_ source
+  varchar_36_ steeringExecutionId FK
+  integer steeringOrder
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution" {
+  boolean acceptsSteering
   json attachments
   json author
   integer completionTokens

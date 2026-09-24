@@ -139,6 +139,7 @@ export class AgentExecutionService {
 	>();
 
 	private readonly timelineSnapshotWrites = new Map<string, Promise<void>>();
+	private readonly pausedTimelineSnapshots = new Set<string>();
 
 	private readonly executionsNeedingTitleSync = new Set<string>();
 
@@ -270,6 +271,21 @@ export class AgentExecutionService {
 		if (!this.heartbeatTimers.has(executionId)) return;
 		this.pendingTimelineSnapshots.set(executionId, snapshot);
 		this.ensureTimelineSnapshotWrite(executionId);
+	}
+
+	/** Keep older snapshots behind the transaction that commits additional input. */
+	async withTimelineWritesPaused<T>(executionId: string, commit: () => Promise<T>): Promise<T> {
+		this.pausedTimelineSnapshots.add(executionId);
+		try {
+			await this.timelineSnapshotWrites.get(executionId);
+			return await commit();
+		} catch (error) {
+			this.pendingTimelineSnapshots.delete(executionId);
+			throw error;
+		} finally {
+			this.pausedTimelineSnapshots.delete(executionId);
+			this.ensureTimelineSnapshotWrite(executionId);
+		}
 	}
 
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
@@ -417,6 +433,7 @@ export class AgentExecutionService {
 
 	private ensureTimelineSnapshotWrite(executionId: string): void {
 		if (
+			this.pausedTimelineSnapshots.has(executionId) ||
 			this.timelineSnapshotWrites.has(executionId) ||
 			!this.pendingTimelineSnapshots.has(executionId)
 		) {
@@ -430,7 +447,7 @@ export class AgentExecutionService {
 	}
 
 	private async drainTimelineSnapshots(executionId: string): Promise<void> {
-		while (true) {
+		while (!this.pausedTimelineSnapshots.has(executionId)) {
 			const snapshot = this.pendingTimelineSnapshots.get(executionId);
 			if (!snapshot) return;
 			this.pendingTimelineSnapshots.delete(executionId);

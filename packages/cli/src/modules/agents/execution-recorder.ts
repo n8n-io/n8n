@@ -5,6 +5,7 @@ import {
 	settleChildTrace,
 	type PersistedChildTrace,
 	type AgentBackgroundJobSignal,
+	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
@@ -262,6 +263,7 @@ export interface RecordedUsage {
 }
 
 export type TimelineEvent =
+	| { type: 'input'; queueId: string; message: AgentPersistedMessageDto; timestamp: number }
 	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
@@ -382,6 +384,19 @@ export class ExecutionRecorder {
 	private readonly startTime: number;
 
 	private childTraceChars = new Map<string, number>();
+
+	/** Record additional input only after its transaction commits. */
+	recordInputs(events: Array<Extract<TimelineEvent, { type: 'input' }>>): void {
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		for (const event of events) {
+			if (
+				this.timeline.some((item) => item.type === 'input' && item.message.id === event.message.id)
+			)
+				continue;
+			this.appendCompletedEvent(event);
+		}
+	}
 
 	/** Record the human response that caused a suspended tool call to resume. */
 	recordHitlResponse(toolCallId: string, response: unknown): void {

@@ -42,6 +42,13 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
 
+	@Column({
+		type: 'boolean',
+		default: false,
+		comment: 'Accept input until the runtime closes admission',
+	})
+	acceptsSteering: boolean;
+
 	@DateTimeColumn({ precision: 3, nullable: true })
 	startedAt: Date | null;
 

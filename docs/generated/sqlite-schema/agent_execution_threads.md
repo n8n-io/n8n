@@ -107,6 +107,7 @@ erDiagram
   varchar_36_ versionId
 }
 "agent_execution" {
+  BOOLEAN acceptsSteering
   TEXT attachments
   TEXT author
   INTEGER completionTokens
@@ -136,6 +137,8 @@ erDiagram
   INTEGER id
   TEXT payload
   varchar_32_ source
+  varchar_36_ steeringExecutionId FK
+  INTEGER steeringOrder
   varchar_128_ threadId FK
   datetime_3_ updatedAt
 }

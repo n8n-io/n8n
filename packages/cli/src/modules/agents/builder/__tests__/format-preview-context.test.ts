@@ -76,6 +76,18 @@ describe('formatPreviewSessionContext', () => {
 					{ type: 'reasoning', content: 'I should search the orders.', timestamp: 0, endTime: 1 },
 					toolCallEvent(),
 					{ type: 'text', content: 'Here are your orders.', timestamp: 1, endTime: 2 },
+					{
+						type: 'input',
+						timestamp: 3,
+						queueId: '2',
+						message: {
+							id: 'steered-input',
+							role: 'user',
+							content: [
+								{ type: 'file', fileId: 'file-1', fileName: 'orders.csv', mimeType: 'text/csv' },
+							],
+						},
+					},
 				],
 			}),
 			makeExecution({ id: 'exec-2', userMessage: 'Second question' }),
@@ -95,6 +107,7 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).toContain('Input: {"query":"open orders"}');
 		expect(block).toContain('Output: {"count":2}');
 		expect(block).toContain('Assistant: Here are your orders.');
+		expect(block).toContain('orders.csv');
 	});
 
 	it('scopes a single turn to the anchor plus trailing resume continuations', () => {

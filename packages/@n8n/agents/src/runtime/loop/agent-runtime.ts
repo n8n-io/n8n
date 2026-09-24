@@ -53,6 +53,7 @@ import { getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
 import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
+import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-memory';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModelTokenCounter } from '../model/model-token-counter';
@@ -107,7 +108,7 @@ interface PreparedLoopContext extends LoopContext {
 	staticContext: StaticLoopContext;
 	instructionProviderOptions: ProviderOptions | undefined;
 	runTelemetry: BuiltTelemetry | undefined;
-	canDiscardRejectedInput: boolean;
+	acceptedInputIds: Set<string>;
 }
 
 interface LoopState {
@@ -720,11 +721,17 @@ export class AgentRuntime {
 		}
 
 		for (; state.iterationCount < state.maxIterations; state.iterationCount++) {
+			const hasInput = await this.consumeAdditionalInput(prepared, sink, state);
+			if (state.reachedStopCondition && !hasInput) break;
+			state.reachedStopCondition = false;
 			const settlement = await this.runLoopIteration(prepared, sink, state);
 			if (settlement.suspended) return settlement.result;
-			if (state.reachedStopCondition) break;
+			if (state.reachedStopCondition && !prepared.options?.onInputBoundary) break;
 		}
 
+		if (state.iterationCount >= state.maxIterations) {
+			await this.consumeAdditionalInput(prepared, sink, state);
+		}
 		if (!state.reachedStopCondition && state.iterationCount >= state.maxIterations) {
 			state.lastFinishReason = 'max-iterations';
 		}
@@ -735,6 +742,35 @@ export class AgentRuntime {
 			usage: state.totalUsage,
 			structuredOutput: state.structuredOutput,
 		});
+	}
+
+	private async consumeAdditionalInput<T>(
+		ctx: PreparedLoopContext,
+		sink: RunOutputSink<T>,
+		state: LoopState,
+	): Promise<boolean> {
+		const receive = ctx.options?.onInputBoundary;
+		if (!receive || state.lastFinishReason === 'error') return false;
+		this.assertNotAborted(ctx.abortScope);
+		await sink.inputBoundary?.(ctx.abortScope.signal);
+		this.assertNotAborted(ctx.abortScope);
+		const messages = await receive({
+			messages: sanitizeOffloadedToolResultsForMemory(ctx.list.turnDelta()),
+			lastCreatedAt: ctx.list.messages().at(-1)?.createdAt.getTime() ?? 0,
+			completing: state.reachedStopCondition,
+			canContinue: state.iterationCount < state.maxIterations,
+		});
+		// Only committed input enters the live list. Its IDs and timestamps stay stable.
+		ctx.list.addInput(messages);
+		for (const message of messages) await sink.emitInput?.(message);
+		this.assertNotAborted(ctx.abortScope);
+		if (messages.length > 0) {
+			state.structuredOutput = undefined;
+			await hydrateFileParts(ctx.list.messages(), this.config.fileStore, {
+				threadId: ctx.options?.persistence?.threadId,
+			});
+		}
+		return messages.length > 0;
 	}
 
 	private async prepareLoop(ctx: LoopContext): Promise<{
@@ -767,28 +803,32 @@ export class AgentRuntime {
 				runTelemetry,
 				staticContext,
 				instructionProviderOptions,
-				canDiscardRejectedInput: this.canDiscardRejectedInput(ctx),
+				acceptedInputIds: new Set(
+					ctx.isFreshRun ? [] : list.inputDelta().map((message) => message.id),
+				),
 			},
 			state,
 		};
 	}
 
-	private canDiscardRejectedInput(ctx: LoopContext): boolean {
-		const inputMessages = new Set(ctx.list.inputDelta());
-		const inputIds = new Set([...inputMessages].map((message) => message.id));
-		return (
-			ctx.isFreshRun === true &&
-			[...inputMessages].some(
-				(message) =>
-					'role' in message &&
-					message.role === 'user' &&
-					Array.isArray(message.content) &&
-					message.content.some((part) => part.type === 'file' && part.data !== undefined),
-			) &&
-			!ctx.list
-				.messages()
-				.some((message) => !inputMessages.has(message) && inputIds.has(message.id))
+	private getRejectableInputIds(ctx: PreparedLoopContext): string[] {
+		const inputMessages = new Set(
+			ctx.list.inputDelta().filter((message) => !ctx.acceptedInputIds.has(message.id)),
 		);
+		const inputIds = new Set([...inputMessages].map((message) => message.id));
+		const hasFiles = [...inputMessages].some(
+			(message) =>
+				'role' in message &&
+				message.role === 'user' &&
+				Array.isArray(message.content) &&
+				message.content.some((part) => part.type === 'file' && part.data !== undefined),
+		);
+		if (!hasFiles) return [];
+		if (
+			ctx.list.messages().some((message) => !inputMessages.has(message) && inputIds.has(message.id))
+		)
+			return [];
+		return [...inputIds];
 	}
 
 	private buildToolBatchContext(
@@ -844,9 +884,10 @@ export class AgentRuntime {
 	): Promise<ToolBatchSettlement<T>> {
 		this.assertNotAborted(ctx.abortScope);
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
-		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx, state.iterationCount);
+		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
 		this.assertNotAborted(ctx.abortScope);
+		for (const message of ctx.list.inputDelta()) ctx.acceptedInputIds.add(message.id);
 
 		state.lastFinishReason = turn.finishReason;
 		if (!isReasoningOnlyStop(turn)) ctx.list.addResponse(turn.newMessages);
@@ -878,7 +919,7 @@ export class AgentRuntime {
 		return settlement;
 	}
 
-	private async prepareModelCall(ctx: PreparedLoopContext, iterationCount: number) {
+	private async prepareModelCall(ctx: PreparedLoopContext) {
 		const { list, options, abortScope, staticContext } = ctx;
 		for (const toolName of this.activeSkills?.toolDependencies() ?? []) {
 			this.deferredToolManager?.load(toolName);
@@ -909,19 +950,19 @@ export class AgentRuntime {
 			outputSpec: staticContext.outputSpec,
 			maxOutputTokens: staticContext.maxOutputTokens,
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),
-			onInputRejected: this.createInputRejectionHandler(ctx, iterationCount),
+			onInputRejected: this.createInputRejectionHandler(ctx),
 		};
 		return { toolMap: tools.toolMap, modelCallContext };
 	}
 
 	private createInputRejectionHandler(
 		ctx: PreparedLoopContext,
-		iterationCount: number,
 	): ModelCallContext['onInputRejected'] {
-		if (!ctx.canDiscardRejectedInput || iterationCount !== 0) return undefined;
+		const messageIds = this.getRejectableInputIds(ctx);
+		if (messageIds.length === 0) return undefined;
 		return async () => {
 			if (ctx.abortScope.isAborted) return;
-			await this.memory.discardRejectedInput(ctx.list, ctx.options);
+			await this.memory.discardRejectedInput(ctx.list, messageIds, ctx.options);
 			this.updateState({ messageList: ctx.list.serialize() });
 		};
 	}
