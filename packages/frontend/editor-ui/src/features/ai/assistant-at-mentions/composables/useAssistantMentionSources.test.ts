@@ -145,12 +145,27 @@ describe('createWorkflowMentionSourceProvider', () => {
 		expect((await source.browse()).map(({ workflowId }) => workflowId)).toEqual(['backfill']);
 	});
 
-	it('reports an error only when both the recent lookup and the backfill fail', async () => {
+	it('rejects when both the recent lookup and the backfill fail', async () => {
 		const recentWorkflowsStore = useRecentWorkflowsStore();
 		const workflowsListStore = useWorkflowsListStore();
 		vi.spyOn(recentWorkflowsStore, 'resolveRecentWorkflows').mockRejectedValue(
 			new Error('Recent unavailable'),
 		);
+		vi.spyOn(workflowsListStore, 'searchWorkflows').mockRejectedValue(
+			new Error('Backfill unavailable'),
+		);
+		const source = createWorkflowMentionSourceProvider({
+			projectId: 'project-1',
+			artifactWorkflowIds: [],
+		});
+
+		await expect(source.browse()).rejects.toThrow('Backfill unavailable');
+	});
+
+	it('rejects when the backfill fails and the recent lookup returns nothing', async () => {
+		const recentWorkflowsStore = useRecentWorkflowsStore();
+		const workflowsListStore = useWorkflowsListStore();
+		vi.spyOn(recentWorkflowsStore, 'resolveRecentWorkflows').mockResolvedValue([]);
 		vi.spyOn(workflowsListStore, 'searchWorkflows').mockRejectedValue(
 			new Error('Backfill unavailable'),
 		);

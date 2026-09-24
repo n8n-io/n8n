@@ -64,7 +64,7 @@ export function createWorkflowMentionSourceProvider(options: {
 				);
 			} catch {
 				// A failed recent lookup must not hide the section. The project backfill
-				// below can still fill it. The section reports an error only when both fail.
+				// below can still fill it.
 			}
 			if (recentWorkflows.length >= MAX_MENTION_RESULTS) {
 				return recentWorkflows.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
@@ -87,6 +87,8 @@ export function createWorkflowMentionSourceProvider(options: {
 					.slice(0, MAX_MENTION_RESULTS)
 					.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
 			} catch (error) {
+				// Prefer partial results over an error. Surface the failure only when there
+				// is nothing to show, so an empty state never hides a failed request.
 				if (recentWorkflows.length === 0) throw error;
 				return recentWorkflows.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
 			}
