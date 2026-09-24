@@ -6,6 +6,6 @@
 
 ## Rule Details
 
-This rule reports a programmatic node when its `execute()` method only sends one HTTP request for each input item. Use `routing`, `requestDefaults`, and credential `authenticate` settings for this node instead.
+This rule reports a programmatic node when its `execute()` method sends one HTTP request for each input item. It recognizes loops over `getInputData()` and indexed loops that use the input item index. Use `routing`, `requestDefaults`, and credential `authenticate` settings for this node instead.
 
-The rule does not report trigger nodes, pagination logic, binary data handling, non-HTTP transports, multiple requests, multiple outputs, or workflow static data access.
+The rule does not report trigger nodes, pagination logic, binary data handling, non-item or nested request loops, non-HTTP transports, multiple requests, multiple outputs, or workflow static data access.
