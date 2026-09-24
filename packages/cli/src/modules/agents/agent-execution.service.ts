@@ -995,13 +995,17 @@ export class AgentExecutionService {
 		let lastError: unknown;
 		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
 			try {
-				const finalized = await this.agentExecutionRepository.updateIfRunning(
-					executionId,
-					terminalValues,
-					undefined,
-					{},
-					record.totalCost ?? undefined,
-				);
+				const finalized = await this.txRunner.run({}, async (ctx) => {
+					if (!(await this.agentExecutionThreadRepository.lockById(params.threadId, ctx)))
+						return false;
+					return await this.agentExecutionRepository.updateIfRunning(
+						executionId,
+						terminalValues,
+						undefined,
+						ctx,
+						record.totalCost ?? undefined,
+					);
+				});
 				if (!finalized) {
 					throw new OperationalError('Agent execution is no longer running', {
 						extra: { executionId },

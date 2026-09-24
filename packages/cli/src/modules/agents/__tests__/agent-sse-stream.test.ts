@@ -118,6 +118,24 @@ describe('agent-sse-stream — connection setup', () => {
 		expect(res.write).not.toHaveBeenCalled();
 	});
 
+	it.each([null, 'progress'])('keeps delivery open after custom message data is %j', (data) => {
+		const { res } = createResponse();
+		const { onChunk, abortSignal, close } = initSseStream(res);
+
+		onChunk({
+			type: 'message',
+			message: { type: 'custom', data },
+		} as unknown as StreamChunk);
+		onChunk({ type: 'text-delta', id: 't-1', delta: 'hello' });
+
+		expect(abortSignal.aborted).toBe(false);
+		expect(res.end).not.toHaveBeenCalled();
+		expect(res.write).toHaveBeenCalledWith(
+			'data: {"type":"text-delta","id":"t-1","delta":"hello"}\n\n',
+		);
+		close();
+	});
+
 	it('closes delivery when an event cannot be serialized', () => {
 		const { res } = createResponse();
 		const { onChunk, abortSignal } = initSseStream(res);
