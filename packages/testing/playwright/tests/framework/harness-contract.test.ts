@@ -23,7 +23,22 @@ function results(suites: JSONReportSuite[]): JSONReportTestResult[] {
 	]);
 }
 
-test.each(['api-only', 'ui-only', 'combined', 'service-only', 'body-failure', 'bootstrap-failure'])(
+test.each([
+	'api-only',
+	'ui-only',
+	'combined',
+	'service-only',
+	'body-failure',
+	'bootstrap-failure',
+	'state',
+	'failure',
+	'retry-worker',
+	'admin-role',
+	'unauthenticated',
+	'ui-unauthenticated',
+	'forbidden-reset',
+	'per-test-reset-failure',
+])(
 	'base.ts consumer: %s',
 	async (scenario) => {
 		const outputDir = await mkdtemp(join(tmpdir(), 'harness-contract-'));
@@ -43,6 +58,7 @@ test.each(['api-only', 'ui-only', 'combined', 'service-only', 'body-failure', 'b
 			DEBUG_COLORS: '0',
 			FORCE_COLOR: '0',
 		});
+		if (scenario === 'forbidden-reset') env.N8N_BASE_URL = 'http://127.0.0.1:1';
 		const localBrowsers = join(packageDir, '.playwright-browsers');
 		if (existsSync(localBrowsers)) env.PLAYWRIGHT_BROWSERS_PATH = localBrowsers;
 		const child = spawn(
@@ -92,16 +108,25 @@ test.each(['api-only', 'ui-only', 'combined', 'service-only', 'body-failure', 'b
 		try {
 			const code = await exited;
 			expect(timedOut, output).toBe(false);
-			const failing = scenario.endsWith('failure');
+			const failing =
+				scenario.endsWith('failure') || ['failure', 'forbidden-reset'].includes(scenario);
 			expect(code, output).toBe(failing ? 1 : 0);
 			const report = JSON.parse(
 				await readFile(join(outputDir, 'report.json'), 'utf8'),
 			) as JSONReport;
 			const attempts = results(report.suites);
 			expect(report.errors, output).toEqual([]);
-			expect(attempts, output).toHaveLength(1);
-			expect(attempts[0].status, output).toBe(failing ? 'failed' : 'passed');
-			expect(attempts[0].errors, output).toHaveLength(failing ? 1 : 0);
+			const multi = ['state', 'failure', 'retry-worker'].includes(scenario);
+			expect(attempts, output).toHaveLength(multi ? 2 : 1);
+			if (multi) {
+				expect(
+					attempts.map((attempt) => attempt.status),
+					output,
+				).toEqual(scenario === 'state' ? ['passed', 'passed'] : ['failed', 'passed']);
+			} else {
+				expect(attempts[0].status, output).toBe(failing ? 'failed' : 'passed');
+				expect(attempts[0].errors, output).toHaveLength(failing ? 1 : 0);
+			}
 			const events = (await readFile(env.HARNESS_EVENTS!, 'utf8'))
 				.trim()
 				.split('\n')
@@ -111,23 +136,84 @@ test.each(['api-only', 'ui-only', 'combined', 'service-only', 'body-failure', 'b
 			const reset = events.findIndex((event) => event.path === '/rest/e2e/reset');
 			const servers = events.filter((event) => event.type === 'server-listening');
 			expect(servers.length).toBeGreaterThan(0);
-			for (const server of servers) {
+			for (const [index, server] of servers.entries()) {
 				expect(events).toContainEqual({ type: 'server-closed', server: server.server });
-				expect(
-					events.findIndex(
-						(event) => event.type === 'server-closed' && event.server === server.server,
-					),
-				).toBeGreaterThan(events.findLastIndex((event) => event.type === 'response'));
+				if (['failure', 'retry-worker'].includes(scenario)) {
+					const start = events.indexOf(server);
+					const end = servers[index + 1] ? events.indexOf(servers[index + 1]) : events.length;
+					const segment = events.slice(start, end);
+					expect(segment.at(-1)).toEqual({ type: 'server-closed', server: server.server });
+				} else {
+					expect(
+						events.findIndex(
+							(event) => event.type === 'server-closed' && event.server === server.server,
+						),
+					).toBeGreaterThan(events.findLastIndex((event) => event.type === 'response'));
+				}
 				await expect(fetch(server.url!, { signal: AbortSignal.timeout(1000) })).rejects.toThrow();
 			}
 			const launches = [...output.matchAll(/<launched> pid=(\d+)/g)];
-			if (['ui-only', 'combined', 'body-failure'].includes(scenario)) {
+			if (
+				[
+					'api-only',
+					'service-only',
+					'bootstrap-failure',
+					'state',
+					'failure',
+					'retry-worker',
+					'admin-role',
+					'unauthenticated',
+					'forbidden-reset',
+					'per-test-reset-failure',
+				].includes(scenario)
+			) {
+				expect(launches, output).toHaveLength(0);
+			}
+			if (['ui-only', 'ui-unauthenticated', 'combined', 'body-failure'].includes(scenario)) {
 				expect(launches.length, output).toBeGreaterThan(0);
 			}
 			for (const [, pid] of launches) {
 				expect(output).toContain(`[pid=${pid}] <process did exit:`);
 			}
-			// Observation only: API/service auto fixtures currently activate a browser. Do not require that bug.
+			if (multi) {
+				const stateChanges = requests.filter((event) => event.path === '/state');
+				expect(stateChanges.map((event) => event.method)).toEqual(
+					scenario === 'retry-worker' ? ['GET', 'POST', 'GET'] : ['POST', 'GET'],
+				);
+				expect(stateChanges.at(-1)?.status).toBe(200);
+				expect(requests.filter((event) => event.path === '/rest/e2e/reset')).toHaveLength(
+					scenario === 'state' ? 2 : scenario === 'failure' ? 3 : 4,
+				);
+				expect(servers).toHaveLength(scenario === 'state' ? 1 : 2);
+				if (scenario !== 'state') expect(attempts[0].errors[0].message).toContain(marker);
+				return;
+			}
+			if (scenario === 'forbidden-reset') {
+				expect(body).toBe(-1);
+				expect(requests.filter((event) => event.path === '/rest/e2e/reset')).toHaveLength(1);
+				expect(attempts[0].errors[0].message).toContain('Database reset is not enabled');
+				return;
+			}
+			if (scenario === 'per-test-reset-failure') {
+				expect(body).toBe(-1);
+				expect(requests.filter((event) => event.path === '/rest/e2e/reset')).toHaveLength(2);
+				expect(requests.findLast((event) => event.path === '/rest/e2e/reset')?.status).toBe(500);
+				expect(requests.filter((event) => event.path === '/rest/login')).toHaveLength(0);
+				expect(attempts[0].errors[0].message).toContain(`${marker}:reset-error`);
+				return;
+			}
+			if (scenario === 'unauthenticated') {
+				expect(requests.filter((event) => event.path === '/rest/login')).toHaveLength(0);
+				expect(requests.find((event) => event.path === '/identity')?.status).toBe(401);
+				return;
+			}
+			if (scenario === 'ui-unauthenticated') {
+				expect(servers).toHaveLength(2);
+				expect(requests.filter((event) => event.path === '/rest/login')).toHaveLength(0);
+				expect(requests.find((event) => event.path === '/consumer')?.status).toBe(401);
+				return;
+			}
+			// Keep these counts visible when a fixture changes.
 			console.info(
 				`${scenario}: exit=${code}, browser launches=${launches.length}, server closes=${servers.length}, ` +
 					`resets=${requests.filter((event) => event.path === '/rest/e2e/reset').length}, ` +
@@ -160,15 +246,25 @@ test.each(['api-only', 'ui-only', 'combined', 'service-only', 'body-failure', 'b
 			const login = events.findIndex((event) => event.path === '/rest/login');
 			expect(login).toBeGreaterThan(reset);
 			expect(body).toBeGreaterThan(login);
-			const identity = scenario === 'combined' ? 'member@n8n.io' : 'nathan@n8n.io';
+			const identity =
+				scenario === 'combined'
+					? 'member@n8n.io'
+					: scenario === 'admin-role'
+						? 'admin@n8n.io'
+						: 'nathan@n8n.io';
 			const probes = requests.filter((event) =>
 				['/identity', '/consumer'].includes(event.path ?? ''),
 			);
 			expect(probes.length).toBeGreaterThan(0);
 			for (const probe of probes) expect(probe.email).toBe(identity);
 			if (scenario === 'combined') {
+				expect(requests.filter((event) => event.path === '/rest/e2e/reset')).toHaveLength(2);
+				expect(requests.filter((event) => event.path === '/rest/login')).toHaveLength(2);
+				expect(events.findIndex((event) => event.path === '/rest/login')).toBeGreaterThan(
+					events.findLastIndex((event) => event.path === '/rest/e2e/reset'),
+				);
 				expect(probes.map((event) => event.path)).toEqual(['/identity', '/consumer']);
-				// All resets must precede the consumer. Do not freeze the current duplicate-reset count.
+				// Both worker bootstrap and the per-test reset must precede the consumer.
 				expect(events.findLastIndex((event) => event.path === '/rest/e2e/reset')).toBeLessThan(
 					body,
 				);

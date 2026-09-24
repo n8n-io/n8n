@@ -1,4 +1,4 @@
-import { marker, provision, record } from './support';
+import { failFirstAttempt, marker, provision, record } from './support';
 import { INSTANCE_MEMBER_CREDENTIALS, INSTANCE_OWNER_CREDENTIALS } from '../../config/test-users';
 import { test as base, expect } from '../../fixtures/base';
 
@@ -79,6 +79,54 @@ test.describe(
 			record({ type: 'body' });
 			await api.request.get('/identity');
 			throw new Error('Bootstrap failure must prevent this body from running');
+		});
+
+		test('state predecessor', async ({ api }) => {
+			expect((await api.request.post('/state')).ok()).toBe(true);
+		});
+
+		test('state successor', { tag: '@db:reset' }, async ({ api }) => {
+			expect(await (await api.request.get('/state')).json()).toEqual({ changed: false });
+		});
+
+		test('failure predecessor', async ({ api }) => {
+			await api.request.post('/state');
+			throw new Error(`${marker}:predecessor-error`);
+		});
+
+		test('failure successor', { tag: '@db:reset' }, async ({ api }) => {
+			expect(await (await api.request.get('/state')).json()).toEqual({ changed: false });
+		});
+
+		test('retry-worker', { tag: '@db:reset' }, async ({ api }, testInfo) => {
+			const state = await (await api.request.get('/state')).json();
+			expect(state).toEqual({ changed: false });
+			await failFirstAttempt(api, testInfo.retry);
+		});
+
+		test('admin-role', { tag: '@auth:admin' }, async ({ api }) => {
+			record({ type: 'body' });
+			expect((await api.request.get('/identity')).ok()).toBe(true);
+		});
+
+		test('unauthenticated', { tag: '@auth:none' }, async ({ api }) => {
+			record({ type: 'body' });
+			expect((await api.request.get('/identity')).status()).toBe(401);
+		});
+
+		test('ui-unauthenticated', { tag: '@auth:none' }, async ({ n8n }) => {
+			record({ type: 'body' });
+			expect((await n8n.page.goto('/consumer'))?.status()).toBe(401);
+		});
+
+		test('forbidden-reset', { tag: '@db:reset' }, async ({ api }) => {
+			void api;
+			record({ type: 'body' });
+		});
+
+		test('per-test-reset-failure', { tag: '@db:reset' }, async ({ api }) => {
+			void api;
+			record({ type: 'body' });
 		});
 	},
 );

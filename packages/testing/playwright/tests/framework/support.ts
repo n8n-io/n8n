@@ -6,6 +6,7 @@ import { appendFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 
 import { N8N_AUTH_COOKIE } from '../../config/constants';
+import type { ApiHelpers } from '../../services/api-helper';
 
 export interface Evidence {
 	type: string;
@@ -24,6 +25,12 @@ export function record(event: Evidence) {
 	appendFileSync(process.env.HARNESS_EVENTS!, `${JSON.stringify(event)}\n`);
 }
 
+export async function failFirstAttempt(api: ApiHelpers, retry: number) {
+	if (retry !== 0) return;
+	await api.request.post('/state');
+	throw new Error(`${marker}:retry-error`);
+}
+
 function strict<T extends object>(value: T): T {
 	return new Proxy(value, {
 		get(target, key, receiver) {
@@ -37,7 +44,9 @@ export async function provision() {
 	const servers: Server[] = [];
 	const users = new Map<string, string>();
 	const sessions = new Map<string, string>();
+	let changed = false;
 	let mailCleared = false;
+	let resets = 0;
 	const stop = async () => {
 		await Promise.all(
 			servers.map(async (server) => {
@@ -77,7 +86,11 @@ export async function provision() {
 				try {
 					const route = `${req.method} ${req.url}`;
 					if (name === 'backend' && route === 'POST /rest/e2e/reset') {
-						if (process.env.HARNESS_CASE === 'bootstrap-failure') {
+						resets++;
+						if (
+							process.env.HARNESS_CASE === 'bootstrap-failure' ||
+							(process.env.HARNESS_CASE === 'per-test-reset-failure' && resets === 2)
+						) {
 							res.writeHead(500).end(`${marker}:reset-error`);
 							return;
 						}
@@ -86,7 +99,8 @@ export async function provision() {
 							{ email: string; password: string } | Array<{ email: string; password: string }>
 						>;
 						for (const user of Object.values(data).flat()) users.set(user.email, user.password);
-						// Session invalidation is not modeled: this suite checks fixture ordering, not DB semantics.
+						changed = false;
+						sessions.clear();
 						res.end('{}');
 					} else if (name === 'backend' && route === 'POST /rest/login') {
 						const data = JSON.parse(body) as { emailOrLdapLoginId: string; password: string };
@@ -111,6 +125,11 @@ export async function provision() {
 						res.writeHead(401).end('Missing session');
 					} else if (name === 'backend' && route === 'GET /identity') {
 						res.end(JSON.stringify({ id: email }));
+					} else if (name === 'backend' && route === 'POST /state') {
+						changed = true;
+						res.end('{}');
+					} else if (name === 'backend' && route === 'GET /state') {
+						res.end(JSON.stringify({ changed }));
 					} else if (route === 'GET /consumer') {
 						res.setHeader('Content-Type', 'text/html');
 						res.end(
@@ -141,7 +160,9 @@ export async function provision() {
 	};
 	try {
 		const baseUrl = await listen('backend');
-		const frontendUrl = process.env.HARNESS_CASE === 'ui-only' ? await listen('frontend') : baseUrl;
+		const frontendUrl = ['ui-only', 'ui-unauthenticated'].includes(process.env.HARNESS_CASE ?? '')
+			? await listen('frontend')
+			: baseUrl;
 		const services = strict({ mailpit: new MailpitHelper(baseUrl) });
 		// Only the supplied endpoint, service, and lifecycle surface is implemented. All other reads throw.
 		const stack = strict({ baseUrl, mainUrls: [baseUrl], services, stop }) as unknown as N8NStack;

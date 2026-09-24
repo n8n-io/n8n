@@ -10,7 +10,7 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 	testDir: '.',
 	testMatch: 'consumers.ts',
 	workers: 1,
-	retries: 0,
+	retries: process.env.HARNESS_CASE === 'retry-worker' ? 1 : 0,
 	timeout: 20_000,
 	globalTimeout: 35_000,
 	outputDir: join(process.env.HARNESS_OUTPUT, 'artifacts'),

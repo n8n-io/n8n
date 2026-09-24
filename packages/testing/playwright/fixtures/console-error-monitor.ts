@@ -48,7 +48,7 @@ class ConsoleErrorMonitor {
  * Spread into test.extend() to enable monitoring.
  */
 export const consoleErrorFixtures = {
-	_consoleErrorMonitor: [
+	consoleErrorMonitor: [
 		async (
 			{ context }: { context: BrowserContext },
 			use: (monitor: ConsoleErrorMonitor) => Promise<void>,
@@ -77,6 +77,6 @@ export const consoleErrorFixtures = {
 				});
 			}
 		},
-		{ auto: true },
+		{},
 	],
 };
