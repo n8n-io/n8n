@@ -126,9 +126,9 @@ export const createGetUserPreferencesTool = (
 					: NOTHING_SAVED;
 
 			// Count, scopes and the size of the rendered text, never the text itself, which is
-			// the person's own writing. The length is what reviews the caps: CONTEXT-137 wants a
-			// new number once the 95th percentile of a rendered block passes 8,000 characters,
-			// and this read is one of the two paths that render one today (CONTEXT-137).
+			// the person's own writing. The length is what reviews the caps: the caps need a new
+			// number once the 95th percentile of a rendered block passes 8,000 characters, and
+			// this read is one of the two paths that render one today.
 			telemetryPayload.results = {
 				success: true,
 				data: {

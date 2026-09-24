@@ -8,7 +8,7 @@ import {
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewTag,
+	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -37,6 +37,7 @@ import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrows
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -166,6 +167,8 @@ const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'blocked',
 ];
 
+const PREFERENCE_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = ['always_allow', 'blocked'];
+
 const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 	require_approval: 'settings.n8nAgent.permissions.needsApproval',
 	always_allow: 'settings.n8nAgent.permissions.alwaysAllow',
@@ -230,13 +233,33 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	},
 ];
 
+const PREFERENCES_PERMISSION_GROUP: PermissionGroup = {
+	id: 'preferences',
+	labelKey: 'settings.n8nAgent.permissions.group.preferences',
+	keys: ['createPreference'],
+};
+
+const permissionGroups = computed(() =>
+	isContextPreferencesEnabled()
+		? [...PERMISSION_GROUPS, PREFERENCES_PERMISSION_GROUP]
+		: PERMISSION_GROUPS,
+);
+
 const expandedGroups = reactive<Record<string, boolean>>({});
 
 function isGroupLocked(group: PermissionGroup) {
 	return isOff.value || (group.id === 'mcp' && !isMcpAccessEnabled.value);
 }
 
-function permissionSummary(exceptions: number) {
+function groupSummary(group: PermissionGroup) {
+	if (group.id === 'mcp' && !isMcpAccessEnabled.value)
+		return i18n.baseText('settings.n8nAgent.permissions.group.mcpDisabled');
+	// Each key has its own default, so compare against that one. Comparing
+	// against `require_approval` counts an untouched Preferences group, whose
+	// default is `always_allow`, as an exception.
+	const exceptions = group.keys.filter(
+		(key) => store.getPermission(key) !== DEFAULT_INSTANCE_AI_PERMISSIONS[key],
+	).length;
 	if (exceptions === 0) return i18n.baseText('settings.n8nAgent.permissions.group.default');
 	if (exceptions === 1) return i18n.baseText('settings.n8nAgent.permissions.group.exception');
 	return i18n.baseText('settings.n8nAgent.permissions.group.exceptions', {
@@ -244,14 +267,9 @@ function permissionSummary(exceptions: number) {
 	});
 }
 
-function groupSummary(group: PermissionGroup) {
-	if (group.id === 'mcp' && !isMcpAccessEnabled.value) {
-		return i18n.baseText('settings.n8nAgent.permissions.group.mcpDisabled');
-	}
-	const exceptions = group.keys.filter(
-		(key) => store.getPermission(key) !== DEFAULT_INSTANCE_AI_PERMISSIONS[key],
-	).length;
-	return permissionSummary(exceptions);
+function permissionOptionsFor(key: keyof InstanceAiPermissions) {
+	if (key === 'createPreference') return PREFERENCE_PERMISSION_OPTIONS;
+	return PERMISSION_OPTIONS;
 }
 
 /** Exactly one dialog can be active; transitions between steps never observe an all-closed state. */
@@ -463,7 +481,7 @@ function openAiUsageSettings() {
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
 			<template #titleTrailing>
-				<N8nPreviewTag size="medium" />
+				<N8nPreviewBadge size="medium" />
 			</template>
 		</N8nSettingsPageHeader>
 
@@ -659,7 +677,7 @@ function openAiUsageSettings() {
 								<N8nText bold size="medium" color="text-dark">
 									{{ i18n.baseText('settings.n8nAgent.search.label') }}
 								</N8nText>
-								<N8nBadge theme="success" size="xsmall">
+								<N8nBadge variant="success" size="xsmall">
 									{{ i18n.baseText('settings.n8nAgent.search.recommended') }}
 								</N8nBadge>
 							</span>
@@ -758,7 +776,7 @@ function openAiUsageSettings() {
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
-						v-for="group in PERMISSION_GROUPS"
+						v-for="group in permissionGroups"
 						:key="group.id"
 						v-model="expandedGroups[group.id]"
 						:class="{ [$style.dim]: isGroupLocked(group) }"
@@ -788,7 +806,7 @@ function openAiUsageSettings() {
 										"
 									>
 										<N8nOption
-											v-for="option in PERMISSION_OPTIONS"
+											v-for="option in permissionOptionsFor(key)"
 											:key="option"
 											:value="option"
 											:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"

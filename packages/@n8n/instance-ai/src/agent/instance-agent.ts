@@ -214,6 +214,7 @@ export async function createInstanceAgent(
 			// Presence of the service IS the experiment gate — the host only wires it
 			// for flagged-in users on project-bound runs.
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
+			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot

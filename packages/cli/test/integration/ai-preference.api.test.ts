@@ -110,7 +110,7 @@ describe('POST /ai-preferences', () => {
 
 	test('records the settings area as the surface that wrote the row', async () => {
 		// The write path names the surface. A client cannot claim `aia` or `mcp` by
-		// sending a source of its own (CONTEXT-137).
+		// sending a source of its own.
 		const response = await memberAgent
 			.post('/ai-preferences')
 			.send({ content: 'From settings.', scope: 'user', source: 'aia' });
@@ -141,6 +141,34 @@ describe('POST /ai-preferences', () => {
 		);
 
 		await repository().delete({ userId: outsider.id });
+	});
+
+	test('refuses a second row with the same text in the same scope', async () => {
+		const first = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Keep replies short.', scope: 'user' });
+		expect(first.statusCode).toBe(200);
+
+		const second = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Keep replies short.', scope: 'user' });
+		expect(second.statusCode).toBe(409);
+
+		expect(await repository().count({ where: { userId: member.id } })).toBe(1);
+		await repository().delete({ userId: member.id });
+	});
+
+	test('refuses an edit that copies another row in the scope', async () => {
+		const a = await memberAgent.post('/ai-preferences').send({ content: 'Rule A.', scope: 'user' });
+		const b = await memberAgent.post('/ai-preferences').send({ content: 'Rule B.', scope: 'user' });
+
+		const edit = await memberAgent
+			.patch(`/ai-preferences/${b.body.data.id}`)
+			.send({ content: 'Rule A.', scope: 'user' });
+		expect(edit.statusCode).toBe(409);
+
+		await repository().delete({ userId: member.id });
+		expect(a.statusCode).toBe(200);
 	});
 
 	test("counts the target user's scope when an admin writes for somebody else", async () => {
@@ -205,10 +233,12 @@ describe('POST /ai-preferences', () => {
 	});
 
 	test('lets an owner and an admin save an instance preference', async () => {
-		for (const agent of [ownerAgent, adminAgent]) {
+		// Distinct text per agent: the instance scope is one shared scope, so a second
+		// identical write to it is a duplicate, not a second grant to check.
+		for (const [index, agent] of [ownerAgent, adminAgent].entries()) {
 			const response = await agent
 				.post('/ai-preferences')
-				.send({ content: 'Everyone.', scope: 'instance' });
+				.send({ content: `Everyone, rule ${index}.`, scope: 'instance' });
 
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data).toMatchObject({ userId: null, projectId: null });
@@ -499,6 +529,62 @@ describe('GET /ai-preferences', () => {
 	});
 });
 
+describe('GET /ai-preferences?ids=', () => {
+	test('returns only the named rows, in prompt order', async () => {
+		const first = await seed({
+			content: 'first',
+			userId: member.id,
+			createdAt: new Date('2026-01-01'),
+		});
+		await seed({ content: 'second', userId: member.id, createdAt: new Date('2026-02-01') });
+		const third = await seed({
+			content: 'third',
+			userId: member.id,
+			createdAt: new Date('2026-03-01'),
+		});
+
+		const response = await memberAgent
+			.get('/ai-preferences')
+			.query({ ids: `${third.id},${first.id}` });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+		expect(contentsOf(response)).toEqual(['first', 'third']);
+	});
+
+	test('does not widen what the caller may see', async () => {
+		const theirs = await seed({ content: 'Someone else', userId: outsider.id });
+		const mine = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.get('/ai-preferences')
+			.query({ ids: `${theirs.id},${mine.id}` });
+
+		expect(contentsOf(response)).toEqual(['Mine']);
+	});
+
+	test('answers an unknown id with an empty page', async () => {
+		await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ ids: crypto.randomUUID() });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(0);
+	});
+
+	test('refuses an id that is not a UUID', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ ids: 'missing' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test.each([' , ', ''])('refuses an empty ids filter (%j)', async (ids) => {
+		const response = await memberAgent.get('/ai-preferences').query({ ids });
+
+		expect(response.statusCode).toBe(400);
+	});
+});
+
 describe('GET /ai-preferences/count', () => {
 	test('returns the size of the list the caller would see, without rows', async () => {
 		await seed({ content: 'Instance' });
@@ -729,16 +815,14 @@ describe('the preferences a write produces', () => {
 	});
 
 	test('keep two preferences with the same text apart by id', async () => {
-		// A remint or a conflation of ids is invisible when the text is unique, and the assistant
-		// edits by id, so the same sentence saved twice has to stay two addressable rows.
-		const first = await memberAgent
-			.post('/ai-preferences')
-			.send({ content: 'Keep replies short.', scope: 'user' });
-		const second = await memberAgent
-			.post('/ai-preferences')
-			.send({ content: 'Keep replies short.', scope: 'user' });
-
-		expect(second.body.data.id).not.toBe(first.body.data.id);
+		// The write path now refuses a second row with this text (see `refuses a second row
+		// with the same text in the same scope` above), so these two rows come from a direct
+		// insert, standing in for a pair a race between two writes left behind before the
+		// duplicate check ran, or for rows a migration inserted before this check existed. A
+		// remint or a conflation of ids is invisible when the text is not unique, and the
+		// assistant edits by id, so the same sentence twice has to stay two addressable rows.
+		const first = await seed({ content: 'Keep replies short.', userId: member.id });
+		const second = await seed({ content: 'Keep replies short.', userId: member.id });
 
 		const applicable = await Container.get(AiPreferenceService).getApplicable(member.id, []);
 
@@ -746,9 +830,7 @@ describe('the preferences a write produces', () => {
 		// falls back to `id ASC`, which is a random uuid. Order is covered where it is seeded,
 		// in `ai-preference.repository.test.ts` and in the `GET /ai-preferences` block above.
 		expect(applicable.user).toHaveLength(2);
-		expect(applicable.user.map((item) => item.id).sort()).toEqual(
-			[first.body.data.id, second.body.data.id].sort(),
-		);
+		expect(applicable.user.map((item) => item.id).sort()).toEqual([first.id, second.id].sort());
 		expect(applicable.user.every((item) => item.content === 'Keep replies short.')).toBe(true);
 	});
 

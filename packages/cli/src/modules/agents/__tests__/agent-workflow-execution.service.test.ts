@@ -14,6 +14,7 @@ import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
@@ -141,7 +142,11 @@ function makeService() {
 	const service = new AgentWorkflowExecutionService(
 		mockLogger(),
 		agentRepository,
-		new AgentTurnExecutionService(mockLogger(), executionService),
+		new AgentTurnExecutionService(
+			mockLogger(),
+			executionService,
+			mock<AgentChatExecutionService>(),
+		),
 		telemetry,
 		credentialsService,
 		reconstructionService,

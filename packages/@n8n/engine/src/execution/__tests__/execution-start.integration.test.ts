@@ -102,7 +102,7 @@ describe('execution start (integration)', () => {
 			workflow: {},
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: generateId(),
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 		await ready;
 
@@ -149,7 +149,7 @@ describe('execution start (integration)', () => {
 			graph,
 			workflow: {},
 			triggerOutputs: null,
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

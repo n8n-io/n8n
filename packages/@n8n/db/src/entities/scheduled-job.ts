@@ -32,6 +32,9 @@ export { ScheduledJobMisfirePolicy, ScheduledJobOwnerType } from '@n8n/constants
 // leftmost prefix, the third column covers the per-member provisioning diff.
 @Index(['ownerType', 'ownerId', 'ownerMemberId'])
 @Index(['name'], { unique: true })
+// The claim reads the set of limited jobs on every pass. Partial, so it stays as
+// small as that set.
+@Index(['concurrencyLimit'], { where: '"concurrencyLimit" IS NOT NULL' })
 export class ScheduledJob extends WithTimestamps {
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -154,6 +157,16 @@ export class ScheduledJob extends WithTimestamps {
 	 */
 	@Column({ type: 'int', default: 1 })
 	maxAttempts: number;
+
+	/**
+	 * How many of this job's occurrences may run at the same time. `null` means no
+	 * limit.
+	 *
+	 * At least 1: a lower ceiling would hold every occurrence back until its misfire
+	 * deadline passed, so the job would never run.
+	 */
+	@Column({ type: 'int', nullable: true })
+	concurrencyLimit: number | null;
 
 	/** What happens to an occurrence overdue by more than {@link misfireGraceSeconds}. */
 	@Column({ type: 'varchar', length: 16, default: ScheduledJobMisfirePolicy.Coalesce })

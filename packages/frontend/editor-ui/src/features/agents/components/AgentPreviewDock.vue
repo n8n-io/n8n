@@ -34,7 +34,7 @@ interface SessionOption {
 	updatedAt?: string;
 }
 
-enum PreviewLayout {
+const enum PreviewLayout {
 	Docked = 'docked',
 	Fullpage = 'fullpage',
 }

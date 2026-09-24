@@ -432,6 +432,11 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.readFilesystem).toBe('always_allow');
 	});
 
+	it('blocks createPreference on a read-only branch like every other write', () => {
+		const result = applyBranchReadOnlyOverrides(DEFAULT_INSTANCE_AI_PERMISSIONS);
+		expect(result.createPreference).toBe('blocked');
+	});
+
 	it('should not mutate the original permissions object', () => {
 		const original = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
 		applyBranchReadOnlyOverrides(original);
@@ -479,6 +484,26 @@ describe('resolveInstanceAiPermissions', () => {
 		resolveInstanceAiPermissions(persisted);
 
 		expect(persisted.executeNode).toBeUndefined();
+	});
+});
+
+describe('createPreference permission', () => {
+	it('defaults to always_allow, because the tool never pauses for approval', () => {
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.createPreference).toBe('always_allow');
+	});
+
+	it.each(['always_allow', 'blocked'] as const)('accepts %s from the settings API', (mode) => {
+		const parsed = InstanceAiAdminSettingsUpdateRequest.safeParse({
+			permissions: { createPreference: mode },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('refuses require_approval from the settings API', () => {
+		const parsed = InstanceAiAdminSettingsUpdateRequest.safeParse({
+			permissions: { createPreference: 'require_approval' },
+		});
+		expect(parsed.success).toBe(false);
 	});
 });
 

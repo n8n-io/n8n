@@ -15,6 +15,7 @@ export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
 export type * from './node-type-availability';
+export type * from './credential-type-availability';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -154,6 +155,8 @@ export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
 	credentialTypeNameParamSchema,
+	credentialTypePolicyIdParamSchema,
+	credentialTypePolicyScopeIdParamSchema,
 	executionIdParamSchema,
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
@@ -193,6 +196,7 @@ export {
 	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
 	credentialDescriptionSchema,
 } from './schemas/credential-description.schema';
+export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
 export type {
 	DependencyType,
 	DependencyResourceType,
@@ -427,6 +431,8 @@ export {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
@@ -524,6 +530,7 @@ export type {
 	InstanceAiPromptConfiguration,
 	InstanceAiPrefillType,
 	InstanceAiPrefillTypeReported,
+	InstanceAiPrefillPayload,
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
@@ -577,6 +584,10 @@ export type {
 	InstanceAiSetupItem,
 	InstanceAiSetupItemsEvent,
 	InstanceAiPreferencesAppliedEvent,
+	InstanceAiPreferenceCardEvent,
+	InstanceAiPreferenceCardUndoResponse,
+	InstanceAiPreferenceCardEditResponse,
+	PreferenceCardPayload,
 	AiPreferencesAppliedPayload,
 	InstanceAiErrorEvent,
 	InstanceAiFilesystemRequestEvent,
@@ -852,6 +863,7 @@ export {
 	SSO_ERROR_QUERY_PARAM,
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
+export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
 
 export {
 	instanceAiApprovalDetailsSchema,

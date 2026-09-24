@@ -91,8 +91,12 @@ function renderWith(
 		categories: ToolCategoryKey[];
 		detailItem: ToolConnectionItem | null;
 		detailMode: 'detail' | 'settings';
-		allowWorkflowCreation: boolean;
 		showSuggestionFooter: boolean;
+		createAction: {
+			category: ToolCategoryKey;
+			label: string;
+			testId?: string;
+		};
 	}>,
 ) {
 	return renderModal({
@@ -102,8 +106,8 @@ function renderWith(
 			categories: props.categories ?? ALL_CATEGORIES,
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
-			allowWorkflowCreation: props.allowWorkflowCreation,
 			showSuggestionFooter: props.showSuggestionFooter,
+			createAction: props.createAction,
 		},
 		slots: {
 			'suggestion-footer': '<div data-test-id="suggest-tool-footer">Suggest a tool</div>',
@@ -273,7 +277,11 @@ describe('ToolsConnectionModal', () => {
 		const { emitted, getByTestId, queryByTestId } = renderWith({
 			items: [],
 			categories: ['mcp', 'workflows'],
-			allowWorkflowCreation: true,
+			createAction: {
+				category: 'workflows',
+				label: 'Create workflow',
+				testId: 'tools-connection-create-workflow',
+			},
 		});
 
 		expect(queryByTestId('tools-connection-create-workflow')).toBeNull();
@@ -282,7 +290,7 @@ describe('ToolsConnectionModal', () => {
 		expect(getByTestId('tools-connection-empty')).toBeTruthy();
 
 		await fireEvent.click(getByTestId('tools-connection-create-workflow'));
-		expect(emitted()['create-workflow']).toEqual([[]]);
+		expect(emitted().create).toEqual([[]]);
 	});
 
 	it('renders the detail view when a detailItem is set', () => {
@@ -512,6 +520,17 @@ describe('ToolsConnectionModal', () => {
 		await waitFor(() => {
 			expect(queryByText('Gmail')).toBeTruthy();
 			expect(queryByText('GitHub')).toBeNull();
+		});
+	});
+
+	it('ignores surrounding whitespace in a search query', async () => {
+		const { getByPlaceholderText, queryByText } = renderWith({ categories: ['mcp'] });
+
+		await fireEvent.update(getByPlaceholderText('Search all tools...'), '  github  ');
+
+		await waitFor(() => {
+			expect(queryByText('GitHub')).toBeTruthy();
+			expect(queryByText('Gmail')).toBeNull();
 		});
 	});
 

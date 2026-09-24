@@ -1,20 +1,26 @@
 import { createActiveWorkflow, createWorkflow, newWorkflow, testDb } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import { UNPUBLISH_VERSION_SENTINEL } from '@n8n/db';
-import { WorkflowPublicationOutboxRepository, WorkflowRepository } from '@n8n/db';
+import {
+	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import assert from 'node:assert';
 
 describe('WorkflowPublicationOutboxRepository', () => {
 	let repository: WorkflowPublicationOutboxRepository;
+	let retryStateRepository: WorkflowPublicationRetryStateRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
 		repository = Container.get(WorkflowPublicationOutboxRepository);
+		retryStateRepository = Container.get(WorkflowPublicationRetryStateRepository);
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['WorkflowPublicationOutbox']);
+		await testDb.truncate(['WorkflowPublicationRetryState', 'WorkflowPublicationOutbox']);
 	});
 
 	afterAll(async () => {
@@ -32,6 +38,15 @@ describe('WorkflowPublicationOutboxRepository', () => {
 
 		const claimedAgain = await repository.claimNextPendingRecord();
 		expect(claimedAgain).toBeNull();
+	});
+
+	it('clears retry suppression when a user explicitly enqueues a publication', async () => {
+		const workflow = await createWorkflow();
+		await retryStateRepository.suppressRetry(workflow.id, workflow.versionId);
+
+		await repository.enqueue(workflow.id, workflow.versionId, 'publish');
+
+		expect(await retryStateRepository.findOneBy({ workflowId: workflow.id })).toBeNull();
 	});
 
 	it('supersedes an existing pending record when re-enqueued for the same workflow', async () => {
@@ -82,6 +97,16 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			expect(claimed?.reason).toBe('publish');
 		});
 
+		it('keeps retry suppression when reconciliation enqueues the workflow', async () => {
+			const workflow = await createActiveWorkflow();
+			assert(workflow.activeVersionId);
+			await retryStateRepository.suppressRetry(workflow.id, workflow.activeVersionId);
+
+			await repository.enqueueByWorkflowIds([workflow.id], 'reconcile');
+
+			expect(await retryStateRepository.findOneBy({ workflowId: workflow.id })).not.toBeNull();
+		});
+
 		it('stamps the given reason on bulk-enqueued records', async () => {
 			const wf1 = await createActiveWorkflow();
 			const wf2 = await createActiveWorkflow();
@@ -115,6 +140,21 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		).rejects.toThrow('rollback');
 
 		expect(await repository.claimNextPendingRecord()).toBeNull();
+	});
+
+	it('keeps retry suppression when an explicit retry transaction rolls back', async () => {
+		const workflow = await createWorkflow();
+		await retryStateRepository.suppressRetry(workflow.id, workflow.versionId);
+
+		await expect(
+			repository.manager.transaction(async (trx) => {
+				await repository.enqueue(workflow.id, workflow.versionId, 'publish', trx);
+				throw new Error('rollback');
+			}),
+		).rejects.toThrow('rollback');
+
+		expect(await retryStateRepository.findOneBy({ workflowId: workflow.id })).not.toBeNull();
+		expect(await repository.findInFlightByWorkflowId(workflow.id)).toBeNull();
 	});
 
 	it('claims pending records in FIFO order', async () => {

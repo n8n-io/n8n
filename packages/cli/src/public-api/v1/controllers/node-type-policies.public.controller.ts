@@ -94,7 +94,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
-	async getInstancePolicy(): Promise<PolicyEffectivePublicDto> {
+	async getNodeTypeInstancePolicy(): Promise<PolicyEffectivePublicDto> {
 		const effective = await (await this.service()).getEffectivePolicy(NODE_TYPES_KIND, null);
 
 		return {
@@ -117,7 +117,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async putInstancePolicy(
+	async putNodeTypeInstancePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: PutInstancePolicyDto,
@@ -150,7 +150,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
-	async getProjectPolicy(
+	async getNodeTypeProjectPolicy(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
@@ -177,7 +177,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async putProjectPolicy(
+	async putNodeTypeProjectPolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
@@ -209,7 +209,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyDocumentListPublicDto)
 	@ApiErrorResponse(503)
-	async listPolicyDocuments(
+	async listNodeTypePolicyDocuments(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListNodeTypePolicyDocumentsQueryDto,
@@ -239,7 +239,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(201, PolicyDocumentWriteResultPublicDto)
 	@ApiErrorResponse(503)
-	async createPolicyDocument(
+	async createNodeTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: CreatePolicyDocumentDto,
@@ -262,7 +262,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyDocumentPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async getPolicyDocument(
+	async getNodeTypePolicyDocument(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
@@ -288,7 +288,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async updatePolicyDocument(
+	async updateNodeTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
@@ -318,7 +318,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async deletePolicyDocument(
+	async deleteNodeTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
@@ -338,7 +338,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyAttachmentsPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async replaceAttachments(
+	async replaceNodeTypePolicyAttachments(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('scopeId', nodeTypePolicyScopeIdParamSchema) scopeId: string,

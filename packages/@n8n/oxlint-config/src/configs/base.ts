@@ -223,6 +223,7 @@ export const baseConfig = defineConfig({
 		'n8n-local-rules/no-json-parse-json-stringify': 'error',
 		'n8n-local-rules/no-restricted-sleep-definition': 'error',
 		'n8n-local-rules/no-restricted-sleep-import': 'error',
+		'n8n-local-rules/no-raw-enum': 'error',
 		'n8n-local-rules/no-type-only-import-in-di': 'error',
 		'n8n-local-rules/no-unsealed-credentials-entity-write': 'error',
 		'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',

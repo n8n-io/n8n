@@ -4,6 +4,7 @@ import ClaudeIcon from './assets/client-icons/claude.svg?component';
 import CodexIcon from './assets/client-icons/codex.svg?component';
 import CursorIcon from './assets/client-icons/cursor.svg?component';
 import GeminiIcon from './assets/client-icons/gemini.svg?component';
+import MistralIcon from './assets/client-icons/mistral.svg?component';
 import OpenAiIcon from './assets/client-icons/openai.svg?component';
 import VsCodeIcon from './assets/client-icons/vscode.svg?component';
 
@@ -140,6 +141,13 @@ url = "${serverUrl}"`;
 					// server URL, rather than dropping the user on the connectors settings page.
 					addUrl:
 						'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
+				},
+				{
+					id: 'mistral-vibe',
+					name: 'Mistral Vibe',
+					category: 'web',
+					icon: MistralIcon,
+					addUrl: 'https://chat.mistral.ai/connections/marketplace?search=n8n&template=n8n',
 				},
 			],
 		},

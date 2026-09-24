@@ -1,0 +1,27 @@
+operationId: listNodeTypePolicyDocuments
+tags:
+  - NodeTypePolicy
+summary: List node type policy documents
+description: Returns a cursor-paginated list of reusable policy documents.
+x-required-scope: nodeTypePolicy:manage
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/policyDocumentListPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

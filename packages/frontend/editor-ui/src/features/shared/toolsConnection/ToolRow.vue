@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
-import {
-	N8nActionPill,
-	N8nButton,
-	N8nIcon,
-	N8nSpinner,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';
@@ -21,6 +14,10 @@ import { resolveToolItemIcon } from './toolItemIcon';
 
 const props = defineProps<{
 	item: ToolConnectionItem;
+	showConnectAction?: boolean;
+	connectLabel?: string;
+	connectAriaLabel?: string;
+	connectedLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -91,15 +88,13 @@ const serviceActionLabel = computed(() =>
 	),
 );
 
-const actionLabel = computed(() =>
-	props.item.communityPreview
-		? i18n.baseText('communityNodeDetails.install')
-		: i18n.baseText(
-				props.item.status === 'disconnected'
-					? 'tools.connection.action.reconnect'
-					: 'tools.connection.action.connect',
-			),
-);
+const actionLabel = computed(() => {
+	if (props.item.communityPreview) return i18n.baseText('communityNodeDetails.install');
+	if (props.item.status === 'disconnected') {
+		return i18n.baseText('tools.connection.action.reconnect');
+	}
+	return props.connectLabel ?? i18n.baseText('tools.connection.action.connect');
+});
 
 const installBlocked = computed(
 	() => Boolean(props.item.communityPreview) && Boolean(props.item.installDisabled),
@@ -115,7 +110,10 @@ const isRowNavigable = computed(() => props.item.kind !== 'service');
  * its detail view.
  */
 const hasDirectAction = computed(
-	() => Boolean(props.item.communityPreview) || props.item.kind === 'mcp-server',
+	() =>
+		props.showConnectAction ||
+		Boolean(props.item.communityPreview) ||
+		props.item.kind === 'mcp-server',
 );
 
 function handleRowClick() {
@@ -181,14 +179,14 @@ function handleConnect() {
 								data-test-id="tools-connection-row-verified-badge"
 							/>
 						</N8nTooltip>
-						<N8nActionPill
+						<N8nBadge
 							v-if="item.freeCredits"
-							size="small"
-							:type="creditsPill.type"
+							size="xxsmall"
+							:variant="creditsPill.type === 'info' ? 'info' : 'success'"
 							data-test-id="tools-connection-row-free-credits"
 						>
 							{{ creditsPill.text }}
-						</N8nActionPill>
+						</N8nBadge>
 					</span>
 					<N8nText
 						v-if="item.description"
@@ -247,7 +245,7 @@ function handleConnect() {
 				data-test-id="tools-connection-row-connected"
 			>
 				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
-				{{ i18n.baseText('tools.connection.action.connected') }}
+				{{ connectedLabel ?? i18n.baseText('tools.connection.action.connected') }}
 			</span>
 			<span
 				v-else-if="item.status === 'connecting'"
@@ -278,6 +276,7 @@ function handleConnect() {
 					variant="outline"
 					size="small"
 					:loading="item.installing"
+					:aria-label="connectAriaLabel"
 					:data-test-id="
 						item.communityPreview ? 'tools-connection-row-install' : 'tools-connection-row-connect'
 					"
