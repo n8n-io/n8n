@@ -7,6 +7,22 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fakeBinaries } from './fake-bin.mjs';
 import { prepareOpenCode } from './opencode-server.mjs';
 
+// An orphaned fixture process can linger as a zombie where PID 1 does not reap
+// it, and kill(pid, 0) still succeeds for one. Read the process state where the
+// kernel exposes it; without /proc only the signal error can tell.
+function stopped(pid) {
+	try {
+		process.kill(pid, 0);
+	} catch {
+		return true;
+	}
+	try {
+		return readFileSync(`/proc/${pid}/stat`, 'utf8').split(' ')[2] === 'Z';
+	} catch {
+		return false;
+	}
+}
+
 function fixture(t) {
 	const fake = fakeBinaries('opencode-server-');
 	const dir = fake.root;
@@ -38,7 +54,13 @@ if (process.env.TEST_INSTALL_FAIL) process.exit(1);
 		'tmux',
 		`
 if (args[0] === 'has-session') {
-  try { process.kill(+fs.readFileSync(file('pid'), 'utf8'), 0); } catch { process.exit(1); }
+  const pid = +fs.readFileSync(file('pid'), 'utf8');
+  let gone = false;
+  try { process.kill(pid, 0); } catch { gone = true; }
+  if (!gone) {
+    try { gone = fs.readFileSync('/proc/' + pid + '/stat', 'utf8').split(' ')[2] === 'Z'; } catch {}
+  }
+  if (gone) process.exit(1);
 } else {
   const child = require('node:child_process').spawn('bash', ['-c', args.at(-1)], { detached:true, stdio:'ignore' });
   fs.writeFileSync(file('pid'), String(child.pid)); child.unref();
@@ -59,15 +81,25 @@ const server = require('node:http').createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json');
   const expected = 'Basic ' + Buffer.from('opencode:' + process.env.OPENCODE_SERVER_PASSWORD).toString('base64');
   if (req.headers.authorization !== expected) { res.writeHead(401).end('{}'); return; }
+  const directory = decodeURIComponent(req.headers['x-opencode-directory']);
   if (req.url === '/global/health') { res.end(JSON.stringify({ healthy:true, version:'1.2.3' })); return; }
   if (req.method === 'POST' && req.url === '/session') {
-    for await (const chunk of req) {}
+    if (fs.existsSync(file('reject-create'))) { res.writeHead(503).end('{}'); return; }
+    let body = '';
+    for await (const chunk of req) body += chunk;
     const id = 'ses_' + (Object.keys(sessions).length + 1);
-    sessions[id] = { id, directory:decodeURIComponent(req.headers['x-opencode-directory']) };
+    sessions[id] = { id, directory, title: JSON.parse(body).title };
     fs.writeFileSync(file('sessions.json'), JSON.stringify(sessions));
     res.end(JSON.stringify(sessions[id])); return;
   }
   if (fs.existsSync(file('reject-session'))) { res.writeHead(503).end('{}'); return; }
+  if (req.url === '/session') {
+    // Newest first, like the real server. The extra-session file models a
+    // conversation created outside the launcher, newer than every stored one.
+    const list = Object.values(sessions).filter(s => s.directory === directory).reverse();
+    if (fs.existsSync(file('extra-session'))) list.unshift({ id: 'ses_extra', directory, title: 'TUI session' });
+    res.end(JSON.stringify(list)); return;
+  }
   const session = sessions[req.url.split('/').at(-1)];
   if (!session) { res.writeHead(404).end('{}'); return; }
   res.end(JSON.stringify(session));
@@ -80,11 +112,7 @@ server.listen(+args[args.indexOf('--port') + 1], '127.0.0.1');
 			const pid = +readFileSync(join(dir, 'pid'), 'utf8');
 			process.kill(-pid, 'SIGTERM');
 			for (let count = 0; count < 100; count++) {
-				try {
-					process.kill(pid, 0);
-				} catch {
-					return;
-				}
+				if (stopped(pid)) return;
 				await delay(20);
 			}
 			throw new Error('Fixture server did not stop.');
@@ -107,19 +135,29 @@ server.listen(+args[args.indexOf('--port') + 1], '127.0.0.1');
 }
 
 test(
-	'reuses the server and saved conversation, creates separate workspaces, and resumes after restart',
+	'reuses the server, serves web mode the newest conversation, and resumes after restart',
 	{ timeout: 15000 },
 	async (t) => {
 		const f = fixture(t);
 		const first = await f.prepare({ name: 'fix-flaky' });
 		assert.equal(first.directory, join(f.dir, 'wt-fix-flaky'));
+		assert.ok(!('sessionID' in first));
 		assert.deepEqual(await f.prepare({ name: 'fix-flaky' }), first);
 		const second = await f.prepare({ name: 'another-task' });
 		assert.equal(second.port, first.port);
-		assert.notEqual(second.sessionID, first.sessionID);
-		const fresh = await f.prepare({ name: 'fix-flaky', fresh: true });
-		assert.notEqual(fresh.sessionID, first.sessionID);
-		assert.equal((await f.prepare({ name: 'fix-flaky' })).sessionID, fresh.sessionID);
+		const webbed = await f.prepare({ name: 'fix-flaky', web: true });
+		assert.equal(webbed.sessionID, 'ses_1');
+		const created = JSON.parse(readFileSync(join(f.dir, 'sessions.json'), 'utf8'));
+		assert.equal(created.ses_1.title, 'n8n: fix-flaky');
+		assert.equal(created.ses_1.directory, join(f.dir, 'wt-fix-flaky'));
+		assert.equal((await f.prepare({ name: 'fix-flaky', web: true })).sessionID, 'ses_1');
+		assert.equal((await f.prepare({ name: 'another-task', web: true })).sessionID, 'ses_2');
+		writeFileSync(join(f.dir, 'extra-session'), '');
+		assert.equal((await f.prepare({ name: 'fix-flaky', web: true })).sessionID, 'ses_extra');
+		const fresh = await f.prepare({ name: 'fix-flaky', web: true, fresh: true });
+		assert.notEqual(fresh.sessionID, 'ses_extra');
+		rmSync(join(f.dir, 'extra-session'));
+		assert.equal((await f.prepare({ name: 'fix-flaky', web: true })).sessionID, fresh.sessionID);
 		const env = JSON.parse(readFileSync(join(f.dir, 'server-env.json'), 'utf8'));
 		assert.deepEqual([env.worker, env.queue, env.slack], [false, false, false]);
 		assert.equal(env.cache, join(f.dir, '.turbo-cache'));
@@ -127,18 +165,18 @@ test(
 		assert.deepEqual(env.config.enabled_providers, ['openrouter']);
 		assert.deepEqual([env.runtime, env.profile], ['sandbox', null]);
 		assert.equal(statSync(join(f.dir, '.n8n-opencode')).mode & 0o777, 0o700);
-		for (const file of ['serve.sh', 'server.json', 'fix-flaky.session.json']) {
+		for (const file of ['serve.sh', 'server.json']) {
 			assert.equal(statSync(join(f.dir, '.n8n-opencode', file)).mode & 0o777, 0o600);
 		}
 		assert.ok(!f.commands().some((entry) => JSON.stringify(entry.args).includes(first.password)));
 		assert.equal(f.commands().filter((entry) => entry.command === 'pnpm').length, 2);
 		await f.stop();
-		const restarted = await f.prepare({ name: 'fix-flaky' });
+		const restarted = await f.prepare({ name: 'fix-flaky', web: true });
 		assert.equal(restarted.sessionID, fresh.sessionID);
 		assert.notEqual(restarted.password, first.password);
 		rmSync(first.directory, { recursive: true });
 		writeFileSync(join(f.dir, 'branch-exists'), '');
-		assert.equal((await f.prepare({ name: 'fix-flaky' })).sessionID, fresh.sessionID);
+		assert.equal((await f.prepare({ name: 'fix-flaky' })).directory, join(f.dir, 'wt-fix-flaky'));
 		const worktree = f
 			.commands()
 			.filter((entry) => entry.command === 'git' && entry.args.includes('add'))
@@ -183,19 +221,23 @@ test(
 );
 
 test(
-	'preserves saved sessions on API errors and replaces only missing sessions',
+	'reports session API errors and creates conversations only when none exist',
 	{ timeout: 10000 },
 	async (t) => {
 		const f = fixture(t);
-		const first = await f.prepare();
+		const first = await f.prepare({ web: true });
+		assert.equal(first.sessionID, 'ses_1');
 		writeFileSync(join(f.dir, 'reject-session'), '');
-		await assert.rejects(f.prepare(), /Cannot resume OpenCode session \(503\)/);
-		const saved = join(f.dir, '.n8n-opencode', 'agent.session.json');
-		assert.equal(JSON.parse(readFileSync(saved, 'utf8')).id, first.sessionID);
+		await assert.rejects(f.prepare({ web: true }), /Cannot list OpenCode sessions \(503\)/);
+		assert.ok(JSON.parse(readFileSync(join(f.dir, 'sessions.json'), 'utf8')).ses_1);
 		rmSync(join(f.dir, 'reject-session'));
-		writeFileSync(saved, JSON.stringify({ id: 'ses_missing' }));
-		assert.notEqual((await f.prepare()).sessionID, first.sessionID);
-		writeFileSync(saved, '{');
-		await assert.rejects(f.prepare(), /Cannot read/);
+		assert.equal((await f.prepare({ web: true })).sessionID, first.sessionID);
+		writeFileSync(join(f.dir, 'reject-create'), '');
+		await assert.rejects(
+			f.prepare({ name: 'fresh-task', web: true }),
+			/Cannot create OpenCode session \(503\)/,
+		);
+		rmSync(join(f.dir, 'reject-create'));
+		assert.equal((await f.prepare({ name: 'fresh-task', web: true })).sessionID, 'ses_2');
 	},
 );

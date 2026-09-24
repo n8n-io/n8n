@@ -94,7 +94,7 @@ function startChild(command, args, options = {}) {
 async function bootstrap(codespace, options, signal) {
 	signal.throwIfAborted();
 	console.log(`Preparing OpenCode workspace '${options.name}' on ${codespace}…`);
-	const command = `umask 077; mkdir -p /workspaces/.n8n-opencode && flock --close -w 600 /workspaces/.n8n-opencode/launch.lock node --input-type=module - ${options.name} ${options.fresh}`;
+	const command = `umask 077; mkdir -p /workspaces/.n8n-opencode && flock --close -w 600 /workspaces/.n8n-opencode/launch.lock node --input-type=module - ${options.name} ${options.fresh} ${options.web}`;
 	const remote = startChild('gh', ['codespace', 'ssh', '-c', codespace, '--', command], {
 		stdio: ['pipe', 'pipe', 'inherit'],
 		detached: true,
@@ -129,8 +129,8 @@ async function bootstrap(codespace, options, signal) {
 			!state ||
 			!Number.isInteger(state.port) ||
 			!text(state.password) ||
-			!text(state.sessionID) ||
-			!text(state.directory)
+			!text(state.directory) ||
+			(options.web && !text(state.sessionID))
 		) {
 			throw new Error('Invalid OpenCode server response.');
 		}
@@ -236,9 +236,11 @@ export async function connectOpenCode(options, ensureCodespace) {
 			openBrowser(webUrl);
 		} else {
 			console.log(`Connecting to OpenCode ${health.version} in ${state.directory}…`);
+			// `--continue` follows the conversation the user last saw in this workspace,
+			// including one they switched to inside a client. Omit it for `--new`.
 			client = startChild(
 				'opencode',
-				['attach', url, '--dir', state.directory, '--session', state.sessionID],
+				['attach', url, '--dir', state.directory, ...(options.fresh ? [] : ['--continue'])],
 				{
 					stdio: 'inherit',
 					env: {
