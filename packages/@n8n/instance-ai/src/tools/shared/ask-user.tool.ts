@@ -18,6 +18,10 @@ const questionSchema = z.object({
 		.array(z.string())
 		.optional()
 		.describe('Suggested answers (required for single/multi, ignored for text)'),
+	required: z
+		.boolean()
+		.optional()
+		.describe('true hides Skip: the user must answer before they can submit'),
 });
 
 const answerSchema = z.object({

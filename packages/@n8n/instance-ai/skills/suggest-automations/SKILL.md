@@ -50,7 +50,8 @@ Slack or Google Sheets. Never run a command or read a file to find them.
    Without a task, write the second sentence only, with the team and apps
    instead: "Here are three ways n8n could help a sales team with Gmail and
    Slack." Then ONE `ask-user` call with `questions` only: a `single`
-   question "Which one feels like the best fit?" with four options: three
+   question "Which one feels like the best fit?", `required: true`, with
+   four options: three
    suggestions as `<title>: <one plain sentence, the trigger then what
    happens, with the user's app names>`, under 25 words each, no Markdown,
    no n8n node names, and last `Show me other ideas`. Leave `introMessage`
@@ -63,6 +64,10 @@ Slack or Google Sheets. Never run a command or read a file to find them.
    - Free text that describes a task: that is the user's request; build it.
    - Free text that asks for a change, for example another app or a topic:
      repeat step 2 with three automations that fit it.
+   - Free text that names no task and no change, for example "skip", "no" or
+     "later", or `answered: false`: do not build. Reply with one sentence,
+     for example "No problem. Tell me when you want to automate something.",
+     and end the turn.
 4. Write exactly one line before the first tool call, `Building <title> now.`,
    and no other text until the `build-workflow` result. Load `workflow-builder`
    and build the automation with the user's apps the normal way, then follow
@@ -72,6 +77,8 @@ Slack or Google Sheets. Never run a command or read a file to find them.
 ## Rules
 
 - One `ask-user` call per turn. Keep every message under four sentences.
+- A build needs a picked suggestion or a task in the user's words. Never
+  start one after a skip, a dismissal, or free text that names nothing.
 - No apps given: suggest the automations with the apps people on the team
   use most.
 - Talk about the automation, never about the mechanics. Do not say

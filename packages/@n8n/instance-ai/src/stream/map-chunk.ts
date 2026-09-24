@@ -24,6 +24,7 @@ const questionItemSchema = z.object({
 	question: z.string(),
 	type: z.enum(['single', 'multi', 'text']),
 	options: z.array(z.string()).optional(),
+	required: z.boolean().optional(),
 });
 
 function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
