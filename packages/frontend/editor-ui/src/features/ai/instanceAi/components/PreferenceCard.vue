@@ -29,11 +29,14 @@ const i18n = useI18n();
 const card = computed(() => resolvePreferenceCard(props.toolCall));
 // A refused write renders too, so the person does not depend on the assistant's account.
 const rejection = computed(() => resolvePreferenceRejection(props.toolCall));
+// The process died mid-call, so the row may or may not exist.
+const isUnconfirmed = computed(() => rejection.value?.reason === 'interrupted');
 const isRemoved = computed(() => card.value?.state === 'undone');
 // Only the latest turn may correct a preference, and a removed one has nothing to correct.
 const isEditable = computed(() => card.value !== null && !props.readOnly && !isRemoved.value);
 
 const rowLabel = computed(() => {
+	if (isUnconfirmed.value) return i18n.baseText('instanceAi.preferenceCard.notConfirmed');
 	if (rejection.value) return i18n.baseText('instanceAi.preferenceCard.notSaved');
 	return isRemoved.value
 		? i18n.baseText('instanceAi.preferenceCard.removed')
@@ -44,9 +47,10 @@ const rowLabel = computed(() => {
 const text = computed(() => rejection.value?.content ?? card.value?.content);
 
 /** Prefer the server's explanation over the generic line. */
-const rejectionMessage = computed(
-	() => rejection.value?.message ?? i18n.baseText('instanceAi.preferenceCard.notSavedFallback'),
-);
+const rejectionMessage = computed(() => {
+	if (isUnconfirmed.value) return i18n.baseText('instanceAi.preferenceCard.notConfirmedMessage');
+	return rejection.value?.message ?? i18n.baseText('instanceAi.preferenceCard.notSavedFallback');
+});
 
 // The active turn shows the card; an earlier turn collapses to the row. The chevron
 // overrides either default.
@@ -98,7 +102,7 @@ const modalOpen = ref(false);
 
 				<N8nCallout
 					v-if="rejection"
-					theme="danger"
+					:theme="isUnconfirmed ? 'warning' : 'danger'"
 					data-test-id="instance-ai-preference-card-error"
 				>
 					{{ rejectionMessage }}

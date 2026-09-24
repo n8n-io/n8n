@@ -253,6 +253,24 @@ describe('PreferenceCard', () => {
 			expect(error).not.toHaveTextContent('ECONNREFUSED');
 		});
 
+		it('reads "Preference not confirmed" when a restart interrupted the call', () => {
+			renderActive({
+				...refused,
+				result: undefined,
+				error: 'Interrupted by a process restart',
+				interrupted: true,
+			});
+
+			expect(screen.getByText('instanceAi.preferenceCard.notConfirmed')).toBeInTheDocument();
+			expect(screen.queryByText('instanceAi.preferenceCard.notSaved')).toBeNull();
+			expect(screen.getByTestId('instance-ai-preference-card-text')).toHaveTextContent(STORED_TEXT);
+			expect(screen.getByTestId('instance-ai-preference-card-error')).toHaveTextContent(
+				'instanceAi.preferenceCard.notConfirmedMessage',
+			);
+			expect(screen.getByTestId('instance-ai-preference-card-manage')).toBeInTheDocument();
+			expect(screen.queryByTestId('instance-ai-preference-card-edit')).toBeNull();
+		});
+
 		it('collapses to the row in history, like a saved card', () => {
 			renderHistory(refused);
 

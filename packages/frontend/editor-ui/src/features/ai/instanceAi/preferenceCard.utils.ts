@@ -76,6 +76,7 @@ export function resolvePreferenceCard(
 }
 
 export interface PreferenceRejection {
+	/** A server reason, `failed` for a tool that threw, or `interrupted` for an unverified write. */
 	reason: string;
 	/** The server's explanation. Absent when the tool threw. */
 	message?: string;
@@ -83,7 +84,8 @@ export interface PreferenceRejection {
 	content?: string;
 }
 
-/** The refusal the card shows. A tool that threw counts as `failed` with no message. */
+/** The refusal the card shows. A tool that threw counts as `failed` with no message.
+ *  An interrupted call may have saved the row, so it is `interrupted`, not `failed`. */
 export function resolvePreferenceRejection(
 	tc: InstanceAiToolCallState,
 ): PreferenceRejection | null {
@@ -98,6 +100,9 @@ export function resolvePreferenceRejection(
 				? tc.result.message
 				: undefined;
 		return { reason: tc.result.reason, message, content };
+	}
+	if (tc.result === undefined && tc.interrupted) {
+		return { reason: 'interrupted', content };
 	}
 	if (tc.result === undefined && typeof tc.error === 'string') {
 		return { reason: 'failed', content };

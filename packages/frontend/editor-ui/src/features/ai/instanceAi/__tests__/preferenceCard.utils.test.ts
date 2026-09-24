@@ -102,6 +102,18 @@ describe('resolvePreferenceRejection', () => {
 		});
 	});
 
+	it('treats a call interrupted by a restart as unconfirmed, not as failed', () => {
+		expect(
+			resolvePreferenceRejection(
+				toolCall({
+					result: undefined,
+					error: 'Interrupted by a process restart',
+					interrupted: true,
+				}),
+			),
+		).toEqual({ reason: 'interrupted', content: 'Keep replies short.' });
+	});
+
 	it.each([
 		[
 			'a saved result',
@@ -131,6 +143,7 @@ describe('isPreferenceWriteOutcome', () => {
 		],
 		['a refusal', { result: { ok: false, reason: 'too_long' } }],
 		['a thrown tool', { error: 'boom' }],
+		['an interrupted call', { error: 'Interrupted', interrupted: true }],
 	] as const)('is true for %s', (_label, overrides) => {
 		expect(isPreferenceWriteOutcome(toolCall(overrides))).toBe(true);
 	});
