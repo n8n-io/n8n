@@ -10,22 +10,23 @@ Source: https://github.com/n8n-io/n8n/pull/36252
 
 ## Context
 
-Some consumers keep data or use an older n8n version after a shared contract changes. A current
-build can pass even when these consumers cannot use the new contract. Different contracts need
-different checks. A schema comparison cannot show whether an existing guarantee still holds.
+Shared contracts are guarantees that consumers depend on after the producer changes. Existing
+credentials depend on OAuth scopes granted before the change. The proposed model catalog will
+publish new data to clients on older n8n versions. A current build can pass even when those
+consumers cannot use the changed contract.
 
-We need to detect incompatible changes before they reach existing consumers. Each check needs
-access to the contract and the output it verifies.
+We need to detect incompatible changes before they reach existing consumers. A schema comparison
+cannot show whether every guarantee still holds.
 
 ## Decision
 
-We check changes to shared contracts before consumers receive them. The contract owner defines
-which consumers must remain compatible. The check compares the proposed output with a protected
-prior contract or a supported consumer. A change in the same pull request cannot replace its own
-baseline.
+We require a blocking compatibility test before consumers receive a changed shared contract. The
+owner records the guarantee in a versioned definition or test and names the supported consumers.
+The test compares the proposed output with a protected prior contract or a supported consumer. A
+change in the same pull request cannot replace its own baseline.
 
-We run each check where its required output exists. A check of built output runs after the build.
-A check of independently published data runs before publication.
+We run the test where its required output exists. A test of built output runs after the build. A
+test of independently published data runs before publication.
 
 ## Alternatives Considered
 
