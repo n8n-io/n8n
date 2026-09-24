@@ -524,6 +524,56 @@ describe('AiPreferenceService', () => {
 			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith({ scope: 'instance' });
 		});
 
+		// A caller that holds no scope it can trust, such as the chat card, names none. The
+		// target then comes off the row this write loads, so a move that landed after the
+		// caller last looked is kept rather than undone.
+		it('keeps a project row in its project when the update names no scope', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: null, projectId: 'project-1' }),
+			);
+			projectRepository.findOneBy.mockResolvedValue(mock<Project>({ id: 'project-1' }));
+
+			await service.update(owner, 'pref-1', { content: 'A better rule.' });
+
+			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					content: 'A better rule.',
+					userId: null,
+					projectId: 'project-1',
+				}),
+			);
+			// Nothing moved, so nothing lands in another scope.
+			expect(aiPreferenceRepository.countForTarget).not.toHaveBeenCalled();
+		});
+
+		it('keeps the owner of a user row when the update names no scope', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1', projectId: null }),
+			);
+
+			await service.update(owner, 'pref-1', { content: 'A better rule.' });
+
+			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					content: 'A better rule.',
+					userId: 'owner-1',
+					projectId: null,
+				}),
+			);
+		});
+
+		it('keeps an instance row on the instance when the update names no scope', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: null, projectId: null }),
+			);
+
+			await service.update(owner, 'pref-1', { content: 'A better rule.' });
+
+			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ content: 'A better rule.', userId: null, projectId: null }),
+			);
+		});
+
 		it('leaves an edit in place alone: it adds no row to the scope', async () => {
 			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
 				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1' }),

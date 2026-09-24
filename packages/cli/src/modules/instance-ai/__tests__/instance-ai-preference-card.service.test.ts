@@ -131,7 +131,9 @@ describe('InstanceAiPreferenceCardService', () => {
 		content: 'Keep replies brief.',
 	};
 
-	it('edit without a scope leaves a project row in the project it holds now', async () => {
+	// The target is left to the write, which reads it off the row it loads. Naming it here
+	// from an earlier read would undo a move that landed between that read and the write.
+	it('edit without a scope names no target, and leaves it to the write', async () => {
 		aiPreferenceService.getById.mockResolvedValue(
 			userDto({ content: 'Keep replies short.', userId: null, projectId: 'p-1' }),
 		);
@@ -141,27 +143,9 @@ describe('InstanceAiPreferenceCardService', () => {
 
 		expect(aiPreferenceService.update).toHaveBeenCalledWith(user, 'pref-1', {
 			content: 'Keep replies brief.',
-			scope: 'project',
-			projectId: 'p-1',
-			userId: null,
-		});
-	});
-
-	// The update refuses a user-scope write that names no owner, and the row's own owner is the
-	// only right answer: reading it off the caller would hand another user's row to the editor.
-	it('edit without a scope keeps the owner a user row holds now', async () => {
-		aiPreferenceService.getById.mockResolvedValue(
-			userDto({ content: 'Keep replies short.', userId: 'user-2', projectId: null }),
-		);
-		aiPreferenceService.update.mockResolvedValue(userDto({ userId: 'user-2' }));
-
-		await service.edit(user, 'thread-1', 'pref-1', textOnlyBody);
-
-		expect(aiPreferenceService.update).toHaveBeenCalledWith(user, 'pref-1', {
-			content: 'Keep replies brief.',
-			scope: 'user',
-			projectId: null,
-			userId: 'user-2',
+			scope: undefined,
+			projectId: undefined,
+			userId: undefined,
 		});
 	});
 
