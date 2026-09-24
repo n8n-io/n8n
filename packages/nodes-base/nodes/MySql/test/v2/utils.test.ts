@@ -361,9 +361,23 @@ describe('Test MySql V2, splitQueryToStatements', () => {
 		]);
 	});
 	it('should preserve line comment boundaries', () => {
-		const query = "SELECT 1; -- don't run this;\nSELECT 2;";
+		const query = 'SELECT 1; -- don\'t run this;\nSELECT 2;SELECT "a;b"';
 
-		expect(splitQueryToStatements(query)).toEqual(["SELECT 1; -- don't run this", 'SELECT 2']);
+		expect(splitQueryToStatements(query)).toEqual([
+			"SELECT 1; -- don't run this",
+			'SELECT 2',
+			'SELECT "a;b"',
+		]);
+	});
+	it('should not split by ; inside a backtick identifier', () => {
+		const query = 'SELECT `a;b`; SELECT 2;';
+
+		expect(splitQueryToStatements(query)).toEqual(['SELECT `a;b`', 'SELECT 2']);
+	});
+	it('should handle escaped quote characters', () => {
+		const query = 'SELECT \'It\\\'s; valid\'; SELECT "a\\";b";';
+
+		expect(splitQueryToStatements(query)).toEqual(["SELECT 'It\\'s; valid'", 'SELECT "a\\";b"']);
 	});
 	it('should split statement separators inside SQL comments', () => {
 		const query = 'SELECT 1 /* first; statement */; SELECT 2 # second; statement\n;';

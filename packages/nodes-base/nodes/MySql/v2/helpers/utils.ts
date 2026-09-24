@@ -314,7 +314,7 @@ export function prepareOutput(
 export const splitQueryToStatements = (query: string, filterOutEmpty = true) => {
 	const statements: string[] = [];
 	let statementParts: string[] = [];
-	let quote = false;
+	let quote: "'" | '"' | '`' | undefined;
 	let escaped = false;
 	let lineComment = false;
 	let lineCommentAfterDelimiter = false;
@@ -357,18 +357,23 @@ export const splitQueryToStatements = (query: string, filterOutEmpty = true) => 
 			if (character !== '\n' && character !== '\r') {
 				statementParts.push(character);
 			}
+			if (quote === '`' && character === '`' && nextCharacter === '`') {
+				statementParts.push(nextCharacter);
+				index++;
+				continue;
+			}
 			if (escaped) {
 				escaped = false;
 			} else if (character === '\\') {
 				escaped = true;
-			} else if (character === "'") {
-				quote = false;
+			} else if (character === quote) {
+				quote = undefined;
 			}
 			continue;
 		}
 
-		if (character === "'") {
-			quote = true;
+		if (character === "'" || character === '"' || character === '`') {
+			quote = character;
 			statementParts.push(character);
 		} else if (
 			character === '#' ||
