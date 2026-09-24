@@ -120,14 +120,11 @@ describe('N8nOAuth2TokenCredential', () => {
 			);
 		});
 
-		// The caller's token cycler compares this against `Date.now()`, so seconds would put every
-		// token in 1970 and re-authenticate on every model call.
 		it('should report the expiry in epoch milliseconds, from expires_in', async () => {
 			const before = Date.now();
 
 			const result = await credential.getToken();
 
-			// 3599 seconds from now, allowing for the clock moving during the call
 			expect(result?.expiresOnTimestamp).toBeGreaterThanOrEqual(before + 3599 * 1000);
 			expect(result?.expiresOnTimestamp).toBeLessThanOrEqual(Date.now() + 3599 * 1000);
 		});
@@ -142,8 +139,6 @@ describe('N8nOAuth2TokenCredential', () => {
 			expect(result?.expiresOnTimestamp).toBe(1790000000 * 1000);
 		});
 
-		// A real Entra v1 response carries both fields. Without this case the two branches can be
-		// swapped and the suite still passes.
 		it('should prefer expires_in when the response carries both', async () => {
 			mockGetToken.mockResolvedValueOnce({
 				data: { access_token: 'fresh-test-token', expires_in: '3599', expires_on: '1790000000' },
@@ -166,7 +161,6 @@ describe('N8nOAuth2TokenCredential', () => {
 			expect(result?.expiresOnTimestamp).toBeLessThanOrEqual(Date.now());
 		});
 
-		// The credential signs in as the app, so it must not need a stored browser token.
 		it('should not require oauthTokenData', async () => {
 			const withoutBrowserToken = { ...mockCredential };
 			// @ts-expect-error: a client-credentials credential never holds this
@@ -188,9 +182,6 @@ describe('N8nOAuth2TokenCredential', () => {
 		});
 	});
 
-	// The node hands this credential to `getBearerTokenProvider`, whose pipeline caches on the
-	// expiry we report. This is the acceptance criterion "one token serves many model calls", and
-	// it is the reason the expiry has to be in milliseconds.
 	describe('through getBearerTokenProvider', () => {
 		it('should mint one token for many calls', async () => {
 			const provider = getBearerTokenProvider(
@@ -206,7 +197,6 @@ describe('N8nOAuth2TokenCredential', () => {
 		});
 
 		it('should mint a new token once the old one is near expiry', async () => {
-			// Inside the cycler's two-minute refresh window, so it must not be reused
 			mockGetToken.mockResolvedValue({
 				data: { access_token: 'fresh-test-token', expires_in: '30' },
 			});
@@ -235,7 +225,6 @@ describe('N8nOAuth2TokenCredential', () => {
 			});
 		});
 
-		// Not '': callers fall back with `??`, which an empty string would pass straight through.
 		it('should leave a missing endpoint undefined', async () => {
 			delete mockCredential.endpoint;
 			credential = new N8nOAuth2TokenCredential(mockNode, mockCredential);
