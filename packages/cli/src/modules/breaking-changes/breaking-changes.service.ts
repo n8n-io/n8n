@@ -40,6 +40,9 @@ export class BreakingChangeService {
 	private readonly batchSize = 100;
 	private static readonly REPORT_DURATION_CACHE_THRESHOLD = Time.seconds.toMilliseconds * 2;
 	private static readonly CACHE_KEY_PREFIX = 'breaking-changes:results:';
+	// Bump when the shape of the cached report changes. This keeps a report that an
+	// older version wrote from being served with the new schema.
+	private static readonly CACHE_SCHEMA_VERSION = 2;
 	private readonly ongoingDetections = new Map<
 		BreakingChangeVersion,
 		Promise<BreakingChangeReportResult>
@@ -271,7 +274,7 @@ export class BreakingChangeService {
 	async refreshDetectionResults(
 		targetVersion: BreakingChangeVersion,
 	): Promise<BreakingChangeReportResult> {
-		await this.cacheService.delete(`${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`);
+		await this.cacheService.delete(this.getCacheKey(targetVersion));
 		return await this.getDetectionResults(targetVersion);
 	}
 
@@ -295,10 +298,14 @@ export class BreakingChangeService {
 		}
 	}
 
+	private getCacheKey(targetVersion: BreakingChangeVersion): string {
+		return `${BreakingChangeService.CACHE_KEY_PREFIX}${BreakingChangeService.CACHE_SCHEMA_VERSION}:${targetVersion}`;
+	}
+
 	private async detectWithCache(
 		targetVersion: BreakingChangeVersion,
 	): Promise<BreakingChangeReportResult> {
-		const cacheKey = `${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`;
+		const cacheKey = this.getCacheKey(targetVersion);
 
 		const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
 		if (cachedResult) {
