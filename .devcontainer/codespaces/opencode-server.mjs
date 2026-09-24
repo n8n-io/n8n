@@ -163,8 +163,9 @@ function prepareWorkspace({ name, directory, mainDirectory, stateDir }) {
 }
 
 // The TUI resolves its own conversation with `attach --continue`. Only the browser
-// URL needs a concrete session ID, so take the directory's most recently updated
-// root conversation, the one that resume would pick.
+// URL needs a concrete session ID, so take the most recently updated root
+// conversation, the one that resume would pick. OpenCode scopes the list to the
+// repository project, so all worktrees share one conversation pool.
 async function resolveWebSession({ name, fresh, directory, server }) {
 	if (!fresh) {
 		const query = new URLSearchParams({ directory, roots: 'true' });

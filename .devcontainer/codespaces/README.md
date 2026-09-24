@@ -72,7 +72,7 @@ OpenCode server, repository, tools, and builds run in the Codespace. Browser
 mode opens the remote web interface through a local connection.
 
 ```bash
-pnpm session:opencode fix-flaky              # resume the latest conversation there
+pnpm session:opencode fix-flaky              # resume the latest conversation
 pnpm session:opencode fix-flaky --web        # open the latest conversation in a browser
 pnpm session:opencode fix-flaky --new        # start a new conversation in that worktree
 pnpm session:opencode --web --port 4100      # override the default browser port
@@ -98,12 +98,12 @@ post-start command installs. The local harness setup above is not required for
 these commands.
 
 The command prepares the worktree, starts or reuses one server, opens an SSH
-tunnel, and connects the client. Conversations belong to the workspace
-directory. The client opens the most recently updated conversation in that
-workspace. A conversation moves to the front when it receives a message.
-Switching to a conversation without sending a message does not move it.
-`--new` starts a new conversation instead. It preserves the worktree and the
-old conversation.
+tunnel, and connects the client. OpenCode scopes conversations to the
+repository, so all worktrees in the Codespace share one conversation pool.
+The client opens the most recently updated conversation in that pool. A
+conversation moves to the front when it receives a message. Switching to a
+conversation without sending a message does not move it. `--new` starts a
+new conversation instead. It preserves the worktree and the old conversation.
 
 - **Exit the TUI** with `/exit` or its quit shortcut. The launcher closes its
   tunnel. The remote server stays running.
