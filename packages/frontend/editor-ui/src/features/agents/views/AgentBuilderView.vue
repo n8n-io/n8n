@@ -2763,7 +2763,6 @@ function onSwitchAgent(nextAgentId: string) {
 					left: showAiPanel ? `${renderedSidePanelWidths.ai}px` : undefined,
 					right: isPreviewDockOpen ? `${renderedSidePanelWidths.preview}px` : undefined,
 				}"
-				data-testid="agent-builder-activity-area"
 			>
 				<AgentBuildingIndicator />
 			</div>

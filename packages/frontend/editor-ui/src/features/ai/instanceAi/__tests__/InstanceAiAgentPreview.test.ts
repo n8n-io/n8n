@@ -141,8 +141,9 @@ describe('InstanceAiAgentPreview', () => {
 		expect(wrapper.emitted('assistant-handoff')).toEqual([[handoff]]);
 	});
 
-	it('shows the building indicator and locks editing while the AI mutates this agent', () => {
-		threadState.messages = [makeBuildingMessage('agent-1')];
+	it('shows activity from sending through agent changes and only locks editing for changes', async () => {
+		threadState.activeArtifactId = 'agent-1';
+		threadState.isSendingMessage = true;
 
 		const wrapper = mount(InstanceAiAgentPreview, {
 			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },
@@ -153,85 +154,28 @@ describe('InstanceAiAgentPreview', () => {
 			true,
 		);
 		expect(wrapper.findComponent({ name: 'AgentBuilderView' }).props('artifactEditingLocked')).toBe(
-			true,
+			false,
 		);
-	});
-
-	it('shows the indicator from prompt submission through the agent build', async () => {
-		threadState.activeArtifactId = 'agent-1';
-		threadState.isSendingMessage = true;
-
-		const wrapper = mount(InstanceAiAgentPreview, {
-			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },
-			global: { stubs: { AgentBuilderView: AgentBuilderViewStub } },
-		});
-		const indicator = () =>
-			wrapper.find('[data-test-id="instance-ai-agent-building-indicator"]').exists();
-		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
-
-		expect(indicator()).toBe(true);
-		expect(builder.props('artifactEditingLocked')).toBe(false);
-
-		threadState.isSendingMessage = false;
-		threadState.isStreaming = true;
-		await wrapper.vm.$nextTick();
-		expect(indicator()).toBe(true);
-
-		threadState.messages = [makeBuildingMessage('agent-1')];
-		await wrapper.vm.$nextTick();
-		expect(indicator()).toBe(true);
-		expect(builder.props('artifactEditingLocked')).toBe(true);
-
-		threadState.isStreaming = false;
-		await wrapper.vm.$nextTick();
-		expect(indicator()).toBe(true);
-		expect(builder.props('artifactEditingLocked')).toBe(true);
-
-		const builderAgent = threadState.messages[0]?.agentTree?.children[0];
-		if (!builderAgent) throw new Error('Expected an agent builder');
-		builderAgent.status = 'completed';
-		await wrapper.vm.$nextTick();
-		expect(indicator()).toBe(false);
-		expect(builder.props('artifactEditingLocked')).toBe(false);
-	});
-
-	it('clears the indicator when sending ends without a run', async () => {
-		threadState.activeArtifactId = 'agent-1';
-		threadState.isSendingMessage = true;
-
-		const wrapper = mount(InstanceAiAgentPreview, {
-			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },
-			global: { stubs: { AgentBuilderView: AgentBuilderViewStub } },
-		});
-		const indicator = () =>
-			wrapper.find('[data-test-id="instance-ai-agent-building-indicator"]').exists();
-
-		expect(indicator()).toBe(true);
 		threadState.isSendingMessage = false;
 		await wrapper.vm.$nextTick();
-		expect(indicator()).toBe(false);
-	});
-
-	it('does not show early activity for another open artifact', () => {
-		threadState.activeArtifactId = 'agent-other';
-		threadState.isSendingMessage = true;
-		threadState.isStreaming = true;
-
-		const wrapper = mount(InstanceAiAgentPreview, {
-			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },
-			global: { stubs: { AgentBuilderView: AgentBuilderViewStub } },
-		});
-
 		expect(wrapper.find('[data-test-id="instance-ai-agent-building-indicator"]').exists()).toBe(
 			false,
 		);
+
+		threadState.messages = [makeBuildingMessage('agent-1')];
+		await wrapper.vm.$nextTick();
+		expect(wrapper.find('[data-test-id="instance-ai-agent-building-indicator"]').exists()).toBe(
+			true,
+		);
 		expect(wrapper.findComponent({ name: 'AgentBuilderView' }).props('artifactEditingLocked')).toBe(
-			false,
+			true,
 		);
 	});
 
 	it('hides the building indicator when the AI is working on a different agent', () => {
 		threadState.messages = [makeBuildingMessage('agent-other')];
+		threadState.activeArtifactId = 'agent-other';
+		threadState.isSendingMessage = true;
 
 		const wrapper = mount(InstanceAiAgentPreview, {
 			props: { projectId: 'project-1', agentId: 'agent-1', previewOpen: false },

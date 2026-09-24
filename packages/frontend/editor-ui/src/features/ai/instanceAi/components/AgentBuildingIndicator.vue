@@ -6,7 +6,6 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<!-- Show progress from prompt submission through the agent build. -->
 	<div
 		:class="$style.buildingIndicator"
 		role="status"
