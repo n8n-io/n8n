@@ -127,6 +127,9 @@ const sortedProjects = computed((): ProjectListItem[] => {
 const moreResultsCount = computed(() => {
 	return Math.max(0, searchCount.value - searchResults.value.length);
 });
+const showSearchHint = computed(
+	() => filter.value === '' && sortedProjects.value.length === 0 && searchCount.value > 0,
+);
 
 const projectIcon = computed<IconOrEmoji>(() => {
 	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
@@ -262,18 +265,22 @@ watch(
 					<ProjectSharingInfo :project="project" />
 				</N8nOption>
 				<N8nOption
-					v-if="moreResultsCount > 0"
+					v-if="showSearchHint || moreResultsCount > 0"
 					:key="'more-results'"
 					:value="''"
 					:label="''"
 					disabled
-					:class="$style.moreResults"
+					:class="$style.searchNotice"
 				>
 					<N8nText size="small" color="text-light">
 						{{
-							locale.baseText('projects.sharing.moreResults', {
-								interpolate: { count: moreResultsCount },
-							})
+							showSearchHint
+								? locale.baseText('projects.sharing.startTypingToSearch', {
+										interpolate: { count: searchCount },
+									})
+								: locale.baseText('projects.sharing.moreResults', {
+										interpolate: { count: moreResultsCount },
+									})
 						}}
 					</N8nText>
 				</N8nOption>
@@ -365,9 +372,8 @@ watch(
 	font-size: var(--font-size--sm);
 }
 
-.moreResults {
+.searchNotice {
 	cursor: default;
 	text-align: center;
-	border-top: var(--border);
 }
 </style>

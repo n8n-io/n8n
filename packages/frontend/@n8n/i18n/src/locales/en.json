@@ -6187,6 +6187,7 @@
 	"projects.sharing.allUsers": "All users and projects",
 	"projects.sharing.noMatchingProjects": "There are no available projects",
 	"projects.sharing.moreResults": "{count} more results — refine your search",
+	"projects.sharing.startTypingToSearch": "{count} results - Start typing to search",
 	"projects.sharing.noMatchingUsers": "No matching users or projects",
 	"projects.sharing.select.placeholder": "Select project or user",
 	"projects.sharing.select.placeholder.user": "Share with user(s)",
