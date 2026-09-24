@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
-import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
-import { N8nButton } from '@n8n/design-system';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { N8nButton, N8nDialog, N8nDialogFooter } from '@n8n/design-system';
+import { computed, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 type SelectRef = InstanceType<typeof MCPWorkflowsSelect>;
 
 const props = defineProps<{
-	data: {
-		onEnableMcpAccess: (workflowIds: string[]) => Promise<void>;
-	};
+	enableMcpAccess: (workflowIds: string[]) => Promise<void>;
 }>();
+
+const open = defineModel<boolean>('open', { default: false });
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -22,37 +19,34 @@ const telemetry = useTelemetry();
 const isSaving = ref(false);
 const selectedWorkflowIds = ref<string[]>([]);
 const selectRef = ref<SelectRef | null>(null);
-const modalBus = createEventBus();
 const closedByAction = ref(false);
 
 const canSave = computed(() => selectedWorkflowIds.value.length > 0);
 
-const cancel = (close: () => void) => {
-	closedByAction.value = true;
-	telemetry.track('User dismissed mcp workflows dialog');
-	close();
-};
+// The view keeps this component mounted, so every opening starts from an empty selection.
+watch(open, (isOpen) => {
+	if (isOpen) {
+		selectedWorkflowIds.value = [];
+		closedByAction.value = false;
+	} else if (!closedByAction.value) {
+		telemetry.track('User dismissed mcp workflows dialog');
+	}
+});
 
-async function save(close: () => void) {
+async function save() {
 	if (selectedWorkflowIds.value.length === 0) return;
 
 	isSaving.value = true;
 	try {
-		await props.data.onEnableMcpAccess(selectedWorkflowIds.value);
+		await props.enableMcpAccess(selectedWorkflowIds.value);
 		closedByAction.value = true;
 		telemetry.track('User selected workflow from list', {
 			workflowIds: selectedWorkflowIds.value,
 			count: selectedWorkflowIds.value.length,
 		});
-		close();
+		open.value = false;
 	} finally {
 		isSaving.value = false;
-	}
-}
-
-function onModalClosed() {
-	if (!closedByAction.value) {
-		telemetry.track('User dismissed mcp workflows dialog');
 	}
 }
 
@@ -62,70 +56,47 @@ function onSelectReady() {
 
 function onConfirm() {
 	if (!isSaving.value) {
-		void save(() => modalBus.emit('close'));
+		void save();
 	}
 }
 
-onMounted(() => {
-	modalBus.on('closed', onModalClosed);
-});
-
-onBeforeUnmount(() => {
-	modalBus.off('closed', onModalClosed);
-});
+function preventOutsideClose(event: Event) {
+	event.preventDefault();
+}
 </script>
 
 <template>
-	<Modal
-		:name="MCP_CONNECT_WORKFLOWS_MODAL_KEY"
-		:title="i18n.baseText('settings.mcp.connectWorkflows.modalTitle')"
-		width="600px"
-		:class="$style.container"
-		:event-bus="modalBus"
-		:close-on-click-modal="false"
+	<N8nDialog
+		v-model:open="open"
+		size="xlarge"
+		:header="i18n.baseText('settings.mcp.connectWorkflows.modalTitle')"
+		data-test-id="mcp-connect-workflows-dialog"
+		@interact-outside="preventOutsideClose"
 	>
-		<template #content>
-			<MCPWorkflowsSelect
-				ref="selectRef"
-				v-model="selectedWorkflowIds"
-				:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
+		<MCPWorkflowsSelect
+			ref="selectRef"
+			v-model="selectedWorkflowIds"
+			:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
+			:disabled="isSaving"
+			@ready="onSelectReady"
+			@confirm="onConfirm"
+		/>
+		<N8nDialogFooter>
+			<N8nButton
+				variant="subtle"
+				:label="i18n.baseText('generic.cancel')"
 				:disabled="isSaving"
-				@ready="onSelectReady"
-				@confirm="onConfirm"
+				data-test-id="mcp-connect-workflows-cancel-button"
+				@click="open = false"
 			/>
-		</template>
-		<template #footer="{ close }">
-			<div :class="$style.footer">
-				<N8nButton
-					variant="subtle"
-					:label="i18n.baseText('generic.cancel')"
-					:disabled="isSaving"
-					data-test-id="mcp-connect-workflows-cancel-button"
-					@click="cancel(close)"
-				/>
-				<N8nButton
-					variant="solid"
-					:label="i18n.baseText('settings.mcp.connectWorkflows.confirm.label')"
-					:loading="isSaving"
-					:disabled="!canSave || isSaving"
-					data-test-id="mcp-connect-workflows-save-button"
-					@click="save(close)"
-				/>
-			</div>
-		</template>
-	</Modal>
+			<N8nButton
+				variant="solid"
+				:label="i18n.baseText('settings.mcp.connectWorkflows.confirm.label')"
+				:loading="isSaving"
+				:disabled="!canSave || isSaving"
+				data-test-id="mcp-connect-workflows-save-button"
+				@click="save"
+			/>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
-
-<style module lang="scss">
-.container {
-	display: flex;
-	flex-direction: column;
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--2xs);
-}
-</style>

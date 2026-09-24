@@ -1,11 +1,10 @@
-import { defineComponent, nextTick } from 'vue';
+import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import MCPConnectWorkflowsModal from '@/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.vue';
-import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -34,32 +33,6 @@ vi.mock('@/app/router', () => ({
 	},
 }));
 
-const ModalStub = defineComponent({
-	template: `
-		<div>
-			<slot name="content" />
-			<slot name="footer" v-bind="{ close: closeFn }" />
-		</div>
-	`,
-	emits: ['closed'],
-	methods: {
-		closeFn() {
-			this.$emit('closed');
-		},
-	},
-});
-
-const initialState = {
-	ui: {
-		modalStateById: {
-			[MCP_CONNECT_WORKFLOWS_MODAL_KEY]: {
-				open: true,
-			},
-		},
-		modalStack: [MCP_CONNECT_WORKFLOWS_MODAL_KEY],
-	},
-};
-
 const renderModal = createComponentRenderer(MCPConnectWorkflowsModal);
 
 const telemetry = useTelemetry();
@@ -70,7 +43,7 @@ let mockOnEnableMcpAccess: Mock;
 
 describe('MCPConnectWorkflowsModal', () => {
 	beforeEach(() => {
-		pinia = createTestingPinia({ initialState });
+		pinia = createTestingPinia();
 		mcpStore = mockedStore(useMCPStore);
 		mcpStore.getMcpEligibleWorkflows.mockResolvedValue({
 			count: 0,
@@ -83,11 +56,9 @@ describe('MCPConnectWorkflowsModal', () => {
 		vi.clearAllMocks();
 	});
 
-	const createProps = (overrides = {}) => ({
-		data: {
-			onEnableMcpAccess: mockOnEnableMcpAccess,
-			...overrides,
-		},
+	const createProps = () => ({
+		open: true,
+		enableMcpAccess: mockOnEnableMcpAccess,
 	});
 
 	describe('Initial rendering', () => {
@@ -95,7 +66,6 @@ describe('MCPConnectWorkflowsModal', () => {
 			const { getByTestId } = renderModal({
 				pinia,
 				props: createProps(),
-				global: { stubs: { Modal: ModalStub } },
 			});
 			await nextTick();
 
@@ -106,7 +76,6 @@ describe('MCPConnectWorkflowsModal', () => {
 			const { getByTestId } = renderModal({
 				pinia,
 				props: createProps(),
-				global: { stubs: { Modal: ModalStub } },
 			});
 			await nextTick();
 
@@ -118,7 +87,6 @@ describe('MCPConnectWorkflowsModal', () => {
 			const { getByTestId } = renderModal({
 				pinia,
 				props: createProps(),
-				global: { stubs: { Modal: ModalStub } },
 			});
 			await nextTick();
 
@@ -137,7 +105,6 @@ describe('MCPConnectWorkflowsModal', () => {
 			const { getByTestId } = renderModal({
 				pinia,
 				props: createProps(),
-				global: { stubs: { Modal: ModalStub } },
 			});
 			await nextTick();
 
@@ -176,7 +143,6 @@ describe('MCPConnectWorkflowsModal', () => {
 			const { getByTestId } = renderModal({
 				pinia,
 				props: createProps(),
-				global: { stubs: { Modal: ModalStub } },
 			});
 			await nextTick();
 
@@ -218,7 +184,6 @@ describe('MCPConnectWorkflowsModal', () => {
 			const { getByTestId } = renderModal({
 				pinia,
 				props: createProps(),
-				global: { stubs: { Modal: ModalStub } },
 			});
 			await nextTick();
 
@@ -259,7 +224,6 @@ describe('MCPConnectWorkflowsModal', () => {
 			const { getByTestId } = renderModal({
 				pinia,
 				props: createProps(),
-				global: { stubs: { Modal: ModalStub } },
 			});
 			await nextTick();
 
@@ -289,7 +253,6 @@ describe('MCPConnectWorkflowsModal', () => {
 			const { getByTestId } = renderModal({
 				pinia,
 				props: createProps(),
-				global: { stubs: { Modal: ModalStub } },
 			});
 			await nextTick();
 
