@@ -1,7 +1,7 @@
 import type { BreakingChangeVersion, MigrationFindingStatus } from '@n8n/api-types';
 import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource, In, Not, type EntityManager } from '@n8n/typeorm';
 
 import { MigrationFinding } from '../entities/migration-finding.entity';
 
@@ -41,7 +41,11 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		);
 	}
 
-	/** Sets the triage status. Pass `note` to replace the note; leave it `undefined` to keep it. */
+	/**
+	 * Sets the triage status. Pass `note` to replace the note; leave it `undefined` to keep it.
+	 * `statusChangedAt` moves only for rows whose status actually changes, so a note edit
+	 * or a repeated sync does not falsify it.
+	 */
 	async updateStatusForIds(
 		ids: number[],
 		status: MigrationFindingStatus,
@@ -50,10 +54,23 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	): Promise<void> {
 		if (ids.length === 0) return;
 
-		await this.managerFor(ctx).update(
+		const manager = this.managerFor(ctx);
+		await this.transitionStatus(manager, ids, status);
+		if (note !== undefined) {
+			await manager.update(MigrationFinding, { id: In(ids) }, { note });
+		}
+	}
+
+	/** Updates only the rows not already in `status`, so `statusChangedAt` marks a real transition. */
+	private async transitionStatus(
+		manager: EntityManager,
+		ids: number[],
+		status: MigrationFindingStatus,
+	): Promise<void> {
+		await manager.update(
 			MigrationFinding,
-			{ id: In(ids) },
-			{ status, statusChangedAt: new Date(), ...(note !== undefined ? { note } : {}) },
+			{ id: In(ids), status: Not(status) },
+			{ status, statusChangedAt: new Date() },
 		);
 	}
 

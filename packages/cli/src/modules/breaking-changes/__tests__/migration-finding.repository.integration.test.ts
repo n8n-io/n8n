@@ -22,6 +22,17 @@ const finding = (
 	targetVersion: NewMigrationFinding['targetVersion'] = 'v3',
 ): NewMigrationFinding => ({ targetVersion, ruleId, workflowId });
 
+/** A fixed past timestamp, so a moved `statusChangedAt` is distinguishable from a kept one. */
+const PAST = new Date('2026-01-01T00:00:00.000Z');
+
+/** Inserts one open finding and pins its `statusChangedAt`; returns the id. */
+async function insertWithStatusChangedAt(workflowId: string, statusChangedAt: Date) {
+	await findingRepository.insertMany([finding(workflowId)], ctx);
+	const [row] = await findingRepository.listForWorkflows('v3', [workflowId], ctx);
+	await findingRepository.update({ id: row.id }, { statusChangedAt });
+	return row.id;
+}
+
 beforeAll(async () => {
 	await testModules.loadModules(['breaking-changes']);
 	await testDb.init();
@@ -153,6 +164,38 @@ describe('MigrationFindingRepository', () => {
 			const [after] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
 			expect(after.status).toBe('notified');
 			expect(after.note).toBe('Keep me');
+		});
+
+		test('moves statusChangedAt on a real status transition', async () => {
+			const workflow = await createWorkflow();
+			const id = await insertWithStatusChangedAt(workflow.id, PAST);
+
+			await findingRepository.updateStatusForIds([id], 'wont_fix', undefined, ctx);
+
+			const [after] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+			expect(after.statusChangedAt.getTime()).toBeGreaterThan(PAST.getTime());
+		});
+
+		test('keeps statusChangedAt when the status does not change', async () => {
+			const workflow = await createWorkflow();
+			const id = await insertWithStatusChangedAt(workflow.id, PAST);
+
+			await findingRepository.updateStatusForIds([id], 'open', undefined, ctx);
+
+			const [after] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+			expect(after.status).toBe('open');
+			expect(after.statusChangedAt.getTime()).toBe(PAST.getTime());
+		});
+
+		test('keeps statusChangedAt on a note-only edit', async () => {
+			const workflow = await createWorkflow();
+			const id = await insertWithStatusChangedAt(workflow.id, PAST);
+
+			await findingRepository.updateStatusForIds([id], 'open', 'Edited note', ctx);
+
+			const [after] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+			expect(after.note).toBe('Edited note');
+			expect(after.statusChangedAt.getTime()).toBe(PAST.getTime());
 		});
 
 		test('does nothing for an empty id array', async () => {
