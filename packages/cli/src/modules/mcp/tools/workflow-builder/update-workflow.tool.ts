@@ -785,19 +785,6 @@ const isTagOperation = (op: PartialUpdateOperation) =>
 const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWorkflowSettings';
 
 /**
- * Rejects operations this instance cannot serve, before anything is loaded or
- * applied.
- */
-function assertOperationsSupported(
-	strictOperations: PartialUpdateOperation[],
-	{ tagsDisabled }: { tagsDisabled: boolean },
-): void {
-	if (tagsDisabled && strictOperations.some(isTagOperation)) {
-		throw new Error('Tag operations are not supported on this instance because tags are disabled.');
-	}
-}
-
-/**
  * Group rules depend on how the workflow looks after the whole batch, so they
  * are checked once here rather than per operation. A broken group is dropped
  * and reported; the update still goes through.
@@ -1194,10 +1181,6 @@ export const createUpdateWorkflowTool = (
 				const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
 				const hasSettingsOperations = strictOperations.some(isSettingsOperation);
 				hasGraphOps = strictOperations.some((op) => GRAPH_OPERATION_TYPES.has(op.type));
-
-				assertOperationsSupported(strictOperations, {
-					tagsDisabled: globalConfig.tags.disabled,
-				});
 
 				existingWorkflow = await getMcpWorkflow(
 					workflowId,

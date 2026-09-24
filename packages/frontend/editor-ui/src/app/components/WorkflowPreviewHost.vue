@@ -52,7 +52,6 @@ provide(
 		expandGroups: 'all',
 		aiAssistant: false,
 		aiBuilder: false,
-		askAi: false,
 		executionSuccessToasts: false,
 		executionErrorToasts: false,
 	})),

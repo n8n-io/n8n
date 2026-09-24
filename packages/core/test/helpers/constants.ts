@@ -49,7 +49,6 @@ export const predefinedNodesTypes: INodeTypeData = {
 				description: 'Test tool executor',
 				defaults: {
 					name: 'Test Tool Executor',
-					color: '#0000FF',
 				},
 				inputs: [NodeConnectionTypes.AiTool, NodeConnectionTypes.Main],
 				outputs: [NodeConnectionTypes.Main],
@@ -69,7 +68,6 @@ export const predefinedNodesTypes: INodeTypeData = {
 				inputs: [],
 				defaults: {
 					name: 'Test Tool',
-					color: '#0000FF',
 				},
 				outputs: [NodeConnectionTypes.AiTool],
 				properties: [],
@@ -87,7 +85,6 @@ export const predefinedNodesTypes: INodeTypeData = {
 				description: 'Tests if versioning works',
 				defaults: {
 					name: 'Version Test',
-					color: '#0000FF',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				outputs: [NodeConnectionTypes.Main],
@@ -146,7 +143,6 @@ export const predefinedNodesTypes: INodeTypeData = {
 				description: 'Sets a value',
 				defaults: {
 					name: 'Set',
-					color: '#0000FF',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				outputs: [NodeConnectionTypes.Main],
@@ -178,7 +174,6 @@ export const predefinedNodesTypes: INodeTypeData = {
 				description: 'Sets multiple values',
 				defaults: {
 					name: 'Set Multi',
-					color: '#0000FF',
 				},
 				inputs: [NodeConnectionTypes.Main],
 				outputs: [NodeConnectionTypes.Main],

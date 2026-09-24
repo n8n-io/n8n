@@ -22,20 +22,13 @@ const settingsStore = useSettingsStore();
 const allowSendingSchema = ref(true);
 
 const isAssistantEnabled = computed(() => assistantStore.isAssistantEnabled);
-const isAskAiEnabled = computed(() => settingsStore.isAskAiEnabled);
 const allowSendingParameterValues = computed(() => settingsStore.isAiDataSharingEnabled);
 
-const aiSettingsDescription = computed(() => {
-	if (isAssistantEnabled.value && isAskAiEnabled.value) {
-		return i18n.baseText('settings.ai.description.both');
-	} else if (isAssistantEnabled.value) {
-		return i18n.baseText('settings.ai.description.assistantOnly');
-	} else if (isAskAiEnabled.value) {
-		return i18n.baseText('settings.ai.description.askAiOnly');
-	}
-	// Fallback to 'both' if neither is enabled (edge case)
-	return i18n.baseText('settings.ai.description.both');
-});
+const aiSettingsDescription = computed(() =>
+	isAssistantEnabled.value
+		? i18n.baseText('settings.ai.description.assistantOnly')
+		: i18n.baseText('settings.ai.description.both'),
+);
 
 const onallowSendingParameterValuesChange = async (newValue: boolean | string | number) => {
 	if (typeof newValue !== 'boolean') return;

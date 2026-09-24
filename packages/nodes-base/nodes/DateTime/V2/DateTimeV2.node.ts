@@ -25,9 +25,9 @@ export class DateTimeV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: 2,
+			iconColor: 'green',
 			defaults: {
 				name: 'Date & Time',
-				color: '#408000',
 			},
 			usableAsTool: true,
 			inputs: [NodeConnectionTypes.Main],

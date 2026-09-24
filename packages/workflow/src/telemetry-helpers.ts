@@ -1,7 +1,6 @@
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
-	AI_TRANSFORM_NODE_TYPE,
 	AI_VENDOR_NODE_TYPES,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
@@ -15,7 +14,7 @@ import {
 	FROM_AI_AUTO_GENERATED_MARKER,
 	GUARDRAILS_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
 	LANGCHAIN_LM_NODE_TYPE_PREFIX,
 	MCP_CLIENT_NODE_TYPE,
@@ -400,9 +399,7 @@ export function generateNodesGraph(
 			nodeItem.src_node_id = options.nodeIdMap[node.id];
 		}
 
-		if (node.type === AI_TRANSFORM_NODE_TYPE && options?.isCloudDeployment) {
-			nodeItem.prompts = { instructions: node.parameters.instructions as string };
-		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+		if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
 			nodeItem.agent = (node.parameters.agent as string) ?? 'toolsAgent';
 
 			if (node.typeVersion >= 2.1) {
@@ -445,7 +442,7 @@ export function generateNodesGraph(
 
 			nodeItem.domain_base = getDomainBase(url);
 			nodeItem.method = node.parameters.requestMethod as string;
-		} else if (HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE === node.type) {
+		} else if (HTTP_REQUEST_AS_TOOL_NODE_TYPE === node.type) {
 			if (!nodeItem.toolSettings) nodeItem.toolSettings = {};
 
 			nodeItem.toolSettings.url_type = 'other';

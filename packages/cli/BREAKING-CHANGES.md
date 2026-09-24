@@ -2,6 +2,71 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 3.0.0
+
+### What changed?
+
+The `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION` environment variable was removed. A throw from `workflow.preExecute` never creates an execution record. n8n now ignores the variable.
+
+### When is action necessary?
+
+If you set `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION=true` to keep the old persist-then-fail path. Remove the variable. A throw from `workflow.preExecute` never starts a run and does not count toward Insights or license usage.
+
+### What changed?
+
+The filesystem storage directory `~/.n8n/binaryData` is renamed to `~/.n8n/storage` on the first start.
+
+### When is action necessary?
+
+If you mount a volume at `~/.n8n/binaryData`, n8n does not start: mount it at `~/.n8n/storage` instead, or set `N8N_STORAGE_PATH` to the old path to keep it. If both directories exist, n8n does not start. Move the contents of `~/.n8n/binaryData` into `~/.n8n/storage`, remove `~/.n8n/binaryData`, then start n8n again.
+
+### What changed?
+
+n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.x release and is marked as deprecated. The official Docker image is the only supported way to run n8n.
+
+### When is action necessary?
+
+If you run n8n from the npm package, move to the Docker image before you update. Reuse your existing database and encryption key. See https://docs.n8n.io/deploy/host-n8n
+
+### What changed?
+
+The `N8N_WORKFLOW_TAGS_DISABLED` environment variable was removed. Workflow tags are always enabled. n8n now ignores the variable.
+
+### When is action necessary?
+
+No action is required. Remove the variable from your configuration. Tag data was never deleted while the feature was disabled, so tags reappear in the UI and API after the upgrade.
+
+### What changed?
+
+The Execute Sub-workflow node no longer supports the "Local File" and "URL" sources. Executions of nodes that still use these sources fail with an error.
+
+### When is action necessary?
+
+If your workflows use an Execute Sub-workflow node with the "Local File" or "URL" source. Save the sub-workflow on the instance and use the "Database" source, or paste the workflow JSON into the "Define Below" source. The migration report on v2 lists every affected node.
+
+### What changed?
+
+n8n enforces a Content-Security-Policy on its own HTML pages. The policy was served as `Content-Security-Policy-Report-Only` before, which reported violations but blocked nothing. The enforced policy is `script-src <nonce> 'strict-dynamic' 'unsafe-eval'; object-src 'none'; base-uri 'none'`: only scripts that carry the response nonce run, `<object>` and `<embed>` are blocked, and a `<base>` tag cannot repoint relative URLs. `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` no longer sends a header by default. Webhook and form pages keep their own sandbox policy and are not affected.
+
+### When is action necessary?
+
+If you inject your own scripts into n8n's pages. Test the instance before you update, because a script without the response nonce no longer runs. Set `N8N_CONTENT_SECURITY_POLICY` to `{}` to enforce nothing, or to your own policy. To try a policy before you enforce it, put it in `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` instead.
+
+### What changed?
+
+Chat hub is off by default. `chat-hub` is no longer a default module, so the **Chat** section disappears from the navigation and the chat endpoints stop responding. Your chat sessions, agents, messages and tools stay in the database. Chat hub is deprecated and version 4.0 removes it.
+
+### When is action necessary?
+
+If your instance uses chat hub. Add `chat-hub` to `N8N_ENABLED_MODULES` to turn it on again for the 3.x line. n8n then prints a deprecation warning at startup. The migration report on v2 lists this change for every instance that uses chat hub.
+
+### What changed?
+
+The `$evaluateExpression()` helper was removed from the Code node. A Code node that calls it fails with the error `The function "$evaluateExpression" is not available in this context`. The helper is still available in expression fields.
+
+### When is action necessary?
+
+If your Code nodes call `$evaluateExpression()`. Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before the Code node, and read the result from the input item. Code nodes on a secure-mode task runner, the default since 2.0, already failed on this call.
 # 2.0.0
 
 ### What changed?

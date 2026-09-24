@@ -49,7 +49,6 @@ import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
 import { SsoConfig } from './configs/sso.config';
 import { SsrfProtectionConfig } from './configs/ssrf-protection.config';
-import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
@@ -58,7 +57,7 @@ import { WorkflowHistoryConfig } from './configs/workflow-history.config';
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
-export { Config, Env, Nested } from './decorators';
+export { Config, Env, Nested, readEnvValue } from './decorators';
 export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
@@ -224,9 +223,6 @@ export class GlobalConfig {
 
 	@Nested
 	aiBuilder: AiBuilderConfig;
-
-	@Nested
-	tags: TagsConfig;
 
 	@Nested
 	workflowHistory: WorkflowHistoryConfig;

@@ -6,7 +6,7 @@
 		{
 			"parameters": {},
 			"id": "4535ce3e-280e-49b0-8854-373472ec86d1",
-			"name": "When clicking ‘Execute workflow’",
+			"name": "When clicking \u2018Execute workflow\u2019",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
 			"position": [80, 860]
@@ -22,47 +22,6 @@
 			"type": "n8n-nodes-base.debugHelper",
 			"typeVersion": 1,
 			"position": [280, 860]
-		},
-		{
-			"parameters": {
-				"source": "parameter",
-				"workflowJson": "{\n  \"meta\": {\n    \"instanceId\": \"a786b722078489c1fa382391a9f3476c2784761624deb2dfb4634827256d51a0\"\n  },\n  \"nodes\": [\n    {\n      \"parameters\": {},\n      \"type\": \"n8n-nodes-base.executeWorkflowTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [\n        0,\n        0\n      ],\n      \"id\": \"00600a51-e63a-4b6e-93f5-f01d50a21e0c\",\n      \"name\": \"Execute Workflow Trigger\"\n    },\n    {\n      \"parameters\": {\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"87ff01af-2e28-48da-ae6c-304040200b15\",\n              \"name\": \"hello\",\n              \"value\": \"=world {{ $json.firstname }} {{ $json.lastname }}\",\n              \"type\": \"string\"\n            }\n          ]\n        },\n        \"includeOtherFields\": false,\n        \"options\": {}\n      },\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.4,\n      \"position\": [\n        280,\n        0\n      ],\n      \"id\": \"642219a1-d655-4a30-af5c-fcccbb690322\",\n      \"name\": \"Edit Fields\"\n    }\n  ],\n  \"connections\": {\n    \"Execute Workflow Trigger\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Edit Fields\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"pinData\": {}\n}",
-				"mode": "each",
-				"options": {
-					"waitForSubWorkflow": false
-				}
-			},
-			"type": "n8n-nodes-base.executeWorkflow",
-			"typeVersion": 1.1,
-			"position": [680, 1540],
-			"id": "f90a25da-dd89-4bf8-8f5b-bf8ee1de0b70",
-			"name": "Execute Workflow with param3"
-		},
-		{
-			"parameters": {
-				"assignments": {
-					"assignments": [
-						{
-							"id": "c93f26bd-3489-467b-909e-6462e1463707",
-							"name": "uid",
-							"value": "={{ $json.uid }}",
-							"type": "string"
-						},
-						{
-							"id": "3dd706ce-d925-4219-8531-ad12369972fe",
-							"name": "email",
-							"value": "={{ $json.email }}",
-							"type": "string"
-						}
-					]
-				},
-				"options": {}
-			},
-			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.4,
-			"position": [900, 1540],
-			"id": "3be57648-3be8-4b0f-abfa-8fdcafee804d",
-			"name": "Edit Fields8"
 		},
 		{
 			"parameters": {
@@ -103,47 +62,6 @@
 			"position": [840, 1220],
 			"id": "9d2a9dda-e2a1-43e8-a66f-a8a555692e5f",
 			"name": "Edit Fields7"
-		},
-		{
-			"parameters": {
-				"source": "parameter",
-				"workflowJson": "{\n  \"meta\": {\n    \"instanceId\": \"a786b722078489c1fa382391a9f3476c2784761624deb2dfb4634827256d51a0\"\n  },\n  \"nodes\": [\n    {\n      \"parameters\": {},\n      \"type\": \"n8n-nodes-base.executeWorkflowTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [\n        0,\n        0\n      ],\n      \"id\": \"00600a51-e63a-4b6e-93f5-f01d50a21e0c\",\n      \"name\": \"Execute Workflow Trigger\"\n    },\n    {\n      \"parameters\": {\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"87ff01af-2e28-48da-ae6c-304040200b15\",\n              \"name\": \"hello\",\n              \"value\": \"=world {{ $json.firstname }} {{ $json.lastname }}\",\n              \"type\": \"string\"\n            }\n          ]\n        },\n        \"includeOtherFields\": false,\n        \"options\": {}\n      },\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.4,\n      \"position\": [\n        280,\n        0\n      ],\n      \"id\": \"642219a1-d655-4a30-af5c-fcccbb690322\",\n      \"name\": \"Edit Fields\"\n    }\n  ],\n  \"connections\": {\n    \"Execute Workflow Trigger\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Edit Fields\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"pinData\": {}\n}",
-				"mode": "each",
-				"options": {
-					"waitForSubWorkflow": true
-				}
-			},
-			"type": "n8n-nodes-base.executeWorkflow",
-			"typeVersion": 1.1,
-			"position": [560, 900],
-			"id": "07e47f60-622a-484c-ab24-35f6f2280595",
-			"name": "Execute Workflow with param1"
-		},
-		{
-			"parameters": {
-				"assignments": {
-					"assignments": [
-						{
-							"id": "c93f26bd-3489-467b-909e-6462e1463707",
-							"name": "uid",
-							"value": "={{ $json.uid }}",
-							"type": "string"
-						},
-						{
-							"id": "3dd706ce-d925-4219-8531-ad12369972fe",
-							"name": "email",
-							"value": "={{ $json.email }}",
-							"type": "string"
-						}
-					]
-				},
-				"options": {}
-			},
-			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.4,
-			"position": [760, 900],
-			"id": "80563d0a-0bab-444f-a04c-4041a505d78b",
-			"name": "Edit Fields6"
 		},
 		{
 			"parameters": {
@@ -247,7 +165,7 @@
 		}
 	],
 	"connections": {
-		"When clicking ‘Execute workflow’": {
+		"When clicking \u2018Execute workflow\u2019": {
 			"main": [
 				[
 					{
@@ -267,17 +185,7 @@
 			"main": [
 				[
 					{
-						"node": "Execute Workflow with param3",
-						"type": "main",
-						"index": 0
-					},
-					{
 						"node": "Execute Workflow with param2",
-						"type": "main",
-						"index": 0
-					},
-					{
-						"node": "Execute Workflow with param1",
 						"type": "main",
 						"index": 0
 					},
@@ -289,33 +197,11 @@
 				]
 			]
 		},
-		"Execute Workflow with param3": {
-			"main": [
-				[
-					{
-						"node": "Edit Fields8",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
 		"Execute Workflow with param2": {
 			"main": [
 				[
 					{
 						"node": "Edit Fields7",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Execute Workflow with param1": {
-			"main": [
-				[
-					{
-						"node": "Edit Fields6",
 						"type": "main",
 						"index": 0
 					}
@@ -338,11 +224,6 @@
 				[
 					{
 						"node": "Execute Workflow with param2",
-						"type": "main",
-						"index": 0
-					},
-					{
-						"node": "Execute Workflow with param3",
 						"type": "main",
 						"index": 0
 					}
