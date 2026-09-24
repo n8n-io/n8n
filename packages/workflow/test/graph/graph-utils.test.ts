@@ -333,7 +333,8 @@ describe('graphUtils', () => {
 
 		// The option lifts the count of entry and exit nodes only. The selection
 		// must still be a whole slice, so an edge into or out of the middle of it
-		// stays an error.
+		// stays an error. Connectivity is the caller's check, not this one: see
+		// `findDisconnectedSelectionError` in node-grouping-validation.
 		describe('with relaxBoundaryRules on', () => {
 			const relaxed = { relaxBoundaryRules: true };
 

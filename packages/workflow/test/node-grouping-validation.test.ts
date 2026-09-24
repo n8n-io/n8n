@@ -536,6 +536,30 @@ describe('node grouping validation', () => {
 				expect(result.reason).toBe('invalid-subgraph');
 			}
 		});
+
+		// Each island is a root and a leaf, so the entry and exit counts say nothing
+		// about them. `findDisconnectedSelectionError` is what refuses this shape.
+		it('still rejects two islands that each take input and send output outside', () => {
+			const nodes = [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })];
+			const connections: IConnections = {
+				OutsideInOne: { main: [mainTo('A')] },
+				OutsideInTwo: { main: [mainTo('B')] },
+				A: { main: [mainTo('OutsideOutOne')] },
+				B: { main: [mainTo('OutsideOutTwo')] },
+			};
+
+			const result = validateGrouping({
+				nodes,
+				connectionsBySourceNode: connections,
+				allowTriggerInGroup: true,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
 	});
 
 	it('returns invalid-subgraph when selected nodes skip an intermediate node', () => {
