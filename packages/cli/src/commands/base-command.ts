@@ -308,12 +308,13 @@ export abstract class BaseCommand<F = never> {
 					error,
 				);
 			}
-		} else {
+		} else if (this.needsExpressionEngine) {
 			const configuredEngine: string = this.globalConfig.regexEngine.engine;
 			if (configuredEngine !== 'js') {
-				// This command never initializes the regex engine, so an instance configured
-				// for a non-default one must fail loudly here instead of silently evaluating a
-				// user's regexes on the built-in engine.
+				// This command evaluates expressions, so it can reach a user's regexes, but it
+				// diverges from needsExpressionEngine by declaring it does not need the regex
+				// engine. An instance configured for a non-default one must fail loudly here
+				// instead of silently evaluating a user's regexes on the built-in engine.
 				await this.exitWithCrash(
 					`This command does not support the "${configuredEngine}" regular expression engine. Set N8N_REGEX_ENGINE=js, or run a command that initializes it.`,
 					new UnexpectedError('Regex engine not initialized for a non-default configuration'),
@@ -354,8 +355,10 @@ export abstract class BaseCommand<F = never> {
 
 	protected async exitSuccessFully() {
 		try {
-			this.regexEngineService.shutdown();
 			await Promise.all([
+				this.needsRegexEngine
+					? Promise.resolve().then(() => this.regexEngineService.shutdown())
+					: Promise.resolve(),
 				CrashJournal.cleanup(),
 				this.dbConnection.close(),
 				Expression.disposeExpressionEngine(),

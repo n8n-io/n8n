@@ -11,6 +11,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { PostHogClient } from '@/posthog';
 import { RegexEngineService } from '@/regex-engine/regex-engine.service';
@@ -68,6 +69,7 @@ describe('needsRegexEngine', () => {
 	const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 	mockInstance(ActivityEventRelay);
 	mockInstance(WorkflowFailureNotificationEventRelay);
+	mockInstance(ExpressionObservabilityProvider);
 	mockInstance(ErrorReporter);
 	mockInstance(ShutdownService);
 	const regexEngineService = mockInstance(RegexEngineService);
@@ -81,6 +83,16 @@ describe('needsRegexEngine', () => {
 	}
 
 	class PlainCommand extends BaseCommand {
+		async run() {}
+	}
+
+	class ExpressionOnlyCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+
+		override get needsRegexEngine() {
+			return false;
+		}
+
 		async run() {}
 	}
 
@@ -144,7 +156,7 @@ describe('needsRegexEngine', () => {
 		expect(exitSpy).toHaveBeenCalled();
 	});
 
-	it('crashes a command without regex-engine support when a non-default engine is configured', async () => {
+	it('does not crash a command that never evaluates expressions or regexes when a non-default engine is configured', async () => {
 		Container.set(
 			GlobalConfig,
 			mock<GlobalConfig>({
@@ -161,6 +173,28 @@ describe('needsRegexEngine', () => {
 			.mockResolvedValue(undefined);
 
 		await new PlainCommand().init();
+
+		expect(exitSpy).not.toHaveBeenCalled();
+		expect(regexEngineService.init).not.toHaveBeenCalled();
+	});
+
+	it('crashes a command that evaluates expressions but diverges on regex-engine support when a non-default engine is configured', async () => {
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				taskRunners: {},
+				nodes: {},
+				expressionEngine: { engine: 'legacy' },
+				regexEngine: { engine: 'bogus-engine' as never },
+				generic: { gracefulShutdownTimeout: 30 },
+			}),
+		);
+		const exitSpy = vi
+			// @ts-expect-error Protected method
+			.spyOn(BaseCommand.prototype, 'exitWithCrash')
+			.mockResolvedValue(undefined);
+
+		await new ExpressionOnlyCommand().init();
 
 		expect(exitSpy).toHaveBeenCalledWith(
 			expect.stringContaining('bogus-engine'),
