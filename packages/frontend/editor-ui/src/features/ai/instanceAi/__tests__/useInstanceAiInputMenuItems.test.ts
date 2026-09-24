@@ -1,4 +1,6 @@
+import { flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick, ref } from 'vue';
 
 import {
 	type InputMenuItem,
@@ -11,20 +13,34 @@ import {
 
 const {
 	browserUseTelemetry,
+	contextStore,
 	ensureBrowserConnected,
 	computerUseTelemetry,
 	featureFlags,
 	ignorePendingConnectResult,
+	instanceAiStore,
 	mcpStore,
 	mcpTelemetry,
+	router,
 	settingsStore,
 	uiStore,
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
+	contextStore: {
+		fetchPreferencesByIds:
+			vi.fn<(ids: string[]) => Promise<Array<{ id: string; content: string }>>>(),
+	},
 	ensureBrowserConnected: vi.fn(),
 	computerUseTelemetry: { trackModalOpened: vi.fn() },
-	featureFlags: { browserUse: true, computerUse: true, mcp: true },
+	featureFlags: { browserUse: true, computerUse: true, preferences: true },
 	ignorePendingConnectResult: vi.fn(),
+	instanceAiStore: {
+		runtimes: new Map<string, { appliedPreferences: unknown }>(),
+		getRuntime(threadId: string) {
+			return this.runtimes.get(threadId);
+		},
+	},
+	router: { push: vi.fn() },
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
 		fetchConnectionsLazy: vi.fn(),
@@ -36,7 +52,7 @@ const {
 	},
 	settingsStore: {
 		fetch: vi.fn(),
-		settings: { mcpAccessEnabled: true },
+		isMcpAvailable: true,
 		isLocalGatewayDisabled: false,
 		isComputerUseAvailable: true,
 		isBrowserUseAvailable: true,
@@ -59,18 +75,24 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => uiStore,
+vi.mock('vue-router', () => ({
+	useRouter: () => router,
 }));
 
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.mcp;
-			},
-		},
-	}),
+vi.mock('@/features/settings/context/context.store', () => ({
+	useContextStore: () => contextStore,
+}));
+
+vi.mock('@/features/settings/context/context.utils', () => ({
+	isContextPreferencesEnabled: () => featureFlags.preferences,
+}));
+
+vi.mock('../instanceAi.store', () => ({
+	useInstanceAiStore: () => instanceAiStore,
+}));
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => uiStore,
 }));
 
 vi.mock('../composables/useBrowserUseConnection', () => ({
@@ -155,9 +177,11 @@ describe('useInstanceAiInputMenuItems', () => {
 		vi.clearAllMocks();
 		featureFlags.browserUse = true;
 		featureFlags.computerUse = true;
-		featureFlags.mcp = true;
+		featureFlags.preferences = false;
+		instanceAiStore.runtimes.clear();
+		contextStore.fetchPreferencesByIds.mockResolvedValue([]);
 		mcpStore.connections = [];
-		settingsStore.settings.mcpAccessEnabled = true;
+		settingsStore.isMcpAvailable = true;
 		settingsStore.isLocalGatewayDisabled = false;
 		settingsStore.isComputerUseAvailable = true;
 		settingsStore.isBrowserUseAvailable = true;
@@ -167,8 +191,8 @@ describe('useInstanceAiInputMenuItems', () => {
 		settingsStore.gatewayHostIdentifier = null;
 	});
 
-	it('omits connection groups the store reports as unavailable', () => {
-		featureFlags.mcp = false;
+	it('omits connection groups that instance settings report as unavailable', () => {
+		settingsStore.isMcpAvailable = false;
 		settingsStore.isComputerUseAvailable = false;
 		settingsStore.isBrowserUseAvailable = false;
 
@@ -176,6 +200,30 @@ describe('useInstanceAiInputMenuItems', () => {
 
 		expect(menuItems.value.map(({ id }) => id)).toEqual(['attach-files']);
 		expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
+	});
+
+	it('fetches MCP connections when MCP becomes available', async () => {
+		const isMcpAvailable = ref(false);
+		const originalDescriptor = Object.getOwnPropertyDescriptor(settingsStore, 'isMcpAvailable');
+		Object.defineProperty(settingsStore, 'isMcpAvailable', {
+			configurable: true,
+			get: () => isMcpAvailable.value,
+			set: (value: boolean) => {
+				isMcpAvailable.value = value;
+			},
+		});
+
+		try {
+			useInstanceAiInputMenuItems(vi.fn());
+			expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
+
+			settingsStore.isMcpAvailable = true;
+			await nextTick();
+
+			expect(mcpStore.fetchConnectionsLazy).toHaveBeenCalledOnce();
+		} finally {
+			Object.defineProperty(settingsStore, 'isMcpAvailable', originalDescriptor!);
+		}
 	});
 
 	it.each(mcpStatusCases)(
@@ -304,5 +352,156 @@ describe('useInstanceAiInputMenuItems', () => {
 		);
 		expect(settingsStore.disconnectComputerUse).toHaveBeenCalledOnce();
 		expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
+	});
+
+	describe('applied preferences', () => {
+		function setApplied(threadId: string, preferences: unknown[] | null) {
+			instanceAiStore.runtimes.set(threadId, {
+				appliedPreferences:
+					preferences === null ? null : { preferences, renderedLength: 10, injectedThisTurn: true },
+			});
+		}
+
+		it('hides the section while the flag is off', () => {
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
+
+			expect(findItem(menuItems.value, 'preferences')).toBeUndefined();
+		});
+
+		it('shows the empty state, not a hidden item, before a turn reported anything', () => {
+			featureFlags.preferences = true;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => undefined);
+			const section = findItem(menuItems.value, 'preferences');
+
+			expect(section?.children?.map(({ id }) => id)).toEqual([
+				'preferences-empty',
+				'preferences-manage',
+			]);
+			expect(findItem(menuItems.value, 'preferences-empty')?.disabled).toBe(true);
+			expect(contextStore.fetchPreferencesByIds).not.toHaveBeenCalled();
+		});
+
+		it('shows the empty state for a turn that reported an empty payload', () => {
+			featureFlags.preferences = true;
+			setApplied('thread-1', []);
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
+
+			expect(findItem(menuItems.value, 'preferences-empty')).toBeDefined();
+		});
+
+		it('lists exactly what the payload names, in payload order, grouped by scope', async () => {
+			featureFlags.preferences = true;
+			setApplied('thread-1', [
+				{ id: 'inst-1', scope: 'instance' },
+				{ id: 'user-1', scope: 'user' },
+				{ id: 'user-2', scope: 'user' },
+				{ id: 'proj-1', scope: 'project', projectId: 'p-1', projectName: 'Marketing' },
+			]);
+			// The lookup answers in a different order and without the row that was removed.
+			contextStore.fetchPreferencesByIds.mockResolvedValue([
+				{ id: 'user-2', content: 'Prefer Postgres' },
+				{ id: 'inst-1', content: 'Name nodes clearly' },
+				{ id: 'proj-1', content: 'Post to #marketing' },
+			]);
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
+			await flushPromises();
+
+			expect(contextStore.fetchPreferencesByIds).toHaveBeenCalledWith([
+				'inst-1',
+				'user-1',
+				'user-2',
+				'proj-1',
+			]);
+			const children = findItem(menuItems.value, 'preferences')?.children ?? [];
+			expect(children.map(({ id, label, header }) => ({ id, label, header }))).toEqual([
+				{
+					id: 'preferences-group-instance',
+					label: 'settings.context.preferences.scope.instance',
+					header: true,
+				},
+				{ id: 'preference-inst-1', label: 'Name nodes clearly', header: undefined },
+				{
+					id: 'preferences-group-user',
+					label: 'instanceAi.inputMenu.preferences.scope.user',
+					header: true,
+				},
+				{
+					id: 'preference-user-1',
+					label: 'instanceAi.inputMenu.preferences.removed',
+					header: undefined,
+				},
+				{ id: 'preference-user-2', label: 'Prefer Postgres', header: undefined },
+				{ id: 'preferences-group-project-p-1', label: 'Marketing', header: true },
+				{ id: 'preference-proj-1', label: 'Post to #marketing', header: undefined },
+				{
+					id: 'preferences-manage',
+					label: 'instanceAi.inputMenu.preferences.manage',
+					header: undefined,
+				},
+			]);
+			expect(findItem(menuItems.value, 'preference-user-1')?.data?.preference).toBe('removed');
+			expect(findItem(menuItems.value, 'preference-user-2')?.data?.preference).toBe('applied');
+		});
+
+		it('keeps the list when the text lookup fails, and does not call the rows removed', async () => {
+			featureFlags.preferences = true;
+			setApplied('thread-1', [{ id: 'user-1', scope: 'user' }]);
+			contextStore.fetchPreferencesByIds.mockRejectedValue(new Error('offline'));
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
+			await flushPromises();
+
+			const item = findItem(menuItems.value, 'preference-user-1');
+			expect(item?.label).toBe('instanceAi.inputMenu.preferences.unavailable');
+			expect(item?.data?.preference).toBe('unavailable');
+			expect(findItem(menuItems.value, 'preferences')?.loading).toBe(false);
+		});
+
+		it('keeps texts it already resolved when a later lookup fails', async () => {
+			featureFlags.preferences = true;
+			setApplied('thread-1', [{ id: 'user-1', scope: 'user' }]);
+			contextStore.fetchPreferencesByIds.mockResolvedValue([{ id: 'user-1', content: 'known' }]);
+
+			const { menuItems, refreshAppliedPreferences } = useInstanceAiInputMenuItems(
+				vi.fn(),
+				() => 'thread-1',
+			);
+			await flushPromises();
+
+			contextStore.fetchPreferencesByIds.mockRejectedValue(new Error('offline'));
+			await refreshAppliedPreferences();
+
+			expect(findItem(menuItems.value, 'preference-user-1')?.label).toBe('known');
+		});
+
+		it('re-reads the texts on demand, so an edit in settings shows up', async () => {
+			featureFlags.preferences = true;
+			setApplied('thread-1', [{ id: 'user-1', scope: 'user' }]);
+			contextStore.fetchPreferencesByIds.mockResolvedValue([{ id: 'user-1', content: 'old' }]);
+
+			const { menuItems, refreshAppliedPreferences } = useInstanceAiInputMenuItems(
+				vi.fn(),
+				() => 'thread-1',
+			);
+			await flushPromises();
+			expect(findItem(menuItems.value, 'preference-user-1')?.label).toBe('old');
+
+			contextStore.fetchPreferencesByIds.mockResolvedValue([{ id: 'user-1', content: 'new' }]);
+			await refreshAppliedPreferences();
+
+			expect(findItem(menuItems.value, 'preference-user-1')?.label).toBe('new');
+		});
+
+		it('links to the Context settings page', async () => {
+			featureFlags.preferences = true;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
+			await findItem(menuItems.value, 'preferences-manage')?.data?.action?.();
+
+			expect(router.push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+		});
 	});
 });

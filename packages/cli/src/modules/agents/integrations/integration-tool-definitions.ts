@@ -1,5 +1,6 @@
 import {
 	richMessageSchema,
+	type AgentApproval,
 	type RichCardComponent,
 	type RICH_CARD_BUTTON_STYLES,
 } from '@n8n/api-types';
@@ -271,12 +272,14 @@ export const GENERIC_ACTION_TOOL_DEFINITIONS = [
 	{
 		name: 'send_dm',
 		inputSchema: sendDmActionInputSchema,
+		sensitive: true,
 		description:
 			'send_dm: input.userId and input.message are required. userId must be a platform user ID, not a name, handle, or email.',
 	},
 	{
 		name: 'send_channel_message',
 		inputSchema: sendChannelMessageActionInputSchema,
+		sensitive: true,
 		description:
 			'send_channel_message: input.channelId and input.message are required. channelId must be a platform channel ID, not a channel name.',
 	},
@@ -286,6 +289,7 @@ const EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS = [
 	{
 		name: 'edit_message',
 		inputSchema: editMessageActionInputSchema,
+		sensitive: true,
 		description:
 			"edit_message: input.messageId and input.message are required. Uses the latest message context to choose the conversation, so input.threadId isn't accepted.",
 	},
@@ -348,6 +352,19 @@ export function resolveIntegrationActionDefinitions(
 	actions: IntegrationAction[],
 ): IntegrationActionDefinition[] {
 	return actions.map((action) => requireDefinition(actionDefinitionsByName, action));
+}
+
+/** Whether a channel's approval config gates this action. */
+export function actionNeedsApproval(
+	approval: AgentApproval | undefined,
+	action: IntegrationAction,
+): boolean {
+	if (!approval) return false;
+	// Staying silent has no effect to approve; asking would post a card instead
+	// of the silence the model chose.
+	if (action === 'do_not_respond') return false;
+	if (approval.mode === 'global') return true;
+	return approval.tools.includes(action);
 }
 
 function toDefinitionMap<

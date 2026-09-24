@@ -191,13 +191,6 @@ export class InstanceAiConfig {
 	thinkingEnabled: boolean = true;
 
 	/**
-	 * Let the assistant discover and connect MCP registry servers.
-	 * Force enable the `089_instance_ai_mcp_connections` PostHog flag
-	 */
-	@Env('N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED')
-	mcpConnectionsEnabled: boolean = false;
-
-	/**
 	 * Force-enable canvas-selected-nodes chat context in Instance AI.
 	 * Acts as an operator-level override of the PostHog rollout flag
 	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
@@ -205,15 +198,6 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED')
 	canvasNodeContextEnabled: boolean = false;
-
-	/**
-	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
-	 * the chat input replaces the suspending setup wizard. Env-settable so eval
-	 * lanes can exercise both paths; a managed rollout flag may layer on top
-	 * later behind the same accessors.
-	 */
-	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
-	instanceAiSetupPanelEnabled: boolean = false;
 
 	/**
 	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and

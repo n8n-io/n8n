@@ -42,6 +42,7 @@ import {
 	type Thread,
 	stripHydratedFileData,
 } from '@n8n/agents';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
@@ -58,7 +59,6 @@ import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
-import { AgentResourceEntity } from '../entities/agent-resource.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 import { AgentMemoryEntryCandidateRepository } from '../repositories/agent-memory-entry-candidate.repository';
 import { AgentMemoryEntryLockRepository } from '../repositories/agent-memory-entry-lock.repository';
@@ -164,7 +164,7 @@ export class N8nMemoryImpl
 	}
 
 	async saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread> {
-		await this.ensureResource(thread.resourceId);
+		await this.resourceRepository.ensureExists(thread.resourceId);
 
 		const existing = await this.threadRepository.findOneBy({ id: thread.id });
 
@@ -193,19 +193,8 @@ export class N8nMemoryImpl
 		return this.toThread(saved);
 	}
 
-	private async ensureResource(resourceId: string): Promise<void> {
-		// Two callers can create a new thread scope at the same time. Ignore the loser.
-		await this.resourceRepository
-			.createQueryBuilder()
-			.insert()
-			.into(AgentResourceEntity)
-			.values({ id: resourceId, metadata: null })
-			.orIgnore()
-			.execute();
-	}
-
-	async deleteThread(threadId: string): Promise<void> {
-		await this.threadRepository.manager.transaction(async (trx) => {
+	async deleteThread(threadId: string, ctx: OperationContext = {}): Promise<void> {
+		await this.threadRepository.runInTransaction(ctx, async (trx) => {
 			await this.dropEpisodicEntriesWithoutSources(trx, threadId);
 			const observationScope = { agentId: this.agentId, observationScopeId: threadId };
 			await trx.delete(AgentObservationEntity, observationScope);
@@ -601,7 +590,7 @@ export class N8nMemoryImpl
 		candidate: NewEpisodicMemoryCaptureCandidate,
 	): Promise<EpisodicMemoryCaptureCandidate> {
 		const resourceId = episodicMemoryWriteScopeId(candidate);
-		await this.ensureResource(resourceId);
+		await this.resourceRepository.ensureExists(resourceId);
 		const entity = await this.memoryEntryCandidateRepository.enqueueCandidate({
 			agentId: this.agentId,
 			...candidate,
@@ -642,7 +631,7 @@ export class N8nMemoryImpl
 		opts: { ttlMs: number; holderId: string },
 	): Promise<EpisodicMemoryTaskLockHandle | null> {
 		const resourceId = episodicMemoryWriteScopeId(scope);
-		await this.ensureResource(resourceId);
+		await this.resourceRepository.ensureExists(resourceId);
 
 		const now = new Date();
 		const heldUntil = new Date(now.getTime() + opts.ttlMs);
@@ -699,7 +688,7 @@ export class N8nMemoryImpl
 		const resourceId = sourceThreadId
 			? episodicMemoryWriteScopeId({ resourceId: entry.resourceId, threadId: sourceThreadId })
 			: entry.resourceId;
-		await this.ensureResource(resourceId);
+		await this.resourceRepository.ensureExists(resourceId);
 
 		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
 			const entryRepo = trx.getRepository(AgentMemoryEntryEntity);

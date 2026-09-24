@@ -1,14 +1,13 @@
 import {
 	AGENT_EVALS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
@@ -185,7 +184,17 @@ export class PostHogClient {
 		} catch {
 			// Apply local overrides when PostHog is not available.
 		}
-		return this.applyEnvOverrides(data);
+		const overridden = this.applyEnvOverrides(data);
+		// The editor and backend must use the same instance result.
+		const credentialDescriptionsEnabled =
+			(await this.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true;
+		return {
+			...overridden,
+			featureFlags: {
+				...overridden.featureFlags,
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: credentialDescriptionsEnabled,
+			},
+		};
 	}
 
 	private async fetchFlagsFromPostHog({
@@ -251,10 +260,6 @@ export class PostHogClient {
 
 		if (this.globalConfig.evaluation.agentEvalsEnabled) {
 			overrides[AGENT_EVALS_FLAG] = true;
-		}
-
-		if (this.globalConfig.instanceAi.mcpConnectionsEnabled) {
-			overrides[INSTANCE_AI_MCP_CONNECTIONS_FLAG] = INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT;
 		}
 
 		if (this.globalConfig.instanceAi.canvasNodeContextEnabled) {

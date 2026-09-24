@@ -132,6 +132,14 @@ export type PubSubCommandMap = {
 		userIds: string[];
 	};
 
+	'cancel-agent-chat-execution': {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		executionId: string;
+		userId: string;
+	};
+
 	'relay-agent-background-tasks-update': {
 		data: PushPayload<'agentBackgroundTasksUpdated'>;
 		userIds: string[];

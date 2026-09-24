@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowGraph } from '../../graph';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
-import type { ExecutionResponseChannel } from '../../response-channel';
+import type { ExecutionResponseSender } from '../../response-channel';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
@@ -57,7 +57,7 @@ function makeExecutionStore(
 		graph,
 		workflow: {},
 		triggerOutputs: null,
-		callerContext: {},
+		callerContext: { hostMode: 'trigger' },
 		...overrides,
 	};
 	return {
@@ -81,6 +81,8 @@ function makeStepStore(
 		iteration: 0,
 		status: 'completed',
 		outputs: null,
+		waitDeclaration: null,
+		resumeCause: null,
 		...step,
 	};
 	const summariesByKey = Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
@@ -93,8 +95,12 @@ function makeStepStore(
 		loadStep: vi.fn().mockResolvedValue(record),
 		claimStep: vi.fn(),
 		completeStep: vi.fn(),
+		suspendStep: vi.fn(),
+		resumeStep: vi.fn(),
+		resumeDueSteps: vi.fn().mockResolvedValue([]),
+		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failStep: vi.fn(),
-		cancelQueuedSteps: vi.fn(),
+		cancelPendingSteps: vi.fn(),
 		// like the store: only requested keys that have rows appear
 		loadStepSummariesByKeys: vi.fn().mockImplementation(async (_: string, keys: StepKey[]) => {
 			await Promise.resolve();
@@ -128,9 +134,9 @@ function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
-/** A channel fake; tests that care assert on `publish`. */
-function makeResponseChannel() {
-	return { publish: vi.fn() } as unknown as ExecutionResponseChannel;
+/** A response sender fake; tests that care assert on `send`. */
+function makeResponseSender() {
+	return { send: vi.fn() } as unknown as ExecutionResponseSender;
 }
 
 function makeHandler(
@@ -140,7 +146,7 @@ function makeHandler(
 		stepQueue = makeStepQueue(),
 		orchestrationQueue = makeOrchestrationQueue(),
 		lifecycleEventPublisher = makeLifecycleEventPublisher(),
-		responseChannel = makeResponseChannel(),
+		responseSender = makeResponseSender(),
 	} = {},
 ) {
 	return {
@@ -150,13 +156,13 @@ function makeHandler(
 			stepQueue,
 			orchestrationQueue,
 			lifecycleEventPublisher,
-			responseChannel,
+			responseSender,
 		),
 		executionStore,
 		stepQueue,
 		orchestrationQueue,
 		lifecycleEventPublisher,
-		responseChannel,
+		responseSender,
 	};
 }
 
@@ -219,7 +225,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-c' });
 
 		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
-		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.loadStepSummariesByKeys).not.toHaveBeenCalled();
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
@@ -436,7 +442,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle(event);
 
 		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
-		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(stepStore.countSettledSteps).not.toHaveBeenCalled();
@@ -453,7 +459,7 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
 	it('plans nothing more once the execution is finished', async () => {
@@ -488,7 +494,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			{ id: 'step-m', nodeId: 'm' },
 			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
 		);
-		const { handler, lifecycleEventPublisher, responseChannel } = makeHandler(stepStore);
+		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(stepStore);
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
@@ -496,7 +502,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			type: 'execution:completed',
 			...finished,
 		});
-		expect(responseChannel.publish).toHaveBeenCalledExactlyOnceWith({
+		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
 			type: 'ended',
 			executionId: 'exec-1',
 			workflowId: 'wf-1',
@@ -516,7 +522,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			status: 'failed',
 			error: { name: 'NodeOperationError', message: 'it broke', stack: 'at trace' },
 		});
-		const { handler, lifecycleEventPublisher, responseChannel } = makeHandler(stepStore);
+		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(stepStore);
 
 		await handler.handle(event);
 
@@ -524,7 +530,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			type: 'execution:failed',
 			...finished,
 		});
-		expect(responseChannel.publish).toHaveBeenCalledExactlyOnceWith({
+		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
 			type: 'ended',
 			executionId: 'exec-1',
 			workflowId: 'wf-1',
@@ -546,7 +552,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			{},
 			{ finishExecution: vi.fn().mockResolvedValue(false) },
 		);
-		const { handler, lifecycleEventPublisher, responseChannel } = makeHandler(
+		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(
 			makeStepStore({ status: 'failed' }),
 			{ executionStore },
 		);
@@ -554,7 +560,7 @@ describe('StepSettledHandler lifecycle events', () => {
 		await handler.handle(event);
 
 		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
-		expect(responseChannel.publish).not.toHaveBeenCalled();
+		expect(responseSender.send).not.toHaveBeenCalled();
 	});
 
 	it('announces nothing while any reachable node is unsettled', async () => {

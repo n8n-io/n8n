@@ -106,8 +106,45 @@ describe('CreateProjectPublicDto', () => {
 	});
 
 	test.each([
+		{
+			id: 'source-id',
+			icon: { type: 'icon', value: 'briefcase', color: 'red' },
+			description: '',
+			customTelemetryTags: [
+				{ key: ' team ', value: ' Sales ' },
+				{ key: 'region', value: '' },
+			],
+		},
+		{ icon: null, description: null, customTelemetryTags: [] },
+	])('preserves supplied fields: %j', (fields) => {
+		const input = { name: ' Sales ', ...fields };
+		expect(CreateProjectPublicDto.parse(input)).toEqual(input);
+	});
+
+	test.each([
+		['an empty ID', { id: '' }],
+		['an ID over 36 characters', { id: 'a'.repeat(37) }],
+		['an empty name', { name: '' }],
+		['a name over 255 characters', { name: 'a'.repeat(256) }],
+		['a description over 512 characters', { description: 'a'.repeat(513) }],
+		['an empty icon value', { icon: { type: 'icon', value: '' } }],
+		['an empty tag key', { customTelemetryTags: [{ key: ' ', value: 'x' }] }],
+		[
+			'duplicate tag keys',
+			{
+				customTelemetryTags: [
+					{ key: 'team', value: 'a' },
+					{ key: ' team ', value: 'b' },
+				],
+			},
+		],
+	])('rejects %s', (_label, fields) => {
+		expect(CreateProjectPublicDto.safeParse({ name: 'Sales', ...fields }).success).toBe(false);
+	});
+
+	test.each([
 		['a missing name', {}, ['name']],
-		['an unknown key', { name: 'Marketing', icon: { type: 'icon', value: 'layers' } }, []],
+		['an unknown key', { name: 'Marketing', extra: true }, []],
 	])('rejects %s', (_label, payload, path) => {
 		const result = CreateProjectPublicDto.safeParse(payload);
 
@@ -115,7 +152,7 @@ describe('CreateProjectPublicDto', () => {
 		expect(result.error?.issues[0].path).toEqual(path);
 	});
 
-	test.each(['id', 'type'])('rejects %s as read-only', (key) => {
+	test.each(['type'])('rejects %s as read-only', (key) => {
 		const result = CreateProjectPublicDto.safeParse({ name: 'Marketing', [key]: 'x' });
 
 		expect(result.success).toBe(false);

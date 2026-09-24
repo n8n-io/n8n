@@ -5,7 +5,12 @@ import { deriveLoops, type WorkflowGraph } from '../../graph';
 import type { LifecycleEventPublisher, LifecycleEvent } from '../../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
-import { stepKeyId, type StepSlots, type StepStatus } from '../execution.types';
+import {
+	stepKeyId,
+	type StepSlots,
+	type StepStatus,
+	type WaitDeclaration,
+} from '../execution.types';
 import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
@@ -21,6 +26,8 @@ function stepRow(nodeId: string, status: StepStatus, outputs: StepSlots | null =
 		iteration: 0,
 		status,
 		outputs,
+		waitDeclaration: null,
+		resumeCause: null,
 	};
 }
 
@@ -49,6 +56,7 @@ function makeHandler(
 	queue: WorkQueue<OrchestrationMessage>,
 	dependencies: ExternalDependencies,
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
+	onStepSuspended?: () => void,
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
@@ -56,6 +64,7 @@ function makeHandler(
 		queue,
 		dependencies,
 		lifecycleEventPublisher,
+		onStepSuspended,
 	);
 }
 
@@ -68,7 +77,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		graph,
 		workflow: {},
 		triggerOutputs: null,
-		callerContext: {},
+		callerContext: { hostMode: 'trigger' },
 		...overrides,
 	};
 	return {
@@ -87,6 +96,8 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		iteration: 0,
 		status: 'running',
 		outputs: null,
+		waitDeclaration: null,
+		resumeCause: null,
 		...step,
 	};
 	return {
@@ -95,7 +106,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		claimStep: vi.fn().mockResolvedValue(record),
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
-		cancelQueuedSteps: vi.fn(),
+		cancelPendingSteps: vi.fn(),
 		loadStepsByKeys: vi
 			.fn()
 			.mockResolvedValue({ [at('trigger')]: stepRow('trigger', 'completed', [{}]) }),
@@ -104,6 +115,10 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		loadAllSteps: vi.fn().mockResolvedValue([]),
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
+		suspendStep: vi.fn().mockResolvedValue(true),
+		resumeStep: vi.fn().mockResolvedValue(true),
+		resumeDueSteps: vi.fn().mockResolvedValue([]),
+		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		...overrides,
 	} satisfies StepStore;
 }
@@ -153,7 +168,7 @@ describe('StepReadyHandler', () => {
 				workflowId: 'wf-1',
 				mode: 'production',
 				iteration: 0,
-				callerContext: {},
+				callerContext: { hostMode: 'trigger' },
 			},
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
@@ -706,6 +721,278 @@ describe('StepReadyHandler', () => {
 	);
 });
 
+describe('StepReadyHandler waits', () => {
+	/** A deadline wait with its captured outputs, as a time-mode Wait node will declare it. */
+	const timeWait: WaitDeclaration = {
+		resumeAt: '2099-01-01T00:00:00.000Z',
+		outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+		acceptsResumeRequest: false,
+	};
+
+	it('suspends the step and announces no settlement when the executor declares a wait', async () => {
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: makeExecutor({ wait: timeWait }),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).toHaveBeenCalledWith('step-a', timeWait);
+		// `waiting` is not settled: the step has no outcome yet, so nothing may
+		// plan behind it and nothing may count it towards the execution's end.
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
+	it('reports the suspension once the row is written, so the sweeper can re-arm', async () => {
+		const stepStore = makeStepStore();
+		const onStepSuspended = vi.fn(() => {
+			expect(stepStore.suspendStep).toHaveBeenCalled();
+		});
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
+			makeLifecycleEventPublisher(),
+			onStepSuspended,
+		);
+
+		await handler.handle(event);
+
+		expect(onStepSuspended).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports no suspension when another owner took the step over', async () => {
+		const stepStore = makeStepStore();
+		vi.mocked(stepStore.suspendStep).mockResolvedValue(false);
+		const onStepSuspended = vi.fn();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
+			makeLifecycleEventPublisher(),
+			onStepSuspended,
+		);
+
+		await handler.handle(event);
+
+		expect(onStepSuspended).not.toHaveBeenCalled();
+	});
+
+	it('suspends a wait that only a resume request ends', async () => {
+		const openWait: WaitDeclaration = { acceptsResumeRequest: true };
+		const stepStore = makeStepStore();
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: makeExecutor({ wait: openWait }),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).toHaveBeenCalledWith('step-a', openWait);
+	});
+
+	it('fails the step when the declaration names a deadline it cannot parse', async () => {
+		// `wait_till` is derived from `resumeAt` in the statement that suspends the
+		// step, so a value no date can be made from fails that write and leaves the
+		// claimed step running. The declaration crosses the executor seam, so this
+		// is the executor's bug, and the step that ran is recorded as failed.
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: makeExecutor({
+				wait: {
+					resumeAt: 'the day after tomorrow',
+					outputsAtDeadline: [[{ json: {} }]],
+					acceptsResumeRequest: false,
+				},
+			}),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({
+				message: expect.stringContaining('deadline that is not a date') as string,
+			}),
+		);
+	});
+
+	it('fails the step when the declaration names a deadline but captures no outputs', async () => {
+		// The engine emits `outputsAtDeadline` when the deadline fires, and it never
+		// runs the step again to produce them. Suspending would defer the failure to
+		// the sweep, which finds it with the row already `queued`.
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: makeExecutor({
+				wait: { resumeAt: '2099-01-01T00:00:00.000Z', acceptsResumeRequest: false },
+			}),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({
+				message: expect.stringContaining('no outputs to emit at it') as string,
+			}),
+		);
+	});
+
+	it('fails the step when the declaration can never resume', async () => {
+		// No deadline and no resume request means nothing would ever end this
+		// wait, so suspending would strand the execution. The declaration comes
+		// across the executor seam, so this is the executor's bug — but the node
+		// has already run, and a step that ran is recorded, not left running.
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: makeExecutor({ wait: { acceptsResumeRequest: false } }),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({
+				message: expect.stringContaining('declares a wait that can never resume') as string,
+			}),
+		);
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+});
+
+describe('StepReadyHandler resumes', () => {
+	const timeWait: WaitDeclaration = {
+		resumeAt: '2099-01-01T00:00:00.000Z',
+		outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+		acceptsResumeRequest: false,
+	};
+
+	it('emits the captured outputs when a deadline resume dispatches the step', async () => {
+		const stepStore = makeStepStore({
+			status: 'running',
+			waitDeclaration: timeWait,
+			resumeCause: { kind: 'deadline' },
+		});
+		const queue = makeQueue();
+		const executor = makeExecutor();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		// the node is never run again: the declaration already holds its output,
+		// so there is nothing to feed it either
+		expect(executor.execute).not.toHaveBeenCalled();
+		expect(stepStore.loadStepsByKeys).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline);
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
+	it('resumes at a deadline in a worker that has no v1 executor', async () => {
+		// The step suspended in a process that had the shim, and the sweep announces
+		// the resume for any worker to claim. A deadline resume runs no node code, so
+		// looking an executor up here would fail a resume this worker can serve.
+		const stepStore = makeStepStore({
+			status: 'running',
+			waitDeclaration: timeWait,
+			resumeCause: { kind: 'deadline' },
+		});
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {});
+
+		await handler.handle(event);
+
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline);
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
+	it('emits the request outputs when a request resume dispatches the step, in a worker with no v1 executor', async () => {
+		// The node's resume path already ran where the request arrived, and what
+		// it produced is on the row. Nothing runs here, so the worker needs no
+		// shim and gathers no inputs.
+		const requestOutputs = [[{ json: { approved: true } }]];
+		const stepStore = makeStepStore({
+			status: 'running',
+			waitDeclaration: { acceptsResumeRequest: true },
+			resumeCause: { kind: 'request', outputs: requestOutputs },
+		});
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {});
+
+		await handler.handle(event);
+
+		expect(stepStore.loadStepsByKeys).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', requestOutputs);
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
+	it('fails the step when a deadline resume finds no captured outputs', async () => {
+		// The declaration type pairs a deadline with its outputs, so only a write
+		// from outside the type system reaches this — but the row is such a write.
+		const stepStore = makeStepStore({
+			status: 'running',
+			waitDeclaration: null,
+			resumeCause: { kind: 'deadline' },
+		});
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: makeExecutor(),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({
+				message: expect.stringContaining('captured no outputs') as string,
+			}),
+		);
+	});
+
+	it('does not treat a first dispatch as a resume', async () => {
+		const stepStore = makeStepStore();
+		const executor = makeExecutor();
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.not.objectContaining({ resumeRequest: expect.anything() as unknown }),
+		);
+	});
+});
+
 describe('StepReadyHandler lifecycle events', () => {
 	const stepFields = {
 		executionId: 'exec-1',
@@ -884,6 +1171,8 @@ describe('StepReadyHandler over loop iterations', () => {
 			iteration,
 			status: 'completed',
 			outputs,
+			waitDeclaration: null,
+			resumeCause: null,
 		};
 	}
 

@@ -40,6 +40,7 @@ export class ExecutionStartHandler {
 			executionId: execution.id,
 			workflowId: execution.workflowId,
 			mode: execution.mode,
+			hostMode: execution.callerContext.hostMode,
 			at: new Date().toISOString(),
 		});
 

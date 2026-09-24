@@ -144,7 +144,7 @@ watch(filtersLength, (value) => {
 							v-if="filtersLength > 0"
 							:class="$style['filter-button-count']"
 							data-test-id="resources-list-filters-count"
-							theme="primary"
+							variant="primary"
 						>
 							{{ filtersLength }}
 						</N8nBadge>

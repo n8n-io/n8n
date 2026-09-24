@@ -481,4 +481,86 @@ describe('WorkflowHistoryRepository', () => {
 			}
 		});
 	});
+
+	describe('findVersionSummaries', () => {
+		it('scopes by workflowId, filters by versionId, selects versionId/name/createdAt, and orders by createdAt desc', async () => {
+			const workflowA = await createWorkflow({
+				versionId: uuid(),
+				nodes: [testNode1],
+			});
+			const workflowB = await createWorkflow({
+				versionId: uuid(),
+				nodes: [testNode1],
+			});
+
+			const vOldest = uuid();
+			const vMiddle = uuid();
+			const vNewest = uuid();
+			const vNotRequested = uuid();
+			const vOtherWorkflow = uuid();
+
+			const threeDaysAgo = new Date();
+			threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+			const twoDaysAgo = new Date();
+			twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+			const oneDayAgo = new Date();
+			oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vOldest,
+				name: null,
+				createdAt: threeDaysAgo,
+			});
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vMiddle,
+				name: 'Release 1',
+				createdAt: twoDaysAgo,
+			});
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vNewest,
+				name: null,
+				createdAt: oneDayAgo,
+			});
+			// Belongs to workflowA but not passed in versionIds — must be excluded
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vNotRequested,
+				name: 'Should not appear',
+				createdAt: oneDayAgo,
+			});
+			// Passed in versionIds but belongs to workflowB — must be excluded by workflowId scoping
+			await createWorkflowHistory(workflowB, undefined, undefined, {
+				versionId: vOtherWorkflow,
+				name: 'Wrong workflow',
+				createdAt: oneDayAgo,
+			});
+
+			const repository = Container.get(WorkflowHistoryRepository);
+			const result = await repository.findVersionSummaries(workflowA.id, [
+				vOldest,
+				vMiddle,
+				vNewest,
+				vOtherWorkflow,
+				uuid(), // not present in the DB at all
+			]);
+
+			expect(result).toHaveLength(3);
+			expect(result.map((v) => v.versionId)).toEqual([vNewest, vMiddle, vOldest]);
+			expect(result[0]).toMatchObject({ versionId: vNewest, name: null });
+			expect(result[1]).toMatchObject({ versionId: vMiddle, name: 'Release 1' });
+			expect(result[2]).toMatchObject({ versionId: vOldest, name: null });
+			// `select` should be applied: only versionId/name/createdAt are populated,
+			// not the full entity (e.g. nodes/authors).
+			expect(result[0]).not.toHaveProperty('nodes');
+			expect(result[0]).not.toHaveProperty('authors');
+		});
+
+		it('returns an empty array when no versionIds match', async () => {
+			const workflow = await createWorkflow({ versionId: uuid(), nodes: [testNode1] });
+
+			const repository = Container.get(WorkflowHistoryRepository);
+			const result = await repository.findVersionSummaries(workflow.id, [uuid()]);
+
+			expect(result).toEqual([]);
+		});
+	});
 });

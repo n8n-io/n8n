@@ -21,6 +21,7 @@ import {
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
 	formatWakeMessage,
 } from './background-job-messages';
+import type { Agent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
@@ -173,47 +174,12 @@ export class AgentWakeService {
 			return;
 		}
 
-		const agent = await this.agentRepository.findById(first.parentAgentId);
-		if (!agent) {
-			this.recordFailure(threadId, generation, 'Background job parent agent no longer exists');
-			return;
-		}
-
-		let identity: ExecuteForWakeConfig['identity'];
-		try {
-			identity = await this.resolveIdentity(
-				first.parentResourceId,
-				first.parentPrincipalHash,
-				agent.projectId,
-			);
-		} catch (error) {
-			this.recordFailure(
-				threadId,
-				generation,
-				error instanceof Error ? error.message : String(error),
-			);
-			return;
-		}
+		const target = await this.resolveWakeTarget(first, threadId, generation);
+		if (!target) return;
+		const { agent, identity } = target;
 
 		try {
-			this.activeWakes.add(threadId);
-			try {
-				await this.orchestrator.executeForWake({
-					agentId: agent.id,
-					projectId: agent.projectId,
-					message: formatWakeMessage(jobs),
-					backgroundJobSignal: {
-						tasks: jobs.flatMap(({ id, title, kind, status }) =>
-							status === 'running' ? [] : [{ id, title, kind, status }],
-						),
-					},
-					memory: { threadId, resourceId: first.parentResourceId },
-					identity,
-					abortSignal: signal,
-				});
-			} finally {
-				this.activeWakes.delete(threadId);
-			}
+			await this.runWake(agent, identity, jobs, threadId, first.parentResourceId, signal);
 
 			if (signal.aborted) return;
 			await this.backgroundJobService.markMailConsumed(
@@ -281,5 +247,58 @@ export class AgentWakeService {
 			attempt: count,
 			reason,
 		});
+	}
+
+	private async resolveWakeTarget(first: AgentBackgroundJob, threadId: string, generation: string) {
+		const agent = await this.agentRepository.findById(first.parentAgentId);
+		if (!agent) {
+			this.recordFailure(threadId, generation, 'Background job parent agent no longer exists');
+			return undefined;
+		}
+
+		let identity: ExecuteForWakeConfig['identity'];
+		try {
+			identity = await this.resolveIdentity(
+				first.parentResourceId,
+				first.parentPrincipalHash,
+				agent.projectId,
+			);
+		} catch (error) {
+			this.recordFailure(
+				threadId,
+				generation,
+				error instanceof Error ? error.message : String(error),
+			);
+			return undefined;
+		}
+		return { agent, identity };
+	}
+
+	private async runWake(
+		agent: Agent,
+		identity: ExecuteForWakeConfig['identity'],
+		jobs: AgentBackgroundJob[],
+		threadId: string,
+		resourceId: string,
+		signal: AbortSignal,
+	): Promise<void> {
+		this.activeWakes.add(threadId);
+		try {
+			await this.orchestrator.executeForWake({
+				agentId: agent.id,
+				projectId: agent.projectId,
+				message: formatWakeMessage(jobs),
+				backgroundJobSignal: {
+					tasks: jobs.flatMap(({ id, title, kind, status }) =>
+						status === 'running' ? [] : [{ id, title, kind, status }],
+					),
+				},
+				memory: { threadId, resourceId },
+				identity,
+				abortSignal: signal,
+			});
+		} finally {
+			this.activeWakes.delete(threadId);
+		}
 	}
 }
