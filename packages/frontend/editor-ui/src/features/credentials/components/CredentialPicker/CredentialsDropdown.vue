@@ -2,7 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 
 import {
-	N8nActionPill,
+	N8nBadge,
 	N8nIcon,
 	N8nOption,
 	N8nSelect,
@@ -135,12 +135,17 @@ const onCreateNewCredential = async () => {
 				<div :class="$style.credentialOption">
 					<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
 					<N8nText :class="$style.optionName">{{ managedOption.label }}</N8nText>
-					<N8nActionPill
+					<N8nBadge
 						v-if="managedOption.pill"
-						size="small"
-						:type="managedOption.pill.type"
-						:text="managedOption.pill.text"
-					/>
+						size="xxsmall"
+						:variant="
+							managedOption.pill.type === 'danger' || managedOption.pill.type === 'info'
+								? managedOption.pill.type
+								: 'success'
+						"
+					>
+						{{ managedOption.pill.text }}
+					</N8nBadge>
 					<N8nIcon v-if="isManagedSelected" icon="check" size="large" :class="$style.checkIcon" />
 				</div>
 			</N8nOption>
@@ -201,7 +206,16 @@ const onCreateNewCredential = async () => {
 			<!-- Invisible copy of the selected label reserves its rendered width so the
 			     badge sits the same gap after it as in the dropdown row. -->
 			<span :class="$style.balanceLabelSizer" aria-hidden="true">{{ managedOption.label }}</span>
-			<N8nActionPill size="small" :type="managedOption.pill.type" :text="managedOption.pill.text" />
+			<N8nBadge
+				size="xxsmall"
+				:variant="
+					managedOption.pill.type === 'danger' || managedOption.pill.type === 'info'
+						? managedOption.pill.type
+						: 'success'
+				"
+			>
+				{{ managedOption.pill.text }}
+			</N8nBadge>
 		</div>
 	</div>
 </template>
