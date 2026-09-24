@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	mockInstance,
 	testDb,
 	testModules,
@@ -15,7 +16,9 @@ import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { createOwner } from '@test-integration/db/users';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
@@ -393,5 +396,148 @@ describe('importPackageSelectionFromDirectory', () => {
 		expect(await findWorkflow(wfOne.id)).not.toBeNull();
 		// WF Two was in the exported directory but not selected, so it is not recreated.
 		expect(await findWorkflow(wfTwo.id)).toBeNull();
+	});
+
+	describe('explicit deletes', () => {
+		/** Seeds the destination project P1 with both WFA and WFB by importing them. */
+		async function seedBothWorkflows() {
+			await importSelection(await packageDir(twoWorkflowPackage), {
+				selectedProjectId: 'P1',
+				selectedWorkflowIds: ['WFA', 'WFB'],
+			});
+		}
+
+		it('archives a workflow named for deletion, even under the additive merge profile', async () => {
+			await seedBothWorkflows();
+			expect((await findWorkflow('WFB'))?.isArchived).toBe(false);
+
+			const result = await importSelection(await packageDir(twoWorkflowPackage), {
+				selectedProjectId: 'P1',
+				selectedWorkflowIds: ['WFA'],
+				deletedWorkflowIds: ['WFB'],
+			});
+
+			// The locked profile deletes by archiving, so the row survives but is archived.
+			expect(result.removedWorkflows).toEqual([
+				{
+					workflowId: 'WFB',
+					name: 'wfb',
+					projectId: 'P1',
+					parentFolderId: null,
+					deletion: 'archived',
+				},
+			]);
+			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
+			// The selected workflow is imported and left active; merge never reconciled it away.
+			expect((await findWorkflow('WFA'))?.isArchived).toBe(false);
+		});
+
+		it('tolerates deleting an already-archived or absent workflow as a no-op', async () => {
+			await seedBothWorkflows();
+
+			// First delete archives WFB.
+			await importSelection(await packageDir(twoWorkflowPackage), {
+				selectedProjectId: 'P1',
+				selectedWorkflowIds: ['WFA'],
+				deletedWorkflowIds: ['WFB'],
+			});
+			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
+
+			// A second import deleting the now-archived WFB and a never-seen id removes nothing.
+			const result = await importSelection(await packageDir(twoWorkflowPackage), {
+				selectedProjectId: 'P1',
+				selectedWorkflowIds: ['WFA'],
+				deletedWorkflowIds: ['WFB', 'GHOST'],
+			});
+
+			expect(result.removedWorkflows).toEqual([]);
+			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
+		});
+
+		it('confines deletes to the scoped project, never removing a bystander project workflow', async () => {
+			await seedBothWorkflows();
+			const bystander = await createTeamProject('Bystander', owner);
+			const outsider = await createWorkflow({ name: 'Outsider' }, bystander);
+
+			// The delete id names a workflow in another project, so it is dropped rather than archived.
+			const result = await importSelection(await packageDir(twoWorkflowPackage), {
+				selectedProjectId: 'P1',
+				selectedWorkflowIds: ['WFA'],
+				deletedWorkflowIds: [outsider.id],
+			});
+
+			expect(result.removedWorkflows).toEqual([]);
+			expect((await findWorkflow(outsider.id))?.isArchived).toBe(false);
+		});
+
+		it('rejects an explicit delete the caller may not perform, writing nothing', async () => {
+			const projectRepository = Container.get(ProjectRepository);
+			await projectRepository.save(
+				projectRepository.create({ id: 'P1', name: 'p1', type: 'team' }),
+			);
+			const project = await projectRepository.findOneOrFail({ where: { id: 'P1' } });
+			const protectedWorkflow = await createWorkflow({ name: 'Protected' }, project);
+
+			// A member who may import into P1 but has no workflow:delete scope there.
+			const member = await createMember();
+			const importOnlyRole = await createCustomRoleWithScopeSlugs(
+				[
+					'project:read',
+					'project:list',
+					'project:update',
+					'workflow:create',
+					'workflow:read',
+					'workflow:update',
+					'workflow:import',
+					'workflow:list',
+					'workflow:publish',
+					'folder:create',
+					'folder:read',
+					'folder:update',
+					'folder:list',
+					'credential:read',
+					'credential:list',
+				],
+				{ roleType: 'project' },
+			);
+			await linkUserToProject(member, project, importOnlyRole.slug);
+
+			const sourceDir = await packageDir({
+				projects: [{ target: 'projects/p1', project: serializedProject({ id: 'P1', name: 'p1' }) }],
+				workflows: [
+					{
+						target: 'projects/p1/workflows/wfa',
+						workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
+					},
+				],
+			});
+
+			let caught: unknown;
+			try {
+				await importSelection(
+					sourceDir,
+					{
+						selectedProjectId: 'P1',
+						selectedWorkflowIds: ['WFA'],
+						deletedWorkflowIds: [protectedWorkflow.id],
+					},
+					{ user: member },
+				);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(UnprocessableRequestError);
+			expect((caught as UnprocessableRequestError).meta?.issues).toContainEqual({
+				type: 'workflow-removal-forbidden',
+				workflowId: protectedWorkflow.id,
+				name: 'Protected',
+				projectId: 'P1',
+			});
+
+			// The whole import is refused before any write: WFA is not created and the target survives.
+			expect(await findWorkflow('WFA')).toBeNull();
+			expect((await findWorkflow(protectedWorkflow.id))?.isArchived).toBe(false);
+		});
 	});
 });

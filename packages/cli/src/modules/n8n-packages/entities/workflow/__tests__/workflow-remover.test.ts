@@ -215,6 +215,86 @@ describe('WorkflowRemover.plan', () => {
 	});
 });
 
+describe('WorkflowRemover.planExplicitDeletes', () => {
+	it('removes an explicitly named workflow even under merge', async () => {
+		const { remover, workflowFinderService } = makeRemover([
+			{ id: 'target', name: 'Target', parentFolderId: 'F1' },
+			{ id: 'bystander', name: 'Bystander', parentFolderId: null },
+		]);
+
+		const plan = await remover.plan(context, {
+			workflowItems: [],
+			packageFolderIds: [],
+			// merge never reconciles by absence, yet the explicit delete still goes.
+			folderConflictPolicy: 'merge',
+			deletionPolicy: 'archive',
+			explicitDeleteIds: ['target'],
+		});
+
+		expect(plan.removals).toEqual([{ id: 'target', name: 'Target', parentFolderId: 'F1' }]);
+		expect(plan.failures).toEqual([]);
+		// Explicit deletes never drive folder reconciliation.
+		expect(plan.occupiedFolderIds).toEqual([]);
+		// Only the named id is scope-checked, not the bystander.
+		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledExactlyOnceWith(
+			['target'],
+			user,
+			['workflow:delete'],
+		);
+	});
+
+	it('reports a failure for a named workflow the caller may not delete', async () => {
+		const { remover } = makeRemover([{ id: 'target', name: 'Target', parentFolderId: null }], []);
+
+		const plan = await remover.plan(context, {
+			workflowItems: [],
+			packageFolderIds: [],
+			folderConflictPolicy: 'merge',
+			deletionPolicy: 'archive',
+			explicitDeleteIds: ['target'],
+		});
+
+		expect(plan.removals).toEqual([]);
+		expect(plan.failures).toEqual([{ workflowId: 'target', name: 'Target', projectId: 'proj-1' }]);
+	});
+
+	it('treats an absent id as a no-op, skipping the permission query', async () => {
+		const { remover, workflowFinderService } = makeRemover([
+			{ id: 'present', name: 'Present', parentFolderId: null },
+		]);
+
+		const plan = await remover.plan(context, {
+			workflowItems: [],
+			packageFolderIds: [],
+			folderConflictPolicy: 'merge',
+			deletionPolicy: 'archive',
+			explicitDeleteIds: ['absent'],
+		});
+
+		expect(plan.removals).toEqual([]);
+		expect(plan.failures).toEqual([]);
+		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+	});
+
+	it('treats an already-archived id as a no-op', async () => {
+		const { remover, workflowFinderService } = makeRemover([
+			{ id: 'gone', name: 'Gone', parentFolderId: null, isArchived: true },
+		]);
+
+		const plan = await remover.plan(context, {
+			workflowItems: [],
+			packageFolderIds: [],
+			folderConflictPolicy: 'merge',
+			deletionPolicy: 'archive',
+			explicitDeleteIds: ['gone'],
+		});
+
+		expect(plan.removals).toEqual([]);
+		expect(plan.failures).toEqual([]);
+		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+	});
+});
+
 describe('WorkflowRemover.apply', () => {
 	const planWith = (deletionPolicy: OverwriteDeletionPolicy): WorkflowRemovalPlan => ({
 		removals: [{ id: 'stale', name: 'Stale', parentFolderId: 'F1' }],

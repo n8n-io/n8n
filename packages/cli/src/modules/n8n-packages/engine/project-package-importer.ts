@@ -19,6 +19,7 @@ import type {
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
+	ImportSelection,
 	ResolvedImportRequest,
 	ImportTagSummary,
 	PackageImportBindings,
@@ -325,6 +326,8 @@ export class ProjectPackageImporter {
 			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			// Explicit deletes name DESTINATION ids and apply only to the scoped project.
+			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
 		};
 	}
 
@@ -355,5 +358,23 @@ export class ProjectPackageImporter {
 			// Folders it empties go too, so it needs both removal scopes up front.
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete', 'folder:delete']);
 		}
+
+		// An explicit-delete selection removes workflows without touching folders, so it needs the
+		// workflow removal scope only.
+		if (request.selection?.deletedWorkflowIds?.length) {
+			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete']);
+		}
 	}
+}
+
+/**
+ * The DESTINATION ids to delete within one project scope. Deletes are confined to the selected
+ * project, so a bystander project (matched by another manifest entry) never inherits them.
+ */
+function deletesForProject(
+	selection: ImportSelection | undefined,
+	projectId: string,
+): string[] | undefined {
+	if (!selection || selection.selectedProjectId !== projectId) return undefined;
+	return selection.deletedWorkflowIds;
 }

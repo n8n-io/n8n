@@ -21,6 +21,12 @@ export interface WorkflowRemovalRequest {
 	projectPendingCreation?: boolean;
 	/** Git pulls reconcile all folders; package imports preserve folders they do not represent. */
 	importSource?: PackageImportSource;
+	/**
+	 * DESTINATION ids to remove by explicit request (cherry-pick), independent of reconciliation.
+	 * When present, these are the only removals — the reconcile-by-absence path is skipped, so a
+	 * delete runs even under the additive `merge` profile.
+	 */
+	explicitDeleteIds?: string[];
 }
 
 /** A workflow on the target that the package does not account for. */

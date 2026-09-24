@@ -84,6 +84,8 @@ export interface ImportOrchestrationInput {
 	/** Sub-workflow dependency graph from the manifest, used to order the import. */
 	subWorkflowRequirements?: PackageWorkflowRequirement[];
 	importSource?: PackageImportSource;
+	/** DESTINATION ids to remove by explicit request (cherry-pick), removed even under `merge`. */
+	explicitDeleteWorkflowIds?: string[];
 }
 
 /**
@@ -232,6 +234,7 @@ export class ImportOrchestrator {
 			subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
 			projectPendingCreation: input.projectPendingCreation,
 			importSource: input.importSource,
+			explicitDeleteIds: input.explicitDeleteWorkflowIds,
 		});
 
 		// Which folders end up empty depends on which workflows survive, so this follows the plan above

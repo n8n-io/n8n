@@ -275,11 +275,17 @@ export type ImportPackageRequest = ImportRequest & {
 /**
  * A cherry-pick subset to import: only `selectedWorkflowIds` (SOURCE ids) from the single source
  * project `selectedProjectId`. It is a pure filter applied before the pipeline — no dependency
- * closure and no auto-pull of referenced sub-workflows. (Explicit deletes arrive in a later phase.)
+ * closure and no auto-pull of referenced sub-workflows.
+ *
+ * `deletedWorkflowIds` (DESTINATION ids) are removed even under the additive `merge` profile, via a
+ * thin explicit-delete path. Deletes are confined to the scoped project; an already-archived or
+ * absent id is a tolerated no-op. A referenced workflow may still be deleted (broken-but-preserved,
+ * symmetric with an out-of-subset sub-workflow reference).
  */
 export interface ImportSelection {
 	selectedProjectId: string;
 	selectedWorkflowIds: string[];
+	deletedWorkflowIds?: string[];
 }
 
 /**

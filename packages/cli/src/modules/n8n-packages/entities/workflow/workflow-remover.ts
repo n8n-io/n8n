@@ -37,6 +37,12 @@ export class WorkflowRemover {
 			occupiedFolderIds: [],
 		};
 
+		// Explicit deletes (cherry-pick) run independently of reconciliation, so they take their own
+		// path even under `merge` where reconcile-by-absence removes nothing.
+		if (request.explicitDeleteIds?.length) {
+			return await this.planExplicitDeletes(context, request);
+		}
+
 		// Owned here rather than by the caller: the policy that turns reconciliation on is this
 		// service's concern, and a project being created holds nothing to reconcile against.
 		if (
@@ -75,6 +81,55 @@ export class WorkflowRemover {
 				.map(({ id, name }) => ({ workflowId: id, name, projectId: context.projectId })),
 			deletionPolicy: request.deletionPolicy,
 			occupiedFolderIds: occupiedBy(placements.filter(({ id }) => !removedIds.has(id))),
+		};
+	}
+
+	/**
+	 * Plans the removal of an explicit, caller-named set of DESTINATION workflows (cherry-pick). It
+	 * reuses the reconcile path's permission check and archive/hard-delete apply, but skips its
+	 * reconcile-by-absence logic entirely: only the named ids go. An id that is absent from the project
+	 * or already archived is a tolerated no-op; a named id the caller may not delete becomes a failure
+	 * (surfaced as the existing `workflow-removal-forbidden` blocking issue). No reverse-reference
+	 * guard — deleting a workflow another one references is allowed, leaving a broken-but-preserved ref.
+	 */
+	private async planExplicitDeletes(
+		context: ImportContext,
+		request: WorkflowRemovalRequest,
+	): Promise<WorkflowRemovalPlan> {
+		const requested = new Set(request.explicitDeleteIds);
+
+		// Confined to the scoped project: an id naming a workflow elsewhere is simply not found here.
+		// Archived rows load so an already-archived id reads as gone rather than a candidate.
+		const placements = await this.workflowFinderService.findOwnedWorkflowPlacementsInProject(
+			context.projectId,
+			{ includeArchived: true },
+		);
+		const targets = placements.filter(({ id, isArchived }) => requested.has(id) && !isArchived);
+		if (targets.length === 0) {
+			return {
+				removals: [],
+				failures: [],
+				deletionPolicy: request.deletionPolicy,
+				occupiedFolderIds: [],
+			};
+		}
+
+		const authorized = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			targets.map(({ id }) => id),
+			context.user,
+			['workflow:delete'],
+		);
+
+		return {
+			removals: targets
+				.filter(({ id }) => authorized.has(id))
+				.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId })),
+			failures: targets
+				.filter(({ id }) => !authorized.has(id))
+				.map(({ id, name }) => ({ workflowId: id, name, projectId: context.projectId })),
+			deletionPolicy: request.deletionPolicy,
+			// Explicit deletes never drive folder reconciliation, so no folder is emptied by them.
+			occupiedFolderIds: [],
 		};
 	}
 
