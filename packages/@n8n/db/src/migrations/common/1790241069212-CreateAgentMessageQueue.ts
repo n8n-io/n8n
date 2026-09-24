@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateAgentMessageQueue1790193898938 implements ReversibleMigration {
+export class CreateAgentMessageQueue1790241069212 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { createTable, createIndex, column },
 		escape,

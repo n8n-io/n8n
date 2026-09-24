@@ -7,7 +7,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'CreateAgentMessageQueue1790193898938';
+const MIGRATION_NAME = 'CreateAgentMessageQueue1790241069212';
 
 describe('CreateAgentMessageQueue migration', () => {
 	let dataSource: DataSource;
