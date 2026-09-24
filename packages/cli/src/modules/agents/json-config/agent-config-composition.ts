@@ -25,5 +25,8 @@ export function decomposeJsonConfig(config: AgentJsonConfig): {
 	integrations: AgentIntegrationConfig[];
 } {
 	const { integrations, ...schemaConfig } = config;
-	return { schemaConfig, integrations: integrations ?? [] };
+	return {
+		schemaConfig,
+		integrations: integrations ?? [],
+	};
 }

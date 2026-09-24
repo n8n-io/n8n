@@ -15,6 +15,7 @@ import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
 import { pipeline } from 'node:stream/promises';
+import { randomUUID } from 'node:crypto';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -22,6 +23,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
@@ -30,7 +32,7 @@ import {
 	AgentTurnAlreadyRunningError,
 } from './agent-chat-execution.service';
 import { AgentExecutionService } from './agent-execution.service';
-import { threadBelongsTo } from './utils/agent-thread-access';
+import { N8N_CHAT_PRODUCTION_SOURCE, threadBelongsTo } from './utils/agent-thread-access';
 import { messagesToDto } from './agent-message-mapper';
 import { type FlushableResponse, initSseStream } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
@@ -40,6 +42,7 @@ import { AgentsBuilderService } from './builder/agents-builder.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import {
 	draftChatMemoryResourceId,
+	productionChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
@@ -93,8 +96,9 @@ export class AgentChatController {
 		projectId: string;
 		threadId: string;
 		resourceId: string;
+		source?: string;
 	}): Promise<StoredAttachmentRef[] | undefined> {
-		const { attachments, agentId, projectId, threadId, resourceId } = params;
+		const { attachments, agentId, projectId, threadId, resourceId, source = 'chat' } = params;
 		if (!attachments?.length) return undefined;
 
 		const stored: StoredAttachmentRef[] = [];
@@ -116,7 +120,7 @@ export class AgentChatController {
 					projectId,
 					threadId,
 					resourceId,
-					source: 'chat',
+					source,
 					fileName: attachment.fileName,
 					mimeType,
 					data,
@@ -134,6 +138,172 @@ export class AgentChatController {
 			throw error;
 		}
 		return stored;
+	}
+
+	private async requireProductionChat(agentId: string, projectId: string): Promise<void> {
+		if (!(await this.agentsService.isN8nChatPublished(agentId, projectId))) {
+			throw new NotFoundError('Agent is not available in n8n Chat');
+		}
+	}
+
+	private async requireProductionThread(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<void> {
+		if (
+			!(await this.agentExecutionService.canUseProductionChatThread(
+				threadId,
+				projectId,
+				agentId,
+				userId,
+				'existing',
+			))
+		)
+			throw new NotFoundError('Session not found');
+	}
+
+	@Post('/:agentId/n8n-chat', { usesTemplates: true })
+	@ProjectScope('agent:execute')
+	async productionChat(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: FlushableResponse,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentChatMessageDto,
+	) {
+		const { projectId } = req.params;
+		const execution = this.createChatExecution(res);
+		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
+		let executionId: string | undefined;
+		let storedAttachments: StoredAttachmentRef[] | undefined;
+		try {
+			if (!(await this.agentsService.isN8nChatPublished(agentId, projectId))) {
+				send({
+					type: 'error',
+					message: 'This agent is not available in n8n Chat.',
+					errorCode: 'agent_unavailable',
+				});
+				return;
+			}
+			const sessionMode = payload.sessionId && !payload.newSession ? 'existing' : 'new';
+			const threadId = sessionMode === 'existing' ? payload.sessionId : randomUUID();
+			if (!threadId) throw new NotFoundError('Session not found');
+			if (sessionMode === 'existing') {
+				await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+			}
+			storedAttachments = await this.storeChatAttachments({
+				attachments: payload.attachments,
+				agentId,
+				projectId,
+				threadId,
+				resourceId: productionChatMemoryResourceId(req.user.id),
+				source: N8N_CHAT_PRODUCTION_SOURCE,
+			});
+			abortSignal.throwIfAborted();
+			const stream = this.agentExecutionOrchestratorService.executeForN8nChatPublished({
+				agentId,
+				projectId,
+				user: req.user,
+				message: payload.message,
+				memory: { threadId, resourceId: productionChatMemoryResourceId(req.user.id) },
+				attachments: storedAttachments,
+				sessionMode,
+				onExecutionStarted,
+				onExecutionRecorded: (id) => {
+					executionId = id;
+				},
+				abortSignal,
+			});
+			let suspended = false;
+			let failed = false;
+			for await (const chunk of stream) {
+				onChunk(chunk);
+				if (chunk.type === 'tool-call-suspended') suspended = true;
+				if (chunk.type === 'error') failed = true;
+			}
+			executionId ??= execution.executionId;
+			if (!suspended && !failed) {
+				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
+			}
+		} catch (error) {
+			executionId ??= execution.executionId;
+			if (error instanceof AgentExecutionRecordingError) executionId ??= error.executionId;
+			if (!executionId && storedAttachments?.length) {
+				await this.agentChatAttachmentService
+					.deleteByIds(storedAttachments.map((ref) => ref.id))
+					.catch(() => {});
+			}
+			send({
+				type: 'error',
+				message: error instanceof Error ? error.message : 'Chat failed',
+				...(error instanceof AgentTurnAlreadyRunningError
+					? { errorCode: 'turn_already_running' }
+					: {}),
+			});
+		} finally {
+			execution.close();
+		}
+	}
+
+	@Post('/:agentId/n8n-chat/resume', { usesTemplates: true })
+	@ProjectScope('agent:execute')
+	async productionChatResume(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: FlushableResponse,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentChatResumeDto,
+	) {
+		const execution = this.createChatExecution(res);
+		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
+		try {
+			if (!(await this.agentsService.isN8nChatPublished(agentId, req.params.projectId))) {
+				send({
+					type: 'error',
+					message: 'This agent is not available in n8n Chat.',
+					errorCode: 'agent_unavailable',
+				});
+				return;
+			}
+			abortSignal.throwIfAborted();
+			const stream = this.agentExecutionOrchestratorService.resumeForChat({
+				agentId,
+				projectId: req.params.projectId,
+				runId: payload.runId,
+				toolCallId: payload.toolCallId,
+				resumeData: payload.resumeData,
+				user: req.user,
+				usePublishedVersion: true,
+				integrationType: 'n8n_chat',
+				source: N8N_CHAT_PRODUCTION_SOURCE,
+				expectedMemory: { resourceId: productionChatMemoryResourceId(req.user.id) },
+				onExecutionStarted,
+				abortSignal,
+			});
+			let suspended = false;
+			let failed = false;
+			for await (const chunk of stream) {
+				onChunk(chunk);
+				if (chunk.type === 'tool-call-suspended') suspended = true;
+				if (chunk.type === 'error') failed = true;
+			}
+			if (!suspended && !failed) {
+				send({
+					type: 'done',
+					...(execution.executionId ? { executionId: execution.executionId } : {}),
+				});
+			}
+		} catch (error) {
+			send({
+				type: 'error',
+				message: error instanceof Error ? error.message : 'Resume failed',
+				...(error instanceof AgentTurnAlreadyRunningError
+					? { errorCode: 'turn_already_running' }
+					: {}),
+			});
+		} finally {
+			execution.close();
+		}
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
@@ -325,6 +495,102 @@ export class AgentChatController {
 		return { cancelled };
 	}
 
+	@Delete('/:agentId/n8n-chat/:threadId/executions/:executionId')
+	@ProjectScope('agent:execute')
+	async cancelProductionChatExecution(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('threadId') threadId: string,
+		@Param('executionId') executionId: string,
+	) {
+		await this.requireProductionChat(agentId, req.params.projectId);
+		await this.requireProductionThread(threadId, req.params.projectId, agentId, req.user.id);
+		return {
+			cancelRequested: await this.chatExecutionService.requestCancel({
+				projectId: req.params.projectId,
+				agentId,
+				threadId,
+				executionId,
+				userId: req.user.id,
+				productionN8nChat: true,
+			}),
+		};
+	}
+
+	@Delete('/:agentId/n8n-chat/runs/:runId')
+	@ProjectScope('agent:execute')
+	async cancelProductionChatRun(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('runId') runId: string,
+	) {
+		await this.requireProductionChat(agentId, req.params.projectId);
+		return {
+			cancelled: await this.agentExecutionOrchestratorService.cancelChatRun({
+				agentId,
+				runId,
+				resourceId: productionChatMemoryResourceId(req.user.id),
+			}),
+		};
+	}
+
+	@Get('/:agentId/n8n-chat/:threadId/messages')
+	@ProjectScope('agent:read')
+	async getProductionChatMessages(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentChatMessagesResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		await this.requireProductionChat(agentId, projectId);
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+		const history = await this.agentExecutionOrchestratorService.getConversationHistory({
+			threadId,
+			projectId,
+			agentId,
+			userId: req.user.id,
+		});
+		if (!history) throw new NotFoundError('Session not found');
+		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
+			agentId,
+			threadId,
+		);
+		return {
+			...withOpenSuspensions(
+				history.messages,
+				checkpoint?.persistence?.resourceId === productionChatMemoryResourceId(req.user.id)
+					? checkpoint
+					: null,
+				{ appendInactiveCheckpointMessages: false },
+			),
+			activeExecutionId: history.activeExecutionId,
+		};
+	}
+
+	@Get('/:agentId/n8n-chat/attachments/:attachmentId')
+	@ProjectScope('agent:read')
+	async getProductionChatAttachment(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; attachmentId: string }>,
+		res: Response,
+	) {
+		const { projectId, agentId, attachmentId } = req.params;
+		await this.requireProductionChat(agentId, projectId);
+		const attachment = await this.agentChatAttachmentService.getForAgent(attachmentId, {
+			agentId,
+			projectId,
+			userId: req.user.id,
+		});
+		if (
+			!attachment ||
+			attachment.source !== N8N_CHAT_PRODUCTION_SOURCE ||
+			attachment.resourceId !== productionChatMemoryResourceId(req.user.id)
+		) {
+			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
+		}
+		await this.requireProductionThread(attachment.threadId, projectId, agentId, req.user.id);
+		await this.streamAttachment(attachment, res);
+	}
+
 	@Get('/:agentId/chat/:threadId/background-tasks')
 	@ProjectScope('agent:read')
 	async getBackgroundJobs(
@@ -341,6 +607,17 @@ export class AgentChatController {
 		if (!threadBelongsTo(thread, projectId, agentId, req.user.id)) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
+		if (
+			thread.accessScope === 'user' &&
+			!(await this.agentExecutionService.canUseDraftThread(
+				threadId,
+				projectId,
+				agentId,
+				req.user.id,
+				{ previewChat: true, sessionMode: 'existing' },
+			))
+		)
+			throw new NotFoundError(`Thread "${threadId}" not found`);
 
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
 		return {
@@ -370,6 +647,17 @@ export class AgentChatController {
 		if (thread && !threadBelongsTo(thread, projectId, agentId, req.user.id)) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
+		if (
+			thread?.accessScope === 'user' &&
+			!(await this.agentExecutionService.canUseDraftThread(
+				threadId,
+				projectId,
+				agentId,
+				req.user.id,
+				{ previewChat: true, sessionMode: 'existing' },
+			))
+		)
+			throw new NotFoundError(`Thread "${threadId}" not found`);
 		const history = await this.agentExecutionOrchestratorService.getConversationHistory({
 			threadId,
 			projectId,
@@ -455,7 +743,14 @@ export class AgentChatController {
 			userId: req.user.id,
 		});
 		if (!attachment) throw new NotFoundError(`Attachment "${attachmentId}" not found`);
+		if (attachment.source === N8N_CHAT_PRODUCTION_SOURCE) {
+			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
+		}
+		await this.streamAttachment(attachment, res);
+	}
 
+	private async streamAttachment(attachment: AgentChatAttachment, res: Response) {
+		const attachmentId = attachment.id;
 		// Open the stream before writing headers: bytes can be gone while the row
 		// remains (out-of-band storage cleanup), and that must surface as a clean
 		// 404 rather than a half-written response.

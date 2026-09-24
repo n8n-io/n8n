@@ -48,6 +48,7 @@ interface ExecuteTurnConfig {
 	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	previewChat?: boolean;
+	productionN8nChat?: boolean;
 	automaticPreviewContinuation?: boolean;
 	onExecutionStarted?: (executionId: string, sessionId: string) => void;
 	onExecutionRecorded?: (executionId: string) => void;
@@ -123,7 +124,7 @@ export class AgentTurnExecutionService {
 		try {
 			turn = await config.prepare();
 			const preparedTurn = turn;
-			if (config.previewChat) {
+			if (config.previewChat || config.productionN8nChat) {
 				previewControl = this.createPreviewExecutionControl(preparedTurn);
 				preparedTurn.options.abortSignal = previewControl.controller.signal;
 			}
@@ -223,7 +224,7 @@ export class AgentTurnExecutionService {
 	): Promise<void> {
 		const finalize = async () =>
 			await this.finalizeTurn(turn, config, recorder, executionId, state);
-		if (config.previewChat) {
+		if (config.previewChat || config.productionN8nChat) {
 			await this.chatExecutionService.settle(executionId, finalize, state.suspendedRunId);
 		} else {
 			await finalize();
@@ -408,7 +409,12 @@ export class AgentTurnExecutionService {
 	): Promise<ReadableStream<StreamChunk>> {
 		if (previewControl) {
 			this.chatExecutionService.register(
-				{ ...config.context, userId: previewControl.userId, executionId },
+				{
+					...config.context,
+					userId: previewControl.userId,
+					executionId,
+					...(config.productionN8nChat ? { productionN8nChat: true } : {}),
+				},
 				previewControl.controller,
 			);
 			previewControl.detachRequest();

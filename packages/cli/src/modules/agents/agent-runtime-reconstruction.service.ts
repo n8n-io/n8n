@@ -14,6 +14,7 @@ import {
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	buildProxyHeaders,
+	isCredentialAgentIntegration,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonMcpServerConfig,
@@ -141,6 +142,7 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	 * integration parents, which keep the project-scoped trust boundary.
 	 */
 	user?: User;
+	attributionUserId?: string;
 	/** Runtime seams inherited from the delegating parent run (see {@link AgentRuntimeInstrumentation}). */
 	instrumentation?: AgentRuntimeInstrumentation;
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
@@ -192,6 +194,7 @@ interface ToolRunIdentity {
 	integrationType?: string;
 	userId?: string;
 	previewChat?: boolean;
+	publishedN8nChat?: boolean;
 	supportsHitl: boolean;
 	backgroundTasksEnabled: boolean;
 }
@@ -287,6 +290,7 @@ export class AgentRuntimeReconstructionService {
 			supportsHitl,
 			previewChat,
 			allowBackgroundTasks = true,
+			attributionUserId,
 		}: {
 			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
 			supportsHitl?: boolean;
@@ -294,6 +298,7 @@ export class AgentRuntimeReconstructionService {
 			previewChat?: boolean;
 			/** Disable background jobs for task-triggered runtimes. */
 			allowBackgroundTasks?: boolean;
+			attributionUserId?: string;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
 		let config = agentEntity.schema;
@@ -338,6 +343,7 @@ export class AgentRuntimeReconstructionService {
 			credentialIntegrations: agentEntity.integrations ?? [],
 			subAgentDelegation,
 			user,
+			attributionUserId,
 			instrumentation,
 			sandboxPrincipalHash,
 			unavailableTools,
@@ -612,6 +618,7 @@ export class AgentRuntimeReconstructionService {
 			memoryOwnerAgentId,
 			integrationType,
 			user,
+			attributionUserId,
 			previewChat,
 			supportsHitl,
 			runtimeProfile,
@@ -626,8 +633,12 @@ export class AgentRuntimeReconstructionService {
 				usePublishedWorkflowVersion: runType === 'production',
 				agentId: memoryOwnerAgentId,
 				integrationType,
-				userId: user?.id,
+				userId: attributionUserId ?? user?.id,
 				previewChat,
+				publishedN8nChat:
+					runType === 'production' &&
+					integrationType === N8N_CHAT_INTEGRATION_TYPE &&
+					attributionUserId !== undefined,
 				// Sub-agent checkpoints are rejected on resume and inline agents have no
 				// checkpoint storage, so neither can be woken again.
 				supportsHitl: canResume,
@@ -922,7 +933,7 @@ export class AgentRuntimeReconstructionService {
 
 		const descriptors = this.createIntegrationDescriptors(
 			agentId,
-			credentialIntegrations,
+			credentialIntegrations.filter(isCredentialAgentIntegration),
 			integrationRegistry,
 		);
 

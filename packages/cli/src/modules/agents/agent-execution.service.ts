@@ -37,6 +37,7 @@ import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import {
 	canContinueThreadInPreview,
 	canUseTopLevelDraftThread,
+	N8N_CHAT_PRODUCTION_SOURCE,
 	threadBelongsTo,
 	type AgentSessionMode,
 } from './utils/agent-thread-access';
@@ -626,6 +627,26 @@ export class AgentExecutionService {
 		}
 		if (options.sessionMode === 'existing') return false;
 		return await this.canUseUnrecordedDraftThread(threadId, agentId, userId);
+	}
+
+	async canUseProductionChatThread(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+		sessionMode: AgentSessionMode,
+	): Promise<boolean> {
+		const thread = await this.findThreadById(threadId);
+		if (!thread) return sessionMode === 'new';
+		if (
+			thread.projectId !== projectId ||
+			thread.agentId !== agentId ||
+			!canUseTopLevelDraftThread(thread, userId) ||
+			thread.taskId !== null
+		)
+			return false;
+		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
+		return sources.get(threadId) === N8N_CHAT_PRODUCTION_SOURCE;
 	}
 
 	private async canUseUnrecordedDraftThread(

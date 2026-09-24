@@ -59,6 +59,48 @@ describe('AgentRepository', () => {
 		await testDb.terminate();
 	});
 
+	describe('published n8n Chat availability', () => {
+		it('uses the active version instead of the mutable draft switch', async () => {
+			const agent = await createAgent();
+			expect(agent.integrations).toEqual([]);
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
+			const firstVersion = uuid();
+			await agentHistoryRepo.saveVersion({
+				versionId: firstVersion,
+				agentId: agent.id,
+				schema: agent.schema
+					? { ...agent.schema, integrations: [{ type: 'n8n_chat', credentialId: '' }] }
+					: null,
+				tools: {},
+				skills: {},
+				publishedBy: 'test',
+			});
+			await agentRepo.update({ id: agent.id }, { activeVersionId: firstVersion });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(true);
+			await agentRepo.update({ id: agent.id }, { integrations: [] });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(true);
+
+			const secondVersion = uuid();
+			await agentHistoryRepo.saveVersion({
+				versionId: secondVersion,
+				agentId: agent.id,
+				schema: agent.schema,
+				tools: {},
+				skills: {},
+				publishedBy: 'test',
+			});
+			await agentRepo.update({ id: agent.id }, { activeVersionId: secondVersion });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
+			await agentRepo.update({ id: agent.id }, { activeVersionId: firstVersion });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(true);
+			await agentRepo.update({ id: agent.id }, { activeVersionId: null });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
+			expect(await agentRepo.isN8nChatPublished(agent.id, uuid())).toBe(false);
+			await agentRepo.delete({ id: agent.id });
+			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
+		});
+	});
+
 	describe('saveDraftFenced', () => {
 		it('persists draft columns and bumps revision when the fence is won', async () => {
 			const agent = await createAgent();

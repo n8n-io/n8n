@@ -424,6 +424,27 @@ describe('AgentConfigService', () => {
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
+		it('persists n8n Chat as a draft channel', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({ integrations: [{ type: 'slack', credentialId: 'slack-cred' }] });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					integrations: [{ type: 'slack', credentialId: 'slack-cred' }, { type: 'n8n_chat' }],
+				},
+				user,
+				fencedOn(agent),
+			);
+			expect(agent.integrations).toEqual([
+				{ type: 'slack', credentialId: '' },
+				{ type: 'n8n_chat', credentialId: '' },
+			]);
+			expect(composeJsonConfig(agent)?.integrations).toEqual(agent.integrations);
+		});
+
 		it('persists modelDeploymentName, retains it when omitted, and drops it on clearOmittedOptionalFields', async () => {
 			const { service, agentRepository } = makeService();
 			const agent = makeAgent();

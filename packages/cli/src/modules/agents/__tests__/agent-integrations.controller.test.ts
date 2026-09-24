@@ -404,6 +404,39 @@ describe('AgentIntegrationsController channel status', () => {
 		]);
 	});
 
+	it('reports draft and active n8n Chat availability separately', async () => {
+		const agent = {
+			...publishedAgent,
+			activeVersion: {
+				schema: {
+					name: 'Agent',
+					model: 'openai:gpt-4o-mini',
+					instructions: 'Help',
+					integrations: [{ type: 'n8n_chat', credentialId: '' }],
+				},
+			},
+		} as Agent;
+		const { response } = await statusOf(agent, []);
+		expect(response.n8nChat).toEqual({ draftEnabled: false, publishedEnabled: true });
+		expect(response.integrations).toEqual([
+			{ type: slack.type, credentialId: slack.credentialId, status: 'starting' },
+			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },
+			{ type: 'n8n_chat', status: 'connected' },
+		]);
+		const unpublished = {
+			...agent,
+			activeVersionId: null,
+			activeVersion: null,
+			integrations: [...agent.integrations, { type: 'n8n_chat', credentialId: '' }],
+		} as Agent;
+		const { response: unpublishedResponse } = await statusOf(unpublished, []);
+		expect(unpublishedResponse.n8nChat).toEqual({ draftEnabled: true, publishedEnabled: false });
+		expect(unpublishedResponse.integrations).toContainEqual({
+			type: 'n8n_chat',
+			status: 'configured',
+		});
+	});
+
 	it('reports the reason a channel could not start', async () => {
 		const failed = {
 			...liveRow(telegram),

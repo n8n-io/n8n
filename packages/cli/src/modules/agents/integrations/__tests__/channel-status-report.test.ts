@@ -11,6 +11,7 @@ const telegram: AgentIntegrationConfig = {
 	credentialId: 'cred-telegram',
 	settings: { accessMode: 'public', allowedUsers: [] },
 };
+const n8nChat: AgentIntegrationConfig = { type: 'n8n_chat', credentialId: '' };
 
 /** Live unless a test says otherwise — expiry is exercised on its own below. */
 const isLive = (row: AgentChannelStatus) =>
@@ -52,6 +53,20 @@ function erroredRow(
 }
 
 describe('buildChannelStatusReport', () => {
+	it('uses the published n8n Chat entry while the draft changes', () => {
+		expect(buildChannelStatusReport([], PUBLISHED, [], isLive, [n8nChat])).toEqual({
+			status: 'connected',
+			integrations: [{ type: 'n8n_chat', status: 'connected' }],
+		});
+		expect(buildChannelStatusReport([n8nChat], PUBLISHED, [], isLive)).toEqual({
+			status: 'configured',
+			integrations: [{ type: 'n8n_chat', status: 'configured' }],
+		});
+		expect(buildChannelStatusReport([n8nChat], null, [], isLive, [n8nChat])).toEqual({
+			status: 'configured',
+			integrations: [{ type: 'n8n_chat', status: 'configured' }],
+		});
+	});
 	it('reports no channels as disconnected', () => {
 		expect(buildChannelStatusReport([], PUBLISHED, [], isLive)).toEqual({
 			status: 'disconnected',
