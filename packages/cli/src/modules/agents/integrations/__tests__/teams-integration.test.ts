@@ -12,7 +12,7 @@ import {
 	TEAMS_CLIENT_SECRET as CLIENT_SECRET,
 	TEAMS_TENANT_ID as TENANT_ID,
 } from './helpers/teams/synthetic-fixtures';
-import { TeamsIntegration } from '../platforms/teams-integration';
+import { TeamsIntegration } from '../platforms/teams/teams-integration';
 
 const createTeamsAdapter = vi.fn(() => ({ name: 'teams' }));
 

@@ -27,6 +27,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
 		await import('./agent-slack-integrations.controller.js');
+		await import('./agent-teams-integrations.controller.js');
 		await import('./agent-vector-stores.controller.js');
 		await import('./agent-tasks.controller.js');
 		await import('./agent-sandbox.controller.js');
@@ -87,7 +88,9 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
-		const { TeamsIntegration } = await import('./integrations/platforms/teams-integration.js');
+		const { TeamsIntegration } = await import(
+			'./integrations/platforms/teams/teams-integration.js'
+		);
 		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
@@ -231,6 +234,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
+		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
@@ -272,6 +276,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentMessageEntity,
 			AgentExecutionThread,
 			AgentExecution,
+			AgentMessageQueue,
 			AgentBackgroundJob,
 			AgentHistory,
 			AgentCredentialDependency,

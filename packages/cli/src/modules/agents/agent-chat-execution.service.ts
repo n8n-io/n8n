@@ -1,8 +1,7 @@
-import { LockAcquisitionTimeoutError, LockNamespace, LockService } from '@n8n/backend-common';
+import { LockNamespace, LockService } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -27,11 +26,7 @@ export interface CancelSuspendedRunParams {
 	resourceId: string;
 }
 
-export class AgentTurnAlreadyRunningError extends UserError {
-	constructor() {
-		super('A turn is already running in this conversation.');
-	}
-}
+export { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 
 @Service()
 export class AgentChatExecutionService {
@@ -49,50 +44,6 @@ export class AgentChatExecutionService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionUpdates: AgentExecutionUpdateBroadcaster,
 	) {}
-
-	async admit<T>(threadId: string, create: () => Promise<T>): Promise<T> {
-		return await this.withAdmissionLease(`agent-preview-turn:${threadId}`, async (signal) => {
-			if (await this.executionRepository.existsRunningByThread(threadId)) {
-				throw new AgentTurnAlreadyRunningError();
-			}
-			signal.throwIfAborted();
-			return await create();
-		});
-	}
-
-	async admitAutomaticContinuation<T>(
-		threadId: string,
-		agentId: string,
-		runId: string,
-		createAndClaim: () => Promise<T>,
-	): Promise<T> {
-		return await this.withAdmissionLease(`agent-preview-turn:${threadId}`, async (signal) => {
-			const checkpoint = await this.checkpointStorage.getStatus(runId, agentId);
-			if (
-				checkpoint.status !== 'active' ||
-				checkpoint.checkpoint.status !== 'suspended' ||
-				checkpoint.checkpoint.persistence?.threadId !== threadId
-			) {
-				throw new AgentTurnAlreadyRunningError();
-			}
-			signal.throwIfAborted();
-			return await createAndClaim();
-		});
-	}
-
-	private async withAdmissionLease<T>(
-		key: string,
-		admit: (signal: AbortSignal) => Promise<T>,
-	): Promise<T> {
-		try {
-			return await this.lockService.withLease(LockNamespace.KNOWN_LOCKS, key, admit, {
-				waitTimeoutMs: 0,
-			});
-		} catch (error) {
-			if (error instanceof LockAcquisitionTimeoutError) throw new AgentTurnAlreadyRunningError();
-			throw error;
-		}
-	}
 
 	register(context: ExecutionContext, controller: AbortController): void {
 		this.executions.set(context.executionId, { context, controller });

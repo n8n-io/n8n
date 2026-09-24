@@ -23,7 +23,7 @@ import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
@@ -60,6 +60,7 @@ import type {
 	ExecutionResult,
 	StepExecutionResult,
 	ExecutionDebugInfo,
+	NodeOutputBranch,
 	NodeOutputResult,
 	ResolvedNodeParametersResult,
 	ExecutionSummary as InstanceAiExecutionSummary,
@@ -116,12 +117,14 @@ import {
 	type IWorkflowBase,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
+	type AiAgentRequest,
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
 	type IRunData,
 	type ITaskData,
+	NodeConnectionTypes,
 	NodeHelpers,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -209,7 +212,15 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { pinDataForStepRun, planStepRun, toExecutionItems } from './instance-ai-step-run';
+import {
+	buildToolAgentRequest,
+	declaredToolArguments,
+	findRootsAboveOtherRoots,
+	isToolkitNode,
+	pinDataForStepRun,
+	planStepRun,
+	toExecutionItems,
+} from './instance-ai-step-run';
 import { InstanceContextService } from './instance-context.service';
 import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -251,6 +262,21 @@ function resolveDisplayedDefaults(
 		desc,
 	);
 	return resolved ?? (parameters as INodeParameters);
+}
+
+/**
+ * Whether the engine can run this node on its own through a Tool Executor. This
+ * is the same test `runPartialWorkflow2` and `runManually` make, so it decides
+ * the same way they will. A node type that does not load is not a tool here:
+ * the run fails on the missing type either way.
+ */
+function isToolNode(nodeTypes: NodeTypes, node: INode): boolean {
+	try {
+		const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		return NodeHelpers.isTool(description, node.parameters);
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -2244,7 +2270,10 @@ export class InstanceAiAdapterService {
 						includeData: true,
 						unflattenData: true,
 					});
-					priorRunData = stored?.data?.resultData?.runData;
+					// An execution with no stored run data still counts as a request to
+					// replay: `planStepRun` has to see the empty set to refuse the run
+					// rather than fall back to running the chain.
+					priorRunData = stored?.data?.resultData?.runData ?? {};
 					reusedFromExecutionId = options.reuseExecutionId;
 				}
 
@@ -2254,7 +2283,99 @@ export class InstanceAiAdapterService {
 					targetName: nodeName,
 					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
 					priorRunData,
+					pinnedNodeNames: Object.keys(workflow.pinData ?? {}),
 				});
+
+				// The caller asked to keep the nodes above the target out of the run and
+				// the graph cannot deliver that. Running the chain anyway would execute
+				// them for real, which is the one thing the caller ruled out.
+				if (plan.unhonoredInput) {
+					const names = plan.unhonoredInput.upstreamNodeNames;
+					const upstream = names.slice(0, 10).join(', ') + (names.length > 10 ? ', …' : '');
+					if (plan.unhonoredInput.requested === 'mocked') {
+						throw new UserError(
+							`mockInput cannot keep every node above "${nodeName}" out of the run: ` +
+								`the mock leaves a Loop Over Items node unfinished, and n8n would restart it and execute these nodes for real (${upstream}). ` +
+								'Pass reuseExecutionId with an execution where the loop finished, or omit both options to run the chain on purpose.',
+						);
+					}
+					throw new UserError(
+						`Execution ${options?.reuseExecutionId} does not cover every node above "${nodeName}", ` +
+							`so the run would execute them for real (${upstream}). ` +
+							'Pick an execution where those nodes ran to completion, or omit both options to run the chain on purpose.',
+					);
+				}
+
+				// A tool runs through a virtual Tool Executor that passes it the agent
+				// request. Every other sub-node type has no such path: n8n runs it as
+				// part of the node that owns it and nowhere else.
+				let agentRequest: AiAgentRequest | undefined;
+				if (plan.rootNodeNames) {
+					const roots = plan.rootNodeNames.map((name) => `"${name}"`).join(' or ');
+					if (!isToolNode(nodeTypes, target)) {
+						throw new UserError(
+							`Node "${nodeName}" cannot run on its own — n8n runs it as part of ${roots}. ` +
+								`Run ${roots} instead: its execution records what this node returned on every ` +
+								'call it made.',
+						);
+					}
+
+					// A toolkit node holds several tools and the Tool Executor runs only the
+					// one whose name matches the request. That name is built from the node
+					// name and the server's tool name, so nothing here can name a member
+					// reliably, and a miss reports success with no result at all.
+					if (isToolkitNode(target)) {
+						throw new UserError(
+							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
+								`Run ${roots} instead, then read this node with ` +
+								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'tool call returned.',
+						);
+					}
+
+					// The engine runs the tool through one of its Agents only. When it picks
+					// a lower one, the Agent above it and the nodes in between run for
+					// real, whatever mocked or replayed data the plan gave them.
+					const upperRoots = findRootsAboveOtherRoots(nodes, connections, plan.rootNodeNames);
+					if (upperRoots.length > 0) {
+						const upper = upperRoots.map((name) => `"${name}"`).join(' or ');
+						throw new UserError(
+							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
+								`so a step run would run ${upper} and the nodes after it again. ` +
+								`Run ${upper} instead, then read this node with ` +
+								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'tool call returned.',
+						);
+					}
+
+					// A tool whose parameters hold `$fromAI` calls gets those values from
+					// the agent. With no arguments it runs on empty ones and fails for a
+					// reason that has nothing to do with the user's problem.
+					const expected = declaredToolArguments(target);
+					if (expected.length > 0 && options?.toolArguments === undefined) {
+						throw new UserError(
+							`Node "${nodeName}" takes its arguments from the agent, so a step run has to supply them. ` +
+								`Pass toolArguments with: ${expected.join(', ')}.`,
+						);
+					}
+
+					agentRequest = buildToolAgentRequest({ target, toolArguments: options?.toolArguments });
+				} else if (isToolNode(nodeTypes, target)) {
+					// A tool runs only through the node that owns it, and nothing owns
+					// this one: its tool output goes nowhere. `rewireGraph` then finds no
+					// node to stand in for, so the run would start, cost an execution and
+					// die on an error about a graph the caller never asked about.
+					throw new UserError(
+						`Node "${nodeName}" is a tool, and no node is connected to run it. ` +
+							'A tool runs only through the node that owns it, so connect it to an Agent ' +
+							'and run the step again.',
+					);
+				} else if (options?.toolArguments !== undefined) {
+					throw new UserError(
+						`toolArguments applies only to a tool node. "${nodeName}" runs in the main graph, ` +
+							'so its input comes from mockInput, reuseExecutionId, or the nodes above it.',
+					);
+				}
 
 				// A pinned node never executes, so the target's own pin — and any pin on
 				// a node whose output we just mocked — has to come off this run's
@@ -2289,6 +2410,7 @@ export class InstanceAiAdapterService {
 					pinData: stepPinData,
 					runData: plan.runData,
 					dirtyNodeNames: plan.dirtyNodeNames,
+					agentRequest,
 					source: 'instance_ai',
 				};
 
@@ -2315,6 +2437,9 @@ export class InstanceAiAdapterService {
 							userId: user.id,
 							dirtyNodeNames: plan.dirtyNodeNames,
 							triggerToStartFrom: runData.triggerToStartFrom,
+							// Without this a worker-run step on a tool loses the arguments and
+							// runs the tool on empty ones.
+							agentRequest,
 							source: 'instance_ai',
 						},
 						executionData: null,
@@ -2370,6 +2495,12 @@ export class InstanceAiAdapterService {
 						nodeName,
 						inputMode: plan.inputMode,
 						mockedNodeNames: plan.mockedNodeNames,
+						// A sub-node only runs through the node that owns it, so the input
+						// the caller supplied fed that node, not the sub-node. Every owner is
+						// listed, not the one that ran: `rewireGraph` picks one and reports
+						// nothing about the choice, so naming a single owner here would be a
+						// guess.
+						...(plan.rootNodeNames ? { ranThroughNodeNames: plan.rootNodeNames } : {}),
 						...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
 						...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
 						// Report the pins that actually fed this run, not every pin the
@@ -2403,6 +2534,9 @@ export class InstanceAiAdapterService {
 						executionId,
 						allowSendingParameterValues,
 						nodeTypes,
+						// A tool ran through the virtual Tool Executor. Report the run
+						// under the node the caller named, which is the one they can open.
+						plan.rootNodeNames ? nodeName : undefined,
 					);
 					trackStepRun(result.status, telemetryError);
 					return describe(result);
@@ -4410,6 +4544,49 @@ export async function extractExecutionResult(
 	return (await extractExecutionOutcome(executionId, includeOutputData, nodeTypes)).result;
 }
 
+/** Output branches of a run that a non-main connection carried. */
+function nonMainOutputs(run: ITaskData | undefined) {
+	return Object.entries(run?.data ?? {}).find(([type]) => type !== NodeConnectionTypes.Main)?.[1];
+}
+
+/** Whether this is the virtual node the engine runs a tool through. */
+const isToolExecutor = (nodeName: string | undefined) => nodeName === TOOL_EXECUTOR_NODE_NAME;
+
+/** Reports the node the caller asked for in place of the virtual one. */
+function renameToolExecutor(nodeName: string | undefined, subNodeTarget?: string) {
+	return subNodeTarget && isToolExecutor(nodeName) ? subNodeTarget : nodeName;
+}
+
+/**
+ * Folds the virtual Tool Executor's run into the node the step run targeted.
+ *
+ * `rewireGraph` runs a tool through a node the workflow does not contain, and
+ * that node's name reaches the result in four places — the output data, the
+ * executed names, the last node, and a node error. None of them can be looked
+ * up or opened, because the workflow has no such node.
+ *
+ * The tool's own run is the better record: the Tool Executor re-serializes the
+ * result as one string, while the tool keeps its items. So the executor's run
+ * only stands in when the tool recorded none of its own.
+ */
+function foldToolExecutorRun(
+	runData: IRunData | undefined,
+	subNodeTarget?: string,
+): IRunData | undefined {
+	if (!runData || !subNodeTarget || !runData[TOOL_EXECUTOR_NODE_NAME]) return runData;
+
+	const folded: IRunData = {};
+	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+		if (isToolExecutor(nodeName)) {
+			folded[subNodeTarget] ??= nodeRuns;
+			continue;
+		}
+		folded[nodeName] = nodeRuns;
+	}
+
+	return folded;
+}
+
 /**
  * The execution result the agent sees, plus the error string telemetry may use.
  * They differ when `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is on: that setting
@@ -4422,6 +4599,11 @@ export async function extractExecutionOutcome(
 	executionId: string,
 	includeOutputData = true,
 	nodeTypes?: NodeTypes,
+	/**
+	 * Sub-node a step run targeted. The engine ran it through a virtual node, so
+	 * the result has to be told which node the caller actually asked for.
+	 */
+	subNodeTarget?: string,
 ): Promise<{ result: ExecutionResult; telemetryError?: string }> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
@@ -4448,7 +4630,7 @@ export async function extractExecutionOutcome(
 	// omits. Verification uses this to tell "ran and returned nothing" apart
 	// from "never reached". Node names only, so it is safe regardless of the
 	// parameter-values privacy setting.
-	const runData = execution.data?.resultData?.runData;
+	const runData = foldToolExecutorRun(execution.data?.resultData?.runData, subNodeTarget);
 	const executedNodeNames = Object.keys(runData ?? {});
 	if (includeOutputData && runData) {
 		const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
@@ -4456,8 +4638,15 @@ export async function extractExecutionOutcome(
 		try {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
-				if (!lastRun?.data?.main) continue;
-				const branches = lastRun.data.main.map((items) => (items ?? []).map((item) => item.json));
+				// A sub-node records its run under the connection type that carried it,
+				// never `main`. Only the step run's own target is read that way: every
+				// other sub-node (a model, a memory) would otherwise put its whole
+				// exchange into the result of every ordinary run.
+				const outputs =
+					lastRun?.data?.[NodeConnectionTypes.Main] ??
+					(nodeName === subNodeTarget ? nonMainOutputs(lastRun) : undefined);
+				if (!outputs) continue;
+				const branches = outputs.map((items) => (items ?? []).map((item) => item.json));
 				const totalItems = branches.reduce((sum, items) => sum + items.length, 0);
 				if (totalItems === 0) continue;
 				if (branches.length === 1) {
@@ -4496,7 +4685,10 @@ export async function extractExecutionOutcome(
 					: undefined,
 			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
 			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
-			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			lastNodeExecuted: renameToolExecutor(
+				execution.data?.resultData?.lastNodeExecuted,
+				subNodeTarget,
+			),
 			workflowVersionId: execution.workflowVersionId,
 			error: errorMessage,
 			startedAt: execution.startedAt?.toISOString(),
@@ -4748,41 +4940,72 @@ export async function extractNodeOutput(
 		await workflow?.expression.releaseIsolate();
 	}
 
+	// A sub-node (a model, a memory, a tool) records its run under the connection
+	// type that carried it, never `main`, and it records one run for each call
+	// its owner made. A step run on one is refused and the caller is sent here to
+	// read those calls, so all of them are read. A node in the main graph keeps
+	// to its last run: one run for each iteration of a loop is the common case
+	// there, and merging them would change what every caller already gets.
+	//
+	// The test is a non-main output on *some* run, not the absence of a main one
+	// on the last. A failed run carries no data at all — `createTaskData` sets
+	// none and only a rewired tool has it filled on the error path — so "no main
+	// output" also describes a node that failed on the last iteration of a loop.
+	// Reading every run of it would answer a question about the failed run with
+	// the output of earlier ones. A sub-node that failed on its last call is the
+	// mirror case: the calls that did return are the answer, and they are only
+	// reachable by looking past the last run.
+	const readsEveryRun = nodeRuns.some((run) => nonMainOutputs(run) !== undefined);
+	const runsRead = readsEveryRun ? nodeRuns : [lastRun];
+	const outputsPerRun = runsRead.map(
+		(run) => run?.data?.[NodeConnectionTypes.Main] ?? nonMainOutputs(run) ?? [],
+	);
+	const outputCount = Math.max(0, ...outputsPerRun.map((runOutputs) => runOutputs.length));
+
 	// One page over the items of all outputs (first output first), reported per
 	// output so a Filter's Kept and Discarded items never read as one list.
 	// Only the requested slice is materialized — avoids OOM on huge result sets.
+	// A label names the call when several were read, so two items that differ
+	// only by call are still told apart.
 	let index = 0;
 	let returnedCount = 0;
-	const outputs = (lastRun?.data?.main ?? []).map((output, outputIndex) => {
-		const items = output ?? [];
-		const firstInPage = Math.max(startIndex - index, 0);
+	const outputs: NodeOutputBranch[] = [];
+	for (let outputIndex = 0; outputIndex < outputCount; outputIndex++) {
 		const collected: unknown[] = [];
-		for (const item of items) {
-			if (index >= startIndex && returnedCount < maxItems) {
-				collected.push(item.json);
-				returnedCount++;
+		let itemsOnOutput = 0;
+
+		outputsPerRun.forEach((runOutputs, runIndex) => {
+			for (const item of runOutputs[outputIndex] ?? []) {
+				if (index >= startIndex && returnedCount < maxItems) {
+					const call = runsRead.length > 1 ? `[call ${runIndex + 1}]` : '';
+					collected.push(
+						wrapUntrustedData(
+							JSON.stringify(capItem(item.json), null, 2),
+							'execution-output',
+							`node:${nodeName}${call}[${outputIndex}][${itemsOnOutput}]`,
+						),
+					);
+					returnedCount++;
+				}
+				index++;
+				itemsOnOutput++;
 			}
-			index++;
-		}
-		return {
+		});
+
+		outputs.push({
 			index: outputIndex,
 			...(names[outputIndex] ? { name: names[outputIndex] } : {}),
-			totalItems: items.length,
-			items: collected.map((item, i) =>
-				wrapUntrustedData(
-					JSON.stringify(capItem(item), null, 2),
-					'execution-output',
-					`node:${nodeName}[${outputIndex}][${firstInPage + i}]`,
-				),
-			),
-		};
-	});
+			totalItems: itemsOnOutput,
+			items: collected,
+		});
+	}
 
 	return {
 		nodeName,
 		outputs,
 		totalItems: index,
 		returned: { from: startIndex, to: startIndex + returnedCount },
+		...(nodeRuns.length > 1 ? { totalRuns: nodeRuns.length } : {}),
 	};
 }
 
