@@ -1,11 +1,11 @@
 import type { Secret } from 'jsonwebtoken';
-import { JwtAlgorithmSchema } from '@n8n/inbound-auth';
+import { JwtAlgorithmSchema, type JwtAlgorithm } from '@n8n/inbound-auth';
 import { z } from 'zod';
 
 /** RFC 8693 grant type URN for token exchange */
 export const TOKEN_EXCHANGE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:token-exchange' as const;
 
-export { JwtAlgorithmSchema };
+export { JwtAlgorithmSchema, type JwtAlgorithm };
 
 /**
  * Validates JWT claims originating from an external identity provider.
@@ -64,7 +64,6 @@ export type TrustedKeySource = z.infer<typeof TrustedKeySourceSchema>;
 export type StaticKeySource = Extract<TrustedKeySource, { type: 'static' }>;
 export type JwksKeySource = Extract<TrustedKeySource, { type: 'jwks' }>;
 
-export type JwtAlgorithm = z.infer<typeof JwtAlgorithmSchema>;
 export type TrustedKeySourceType = 'static' | 'jwks';
 export type TrustedKeySourceStatus = 'pending' | 'healthy' | 'error';
 

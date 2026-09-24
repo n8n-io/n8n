@@ -6,5 +6,6 @@
 			"@/*": ["./src/*"]
 		}
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"references": [{ "path": "../permissions/tsconfig.build.json" }]
 }

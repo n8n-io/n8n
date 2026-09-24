@@ -1,3 +1,4 @@
+import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { z } from 'zod';
 
 /**
@@ -18,13 +19,13 @@ export const JwtAlgorithmSchema = z.enum([
 ]);
 export type JwtAlgorithm = z.infer<typeof JwtAlgorithmSchema>;
 
-/** A single rule mapping claims to an instance or project role. */
+/** A single rule mapping claims to an instance or project role. Bounds match the public API DTO. */
 export const RoleMappingRuleSchema = z.object({
-	id: z.string(),
-	expression: z.string(),
-	role: z.string(),
+	id: z.string().min(1),
+	expression: z.string().min(1),
+	role: z.string().min(1).max(128),
 	/** undefined = instance role rule; set = project role rule */
-	projectId: z.string().optional(),
+	projectId: z.string().min(1).optional(),
 	enabled: z.boolean(),
 	description: z.string().optional(),
 });
@@ -70,14 +71,15 @@ export const Oauth2AuthenticationSchema = z.object({
 		.array(JwtAlgorithmSchema)
 		.min(1)
 		.default([...JwtAlgorithmSchema.options]),
-	maxTokenLifetimeSeconds: z.number().int().positive().default(86400),
-	clockSkewSeconds: z.number().int().nonnegative().default(60),
+	// Upper bounds keep both windows from disabling `exp`/`nbf` checks. Relaxing later is additive.
+	maxTokenLifetimeSeconds: z.number().int().positive().max(86400).default(86400),
+	clockSkewSeconds: z.number().int().nonnegative().max(300).default(60),
+	// The client secret is not part of the document: see `TrustedSourceSecretsSchema`.
 	client: z
 		.discriminatedUnion('kind', [
 			z.object({
 				kind: z.literal('registered'),
 				clientId: z.string().min(1),
-				clientSecret: z.string().min(1),
 				scopes: z.array(z.string()).optional(),
 			}),
 			z.object({ kind: z.literal('virtual') }),
@@ -90,7 +92,13 @@ export type Oauth2Authentication = z.infer<typeof Oauth2AuthenticationSchema>;
 export const AuthenticationSchema = z.discriminatedUnion('type', [Oauth2AuthenticationSchema]);
 export type TrustedSourceAuthentication = z.infer<typeof AuthenticationSchema>;
 
-export const SurfaceSettingsSchema = z.object({ audiences: z.array(z.string()).optional() });
+/**
+ * `audiences` absent means the surface's canonical audience is required. It never means the `aud`
+ * check is skipped, and an empty list is refused so it cannot be read that way either.
+ */
+export const SurfaceSettingsSchema = z.object({
+	audiences: z.array(z.string().min(1)).min(1).optional(),
+});
 /** A key present means the source is accepted on that surface. Unregistered keys are rejected by zod. */
 export const SurfacesSchema = z.record(SurfaceIdSchema, SurfaceSettingsSchema);
 export type TrustedSourceSurfaces = z.infer<typeof SurfacesSchema>;
@@ -119,7 +127,7 @@ export const RoleMappingSchema = z.object({
 	mode: z.enum(['off', 'on-provision', 'continuous']).default('off'),
 	instanceRoleRules: z.array(RoleMappingRuleSchema).default([]),
 	projectRoleRules: z.array(RoleMappingRuleSchema).default([]),
-	fallbackInstanceRole: z.string().optional(),
+	fallbackInstanceRole: z.string().min(1).optional(),
 });
 export type RoleMapping = z.infer<typeof RoleMappingSchema>;
 
@@ -142,31 +150,76 @@ export const TrustedSourceConfigV1Schema = z.object({
 export type TrustedSourceConfigV1 = z.infer<typeof TrustedSourceConfigV1Schema>;
 export type TrustedSourceConfigV1Input = z.input<typeof TrustedSourceConfigV1Schema>;
 
-// Cross-field rules live on the union, not on the version object: a discriminated-union member
-// has to stay a plain object, and the rules hold for every version anyway.
+const ownerRoleIssue = (path: Array<string | number>): z.IssueData => ({
+	code: z.ZodIssueCode.custom,
+	message: 'provisioning never assigns the instance owner role',
+	path,
+});
+
+/**
+ * The config document of one trusted source. Unknown keys are stripped, not rejected: an added
+ * optional field keeps the version, so an older process in a rolling deploy must tolerate it. The
+ * write path (admin DTO) must therefore reject unknown keys itself, and the store must persist the
+ * parsed output, not the raw input, so a later default change does not alter stored rows.
+ *
+ * Cross-field rules live here on the union, not on the block schemas: a discriminated-union member
+ * has to stay a plain object, and the rules hold for every version anyway.
+ */
 export const TrustedSourceConfigSchema = z
 	.discriminatedUnion('version', [TrustedSourceConfigV1Schema])
 	.superRefine((config, ctx) => {
-		if (config.identity.provision.human === 'jit' && config.identity.roleMapping.mode === 'off') {
+		const { authentication, identity } = config;
+		if (
+			authentication.discovery.mode === 'manual' &&
+			authentication.keys.kind === 'jwks-uri' &&
+			!authentication.discovery.jwksUri &&
+			!authentication.discovery.metadataUrl
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'manual discovery with jwks-uri keys requires jwksUri or metadataUrl',
+				path: ['authentication', 'discovery'],
+			});
+		}
+		if (identity.provision.human === 'jit' && identity.roleMapping.mode === 'off') {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'jit provisioning requires a role-mapping mode',
 				path: ['identity', 'roleMapping', 'mode'],
 			});
 		}
-		if (
-			config.identity.roleMapping.mode !== 'off' &&
-			!config.identity.roleMapping.fallbackInstanceRole
-		) {
+		if (identity.roleMapping.mode !== 'off' && !identity.roleMapping.fallbackInstanceRole) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'a role-mapping mode requires a fallback role',
 				path: ['identity', 'roleMapping', 'fallbackInstanceRole'],
 			});
 		}
+		if (identity.roleMapping.fallbackInstanceRole === GLOBAL_OWNER_ROLE_SLUG) {
+			ctx.addIssue(ownerRoleIssue(['identity', 'roleMapping', 'fallbackInstanceRole']));
+		}
+		identity.roleMapping.instanceRoleRules.forEach((rule, index) => {
+			const path = ['identity', 'roleMapping', 'instanceRoleRules', index];
+			if (rule.role === GLOBAL_OWNER_ROLE_SLUG) ctx.addIssue(ownerRoleIssue([...path, 'role']));
+			if (rule.projectId !== undefined) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'an instance role rule must not set projectId',
+					path: [...path, 'projectId'],
+				});
+			}
+		});
+		identity.roleMapping.projectRoleRules.forEach((rule, index) => {
+			if (rule.projectId === undefined) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'a project role rule requires projectId',
+					path: ['identity', 'roleMapping', 'projectRoleRules', index, 'projectId'],
+				});
+			}
+		});
 	});
 export type TrustedSourceConfig = z.infer<typeof TrustedSourceConfigSchema>;
-export type TrustedSourceConfigLatest = TrustedSourceConfigV1;
 
 /**
  * The config schema for one row. `managedBy` is a column, not part of the document, so the rules
@@ -202,12 +255,30 @@ export const trustedSourceConfigSchemaFor = (managedBy: ManagedBy) =>
 		}
 	});
 
+/**
+ * Secret material of a trusted source. Stored apart from the config document in its own encrypted
+ * column, so the document stays safe to return to an admin UI unchanged. Strict: a secret payload
+ * with an unknown key is a bug, not a forward-compatible read.
+ */
+export const TrustedSourceSecretsSchema = z
+	.object({
+		version: z.literal(1),
+		clientSecret: z.string().min(1).optional(),
+	})
+	.strict();
+export type TrustedSourceSecrets = z.infer<typeof TrustedSourceSecretsSchema>;
+
 type ConfigMigration = (config: TrustedSourceConfig) => TrustedSourceConfig;
 
 /** One step per version, keyed by the version it migrates from. Empty until a v2 exists. */
 export const configMigrations: Record<number, ConfigMigration> = {};
 
 const LATEST_VERSION = 1;
+
+export type TrustedSourceConfigLatest = Extract<
+	TrustedSourceConfig,
+	{ version: typeof LATEST_VERSION }
+>;
 
 const isLatest = (config: TrustedSourceConfig): config is TrustedSourceConfigLatest =>
 	config.version === LATEST_VERSION;
@@ -223,6 +294,12 @@ export function migrateToLatest(config: TrustedSourceConfig): TrustedSourceConfi
 			throw new Error(`No migration from trusted source config version ${version}`);
 		}
 		current = migrate(current);
+		// A step must advance the version, or the chain would never end.
+		if (current.version <= version) {
+			throw new Error(
+				`Migration from trusted source config version ${version} did not advance the version`,
+			);
+		}
 		version = current.version;
 	}
 	if (!isLatest(current)) {

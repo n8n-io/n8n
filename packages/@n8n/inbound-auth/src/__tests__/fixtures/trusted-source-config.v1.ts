@@ -1,3 +1,5 @@
+import type { TrustedSourceConfigV1 } from '../../trusted-source-config';
+
 /** A fully-specified v1 document, used by the migration-chain test harness. */
 export const trustedSourceConfigV1Fixture = {
 	version: 1,
@@ -10,7 +12,7 @@ export const trustedSourceConfigV1Fixture = {
 		maxTokenLifetimeSeconds: 3600,
 		clockSkewSeconds: 30,
 	},
-	surfaces: { 'public-api': {} },
+	surfaces: { 'public-api': { audiences: ['n8n'] } },
 	identity: {
 		subject: 'binding',
 		claimMapping: {
@@ -25,4 +27,4 @@ export const trustedSourceConfigV1Fixture = {
 		provision: { human: 'off' },
 		roleMapping: { mode: 'off', instanceRoleRules: [], projectRoleRules: [] },
 	},
-} satisfies Record<string, unknown>;
+} satisfies TrustedSourceConfigV1;

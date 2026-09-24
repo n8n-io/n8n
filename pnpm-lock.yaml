@@ -2909,6 +2909,9 @@ importers:
 
   packages/@n8n/inbound-auth:
     dependencies:
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../permissions
       zod:
         specifier: 3.25.76
         version: 3.25.76
