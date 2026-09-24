@@ -180,6 +180,8 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				id,
 				expect.objectContaining({ timeline: initialTimeline }),
+				undefined,
+				{},
 			);
 		});
 
@@ -518,6 +520,8 @@ describe('AgentExecutionService', () => {
 		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({ status: 'success', totalTokens: 5, model: 'mock' }),
+			undefined,
+			{},
 		);
 		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 	});
@@ -589,6 +593,8 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
+				undefined,
+				{},
 			);
 			expect(agentExecutionRepository.moveTimelineToBlob).toHaveBeenCalledWith('execution-1', 'fs');
 			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
@@ -681,6 +687,8 @@ describe('AgentExecutionService', () => {
 						storedAt: 'db',
 						failureSummary: null,
 					}),
+					undefined,
+					{},
 				);
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 				if (shouldDeleteBlob) {
@@ -1075,6 +1083,8 @@ describe('AgentExecutionService', () => {
 					storedAt: 'db',
 					failureSummary: null,
 				}),
+				undefined,
+				{},
 			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({ turn_status: 'failed' }),

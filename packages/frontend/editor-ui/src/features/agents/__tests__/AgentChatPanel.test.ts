@@ -29,6 +29,9 @@ const trackSubmittedMessageMock = vi.fn();
 const queuedMessagesMock = ref<AgentChatQueueItem[]>([]);
 const removeQueuedMessageMock = vi.fn();
 const updateQueuedMessageMock = vi.fn();
+const steerQueuedMessageMock = vi.fn();
+const canSteerMock = ref(false);
+const steeringQueueIdsMock = ref(new Set<string>());
 const isCancellingMock = ref(false);
 const backgroundJobsMock = ref<AgentBackgroundJobDto[]>([]);
 vi.mock('../composables/useAgentBackgroundJobs', () => ({
@@ -198,6 +201,9 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			isLoadingHistory: isLoadingHistoryMock,
 			queuedMessages: queuedMessagesMock,
 			removingQueueIds: ref(new Set()),
+			steeringQueueIds: steeringQueueIdsMock,
+			canSteer: canSteerMock,
+			steerQueuedMessage: steerQueuedMessageMock,
 			removeQueuedMessage: removeQueuedMessageMock,
 			updateQueuedMessage: updateQueuedMessageMock,
 			isCancelling: isCancellingMock,
@@ -241,6 +247,8 @@ describe('AgentChatPanel', () => {
 		isSubmittingMock.value = false;
 		isLoadingHistoryMock.value = false;
 		queuedMessagesMock.value = [];
+		canSteerMock.value = false;
+		steeringQueueIdsMock.value = new Set();
 		isCancellingMock.value = false;
 		backgroundJobsMock.value = [];
 		fatalErrorMock.value = null;
@@ -284,9 +292,15 @@ describe('AgentChatPanel', () => {
 
 	it('keeps two pending messages in the composer below background tasks and removes them without adding conversation bubbles', async () => {
 		queuedMessagesMock.value = [
-			{ id: '1', message: 'Next message', createdAt: new Date().toISOString() },
+			{
+				id: '1',
+				steeringExecutionId: null,
+				message: 'Next message',
+				createdAt: new Date().toISOString(),
+			},
 			{
 				id: '2',
+				steeringExecutionId: null,
 				message: '',
 				createdAt: new Date().toISOString(),
 				attachments: [
@@ -312,7 +326,9 @@ describe('AgentChatPanel', () => {
 			false,
 		);
 		expect(
-			wrapper.findAll('[data-testid="agent-queued-message"]').map((row) => row.text()),
+			wrapper
+				.findAll('[data-testid="agent-queued-message"]')
+				.map((row) => row.get('[title]').text()),
 		).toEqual(['Next message', 'notes.txt']);
 		expect(wrapper.html().indexOf('agent-background-jobs')).toBeLessThan(
 			wrapper.html().indexOf('agent-message-queue'),
@@ -334,6 +350,7 @@ describe('AgentChatPanel', () => {
 	it('collapses only the third and later pending messages as the queue grows and shrinks', async () => {
 		const items = [1, 2, 3, 4].map((id) => ({
 			id: String(id),
+			steeringExecutionId: null,
 			message: `Message ${id}`,
 			createdAt: '2026-09-24T12:00:00.000Z',
 		}));
@@ -347,26 +364,38 @@ describe('AgentChatPanel', () => {
 		const toggle = queue.get('button[aria-expanded]');
 		expect(toggle.attributes('aria-expanded')).toBe('false');
 		expect(toggle.text()).toBe('1 message up next');
-		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
+		expect(queue.findAll('li').map((row) => row.get('[title]').text())).toEqual([
+			'Message 1',
+			'Message 2',
+		]);
 
 		queuedMessagesMock.value = items;
 		await nextTick();
 		expect(toggle.text()).toBe('2 messages up next');
-		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
+		expect(queue.findAll('li').map((row) => row.get('[title]').text())).toEqual([
+			'Message 1',
+			'Message 2',
+		]);
 		await toggle.trigger('click');
-		expect(queue.findAll('li').map((row) => row.text())).toEqual([
+		expect(queue.findAll('li').map((row) => row.get('[title]').text())).toEqual([
 			'Message 1',
 			'Message 2',
 			'Message 3',
 			'Message 4',
 		]);
 		await toggle.trigger('click');
-		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
+		expect(queue.findAll('li').map((row) => row.get('[title]').text())).toEqual([
+			'Message 1',
+			'Message 2',
+		]);
 
 		queuedMessagesMock.value = items.slice(1, 3);
 		await nextTick();
 		expect(queue.find('[aria-expanded]').exists()).toBe(false);
-		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 2', 'Message 3']);
+		expect(queue.findAll('li').map((row) => row.get('[title]').text())).toEqual([
+			'Message 2',
+			'Message 3',
+		]);
 		wrapper.unmount();
 	});
 
@@ -374,6 +403,7 @@ describe('AgentChatPanel', () => {
 		queuedMessagesMock.value = [
 			{
 				id: '1',
+				steeringExecutionId: null,
 				message: 'original',
 				createdAt: new Date().toISOString(),
 				attachments: [{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 }],
@@ -404,11 +434,82 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('steers an overflow message and restores its controls when a reservation returns to FIFO', async () => {
+		const items: AgentChatQueueItem[] = ['B', 'D', 'C'].map((message, index) => ({
+			id: String(index + 1),
+			message,
+			createdAt: '2026-09-24T12:00:00.000Z',
+			steeringExecutionId: null,
+		}));
+		queuedMessagesMock.value = items;
+		const wrapper = mountPanel();
+		await wrapper.get('[data-testid="agent-message-queue"] button[aria-expanded]').trigger('click');
+		const row = wrapper.findAll('[data-testid="agent-queued-message"]')[2];
+		const steer = row.get('[aria-label="agents.chat.queue.steer"]');
+		expect(steer.attributes('disabled')).toBeDefined();
+		canSteerMock.value = true;
+		await nextTick();
+		expect(steer.attributes('disabled')).toBeUndefined();
+		expect(row.html().indexOf('aria-label="agents.chat.queue.steer"')).toBeLessThan(
+			row.html().indexOf('aria-label="agents.chat.queue.edit"'),
+		);
+		await steer.trigger('click');
+		expect(steerQueuedMessageMock).toHaveBeenCalledExactlyOnceWith('3');
+		queuedMessagesMock.value = items.map((item) =>
+			item.id === '3' ? { ...item, steeringExecutionId: 'A' } : item,
+		);
+		await nextTick();
+		expect(row.text()).toContain('agents.chat.queue.steering');
+		for (const action of ['steer', 'edit', 'remove'])
+			expect(
+				row.get(`[aria-label="agents.chat.queue.${action}"]`).attributes('disabled'),
+			).toBeDefined();
+		queuedMessagesMock.value = items;
+		await nextTick();
+		expect(row.text()).not.toContain('agents.chat.queue.steering');
+		expect(row.get('[aria-label="agents.chat.queue.edit"]').attributes('disabled')).toBeUndefined();
+		wrapper.unmount();
+	});
+
+	it('preserves an edit draft while another client reserves and releases its message', async () => {
+		const item: AgentChatQueueItem = {
+			id: '1',
+			message: 'C',
+			createdAt: new Date().toISOString(),
+			steeringExecutionId: null,
+		};
+		queuedMessagesMock.value = [item];
+		const wrapper = mountPanel();
+		await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
+		const editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
+		await editor.setValue('unsaved draft');
+		queuedMessagesMock.value = [{ ...item, steeringExecutionId: 'A' }];
+		await nextTick();
+		expect(editor.element).toHaveProperty('value', 'unsaved draft');
+		expect(
+			wrapper.get('[aria-label="agents.chat.queue.save"]').attributes('disabled'),
+		).toBeDefined();
+		expect(wrapper.text()).toContain('agents.chat.queue.editSteeringUnavailable');
+		queuedMessagesMock.value = [item];
+		await nextTick();
+		expect(
+			wrapper.get('[aria-label="agents.chat.queue.save"]').attributes('disabled'),
+		).toBeUndefined();
+		await editor.trigger('keydown', { key: 'Enter' });
+		expect(updateQueuedMessageMock).toHaveBeenCalledWith('1', 'unsaved draft');
+		wrapper.unmount();
+	});
+
 	it.each(['notification', 'conflict'])(
 		'preserves edits when a message starts before saving (%s)',
 		async (source) => {
 			queuedMessagesMock.value = [
-				{ id: '1', message: 'original', createdAt: new Date().toISOString() },
+				{
+					id: '1',
+					steeringExecutionId: null,
+					message: 'original',
+					createdAt: new Date().toISOString(),
+				},
 			];
 			const wrapper = mountPanel();
 			await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');

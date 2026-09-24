@@ -238,6 +238,16 @@ export function emitChunkEvents(chunk: StreamChunk, send: (event: AgentSseEvent)
 			emitToolChunk(chunk, send);
 			return;
 		case 'message': {
+			if (
+				chunk.message.type === 'custom' &&
+				typeof chunk.message.data === 'object' &&
+				chunk.message.data !== null &&
+				'type' in chunk.message.data &&
+				chunk.message.data.type === 'message-steered'
+			) {
+				send(chunk.message.data);
+				return;
+			}
 			const sseMessage = toAgentSseMessage(chunk.message);
 			if (sseMessage) send({ type: 'message', message: sseMessage });
 			return;

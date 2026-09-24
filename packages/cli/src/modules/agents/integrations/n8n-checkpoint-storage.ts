@@ -118,6 +118,13 @@ export class N8NCheckpointStorage {
 				expired: false,
 			});
 			await this.agentCheckpointRepository.saveCheckpoint(checkpoint, ctx);
+			const executionId = checkpointExecutionId(state);
+			const threadId = state.persistence?.threadId;
+			if (state.status === 'suspended' && executionId && threadId) {
+				// A continuation can start before the suspended predecessor finishes recording.
+				await this.executionRepository.closeSteering(threadId, executionId, ctx);
+				await this.queueRepository.releaseSteering(threadId, executionId, ctx);
+			}
 		});
 	}
 

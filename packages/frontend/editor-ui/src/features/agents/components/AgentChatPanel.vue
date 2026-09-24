@@ -96,6 +96,9 @@ const {
 	messages,
 	queuedMessages,
 	removingQueueIds,
+	steeringQueueIds,
+	canSteer,
+	steerQueuedMessage,
 	removeQueuedMessage,
 	updateQueuedMessage,
 	isSubmitting,
@@ -153,12 +156,21 @@ const canSaveQueueEdit = computed(() => {
 	);
 });
 watch(queuedMessages, (items) => {
-	if (queueEdit.value && !items.some((item) => item.id === queueEdit.value?.item.id)) {
-		queueEdit.value.unavailable = true;
-	}
+	const edit = queueEdit.value;
+	if (!edit) return;
+	const current = items.find((item) => item.id === edit.item.id);
+	edit.unavailable = !current || !!current.steeringExecutionId;
 });
 function startQueueEdit(item: AgentChatQueueItem) {
+	if (item.steeringExecutionId) return;
 	queueEdit.value = { item, text: item.message, unavailable: false, saving: false };
+}
+function isQueueItemBusy(item: AgentChatQueueItem) {
+	return (
+		!!item.steeringExecutionId ||
+		steeringQueueIds.value.has(item.id) ||
+		removingQueueIds.value.has(item.id)
+	);
 }
 async function saveQueueEdit() {
 	const edit = queueEdit.value;
@@ -811,8 +823,21 @@ onBeforeUnmount(() => {
 											:class="$style.queueEditNotice"
 											role="status"
 										>
-											{{ locale.baseText('agents.chat.queue.editUnavailable') }}
+											{{
+												locale.baseText(
+													item.steeringExecutionId && queuedMessages.includes(item)
+														? 'agents.chat.queue.editSteeringUnavailable'
+														: 'agents.chat.queue.editUnavailable',
+												)
+											}}
 										</p>
+										<span
+											v-else-if="item.steeringExecutionId"
+											:class="$style.queueEditNotice"
+											role="status"
+										>
+											{{ locale.baseText('agents.chat.queue.steering') }}
+										</span>
 										<span v-for="attachment in item.attachments" :key="attachment.id">{{
 											attachment.fileName
 										}}</span>
@@ -858,15 +883,33 @@ onBeforeUnmount(() => {
 										</template>
 										<template v-else>
 											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.steerTooltip')"
+												:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
+												placement="top"
+											>
+												<N8nButton
+													variant="ghost"
+													size="xsmall"
+													:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
+													:aria-label="locale.baseText('agents.chat.queue.steer')"
+													@click="steerQueuedMessage(item.id)"
+												>
+													<template #icon
+														><N8nIcon icon="corner-down-right" size="large" aria-hidden="true"
+													/></template>
+													{{ locale.baseText('agents.chat.queue.steer') }}
+												</N8nButton>
+											</N8nTooltip>
+											<N8nTooltip
 												:content="locale.baseText('agents.chat.queue.edit')"
-												:disabled="!!queueEdit || removingQueueIds.has(item.id)"
+												:disabled="!!queueEdit || isQueueItemBusy(item)"
 												placement="top"
 											>
 												<N8nButton
 													icon-only
 													variant="ghost"
 													size="xsmall"
-													:disabled="!!queueEdit || removingQueueIds.has(item.id)"
+													:disabled="!!queueEdit || isQueueItemBusy(item)"
 													:aria-label="locale.baseText('agents.chat.queue.edit')"
 													@click="startQueueEdit(item)"
 												>
@@ -877,14 +920,14 @@ onBeforeUnmount(() => {
 											</N8nTooltip>
 											<N8nTooltip
 												:content="locale.baseText('agents.chat.queue.remove')"
-												:disabled="removingQueueIds.has(item.id)"
+												:disabled="isQueueItemBusy(item)"
 												placement="top"
 											>
 												<N8nButton
 													icon-only
 													variant="ghost"
 													size="xsmall"
-													:disabled="removingQueueIds.has(item.id)"
+													:disabled="isQueueItemBusy(item)"
 													:aria-label="locale.baseText('agents.chat.queue.remove')"
 													@click="removeQueuedMessage(item.id)"
 												>

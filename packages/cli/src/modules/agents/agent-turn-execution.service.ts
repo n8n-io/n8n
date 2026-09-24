@@ -16,6 +16,8 @@ import { AgentExecutionRecordingError } from './agent-execution-recording.error'
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
+import { AgentMessageSteeringService } from './agent-message-steering.service';
+import type { SteeredMessageEvent } from './types/agent-steering';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
 	AgentExecutionService,
@@ -60,6 +62,7 @@ interface ExecuteTurnConfig {
 }
 
 interface TurnExecutionState {
+	steeredMessages: Map<string, SteeredMessageEvent>;
 	executionId?: string;
 	executionStarted: boolean;
 	executionError?: unknown;
@@ -109,6 +112,7 @@ export class AgentTurnExecutionService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly messageQueue: AgentMessageQueueService,
+		private readonly steering: AgentMessageSteeringService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -119,6 +123,7 @@ export class AgentTurnExecutionService {
 		let turn: AgentTurnRequest | undefined;
 		let previewControl: PreviewExecutionControl | undefined;
 		const state: TurnExecutionState = {
+			steeredMessages: new Map(),
 			executionStarted: false,
 			receivedFinish: false,
 			executionId: config.admittedExecution?.executionId,
@@ -209,6 +214,18 @@ export class AgentTurnExecutionService {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
 		for await (const value of streamAgentChunks(stream)) {
+			if (value.type === 'input-boundary') {
+				value.acknowledge();
+				continue;
+			}
+			if (value.type === 'input') {
+				const event = state.steeredMessages.get(value.message.id);
+				if (event) {
+					state.steeredMessages.delete(value.message.id);
+					yield { type: 'message', message: { type: 'custom', data: event } };
+				}
+				continue;
+			}
 			const chunk = config.includeHitlToolDetails
 				? withApprovalToolDetails(value, config.toolRegistry)
 				: value;
@@ -395,6 +412,7 @@ export class AgentTurnExecutionService {
 		const id = await this.startExecution(
 			{
 				...turn.recording,
+				previewChat: config.previewChat,
 				resumeRunId: turn.type === 'resume' ? turn.options.runId : undefined,
 				allowSuspendedPredecessor: config.automaticPreviewContinuation,
 				...(config.backgroundJobSignal
@@ -432,6 +450,17 @@ export class AgentTurnExecutionService {
 			};
 		}
 		if (previewControl) {
+			turn.options.onInputBoundary = async (boundary) => {
+				const result = await this.steering.consume(
+					{ ...config.context, executionId, userId: previewControl.userId },
+					boundary,
+					recorder,
+					turn.options.abortSignal!,
+				);
+				if (result.stopped) previewControl.controller.abort();
+				for (const event of result.events) state.steeredMessages.set(event.message.id, event);
+				return result.messages;
+			};
 			this.chatExecutionService.register(
 				{ ...config.context, userId: previewControl.userId, executionId },
 				previewControl.controller,

@@ -161,6 +161,7 @@ describe('AgentChatController route access scopes', () => {
 		['getQueuedMessages', 'agent:read'],
 		['removeQueuedMessage', 'agent:execute'],
 		['updateQueuedMessage', 'agent:execute'],
+		['steerQueuedMessage', 'agent:execute'],
 		['getBackgroundJobs', 'agent:read'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
@@ -169,29 +170,35 @@ describe('AgentChatController route access scopes', () => {
 	});
 });
 
-describe('AgentChatController queue editing', () => {
-	it('reads the message after the request and response arguments supplied by the registry', async () => {
-		const { controller, agentsService, messageQueue } = makeController();
-		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
-		const params = {
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			threadId: 'thread-1',
-			queueId: '1',
-		};
+describe('AgentChatController queue mutations', () => {
+	it.each([
+		['updateQueuedMessage', 'updatePending', { message: 'Edited message' }],
+		['steerQueuedMessage', 'steer', { executionId: 'execution-1' }],
+	] as const)(
+		'%s reads the body after the request and response arguments',
+		async (handler, operation, payload) => {
+			const { controller, agentsService, messageQueue } = makeController();
+			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			const params = {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				queueId: '1',
+			};
 
-		await Reflect.apply(controller.updateQueuedMessage, controller, [
-			{ params, user: { id: 'user-1' } },
-			makeSseResponse([]),
-			{ message: 'Edited message' },
-		]);
+			await Reflect.apply(controller[handler], controller, [
+				{ params, user: { id: 'user-1' } },
+				makeSseResponse([]),
+				payload,
+			]);
 
-		expect(messageQueue.updatePending).toHaveBeenCalledWith({
-			...params,
-			userId: 'user-1',
-			message: 'Edited message',
-		});
-	});
+			expect(messageQueue[operation]).toHaveBeenCalledWith({
+				...params,
+				userId: 'user-1',
+				...payload,
+			});
+		},
+	);
 });
 
 describe('AgentChatController background tasks', () => {

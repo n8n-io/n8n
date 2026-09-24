@@ -1,7 +1,12 @@
-import { WORKFLOW_WAIT_SUSPEND_TYPE, type AgentBackgroundJobSignal } from '@n8n/api-types';
+import {
+	WORKFLOW_WAIT_SUSPEND_TYPE,
+	type AgentBackgroundJobSignal,
+	type AgentPersistedMessageDto,
+} from '@n8n/api-types';
 import type { BadgeVariant } from '@n8n/design-system';
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
+import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
 import type {
 	EventKind,
 	HitlRequestType,
@@ -435,6 +440,12 @@ interface RawTextEvent {
 	endTime?: number;
 }
 
+interface RawInputEvent {
+	type: 'input';
+	message: AgentPersistedMessageDto;
+	timestamp: number;
+}
+
 interface RawSuspensionEvent {
 	type: 'suspension';
 	toolName: string;
@@ -460,6 +471,7 @@ interface RawBackgroundJobSignalEvent {
 type RawEvent =
 	| RawToolCallEvent
 	| RawTextEvent
+	| RawInputEvent
 	| RawSuspensionEvent
 	| RawHitlResponseEvent
 	| RawBackgroundJobSignalEvent;
@@ -675,6 +687,18 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					executionId: exec.id,
 					timestamp: event.timestamp,
 					backgroundJobSignal: event.signal,
+				});
+			} else if (event.type === 'input') {
+				const [message] = convertDbMessages([event.message]);
+				if (!message) continue;
+				items.push({
+					kind: 'user',
+					executionId: exec.id,
+					content: message.content,
+					timestamp: event.timestamp,
+					attachments: message.attachments?.flatMap(({ fileId, fileName, mimeType, sizeBytes }) =>
+						fileId ? [{ id: fileId, fileName, mimeType, sizeBytes: sizeBytes ?? 0 }] : [],
+					),
 				});
 			} else if (event.type === 'text') {
 				const showResumed = isResumed && !resumedTagUsed;

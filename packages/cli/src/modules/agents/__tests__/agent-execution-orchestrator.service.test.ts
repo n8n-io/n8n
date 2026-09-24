@@ -1,3 +1,4 @@
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type {
 	Agent as RuntimeAgent,
 	CredentialProvider,
@@ -187,6 +188,7 @@ function makeService(sandboxEnabled = false) {
 		mock<Publisher>(),
 		mock<InstanceSettings>(),
 		mock<AgentExecutionUpdateBroadcaster>(),
+		mock<AgentMessageSteeringService>(),
 	);
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
@@ -240,6 +242,7 @@ function makeService(sandboxEnabled = false) {
 			executionService,
 			chatExecutionService,
 			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
 		),
 		telemetry,
 		runtimeCacheService,

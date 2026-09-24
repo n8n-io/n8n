@@ -170,3 +170,5 @@ message a Remove action. Hide an empty queue section. Removal discards the
 message. It does not restore the composer draft.
 
 Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.
+
+Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary FIFO processing. Preserve an open edit draft if another client reserves the message, and disable Save. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.

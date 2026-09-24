@@ -23,6 +23,7 @@ import {
 	getAgentChatQueue,
 	removeAgentQueuedMessage,
 	updateAgentQueuedMessage,
+	steerAgentQueuedMessage,
 	getTestChatMessages,
 } from './useAgentApi';
 
@@ -106,6 +107,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const isSubmitting = ref(false);
 	const queuedMessages = ref<AgentChatQueueItem[]>([]);
 	const removingQueueIds = ref(new Set<string>());
+	const steeringQueueIds = ref(new Set<string>());
+	const consumedQueueIds = new Set<string>();
+	const steerableExecutionId = ref<string | null>(null);
 	const streams = new Map<AbortController, StreamSession>();
 	let queueVersion = 0;
 	let submissionVersion = 0;
@@ -116,6 +120,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		() => isStreamOpen.value || activeExecutionId.value !== null || isRecovering.value,
 	);
 	const isCancelling = ref(false);
+	const canSteer = computed(
+		() =>
+			!!steerableExecutionId.value &&
+			steerableExecutionId.value === activeExecutionId.value &&
+			!isCancelling.value &&
+			!isLoadingHistory.value &&
+			!findTailOpenInteractive(messages.value),
+	);
 	let stopTargetId: string | undefined;
 	const abortController = ref<AbortController | null>(null);
 	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
@@ -302,8 +314,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.agentId.value,
 				threadId,
 			);
-			if (!disposed && target === targetKey() && version === queueVersion)
-				queuedMessages.value = result.items;
+			if (!disposed && target === targetKey() && version === queueVersion) {
+				queuedMessages.value = result.items.filter((item) => !consumedQueueIds.has(item.id));
+				steerableExecutionId.value = result.steerableExecutionId ?? null;
+			}
 		} catch (error) {
 			if (!disposed && target === targetKey() && version === queueVersion) {
 				showError(error, locale.baseText('agents.chat.queue.loadError'));
@@ -341,6 +355,37 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			return 'failed';
 		} finally {
 			if (!disposed && target === targetKey()) refreshHistoryFromPush();
+		}
+	}
+
+	async function steerQueuedMessage(queueId: string): Promise<void> {
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		const executionId = steerableExecutionId.value;
+		if (!threadId || !executionId || !canSteer.value || steeringQueueIds.value.has(queueId)) return;
+		const target = targetKey();
+		steeringQueueIds.value.add(queueId);
+		try {
+			await steerAgentQueuedMessage(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				threadId,
+				queueId,
+				{ executionId },
+			);
+			if (disposed || target !== targetKey()) return;
+			queuedMessages.value = queuedMessages.value.map((item) =>
+				item.id === queueId ? { ...item, steeringExecutionId: executionId } : item,
+			);
+		} catch (error) {
+			if (!disposed && target === targetKey())
+				showError(error, locale.baseText('agents.chat.queue.steerError'));
+		} finally {
+			if (!disposed && target === targetKey()) {
+				queueVersion++;
+				await refreshQueue();
+				steeringQueueIds.value.delete(queueId);
+			}
 		}
 	}
 
@@ -406,6 +451,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		messages.value = [];
 		queuedMessages.value = [];
 		removingQueueIds.value.clear();
+		steeringQueueIds.value.clear();
+		consumedQueueIds.clear();
+		steerableExecutionId.value = null;
 		queueVersion++;
 		activeExecutionId.value = null;
 		acceptedSessionId.value = undefined;
@@ -654,6 +702,25 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
+	function applySteeredMessage(
+		event: Extract<AgentSseEvent, { type: 'message-steered' }>,
+		session: StreamSession,
+	): void {
+		if (event.executionId !== session.executionId || consumedQueueIds.has(event.queueId)) return;
+		consumedQueueIds.add(event.queueId);
+		queueVersion++;
+		queuedMessages.value = queuedMessages.value.filter((item) => item.id !== event.queueId);
+		for (const [controller, waiting] of streams) {
+			if (waiting.queueId === event.queueId && !waiting.executionId) controller.abort();
+		}
+		if (!messages.value.some((message) => message.id === event.message.id)) {
+			settleOpenReasoning(session);
+			if (session.current) markMessageSuccessIfSettled(session.current);
+			session.current = undefined;
+			messages.value.push(...convertDbMessages([event.message]));
+		}
+	}
+
 	function handleEvent(
 		event: AgentSseEvent,
 		session: StreamSession,
@@ -673,8 +740,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				detachExcessWaitingStreams();
 				session.onAccepted?.();
 				session.onAccepted = undefined;
+				if (consumedQueueIds.has(event.queueId)) {
+					session.controller.abort();
+					return { done: true };
+				}
 				queueVersion++;
 				refreshHistoryFromPush();
+				break;
+			case 'message-steered':
+				applySteeredMessage(event, session);
 				break;
 			case 'execution-started':
 				if (session.userMessage) {
@@ -1474,6 +1548,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	return {
 		queuedMessages,
+		canSteer,
+		steeringQueueIds,
+		steerQueuedMessage,
 		removingQueueIds,
 		removeQueuedMessage,
 		updateQueuedMessage,

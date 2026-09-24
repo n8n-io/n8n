@@ -8,6 +8,7 @@ import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentMessageSteeringService } from './agent-message-steering.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
@@ -49,6 +50,7 @@ export class AgentChatExecutionService {
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionUpdates: AgentExecutionUpdateBroadcaster,
+		private readonly steering: AgentMessageSteeringService,
 	) {}
 
 	register(context: ExecutionContext, controller: AbortController): void {
@@ -103,6 +105,7 @@ export class AgentChatExecutionService {
 			async () => {
 				const execution = await this.getOwnedExecution(context);
 				if (!execution) throw new NotFoundError('Execution not found');
+				await this.steering.close(context.threadId, context.executionId);
 				if (this.cancelLocal(context)) return true;
 				if (execution.status !== 'running') return await this.cancelRecordedSuspension(context);
 				this.cancelOrRemember(context);

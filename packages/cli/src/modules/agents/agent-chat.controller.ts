@@ -3,6 +3,7 @@ import {
 	type AgentChatAttachmentPayload,
 	AgentChatMessageDto,
 	AgentChatQueueUpdateDto,
+	AgentChatQueueSteerDto,
 	type AgentChatMessagesResponse,
 	type AgentChatQueueResponse,
 	AgentChatResumeDto,
@@ -381,6 +382,28 @@ export class AgentChatController {
 		if (!agent) throw new NotFoundError('Agent not found');
 		await this.messageQueue.removePending({ ...req.params, userId: req.user.id });
 		return { removed: true };
+	}
+
+	@Post('/:agentId/chat/:threadId/queue/:queueId/steer')
+	@ProjectScope('agent:execute')
+	async steerQueuedMessage(
+		req: AuthenticatedRequest<{
+			projectId: string;
+			agentId: string;
+			threadId: string;
+			queueId: string;
+		}>,
+		_res: Response,
+		@Body payload: AgentChatQueueSteerDto,
+	): Promise<void> {
+		if (!/^[1-9]\d*$/.test(req.params.queueId)) throw new BadRequestError('Invalid queue ID');
+		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError('Agent not found');
+		await this.messageQueue.steer({
+			...req.params,
+			userId: req.user.id,
+			executionId: payload.executionId,
+		});
 	}
 
 	@Get('/:agentId/chat/:threadId/background-tasks')
