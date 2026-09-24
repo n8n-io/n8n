@@ -46,7 +46,7 @@ vi.mock('@n8n/i18n', () => ({
 				{
 					'agentSessions.viewTrace': 'View session trace',
 					'agentSessions.origin.preview': 'Preview',
-					'agentSessions.origin.instanceAi': 'AI Assistant',
+					'agentSessions.origin.instanceAi': 'n8n Assistant',
 					'agentSessions.origin.mcp': 'MCP',
 					'agentSessions.origin.subAgent': 'Sub-agent',
 					'agentSessions.origin.schedule': 'Schedule',
@@ -77,6 +77,10 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<div data-test-id="agent-session-actions" />',
 		props: ['items', 'activatorIcon'],
 		emits: ['select'],
+	},
+	N8nBadge: {
+		props: ['leadingIcon'],
+		template: '<span><span :data-icon="leadingIcon" /><slot /></span>',
 	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nCheckbox: {
@@ -174,6 +178,7 @@ import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return {
 		id: 'thread-1',
+		canContinueInPreview: true,
 		agentId: 'agent-1',
 		agentName: 'Agent',
 		parentThreadId: null,
@@ -414,7 +419,7 @@ describe('AgentSessionsListView', () => {
 		[{ source: 'telegram' }, 'Telegram', 'telegram'],
 		[{ source: 'linear' }, 'Linear', 'linear'],
 		[{ source: 'discord' }, 'Discord', 'discord'],
-		[{ source: 'instance-ai' }, 'AI Assistant', 'flask-conical'],
+		[{ source: 'instance-ai' }, 'n8n Assistant', 'flask-conical'],
 		[{ source: 'mcp' }, 'MCP', 'flask-conical'],
 		[{ source: null }, 'Preview', 'flask-conical'],
 		[{ source: 'chat' }, 'Preview', 'flask-conical'],
@@ -424,7 +429,8 @@ describe('AgentSessionsListView', () => {
 		[{ parentThreadId: 'parent-1', source: 'slack' }, 'Sub-agent', 'bot'],
 		[{ source: 'task' }, 'Schedule', 'clock'],
 		[{ taskId: 'task-1', source: 'slack' }, 'Schedule', 'clock'],
-		[{ source: 'teams' }, 'Teams', 'plug'],
+		[{ source: 'teams' }, 'Teams', 'teams'],
+		[{ source: 'future-channel' }, 'Future-channel', 'plug'],
 		[{ source: ' Slack ' }, 'Slack', 'slack'],
 	] as const)(
 		'renders origin chip for %j as %s with the %s icon',

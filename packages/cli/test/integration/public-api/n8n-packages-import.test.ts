@@ -102,13 +102,13 @@ async function buildImportPackage(
 				},
 			],
 			connections: {},
-			versionId: 'wire-version-id',
 			parentFolderId: null,
+			isArchived: false,
 		}),
 	);
 	writer.writeFile(
-		`workflows/${wfId}/workflow-lifecycle.json`,
-		JSON.stringify({ publishedVersionId: null, isArchived: false }),
+		`workflows/${wfId}/workflow-metadata.json`,
+		JSON.stringify({ versionId: WIRE_VERSION_ID, publishedVersionId: null }),
 	);
 
 	if (variable) {

@@ -25,6 +25,45 @@ interface IGraphqlBody {
 	variables: IDataObject;
 }
 
+/**
+ * Shared `column_values` selection reused across the boardItem read operations.
+ *
+ * Since API version 2025-04 the `value` field returns null for connect board,
+ * dependency, mirror and subtasks columns, so we request the typed fragments
+ * that expose the data instead (`display_value`, `linked_item_ids`, `subitems`).
+ * @see https://developer.monday.com/api-reference/changelog/value-field-now-returns-null-on-connect-boards-dependency-and-subtasks-columns
+ */
+const columnValuesFragment = `column_values {
+	id
+	text
+	type
+	value
+	... on BoardRelationValue {
+		display_value
+		linked_item_ids
+	}
+	... on DependencyValue {
+		display_value
+		linked_item_ids
+	}
+	... on MirrorValue {
+		display_value
+	}
+	... on SubtasksValue {
+		display_value
+		subitems {
+			id
+			name
+		}
+	}
+	column {
+		title
+		archived
+		description
+		settings_str
+	}
+}`;
+
 export class MondayCom implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Monday.com',
@@ -596,19 +635,7 @@ export class MondayCom implements INodeType {
 										name
 										created_at
 										state
-										column_values {
-											id
-											text
-											type
-											value
-											column {
-
-												title
-												archived
-												description
-												settings_str
-											}
-										}
+										${columnValuesFragment}
 									}
 								}`,
 							variables: {
@@ -629,18 +656,7 @@ export class MondayCom implements INodeType {
 							name
 							created_at
 							state
-							column_values {
-								id
-								text
-								type
-								value
-								column {
-									title
-									archived
-									description
-									settings_str
-								}
-							}
+							${columnValuesFragment}
 						}
 						`;
 
@@ -690,18 +706,7 @@ export class MondayCom implements INodeType {
 							board {
 								id
 							}
-							column_values {
-								id
-								text
-								type
-								value
-								column {
-									title
-									archived
-									description
-									settings_str
-								}
-							}
+							${columnValuesFragment}
 						}`;
 						const body = {
 							query: `query ($boardId: ID!, $columnId: String!, $columnValue: String!, $limit: Int) {

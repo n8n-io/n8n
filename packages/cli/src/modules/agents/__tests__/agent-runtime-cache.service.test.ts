@@ -9,6 +9,7 @@ import { OperationalError } from 'n8n-workflow';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
@@ -40,6 +41,7 @@ function makeRuntime() {
 			close: Mock;
 		},
 		toolRegistry: mock<ToolRegistry>(),
+		mcpServerAttributions: new Map<string, string>(),
 	};
 }
 
@@ -61,8 +63,7 @@ function makeService({
 	const service = new AgentRuntimeCacheService(
 		mockLogger(),
 		agentRepository,
-		publisher,
-		globalConfig,
+		new AgentChangePublisher(publisher, globalConfig, mockLogger()),
 		reconstructionService,
 		credentialsService,
 		sandboxRuntimeService,
@@ -104,8 +105,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			undefined,
+			{},
 		);
 	});
 
@@ -135,8 +135,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			false,
+			{ allowBackgroundTasks: false },
 		);
 	});
 
@@ -338,6 +337,37 @@ describe('AgentRuntimeCacheService', () => {
 		}
 	});
 
+	it('keeps the preview runtime separate and flags it for reconstruction', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const plainRuntime = makeRuntime();
+		const previewRuntime = makeRuntime();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(plainRuntime)
+			.mockResolvedValueOnce(previewRuntime);
+
+		const plain = await service.getRuntime({ agentId, projectId });
+		const preview = await service.getRuntime({ agentId, projectId, previewChat: true });
+
+		expect(plain.agent).toBe(plainRuntime.agent);
+		expect(preview.agent).toBe(previewRuntime.agent);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			'test',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			undefined,
+			{ previewChat: true },
+		);
+	});
+
 	it('keeps draft runtimes separate by integration type', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();
@@ -369,8 +399,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			undefined,
+			{},
 		);
 	});
 
@@ -405,8 +434,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			undefined,
+			{},
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -418,8 +446,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			undefined,
+			{},
 		);
 	});
 
@@ -483,8 +510,9 @@ describe('AgentRuntimeCacheService', () => {
 		const first = service.getRuntime({ agentId, projectId });
 		const second = service.getRuntime({ agentId, projectId });
 
-		await Promise.resolve();
-		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+		await vi.waitFor(() =>
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1),
+		);
 
 		resolveRuntime(runtime);
 		const [firstRuntime, secondRuntime] = await Promise.all([first, second]);
@@ -592,8 +620,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'integrated',
 			undefined,
-			undefined,
-			undefined,
+			{},
 		);
 	});
 

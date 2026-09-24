@@ -6,6 +6,7 @@ import { OperationalError, type Logger } from 'n8n-workflow';
 import type { BridgeStatusHandle } from './agent-chat-integration';
 import { isIntegrationActionSuspendPayload } from './agent-chat-suspension-cards';
 import { type TextEndFn, type TextYieldFn } from './types';
+import { isRateLimitedToolOutput } from './channel-rate-limit';
 
 type SuspendedChunk = Extract<StreamChunk, { type: 'tool-call-suspended' }>;
 type MessageChunk = Extract<StreamChunk, { type: 'message' }>;
@@ -59,8 +60,10 @@ interface ResponseState {
 	 * retry recovered) and suppressed by visible output (the agent's own text
 	 * explains the failure). A 'suspension' fallback is neither — the user
 	 * still has an approval request they never received.
+	 * A 'rate-limit' fallback is set when the integration action tool fails with a
+	 * HTTP 429. The user must be informed that the integration is rate-limited.
 	 */
-	fallbackSource: 'tool-error' | 'suspension' | null;
+	fallbackSource: 'tool-error' | 'suspension' | 'rate-limit' | null;
 	fallbackError: unknown;
 }
 
@@ -209,12 +212,7 @@ export class AgentChatStreamConsumer {
 						responseState.hasVisibleResponse = true;
 						break;
 					case 'tool-result':
-						if (chunk.isError) {
-							responseState.fallbackSource = 'tool-error';
-							responseState.fallbackError = chunk.output;
-						} else if (responseState.fallbackSource === 'tool-error') {
-							responseState.fallbackSource = null;
-						}
+						this.noteToolResult(chunk, responseState);
 						if (this.isSilentOutcome(chunk)) responseState.suppressText = true;
 						break;
 					default:
@@ -226,6 +224,22 @@ export class AgentChatStreamConsumer {
 			await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
 		} finally {
 			await responseLifecycle.finish();
+		}
+	}
+
+	private noteToolResult(chunk: ToolResultChunk, state: ResponseState): void {
+		if (isRateLimitedToolOutput(chunk.output)) {
+			state.fallbackSource = 'rate-limit';
+			state.fallbackError = chunk.output;
+			return;
+		}
+		if (chunk.isError) {
+			state.fallbackSource = 'tool-error';
+			state.fallbackError = chunk.output;
+			return;
+		}
+		if (state.fallbackSource === 'tool-error') {
+			state.fallbackSource = null;
 		}
 	}
 
@@ -294,7 +308,7 @@ export class AgentChatStreamConsumer {
 		// it). A dropped approval card is never explained by prior text — the run
 		// stays suspended, so the user must be told to retry.
 		if (state.fallbackSource === 'tool-error' && state.hasVisibleResponse) return;
-
+		// 'rate-limit' and 'suspension' always post.
 		await lifecycle.startDiscreteResponse();
 		await this.options.postErrorToThread(thread, state.fallbackError, throwOnDeliveryError);
 		state.hasVisibleResponse = true;
@@ -376,12 +390,7 @@ export class AgentChatStreamConsumer {
 						responseState.hasVisibleResponse = true;
 						break;
 					case 'tool-result':
-						if (chunk.isError) {
-							responseState.fallbackSource = 'tool-error';
-							responseState.fallbackError = chunk.output;
-						} else if (responseState.fallbackSource === 'tool-error') {
-							responseState.fallbackSource = null;
-						}
+						this.noteToolResult(chunk, responseState);
 						if (this.isSilentOutcome(chunk)) {
 							responseState.suppressText = true;
 							// Nothing has been posted yet in buffered mode, so the

@@ -5,6 +5,8 @@ import {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
+	InstanceAiPreferenceCardEditRequestDto,
+	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
@@ -12,6 +14,7 @@ import {
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
+	InstanceAiThreadHistoryQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
@@ -22,9 +25,14 @@ import {
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
+	findSeedFolderIssues,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type { InstanceAiAdminSettingsResponse, InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiEvent,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -44,6 +52,7 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
+import { hasGlobalScope } from '@n8n/permissions';
 import {
 	buildAgentTreeFromEvents,
 	clearedAgentBuilderTargetMetadata,
@@ -70,6 +79,7 @@ import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
+import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -115,6 +125,7 @@ export class InstanceAiController {
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
+		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -135,7 +146,7 @@ export class InstanceAiController {
 	private async requireModelConfigured(): Promise<void> {
 		if (!(await this.settingsService.isModelConfigured())) {
 			throw new BadRequestError(
-				'The AI Assistant has no model configured. An instance owner can add one in Settings > AI Assistant.',
+				'The n8n Assistant has no model configured. An instance owner can add one in Settings > Assistant.',
 			);
 		}
 	}
@@ -218,6 +229,15 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
+		// The override is an eval knob. It changes how often the observer runs, so a
+		// plain chat caller must not be able to set it.
+		if (
+			payload.observerThresholdTokens !== undefined &&
+			!hasGlobalScope(req.user, 'instanceAi:eval')
+		) {
+			throw new ForbiddenError('observerThresholdTokens requires the instanceAi:eval scope');
+		}
+
 		const runId = this.instanceAiService.startRun(
 			req.user,
 			threadId,
@@ -226,6 +246,11 @@ export class InstanceAiController {
 			payload.context,
 			payload.timeZone,
 			payload.pushRef,
+			payload.mode,
+			payload.promptVersion,
+			payload.computerUseChannels,
+			payload.threadArtifacts,
+			payload.observerThresholdTokens,
 		);
 		return { runId };
 	}
@@ -377,7 +402,7 @@ export class InstanceAiController {
 		//     message group. Each frame uses a named SSE event type
 		//     (event: run-sync) with NO id: field so the browser's lastEventId is
 		//     unaffected and the replay cursor stays consistent.
-		const writeRunSyncFrame = (
+		const writeRunSyncFrame = async (
 			groupId: string,
 			group: { runIds: string[]; status: 'active' | 'suspended' | 'background' },
 			runEvents: InstanceAiEvent[],
@@ -385,6 +410,12 @@ export class InstanceAiController {
 			if (runEvents.length === 0) return;
 
 			const agentTree = buildAgentTreeFromEvents(runEvents);
+			// The fold records that a confirmation was requested, not that it was
+			// answered. Settle cards whose pending row is gone (same check as the
+			// history read); otherwise a client that reconnects mid-run re-arms a
+			// card the server already consumed, and every click on it fails.
+			await this.memoryService.flagExpiredConfirmations([{ agentTree }]);
+			if (closed) return;
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: group.runIds.at(-1),
@@ -439,7 +470,7 @@ export class InstanceAiController {
 			for (const [groupId, group] of liveGroups) {
 				const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
 				if (closed) return;
-				writeRunSyncFrame(groupId, group, runEvents);
+				await writeRunSyncFrame(groupId, group, runEvents);
 				for (const event of runEvents) {
 					if (event.type === 'text-block' || event.type === 'reasoning-block') {
 						foldedBlockKeys.add(blockKey(event));
@@ -628,6 +659,44 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	// ── Preference card (the save_user_preference result in the chat) ────────
+	//
+	// The thread check is the ownership boundary. The row check is inside
+	// AiPreferenceService. The runId and the toolCallId are not verified against
+	// the log on purpose, and the check would cost a log read on every click.
+	// The fold ignores preference-card facts when it anchors a turn, so a wrong
+	// pair can only mis-render that one card's state in the caller's own thread.
+
+	@Post('/threads/:threadId/preferences/:preferenceId/undo')
+	@GlobalScope('instanceAi:message')
+	async undoPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: InstanceAiPreferenceCardUndoRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const event = await this.preferenceCardService.undo(req.user, threadId, preferenceId, payload);
+		// The card applies the fact at once; the stream delivers the same one later.
+		return { ok: true, event };
+	}
+
+	@Post('/threads/:threadId/preferences/:preferenceId/edit')
+	@GlobalScope('instanceAi:message')
+	async editPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: InstanceAiPreferenceCardEditRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.preferenceCardService.edit(req.user, threadId, preferenceId, payload);
+	}
+
 	// ── Credits ──────────────────────────────────────────────────────────────
 
 	@Get('/credits')
@@ -803,6 +872,25 @@ export class InstanceAiController {
 		return await this.memoryService.listThreads(req.user.id);
 	}
 
+	@Get('/threads/history')
+	@GlobalScope('instanceAi:message')
+	async listThreadHistory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: InstanceAiThreadHistoryQuery,
+	) {
+		this.requireInstanceAiEnabled();
+		return await this.memoryService.listThreadHistory(req.user.id, query);
+	}
+
+	@Get('/threads/:threadId')
+	@GlobalScope('instanceAi:message')
+	async getThread(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return { thread: await this.memoryService.getThreadInfo(threadId) };
+	}
+
 	@Post('/threads')
 	@GlobalScope('instanceAi:message')
 	async ensureThread(
@@ -853,7 +941,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.routeClearThreadState(threadId);
+		await this.instanceAiService.routeClearThreadState(threadId, req.user.id);
 		await this.memoryService.deleteThread(threadId);
 		return { ok: true };
 	}
@@ -947,8 +1035,22 @@ export class InstanceAiController {
 		// already covered by these historical messages (prevents duplicates).
 		// Read from the log, so the cursor is valid across restarts and across
 		// mains sharing the database.
+		//
+		// The applied-preferences payload rides along because the messages
+		// endpoint is what opens a thread: without it a reopened thread could
+		// only claim "none applied" until its next turn.
+		//
+		// Cursor first, payload second, on purpose. A turn that commits its
+		// `preferences-applied` fact between the two reads then lands in the
+		// payload AND replays over SSE (a harmless repeat). The other order
+		// would move the cursor past a fact the payload never saw.
 		const nextEventId = await this.eventLog.getNextEventId(threadId);
-		return { ...result, nextEventId };
+		const appliedPreferences = await this.eventLog.getLastAppliedPreferences(threadId);
+		return {
+			...result,
+			nextEventId,
+			...(appliedPreferences ? { appliedPreferences } : {}),
+		};
 	}
 
 	@Get('/threads/:threadId/status')
@@ -1044,10 +1146,30 @@ export class InstanceAiController {
 	}
 
 	/**
+	 * Observational memory for a thread, for a context eval to assert on.
+	 *
+	 * Returns the observation text, an LLM-written summary of the user's conversation.
+	 * Gated like every other `/eval/` route: `instanceAi:eval` is owner/admin-only,
+	 * and `assertThreadAccess` keeps a caller to threads they can already read in full.
+	 */
+	@Get('/eval/threads/:threadId/memory')
+	@GlobalScope('instanceAi:eval')
+	async getEvalThreadMemory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.instanceAiService.getThreadMemory(req.user.id, threadId);
+	}
+
+	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
 	 * recreate the artifacts the history references — workflows (node credentials
-	 * stripped — see `EvalThreadRestoreService`), data tables and agents — then
-	 * write the native message log verbatim. The thread then continues as if the
+	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
+	 * and agents — publish the workflows the seed flags `published`, then write the
+	 * native message log verbatim. The thread then continues as if the
 	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
@@ -1066,6 +1188,7 @@ export class InstanceAiController {
 
 		const workflows = payload.workflows ?? [];
 		const agents = payload.agents ?? [];
+		const folders = payload.folders ?? [];
 		// Cross-field, so the schema can't own it: a seeded agent's workflow tool is
 		// resolved by DISPLAY NAME, and a name no seeded workflow carries restores a
 		// dead tool (or binds an unrelated ambient workflow of the same name).
@@ -1080,30 +1203,57 @@ export class InstanceAiController {
 					.join('; '),
 			);
 		}
-		// Data tables first: the workflows reference them, and their ids are
-		// rewritten to the recreated tables' ids during workflow restore.
-		const idMap = await this.evalThreadRestore.restoreDataTables(
-			payload.dataTables ?? [],
-			projectId,
-			{ uniquifyNames: payload.uniquifyNames ?? true },
-		);
-		const dataTableIds = [...idMap.values()];
+		// Also cross-field: a workflow's `parentFolderId` must name a seeded folder.
+		// Checked before anything is created, so a typo costs no rollback.
+		const folderIssues = findSeedFolderIssues({ folders, workflows });
+		if (folderIssues.length > 0) {
+			throw new BadRequestError(folderIssues.join('; '));
+		}
+		// Folders first: the workflows are created inside them. `restoreFolders`
+		// rolls its own partial work back, so nothing else exists yet if it fails.
+		const folderIdMap = await this.evalThreadRestore.restoreFolders(folders, projectId, req.user);
+		// Positional to `folders`, like `workflowIds` to `workflows`, so the harness
+		// can pair each created id with the seed folder it came from.
+		const folderIds = folders.flatMap((folder) => {
+			const id = folderIdMap.get(folder.id);
+			return id === undefined ? [] : [id];
+		});
 		// Roll back everything we created if a later step fails, so a partial
-		// restore doesn't leak workflows/tables/agents into the shared eval project.
+		// restore doesn't leak folders/tables/workflows/agents into the shared eval
+		// project.
 		let restored = 0;
+		let dataTableIds: string[] = [];
 		let createdWorkflowIds: string[] = [];
+		let publishedWorkflowIds: string[] = [];
 		let createdAgentIds: string[] = [];
 		// Captured so the binding write is undoable: the message write happens after
 		// it, and without this a message failure left a binding pointing at agents the
 		// rollback had already deleted.
 		let priorMetadata: Record<string, unknown> | undefined;
 		let bindingWritten = false;
+		// Seed node credentials resolve within the thread's pinned credential view,
+		// so a same-named credential of a concurrent case is never picked.
+		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
 		try {
+			// Data tables before workflows: the workflows reference them, and their ids
+			// are rewritten to the recreated tables' ids during workflow restore.
+			const idMap = await this.evalThreadRestore.restoreDataTables(
+				payload.dataTables ?? [],
+				projectId,
+				{ uniquifyNames: payload.uniquifyNames ?? true },
+			);
+			dataTableIds = [...idMap.values()];
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
 				idMap,
+				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
+				folderIdMap,
 			);
+			// BEFORE the messages, which the rollback cannot undo: a refused activation
+			// (no trigger, webhook conflict, unresolved credential) must fail while the
+			// restore is still fully rollback-able. The rollback unpublishes.
+			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
 			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
 			// Built (and validated) BEFORE the message write: a rejected binding — two
 			// agents whose refs collide — must fail while the restore is still fully
@@ -1152,8 +1302,15 @@ export class InstanceAiController {
 				}
 			}
 			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
+			// Every seed this restore published, not only the created ones: a re-applied
+			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
+			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
+			// Last, with the contents moved to the root: a re-applied seed workflow
+			// (moved into the folder, not created) is kept by this rollback, so the
+			// folder must not take it down.
+			await this.evalThreadRestore.deleteFolders(folders, folderIdMap, projectId, req.user);
 			throw error;
 		}
 		return {
@@ -1163,6 +1320,7 @@ export class InstanceAiController {
 			workflowIds: workflows.map((workflow) => workflow.id),
 			dataTableIds,
 			agentIds: createdAgentIds,
+			folderIds,
 		};
 	}
 

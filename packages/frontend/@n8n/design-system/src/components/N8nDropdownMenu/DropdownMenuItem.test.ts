@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render, waitFor } from '@testing-library/vue';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { DropdownMenuRoot, DropdownMenuContent } from 'reka-ui';
 
 import type { DropdownMenuItemProps } from './DropdownMenu.types';
@@ -20,7 +20,11 @@ function renderMenuItem<T = string>(
 		template: `
 			<DropdownMenuRoot :open="true">
 				<DropdownMenuContent>
-					<DropdownMenuItem v-bind="itemProps">
+					<DropdownMenuItem
+						v-bind="itemProps"
+						@select="$emit('select', $event)"
+						@update:sub-menu-open="$emit('update:subMenuOpen', $event)"
+					>
 						${options.slots?.['item-leading'] ? `<template #item-leading="slotProps">${options.slots['item-leading']}</template>` : ''}
 						${options.slots?.['item-label'] ? `<template #item-label="slotProps">${options.slots['item-label']}</template>` : ''}
 						${options.slots?.['item-trailing'] ? `<template #item-trailing="slotProps">${options.slots['item-trailing']}</template>` : ''}
@@ -79,6 +83,19 @@ describe('N8nDropdownMenuItem', () => {
 				const item = document.querySelector('[role="menuitem"]');
 				expect(item).toMatchSnapshot();
 			});
+		});
+
+		it('should apply the destructive class', async function appliesDestructiveClass() {
+			const wrapper = renderMenuItem({
+				id: 'delete',
+				label: 'Delete',
+				icon: { type: 'icon', value: 'trash-2' },
+				destructive: true,
+			});
+
+			const item = await wrapper.findByRole('menuitem');
+
+			expect(item.className).toContain('destructive');
 		});
 
 		it('should render checked item with checkmark', async () => {
@@ -282,6 +299,68 @@ describe('N8nDropdownMenuItem', () => {
 	});
 
 	describe('sub-menu', () => {
+		it('should select a selectable parent when its label is clicked', async () => {
+			const wrapper = renderMenuItem({
+				id: 'parent',
+				label: 'Parent',
+				selectable: true,
+				children: [{ id: 'child', label: 'Child' }],
+			});
+
+			await fireEvent.click(await wrapper.findByText('Parent'));
+
+			expect(wrapper.emitted('select')?.[0]).toEqual(['parent']);
+			expect(document.querySelectorAll('[role="menu"]')).toHaveLength(1);
+		});
+
+		it('should open a selectable parent from its chevron without selecting it', async () => {
+			const wrapper = renderMenuItem({
+				id: 'parent',
+				label: 'Parent',
+				selectable: true,
+				children: [{ id: 'child', label: 'Child' }],
+			});
+			const indicator = document.querySelector('[data-sub-menu-action="open"]')!;
+
+			await fireEvent.click(indicator);
+
+			await wrapper.findByText('Child');
+			expect(wrapper.emitted('select')).toBeUndefined();
+			expect(wrapper.emitted('update:subMenuOpen')?.at(-1)).toEqual([true]);
+		});
+
+		it('should select a selectable parent with Enter', async () => {
+			const wrapper = renderMenuItem({
+				id: 'parent',
+				label: 'Parent',
+				selectable: true,
+				children: [{ id: 'child', label: 'Child' }],
+			});
+			const parent = await wrapper.findByRole('menuitem', { name: 'Parent' });
+			parent.focus();
+
+			await userEvent.keyboard('{Enter}');
+
+			expect(wrapper.emitted('select')?.[0]).toEqual(['parent']);
+			expect(document.querySelectorAll('[role="menu"]')).toHaveLength(1);
+		});
+
+		it('should open a selectable parent with ArrowRight', async () => {
+			const wrapper = renderMenuItem({
+				id: 'parent',
+				label: 'Parent',
+				selectable: true,
+				children: [{ id: 'child', label: 'Child' }],
+			});
+			const parent = await wrapper.findByRole('menuitem', { name: 'Parent' });
+			parent.focus();
+
+			await userEvent.keyboard('{ArrowRight}');
+
+			await wrapper.findByText('Child');
+			expect(wrapper.emitted('select')).toBeUndefined();
+		});
+
 		it('should render as sub-menu trigger when loading is true', async () => {
 			renderMenuItem({
 				id: 'loading-parent',

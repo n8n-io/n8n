@@ -19,12 +19,7 @@ import {
 const DEFAULT_TRIGGER_DEPENDENCIES = ['n8n-core', '@n8n/db'];
 
 /** The rules `encryptionBoundaryConfig` enables, without the plugin prefix. */
-const DEFAULT_GUARDED_RULES = [
-	'no-legacy-cipher-methods',
-	'no-misplaced-cipher-primitives',
-	'no-deployment-key-delete',
-	'no-encryption-guardrail-disable',
-];
+const DEFAULT_GUARDED_RULES = ['no-encryption-guardrail-disable'];
 
 const BOUNDARY_CONFIG_PATH = 'packages/@n8n/eslint-config/src/configs/encryption-boundary.ts';
 
@@ -35,10 +30,10 @@ const CONFIG_FILENAMES = [
 	'eslint.config.ts',
 ];
 
-/** `nodeConfig` composes `encryptionBoundaryConfig`, so either import brings the rules in. */
+/** `backendConfig` composes the boundary, and `nodesConfig` composes `backendConfig`. */
 const BOUNDARY_IMPORT =
-	/import\s*\{([^}]*)\}\s*from\s+['"]@n8n\/eslint-config\/(?:node|encryption-boundary)['"]/;
-const BOUNDARY_EXPORTS = /^(nodeConfig|encryptionBoundaryConfig)(?:\s+as\s+(\w+))?$/;
+	/import\s*\{([^}]*)\}\s*from\s+['"]@n8n\/eslint-config\/(?:backend|nodes)['"]/;
+const BOUNDARY_EXPORTS = /^(backendConfig|nodesConfig)(?:\s+as\s+(\w+))?$/;
 
 /** A guarded rule configured to anything weaker than "error" in an ESLint config. */
 const DOWNGRADE =
@@ -60,14 +55,18 @@ const SOURCE_IGNORE = [
 ];
 
 /**
- * An ESLint directive comment: a disable in any of its three forms, or an
+ * A linter directive comment: a disable in any of its three forms, or an
  * inline configuration comment (`eslint rule: severity`). The captured form
  * must end right after its name, so `eslint-enable` and `eslint-env` do not
  * match. A quote right before the comment opener means directive text inside
  * a string literal (e.g. a code generator), not a directive.
+ *
+ * oxlint honours its own `oxlint-disable` spelling as well as ESLint's, so a
+ * scanner that knows only the ESLint form leaves a silent second way to
+ * suppress a guardrail in any package that runs oxlint.
  */
 const DIRECTIVE =
-	/(?<!['"`])(?:\/\/|\/\*)[ \t]*(eslint-disable(?:-next-line|-line)?|eslint)(?![\w-])(.*)$/;
+	/(?<!['"`])(?:\/\/|\/\*)[ \t]*((?:es|ox)lint-disable(?:-next-line|-line)?|(?:es|ox)lint)(?![\w-])(.*)$/;
 
 function stringArrayOption(value: unknown, fallback: string[]): string[] {
 	return Array.isArray(value) && value.every((entry): entry is string => typeof entry === 'string')
@@ -134,7 +133,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 					1,
 					1,
 					`${packageName} depends on ${trigger} but has no ESLint config, so the encryption boundary is not linted there.`,
-					'Add an eslint.config.mjs that composes `encryptionBoundaryConfig` from @n8n/eslint-config/encryption-boundary (or `nodeConfig`).',
+					'Add an eslint.config.mjs that extends `backendConfig` from @n8n/eslint-config/backend (or `nodesConfig`).',
 				),
 			];
 		}
@@ -149,7 +148,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 					1,
 					1,
 					`${packageName} depends on ${trigger} but its ESLint config does not compose the encryption boundary.`,
-					"Import `encryptionBoundaryConfig` from '@n8n/eslint-config/encryption-boundary' (or use `nodeConfig`) and add it to the exported config.",
+					"Extend `backendConfig` from '@n8n/eslint-config/backend' (or `nodesConfig`) and add it to the exported config.",
 				),
 			);
 		}
@@ -211,7 +210,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 		const body = rest.split('*/')[0];
 		const column = match.index + 1;
 
-		if (form === 'eslint') {
+		if (form === 'eslint' || form === 'oxlint') {
 			const rule = guardedRules.find((name) =>
 				new RegExp(`(?:^|[\\s/'"])${name}(?![\\w-])`).test(body),
 			);
@@ -220,7 +219,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 				file,
 				lineNumber,
 				column,
-				`An inline ESLint configuration comment reconfigures the encryption guardrail \`${rule}\`.`,
+				`An inline \`${form}\` configuration comment reconfigures the encryption guardrail \`${rule}\`.`,
 				`Remove the comment. Widen the boundary in ${BOUNDARY_CONFIG_PATH} instead.`,
 			);
 		}

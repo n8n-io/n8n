@@ -1,5 +1,7 @@
 import {
+	type AgentMessageAuthor,
 	type APPROVAL_TOOL_NAME,
+	type AgentBackgroundJobSignal,
 	type N8N_CHAT_ACTION_TOOL_NAME,
 	type WAIT_TOOL_NAME,
 } from '@n8n/api-types';
@@ -124,9 +126,12 @@ export interface ChatMessageAttachment {
 }
 
 export interface AgentsChatMessage {
+	backgroundJobSignal?: AgentBackgroundJobSignal;
 	id: string;
 	role: 'user' | 'assistant';
 	content: string;
+	/** Chat platform user who wrote a user turn in a shared integration thread. */
+	author?: AgentMessageAuthor;
 	renderParts?: ChatMessageRenderPart[];
 	thinkingSegments?: ThinkingSegment[];
 	/** Legacy aggregate kept for messages created before timed segments were added. */
@@ -138,6 +143,8 @@ export interface AgentsChatMessage {
 	attachments?: ChatMessageAttachment[];
 	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
 	executionId?: string;
+	/** Epoch ms when this turn was sent. Drives the chat's timestamp dividers. */
+	createdAt?: number;
 }
 
 export type ChatMessage = AgentsChatMessage;

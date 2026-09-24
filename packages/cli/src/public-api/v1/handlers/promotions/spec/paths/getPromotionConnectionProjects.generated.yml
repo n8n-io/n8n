@@ -11,7 +11,7 @@ parameters:
       type: string
     required: true
     description: The ID of the promotion connection.
-    name: id
+    name: promotionConnectionId
     in: path
 responses:
   '200':
@@ -25,6 +25,8 @@ responses:
               type: array
               items:
                 type: string
+                minLength: 1
+                maxLength: 36
           required:
             - projectIds
   '401':

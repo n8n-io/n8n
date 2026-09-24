@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import { computed, ref } from 'vue';
 import dateformat from 'dateformat';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -29,6 +30,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
+
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
@@ -124,7 +127,7 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const credentialHasDependents = computed(() => hasDependencies(props.data.id));
+const credentialHasDependents = computed(() => hasDependencies(props.data.id, 'credential'));
 
 function onClick() {
 	emit('click', props.data.id);
@@ -237,15 +240,15 @@ function moveResource() {
 		<template #header>
 			<N8nText tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
-				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+				<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 					{{ locale.baseText('credentials.item.readonly') }}
 				</N8nBadge>
-				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
+				<N8nBadge v-if="needsSetup" class="ml-3xs" variant="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
 			</N8nText>
 		</template>
-		<div :class="$style.cardDescription">
+		<div :class="[$style.cardDescription, { [$style.hasDescription]: data.description }]">
 			<N8nText color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
@@ -267,6 +270,18 @@ function moveResource() {
 				/>
 			</span>
 		</div>
+		<N8nTooltip v-if="credentialDescriptionsEnabled && data.description" placement="top" as-child>
+			<template #content>{{ data.description }}</template>
+			<N8nText
+				tag="p"
+				size="small"
+				color="text-light"
+				:class="$style.credentialDescription"
+				data-test-id="credential-card-description"
+			>
+				{{ data.description }}
+			</N8nText>
+		</N8nTooltip>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<DependencyPill
@@ -336,6 +351,20 @@ function moveResource() {
 	display: flex;
 	align-items: center;
 	padding: 0 0 var(--spacing--sm);
+}
+
+.hasDescription {
+	padding-bottom: var(--spacing--3xs);
+}
+
+.credentialDescription {
+	display: block;
+	width: 0;
+	min-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	padding-bottom: var(--spacing--sm);
 }
 
 .privateCredentialIndicator {

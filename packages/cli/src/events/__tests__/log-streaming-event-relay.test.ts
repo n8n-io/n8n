@@ -1282,6 +1282,7 @@ describe('LogStreamingEventRelay', () => {
 		it('should log on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
 				credentialName: 'My GitHub account',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1349,6 +1350,7 @@ describe('LogStreamingEventRelay', () => {
 		it('should log on `credentials-updated` event', () => {
 			const event: RelayEventMap['credentials-updated'] = {
 				credentialName: 'Rotated token',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user808',
 					email: 'updatecred@example.com',
@@ -3356,6 +3358,24 @@ describe('LogStreamingEventRelay', () => {
 					enabled: false,
 				},
 			});
+		});
+	});
+
+	describe('instance reporting events', () => {
+		it('should log on instance-report-delivered event', () => {
+			eventService.emit('instance-report-delivered');
+
+			expect(eventBus.send).toHaveBeenCalledWith(
+				expect.objectContaining({ eventName: 'n8n.instanceReporting.success' }),
+			);
+		});
+
+		it('should log on instance-report-failed event', () => {
+			eventService.emit('instance-report-failed');
+
+			expect(eventBus.send).toHaveBeenCalledWith(
+				expect.objectContaining({ eventName: 'n8n.instanceReporting.failed' }),
+			);
 		});
 	});
 });

@@ -158,8 +158,10 @@ function buildRequestBody(
 ): NonNullable<RouteConfig['request']>['body'] {
 	if (!route.requestBodyDto) return undefined;
 
+	const required = route.requestBodyRequired ?? isRequestBodyRequired(route.requestBodyDto);
+
 	return {
-		...(isRequestBodyRequired(route.requestBodyDto) ? { required: true } : {}),
+		...(required ? { required: true } : {}),
 		content: {
 			'application/json': {
 				schema: route.requestBodyDto.schema,

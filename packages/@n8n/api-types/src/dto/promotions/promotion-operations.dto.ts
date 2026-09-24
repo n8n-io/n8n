@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
+import {
+	promotionBindingPreflightResultSchema,
+	promotionBindingWarningSchema,
+} from './promotion-binding-preflight.dto';
 
 export class PromotePackageDto extends Z.class(
 	{
@@ -35,8 +40,8 @@ export const promotePackageCountsSchema = z.object({
 
 /** Describes the instance that handled the request, not any other instance. */
 export const promotePackageResultSchema = z.object({
-	connectionId: z.string(),
-	configId: z.string(),
+	connectionId: n8nIdSchema,
+	configId: n8nIdSchema,
 	counts: promotePackageCountsSchema,
 	git: promotionGitResultSchema,
 });
@@ -79,11 +84,49 @@ export const applyPackageCountsSchema = z.object({
 	}),
 });
 
-export const applyPackageResultSchema = z.object({
-	connectionId: z.string(),
-	configId: z.string(),
-	counts: applyPackageCountsSchema,
+const expectedSourceSchema = z
+	.object({
+		configId: n8nIdSchema,
+		branchName: z.string().min(1),
+		commitSha: z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/),
+	})
+	.strict();
+
+/** Apply may pin the reviewed source. Without it, the branch tip is applied. */
+export class ApplyPackageDto extends Z.class(
+	{ expectedSource: expectedSourceSchema.optional() },
+	{ strict: true },
+) {}
+
+/** Continue must name the source that the paused Apply reported. */
+export class ContinueApplyPackageDto extends Z.class(
+	{ expectedSource: expectedSourceSchema },
+	{ strict: true },
+) {}
+
+const applyPackageIdentitySchema = z.object({
+	connectionId: n8nIdSchema,
+	configId: n8nIdSchema,
 	git: promotionGitResultSchema,
 });
 
-export class ApplyPackageResultDto extends Z.class(applyPackageResultSchema.shape) {}
+export const applyPackageResultSchema = z.discriminatedUnion('status', [
+	applyPackageIdentitySchema.extend({
+		status: z.literal('applied'),
+		counts: applyPackageCountsSchema,
+		warnings: z.array(promotionBindingWarningSchema),
+	}),
+	applyPackageIdentitySchema.extend({
+		status: z.literal('blocked'),
+		preflight: promotionBindingPreflightResultSchema,
+	}),
+	applyPackageIdentitySchema.extend({ status: z.literal('source-changed') }),
+]);
+
+export const ApplyPackageResultDto = {
+	name: 'ApplyPackageResultDto',
+	schema: applyPackageResultSchema,
+	parse: (value: unknown) => applyPackageResultSchema.parse(value),
+};
+
+export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;

@@ -110,6 +110,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 
 		expect(wrapper.findComponent({ name: 'AgentIdentityHeader' }).props('disabled')).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentInfoPanel' }).props('disabled')).toBe(true);
+		expect(wrapper.getComponent({ name: 'AgentTriggersSection' }).props('disabled')).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('disabled')).toBe(
 			true,
 		);
@@ -178,7 +179,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 		});
 
 		expect(wrapper.findComponent({ name: 'AgentSubAgentsPanel' }).props('disabled')).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).props('disabled')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).props('disabled')).toBe(true);
 	});
 });

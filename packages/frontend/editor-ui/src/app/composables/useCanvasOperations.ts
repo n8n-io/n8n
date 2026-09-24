@@ -67,6 +67,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { isNodeTypeRestricted } from '@n8n/frontend-module-type-availability-policies';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
@@ -149,7 +150,10 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
+import type {
+	CanvasLayoutEvent,
+	NodeLayoutResult,
+} from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { isChatNode } from '@/app/utils/aiUtils';
@@ -305,7 +309,7 @@ export function useCanvasOperations() {
 	 */
 
 	function tidyUp(
-		{ result, source, target }: CanvasLayoutEvent,
+		{ result, source, target, targetNodeCount }: CanvasLayoutEvent,
 		{
 			trackEvents = true,
 			trackHistory = true,
@@ -316,21 +320,18 @@ export function useCanvasOperations() {
 			trackBulk?: boolean;
 		} = {},
 	) {
-		updateNodesPosition(
-			result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
-			{ trackBulk, trackHistory },
-		);
+		updateNodesLayout(result.nodes, { trackBulk, trackHistory });
 
 		if (trackEvents) {
-			trackTidyUp({ result, source, target });
+			trackTidyUp({ result, source, target, targetNodeCount });
 		}
 	}
 
-	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
+	function trackTidyUp({ result, source, target, targetNodeCount }: CanvasLayoutEvent) {
 		telemetry.track('User tidied up canvas', {
 			source,
 			target,
-			nodes_count: result.nodes.length,
+			nodes_count: targetNodeCount ?? result.nodes.length,
 		});
 	}
 
@@ -338,13 +339,84 @@ export function useCanvasOperations() {
 		events: CanvasNodeMoveEvent[],
 		{ trackHistory = false, trackBulk = true } = {},
 	) {
+		const changedEvents = events.filter(({ id, position }) => {
+			const node = workflowDocumentStore.value.getNodeById(id);
+			if (!node) return false;
+			return node.position[0] !== position.x || node.position[1] !== position.y;
+		});
+		if (changedEvents.length === 0) {
+			return;
+		}
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
-		events.forEach(({ id, position }) => {
+		changedEvents.forEach(({ id, position }) => {
 			updateNodePosition(id, position, { trackHistory });
 		});
+
+		if (trackHistory && trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
+	function getStickyParametersForLayout(node: INodeUi, layoutNode: NodeLayoutResult) {
+		if (node.type !== STICKY_NODE_TYPE) return undefined;
+		if (layoutNode.width === undefined || layoutNode.height === undefined) return undefined;
+		if (
+			node.parameters.width === layoutNode.width &&
+			node.parameters.height === layoutNode.height
+		) {
+			return undefined;
+		}
+
+		return {
+			...node.parameters,
+			width: layoutNode.width,
+			height: layoutNode.height,
+		};
+	}
+
+	function updateNodesLayout(
+		layoutNodes: NodeLayoutResult[],
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
+		const updates = layoutNodes.flatMap((layoutNode) => {
+			const node = workflowDocumentStore.value.getNodeById(layoutNode.id);
+			if (!node) return [];
+
+			const positionChanged =
+				node.position[0] !== layoutNode.x || node.position[1] !== layoutNode.y;
+			const parameters = getStickyParametersForLayout(node, layoutNode);
+			if (!positionChanged && !parameters) return [];
+
+			return [
+				{
+					layoutNode,
+					node,
+					parameters,
+					positionChanged,
+				},
+			];
+		});
+		if (updates.length === 0) return;
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		for (const { layoutNode, node, parameters, positionChanged } of updates) {
+			if (positionChanged) {
+				updateNodePosition(layoutNode.id, { x: layoutNode.x, y: layoutNode.y }, { trackHistory });
+			}
+			if (parameters) {
+				replaceNodeParameters(layoutNode.id, node.parameters, parameters, {
+					trackHistory,
+					trackBulk: false,
+				});
+			}
+		}
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -363,6 +435,9 @@ export function useCanvasOperations() {
 
 		const oldPosition: XYPosition = [...node.position];
 		const newPosition: XYPosition = [position.x, position.y];
+		if (oldPosition[0] === newPosition[0] && oldPosition[1] === newPosition[1]) {
+			return;
+		}
 
 		workflowDocumentStore.value.setNodePositionById(id, newPosition);
 
@@ -945,7 +1020,7 @@ export function useCanvasOperations() {
 		);
 
 		// Pinning copies the displayed output; when that output was simulated by
-		// the AI Assistant during verification it is fabricated sample data, so
+		// the n8n Assistant during verification it is fabricated sample data, so
 		// adopting it needs the same explicit opt-in as the NDV pin button.
 		if (nextStatePinned) {
 			const displayedExecutionId = useWorkflowExecutionStateStore(
@@ -3418,8 +3493,12 @@ export function useCanvasOperations() {
 		return result.nodes?.map((node) => node.id).filter(isPresent) ?? [];
 	}
 
-	async function copyNodes(ids: string[]) {
-		const workflowData = deepCopy(getNodesToSave(workflowDocumentStore.value.getNodesByIds(ids)));
+	async function copyNodes(ids: string[]): Promise<boolean> {
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		const hasRestrictedNode = nodes.some((node) => isNodeTypeRestricted(node.type));
+		if (hasRestrictedNode) return false;
+
+		const workflowData = deepCopy(getNodesToSave(nodes));
 
 		workflowData.meta = {
 			...workflowData.meta,
@@ -3433,10 +3512,13 @@ export function useCanvasOperations() {
 			node_types: workflowData.nodes.map((node) => node.type),
 			workflow_id: workflowDocumentStore.value.workflowId,
 		});
+
+		return true;
 	}
 
 	async function cutNodes(ids: string[]) {
-		await copyNodes(ids);
+		if (!(await copyNodes(ids))) return;
+
 		deleteNodes(ids);
 	}
 

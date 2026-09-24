@@ -4,6 +4,8 @@ export const PROMOTION_KEY_COMMENT = 'n8n promotions';
 export const GIT_DEFAULT_COMMIT_NAME = 'n8n user';
 export const GIT_DEFAULT_COMMIT_EMAIL = 'n8n@example.com';
 
+export const PROMOTION_BRANCH_PREFIX = 'n8n-promotion/';
+
 /**
  * Subfolder of the checkout that holds the n8n-managed package. Keeping it
  * separate from the repository root leaves `.git` and any files the user commits
@@ -34,3 +36,5 @@ export const HTTP_LOW_SPEED_TIME_SECONDS = 30;
 // this long, so clone() always rejects and its cleanup path runs. Clone is run
 // with --progress so a healthy transfer keeps feeding this timer.
 export const GIT_COMMAND_STALL_TIMEOUT_MS = 60_000;
+
+export const GIT_READ_CONCURRENCY = 4;

@@ -1,3 +1,5 @@
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+import type { InstanceAiPermissions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type {
@@ -370,7 +372,7 @@ describe('InstanceAiSettingsService', () => {
 					expect.objectContaining({
 						type: 'openAiApi',
 						usageScope: 'instance',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 					}),
 					adminUser,
 					operationContext,
@@ -392,7 +394,7 @@ describe('InstanceAiSettingsService', () => {
 					order.push('hooks');
 					return {
 						id: '',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: 'encrypted',
 					} as never;
@@ -412,7 +414,7 @@ describe('InstanceAiSettingsService', () => {
 				expect(order.slice(0, 2)).toEqual(['hooks', 'transaction']);
 				expect(credentialsService.runInstanceCredentialHooks).toHaveBeenCalledWith('create', {
 					id: null,
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'k' },
 				});
@@ -421,7 +423,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should run the update hook when the connection targets the current credential', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'cred-1',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'k2' },
 				});
@@ -433,7 +435,7 @@ describe('InstanceAiSettingsService', () => {
 
 				expect(credentialsService.runInstanceCredentialHooks).toHaveBeenCalledWith('update', {
 					id: 'cred-1',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'k2' },
 				});
@@ -442,7 +444,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should unredact updates before running credential hooks', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'cred-1',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'saved-key' },
 				});
@@ -471,13 +473,13 @@ describe('InstanceAiSettingsService', () => {
 				instanceCredentialBroker.resolveForUse
 					.mockResolvedValueOnce({
 						id: 'cred-1',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'k1' },
 					})
 					.mockResolvedValueOnce({
 						id: 'cred-2',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'k2' },
 					});
@@ -495,7 +497,7 @@ describe('InstanceAiSettingsService', () => {
 				instanceCredentialBroker.resolveForUse
 					.mockResolvedValueOnce({
 						id: 'cred-1',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'saved-key' },
 					})
@@ -522,13 +524,13 @@ describe('InstanceAiSettingsService', () => {
 				instanceCredentialBroker.resolveForUse
 					.mockResolvedValueOnce({
 						id: 'cred-1',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'old-key' },
 					})
 					.mockResolvedValueOnce({
 						id: 'cred-1',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'new-key' },
 					});
@@ -563,7 +565,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should update the existing credential in place when the type is unchanged', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'cred-1',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'k2' },
 				});
@@ -576,7 +578,7 @@ describe('InstanceAiSettingsService', () => {
 					adminUser,
 					'cred-1',
 					{
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'k2' },
 					},
@@ -597,7 +599,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should replace the assignment without deleting the reusable old credential', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'old-cred',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'k' },
 				});
@@ -621,7 +623,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should switch the sandbox provider and clear the other slot', async () => {
 				instanceCredentialBroker.resolveForUse.mockImplementation(async (policy) =>
 					policy.id === 'instance-ai:sandbox:n8n'
-						? { id: 'old-n8n', name: 'AI Assistant sandbox', type: 'httpHeaderAuth', data: {} }
+						? { id: 'old-n8n', name: 'n8n Assistant sandbox', type: 'httpHeaderAuth', data: {} }
 						: null,
 				);
 				instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
@@ -747,7 +749,7 @@ describe('InstanceAiSettingsService', () => {
 					.mockRejectedValueOnce(new UnprocessableRequestError('not valid'))
 					.mockResolvedValue({
 						id: 'new-cred',
-						name: 'AI Assistant model',
+						name: 'n8n Assistant model',
 						type: 'openAiApi',
 						data: { apiKey: 'k' },
 					});
@@ -791,7 +793,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should reject an inline model connection whose saved data fails validation', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValueOnce(null).mockResolvedValue({
 					id: 'new-cred',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'anthropicApi',
 					data: {},
 				});
@@ -1011,7 +1013,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should reject incomplete Daytona credentials', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'daytona-cred',
-					name: 'AI Assistant sandbox',
+					name: 'n8n Assistant sandbox',
 					type: 'daytonaApi',
 					data: { apiUrl: 'https://daytona.example.com', apiKey: ' ' },
 				});
@@ -1027,7 +1029,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should reject invalid SearXNG URLs', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'search-cred',
-					name: 'AI Assistant web search',
+					name: 'n8n Assistant web search',
 					type: 'searXngApi',
 					data: { apiUrl: 'not-a-url' },
 				});
@@ -2273,6 +2275,83 @@ describe('InstanceAiSettingsService', () => {
 				}),
 				['key'],
 			);
+		});
+	});
+
+	describe('executeNode permission', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		const persistPermissions = async (permissions: Record<string, string>) => {
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ permissions }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+		};
+
+		it('defaults to require_approval', async () => {
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('require_approval');
+		});
+
+		it('persists and reflects an update', async () => {
+			const result = await service.updateAdminSettings({
+				permissions: { executeNode: 'always_allow' },
+			});
+
+			expect(result.permissions.executeNode).toBe('always_allow');
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('always_allow');
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"executeNode":"always_allow"'),
+				}),
+				['key'],
+			);
+		});
+
+		it('inherits a blocked runWorkflow from settings saved before the scope existed', async () => {
+			await persistPermissions({ runWorkflow: 'blocked' });
+
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('blocked');
+		});
+
+		it('does not inherit an always_allow runWorkflow', async () => {
+			await persistPermissions({ runWorkflow: 'always_allow' });
+
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('require_approval');
+		});
+
+		it('keeps an explicitly persisted value over the runWorkflow fallback', async () => {
+			await persistPermissions({ runWorkflow: 'blocked', executeNode: 'always_allow' });
+
+			expect((await service.getAdminSettings()).permissions.executeNode).toBe('always_allow');
+		});
+	});
+
+	describe('createPreference permission', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		it('fills createPreference with its default when a persisted row predates the key', async () => {
+			// Reuse the existing persisted-settings fixture pattern in this file: a
+			// stored permissions object that omits `createPreference`.
+			const persisted: Partial<InstanceAiPermissions> = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
+			delete persisted.createPreference;
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ permissions: persisted }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+
+			expect(service.getPermissions().createPreference).toBe('always_allow');
 		});
 	});
 

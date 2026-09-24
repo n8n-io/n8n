@@ -259,6 +259,25 @@ describe('createRefreshingAuthFetch', () => {
 			expect(current.get('x-api-key')).toBe('secret');
 		});
 
+		it('keeps non-auth headers when refreshHeaders returns only the new authorization', async () => {
+			const baseFetch = vi
+				.fn()
+				.mockResolvedValueOnce(makeUnauthorized())
+				.mockResolvedValueOnce(new Response('ok'));
+			const refreshHeaders = vi.fn().mockResolvedValue({ Authorization: 'Bearer fresh' });
+			const fetchWithAuth = createRefreshingAuthFetch({
+				baseFetch,
+				initialHeaders: { Authorization: 'Bearer stale', 'User-Agent': 'partner-agent' },
+				refreshHeaders,
+			});
+
+			await fetchWithAuth('https://example.com/mcp');
+
+			const retried = new Headers((baseFetch.mock.calls[1][1] as RequestInit).headers);
+			expect(retried.get('authorization')).toBe('Bearer fresh');
+			expect(retried.get('user-agent')).toBe('partner-agent');
+		});
+
 		it('reuses the refreshed token on later requests without refreshing again', async () => {
 			const baseFetch = vi
 				.fn()

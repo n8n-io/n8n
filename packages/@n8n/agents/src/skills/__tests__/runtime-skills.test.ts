@@ -519,6 +519,7 @@ Use the workflow SDK.`,
 			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
 		).build();
 		const { instructions } = runtimeConfig;
+		expect(runtimeConfig.skillSource).toBe(source);
 
 		expect(prepare).toHaveBeenCalledTimes(1);
 		expect(instructions).toContain('name: "Summarize notes"');

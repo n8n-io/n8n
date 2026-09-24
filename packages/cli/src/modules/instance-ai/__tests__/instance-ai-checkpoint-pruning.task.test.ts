@@ -1,6 +1,4 @@
 import type { InstanceAiConfig } from '@n8n/config';
-import type { IntervalSchedule } from '@n8n/scheduler';
-import { validateSchedule } from '@n8n/scheduler';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiCheckpointPruningTask } from '../instance-ai-checkpoint-pruning.task';
@@ -15,27 +13,18 @@ describe('InstanceAiCheckpointPruningTask', () => {
 		expect(task.name).toBe('instance-ai-checkpoint-pruning');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
 		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(false);
-		expect(task.runOnTakeover).toBe(true);
+		expect(task.placement).toEqual({ scope: 'cluster', durable: false, runOnTakeover: true });
 		expect(task.retryDelaySeconds).toBe(30);
 	});
 
-	it.each([
-		{ pruneInterval: 1_500, expected: 2 },
-		{ pruneInterval: 500, expected: 1 },
-		{ pruneInterval: 1, expected: 1 },
-	])(
-		'should schedule a whole number of seconds for a prune interval of $pruneInterval ms',
-		({ pruneInterval, expected }) => {
-			const task = new InstanceAiCheckpointPruningTask(
-				mock<InstanceAiConfig>({ pruneInterval }),
-				instanceAiService,
-			);
+	it('should declare a fractional prune interval as is', () => {
+		const task = new InstanceAiCheckpointPruningTask(
+			mock<InstanceAiConfig>({ pruneInterval: 1_500 }),
+			instanceAiService,
+		);
 
-			expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: expected });
-			expect(() => validateSchedule(task.schedule as IntervalSchedule)).not.toThrow();
-		},
-	);
+		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 1.5 });
+	});
 
 	it('should prune expired data on run and pass the signal through', async () => {
 		const { signal } = new AbortController();

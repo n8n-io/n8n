@@ -8,7 +8,7 @@ import path from 'path';
 
 import currentsConfig from './currents.config';
 import { getProjects } from './playwright-projects';
-import { getBackendUrl, getFrontendUrl, getPortFromUrl } from './utils/url-helper';
+import { getBackendUrl, getFrontendUrl, getPortFromUrl, getReadinessUrl } from './utils/url-helper';
 
 const IS_CI = !!process.env.CI;
 const IS_DEV = !!process.env.N8N_EDITOR_URL;
@@ -68,10 +68,19 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 		process.env.N8N_TEST_USER_FOLDER =
 			typeof envUserFolder === 'string' ? envUserFolder : USER_FOLDER;
 	}
+	// Probe readiness, not a static asset: the startup middleware answers assets
+	// with 200 while the migrations still run, so global setup could reset the
+	// database before n8n registered the E2E controller.
+	const envHealthEndpoint: unknown =
+		getTestEnv().N8N_ENDPOINT_HEALTH ?? process.env.N8N_ENDPOINT_HEALTH;
 	webServer.push({
 		command: 'pnpm --dir ../../.. start',
-		url: `${BACKEND_URL}/favicon.ico`,
-		timeout: 30000,
+		url: getReadinessUrl(
+			BACKEND_URL,
+			typeof envHealthEndpoint === 'string' ? envHealthEndpoint : undefined,
+		),
+		// Readiness lands later than a bound port: allow for the migrations too.
+		timeout: 120000,
 		reuseExistingServer: IS_DEV ? false : true,
 		env: {
 			DB_SQLITE_POOL_SIZE: '40',

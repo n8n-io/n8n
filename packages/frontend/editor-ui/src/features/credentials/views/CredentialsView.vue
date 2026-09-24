@@ -97,6 +97,7 @@ const allCredentials = computed<Resource[]>(() =>
 		resourceType: 'credential',
 		id: credential.id,
 		name: credential.name,
+		description: credential.description,
 		value: '',
 		updatedAt: credential.updatedAt,
 		createdAt: credential.createdAt,
@@ -232,17 +233,14 @@ const initialize = async () => {
 	const isVarsEnabled =
 		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
 
-	const isPersonalView =
-		!overview.isSharedSubPage &&
-		overview.isProjectsSubPage &&
-		route?.params?.projectId === projectsStore.personalProject?.id;
-
 	const loadPromises = [
 		credentialsStore.fetchAllCredentials({
 			projectId: route?.params?.projectId as string | undefined,
 			includeScopes: true,
 			onlySharedWithMe: overview.isSharedSubPage,
-			includeGlobal: !isPersonalView, // don't include global credentials if personal
+			// a credential shared with all users and projects belongs in every
+			// project list, the personal one included
+			includeGlobal: true,
 			externalSecretsStore: filters.value.externalSecretsStore,
 		}),
 		credentialsStore.fetchCredentialTypes(false),

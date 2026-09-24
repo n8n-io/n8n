@@ -13,6 +13,8 @@ import { sleep } from '@n8n/utils/sleep';
 import { OperationalError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+
 let dbLockService: DbLockService;
 let isPostgres: boolean;
 
@@ -85,6 +87,13 @@ describe('DbLockService', () => {
 			const newCredentialId = randomUUID();
 			const settingsKey = `test.atomic-settings.${randomUUID()}`;
 
+			// The credential writes are sealed; with no check registered, enforcement clears.
+			const policyCleared = await Container.get(PolicyEnforcementService).enforceCredentialSave({
+				credential: { id: null, type: 'openAiApi' },
+				storedCredential: null,
+				projectId: null,
+			});
+
 			await expect(
 				dbLockService.withLockContext(DbLock.TEST, async (ctx) => {
 					await credentialsRepository.saveInstanceCredential(
@@ -95,7 +104,7 @@ describe('DbLockService', () => {
 							data: 'encrypted',
 							usageScope: 'instance',
 						}),
-						ctx,
+						{ ...ctx, policyCleared },
 					);
 					await credentialsRepository.deleteInstanceCredentialIfUnassigned(oldCredential.id, ctx);
 					await settingsRepository.upsertByKey(settingsKey, '{}', false, ctx);
@@ -121,6 +130,11 @@ describe('DbLockService', () => {
 				}),
 			);
 			const settingsKey = `test.atomic-settings.${randomUUID()}`;
+			const policyCleared = await Container.get(PolicyEnforcementService).enforceCredentialSave({
+				credential: { id: credential.id, type: credential.type },
+				storedCredential: { id: credential.id, type: credential.type },
+				projectId: null,
+			});
 
 			await expect(
 				dbLockService.withLockContext(DbLock.TEST, async (ctx) => {
@@ -132,7 +146,7 @@ describe('DbLockService', () => {
 							type: credential.type,
 							data: 'new-encrypted',
 						},
-						ctx,
+						{ ...ctx, policyCleared },
 					);
 					await settingsRepository.upsertByKey(settingsKey, '{}', false, ctx);
 					throw new Error('rollback both');

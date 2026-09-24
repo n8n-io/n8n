@@ -2,6 +2,8 @@ type: object
 properties:
   id:
     type: string
+    minLength: 1
+    maxLength: 36
   name:
     type: string
   scope:
@@ -28,6 +30,8 @@ properties:
     properties:
       id:
         type: string
+        minLength: 1
+        maxLength: 36
       name:
         type: string
       type:
@@ -60,6 +64,8 @@ properties:
         properties:
           id:
             type: string
+            minLength: 1
+            maxLength: 36
           name:
             type: string
           createdAt:
@@ -68,6 +74,16 @@ properties:
           updatedAt:
             type: string
             format: date-time
+          checkout:
+            type: object
+            properties:
+              hasCheckout:
+                type: boolean
+              matchesConfig:
+                type: boolean
+            required:
+              - hasCheckout
+              - matchesConfig
           settings:
             type: object
             properties:
@@ -88,12 +104,15 @@ properties:
           - name
           - createdAt
           - updatedAt
+          - checkout
           - settings
       promote:
         type: object
         properties:
           id:
             type: string
+            minLength: 1
+            maxLength: 36
           name:
             type: string
           createdAt:
@@ -102,6 +121,16 @@ properties:
           updatedAt:
             type: string
             format: date-time
+          checkout:
+            type: object
+            properties:
+              hasCheckout:
+                type: boolean
+              matchesConfig:
+                type: boolean
+            required:
+              - hasCheckout
+              - matchesConfig
           settings:
             type: object
             properties:
@@ -125,6 +154,7 @@ properties:
           - name
           - createdAt
           - updatedAt
+          - checkout
           - settings
   createdAt:
     type: string

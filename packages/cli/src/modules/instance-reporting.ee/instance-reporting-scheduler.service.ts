@@ -1,0 +1,235 @@
+import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+import { strict } from 'node:assert';
+
+import { EventService } from '@/events/event.service';
+
+import type { InstanceMonitoringReport } from './database/entities/instance-monitoring-report';
+import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
+import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
+import { InstanceReportingService, RETRY_DELAY_MS } from './instance-reporting.service';
+
+const MINUTES_PER_DAY = 24 * 60;
+
+/**
+ * Fires the daily instance report at this instance's configured report time.
+ *
+ * Uses a plain in-process timer, the same way pruning and compaction do,
+ * because the durable scheduler has no support for system-owned jobs yet. It is
+ * the intended home for this job once it does, so this class does one thing:
+ * decide *when*, then call {@link InstanceReportingService.sendReport}.
+ *
+ * Durability comes from elsewhere instead:
+ *
+ * - **Leader-only.** In multi-main, followers hold no timer, so exactly one
+ *   instance reports. Handover moves the timer with leadership.
+ * - **Catch-up over precision.** Every tick asks the database whether today's
+ *   report has settled rather than trusting that a timer fired, so a restart or
+ *   handover that straddles the report time still reports that day.
+ * - **Bounded retry, held in the database.** The report row carries the attempts
+ *   made and when the last one finished, so a restart resumes that budget rather
+ *   than starting a fresh one.
+ */
+@Service()
+export class InstanceReportingScheduler {
+	private timeout: NodeJS.Timeout | undefined;
+
+	private isShuttingDown = false;
+
+	private readonly onServerStarted = () => this.start();
+
+	constructor(
+		private readonly reportingService: InstanceReportingService,
+		private readonly reportRepository: InstanceMonitoringReportRepository,
+		private readonly settingsService: InstanceReportingSettingsService,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly eventService: EventService,
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('instance-reporting');
+	}
+
+	/**
+	 * Start reporting if this instance leads.
+	 *
+	 * Runs from the module entrypoint, which checks that the module has what it
+	 * needs before it loads this class at all, and which the registry calls after
+	 * `initOrchestration` has settled this instance's role, so `isLeader` is
+	 * already meaningful here.
+	 */
+	init(): void {
+		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
+
+		// Defer the first tick until the server has finished starting. A boot
+		// catch-up report can send right away, but log streaming module was not properly initialized
+		if (this.instanceSettings.isLeader) {
+			this.eventService.once('server-started', this.onServerStarted);
+		}
+	}
+
+	get isEnabled(): boolean {
+		return this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader;
+	}
+
+	/**
+	 * Begin reporting. The first tick runs immediately: it reports if this day's
+	 * slot has already passed and nothing was delivered for it, then arms the timer
+	 * for the next slot. That is what makes a restart, or taking over from a main
+	 * that died before its slot, still report the day.
+	 */
+	@OnLeaderTakeover()
+	start(): void {
+		if (!this.isEnabled || this.isShuttingDown || this.timeout !== undefined) return;
+
+		this.logger.debug('Started the instance reporting timer');
+		void this.tick();
+	}
+
+	@OnLeaderStepdown()
+	stop(): void {
+		this.eventService.off('server-started', this.onServerStarted);
+
+		if (this.timeout === undefined) return;
+
+		clearTimeout(this.timeout);
+		this.timeout = undefined;
+		this.logger.debug('Stopped the instance reporting timer');
+	}
+
+	@OnShutdown()
+	shutdown(): void {
+		this.isShuttingDown = true;
+		this.stop();
+	}
+
+	/**
+	 * One pass: report if due, then arm the next one. Never throws — a pass that
+	 * fails still re-arms, otherwise one bad day would stop reporting for good.
+	 */
+	private async tick(): Promise<void> {
+		try {
+			const reportTime = await this.settingsService.getReportTime();
+
+			// Wait out the gap between retries, but never past the pending row's own
+			// next slot — at that slot it is skipped, not retried. A wait that reaches
+			// the slot collapses to zero, so this pass falls through to reportIfDue,
+			// which skips the stale row and sends a fresh report.
+			const waitMs = Math.min(
+				await this.reportingService.msUntilRetryAllowed(new Date()),
+				await this.msUntilNextSlot(reportTime),
+			);
+			if (waitMs > 0) {
+				this.scheduleNext(waitMs);
+				return;
+			}
+
+			// A failed delivery retries; the row decides when the attempts run out,
+			// after which the day reads as settled and this waits for the next slot.
+			if ((await this.reportIfDue(reportTime)) === 'failed') {
+				this.scheduleNext(Math.min(RETRY_DELAY_MS, await this.msUntilNextSlot(reportTime)));
+				return;
+			}
+
+			this.scheduleNext(msUntilNext(reportTime, new Date()));
+		} catch (error) {
+			// Reaching here means the report time could not even be resolved (e.g. the
+			// database is briefly unavailable), so retry rather than stall until tomorrow.
+			this.logger.error('Instance reporting pass failed', { error });
+			this.scheduleNext(RETRY_DELAY_MS);
+		}
+	}
+
+	/**
+	 * Send the report when it is due.
+	 *
+	 * A pending report is a retry. Resend it now, also after midnight; it holds
+	 * frozen data, so the slot does not apply to it. But once its own next slot
+	 * has passed, its cycle is over: stop trying and let a new report cover its
+	 * day. A new report waits for the slot, which makes sure the day is complete
+	 * before the code measures it.
+	 */
+	private async reportIfDue(reportTime: string): Promise<'sent' | 'skipped' | 'failed'> {
+		const now = new Date();
+		const pending = await this.reportRepository.findPending();
+
+		if (pending) {
+			if (pendingIsStale(pending, reportTime, now)) {
+				await this.reportingService.skip(pending.id, pending.attempts, 'slot-passed');
+			} else {
+				return await this.trySend();
+			}
+		}
+
+		// A new report waits for the slot and runs only when the day is not settled.
+		if (now.getTime() < slotOn(reportTime, now)) return 'skipped';
+		if (await this.reportRepository.hasSettledToday(now)) return 'skipped';
+		return await this.trySend();
+	}
+
+	/**
+	 * Milliseconds until the pending row's own next slot, or `Infinity` when no row
+	 * is pending. Capping a retry sleep with this keeps the timer from sleeping past
+	 * the slot, where the row is skipped and a fresh report takes over — otherwise a
+	 * slot near the end of the UTC day would defer the next report by almost a day.
+	 */
+	private async msUntilNextSlot(reportTime: string): Promise<number> {
+		const pending = await this.reportRepository.findPending();
+		if (!pending) return Number.POSITIVE_INFINITY;
+
+		const nextSlot =
+			slotOn(reportTime, pending.createdAt) + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
+
+		return nextSlot - Date.now();
+	}
+
+	private async trySend(): Promise<'sent' | 'failed'> {
+		try {
+			await this.reportingService.sendReport();
+			return 'sent';
+		} catch (error) {
+			this.logger.warn('Failed to deliver the instance report', { error });
+			return 'failed';
+		}
+	}
+
+	private scheduleNext(delayMs: number): void {
+		if (!this.isEnabled || this.isShuttingDown) return;
+
+		this.timeout = setTimeout(async () => await this.tick(), delayMs);
+	}
+}
+
+/**
+ * Whether a pending row sat unsent past its own next slot. Its cycle is then
+ * over, so a new report covers its day instead of a late resend.
+ */
+function pendingIsStale(report: InstanceMonitoringReport, reportTime: string, now: Date): boolean {
+	const nextSlot =
+		slotOn(reportTime, report.createdAt) + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
+
+	return now.getTime() >= nextSlot;
+}
+
+/** Epoch ms of `reportTime` on `now`'s UTC day. */
+function slotOn(reportTime: string, now: Date): number {
+	const [hour, minute] = reportTime.split(':').map(Number);
+
+	return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour, minute, 0, 0);
+}
+
+/**
+ * Milliseconds until the next `reportTime` strictly after `now` — later today if
+ * the slot is still ahead, otherwise tomorrow. Recomputed from the wall clock on
+ * every pass, so a clock correction shifts the next fire instead of accumulating
+ * drift.
+ */
+function msUntilNext(reportTime: string, now: Date): number {
+	const today = slotOn(reportTime, now);
+	const next =
+		today > now.getTime() ? today : today + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
+
+	return next - now.getTime();
+}

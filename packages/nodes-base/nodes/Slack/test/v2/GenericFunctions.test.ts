@@ -460,6 +460,45 @@ describe('Slack V2 > GenericFunctions', () => {
 			(sleep as Mock).mockResolvedValue(undefined);
 		});
 
+		it.each([false, true])(
+			'reports Slack API errors with HTTP 200, after a page: %s',
+			async (afterPage) => {
+				const request = vi.fn();
+				if (afterPage) {
+					request.mockResolvedValueOnce({
+						statusCode: 200,
+						body: {
+							ok: true,
+							channels: [{ id: 'ch1' }],
+							response_metadata: { next_cursor: 'next' },
+						},
+					});
+				}
+				request.mockResolvedValue({
+					statusCode: 200,
+					body: { ok: false, error: 'missing_scope', needed: 'channels:read' },
+				});
+				mockExecuteFunctions.helpers.requestWithAuthentication = request;
+
+				await expect(
+					slackApiRequestAllItemsWithRateLimit(
+						mockExecuteFunctions,
+						'channels',
+						'GET',
+						'/conversations.list',
+						{},
+						{},
+						{ onFail: 'stop' },
+					),
+				).rejects.toMatchObject({
+					message: 'Your Slack credential is missing required Oauth Scopes',
+					description: 'Add the following scope(s) to your Slack App: channels:read',
+				});
+				expect(request).toHaveBeenCalledTimes(afterPage ? 2 : 1);
+				expect(sleep).not.toHaveBeenCalled();
+			},
+		);
+
 		it('should paginate successfully without rate limits', async () => {
 			const responses = [
 				{

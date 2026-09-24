@@ -208,6 +208,12 @@ export async function truncate(entities: EntityName[]) {
 		await connection.query(`DELETE FROM ${tableName}`);
 	}
 
+	// `workflow_published_version` references workflows and history rows with
+	// RESTRICT, so it has to go before either of them.
+	if (entities.includes('WorkflowEntity') || entities.includes('WorkflowHistory')) {
+		await connection.getRepository('WorkflowPublishedVersion').delete({});
+	}
+
 	for (const name of entities) {
 		// `workflow_statistics_delta` is a raw-SQL, Postgres-only table with no TypeORM entity, so it
 		// can't go through the repository, so we clear it directly.
@@ -221,4 +227,37 @@ export async function truncate(entities: EntityName[]) {
 		}
 		await connection.getRepository(name).delete({});
 	}
+}
+
+export async function resetDeploymentKeys() {
+	const connection = Container.get(Connection);
+	const { type, tablePrefix } = Container.get(GlobalConfig).database;
+	const table = connection.driver.escape(`${tablePrefix}deployment_key`);
+	const deleteTrigger = connection.driver.escape(`${tablePrefix}prevent_deployment_key_delete`);
+
+	if (type === 'postgresdb') {
+		const truncateTrigger = connection.driver.escape(
+			`${tablePrefix}prevent_deployment_key_truncate`,
+		);
+		await connection.transaction(async (tx) => {
+			await tx.query(`ALTER TABLE ${table} DISABLE TRIGGER ${deleteTrigger}`);
+			await tx.query(`ALTER TABLE ${table} DISABLE TRIGGER ${truncateTrigger}`);
+			await tx.query(`DELETE FROM ${table}`);
+			await tx.query(`ALTER TABLE ${table} ENABLE TRIGGER ${deleteTrigger}`);
+			await tx.query(`ALTER TABLE ${table} ENABLE TRIGGER ${truncateTrigger}`);
+		});
+		return;
+	}
+
+	await connection.transaction(async (tx) => {
+		await tx.query(`DROP TRIGGER ${deleteTrigger}`);
+		await tx.query(`DELETE FROM ${table}`);
+		await tx.query(`
+			CREATE TRIGGER ${deleteTrigger}
+			BEFORE DELETE ON ${table}
+			BEGIN
+				SELECT RAISE(ABORT, 'Deployment keys must not be deleted');
+			END
+		`);
+	});
 }

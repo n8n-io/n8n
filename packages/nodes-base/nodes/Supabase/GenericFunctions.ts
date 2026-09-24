@@ -341,6 +341,39 @@ export function getFilters(
 			},
 			default: '',
 			placeholder: 'name=eq.jhon',
+			hint: 'Use $1, $2, etc. and the parameters below to reference dynamic values, rather than building this string with an expression, to avoid PostgREST filter injection',
+		},
+		{
+			displayName: 'Filters (String) Parameters',
+			name: 'filterStringParameters',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			displayOptions: {
+				show: {
+					resource: resources,
+					operation: operations,
+					filterType: ['string'],
+				},
+			},
+			default: {},
+			placeholder: 'Add Parameter',
+			options: [
+				{
+					displayName: 'Values',
+					name: 'values',
+					values: [
+						{
+							displayName: 'Value',
+							name: 'value',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+			description: 'Values to substitute for $1, $2, etc. in the filter string above.',
 		},
 	];
 }
@@ -401,6 +434,37 @@ export const buildOrQuery = (value: IDataObject) =>
 
 export const buildGetQuery = (query: Map<string, string>, value: IDataObject) =>
 	query.set(quotePostgrestComponent(value.keyName), `eq.${String(value.keyValue)}`);
+
+export function applyFilterStringParameters(filterString: string, parameters: IDataObject[]) {
+	if (parameters.length === 0) return filterString;
+
+	return filterString.replace(/\$(\d+)/g, (_match, index: string) => {
+		const position = Number(index) - 1;
+		if (position < 0 || position >= parameters.length) {
+			throw new UserError(
+				`Filters (String) references parameter $${index}, but only ${parameters.length} parameter(s) were provided`,
+			);
+		}
+
+		return encodeURIComponent(quotePostgrestComponent(parameters[position].value));
+	});
+}
+
+export function appendFilterStringToEndpoint(
+	context: IExecuteFunctions,
+	endpoint: string,
+	itemIndex: number,
+) {
+	const filterString = context.getNodeParameter('filterString', itemIndex) as string;
+	const filterStringParameters = context.getNodeParameter(
+		'filterStringParameters.values',
+		itemIndex,
+		[],
+	) as IDataObject[];
+
+	const encodedTemplate = encodeURI(filterString);
+	return `${endpoint}?${applyFilterStringParameters(encodedTemplate, filterStringParameters)}`;
+}
 
 export async function validateCredentials(
 	this: ICredentialTestFunctions,

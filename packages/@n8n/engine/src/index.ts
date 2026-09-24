@@ -16,6 +16,11 @@ export {
 export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
 export type { EngineErrorResponse, ExecutionSnapshot, StepDetail } from './server';
+export type {
+	SearchExecutionsRequest,
+	SearchExecutionsResponse,
+	ExecutionListItem,
+} from './server';
 
 // The publisher stays internal: no host constructs or swaps one.
 export {
@@ -29,6 +34,21 @@ export type {
 	LifecycleEventBatch,
 } from './lifecycle-events';
 
+export {
+	executionResponseSchema,
+	noopExecutionResponseSender,
+	noopResponseEmitter,
+} from './response-channel';
+export type {
+	EndedMessage,
+	ExecutionResponse,
+	ExecutionResponseSender,
+	ResponseEmitter,
+	ResponseMessage,
+	UndeliverableMessage,
+} from './response-channel';
+
+export { UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
 export { deriveLoops, isBatchStepConfig } from './graph';
@@ -73,6 +93,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionRecord,
 	ExecutionStatus,
+	DueStep,
 	ExecutionStore,
 	ExecutionView,
 	NewExecutionRecord,
@@ -83,11 +104,13 @@ export type {
 	StepKey,
 	StepKeyId,
 	StepRecord,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	StepStore,
 	StepView,
 	TriggerOutputs,
+	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';
 

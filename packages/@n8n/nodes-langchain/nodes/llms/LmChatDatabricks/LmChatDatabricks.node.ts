@@ -1,100 +1,26 @@
-import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import { ChatOpenAI } from '@langchain/openai';
 import {
-	createRefreshingAuthFetch,
-	getProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
-	NodeOperationError,
-	type ILoadOptionsFunctions,
-	type INodeListSearchResult,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { CHAT_MODEL_USER_AGENT, databricksAuthHeaders } from './constants';
-import { makeDatabricksFailedAttemptHandler } from './error-handling';
-import type { DatabricksOAuth2Credential } from './token-provider';
-import { getDatabricksTokenProvider } from './token-provider';
+import { makeDatabricksFailedAttemptHandler } from '@utils/databricks/error-handling';
+import { createDatabricksGatewayConfig } from '@utils/databricks/gateway-config';
+import { CHAT_CAPABILITY, makeModelSearch } from '@utils/databricks/model-services';
+import {
+	DATABRICKS_CREDENTIAL_TYPE,
+	type DatabricksOAuth2Credential,
+} from '@utils/databricks/token-provider';
 
-// Every request carries a secret (bearer token, or the client secret on the
-// mint path), so an http host would ship it in cleartext
-function assertHttpsHost(ctx: ILoadOptionsFunctions | ISupplyDataFunctions, host: string) {
-	if (!URL.canParse(host) || new URL(host).protocol !== 'https:') {
-		throw new NodeOperationError(ctx.getNode(), 'Databricks host must use https');
-	}
-}
-
-interface ServingEndpointsResponse {
-	endpoints?: Array<{
-		name: string;
-		task?: string;
-		config?: {
-			served_entities?: Array<{
-				external_model?: { name: string };
-				foundation_model?: { name: string };
-			}>;
-		};
-	}>;
-}
-
-async function searchModels(
-	this: ILoadOptionsFunctions,
-	filter?: string,
-): Promise<INodeListSearchResult> {
-	const credentials = await this.getCredentials<DatabricksOAuth2Credential>('databricksOAuth2Api');
-	assertHttpsHost(this, credentials.host);
-	const host = credentials.host.replace(/\/$/, '');
-
-	const response: ServingEndpointsResponse = await this.helpers.httpRequestWithAuthentication.call(
-		this,
-		'databricksOAuth2Api',
-		{
-			method: 'GET',
-			url: `${host}/api/2.0/serving-endpoints`,
-			headers: { Accept: 'application/json', 'User-Agent': CHAT_MODEL_USER_AGENT },
-			json: true,
-		},
-	);
-
-	const endpoints = response.endpoints ?? [];
-
-	const allResults = endpoints
-		// Covers llm/v1/chat (foundation/external models) and agent/*/chat; custom
-		// endpoints without a task are reachable via the resourceLocator's ID mode
-		.filter((endpoint) => endpoint.task?.includes('chat'))
-		.map((endpoint) => {
-			const modelNames = (endpoint.config?.served_entities ?? [])
-				.map((entity) => entity.external_model?.name ?? entity.foundation_model?.name)
-				.filter(Boolean)
-				.join(', ');
-
-			return {
-				name: endpoint.name,
-				value: endpoint.name,
-				url: `${host}/ml/endpoints/${endpoint.name}`,
-				description: modelNames || 'Model serving endpoint',
-			};
-		});
-
-	if (filter) {
-		const filterLower = filter.toLowerCase();
-		return {
-			results: allResults.filter(
-				(r) =>
-					r.name.toLowerCase().includes(filterLower) ||
-					r.description.toLowerCase().includes(filterLower),
-			),
-		};
-	}
-
-	return { results: allResults };
-}
+const searchModels = makeModelSearch(CHAT_CAPABILITY);
 
 export class LmChatDatabricks implements INodeType {
 	methods = {
@@ -106,8 +32,10 @@ export class LmChatDatabricks implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Databricks Chat Model',
 		name: 'lmChatDatabricks',
-		hidden: true,
-		icon: { light: 'file:databricks.svg', dark: 'file:databricks.dark.svg' },
+		icon: {
+			light: 'file:../../shared/icons/databricks.svg',
+			dark: 'file:../../shared/icons/databricks.dark.svg',
+		},
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
@@ -143,7 +71,7 @@ export class LmChatDatabricks implements INodeType {
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
-					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure the selected endpoint supports JSON mode.',
+					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure the selected model service supports JSON mode.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -174,10 +102,11 @@ export class LmChatDatabricks implements INodeType {
 						displayName: 'ID',
 						name: 'id',
 						type: 'string',
-						placeholder: 'my-serving-endpoint',
+						placeholder: 'system.ai.gpt-oss-120b',
 					},
 				],
-				description: 'The serving endpoint. Choose from the list, or specify an ID.',
+				description:
+					'The Unity AI Gateway model service. Choose from the list, or enter its full name (catalog.schema.service).',
 			},
 			{
 				displayName: 'Options',
@@ -273,11 +202,9 @@ export class LmChatDatabricks implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credential = await this.getCredentials<DatabricksOAuth2Credential>('databricksOAuth2Api');
-
-		assertHttpsHost(this, credential.host);
-
-		const baseURL = `${credential.host.replace(/\/$/, '')}/serving-endpoints`;
+		const credential = await this.getCredentials<DatabricksOAuth2Credential>(
+			DATABRICKS_CREDENTIAL_TYPE,
+		);
 
 		const modelName = this.getNodeParameter('model', itemIndex, '', {
 			extractValue: true,
@@ -286,52 +213,16 @@ export class LmChatDatabricks implements INodeType {
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;
 			maxTokens?: number;
-			maxRetries: number;
-			timeout: number;
+			maxRetries?: number;
+			timeout?: number;
 			presencePenalty?: number;
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
 		};
 
-		const egressFilter = this.helpers.getSecureEgressFilter();
-
 		const timeout = options.timeout;
-		const tokenSource = getDatabricksTokenProvider(this, credential, egressFilter);
-		const { refreshAfterRejection } = tokenSource;
-		const configuration: ClientOptions = {
-			baseURL,
-			// The model client builds its own transport, so it never reaches the
-			// request helpers: `resolveHeaders` runs the expiry clock before every
-			// request, and `refreshHeaders` covers the rejection the clock missed -
-			// revoked server-side, or clock skew
-			fetch: createRefreshingAuthFetch({
-				baseFetch: fetch,
-				expiredStatus: tokenSource.expiredStatus,
-				resolveHeaders: async () => databricksAuthHeaders(await tokenSource.getToken()),
-				...(refreshAfterRejection && {
-					refreshHeaders: async () => {
-						const refreshed = await refreshAfterRejection();
-						return refreshed ? databricksAuthHeaders(refreshed) : null;
-					},
-				}),
-				assertAllowedUrl: async (hopUrl) => {
-					if (!egressFilter) return;
-					const result = await egressFilter.validateUrl(hopUrl);
-					if (!result.ok) throw result.error;
-				},
-			}),
-			fetchOptions: {
-				dispatcher: getProxyAgent(
-					baseURL,
-					{
-						headersTimeout: timeout,
-						bodyTimeout: timeout,
-					},
-					egressFilter?.createSecureLookup(),
-				),
-			},
-		};
+		const { configuration, tokenSource } = createDatabricksGatewayConfig(this, credential, timeout);
 
 		const modelKwargs: Record<string, unknown> = {};
 		if (options.responseFormat) {
@@ -350,7 +241,7 @@ export class LmChatDatabricks implements INodeType {
 			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(
 				this,
-				makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus),
+				makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus, modelName),
 			),
 		});
 

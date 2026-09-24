@@ -17,7 +17,11 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type {
+	ProjectListItem,
+	ProjectSharingData,
+} from '@/features/collaboration/projects/projects.types';
+import { DEFAULT_PROJECT_SEARCH_PAGE_SIZE } from '@/features/collaboration/projects/projects.utils';
 
 const mockWorkflowDocumentState = reactive({
 	homeProject: null as ProjectSharingData | null,
@@ -175,6 +179,58 @@ describe('WorkflowShareModal.ee.vue', () => {
 				workflowId: 'abc123',
 				sharedWithProjects: [projectsStore.personalProjects[0]],
 			});
+		});
+	});
+
+	// Covers the quarantined e2e journey
+	// "Workflow Sharing > should share workflow with another user via UI".
+	it('should offer a peer personal project when team projects fill the first page of sharing candidates', async () => {
+		const homeProject: ProjectSharingData = {
+			id: 'personal-project-id',
+			name: 'Personal Project',
+			type: ProjectTypes.Personal,
+			icon: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		};
+
+		workflowsStore.workflowId = '';
+		mockWorkflowDocumentState.homeProject = homeProject;
+
+		// `GET /rest/projects/sharing-candidates` sorts team projects before personal
+		// ones and returns one page of DEFAULT_PROJECT_SEARCH_PAGE_SIZE. It filters by
+		// `type` only when the caller asks for it.
+		const teamProjects = Array.from({ length: DEFAULT_PROJECT_SEARCH_PAGE_SIZE }, () =>
+			createProjectListItem(ProjectTypes.Team),
+		);
+		const memberProject: ProjectListItem = {
+			...createProjectListItem(ProjectTypes.Personal),
+			name: 'Test Member <member@test.com>',
+		};
+
+		projectsStore.searchShareableProjects.mockImplementation(
+			async (params: { take?: number; type?: 'personal' | 'team' }) => {
+				const candidates = [...teamProjects, memberProject].filter(
+					(project) => !params.type || project.type === params.type,
+				);
+				return { count: candidates.length, data: candidates.slice(0, params.take) };
+			},
+		);
+
+		const { getByTestId, getByText } = renderComponent({ props: { data: { id: '' } } });
+
+		await getDropdownItems(getByTestId('project-sharing-select'));
+
+		await waitFor(() => {
+			expect(projectsStore.searchShareableProjects).toHaveBeenCalledWith(
+				expect.objectContaining({ take: DEFAULT_PROJECT_SEARCH_PAGE_SIZE }),
+			);
+		});
+
+		// The modal drops non-personal projects after the page is fetched, so a page
+		// full of team projects hides every user the owner can share with.
+		await waitFor(() => {
+			expect(getByText('member@test.com')).toBeInTheDocument();
 		});
 	});
 

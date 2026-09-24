@@ -120,7 +120,7 @@ describe('instance credentials', () => {
 
 	describe('assigned to an instance credential use', () => {
 		const sandboxPayload = {
-			name: 'AI Assistant sandbox',
+			name: 'n8n Assistant sandbox',
 			type: 'httpHeaderAuth',
 			data: { name: 'x-api-key', value: 'secret' },
 		};

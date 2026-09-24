@@ -1,5 +1,26 @@
 import { z } from 'zod';
 
+/**
+ * Human-in-the-loop approval selection. Absent means no approval required.
+ * Shared by MCP servers, where `tools` holds tool names, and channels, where
+ * it holds action names such as `send_channel_message`.
+ */
+export const AgentApprovalSchema = z.discriminatedUnion('mode', [
+	z.object({ mode: z.literal('global') }).strict(),
+	z
+		.object({
+			mode: z.literal('selected'),
+			tools: z.array(z.string().min(1)).min(1),
+		})
+		.strict(),
+]);
+
+export type AgentApproval = z.infer<typeof AgentApprovalSchema>;
+
+const approval = AgentApprovalSchema.optional().describe(
+	'Channel actions that need approval before they run. Absent = no approval required',
+);
+
 const createCredIntegrationSchema = <
 	Value extends string,
 	Settings extends z.ZodTypeAny | z.ZodEffects<z.ZodTypeAny>,
@@ -11,6 +32,7 @@ const createCredIntegrationSchema = <
 		type: z.literal<Value>(typeName),
 		credentialId: z.string().min(1),
 		settings: settingsSchema,
+		approval,
 	});
 
 const createDraftCredIntegrationSchema = <
@@ -24,6 +46,7 @@ const createDraftCredIntegrationSchema = <
 		type: z.literal<Value>(typeName),
 		credentialId: z.string(),
 		settings: settingsSchema,
+		approval,
 	});
 
 export const AGENT_TELEGRAM_ACCESS_MODES = ['private', 'public'] as const;
@@ -81,6 +104,9 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
+export const AgentTeamsSettingsSchema = AgentSessionOnlySettingsSchema;
+export type AgentTeamsIntegrationSettings = z.infer<typeof AgentTeamsSettingsSchema>;
+
 export const AgentIntegrationSettingsSchema = z.union([
 	AgentTelegramSettingsSchema,
 	AgentSlackSettingsSchema,
@@ -105,6 +131,9 @@ const credentialIntegrations = [
 	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
+		settings: AgentTeamsSettingsSchema.optional(),
+	}),
 ] as const;
 
 const draftCredentialIntegrations = [
@@ -119,6 +148,9 @@ const draftCredentialIntegrations = [
 	}),
 	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
+	}),
+	createDraftCredIntegrationSchema('teams', AgentTeamsSettingsSchema).extend({
+		settings: AgentTeamsSettingsSchema.optional(),
 	}),
 ] as const;
 

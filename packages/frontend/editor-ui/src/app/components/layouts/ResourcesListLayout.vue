@@ -784,6 +784,7 @@ defineExpose({
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/breakpoints';
+@use '@n8n/design-system/css/mixins/mixins' as mixins;
 
 .filters-row {
 	display: flex;
@@ -847,6 +848,10 @@ defineExpose({
 
 .listItems {
 	overflow-y: auto;
+	padding-inline: var(--spacing--4xs);
+
+	@include mixins.scroll-bar;
+	scrollbar-gutter: stable;
 }
 
 .listPagination {

@@ -18,14 +18,17 @@ import {
 	integrationError,
 	normalizePlatformId,
 	unsupportedAction,
+	rateLimitExceeded,
 } from './integration-helpers';
 import type {
-	IntegrationAction,
 	IntegrationActionExecutor,
+	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
+import { ChannelRateLimitGuard } from './channel-rate-limit.guard';
+import { caughtIntegrationError, channelRateLimitMessage } from './channel-rate-limit';
 
 // The shared wire schema from @n8n/api-types — the same definition the tool
 // boundary validates against and the editor-ui renderer parses with.
@@ -67,23 +70,18 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	constructor(
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
+		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 	) {}
 
-	async execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		action: IntegrationAction;
-		input: Record<string, unknown>;
-		awaitResponse: boolean;
-		runId?: string;
-		toolCallId?: string;
-		currentMessageContext?: IntegrationMessageContext;
-	}): Promise<IntegrationActionResult> {
+	async execute(params: IntegrationActionParams): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
 		if (params.action === 'do_not_respond') {
 			return this.doNotRespond(params);
 		}
-
+		if (this.channelRateLimitGuard.isBlocked(params.descriptor.integrationConnectionId)) {
+			return rateLimitExceeded(channelRateLimitMessage(params.descriptor.integration.type));
+		}
 		const unsupportedAction = () =>
 			integrationError(
 				INTEGRATION_ERROR_CODES.UNSUPPORTED_ACTION,
@@ -105,21 +103,19 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 				});
 				return result ?? unsupportedAction();
 			} catch (error) {
-				return integrationError(
-					INTEGRATION_ERROR_CODES.ACTION_FAILED,
-					error instanceof Error ? error.message : String(error),
-				);
+				return caughtIntegrationError(error, {
+					connectionId: params.descriptor.integrationConnectionId,
+					platform: params.descriptor.integration.type,
+					guard: this.channelRateLimitGuard,
+					failedCode: INTEGRATION_ERROR_CODES.ACTION_FAILED,
+				});
 			}
 		}
 
 		const { credentialId } = params.descriptor.integration;
 		if (!credentialId) return connectionUnavailable();
 
-		let chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
-			type: params.descriptor.integration.type,
-			credentialId,
-		});
-		chat ??= await this.chatIntegrationService.getChatInstanceForTools(
+		const chat = await this.chatIntegrationService.getChatInstanceForTools(
 			params.descriptor.agentId,
 			params.descriptor.integration,
 		);
@@ -157,10 +153,12 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 			return unsupportedAction();
 		} catch (error) {
-			return integrationError(
-				INTEGRATION_ERROR_CODES.ACTION_FAILED,
-				error instanceof Error ? error.message : String(error),
-			);
+			return caughtIntegrationError(error, {
+				connectionId: params.descriptor.integrationConnectionId,
+				platform: params.descriptor.integration.type,
+				guard: this.channelRateLimitGuard,
+				failedCode: INTEGRATION_ERROR_CODES.ACTION_FAILED,
+			});
 		}
 	}
 
@@ -168,7 +166,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	 * End the turn without posting anything. Allowed only when the latest
 	 * inbound message marked the reply as optional.
 	 */
-	private doNotRespond(params: ExecuteParams): IntegrationActionResult {
+	private doNotRespond(params: IntegrationActionParams): IntegrationActionResult {
 		if (params.currentMessageContext?.replyExpectation !== 'optional') {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.REPLY_REQUIRED,
@@ -185,7 +183,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async addReactionToMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const adapter = chat.getAdapter(params.descriptor.integration.type);
 		if (!supportsAddReaction(adapter)) {
@@ -236,7 +234,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async respondInCurrentThread(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = respondInputSchema.parse(params.input);
 		const threadId = params.currentMessageContext?.target.threadId;
@@ -274,7 +272,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async sendDirectMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
 		const thread = await chat.openDM(input.userId);
@@ -298,7 +296,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async editMessageInCurrentThread(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = editMessageInputSchema.parse(params.input);
 		const currentMessageContext = params.currentMessageContext;
@@ -336,7 +334,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async sendChannelMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendChannelMessageInputSchema.parse(params.input);
 		const channelId = normalizePlatformId(params.descriptor.integration.type, input.channelId);
@@ -441,16 +439,6 @@ function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'edi
 
 function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {
 	return isRecord(adapter) && typeof adapter.addReaction === 'function';
-}
-
-interface ExecuteParams {
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	awaitResponse: boolean;
-	runId?: string;
-	toolCallId?: string;
-	currentMessageContext?: IntegrationMessageContext;
 }
 
 function buildMessageContextFromSentMessage(params: {

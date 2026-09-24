@@ -46,11 +46,13 @@ export type PubSubCommandMap = {
 	'community-package-install': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-update': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-uninstall': {
@@ -127,6 +129,19 @@ export type PubSubCommandMap = {
 
 	'relay-agent-execution-update': {
 		data: PushPayload<'agentExecutionUpdated'>;
+		userIds: string[];
+	};
+
+	'cancel-agent-chat-execution': {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		executionId: string;
+		userId: string;
+	};
+
+	'relay-agent-background-tasks-update': {
+		data: PushPayload<'agentBackgroundTasksUpdated'>;
 		userIds: string[];
 	};
 
@@ -217,6 +232,7 @@ export type PubSubCommandMap = {
 	 */
 	'relay-instance-ai-task-control': {
 		threadId: string;
+		userId?: string;
 		taskId?: string;
 		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
 		correction?: string;

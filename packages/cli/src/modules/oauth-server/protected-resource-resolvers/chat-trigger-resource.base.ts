@@ -14,9 +14,9 @@ import {
 	CHAT_TRIGGER_CONSENT_HINTS,
 	CHAT_TRIGGER_SCOPES,
 	isOAuthProtectedChatTrigger,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 } from './utils';
 
 /** The trigger a chat path resolves to, however the subclass found it. */
@@ -58,11 +58,8 @@ export abstract class ChatTriggerResourceResolverBase implements ProtectedResour
 	protected abstract findChatTrigger(path: string): Promise<ChatTriggerLookupResult | undefined>;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.baseUrl);
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
+		const pathname = webhookPathFromResourceUrl(resourceUrl, this.baseUrl, this.logger);
+		if (pathname === undefined) return undefined;
 		return await this.resolveByPath(pathname);
 	}
 

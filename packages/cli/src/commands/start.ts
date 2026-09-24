@@ -7,7 +7,7 @@ import {
 	ExecutionRepository,
 	SettingsRepository,
 } from '@n8n/db';
-import { Command, SystemTaskMetadata } from '@n8n/decorators';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import { sleep } from '@n8n/utils/sleep';
@@ -38,11 +38,11 @@ import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
-import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
+import { RoleCacheService } from '@/services/role-cache.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -271,6 +271,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await Container.get(AuthRolesService).init();
 			this.logger.debug('Auth roles service init complete');
 
+			// The role sync above and data migrations write role scopes straight to the
+			// database, outside RoleService. In queue mode the role cache lives in Redis
+			// and survives a restart, so rebuild it once the sync has committed and
+			// before this main serves requests.
+			await Container.get(RoleCacheService).refreshCache();
+			this.logger.debug('Role cache refreshed');
+
 			await this.initInstanceSettingsLoader();
 			this.logger.debug('Instance settings loader init complete');
 		}
@@ -305,12 +312,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
-
-			// Catches leadership already taken over before this instance had a
-			// takeover listener subscribed, whose one-shot event would otherwise
-			// be lost for the process lifetime.
-			if (this.instanceSettings.isLeader && this.globalConfig.license.autoRenewalEnabled)
-				this.license.enableAutoRenewals();
 		}
 
 		await this.executionContextHookRegistry.init();
@@ -423,13 +424,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(WorkflowStatisticsRollupService).init();
-		Container.get(SystemTaskRunner).init();
-		Container.get(DurableScheduler).start();
 
-		const systemTaskMetadata = Container.get(SystemTaskMetadata);
-		for (const taskClass of await mainSystemTasks(this.globalConfig)) {
-			systemTaskMetadata.register(taskClass);
-		}
+		// The runner provisions the durable system task jobs, so it must finish
+		// before the scheduler can claim one.
+		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
+		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			const { EnqueuedExecutionRecoveryService } = await import(

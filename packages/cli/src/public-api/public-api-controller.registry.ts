@@ -1,4 +1,6 @@
+import { LicenseState } from '@n8n/backend-common';
 import type { BooleanLicenseFeature } from '@n8n/constants';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decorators';
@@ -13,10 +15,11 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import { assertJsonContentType } from '@/public-api/public-api-media-type';
 import {
 	apiKeyScopesSatisfy,
-	isDtoArg,
+	findBodyArg,
 	isRequestBodyRequired,
 	resolveRouteArgs,
 	resolveSuccessStatus,
@@ -80,8 +83,9 @@ export class PublicApiControllerRegistry {
 				route.successStatus,
 			);
 
-			const bodyDto = resolvedArgs.find((arg) => isDtoArg(arg, 'body'))?.dto;
-			const bodyRequired = bodyDto ? isRequestBodyRequired(bodyDto) : false;
+			const bodyArg = findBodyArg(resolvedArgs);
+			const bodyDto = bodyArg?.dto;
+			const bodyRequired = bodyDto ? (bodyArg?.required ?? isRequestBodyRequired(bodyDto)) : false;
 
 			const handler = async (req: Request, res: Response) => {
 				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
@@ -106,17 +110,14 @@ export class PublicApiControllerRegistry {
 
 				if (res.headersSent) return;
 
-				if (successStatus === 204) {
-					res.status(204).send();
+				if (successStatus === 204 || (!route.responseDto && result === undefined)) {
+					res.status(successStatus).send();
 					return;
 				}
 
-				if (route.responseDto) {
-					res.status(successStatus).json(route.responseDto.parse(result));
-					return;
-				}
-
-				res.status(successStatus).json(result);
+				res
+					.status(successStatus)
+					.json(route.responseDto ? route.responseDto.parse(result) : result);
 			};
 
 			const middlewares: RequestHandler[] = [];
@@ -137,6 +138,10 @@ export class PublicApiControllerRegistry {
 
 			if (route.licenseFeature) {
 				middlewares.push(this.createLicenseMiddleware(route.licenseFeature));
+			}
+
+			if (route.requiresUserQuota) {
+				middlewares.push(this.createUserQuotaMiddleware());
 			}
 
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
@@ -204,6 +209,17 @@ export class PublicApiControllerRegistry {
 		return (_req, res, next) => {
 			if (!Container.get(License).isLicensed(feature)) {
 				res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	private createUserQuotaMiddleware(): RequestHandler {
+		return (_req, res, next) => {
+			if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
+				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
 				return;
 			}
 

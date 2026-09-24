@@ -341,14 +341,14 @@ describe('SourceControlService', () => {
 		deletedInScopeCredential = Object.assign(new CredentialsEntity(), {
 			id: 'deletedInScope',
 			name: 'deletedInScope',
-			data: cipher.encrypt({}),
+			data: cipher.encryptWithInstanceKey({}),
 			type: '',
 		});
 
 		deletedOutOfScopeCredential = Object.assign(new CredentialsEntity(), {
 			id: 'deletedOutOfScope',
 			name: 'deletedOutOfScope',
-			data: cipher.encrypt({}),
+			data: cipher.encryptWithInstanceKey({}),
 			type: '',
 		});
 
@@ -357,11 +357,11 @@ describe('SourceControlService', () => {
 			movedIntoScopeCredential,
 			movedOutOfScopeWorkflow,
 			movedIntoScopeWorkflow,
-		] = await Promise.all([
+		] = [
 			await createCredentials(
 				{
 					name: 'OutOfScope',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					type: '',
 				},
 				projectB,
@@ -369,7 +369,7 @@ describe('SourceControlService', () => {
 			await createCredentials(
 				{
 					name: 'IntoScope',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					type: '',
 				},
 				projectA,
@@ -386,14 +386,14 @@ describe('SourceControlService', () => {
 				},
 				projectA,
 			),
-		]);
+		];
 
 		const [projectACredentials, projectBCredentials] = await Promise.all(
 			[projectA, projectB].map(async (project) => [
 				await createCredentials(
 					{
 						name: `${project.name}-CredA`,
-						data: cipher.encrypt({}),
+						data: cipher.encryptWithInstanceKey({}),
 						type: '',
 					},
 					project,
@@ -401,7 +401,7 @@ describe('SourceControlService', () => {
 				await createCredentials(
 					{
 						name: `${project.name}-CredB‚`,
-						data: cipher.encrypt({}),
+						data: cipher.encryptWithInstanceKey({}),
 						type: '',
 					},
 					project,
@@ -1468,7 +1468,7 @@ describe('SourceControlService', () => {
 				{
 					name: 'Test Credential isGlobal false->true',
 					type: 'testType',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					isGlobal: false,
 				},
 				testProject,
@@ -1499,7 +1499,7 @@ describe('SourceControlService', () => {
 				{
 					name: 'Test Credential isGlobal true->false',
 					type: 'testType',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					isGlobal: true,
 				},
 				testProject,
@@ -1527,7 +1527,7 @@ describe('SourceControlService', () => {
 				{
 					name: 'Test Credential isGlobal undefined vs false',
 					type: 'testType',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					isGlobal: false,
 				},
 				testProject,
@@ -1555,7 +1555,7 @@ describe('SourceControlService', () => {
 				{
 					name: 'Test Credential isGlobal undefined->true',
 					type: 'testType',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					isGlobal: false,
 				},
 				testProject,
@@ -1583,7 +1583,7 @@ describe('SourceControlService', () => {
 				{
 					name: 'Test Credential isGlobal same value',
 					type: 'testType',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					isGlobal: true,
 				},
 				testProject,

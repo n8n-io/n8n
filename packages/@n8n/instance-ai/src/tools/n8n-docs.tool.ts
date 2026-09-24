@@ -80,8 +80,29 @@ function emptyLookupResult(
 	};
 }
 
+/** The docs tool reads the registry and, for a credential question, resolves that
+ *  credential type's own docs page — so it needs the credential service too. */
+type N8nDocsToolContext = Pick<InstanceAiContext, 'logger'> &
+	Partial<Pick<InstanceAiContext, 'credentialService'>>;
+
+/**
+ * Fill in `documentationUrl` from the credential type when the caller named a type
+ * but no URL. Ranking scores an exact docs-URL match far above query tokens, so
+ * without this the answer depends on the model first chaining
+ * `credentials(action="search-types")` to fetch the URL itself — which it often
+ * skips, landing on the wrong pages and then answering from memory (AGENT-743).
+ */
+async function withResolvedDocumentationUrl<
+	T extends { credentialType?: string; documentationUrl?: string },
+>(context: N8nDocsToolContext, input: T): Promise<T> {
+	if (input.documentationUrl || !input.credentialType) return input;
+
+	const resolved = await context.credentialService?.getDocumentationUrl?.(input.credentialType);
+	return resolved ? { ...input, documentationUrl: resolved } : input;
+}
+
 async function handleSearch(
-	context: Pick<InstanceAiContext, 'logger'>,
+	context: N8nDocsToolContext,
 	input: N8nDocsSearchInput,
 	abortSignal?: AbortSignal,
 ) {
@@ -89,7 +110,8 @@ async function handleSearch(
 	if (!registry.registry) return emptyLookupResult(input, registry);
 
 	const maxResults = clamp(input.maxResults, DEFAULT_MAX_RESULTS, MAX_RESULTS);
-	const matches = rankN8nDocsEntries(registry.registry.entries, input).slice(0, maxResults);
+	const ranked = await withResolvedDocumentationUrl(context, input);
+	const matches = rankN8nDocsEntries(registry.registry.entries, ranked).slice(0, maxResults);
 
 	return {
 		query: getLookupQuery(input),
@@ -102,7 +124,7 @@ async function handleSearch(
 }
 
 async function handleLookup(
-	context: Pick<InstanceAiContext, 'logger'>,
+	context: N8nDocsToolContext,
 	input: N8nDocsLookupInput,
 	abortSignal?: AbortSignal,
 ) {
@@ -115,7 +137,8 @@ async function handleLookup(
 		DEFAULT_MAX_CONTENT_LENGTH,
 		MAX_CONTENT_LENGTH,
 	);
-	const matches = rankN8nDocsEntries(registry.registry.entries, input);
+	const ranked = await withResolvedDocumentationUrl(context, input);
+	const matches = rankN8nDocsEntries(registry.registry.entries, ranked);
 	const pagesToRead = pickLookupMatches(matches, maxPages);
 	const documents: N8nDocsDocument[] = [];
 	const readErrors: string[] = [];
@@ -200,10 +223,10 @@ async function handleRead(
 	};
 }
 
-export function createN8nDocsTool(context: Pick<InstanceAiContext, 'logger'>) {
+export function createN8nDocsTool(context: N8nDocsToolContext) {
 	return new Tool(N8N_DOCS_TOOL_ID)
 		.description(
-			`Search and read current n8n documentation from docs.n8n.io. Load via \`load_tool\` before calling (search "n8n docs" if not visible). Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
+			`Search and read current n8n documentation from docs.n8n.io. Always available — call it directly, no \`load_tool\` step. Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions, and prefer it over web search for anything n8n ships. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
 		)
 		.input(n8nDocsToolInputSchema)
 		.handler(async (input, ctx) => {

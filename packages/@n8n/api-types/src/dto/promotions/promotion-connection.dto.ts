@@ -7,8 +7,10 @@ import {
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
 	promotionConnectionConfigsPublicSchema,
+	promotionConnectionConfigsSummarySchema,
 } from './promotion-config.dto';
 import { promotionProviderSummarySchema } from './promotion-provider.dto';
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
@@ -39,7 +41,7 @@ export class CreatePromotionConnectionDto extends Z.class(
 		name: promotionDisplayNameSchema,
 		scope: promotionConnectionScopeSchema,
 		/** Providers are created on their own route. A connection only picks one. */
-		providerId: z.string().min(1),
+		providerId: n8nIdSchema,
 		target: promotionConnectionTargetSchema,
 		/**
 		 * Initial configs, keyed by direction, reusing the bodies of the config
@@ -67,7 +69,7 @@ const updatePromotionConnectionSchema = z
 	.object({
 		name: promotionDisplayNameSchema.optional(),
 		target: promotionConnectionTargetSchema.optional(),
-		providerId: z.string().min(1).optional(),
+		providerId: n8nIdSchema.optional(),
 	})
 	.strict()
 	.refine(
@@ -110,7 +112,7 @@ export class ListPromotionConnectionsQueryDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),
 	scope: promotionConnectionScopeSchema.optional(),
-	providerId: z.string().optional(),
+	providerId: n8nIdSchema.optional(),
 }) {}
 
 /**
@@ -118,12 +120,10 @@ export class ListPromotionConnectionsQueryDto extends Z.class({
  * by direction to match the request side.
  *
  * The provider is embedded as a summary, which names it but leaves out its public
- * config. Detail and list share this schema, so the full form would put the SSH
- * public key in every row of the connection list. Read the key from the provider
- * detail route.
+ * config. Read the key from the provider detail route.
  */
 export const promotionConnectionPublicSchema = z.object({
-	id: z.string(),
+	id: n8nIdSchema,
 	name: z.string(),
 	scope: promotionConnectionScopeSchema,
 	target: promotionConnectionTargetSchema,
@@ -135,14 +135,23 @@ export const promotionConnectionPublicSchema = z.object({
 
 export class PromotionConnectionPublicDto extends Z.class(promotionConnectionPublicSchema.shape) {}
 
+/**
+ * Lists contain stored connection data only. Checkout state is local to the
+ * responding instance, so callers read it from the connection detail route.
+ */
+export const promotionConnectionSummarySchema = promotionConnectionPublicSchema.extend({
+	configs: promotionConnectionConfigsSummarySchema,
+});
+export type PromotionConnectionSummary = z.infer<typeof promotionConnectionSummarySchema>;
+
 export class PromotionConnectionListPublicDto extends Z.class({
-	data: z.array(promotionConnectionPublicSchema),
+	data: z.array(promotionConnectionSummarySchema),
 	nextCursor: z.string().nullable(),
 }) {}
 
 export const promotionConnectionProjectPublicSchema = z.object({
-	projectId: z.string(),
-	connectionId: z.string(),
+	projectId: n8nIdSchema,
+	connectionId: n8nIdSchema,
 });
 
 export class PromotionConnectionProjectPublicDto extends Z.class(
@@ -150,5 +159,5 @@ export class PromotionConnectionProjectPublicDto extends Z.class(
 ) {}
 
 export class PromotionConnectionProjectListPublicDto extends Z.class({
-	projectIds: z.array(z.string()),
+	projectIds: z.array(n8nIdSchema),
 }) {}

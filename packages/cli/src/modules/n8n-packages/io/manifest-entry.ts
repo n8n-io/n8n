@@ -3,7 +3,7 @@ import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
 import { PackageExportBlockedError } from '../entities/package-export.errors';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
-import type { SerializedWorkflowLifecycle } from '../spec/serialized/workflow-lifecycle.schema';
+import type { SerializedWorkflowMetadata } from '../spec/serialized/workflow-metadata.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
@@ -72,11 +72,11 @@ export function entityFilePath(collection: ManifestEntityCollection, target: str
 	return `${target}/${PACKAGE_ENTITY_LAYOUT[collection].fileName}`;
 }
 
-/** Lifecycle files share the workflow target and have no manifest entry. */
-export const WORKFLOW_LIFECYCLE_FILE_NAME = 'workflow-lifecycle.json';
+/** Metadata files share the workflow target and have no manifest entry. */
+export const WORKFLOW_METADATA_FILE_NAME = 'workflow-metadata.json';
 
-export function workflowLifecycleFilePath(target: string): string {
-	return `${target}/${WORKFLOW_LIFECYCLE_FILE_NAME}`;
+export function workflowMetadataFilePath(target: string): string {
+	return `${target}/${WORKFLOW_METADATA_FILE_NAME}`;
 }
 
 export function createManifestEntry(
@@ -125,12 +125,12 @@ export async function writeWorkflowManifestEntry(
 	baseDir: string,
 	workflow: { id: string; name: string },
 	content: SerializedWorkflow,
-	lifecycle: SerializedWorkflowLifecycle,
+	metadata: SerializedWorkflowMetadata,
 ): Promise<ManifestEntry> {
 	const entry = await writeManifestEntry(writer, 'workflows', baseDir, workflow, content);
 	await writer.writeFile(
-		workflowLifecycleFilePath(entry.target),
-		JSON.stringify(lifecycle, null, '\t'),
+		workflowMetadataFilePath(entry.target),
+		JSON.stringify(metadata, null, '\t'),
 	);
 	return entry;
 }

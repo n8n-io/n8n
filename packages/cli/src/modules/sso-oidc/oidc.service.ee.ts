@@ -131,11 +131,18 @@ export class OidcService {
 		};
 	}
 
-	generateState(testMode = false) {
+	/**
+	 * The signed state also carries the in-app destination the user asked for
+	 * before the login, so the callback can send them there instead of `/`.
+	 */
+	generateState(testMode = false, redirectUrl?: string) {
 		const state = `n8n_state:${randomUUID()}`;
 		const payload: Record<string, unknown> = { state };
 		if (testMode) {
 			payload.testMode = true;
+		}
+		if (redirectUrl && redirectUrl !== '/') {
+			payload.redirectUrl = redirectUrl;
 		}
 		return {
 			signed: this.jwtService.sign(payload, { expiresIn: '15m' }),
@@ -143,13 +150,15 @@ export class OidcService {
 		};
 	}
 
-	verifyState(signedState: string): { state: string; testMode?: boolean } {
+	verifyState(signedState: string): { state: string; testMode?: boolean; redirectUrl?: string } {
 		let state: string;
 		let testMode: boolean | undefined;
+		let redirectUrl: unknown;
 		try {
 			const decodedState = this.jwtService.verify(signedState);
 			state = decodedState?.state;
 			testMode = decodedState?.testMode;
+			redirectUrl = decodedState?.redirectUrl;
 		} catch (error) {
 			this.logger.error('Failed to verify state', { error });
 			throw new BadRequestError('Invalid state');
@@ -175,7 +184,11 @@ export class OidcService {
 			this.logger.error('Provided state is not formatted correctly');
 			throw new BadRequestError('Invalid state');
 		}
-		return { state, testMode };
+		return {
+			state,
+			testMode,
+			...(typeof redirectUrl === 'string' && { redirectUrl }),
+		};
 	}
 
 	generateNonce() {
@@ -225,12 +238,14 @@ export class OidcService {
 		}
 	}
 
-	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+	async generateLoginUrl(
+		redirectUrl?: string,
+	): Promise<{ url: URL; state: string; nonce: string }> {
 		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
-		const state = this.generateState();
+		const state = this.generateState(false, redirectUrl);
 		const nonce = this.generateNonce();
 
 		const prompt = this.oidcConfig.prompt;
@@ -324,10 +339,7 @@ export class OidcService {
 			throw new BadRequestError('Invalid email format');
 		}
 
-		await this.assertProvisioningLoginAllowed(
-			claims as Record<string, unknown>,
-			userInfo as Record<string, unknown>,
-		);
+		await this.assertProvisioningLoginAllowed(claims, userInfo);
 
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
@@ -339,11 +351,7 @@ export class OidcService {
 		});
 
 		if (openidUser) {
-			await this.applySsoProvisioning(
-				openidUser.user,
-				claims as Record<string, unknown>,
-				userInfo as Record<string, unknown>,
-			);
+			await this.applySsoProvisioning(openidUser.user, claims, userInfo);
 
 			return { user: openidUser.user, idToken: tokens.id_token };
 		}
@@ -369,11 +377,7 @@ export class OidcService {
 			});
 
 			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(
-				foundUser,
-				claims as Record<string, unknown>,
-				userInfo as Record<string, unknown>,
-			);
+			await this.applySsoProvisioning(foundUser, claims, userInfo);
 
 			return { user: foundUser, idToken: tokens.id_token };
 		}
@@ -402,11 +406,7 @@ export class OidcService {
 			return newUser;
 		});
 
-		await this.applySsoProvisioning(
-			user,
-			claims as Record<string, unknown>,
-			userInfo as Record<string, unknown>,
-		);
+		await this.applySsoProvisioning(user, claims, userInfo);
 
 		return { user, idToken: tokens.id_token };
 	}

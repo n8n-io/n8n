@@ -17,6 +17,8 @@ parameters:
     in: query
   - schema:
       type: string
+      minLength: 1
+      maxLength: 36
     required: false
     name: providerId
     in: query
@@ -38,6 +40,8 @@ responses:
                 properties:
                   id:
                     type: string
+                    minLength: 1
+                    maxLength: 36
                   name:
                     type: string
                   scope:
@@ -64,6 +68,8 @@ responses:
                     properties:
                       id:
                         type: string
+                        minLength: 1
+                        maxLength: 36
                       name:
                         type: string
                       type:
@@ -96,6 +102,8 @@ responses:
                         properties:
                           id:
                             type: string
+                            minLength: 1
+                            maxLength: 36
                           name:
                             type: string
                           createdAt:
@@ -130,6 +138,8 @@ responses:
                         properties:
                           id:
                             type: string
+                            minLength: 1
+                            maxLength: 36
                           name:
                             type: string
                           createdAt:

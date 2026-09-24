@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useCredentialOAuth } from '../useCredentialOAuth';
+import { OAUTH_FLOW_TIMEOUT } from '../oauthCallback';
 import { useCredentialsStore } from '../../credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
@@ -813,6 +816,7 @@ describe('useCredentialOAuth', () => {
 		let mockPopup: {
 			closed: boolean;
 			close: ReturnType<typeof vi.fn>;
+			focus: ReturnType<typeof vi.fn>;
 			location: { href: string };
 		};
 
@@ -847,7 +851,8 @@ describe('useCredentialOAuth', () => {
 		beforeEach(() => {
 			mockTrack.mockClear();
 			mockShowError.mockClear();
-			mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
+			mockShowMessage.mockClear();
+			mockPopup = { closed: false, close: vi.fn(), focus: vi.fn(), location: { href: '' } };
 			MockBroadcastChannel.silent = false;
 			mockedStore(useCredentialsStore).deleteCredential.mockResolvedValue();
 			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
@@ -917,6 +922,81 @@ describe('useCredentialOAuth', () => {
 				undefined,
 				{ skipStoreUpdate: true },
 			);
+		});
+
+		it('uses explicit workflow and project context with self-hosted client data', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.fetchUsableCredentials.mockResolvedValue([]);
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', 'n8n-nodes-base.slack', {
+				projectId: 'workflow-project',
+				workflowId: 'setup-workflow',
+				name: 'Custom account',
+				data: { clientId: 'client', clientSecret: 'secret', allowedHttpRequestDomains: 'all' },
+			});
+			expect(credentialsStore.getNewCredentialName).not.toHaveBeenCalled();
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				{
+					id: '',
+					type: 'slackOAuth2Api',
+					name: 'Custom account',
+					data: { clientId: 'client', clientSecret: 'secret', allowedHttpRequestDomains: 'all' },
+				},
+				'workflow-project',
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+				workflowId: 'setup-workflow',
+			});
+			expect(mockTrack).toHaveBeenCalledWith(
+				'User saved credentials',
+				expect.objectContaining({ workflow_id: 'setup-workflow' }),
+			);
+		});
+
+		it('includes the description when the flag is enabled', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			usePostHog().overrides = { [CREDENTIAL_DESCRIPTIONS_FLAG]: { value: true } };
+
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', undefined, {
+				description: 'Use for production alerts',
+			});
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ description: 'Use for production alerts' }),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
+
+		it.each([false, undefined])('omits the description when the flag is %s', async (flag) => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			usePostHog().overrides =
+				flag === undefined ? {} : { [CREDENTIAL_DESCRIPTIONS_FLAG]: { value: flag } };
+
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', undefined, {
+				description: 'Use for production alerts',
+			});
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledOnce();
+			expect(credentialsStore.createNewCredential.mock.calls[0][0]).not.toHaveProperty(
+				'description',
+			);
+		});
+
+		it('keeps project scope when quick connecting from an unsaved workflow', async () => {
+			const store = setupSuccessfulOAuthFlow();
+			store.fetchUsableCredentials.mockResolvedValue([]);
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', undefined, {
+				workflowId: 'unsaved-workflow',
+				projectId: 'project-1',
+				credentialFetchScope: { projectId: 'project-1' },
+			});
+			expect(store.fetchUsableCredentials).toHaveBeenCalledWith({ projectId: 'project-1' });
+			expect(store.fetchUsableCredentials).not.toHaveBeenCalledWith({
+				workflowId: 'unsaved-workflow',
+			});
 		});
 
 		it('should set allowedHttpRequestDomains when property is not hidden', async () => {
@@ -1032,6 +1112,113 @@ describe('useCredentialOAuth', () => {
 			expect(mockPopup.close).toHaveBeenCalled();
 		});
 
+		it('should expose a handle that focuses the active popup', async () => {
+			setupSuccessfulOAuthFlow();
+			let reopen: (() => void) | undefined;
+			const { createAndAuthorize } = useCredentialOAuth();
+
+			const promise = createAndAuthorize('slackOAuth2Api', undefined, {
+				onAuthorizationStarted: (resume) => {
+					reopen = resume;
+				},
+			});
+
+			expect(reopen).toBeTypeOf('function');
+			reopen?.();
+			expect(window.open).toHaveBeenCalledOnce();
+			expect(mockPopup.focus).toHaveBeenCalledOnce();
+			await promise;
+		});
+
+		it('should navigate a reopened popup when the authorization URL arrives', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			let resolveAuthorizationUrl: ((url: string) => void) | undefined;
+			credentialsStore.oAuth2Authorize.mockReturnValueOnce(
+				new Promise<string>((resolve) => {
+					resolveAuthorizationUrl = resolve;
+				}),
+			);
+			const reopenedPopup = {
+				closed: false,
+				close: vi.fn(),
+				focus: vi.fn(),
+				location: { href: '' },
+			};
+			vi.stubGlobal(
+				'open',
+				vi.fn().mockReturnValueOnce(mockPopup).mockReturnValueOnce(reopenedPopup),
+			);
+			let reopen: (() => void) | undefined;
+			const { createAndAuthorize } = useCredentialOAuth();
+			const promise = createAndAuthorize('slackOAuth2Api', undefined, {
+				onAuthorizationStarted: (resume) => {
+					reopen = resume;
+				},
+			});
+
+			await vi.waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalledOnce());
+			mockPopup.closed = true;
+			reopen?.();
+			expect(window.open).toHaveBeenLastCalledWith(
+				'about:blank',
+				'OAuth Authorization',
+				expect.any(String),
+			);
+
+			resolveAuthorizationUrl?.('https://oauth.example.com/auth');
+			await promise;
+
+			expect(reopenedPopup.location.href).toBe('https://oauth.example.com/auth');
+			expect(reopenedPopup.close).toHaveBeenCalledOnce();
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledOnce();
+			expect(credentialsStore.oAuth2Authorize).toHaveBeenCalledOnce();
+		});
+
+		it('should refresh authorization and the timeout when a popup is reopened', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			MockBroadcastChannel.silent = true;
+			credentialsStore.oAuth2Authorize
+				.mockResolvedValueOnce('https://oauth.example.com/auth?state=first')
+				.mockResolvedValueOnce('https://oauth.example.com/auth?state=second');
+			const reopenedPopup = {
+				closed: false,
+				close: vi.fn(),
+				focus: vi.fn(),
+				location: { href: '' },
+			};
+			vi.stubGlobal('open', vi.fn().mockReturnValueOnce(mockPopup).mockReturnValue(reopenedPopup));
+			let reopen: (() => void) | undefined;
+
+			vi.useFakeTimers();
+			try {
+				const { createAndAuthorize } = useCredentialOAuth();
+				const promise = createAndAuthorize('slackOAuth2Api', undefined, {
+					onAuthorizationStarted: (resume) => {
+						reopen = resume;
+					},
+				});
+				await vi.advanceTimersByTimeAsync(OAUTH_FLOW_TIMEOUT - 1000);
+				mockPopup.closed = true;
+				reopen?.();
+				await vi.advanceTimersByTimeAsync(2000);
+
+				expect(credentialsStore.oAuth2Authorize).toHaveBeenCalledTimes(2);
+				expect(reopenedPopup.location.href).toBe('https://oauth.example.com/auth?state=second');
+				expect(reopenedPopup.close).not.toHaveBeenCalled();
+				expect(credentialsStore.deleteCredential).not.toHaveBeenCalled();
+
+				window.dispatchEvent(
+					new MessageEvent('message', { origin: window.location.origin, data: 'success' }),
+				);
+				await expect(promise).resolves.toEqual(createdCredential);
+				expect(credentialsStore.createNewCredential).toHaveBeenCalledOnce();
+				expect(reopenedPopup.close).toHaveBeenCalledOnce();
+				expect(credentialsStore.deleteCredential).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('should keep the credential when OAuth succeeds via backend verification (COOP)', async () => {
 			const credentialsStore = setupSuccessfulOAuthFlow();
 			// No callback message reaches the editor; the popup reads as closed
@@ -1088,6 +1275,31 @@ describe('useCredentialOAuth', () => {
 				vi.useRealTimers();
 			}
 		});
+
+		it.each(['success', 'error', 'cancel'])(
+			'reuses an existing credential after %s without deleting it',
+			async (outcome) => {
+				const store = setupSuccessfulOAuthFlow();
+				store.fetchUsableCredentials.mockResolvedValue([]);
+				MockBroadcastChannel.failOauth = outcome === 'error';
+				MockBroadcastChannel.silent = outcome === 'cancel';
+				vi.useFakeTimers();
+				try {
+					const oauth = useCredentialOAuth();
+					const result = oauth.authorizeExistingCredential(createdCredential, { workflowId: 'wf' });
+					await vi.advanceTimersByTimeAsync(100);
+					if (outcome === 'cancel') oauth.cancelAuthorize();
+					await expect(result).resolves.toEqual(outcome === 'success' ? createdCredential : null);
+					expect(store.oAuth2Authorize).toHaveBeenCalledWith(createdCredential);
+					expect(store.createNewCredential).not.toHaveBeenCalled();
+					expect(store.deleteCredential).not.toHaveBeenCalled();
+					if (outcome === 'success')
+						expect(store.fetchUsableCredentials).toHaveBeenCalledWith({ workflowId: 'wf' });
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
 
 		it('should track "User saved credentials" after OAuth completes, not before', async () => {
 			setupSuccessfulOAuthFlow();

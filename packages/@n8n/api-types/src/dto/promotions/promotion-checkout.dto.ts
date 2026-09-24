@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { promotionDirectionSchema } from './promotion-config.dto';
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 
 /**
@@ -9,8 +10,8 @@ import { Z } from '../../zod-class';
  * checkout, so this never says the whole deployment is ready.
  */
 export const promotionCheckoutPublicSchema = z.object({
-	connectionId: z.string(),
-	configId: z.string(),
+	connectionId: n8nIdSchema,
+	configId: n8nIdSchema,
 	direction: promotionDirectionSchema,
 	/** Apply tracks the branch it imports from, Promote the branch it starts from. */
 	branchName: z.string(),

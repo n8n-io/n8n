@@ -2,7 +2,7 @@ operationId: applyPackage
 tags:
   - Promotions
 summary: Apply a package to the instance
-description: Resets the local checkout to the configured branch tip and imports the package, overwriting to match. Requires the Apply direction to be cloned first, and is available on the instance connection only.
+description: Checks the full package at the configured branch tip. Optionally send expectedSource with the configId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.
 x-required-scope: gitConnection:pull
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -12,203 +12,40 @@ parameters:
       type: string
     required: true
     description: The ID of the promotion connection.
-    name: id
+    name: promotionConnectionId
     in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          expectedSource:
+            type: object
+            properties:
+              configId:
+                type: string
+                minLength: 1
+                maxLength: 36
+              branchName:
+                type: string
+                minLength: 1
+              commitSha:
+                type: string
+                pattern: ^[0-9a-f]{40}([0-9a-f]{24})?$
+            required:
+              - configId
+              - branchName
+              - commitSha
+            additionalProperties: false
+        additionalProperties: false
 responses:
   '200':
     description: Operation successful.
     content:
       application/json:
         schema:
-          type: object
-          properties:
-            connectionId:
-              type: string
-            configId:
-              type: string
-            counts:
-              type: object
-              properties:
-                projects:
-                  type: object
-                  properties:
-                    created:
-                      type: integer
-                      minimum: 0
-                    updated:
-                      type: integer
-                      minimum: 0
-                    skipped:
-                      type: integer
-                      minimum: 0
-                    deleted:
-                      type: integer
-                      minimum: 0
-                  required:
-                    - created
-                    - updated
-                    - skipped
-                    - deleted
-                folders:
-                  type: object
-                  properties:
-                    created:
-                      type: integer
-                      minimum: 0
-                    skipped:
-                      type: integer
-                      minimum: 0
-                    removed:
-                      type: integer
-                      minimum: 0
-                  required:
-                    - created
-                    - skipped
-                    - removed
-                workflows:
-                  type: object
-                  properties:
-                    created:
-                      type: integer
-                      minimum: 0
-                    updated:
-                      type: integer
-                      minimum: 0
-                    skipped:
-                      type: integer
-                      minimum: 0
-                    archived:
-                      type: integer
-                      minimum: 0
-                    deleted:
-                      type: integer
-                      minimum: 0
-                    publishing:
-                      type: object
-                      properties:
-                        published:
-                          type: integer
-                          minimum: 0
-                        unpublished:
-                          type: integer
-                          minimum: 0
-                        unchanged:
-                          type: integer
-                          minimum: 0
-                        blocked:
-                          type: integer
-                          minimum: 0
-                        failed:
-                          type: integer
-                          minimum: 0
-                      required:
-                        - published
-                        - unpublished
-                        - unchanged
-                        - blocked
-                        - failed
-                  required:
-                    - created
-                    - updated
-                    - skipped
-                    - archived
-                    - deleted
-                    - publishing
-                credentials:
-                  type: object
-                  properties:
-                    matched:
-                      type: integer
-                      minimum: 0
-                    stubbed:
-                      type: integer
-                      minimum: 0
-                  required:
-                    - matched
-                    - stubbed
-                dataTables:
-                  type: object
-                  properties:
-                    matched:
-                      type: integer
-                      minimum: 0
-                    created:
-                      type: integer
-                      minimum: 0
-                  required:
-                    - matched
-                    - created
-                variables:
-                  type: object
-                  properties:
-                    matched:
-                      type: integer
-                      minimum: 0
-                    created:
-                      type: integer
-                      minimum: 0
-                    updated:
-                      type: integer
-                      minimum: 0
-                    stubbed:
-                      type: integer
-                      minimum: 0
-                    missing:
-                      type: integer
-                      minimum: 0
-                  required:
-                    - matched
-                    - created
-                    - updated
-                    - stubbed
-                    - missing
-                tags:
-                  type: object
-                  properties:
-                    matched:
-                      type: integer
-                      minimum: 0
-                    created:
-                      type: integer
-                      minimum: 0
-                    renamed:
-                      type: integer
-                      minimum: 0
-                    reconciled:
-                      type: integer
-                      minimum: 0
-                    skipped:
-                      type: integer
-                      minimum: 0
-                  required:
-                    - matched
-                    - created
-                    - renamed
-                    - reconciled
-                    - skipped
-              required:
-                - projects
-                - folders
-                - workflows
-                - credentials
-                - dataTables
-                - variables
-                - tags
-            git:
-              type: object
-              properties:
-                commitSha:
-                  type: string
-                branchName:
-                  type: string
-              required:
-                - commitSha
-                - branchName
-          required:
-            - connectionId
-            - configId
-            - counts
-            - git
+          $ref: ../../../../shared/spec/schemas/applyPackageResultDto.generated.yml
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
@@ -219,6 +56,8 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
     $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
     $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
   '503':

@@ -4,11 +4,14 @@ export {
 	activityResourceNameMaxLength,
 	type ActivityEventInput,
 	type ActivityFeedQuery,
+	type ActivityProjectScope,
 } from './activity-event.repository';
 export { AgentEvalDatasetRepository } from './agent-eval-dataset.repository.ee';
 export { AgentEvalRunRepository } from './agent-eval-run.repository.ee';
 export { AgentEvalResultRepository } from './agent-eval-result.repository.ee';
 export { AgentEvalRatingRepository } from './agent-eval-rating.repository.ee';
+export { AiPreferenceRepository } from './ai-preference.repository';
+export type { ReadableProjects } from './ai-preference.repository';
 export { AnnotationTagMappingRepository } from './annotation-tag-mapping.repository.ee';
 export { AnnotationTagRepository } from './annotation-tag.repository.ee';
 export { AiBuilderTemporaryWorkflowRepository } from './ai-builder-temporary-workflow.repository';
@@ -17,7 +20,11 @@ export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
-export { CredentialsRepository, type CredentialSharingRelation } from './credentials.repository';
+export {
+	CredentialsRepository,
+	CredentialIdConflictError,
+	type CredentialSharingRelation,
+} from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
 	DeploymentKeyRepository,
@@ -32,6 +39,7 @@ export {
 export { EvaluationConfigRepository } from './evaluation-config.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
+export { ExecutionListRepository } from './execution-list.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,
@@ -47,7 +55,11 @@ export { InstanceCredentialAssignmentRepository } from './instance-credential-as
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectPoolSettingsRepository } from './project-pool-settings.repository.ee';
 export { ProjectRelationRepository } from './project-relation.repository';
-export { ProjectRepository, type ProjectListOptions } from './project.repository';
+export {
+	ProjectRepository,
+	ProjectIdConflictError,
+	type ProjectListOptions,
+} from './project.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
 export { ScheduledJobRepository } from './scheduled-job.repository';
@@ -75,7 +87,7 @@ export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
 export { TestRunRepository, type TestRunSummary } from './test-run.repository.ee';
-export { VariablesRepository } from './variables.repository';
+export { VariablesRepository, type VariableKeyScope } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
 export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
@@ -83,6 +95,7 @@ export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository, agentToolReferenceWhere } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
+export { WorkflowPublicationRetryStateRepository } from './workflow-publication-retry-state.repository';
 export {
 	WorkflowPublicationTriggerStatusRepository,
 	type TriggerStatusRow,

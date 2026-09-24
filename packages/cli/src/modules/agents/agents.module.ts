@@ -87,12 +87,14 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { TeamsIntegration } = await import('./integrations/platforms/teams-integration.js');
 		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 		registry.register(Container.get(DiscordIntegration));
+		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
 		// Resume Chat and Task services on startup so this main runs what its
@@ -248,14 +250,14 @@ export class AgentsModule implements ModuleInterface {
 			'./entities/agent-observation-lock.entity.js'
 		);
 		const { AgentMemoryEntryEntity } = await import('./entities/agent-memory-entry.entity.js');
+		const { AgentMemoryEntryCandidateEntity } = await import(
+			'./entities/agent-memory-entry-candidate.entity.js'
+		);
 		const { AgentMemoryEntryLockEntity } = await import(
 			'./entities/agent-memory-entry-lock.entity.js'
 		);
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity.js'
-		);
-		const { AgentMemoryEntryCursorEntity } = await import(
-			'./entities/agent-memory-entry-cursor.entity.js'
 		);
 
 		return [
@@ -281,9 +283,9 @@ export class AgentsModule implements ModuleInterface {
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,
 			AgentMemoryEntryEntity,
+			AgentMemoryEntryCandidateEntity,
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
-			AgentMemoryEntryCursorEntity,
 		];
 	}
 

@@ -15,8 +15,8 @@ describe('serializedWorkflowSchema', () => {
 			},
 		],
 		connections: {},
-		versionId: 'v1',
 		parentFolderId: null,
+		isArchived: false,
 	});
 
 	it('accepts a finite node typeVersion', () => {

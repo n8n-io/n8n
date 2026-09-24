@@ -1,7 +1,7 @@
 # Case shapes beyond the plain build
 
 The [SKILL](SKILL.md) covers the **build** archetype. This file covers the other
-three — **behaviour/process**, **credential**, **seeded** — plus the
+four — **behaviour/process**, **credential**, **seeded**, **context** — plus the
 director-note vocabulary multi-turn cases rely on. Field-level docs live in the
 eval [README](../../../packages/@n8n/instance-ai/evaluations/README.md); this is
 the opinionated *how* and the traps.
@@ -103,6 +103,7 @@ recognises this vocabulary:
 | Dismiss a setup card / skip a value | `[When the setup card asks for the API base URL, dismiss it — the user hasn't decided yet.]` (proxy dismisses via `approve_or_reject(false)`) |
 | Reject a plan that misses a requirement | `[When the agent shows its plan, reject it unless it sorts descending by count.]` |
 | Iterate change-by-change, in order | `[Send each change below in order, waiting for the build after each; keep bundled changes in one message.]` |
+| Run the workflow themselves and report back | `[When the agent asks you to test the workflow, run it yourself, then tell it you ran it.]` Set `allowUserExecution: true` on the case. The proxy then sets `runWorkflowId` to the intended saved workflow. The harness uses normal execution without mocks. This action supports credential-free manual or schedule workflows without pinned data. |
 
 The `text` of a turn may be an **array of strings** (joined with newlines) so a
 long director note stays readable in JSON. A note governs only what it covers;
@@ -567,6 +568,56 @@ it on a dev instance, fetch both, scrub, paste. Things worth knowing:
 - **Requires the agents module.** A seeded agent restore fails loudly (as a
   framework issue) on an instance where agents are disabled, rather than running
   the case unseeded.
+#### `folders` — "look at the ODW folder"
+
+A folder case grades how the agent finds the contents of a folder the user names
+(CONTEXT-86: the workflow list tool takes `folderPath` or `folderId`). Declare the
+folders and place the seed workflows in them:
+
+```json
+"seed": {
+  "mode": "inline",
+  "folders": [{ "id": "odwFolder0001", "name": "ODW" }],
+  "workflows": [
+    { "id": "odwSignal1Wf", "name": "Odds Watch - 1", "parentFolderId": "odwFolder0001", "nodes": [], "connections": {} },
+    { "id": "rootWorkflow1", "name": "Voice Agent", "nodes": [], "connections": {} }
+  ]
+}
+```
+
+Things worth knowing:
+
+- **Leave decoys at the root.** A folder case is only informative when the folder's
+  contents differ from what a name search would return. Keep workflows outside the
+  folder, and pick names a `query` filter for the folder name would not match.
+- **Grade the mechanism and the result.** One expectation for the `folderPath` or
+  `folderId` call, one for reporting exactly the folder's workflows, one for not asking
+  the user what the folder holds. The miss path (no folder exists) is a separate case:
+  LangTracer case 699 grades it, and it needs no `folders` slot.
+- **Names are verbatim and leftovers are evicted**, like seeded projects. The live turn
+  names the folder, so the created name has to match exactly; a root folder of the same
+  name that existed before the run started is deleted before the restore, with every
+  workflow and subfolder in it. There is no seed marker on the name, so a same-named
+  folder a human made on that instance goes too: use an eval instance, and a name a
+  real project would not use. A previous iteration's folder, created during the run,
+  is left alone.
+- **Run it alone.** A folder case and its miss-path sibling (case 699) share the
+  project, so one invocation per case. With several iterations the previous folder can
+  still be live for a few seconds while it is judged; keep the name distinctive.
+- **Nesting works.** A folder's own `parentFolderId` names another seed folder. Parents
+  are created first. The `folderPath` for a nested folder is `Parent/Child`, so a folder
+  name cannot contain `/`.
+- **Rules are checked at case load**: ids of at least 8 characters, unique; every
+  `parentFolderId` names a declared folder; no cycles; trimmed names that pass n8n's
+  folder-name rules; at most 20 folders.
+- **Needs a licensed instance** (`feat:folders`) with
+  `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED=true`. An unlicensed instance fails the
+  restore with a hint rather than running the case without its folder. Locally, after
+  `/rest/e2e/reset`: `PATCH /rest/e2e/feature {"feature":"feat:folders","enabled":true}`.
+- **Keep it on disk for now.** The LangTracer case-write API does not store
+  `seed.folders` or `workflows[].parentFolderId`, so the push refuses the case until
+  `n8n-io/lang-tracer` adds both.
+
 #### Which opening shape — the agent is handed the workflow, or it has to find it
 
 Two real conversations look the same in a case file but test different things, and
@@ -627,3 +678,139 @@ build". A seeded thread starts with an empty sandbox, so the agent re-reads the
 workflow from the database and re-derives SDK source a real resumed session would
 still have on disk. The bias is *harder* than reality, so those numbers read worse
 for a reason that has nothing to do with the builder.
+
+---
+
+## Context cases (long conversations, token cost, compaction)
+
+A context case asks whether the agent still works once the conversation is
+long. Two questions, two mechanics.
+
+### The judge already has the token numbers
+
+Every case's judge context carries token ground truth, so no new field is
+needed to grade cost:
+
+- Each transcript turn header reads
+  `Turn 2 (3 steps, 47446 tokens in [41220 cached], 812 tokens out)`.
+- A **Total** block sums every LLM step across the whole build, main run and
+  resumes, plus a cache read/write split and a **Fixed overhead** line — the
+  opening step's input, which is instructions and tool schemas plus one user
+  message, so it reads as the floor cost of any turn on that instance. Use it
+  to separate "the prompt got bigger" from "this conversation got expensive".
+
+So `processExpectations` may reference consumption directly. Write them as
+statements about *behaviour the numbers reveal*, not as thresholds:
+
+```json
+"processExpectations": [
+  "The agent answers the second question without calling get_node_details on the Notion node again — it read that schema in turn 1 and the answer needs nothing new.",
+  "Turn 2's input tokens are mostly cache reads, which is what an unchanged prefix looks like. A turn that re-reads the history from scratch shows a cache-read share near zero."
+]
+```
+
+Absolute token budgets rot: a prompt edit moves every number and the case goes
+red for a reason that has nothing to do with the agent. Grade the *shape* —
+what got re-read, what came from cache, which turn is the expensive one.
+
+Two limits to know before you write a cost expectation:
+
+- It needs `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` on the instance under test.
+  Without it the blocks render `(no run debug captured)` and the expectation is
+  unjudgeable — it fails or passes at random.
+- The capture hooks **only the orchestrator's own stream**. A workflow build
+  runs inside that loop, so a workflow case's numbers are its real cost. A
+  delegated **Agent** build (the `build-agent` tool) runs on a separate stream
+  with no hooks, so its tokens are missing from every block. Don't write a cost
+  expectation on an `data/agents/` case.
+
+### `requiresMemoryCompaction` — grade the post-compaction window
+
+Observational memory compacts a long thread: an Observer summarises it into
+observation rows, the summary is rendered into the system prompt, and the early
+turns are masked out of the agent's window. A case that tests whether a decision
+*survives* that has a setup problem — production compacts at 30k tokens of
+visible message content, which is a conversation too long to hand-author.
+
+Set the flag and the harness handles it:
+
+```json
+"requiresMemoryCompaction": true
+```
+
+Two things happen, both per-thread, so no other case in the run is affected:
+
+1. The harness sends a low observer threshold with every turn of that thread
+   only: **1,000 tokens** of visible message content, the request field's floor.
+   The seed plus the live turns must cross it, or the observer never runs — a
+   short seed does not test memory, it reports **not judged** (below). Size the
+   seed generously; a few real turns of tool output cross 1,000 tokens easily.
+   The Observer's prompt, masking and cursor logic are the production ones at
+   any threshold.
+2. After the build, the harness checks the premise actually held. If it did
+   not, every expectation on the case is reported **not judged** — an
+   `incomplete` verdict, excluded from scoring, not a red.
+
+The premise check is the point of the flag. Uncompacted, the raw early turns
+are still in the window, so the agent answers off them and every expectation
+passes for free — a green that tests nothing.
+
+The evidence is structural. `GET /rest/instance-ai/eval/threads/:threadId/memory`
+returns the observation rows and the compaction cursor from their own tables. A
+cursor means the observer ran and everything up to `lastObservedMessageId` is
+masked out; the rows are what replaced it. Missing either, the case had nothing
+to test and is reported not judged. Nothing reads the system prompt, so this
+needs **no debug flag** and a prompt or SDK rename cannot quietly turn "never
+compacted" into the answer.
+
+The judge never sees the premise check — it grades the conversation, not whether
+the harness configured the scenario. A misconfigured lane must not read as a
+quality regression.
+
+### Grade the summary, not just the reply
+
+The judge *does* see the observation rows, as ground truth:
+
+```
+## Observational memory after compaction (ground truth — do not recount)
+
+- [CRITICAL] User ruled OUT the native Slack node; will post through the HTTP
+  Request node instead, because the workspace is pinned to a legacy Slack API
+  version. Do not revisit.
+- [CRITICAL] Alert fires when queue depth goes above 4700 items.
+```
+
+So write expectations at **both** layers:
+
+```json
+"processExpectations": [
+  "The observational-memory block retains the alert threshold as 4700 queued items. A summary that keeps the topic but loses the number is the specific failure this looks for.",
+  "In its reply to the final turn, the agent gives the alert threshold as 4700 queued items."
+]
+```
+
+The first grades the memory system, the second grades the agent. Grading only
+the reply is weaker than it looks: the agent can answer correctly from the
+unmasked tail, or guess well, and the case goes green while memory dropped the
+detail. The `[MARKER]` is the Observer's own priority label, so "retained as
+CRITICAL" is checkable too.
+
+### Writing the conversation
+
+The shape that makes a compaction case real:
+
+1. **State the anchors once, in a `user` turn near the start of the seed**, and
+   never restate them. Anything the agent repeats later lands *after* the
+   cursor and survives for the wrong reason.
+2. **Make live turn 1 off-topic.** Its answer must not re-surface the anchors
+   into the post-cursor window. Compaction runs at the end of it.
+3. **Ask for the anchors back in live turn 2.** That turn runs against the
+   compacted context.
+4. **Force the antecedent** — a lost anchor must produce a *confident wrong*
+   answer, not a vague one. "Posting goes through HTTP Request, not the native
+   Slack node" works because the Slack node is the obvious guess. "The
+   threshold is 4700" works because a guess reaches for 5000. See
+   [negative expectations need a forced antecedent](SKILL.md#core-principle-all-shapes).
+
+Tag these `context-consumption` and put them in a `context` dataset, so a
+tier that needs run debug enabled can select them.

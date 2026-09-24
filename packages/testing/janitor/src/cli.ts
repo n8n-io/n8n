@@ -164,7 +164,7 @@ function runInventory(options: CliOptions): void {
 	}
 
 	// File filter - detailed info for single file
-	if (options.files && options.files.length === 1) {
+	if (options.files?.length === 1) {
 		const result = filterByFile(report, options.files[0]);
 		if (result) {
 			console.log(JSON.stringify(result, null, 2));
@@ -558,6 +558,33 @@ async function runDistribute(options: CliOptions): Promise<void> {
 		console.error(
 			`Include: ${specs.length}/${totalBefore} specs after applying allowlist (${include.size} entries)`,
 		);
+	}
+
+	if (options.groupsFile) {
+		const groupsPath = path.isAbsolute(options.groupsFile)
+			? options.groupsFile
+			: path.resolve(config.rootDir, options.groupsFile);
+		let groups: unknown;
+		try {
+			groups = JSON.parse(fs.readFileSync(groupsPath, 'utf-8'));
+		} catch (error) {
+			throw new Error(`Cannot parse distribution groups from ${groupsPath}`, { cause: error });
+		}
+		if (typeof groups !== 'object' || groups === null || Array.isArray(groups)) {
+			throw new Error('Distribution groups must be a JSON object');
+		}
+		specs = specs.map((spec) => {
+			const fixturePools: unknown = Reflect.get(groups, spec.path.replaceAll('\\', '/'));
+			if (
+				!Array.isArray(fixturePools) ||
+				fixturePools.length === 0 ||
+				!fixturePools.every((fixture): fixture is string => typeof fixture === 'string')
+			) {
+				throw new Error(`Fixture pools missing for ${spec.path}`);
+			}
+			const sortedPools = [...fixturePools].sort();
+			return { ...spec, fixturePools: sortedPools };
+		});
 	}
 
 	const metrics: Record<string, number> = {};

@@ -58,6 +58,7 @@ test.describe(
 					testInfo,
 					baseUrl: backendUrl,
 					connections,
+					variant: `${connections} connection${connections === 1 ? '' : 's'}`,
 					pipelining: 1,
 					warmupSeconds: WARMUP_SECONDS,
 					durationSeconds: DURATION_SECONDS,

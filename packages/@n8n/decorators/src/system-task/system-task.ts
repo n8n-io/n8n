@@ -1,13 +1,15 @@
 import {
 	DEFAULT_MISFIRE_GRACE_SECONDS,
+	MAX_INTEGER_32BITS_SIGNED,
 	ScheduledJobMisfirePolicy,
+	Time,
 	type OneOffDefinition,
 	type ScheduleDefinition,
 } from '@n8n/constants';
 import { Service, type Constructable } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { wholeSeconds } from './whole-seconds';
+import type { SystemTaskPlacement } from './system-task-placement';
 
 /** Whether a run is safe to repeat. */
 export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
@@ -31,21 +33,8 @@ export interface SystemTask {
 	/** What kind of effects a run has, which sets the defaults of the overrides below. */
 	readonly effects: SystemTaskEffects;
 
-	/**
-	 * Migration status.
-	 * - `false` runs on the leader-gated in-memory timer
-	 * - `true` runs on the durable scheduler when the instance flag is on.
-	 * @remarks Temporary, removed once every task is durable.
-	 */
-	readonly durable: boolean;
-
-	/**
-	 * Runs one occurrence as soon as this instance becomes the leader,
-	 * including at startup for an instance that is already the leader, on
-	 * top of the scheduled occurrences. In-memory timers only: ignored for a
-	 * durable run.
-	 */
-	readonly runOnTakeover?: boolean;
+	/** Where the occurrences run. */
+	readonly placement: SystemTaskPlacement;
 
 	/**
 	 * How long after a failed run an earlier retry occurrence runs, instead of
@@ -140,6 +129,30 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	return options;
 }
 
+/** Longest delay a timeout honors. Node fires a longer one after about 1 ms. */
+const MAX_RETRY_DELAY_SECONDS = Math.floor(MAX_INTEGER_32BITS_SIGNED / Time.seconds.toMilliseconds);
+
+/**
+ * Rejects a task that declares an option the schedulers cannot honor.
+ *
+ * @throws {UnexpectedError} when `retryDelaySeconds`, `maxAttempts` or `misfireGraceSeconds` is out of range
+ */
+export function validateSystemTask(task: SystemTask): void {
+	resolveSystemTaskRunOptions(task);
+
+	const { retryDelaySeconds } = task;
+	if (
+		retryDelaySeconds !== undefined &&
+		(!Number.isInteger(retryDelaySeconds) ||
+			retryDelaySeconds < 1 ||
+			retryDelaySeconds > MAX_RETRY_DELAY_SECONDS)
+	) {
+		throw new UnexpectedError('A system task declares an out-of-range retry delay', {
+			extra: { name: task.name, retryDelaySeconds },
+		});
+	}
+}
+
 /**
  * Resolves the schedule a task is planned with. An interval is rounded to the
  * whole second the scheduler requires, so a cadence derived from a fractional
@@ -152,15 +165,17 @@ export function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule 
 	return { ...schedule, intervalSeconds: wholeSeconds(schedule.intervalSeconds) };
 }
 
-/** Ceiling of an `int` column, which is what both fields are stored in. */
-const MAX_INT32 = 2_147_483_647;
+/** Rounds to the whole second the scheduler requires, never below one. */
+function wholeSeconds(seconds: number): number {
+	return Math.max(1, Math.round(seconds));
+}
 
 function assertInRange(taskName: string, field: string, value: number, min: number) {
-	if (Number.isInteger(value) && value >= min && value <= MAX_INT32) return;
-
-	throw new UnexpectedError(
-		`System task "${taskName}" declares ${field} as ${value}, but it must be an integer between ${min} and ${MAX_INT32}`,
-	);
+	if (!Number.isInteger(value) || value < min || value > MAX_INTEGER_32BITS_SIGNED) {
+		throw new UnexpectedError('A system task declares an out-of-range option', {
+			extra: { name: taskName, field, value, min, max: MAX_INTEGER_32BITS_SIGNED },
+		});
+	}
 }
 
 export type SystemTaskClass = Constructable<SystemTask>;

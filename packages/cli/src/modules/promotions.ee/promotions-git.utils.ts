@@ -1,15 +1,25 @@
-import type { PromotionSshKeyType } from '@n8n/api-types';
+import type { PromotionConnectionTarget, PromotionSshKeyType } from '@n8n/api-types';
 import { resolveProxyUrl } from '@n8n/backend-network';
 import { generateKeyPairSync } from 'node:crypto';
 
 import {
 	HTTP_LOW_SPEED_LIMIT_BYTES,
 	HTTP_LOW_SPEED_TIME_SECONDS,
+	PROMOTION_BRANCH_PREFIX,
 	SSH_CONNECT_TIMEOUT_SECONDS,
 	SSH_SERVER_ALIVE_COUNT_MAX,
 	SSH_SERVER_ALIVE_INTERVAL_SECONDS,
 } from './constants';
-import type { PromotionOperationInput, ResolvedPromotionConfig } from './promotions.types';
+import type {
+	PromotionCacheDescriptor,
+	PromotionOperationInput,
+	ResolvedPromotionConfig,
+} from './promotions.types';
+
+/** Build a valid Git branch name for one promotion. */
+export function buildPromotionBranchName(now: Date): string {
+	return `${PROMOTION_BRANCH_PREFIX}${now.toISOString().replace(/[:.]/g, '-')}`;
+}
 
 /** Quote a value for use as one POSIX shell argument. */
 const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;
@@ -33,6 +43,10 @@ export function buildHttpsGitConfig({ repositoryUrl }: { repositoryUrl: string }
 	// Git uses http.proxy for both HTTP and HTTPS URLs.
 	const proxyUrl = resolveProxyUrl(repositoryUrl);
 	if (proxyUrl) config.push(`http.proxy=${proxyUrl}`);
+	// Git runs with a replaced environment, so carry the CA settings over as config.
+	const { GIT_SSL_CAINFO, GIT_SSL_CAPATH } = process.env;
+	if (GIT_SSL_CAINFO) config.push(`http.sslCAInfo=${GIT_SSL_CAINFO}`);
+	if (GIT_SSL_CAPATH) config.push(`http.sslCAPath=${GIT_SSL_CAPATH}`);
 	return config;
 }
 
@@ -81,4 +95,25 @@ export function checkoutBranchName(config: ResolvedPromotionConfig): string {
 /** Keep the repository URL consistent across Git operations and cache identity. */
 export function repositoryUrl(input: PromotionOperationInput): string {
 	return input.target.remoteUrl;
+}
+
+/**
+ * The cache descriptor written after a clone and compared on every later
+ * operation: the identity a checkout must match to count as usable. One function
+ * owns both the schema version and the field-derivation rule, so the writer, the
+ * enforcer, and the UI reader agree on the shape by construction.
+ */
+export function buildCacheDescriptor(source: {
+	connectionId: string;
+	configId: string;
+	target: PromotionConnectionTarget;
+	config: ResolvedPromotionConfig;
+}): PromotionCacheDescriptor {
+	return {
+		schemaVersion: 1,
+		connectionId: source.connectionId,
+		configId: source.configId,
+		remoteUrl: source.target.remoteUrl,
+		checkoutBranchName: checkoutBranchName(source.config),
+	};
 }

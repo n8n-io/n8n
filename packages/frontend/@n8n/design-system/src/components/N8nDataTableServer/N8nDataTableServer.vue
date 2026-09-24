@@ -612,6 +612,7 @@ const table = useVueTable({
 .table-scroll {
 	max-height: 100%;
 	overflow: auto;
+	scrollbar-gutter: stable;
 	position: relative;
 }
 

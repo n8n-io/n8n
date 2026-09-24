@@ -37,11 +37,17 @@ type Props = {
 	isSharedGlobally?: boolean;
 	allUsersLabel?: string;
 	disabledTooltip?: string;
+	teleported?: boolean;
 	// Show the dropdown chevron even in remote+filterable mode (element-plus hides it by default)
 	showSuffix?: boolean;
 };
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
+
+// Keep an in-place popper outside a scroll container's clipping area.
+const inPlacePopperOptions: { strategy: 'fixed' } = { strategy: 'fixed' };
 
 const GLOBAL_GROUP: ProjectListItem = {
 	id: 'all_users',
@@ -231,6 +237,8 @@ watch(
 				:size="size ?? 'medium'"
 				:disabled="props.readonly || !!props.disabledTooltip"
 				:clearable
+				:teleported="props.teleported"
+				:popper-options="props.teleported ? undefined : inPlacePopperOptions"
 				:popper-class="$style.popper"
 				@update:model-value="onProjectSelected"
 				@clear="emit('clear')"
@@ -274,7 +282,7 @@ watch(
 		<ul v-if="selectedProjects" :class="$style.selectedProjects">
 			<li v-if="props.homeProject" :class="$style.project" data-test-id="project-sharing-owner">
 				<ProjectSharingInfo :project="props.homeProject">
-					<N8nBadge theme="tertiary" bold>
+					<N8nBadge variant="outline">
 						{{ locale.baseText('auth.roles.owner') }}
 					</N8nBadge></ProjectSharingInfo
 				>

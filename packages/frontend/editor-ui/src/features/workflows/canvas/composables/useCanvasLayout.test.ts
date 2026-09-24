@@ -1,6 +1,8 @@
 import { useVueFlow, type GraphNode, type VueFlowStore } from '@vue-flow/core';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed, ref, shallowRef } from 'vue';
 import {
+	checkOverlap,
 	createEmptyCanvasRenderData,
 	type CanvasRenderData,
 } from '@/features/workflows/canvas/canvas.utils';
@@ -10,14 +12,26 @@ import {
 	createCanvasGraphNode,
 } from '@/features/workflows/canvas/__tests__/utils';
 import {
+	CanvasConnectionMode,
 	CanvasNodeRenderType,
+	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
 	type CanvasNodeData,
 } from '../canvas.types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '@/app/constants';
-import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE, NODE_X_SPACING } from '@/app/utils/nodeViewUtils';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import type { INodeUi } from '@/Interface';
+import {
+	computeGroupFrameRects,
+	computeNodesRectFromStore,
+	titleBarFromNodesRect,
+} from './useCanvasMapping.groups';
+import {
+	computeNodeGroupLayoutPushes,
+	type NodeGroupLayoutComponent,
+} from './useCanvasNodeGroupLayout';
 
 vi.mock('@vue-flow/core');
 
@@ -25,13 +39,33 @@ function matchesGrid(result: CanvasLayoutResult) {
 	return result.nodes.every((node) => node.x % GRID_SIZE === 0 && node.y % GRID_SIZE === 0);
 }
 
+function containsBox(
+	parent: CanvasLayoutResult['boundingBox'],
+	child: CanvasLayoutResult['boundingBox'],
+) {
+	return (
+		child.x >= parent.x &&
+		child.y >= parent.y &&
+		child.x + child.width <= parent.x + parent.width &&
+		child.y + child.height <= parent.y + parent.height
+	);
+}
+
+function isGraphCanvasNode(
+	node: GraphNode<CanvasNodeData> | GraphNode<CanvasGroupNodeData>,
+): node is GraphNode<CanvasNodeData> {
+	return 'connections' in node.data;
+}
+
 describe('useCanvasLayout', () => {
 	function createTestSetup(
 		nodes: Array<GraphNode<CanvasNodeData> | GraphNode<CanvasGroupNodeData>>,
 		connections: Array<[string, string]>,
 		selectedNodeIds?: string[],
+		canonicalConnections = connections,
 	) {
 		const nodesById = Object.fromEntries(nodes.map((node) => [node.id, node]));
+		seedCanonicalConnections(nodesById, canonicalConnections);
 		const edges = connections.map(([sourceId, targetId]) =>
 			createCanvasGraphEdge(nodesById[sourceId], nodesById[targetId]),
 		);
@@ -56,6 +90,32 @@ describe('useCanvasLayout', () => {
 		);
 
 		return { layout };
+	}
+
+	function seedCanonicalConnections(
+		nodesById: Record<string, GraphNode<CanvasNodeData> | GraphNode<CanvasGroupNodeData>>,
+		connections: Array<[string, string]>,
+	) {
+		for (const node of Object.values(nodesById)) {
+			if (isGraphCanvasNode(node)) node.data.name = node.id;
+		}
+
+		for (const [sourceId, targetId] of connections) {
+			const source = nodesById[sourceId];
+			const target = nodesById[targetId];
+			if (!source || !target || !isGraphCanvasNode(source) || !isGraphCanvasNode(target)) continue;
+
+			const outputConnections = source.data.connections[CanvasConnectionMode.Output];
+			const mainOutputConnections = outputConnections[NodeConnectionTypes.Main] ?? [];
+			const firstPortConnections = mainOutputConnections[0] ?? [];
+			outputConnections[NodeConnectionTypes.Main] = [
+				[
+					...firstPortConnections,
+					{ node: target.data.name, type: NodeConnectionTypes.Main, index: 0 },
+				],
+				...mainOutputConnections.slice(1),
+			];
+		}
 	}
 
 	test('should layout a basic workflow', () => {
@@ -94,6 +154,24 @@ describe('useCanvasLayout', () => {
 		const { layout } = createTestSetup(nodes, connections, ['node1', 'node2', 'node3']);
 		const result = layout('selection');
 		expect(result).toMatchSnapshot();
+		expect(matchesGrid(result)).toBe(true);
+	});
+
+	test('should ignore an empty explicit node filter', () => {
+		const nodes = [
+			createCanvasGraphNode({ id: 'node1' }),
+			createCanvasGraphNode({ id: 'node2' }),
+			createCanvasGraphNode({ id: 'node3' }),
+		];
+		const connections: Array<[string, string]> = [
+			['node1', 'node2'],
+			['node2', 'node3'],
+		];
+
+		const { layout } = createTestSetup(nodes, connections, ['node1', 'node2']);
+		const result = layout('selection', { nodeIdsFilter: [] });
+
+		expect(result.nodes.map(({ id }) => id)).toEqual(['node1', 'node2']);
 		expect(matchesGrid(result)).toBe(true);
 	});
 
@@ -390,15 +468,86 @@ describe('useCanvasLayout', () => {
 		expect(node2.x).toBeGreaterThan(node1.x);
 	});
 
-	describe('collapsed node groups', () => {
+	describe('node groups', () => {
 		const groupId = 'g1';
 		const chipId = `group:${groupId}`;
+		const expandedGroups = [
+			{ id: 'approval', name: 'Approval', nodeIds: ['approval-start', 'approval-done'] },
+			{ id: 'billing', name: 'Billing', nodeIds: ['billing-start', 'billing-done'] },
+		];
+
+		type NodePosition = { x: number; y: number };
+
+		function toStoreNode(id: string, position: NodePosition): INodeUi {
+			return {
+				id,
+				name: id,
+				position: [position.x, position.y],
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				parameters: {},
+			} as INodeUi;
+		}
+
+		/** Store lookup over a position map, as the group mapper expects it. */
+		function storeNodeLookup(positions: Map<string, NodePosition>) {
+			return (id: string): INodeUi | undefined => {
+				const position = positions.get(id);
+				return position ? toStoreNode(id, position) : undefined;
+			};
+		}
+
+		function computeGroupFrames(positions: Map<string, NodePosition>) {
+			const getNodeById = storeNodeLookup(positions);
+
+			return expandedGroups.map((group) => ({
+				name: group.name,
+				frame: computeGroupFrameRects(computeNodesRectFromStore(group.nodeIds, getNodeById))
+					.expanded,
+			}));
+		}
+
+		function findOverlappingGroupPairs(positions: Map<string, NodePosition>): string[] {
+			const frames = computeGroupFrames(positions);
+			const pairs: string[] = [];
+			for (let i = 0; i < frames.length; i++) {
+				for (let j = i + 1; j < frames.length; j++) {
+					if (checkOverlap(frames[i].frame, frames[j].frame)) {
+						pairs.push(`${frames[i].name} overlaps ${frames[j].name}`);
+					}
+				}
+			}
+			return pairs;
+		}
+
+		function computeGroupLayoutComponents(
+			positions: Map<string, NodePosition>,
+		): NodeGroupLayoutComponent[] {
+			const getNodeById = storeNodeLookup(positions);
+
+			return expandedGroups.map((group) => {
+				const { collapsed, expanded } = computeGroupFrameRects(
+					computeNodesRectFromStore(group.nodeIds, getNodeById),
+				);
+
+				return {
+					id: createCanvasGroupNodeId(group.id),
+					kind: 'group',
+					groupId: group.id,
+					nodeIds: [...group.nodeIds],
+					rect: expanded,
+					collapsedRect: collapsed,
+					expandedRect: expanded,
+				};
+			});
+		}
 
 		function createCollapsedGroupSetup(
 			m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } }),
+			selectedNodeIds?: string[],
 		) {
-			// Use a grid-aligned gap so snap-to-grid preserves the relative spacing
-			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 1104, y: 1008 } });
+			const hiddenM1 = { ...m1, hidden: true };
+			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 960, y: 1200 }, hidden: true });
 			const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 0 } });
 			const after = createCanvasGraphNode({ id: 'after', position: { x: 2000, y: 0 } });
 			const group = createCanvasGraphGroupNode({
@@ -409,16 +558,57 @@ describe('useCanvasLayout', () => {
 				position: { x: 944, y: 908 },
 			});
 
-			const nodes = [before, m1, m2, after, group];
+			const nodes = [before, hiddenM1, m2, after, group];
 			const connections: Array<[string, string]> = [
 				['before', chipId],
 				[chipId, 'after'],
 			];
+			const canonicalConnections: Array<[string, string]> = [
+				['before', 'm1'],
+				['m1', 'm2'],
+				['m2', 'after'],
+			];
 
-			return createTestSetup(nodes, connections);
+			return createTestSetup(nodes, connections, selectedNodeIds, canonicalConnections);
 		}
 
-		test('lays out a collapsed group as a unit, preserving member offsets and dropping the chip', () => {
+		function createExpandedGroupFrameSetup() {
+			const graphNodes = [
+				createCanvasGraphNode({ id: 'source', position: { x: 0, y: 120 } }),
+				createCanvasGraphNode({ id: 'approval-start', position: { x: 384, y: 0 } }),
+				createCanvasGraphNode({ id: 'approval-done', position: { x: 608, y: 0 } }),
+				createCanvasGraphNode({ id: 'billing-start', position: { x: 384, y: 320 } }),
+				createCanvasGraphNode({ id: 'billing-done', position: { x: 608, y: 320 } }),
+				createCanvasGraphNode({ id: 'merge', position: { x: 896, y: 120 } }),
+			];
+			const initialPositions = new Map(graphNodes.map((node) => [node.id, node.position]));
+
+			const groupNodes = expandedGroups.map((group) => {
+				const getNodeById = storeNodeLookup(initialPositions);
+				const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById);
+				const frame = computeGroupFrameRects(nodesRect).expanded;
+				return createCanvasGraphGroupNode({
+					id: group.id,
+					nodeIds: [...group.nodeIds],
+					isCollapsed: false,
+					position: { x: frame.x, y: frame.y },
+					nodesRect,
+				});
+			});
+
+			const connections: Array<[string, string]> = [
+				['source', 'approval-start'],
+				['approval-start', 'approval-done'],
+				['approval-done', 'merge'],
+				['source', 'billing-start'],
+				['billing-start', 'billing-done'],
+				['billing-done', 'merge'],
+			];
+
+			return createTestSetup([...graphNodes, ...groupNodes], connections);
+		}
+
+		test('lays out a collapsed group as a unit, tidies members and drops the chip', () => {
 			const { layout } = createCollapsedGroupSetup();
 			const result = layout('all');
 
@@ -433,8 +623,7 @@ describe('useCanvasLayout', () => {
 			assert(rm1);
 			assert(rm2);
 
-			// Members move as a block, keeping their relative offset.
-			expect(rm2.x - rm1.x).toBe(96);
+			expect(rm2.x - rm1.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
 			expect(rm2.y - rm1.y).toBe(0);
 			expect(matchesGrid(result)).toBe(true);
 		});
@@ -472,7 +661,57 @@ describe('useCanvasLayout', () => {
 			expect(after.x).toBeGreaterThan(rm2.x);
 		});
 
-		test('keeps a top-left collapsed group anchored in place', () => {
+		test('tidies hidden members when a collapsed group chip is selected', () => {
+			const { layout } = createCollapsedGroupSetup(undefined, [chipId]);
+			const result = layout('selection');
+
+			const ids = result.nodes.map((n) => n.id);
+			expect(ids).toEqual(['m1', 'm2']);
+
+			const rm1 = result.nodes.find((n) => n.id === 'm1');
+			const rm2 = result.nodes.find((n) => n.id === 'm2');
+			assert(rm1);
+			assert(rm2);
+			expect(rm2.x - rm1.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+			expect(rm2.y - rm1.y).toBe(0);
+		});
+
+		test('tidies a collapsed branch group selected by its hidden members', () => {
+			const first = createCanvasGraphNode({
+				id: 'first',
+				position: { x: -272, y: 320 },
+				hidden: true,
+			});
+			const second = createCanvasGraphNode({
+				id: 'second',
+				position: { x: 160, y: 144 },
+				hidden: true,
+			});
+			const group = createCanvasGraphGroupNode({
+				id: 'group',
+				nodeIds: ['first', 'second'],
+				isCollapsed: true,
+				nodesRect: { x: -272, y: 144, width: 528, height: 272 },
+				position: { x: -336, y: 48 },
+			});
+
+			const { layout } = createTestSetup(
+				[first, second, group],
+				[],
+				['first', 'second'],
+				[['first', 'second']],
+			);
+			const result = layout('selection');
+
+			const laidOutFirst = result.nodes.find((n) => n.id === 'first');
+			const laidOutSecond = result.nodes.find((n) => n.id === 'second');
+			assert(laidOutFirst);
+			assert(laidOutSecond);
+			expect(laidOutSecond.x - laidOutFirst.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+			expect(laidOutSecond.y - laidOutFirst.y).toBe(0);
+		});
+
+		test('keeps a top-left collapsed group anchored in place while tidying contents', () => {
 			// Group owns the top-left corner, where the chip box (944, 908) and the
 			// member box (1008, 1008) disagree — the anchor must not absorb that gap.
 			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } });
@@ -490,21 +729,157 @@ describe('useCanvasLayout', () => {
 
 			const rm1 = result.nodes.find((n) => n.id === 'm1');
 			assert(rm1);
-			// A lone group has nothing to re-flow, so its members stay put.
+			// The title/member gap must not shift the group anchor.
 			expect(rm1).toMatchObject({ x: 1008, y: 1008 });
 		});
 
-		test('lays out expanded group members individually and excludes the chip', () => {
-			const m1 = createCanvasGraphNode({ id: 'm1' });
-			const m2 = createCanvasGraphNode({ id: 'm2' });
+		test.each([
+			['expanded', false],
+			['collapsed', true],
+		])(
+			'is idempotent: tidying an already tidy canvas with %s groups moves nothing',
+			(_, isCollapsed) => {
+				const memberIds = ['approval-start', 'approval-done', 'billing-start', 'billing-done'];
+				const plainIds = ['source', ...memberIds, 'merge'];
+				const connections: Array<[string, string]> = [
+					['source', 'approval-start'],
+					['approval-start', 'approval-done'],
+					['approval-done', 'merge'],
+					['source', 'billing-start'],
+					['billing-start', 'billing-done'],
+					['billing-done', 'merge'],
+				];
+				// Builds the canvas the way the app renders it from stored positions.
+				const buildCanvas = (positions: Map<string, NodePosition>) => {
+					const graphNodes = plainIds.map((id) =>
+						createCanvasGraphNode({ id, position: positions.get(id) }),
+					);
+					const getNodeById = storeNodeLookup(positions);
+					const groupNodes = expandedGroups.map((group) => {
+						const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById);
+						return createCanvasGraphGroupNode({
+							id: group.id,
+							nodeIds: [...group.nodeIds],
+							isCollapsed,
+							position: titleBarFromNodesRect(nodesRect, isCollapsed).position,
+							nodesRect,
+						});
+					});
+					const memberIdSet = new Set(memberIds);
+					const chipConnections = isCollapsed
+						? connections.map(([source, target]): [string, string] => [
+								memberIdSet.has(source) ? `group:${source.split('-')[0]}` : source,
+								memberIdSet.has(target) ? `group:${target.split('-')[0]}` : target,
+							])
+						: connections;
+					return createTestSetup(
+						[...graphNodes, ...groupNodes],
+						chipConnections.filter(([source, target]) => source !== target),
+						undefined,
+						connections,
+					);
+				};
+
+				const first = buildCanvas(
+					new Map([
+						['source', { x: 0, y: 120 }],
+						['approval-start', { x: 384, y: 0 }],
+						['approval-done', { x: 608, y: 0 }],
+						['billing-start', { x: 384, y: 320 }],
+						['billing-done', { x: 608, y: 320 }],
+						['merge', { x: 896, y: 120 }],
+					]),
+				).layout('all');
+				const second = buildCanvas(toPositions(first)).layout('all');
+
+				expect(toPositions(second)).toEqual(toPositions(first));
+			},
+		);
+
+		test('is idempotent with parallel groups when one group is collapsed', () => {
+			const groups = [
+				{ id: 'g1', nodeIds: ['branch-1-start', 'branch-1-done'], collapsed: false },
+				{ id: 'g2', nodeIds: ['branch-2-start', 'branch-2-done'], collapsed: false },
+				{ id: 'g3', nodeIds: ['branch-3-start', 'branch-3-done'], collapsed: true },
+			];
+			const connections: Array<[string, string]> = [
+				['source', 'branch-1-start'],
+				['branch-1-start', 'branch-1-done'],
+				['source', 'branch-2-start'],
+				['branch-2-start', 'branch-2-done'],
+				['source', 'branch-3-start'],
+				['branch-3-start', 'branch-3-done'],
+			];
+
+			const buildCanvas = (positions: Map<string, NodePosition>) => {
+				const getNodeById = storeNodeLookup(positions);
+				const groupNodes = groups.map((group) => {
+					const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById);
+					return createCanvasGraphGroupNode({
+						id: group.id,
+						nodeIds: [...group.nodeIds],
+						isCollapsed: group.collapsed,
+						position: titleBarFromNodesRect(nodesRect, group.collapsed).position,
+						nodesRect,
+					});
+				});
+				const groupByMemberId = new Map(
+					groups
+						.filter((group) => group.collapsed)
+						.flatMap((group) => group.nodeIds.map((id) => [id, createCanvasGroupNodeId(group.id)])),
+				);
+				const visibleConnections = connections
+					.map(([source, target]): [string, string] => [
+						groupByMemberId.get(source) ?? source,
+						groupByMemberId.get(target) ?? target,
+					])
+					.filter(([source, target]) => source !== target);
+
+				return createTestSetup(
+					[
+						...[...positions].map(([id, position]) =>
+							createCanvasGraphNode({
+								id,
+								position,
+								hidden: groupByMemberId.has(id),
+							}),
+						),
+						...groupNodes,
+					],
+					visibleConnections,
+					undefined,
+					connections,
+				);
+			};
+
+			const first = buildCanvas(
+				new Map([
+					['source', { x: -560, y: -176 }],
+					['branch-1-start', { x: -272, y: -480 }],
+					['branch-1-done', { x: -48, y: -480 }],
+					['branch-2-start', { x: -272, y: -48 }],
+					['branch-2-done', { x: 384, y: 512 }],
+					['branch-3-start', { x: -272, y: 320 }],
+					['branch-3-done', { x: 160, y: 144 }],
+				]),
+			).layout('all');
+			const second = buildCanvas(toPositions(first)).layout('all');
+
+			expect(toPositions(second)).toEqual(toPositions(first));
+		});
+
+		test('tidies the members of an expanded group and drops the chip', () => {
+			// m2 sits below-left of m1 although it is m1's successor.
+			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } });
+			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 960, y: 1200 } });
 			const group = createCanvasGraphGroupNode({
 				id: groupId,
 				nodeIds: ['m1', 'm2'],
 				isCollapsed: false,
 				nodesRect: { x: 96, y: 96, width: 192, height: 96 },
+				position: { x: 944, y: 908 },
 			});
 
-			// Expanded: members are visible and connected normally.
 			const nodes = [m1, m2, group];
 			const connections: Array<[string, string]> = [['m1', 'm2']];
 
@@ -520,7 +895,783 @@ describe('useCanvasLayout', () => {
 			const rm2 = result.nodes.find((n) => n.id === 'm2');
 			assert(rm1);
 			assert(rm2);
-			expect(rm2.x).toBeGreaterThan(rm1.x);
+			expect(rm2.x - rm1.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+			expect(rm2.y - rm1.y).toBe(0);
+			expect(matchesGrid(result)).toBe(true);
+		});
+
+		test.each([
+			['expanded', false],
+			['collapsed', true],
+		])('keeps an internal sticky note aligned with a %s group', (_, isCollapsed) => {
+			const trigger = createCanvasGraphNode({ id: 'trigger', position: { x: -336, y: -256 } });
+			const first = createCanvasGraphNode({
+				id: 'first',
+				position: { x: -128, y: -400 },
+				hidden: isCollapsed,
+			});
+			const second = createCanvasGraphNode({
+				id: 'second',
+				position: { x: 256, y: -272 },
+				hidden: isCollapsed,
+			});
+			const stickyDimensions = { width: 240, height: 180 };
+			const sticky = createCanvasGraphNode({
+				id: 'sticky',
+				data: { type: STICKY_NODE_TYPE },
+				dimensions: stickyDimensions,
+				position: { x: -80, y: -48 },
+				hidden: isCollapsed,
+			});
+			const groupNodesRect = {
+				x: first.position.x,
+				y: first.position.y,
+				width: second.position.x + DEFAULT_NODE_SIZE[0] - first.position.x,
+				height: sticky.position.y + stickyDimensions.height - first.position.y,
+			};
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['first', 'second', 'sticky'],
+				isCollapsed,
+				nodesRect: groupNodesRect,
+				position: titleBarFromNodesRect(groupNodesRect, isCollapsed).position,
+			});
+			const visibleConnections: Array<[string, string]> = isCollapsed
+				? [['trigger', chipId]]
+				: [
+						['trigger', 'first'],
+						['first', 'second'],
+					];
+
+			const { layout } = createTestSetup(
+				[trigger, first, second, sticky, group],
+				visibleConnections,
+				undefined,
+				[
+					['trigger', 'first'],
+					['first', 'second'],
+				],
+			);
+			const result = layout('all');
+
+			const laidOutFirst = result.nodes.find((n) => n.id === 'first');
+			const laidOutSecond = result.nodes.find((n) => n.id === 'second');
+			const laidOutSticky = result.nodes.find((n) => n.id === 'sticky');
+			assert(laidOutFirst);
+			assert(laidOutSecond);
+			assert(laidOutSticky);
+
+			const memberBounds = {
+				x: Math.min(laidOutFirst.x, laidOutSecond.x),
+				y: Math.min(laidOutFirst.y, laidOutSecond.y),
+			};
+			expect(laidOutSecond.x - laidOutFirst.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+			expect(laidOutSecond.y - laidOutFirst.y).toBe(0);
+			expect(laidOutSticky.x - memberBounds.x).toBe(sticky.position.x - groupNodesRect.x);
+			expect(laidOutSticky.y - memberBounds.y).toBe(sticky.position.y - groupNodesRect.y);
+			expect(matchesGrid(result)).toBe(true);
+		});
+
+		test('uses saved sticky dimensions for hidden group members', () => {
+			const first = createCanvasGraphNode({
+				id: 'first',
+				position: { x: 1008, y: 1008 },
+				hidden: true,
+			});
+			const second = createCanvasGraphNode({
+				id: 'second',
+				position: { x: 1232, y: 1008 },
+				hidden: true,
+			});
+			const stickyDimensions = { width: 480, height: 360 };
+			const sticky = createCanvasGraphNode({
+				id: 'sticky',
+				data: {
+					type: STICKY_NODE_TYPE,
+					render: { type: CanvasNodeRenderType.StickyNote, options: stickyDimensions },
+				},
+				dimensions: { width: 0, height: 0 },
+				position: { x: 960, y: 928 },
+				hidden: true,
+			});
+			const groupNodesRect = {
+				x: sticky.position.x,
+				y: sticky.position.y,
+				width: stickyDimensions.width,
+				height: stickyDimensions.height,
+			};
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['first', 'second', 'sticky'],
+				isCollapsed: true,
+				nodesRect: groupNodesRect,
+				position: titleBarFromNodesRect(groupNodesRect, true).position,
+			});
+
+			const { layout } = createTestSetup([first, second, sticky, group], [], undefined, [
+				['first', 'second'],
+			]);
+			const result = layout('all');
+
+			const laidOutFirst = result.nodes.find((n) => n.id === 'first');
+			const laidOutSecond = result.nodes.find((n) => n.id === 'second');
+			const laidOutSticky = result.nodes.find((n) => n.id === 'sticky');
+			assert(laidOutFirst);
+			assert(laidOutSecond);
+			assert(laidOutSticky);
+
+			const coveredWidth = DEFAULT_NODE_SIZE[0] + NODE_X_SPACING + DEFAULT_NODE_SIZE[0];
+			expect(laidOutSecond.x - laidOutFirst.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+			expect(laidOutSecond.y - laidOutFirst.y).toBe(0);
+			expect(laidOutSticky.x - laidOutFirst.x).toBe((coveredWidth - stickyDimensions.width) / 2);
+			expect(laidOutSticky.y - laidOutFirst.y).toBeLessThan(-DEFAULT_NODE_SIZE[1]);
+			expect(matchesGrid(result)).toBe(true);
+		});
+
+		function createStickyOverGroupSetup(isCollapsed: boolean) {
+			const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 0 } });
+			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } });
+			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 1104, y: 1008 } });
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['m1', 'm2'],
+				isCollapsed,
+				nodesRect: { x: 1008, y: 1008, width: 192, height: 96 },
+				position: { x: 944, y: 908 },
+			});
+			// Covers the whole group frame, not only its members
+			const sticky = createCanvasGraphNode({
+				id: 'sticky',
+				data: { type: STICKY_NODE_TYPE },
+				dimensions: { width: 800, height: 600 },
+				position: { x: 800, y: 700 },
+			});
+
+			const nodes = [before, m1, m2, group, sticky];
+			const connections: Array<[string, string]> = [['before', isCollapsed ? chipId : 'm1']];
+
+			return createTestSetup(nodes, connections);
+		}
+
+		test.each([
+			['an expanded', false],
+			['a collapsed', true],
+		])('moves a sticky note covering %s group along with its members', (_, isCollapsed) => {
+			const { layout } = createStickyOverGroupSetup(isCollapsed);
+			const result = layout('all');
+
+			const sticky = result.nodes.find((n) => n.id === 'sticky');
+			const rm1 = result.nodes.find((n) => n.id === 'm1');
+			const rm2 = result.nodes.find((n) => n.id === 'm2');
+			assert(sticky);
+			assert(rm1);
+			assert(rm2);
+
+			expect(Number.isFinite(sticky.x)).toBe(true);
+			expect(Number.isFinite(sticky.y)).toBe(true);
+			expect(matchesGrid(result)).toBe(true);
+
+			// The sticky still spans the members after they moved
+			expect(sticky.x).toBeLessThanOrEqual(rm1.x);
+			expect(sticky.x + 800).toBeGreaterThanOrEqual(rm2.x + DEFAULT_NODE_SIZE[0]);
+			expect(sticky.y).toBeLessThanOrEqual(rm1.y);
+			expect(sticky.y + 600).toBeGreaterThanOrEqual(rm1.y + DEFAULT_NODE_SIZE[1]);
+		});
+
+		test.each([
+			['an expanded', false],
+			['a collapsed', true],
+		])('moves a sticky note covering %s group when tidying only that group', (_, isCollapsed) => {
+			const { layout } = createStickyOverGroupSetup(isCollapsed);
+			const result = layout('selection', { nodeIdsFilter: ['m1', 'm2'] });
+
+			const sticky = result.nodes.find((n) => n.id === 'sticky');
+			const rm1 = result.nodes.find((n) => n.id === 'm1');
+			const rm2 = result.nodes.find((n) => n.id === 'm2');
+			assert(sticky);
+			assert(rm1);
+			assert(rm2);
+
+			expect(sticky.x).toBeLessThanOrEqual(rm1.x);
+			expect(sticky.x + 800).toBeGreaterThanOrEqual(rm2.x + DEFAULT_NODE_SIZE[0]);
+			expect(sticky.y).toBeLessThanOrEqual(rm1.y);
+			expect(sticky.y + 600).toBeGreaterThanOrEqual(rm1.y + DEFAULT_NODE_SIZE[1]);
+		});
+
+		test('leaves a sticky note alone when it covers no node or group', () => {
+			const { layout } = createTestSetup(
+				[
+					createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } }),
+					createCanvasGraphGroupNode({
+						id: groupId,
+						nodeIds: ['m1'],
+						isCollapsed: false,
+						nodesRect: { x: 1008, y: 1008, width: 96, height: 96 },
+						position: { x: 944, y: 908 },
+					}),
+					createCanvasGraphNode({
+						id: 'sticky',
+						data: { type: STICKY_NODE_TYPE },
+						dimensions: { width: 200, height: 200 },
+						position: { x: -2000, y: -2000 },
+					}),
+				],
+				[],
+			);
+
+			const result = layout('all');
+
+			expect(result.nodes.map((n) => n.id)).not.toContain('sticky');
+		});
+
+		function createStickyOverParallelGroupsSetup(
+			stickyBox: {
+				x: number;
+				y: number;
+				width: number;
+				height: number;
+			},
+			collapsedGroupIds = new Set<string>(),
+		) {
+			const positions = new Map<string, NodePosition>([
+				['trigger', { x: 320, y: -48 }],
+				['approval-start', { x: 560, y: 80 }],
+				['approval-done', { x: 784, y: 80 }],
+				['billing-start', { x: 1248, y: 240 }],
+				['billing-done', { x: 1472, y: 240 }],
+			]);
+			const groupByMemberId = new Map(
+				expandedGroups.flatMap((group) => group.nodeIds.map((nodeId) => [nodeId, group] as const)),
+			);
+			const getNodeById = storeNodeLookup(positions);
+			const groupNodes = expandedGroups.map((group) => {
+				const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById);
+				const isCollapsed = collapsedGroupIds.has(group.id);
+				const frame = computeGroupFrameRects(nodesRect);
+				return createCanvasGraphGroupNode({
+					id: group.id,
+					nodeIds: [...group.nodeIds],
+					isCollapsed,
+					position: isCollapsed
+						? titleBarFromNodesRect(nodesRect, true).position
+						: { x: frame.expanded.x, y: frame.expanded.y },
+					nodesRect,
+				});
+			});
+			const nodes = [
+				...[...positions].map(([id, position]) => {
+					const group = groupByMemberId.get(id);
+					return createCanvasGraphNode({
+						id,
+						position,
+						hidden: group ? collapsedGroupIds.has(group.id) : false,
+					});
+				}),
+				...groupNodes,
+				createCanvasGraphNode({
+					id: 'sticky',
+					data: { type: STICKY_NODE_TYPE },
+					dimensions: { width: stickyBox.width, height: stickyBox.height },
+					position: { x: stickyBox.x, y: stickyBox.y },
+				}),
+			];
+			const canonicalConnections: Array<[string, string]> = [
+				['trigger', 'approval-start'],
+				['approval-start', 'approval-done'],
+				['trigger', 'billing-start'],
+				['billing-start', 'billing-done'],
+			];
+			const visualNodeId = (id: string) => {
+				const group = groupByMemberId.get(id);
+				return group && collapsedGroupIds.has(group.id) ? createCanvasGroupNodeId(group.id) : id;
+			};
+			const connections = canonicalConnections
+				.map(([source, target]): [string, string] => [visualNodeId(source), visualNodeId(target)])
+				.filter(([source, target]) => source !== target);
+
+			return createTestSetup(nodes, connections, undefined, canonicalConnections);
+		}
+
+		function toPositions(result: CanvasLayoutResult) {
+			return new Map(result.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+		}
+
+		function stickyBoxAfter(result: CanvasLayoutResult, width: number, height: number) {
+			const sticky = result.nodes.find((n) => n.id === 'sticky');
+			assert(sticky);
+			return { x: sticky.x, y: sticky.y, width, height };
+		}
+
+		test('reserves room for a sticky note that covers a group', () => {
+			// Covers the billing frame only; much taller than the frame
+			const { layout } = createStickyOverParallelGroupsSetup({
+				x: 1072,
+				y: -112,
+				width: 704,
+				height: 688,
+			});
+			const result = layout('all');
+			const positions = toPositions(result);
+			const sticky = stickyBoxAfter(result, 704, 688);
+			const frames = computeGroupFrames(positions);
+			const approval = frames.find((f) => f.name === 'Approval');
+			const billing = frames.find((f) => f.name === 'Billing');
+			assert(approval);
+			assert(billing);
+
+			// The sticky moved rigidly with the group it covers
+			expect(checkOverlap(sticky, approval.frame)).toBe(false);
+			expect(sticky.x - positions.get('billing-start')!.x).toBe(1072 - 1248);
+			expect(sticky.y - positions.get('billing-start')!.y).toBe(-112 - 240);
+			expect(matchesGrid(result)).toBe(true);
+		});
+
+		test('falls back to following covered nodes when a sticky note spans two groups', () => {
+			const { layout } = createStickyOverParallelGroupsSetup({
+				x: 400,
+				y: -200,
+				width: 1400,
+				height: 900,
+			});
+			const result = layout('all');
+			const positions = toPositions(result);
+			const sticky = stickyBoxAfter(result, 1400, 900);
+
+			expect(sticky.x).toBe(400);
+
+			for (const id of expandedGroups.flatMap((group) => group.nodeIds)) {
+				const position = positions.get(id);
+				assert(position);
+				expect(
+					checkOverlap(sticky, {
+						...position,
+						width: DEFAULT_NODE_SIZE[0],
+						height: DEFAULT_NODE_SIZE[1],
+					}),
+				).toBe(true);
+			}
+
+			for (const { frame } of computeGroupFrames(positions)) {
+				expect(containsBox(sticky, frame)).toBe(true);
+			}
+		});
+
+		test('keeps a sticky note covering collapsed and expanded group boxes', () => {
+			const { layout } = createStickyOverParallelGroupsSetup(
+				{ x: 400, y: -200, width: 1400, height: 900 },
+				new Set(['approval']),
+			);
+			const result = layout('all');
+			const positions = toPositions(result);
+			const sticky = stickyBoxAfter(result, 1400, 900);
+			const getNodeById = storeNodeLookup(positions);
+			const approval = expandedGroups[0];
+			const billing = expandedGroups[1];
+			const approvalChip = computeGroupFrameRects(
+				computeNodesRectFromStore(approval.nodeIds, getNodeById),
+			).collapsed;
+			const billingFrame = computeGroupFrameRects(
+				computeNodesRectFromStore(billing.nodeIds, getNodeById),
+			).expanded;
+
+			expect(sticky.x).toBe(400);
+			expect(containsBox(sticky, approvalChip)).toBe(true);
+			expect(containsBox(sticky, billingFrame)).toBe(true);
+		});
+
+		test('grows a sticky note when needed to keep covering the same group boxes', () => {
+			const { layout } = createStickyOverParallelGroupsSetup({
+				x: 400,
+				y: -56,
+				width: 1400,
+				height: 480,
+			});
+			const result = layout('all');
+			const stickyResult = result.nodes.find((node) => node.id === 'sticky');
+
+			assert(stickyResult);
+			assert(stickyResult.height !== undefined);
+			expect(stickyResult.height).toBeGreaterThan(480);
+			expect(stickyResult.width).toBe(1400);
+
+			const positions = toPositions(result);
+			const sticky = stickyBoxAfter(result, 1400, stickyResult.height);
+			for (const { frame } of computeGroupFrames(positions)) {
+				expect(containsBox(sticky, frame)).toBe(true);
+			}
+		});
+
+		test('leaves a sticky note alone when it only partially covers group boxes', () => {
+			const { layout } = createStickyOverParallelGroupsSetup({
+				x: 520,
+				y: 80,
+				width: 688,
+				height: 512,
+			});
+
+			const result = layout('all');
+
+			expect(result.nodes.map((node) => node.id)).not.toContain('sticky');
+		});
+
+		test('falls back when a sticky note covers a group and an ungrouped node', () => {
+			// Covers the trigger and the approval frame
+			const { layout } = createStickyOverParallelGroupsSetup({
+				x: 200,
+				y: -400,
+				width: 800,
+				height: 800,
+			});
+			const result = layout('all');
+			const positions = toPositions(result);
+			const sticky = stickyBoxAfter(result, 800, 800);
+
+			for (const id of ['trigger', 'approval-start', 'approval-done']) {
+				const position = positions.get(id);
+				assert(position);
+				expect(
+					checkOverlap(sticky, {
+						...position,
+						width: DEFAULT_NODE_SIZE[0],
+						height: DEFAULT_NODE_SIZE[1],
+					}),
+				).toBe(true);
+			}
+		});
+
+		test('leaves a shared sticky note out when tidying only one covered group', () => {
+			// Covers the trigger and the approval frame
+			const { layout } = createStickyOverParallelGroupsSetup({
+				x: 200,
+				y: -400,
+				width: 800,
+				height: 800,
+			});
+
+			const result = layout('selection', {
+				nodeIdsFilter: ['approval-start', 'approval-done'],
+			});
+
+			expect(result.nodes.map((node) => node.id)).not.toContain('sticky');
+		});
+
+		test('leaves a sticky note out when it also covers a partial group member', () => {
+			const groupOnly = createStickyOverParallelGroupsSetup({
+				x: 496,
+				y: -64,
+				width: 464,
+				height: 352,
+			}).layout('selection', {
+				nodeIdsFilter: ['approval-start', 'approval-done'],
+			});
+			expect(groupOnly.nodes.map((node) => node.id)).toContain('sticky');
+
+			const { layout } = createStickyOverParallelGroupsSetup({
+				x: 480,
+				y: -80,
+				width: 900,
+				height: 450,
+			});
+
+			const result = layout('selection', {
+				nodeIdsFilter: ['approval-start', 'approval-done', 'billing-start'],
+			});
+
+			const ids = result.nodes.map((node) => node.id);
+			expect(ids).toContain('billing-start');
+			expect(ids).not.toContain('billing-done');
+			expect(ids).not.toContain('sticky');
+		});
+
+		test.each([
+			['without', false],
+			['with', true],
+		])(
+			'keeps a chain through an expanded group on the connection axis %s a covering sticky note',
+			(_, withSticky) => {
+				const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 240 } });
+				const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1248, y: 240 } });
+				const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 1472, y: 240 } });
+				const after = createCanvasGraphNode({ id: 'after', position: { x: 2000, y: 240 } });
+				const nodesRect = computeNodesRectFromStore(['m1', 'm2'], (id) =>
+					toStoreNode(id, id === 'm1' ? m1.position : m2.position),
+				);
+				const frame = computeGroupFrameRects(nodesRect).expanded;
+				const group = createCanvasGraphGroupNode({
+					id: groupId,
+					nodeIds: ['m1', 'm2'],
+					isCollapsed: false,
+					position: { x: frame.x, y: frame.y },
+					nodesRect,
+				});
+				const nodes = [before, m1, m2, after, group];
+				if (withSticky) {
+					nodes.push(
+						createCanvasGraphNode({
+							id: 'sticky',
+							data: { type: STICKY_NODE_TYPE },
+							dimensions: { width: 704, height: 688 },
+							position: { x: 1072, y: -112 },
+						}),
+					);
+				}
+
+				const { layout } = createTestSetup(nodes, [
+					['before', 'm1'],
+					['m1', 'm2'],
+					['m2', 'after'],
+				]);
+				const result = layout('all');
+				const positions = toPositions(result);
+
+				const y = positions.get('before')!.y;
+				expect(positions.get('m1')!.y).toBe(y);
+				expect(positions.get('m2')!.y).toBe(y);
+				expect(positions.get('after')!.y).toBe(y);
+			},
+		);
+
+		test('keeps an expanded group clustered between its external neighbours', () => {
+			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } });
+			const m2 = createCanvasGraphNode({ id: 'm2', position: { x: 1104, y: 1008 } });
+			const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 0 } });
+			const after = createCanvasGraphNode({ id: 'after', position: { x: 2000, y: 0 } });
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['m1', 'm2'],
+				isCollapsed: false,
+				nodesRect: { x: 1008, y: 1008, width: 192, height: 96 },
+				position: { x: 944, y: 908 },
+			});
+
+			const nodes = [before, m1, m2, after, group];
+			const connections: Array<[string, string]> = [
+				['before', 'm1'],
+				['m1', 'm2'],
+				['m2', 'after'],
+			];
+
+			const { layout } = createTestSetup(nodes, connections);
+			const result = layout('all');
+
+			const beforeResult = result.nodes.find((n) => n.id === 'before');
+			const afterResult = result.nodes.find((n) => n.id === 'after');
+			const rm1 = result.nodes.find((n) => n.id === 'm1');
+			const rm2 = result.nodes.find((n) => n.id === 'm2');
+			assert(beforeResult);
+			assert(afterResult);
+			assert(rm1);
+			assert(rm2);
+
+			expect(beforeResult.x).toBeLessThan(rm1.x);
+			expect(afterResult.x).toBeGreaterThan(rm2.x);
+			expect(rm2.x - rm1.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+			expect(rm2.y - rm1.y).toBe(0);
+		});
+
+		test('lays out expanded groups without overlapping their frames', () => {
+			const { layout } = createExpandedGroupFrameSetup();
+
+			const result = layout('all');
+			const positions = new Map(result.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+
+			expect(findOverlappingGroupPairs(positions)).toEqual([]);
+			expect(
+				computeNodeGroupLayoutPushes({
+					components: computeGroupLayoutComponents(positions),
+					expandedGroupIds: new Set(expandedGroups.map((group) => group.id)),
+					expandedGroupIdOrder: expandedGroups.map((group) => group.id),
+				}),
+			).toEqual([]);
+		});
+
+		test('spaces expanded group frames by the size of their tidied members', () => {
+			const source = createCanvasGraphNode({ id: 'source', position: { x: 0, y: 64 } });
+			// Both groups hold a tall agent card; their frames must not be spaced as
+			// if they held default-size nodes.
+			const agentData = {
+				render: { type: CanvasNodeRenderType.Agent, options: {} },
+			} as unknown as CanvasNodeData;
+			const top = createCanvasGraphNode({ id: 'top', position: { x: 384, y: 0 }, data: agentData });
+			const bottom = createCanvasGraphNode({
+				id: 'bottom',
+				position: { x: 384, y: 128 },
+				data: agentData,
+			});
+			const merge = createCanvasGraphNode({ id: 'merge', position: { x: 800, y: 64 } });
+			const memberSize = { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
+			const topNodesRect = { x: 384, y: 0, ...memberSize };
+			const bottomNodesRect = { x: 384, y: 128, ...memberSize };
+			const topFrame = computeGroupFrameRects(topNodesRect).expanded;
+			const bottomFrame = computeGroupFrameRects(bottomNodesRect).expanded;
+			const topGroup = createCanvasGraphGroupNode({
+				id: 'top-group',
+				nodeIds: ['top'],
+				isCollapsed: false,
+				nodesRect: topNodesRect,
+				position: { x: topFrame.x, y: topFrame.y },
+			});
+			const bottomGroup = createCanvasGraphGroupNode({
+				id: 'bottom-group',
+				nodeIds: ['bottom'],
+				isCollapsed: false,
+				nodesRect: bottomNodesRect,
+				position: { x: bottomFrame.x, y: bottomFrame.y },
+			});
+			const nodes = [source, top, bottom, merge, topGroup, bottomGroup];
+			const connections: Array<[string, string]> = [
+				['source', 'top'],
+				['top', 'merge'],
+				['source', 'bottom'],
+				['bottom', 'merge'],
+			];
+
+			const { layout } = createTestSetup(nodes, connections);
+			const result = layout('all');
+			const frameAfter = (memberId: string) => {
+				const position = result.nodes.find((node) => node.id === memberId);
+				assert(position);
+				return computeGroupFrameRects({ x: position.x, y: position.y, ...memberSize }).expanded;
+			};
+
+			expect(checkOverlap(frameAfter('top'), frameAfter('bottom'))).toBe(false);
+		});
+
+		test('keeps expanded group members as plain nodes for a partial selection', () => {
+			const m1 = createCanvasGraphNode({ id: 'm1' });
+			const m2 = createCanvasGraphNode({ id: 'm2' });
+			const after = createCanvasGraphNode({ id: 'after' });
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['m1', 'm2'],
+				isCollapsed: false,
+				nodesRect: { x: 96, y: 96, width: 192, height: 96 },
+			});
+
+			const nodes = [m1, m2, after, group];
+			const connections: Array<[string, string]> = [['m1', 'after']];
+
+			const { layout } = createTestSetup(nodes, connections, ['m1', 'after']);
+			const result = layout('selection');
+			const ids = result.nodes.map((n) => n.id);
+
+			expect(ids).toContain('m1');
+			expect(ids).toContain('after');
+			expect(ids).not.toContain('m2');
+			expect(ids).not.toContain(chipId);
+
+			const rm1 = result.nodes.find((n) => n.id === 'm1');
+			const afterResult = result.nodes.find((n) => n.id === 'after');
+			assert(rm1);
+			assert(afterResult);
+			expect(afterResult.x).toBeGreaterThan(rm1.x);
+		});
+
+		test('tidies an AI subtree inside an expanded group like a top-level one', () => {
+			const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 96 } });
+			const aiAgent = createCanvasGraphNode({
+				id: 'aiAgent',
+				position: { x: 384, y: 96 },
+				data: {
+					render: {
+						type: CanvasNodeRenderType.Default,
+						options: { configurable: true },
+					},
+				},
+			});
+			const aiTool = createCanvasGraphNode({
+				id: 'aiTool',
+				position: { x: 384, y: 240 },
+				data: {
+					render: {
+						type: CanvasNodeRenderType.Default,
+						options: { configuration: true },
+					},
+				},
+			});
+			const after = createCanvasGraphNode({ id: 'after', position: { x: 1000, y: 96 } });
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['aiAgent', 'aiTool'],
+				isCollapsed: false,
+				nodesRect: { x: 384, y: 96, width: 96, height: 240 },
+				position: { x: 320, y: -4 },
+			});
+
+			const nodes = [before, aiAgent, aiTool, after, group];
+			const connections: Array<[string, string]> = [
+				['before', 'aiAgent'],
+				['aiTool', 'aiAgent'],
+				['aiAgent', 'after'],
+			];
+
+			const { layout } = createTestSetup(nodes, connections);
+			const result = layout('all');
+
+			const resultBefore = result.nodes.find((n) => n.id === 'before');
+			const resultAgent = result.nodes.find((n) => n.id === 'aiAgent');
+			const resultTool = result.nodes.find((n) => n.id === 'aiTool');
+			const resultAfter = result.nodes.find((n) => n.id === 'after');
+			assert(resultBefore);
+			assert(resultAgent);
+			assert(resultTool);
+			assert(resultAfter);
+
+			// The tool hangs below its agent, and the group stays between its neighbours.
+			expect(resultTool.y).toBeGreaterThan(resultAgent.y);
+			expect(resultBefore.x).toBeLessThan(resultAgent.x);
+			expect(resultAfter.x).toBeGreaterThan(resultAgent.x);
+			expect(matchesGrid(result)).toBe(true);
+		});
+
+		test('supports collapsed and expanded group units in the same layout', () => {
+			const c1 = createCanvasGraphNode({ id: 'c1', position: { x: 1008, y: 1008 } });
+			const c2 = createCanvasGraphNode({ id: 'c2', position: { x: 1104, y: 1008 } });
+			const e1 = createCanvasGraphNode({ id: 'e1', position: { x: 1600, y: 1008 } });
+			const e2 = createCanvasGraphNode({ id: 'e2', position: { x: 1696, y: 1008 } });
+			const collapsedGroup = createCanvasGraphGroupNode({
+				id: 'collapsed',
+				nodeIds: ['c1', 'c2'],
+				isCollapsed: true,
+				nodesRect: { x: 1008, y: 1008, width: 192, height: 96 },
+				position: { x: 944, y: 908 },
+			});
+			const expandedGroup = createCanvasGraphGroupNode({
+				id: 'expanded',
+				nodeIds: ['e1', 'e2'],
+				isCollapsed: false,
+				nodesRect: { x: 1600, y: 1008, width: 192, height: 96 },
+				position: { x: 1536, y: 908 },
+			});
+
+			const nodes = [c1, c2, e1, e2, collapsedGroup, expandedGroup];
+			const connections: Array<[string, string]> = [
+				['group:collapsed', 'e1'],
+				['e1', 'e2'],
+				['e2', 'c1'],
+			];
+			const canonicalConnections: Array<[string, string]> = [...connections, ['c1', 'c2']];
+
+			const { layout } = createTestSetup(nodes, connections, undefined, canonicalConnections);
+			const result = layout('all');
+
+			const ids = result.nodes.map((n) => n.id);
+			expect(ids).not.toContain('group:collapsed');
+			expect(ids).not.toContain('group:expanded');
+
+			const rc1 = result.nodes.find((n) => n.id === 'c1');
+			const rc2 = result.nodes.find((n) => n.id === 'c2');
+			const re1 = result.nodes.find((n) => n.id === 'e1');
+			const re2 = result.nodes.find((n) => n.id === 'e2');
+			assert(rc1);
+			assert(rc2);
+			assert(re1);
+			assert(re2);
+
+			expect(rc2.x - rc1.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+			expect(rc2.y - rc1.y).toBe(0);
+			expect(re2.x - re1.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+			expect(re2.y - re1.y).toBe(0);
 		});
 	});
 });

@@ -10,6 +10,7 @@ import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
 import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
 import { AgentEvalRun, type AgentEvalRunStatus } from './agent-eval-run.ee';
 import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
+import { AiPreference } from './ai-preference';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
@@ -18,10 +19,11 @@ import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
 import {
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity, type CredentialUsageScope } from './credentials-entity';
-import { DeploymentKey } from './deployment-key';
+import { DeploymentKey, OAUTH_JWE_PRIVATE_KEY_TYPE } from './deployment-key';
 import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
 import { ExecutionAnnotation } from './execution-annotation.ee';
@@ -69,7 +71,10 @@ import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
-import { WorkflowDependency } from './workflow-dependency-entity';
+import {
+	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
+} from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import {
@@ -78,6 +83,7 @@ import {
 	WorkflowPublicationOutboxStatus,
 	WorkflowPublicationReason,
 } from './workflow-publication-outbox';
+import { WorkflowPublicationRetryState } from './workflow-publication-retry-state';
 import {
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
@@ -120,6 +126,7 @@ export {
 	PollerState,
 	ProcessedData,
 	Settings,
+	AiPreference,
 	Variables,
 	ApiKey,
 	BinaryDataFile,
@@ -131,8 +138,10 @@ export {
 	CredentialsEntity,
 	type CredentialUsageScope,
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 	DeploymentKey,
+	OAUTH_JWE_PRIVATE_KEY_TYPE,
 	EvaluationCollection,
 	EvaluationConfig,
 	Folder,
@@ -158,6 +167,7 @@ export {
 	TagEntity,
 	User,
 	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,
@@ -168,6 +178,7 @@ export {
 	WorkflowPublicationOutboxStatus,
 	WorkflowPublicationReason,
 	UNPUBLISH_VERSION_SENTINEL,
+	WorkflowPublicationRetryState,
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
 	type WorkflowPublicationTriggerKind,
@@ -209,6 +220,7 @@ export const entities = {
 	PollerState,
 	ProcessedData,
 	Settings,
+	AiPreference,
 	Variables,
 	ApiKey,
 	BinaryDataFile,
@@ -236,6 +248,7 @@ export const entities = {
 	AuthProviderSyncHistory,
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
+	WorkflowPublicationRetryState,
 	WorkflowPublicationTriggerStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,

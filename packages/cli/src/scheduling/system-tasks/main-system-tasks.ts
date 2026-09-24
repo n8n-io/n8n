@@ -8,6 +8,7 @@ import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
  * A task whose feature is off is left out, so the runner only logs tasks that will run.
  */
 export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<SystemTaskClass[]> {
+	const { LicenseRenewalTask } = await import('@/license/license-renewal.task.js');
 	const { WorkflowHistoryCompactionOptimizeTask } = await import(
 		'@/services/pruning/workflow-history-compaction-optimize.task.js'
 	);
@@ -17,6 +18,7 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 
 	const tasks: SystemTaskClass[] = [
 		ActivityPruningTask,
+		LicenseRenewalTask,
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryCompactionTrimTask,
 	];
@@ -26,6 +28,11 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 			'@/services/pruning/execution-pruning-soft-delete.task.js'
 		);
 		tasks.push(ExecutionPruningSoftDeleteTask);
+	}
+
+	if (globalConfig.diagnostics.enabled) {
+		const { TelemetryPulseTask } = await import('@/telemetry/telemetry-pulse.task.js');
+		tasks.push(TelemetryPulseTask);
 	}
 
 	if (globalConfig.workflows.useWorkflowPublicationService) {

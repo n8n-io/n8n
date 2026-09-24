@@ -8,7 +8,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeListSearchResult,
-	INodeProperties,
 	INodePropertyOptions,
 	INodeType,
 	ITaskDataConnections,
@@ -255,7 +254,7 @@ export class DynamicNodeParametersService {
 							name: '',
 							default: '',
 							routing: loadOptions.routing,
-						} as INodeProperties,
+						},
 					],
 				},
 			},
@@ -313,7 +312,12 @@ export class DynamicNodeParametersService {
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		return await withExpressionIsolate(workflow, async () => {
-			return await method.call(thisArgs, filter, paginationToken);
+			const result = await method.call(thisArgs, filter, paginationToken);
+			// `INodeListSearchResult` types the token as a string, but offset-style
+			// methods return a number. Convert it here so every caller gets a string.
+			// The RLC dropdown and the MCP output schema both require one.
+			const token: unknown = result?.paginationToken;
+			return typeof token === 'number' ? { ...result, paginationToken: String(token) } : result;
 		});
 	}
 

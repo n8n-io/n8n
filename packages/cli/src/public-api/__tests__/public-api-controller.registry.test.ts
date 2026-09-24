@@ -1,6 +1,9 @@
 import { Z } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
+	ApiKeyScope,
 	ApiResponse,
 	Body,
 	ControllerRegistryMetadata,
@@ -8,6 +11,7 @@ import {
 	Get,
 	Param,
 	Post,
+	RequiresUserQuota,
 } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -141,6 +145,23 @@ describe('PublicApiControllerRegistry', () => {
 		);
 	});
 
+	describe('success response without a DTO', () => {
+		it('sends an empty body without a content-type when the handler returns nothing', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(201)
+				create() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).post('/api/v1/widgets').expect(201);
+
+			expect(response.text).toBe('');
+			expect(response.headers['content-type']).toBeUndefined();
+		});
+	});
+
 	describe('validation failures', () => {
 		class WidgetValidationDto extends Z.class({
 			name: z.string(),
@@ -244,6 +265,22 @@ describe('PublicApiControllerRegistry', () => {
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 		}
 
+		function registerRequiredOptionalBodyRoute() {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method(
+					_req: unknown,
+					_res: unknown,
+					@Body({ required: true }) body: OptionalWidgetBodyDto,
+				) {
+					return body;
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
 		it('accepts application/json', async () => {
 			registerBodyRoute();
 
@@ -325,6 +362,27 @@ describe('PublicApiControllerRegistry', () => {
 			expect(response.body.message).toBe('unsupported media type undefined');
 		});
 
+		it.each(namesNoMediaType)(
+			'rejects %s when @Body({ required: true }) overrides an otherwise-optional DTO',
+			async (_label, header) => {
+				registerRequiredOptionalBodyRoute();
+
+				const response = await postWithContentType(header).expect(415);
+
+				expect(response.body.message).toBe('unsupported media type undefined');
+			},
+		);
+
+		it('accepts application/json with an empty object when @Body({ required: true }) is set', async () => {
+			registerRequiredOptionalBodyRoute();
+
+			await request(activate())
+				.post('/api/v1/widgets')
+				.set('Content-Type', 'application/json')
+				.send({})
+				.expect(200);
+		});
+
 		it('accepts application/json carrying an unrelated parameter', async () => {
 			registerBodyRoute();
 
@@ -333,6 +391,106 @@ describe('PublicApiControllerRegistry', () => {
 				.set('Content-Type', 'application/json; Foo=BAR')
 				.send({ name: 'a' })
 				.expect(200);
+		});
+	});
+
+	describe('@RequiresUserQuota', () => {
+		const licenseState = mock<LicenseState>();
+
+		beforeEach(() => {
+			Container.set(LicenseState, licenseState);
+		});
+
+		function registerGatedRoute() {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				@RequiresUserQuota()
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
+		it('runs the handler when the instance is within its users quota', async () => {
+			licenseState.getMaxUsers.mockReturnValue(UNLIMITED_LICENSE_QUOTA);
+			registerGatedRoute();
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(200);
+
+			expect(response.body).toEqual({ ok: true });
+		});
+
+		it('returns 403 with the legacy license message when over quota, without running the handler', async () => {
+			licenseState.getMaxUsers.mockReturnValue(5);
+			const handler = vi.fn(() => ({ ok: true }));
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				@RequiresUserQuota()
+				method() {
+					return handler();
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(403);
+
+			expect(response.body).toEqual({
+				message: '/users path can only be used with a valid license. See https://n8n.io/pricing/',
+			});
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it('leaves a route without the decorator unaffected when over quota', async () => {
+			licenseState.getMaxUsers.mockReturnValue(5);
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(200);
+
+			expect(response.body).toEqual({ ok: true });
+		});
+
+		it('returns the scope Forbidden response when both @ApiKeyScope and @RequiresUserQuota fail', async () => {
+			licenseState.getMaxUsers.mockReturnValue(5);
+			authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
+				req.user = authenticatedUser;
+				req.tokenGrant = {
+					scopes: [],
+					apiKeyScopes: ['workflow:read'],
+					subject: authenticatedUser,
+				};
+				return true;
+			});
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				@ApiKeyScope('workflow:create')
+				@RequiresUserQuota()
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(403);
+
+			expect(response.body).toEqual({ message: 'Forbidden' });
 		});
 	});
 });

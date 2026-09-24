@@ -250,8 +250,7 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Returns whether the record settled in time.
 	 */
 	private async processRecordWithAbort(record: WorkflowPublicationOutbox): Promise<boolean> {
-		const leaseMs =
-			this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
+		const { leaseMs } = this;
 		const abortAfterMs = leaseMs * ABORT_AFTER_LEASE_FRACTION;
 		const abandonGraceMs = Math.min(ABANDON_GRACE_MS, leaseMs * ABANDON_GRACE_LEASE_FRACTION);
 
@@ -412,12 +411,16 @@ export class WorkflowPublicationOutboxConsumer {
 					// The terminal status is already written; keep the lock until the
 					// abandoned operations settle so the next record for this workflow
 					// can never run concurrently with them.
+					//
+					// The detached work is populated when the abort signal fires while
+					// a promise is still pending; so we know that we've aborted if there
+					// is any detached work.
 					if (detachedWork.length > 0) {
 						this.logger.warn(
 							'Keeping workflow publication lock held until abandoned trigger operations settle',
 							{ outboxId: record.id, workflowId: record.workflowId },
 						);
-						await Promise.allSettled(detachedWork);
+						await this.awaitDetachedWork(record, detachedWork);
 					}
 				};
 
@@ -438,6 +441,46 @@ export class WorkflowPublicationOutboxConsumer {
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	/**
+	 * Waits for abandoned trigger operations, but not forever: an operation that
+	 * never settles (node code that hangs) would otherwise hold this workflow's
+	 * lock for the rest of the process's life, failing every later publication
+	 * of the workflow. The bound is one lease: past it the lock is released and
+	 * the orphan reported. An orphan still running after release is the same
+	 * state a crashed leader can leave, which reconciliation already handles.
+	 */
+	private async awaitDetachedWork(
+		record: WorkflowPublicationOutbox,
+		detachedWork: Array<Promise<unknown>>,
+	): Promise<void> {
+		// Note: detachedWork has already been signaled to abort, so we give it the remaining
+		// lease before we release the lock.
+		const settled = await this.raceTimeout(Promise.allSettled(detachedWork), this.leaseMs);
+		if (settled !== TIMED_OUT) return;
+
+		// `level: 'error'`: nothing else reports this hang — the record itself
+		// settled at its deadline — and `OperationalError` defaults to a
+		// warning, which the error reporter filters from Sentry.
+		this.errorReporter.error(
+			new OperationalError(
+				'Released workflow publication lock with abandoned trigger operations still pending',
+				{
+					level: 'error',
+					extra: {
+						outboxId: record.id,
+						workflowId: record.workflowId,
+						pendingOperations: detachedWork.length,
+					},
+				},
+			),
+			{ shouldBeLogged: true },
+		);
+	}
+
+	private get leaseMs(): number {
+		return this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
 	}
 
 	/**

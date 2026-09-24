@@ -10,7 +10,13 @@ import Handlebars from 'handlebars';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 
-import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
+import type {
+	EmailChangeCompletedData,
+	EmailChangeConfirmationData,
+	InviteEmailData,
+	PasswordResetData,
+	SendEmailResult,
+} from './interfaces';
 import { NodeMailer } from './node-mailer';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -48,7 +54,9 @@ type TemplateName =
 	| 'project-shared'
 	| 'workflow-failure'
 	| 'api-key-revoked'
-	| 'mcp-client-revoked';
+	| 'mcp-client-revoked'
+	| 'email-change-requested'
+	| 'email-change-completed';
 
 @Service()
 export class UserManagementMailer {
@@ -96,6 +104,26 @@ export class UserManagementMailer {
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
 			body: template({ ...this.basePayload, ...passwordResetData }),
+		});
+	}
+
+	async emailChangeConfirmation(data: EmailChangeConfirmationData): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+		const template = await this.getTemplate('email-change-requested');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Confirm your n8n email change',
+			body: template({ ...this.basePayload, ...data }),
+		});
+	}
+
+	async emailChangeCompleted(data: EmailChangeCompletedData): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+		const template = await this.getTemplate('email-change-completed');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Your n8n email was changed',
+			body: template({ ...this.basePayload, ...data }),
 		});
 	}
 

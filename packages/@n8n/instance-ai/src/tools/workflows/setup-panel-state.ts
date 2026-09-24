@@ -270,13 +270,17 @@ export function formatWorkflowSetupStateNote(
 	}));
 	return [
 		'Setup state of the workflows this conversation built, recomputed just now from the saved ' +
-			'workflows and the credentials in this project. The setup panel next to the chat shows the ' +
+			'workflows and the credentials in this project. The setup panel shows the ' +
 			'current checklist and the user completes items there. This observation does not test connections ' +
 			'or resource availability. A configured item is not proof of a successful connection test or ' +
 			'workflow execution. Never ask ' +
 			'for secrets in chat. `settledSinceLastTurn` names items that were open at your previous ' +
 			'look and are not anymore (configured, or removed from the workflow). Trust this over older ' +
-			'tool results.',
+			'tool results. When settledSinceLastTurn is non-empty, open is empty, and there are no validation warnings, ' +
+			'load post-build-flow to verify the current configuration on this user turn. ' +
+			'Use verify-built-workflow to refresh verification after setup. Use executions(action="run") ' +
+			'when the user asks for a test, including an Execute request from the setup panel. ' +
+			'Do not treat the earlier mocked result as a live execution result.',
 		JSON.stringify({ workflows }),
 	].join('\n');
 }

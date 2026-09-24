@@ -34,7 +34,7 @@ that is not expressible as a template — use the matching generic type instead
 ## 2. Key page (docsUrl)
 
 Find where a logged-in user CREATES or COPIES the key. The URL is not shown
-in the form — the AI Assistant help thread presents it as THE place to get
+in the form — the n8n Assistant help thread presents it as THE place to get
 the value, so a wrong URL sends the user to a dead end with full confidence:
 
 - Search `"<service> dashboard API keys"`, and scan the fetched auth docs for

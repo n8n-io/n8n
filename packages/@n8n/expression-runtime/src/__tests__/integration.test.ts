@@ -1,7 +1,11 @@
+import { readFile } from 'node:fs/promises';
+import * as path from 'node:path';
+
 import { DateTime, Duration, Interval } from 'luxon';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
+import { QuickJsBridge } from '../bridge/quickjs-bridge';
 import type { WorkflowData } from '../types';
 import { TimeoutError, MemoryLimitError } from '../types';
 import { createBridge, engineName, isQuickJS, newBridge } from './test-bridge';
@@ -592,6 +596,74 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		).toBe('1/1/70, 12:00 AM');
 	});
 
+	it('should support unbound Intl format and construction-time options snapshot', () => {
+		const data = { $json: {} };
+
+		// V8 exposes format as a bound-function getter, so it must work unbound.
+		expect(
+			evaluator.evaluate(
+				'{{ [new Date(0), new Date(86400000)].map(new Intl.DateTimeFormat("en-US", { timeZone: "UTC" }).format).join("|") }}',
+				data,
+				caller,
+			),
+		).toBe('1/1/1970|1/2/1970');
+
+		// V8 snapshots options at construction; later mutation must not change output.
+		expect(
+			evaluator.evaluate(
+				'{{ (() => { var o = { minimumFractionDigits: 2, maximumFractionDigits: 2 }; var nf = new Intl.NumberFormat("en-US", o); o.minimumFractionDigits = 5; o.maximumFractionDigits = 5; return nf.format(1); })() }}',
+				data,
+				caller,
+			),
+		).toBe('1.00');
+	});
+
+	it('should delegate Collator, PluralRules, DisplayNames and Intl statics to host Intl', () => {
+		const data = { $json: {} };
+
+		expect(evaluator.evaluate('{{ new Intl.PluralRules("en-US").select(1) }}', data, caller)).toBe(
+			'one',
+		);
+		expect(
+			evaluator.evaluate('{{ new Intl.Collator("en-US").compare("a", "b") }}', data, caller),
+		).toBe(-1);
+		expect(
+			evaluator.evaluate(
+				'{{ new Intl.DisplayNames(["en"], { type: "region" }).of("DE") }}',
+				data,
+				caller,
+			),
+		).toBe('Germany');
+		expect(evaluator.evaluate('{{ Intl.getCanonicalLocales("EN-us")[0] }}', data, caller)).toBe(
+			'en-US',
+		);
+		expect(
+			evaluator.evaluate(
+				'{{ Intl.supportedValuesOf("calendar").includes("gregory") }}',
+				data,
+				caller,
+			),
+		).toBe(true);
+	});
+
+	it('should expose real Intl.Locale properties including weekInfo', () => {
+		const data = { $json: {} };
+
+		expect(evaluator.evaluate('{{ new Intl.Locale("de-DE").language }}', data, caller)).toBe('de');
+		expect(evaluator.evaluate('{{ new Intl.Locale("de-DE").baseName }}', data, caller)).toBe(
+			'de-DE',
+		);
+		// Luxon reads getWeekInfo() where present, the weekInfo getter otherwise —
+		// both engines report ISO first day 1 (Monday) for de-DE.
+		expect(
+			evaluator.evaluate(
+				'{{ (l => ("getWeekInfo" in l ? l.getWeekInfo() : l.weekInfo).firstDay)(new Intl.Locale("de-DE")) }}',
+				data,
+				caller,
+			),
+		).toBe(1);
+	});
+
 	it('should round-trip an invalid Date return value', () => {
 		const data = { $json: {} };
 
@@ -1170,5 +1242,61 @@ describe(`Integration: nested evaluation time budget (${engineName})`, () => {
 
 		expect(elapsed).toBeGreaterThanOrEqual(TIMEOUT_MS * 0.8);
 		expect(elapsed).toBeLessThan(TIMEOUT_MS * 2);
+	});
+});
+
+describe('QuickJsBridge runtimeBundle injection', () => {
+	it('should not cache a runtimeBundle that fails to load', async () => {
+		const withBadBundle = new QuickJsBridge({
+			timeout: 5000,
+			runtimeBundle: 'this is not javascript (((',
+		});
+
+		try {
+			await expect(withBadBundle.initialize()).rejects.toThrow('Failed to load runtime bundle');
+		} finally {
+			await withBadBundle.dispose();
+		}
+
+		const withDiskRead = new QuickJsBridge({ timeout: 5000 });
+
+		try {
+			await expect(withDiskRead.initialize()).resolves.toBeUndefined();
+		} finally {
+			await withDiskRead.dispose();
+		}
+	});
+
+	it('should initialize and evaluate when runtimeBundle is provided as a string', async () => {
+		let dir = __dirname;
+		let bundle: string | undefined;
+		while (dir !== path.dirname(dir)) {
+			try {
+				bundle = await readFile(path.join(dir, 'dist', 'bundle', 'runtime.iife.js'), 'utf-8');
+				break;
+			} catch {}
+			dir = path.dirname(dir);
+		}
+		if (!bundle) throw new Error('runtime bundle not found for test setup');
+
+		const capturedBundle = bundle;
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => new QuickJsBridge({ timeout: 5000, runtimeBundle: capturedBundle }),
+			maxCodeCacheSize: 1024,
+		});
+		await evaluator.initialize();
+		const caller = {};
+		await evaluator.acquire(caller);
+		try {
+			const result = evaluator.evaluate(
+				'{{ $json.name }}',
+				{ $json: { name: 'injected' } },
+				caller,
+			);
+			expect(result).toBe('injected');
+		} finally {
+			await evaluator.release(caller);
+			await evaluator.dispose();
+		}
 	});
 });

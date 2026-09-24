@@ -9,8 +9,11 @@ function createWorkflowTaskService(reportVerificationVerdict = vi.fn()) {
 		reportVerificationVerdict,
 		getBuildOutcome: vi.fn(),
 		getLatestBuildOutcomeForWorkflow: vi.fn(),
+		beginVerification: vi.fn(),
 		getWorkflowLoopState: vi.fn(),
 		updateBuildOutcome: vi.fn(),
+		startVerification: vi.fn(),
+		recordVerification: vi.fn(),
 	};
 }
 

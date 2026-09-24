@@ -6,7 +6,6 @@ import { SsrfProtectionService } from '@n8n/backend-network';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
-import type { ServiceIdentifier } from '@n8n/di';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
@@ -900,8 +899,7 @@ export async function getBase({
 		logHitlResponse: (payload) => {
 			eventService.emit('hitl-response-actioned', payload);
 		},
-		getRunnerStatus: (taskType: string) =>
-			Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).getRunnerStatus(taskType),
+		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
 	};
 
 	const ssrfConfig = Container.get(SsrfProtectionConfig);

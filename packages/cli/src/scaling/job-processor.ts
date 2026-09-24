@@ -231,7 +231,7 @@ export class JobProcessor {
 		if (pushRef) {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef,
-			}) as (type: string, data: IDataObject | IDataObject[]) => void;
+			});
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
@@ -722,9 +722,7 @@ export class JobProcessor {
 					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
 				}
 
-				context.addOutputData(NodeConnectionTypes.AiTool, 0, [
-					[{ json: { response } as INodeExecutionData['json'] }],
-				]);
+				context.addOutputData(NodeConnectionTypes.AiTool, 0, [[{ json: { response } }]]);
 
 				return response;
 			}

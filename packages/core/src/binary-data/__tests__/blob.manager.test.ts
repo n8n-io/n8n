@@ -1,7 +1,8 @@
 import type { ByteStore } from '@n8n/blob-storage';
 import { mock } from 'vitest-mock-extended';
 
-import { BinaryDataBlobManager } from '@/binary-data/blob.manager';
+import { BinaryDataBlobManager, parseExecutionFileId } from '@/binary-data/blob.manager';
+import { TEMP_EXECUTION_ID } from '@/binary-data/utils';
 import type { ErrorReporter } from '@/errors';
 import { FileNotFoundError } from '@/errors/file-not-found.error';
 import { toFileId } from '@test/utils';
@@ -29,7 +30,54 @@ beforeEach(() => {
 	manager = new BinaryDataBlobManager(byteStore, errorReporter);
 });
 
+describe('parseExecutionFileId', () => {
+	it('returns the workflow and the execution from an execution path', () => {
+		expect(parseExecutionFileId(fileId)).toEqual({ workflowId, executionId });
+	});
+
+	it('returns the temp placeholder for a binary written before the execution row', () => {
+		const tempFileId = toFileId(
+			workflowId,
+			TEMP_EXECUTION_ID,
+			'71f6209b-5d48-41a2-a224-80d529d8bb32',
+		);
+
+		expect(parseExecutionFileId(tempFileId)).toEqual({
+			workflowId,
+			executionId: TEMP_EXECUTION_ID,
+		});
+	});
+
+	it('returns null for a custom (non-execution) path', () => {
+		const customFileId = 'chat-hub/sessions/s1/messages/m1/binary_data/71f6209b-5d48-41a2-a224';
+
+		expect(parseExecutionFileId(customFileId)).toBeNull();
+	});
+
+	it('returns null for a malformed id', () => {
+		expect(parseExecutionFileId('malformed-id')).toBeNull();
+	});
+});
+
 describe('store', () => {
+	// The read access check authorizes a temp binary on the workflow it parses out
+	// of the path, so the writer and the parser must agree on that path.
+	it('writes a missing execution id as a temp path the parser reads back', async () => {
+		byteStore.write.mockResolvedValue(body.length);
+
+		const { fileId: written } = await manager.store(
+			{ type: 'execution', workflowId, executionId: '' },
+			body,
+			{},
+		);
+
+		expect(byteStore.write).toHaveBeenCalledWith(written, body, {});
+		expect(parseExecutionFileId(written)).toEqual({
+			workflowId,
+			executionId: TEMP_EXECUTION_ID,
+		});
+	});
+
 	it('writes the bytes with native metadata and no metadata file', async () => {
 		byteStore.write.mockResolvedValue(body.length);
 		const metadata = { mimeType: 'text/plain', fileName: 'file.txt' };

@@ -114,7 +114,7 @@ function parseSseFrame(frame: string): SseEvent | undefined {
 }
 
 test.describe(
-	'Instance AI multi-main @capability:proxy',
+	'Instance AI multi-main',
 	{ annotation: [{ type: 'owner', description: 'instanceAI' }] },
 	() => {
 		test('@mode:multi-main streams a run produced on one main to an SSE held by another', async ({

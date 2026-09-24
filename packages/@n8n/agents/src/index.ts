@@ -3,6 +3,7 @@ export type {
 	BuiltProviderTool,
 	BuiltAgent,
 	BuiltMemory,
+	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
 	PiiDetectionType,
@@ -41,14 +42,13 @@ export type {
 	TitleGenerationConfig,
 	Thread,
 	EpisodicMemoryConfig,
-	EpisodicMemoryCursor,
+	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureKind,
+	EpisodicMemoryCaptureMethods,
+	EpisodicMemoryCaptureStatus,
 	EpisodicMemoryEmbeddingProviderOptions,
 	EpisodicMemoryEntry,
 	EpisodicMemoryEntrySource,
-	EpisodicMemoryExtractFn,
-	EpisodicMemoryExtraction,
-	EpisodicMemoryExtractionCandidate,
-	EpisodicMemoryExtractorInput,
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
 	EpisodicMemoryReflectFn,
@@ -63,7 +63,7 @@ export type {
 	EpisodicMemoryStatus,
 	EpisodicMemoryTaskLockHandle,
 	EpisodicMemoryTaskLockMethods,
-	NewEpisodicMemoryCursor,
+	NewEpisodicMemoryCaptureCandidate,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
@@ -136,6 +136,11 @@ export {
 	sanitizeToolName,
 } from './sdk/tool';
 export type { ApprovalResumePayload, ApprovalSuspendPayload } from './sdk/tool';
+export {
+	stripInvisibleUnicode,
+	UNTRUSTED_OUTPUT_DOCTRINE,
+	wrapUntrustedData,
+} from './sdk/untrusted-content';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';
 export {
@@ -192,6 +197,7 @@ export {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_TOOL_NAMES,
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
@@ -217,6 +223,8 @@ export type {
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillStateScope,
+	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './skills';
@@ -258,6 +266,7 @@ export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
+	getCreatedAt,
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
@@ -327,6 +336,7 @@ export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/wri
 export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
+export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
@@ -345,28 +355,32 @@ export {
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
+	hasEpisodicMemoryCaptureStore,
 	hasEpisodicMemoryStore,
 	isEpisodicMemoryEnabled,
 	rankEpisodicMemoryEntries,
-	runEpisodicMemoryIndexer,
 	withEpisodicMemoryDefaults,
 } from './runtime/memory/episodic-memory';
 export {
+	FLAG_MEMORY_TOOL_NAME,
+	createFlagMemoryTool,
+	runEpisodicMemoryCandidateProcessor,
+} from './runtime/memory/episodic-memory-capture';
+export type {
+	RunEpisodicMemoryCandidateProcessorOpts,
+	RunEpisodicMemoryCandidateProcessorResult,
+} from './runtime/memory/episodic-memory-capture';
+export {
+	DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
-	buildEpisodicMemoryExtractorPrompt,
 	buildEpisodicMemoryReflectorPrompt,
-	createEpisodicMemoryExtractFn,
 	createEpisodicMemoryReflectFn,
 } from './runtime/memory/episodic-memory-defaults';
-export type {
-	CreateEpisodicMemoryExtractFnOptions,
-	CreateEpisodicMemoryReflectFnOptions,
-} from './runtime/memory/episodic-memory-defaults';
+export type { CreateEpisodicMemoryReflectFnOptions } from './runtime/memory/episodic-memory-defaults';
 export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,

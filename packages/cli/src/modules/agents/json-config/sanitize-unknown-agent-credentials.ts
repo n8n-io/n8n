@@ -38,7 +38,6 @@ const AI_GATEWAY_MODEL_CREDENTIAL_PATHS: ReadonlySet<string> = new Set([
 	),
 	'memory.observationalMemory.observerModel.credential',
 	'memory.observationalMemory.reflectorModel.credential',
-	'memory.episodicMemory.extractorModel.credential',
 	'memory.episodicMemory.reflectorModel.credential',
 ]);
 
@@ -46,11 +45,18 @@ function isAiGatewayModelCredentialPath(path: readonly string[]): boolean {
 	return AI_GATEWAY_MODEL_CREDENTIAL_PATHS.has(path.join('.'));
 }
 
+/** The web-search credential can carry the n8n Connect tag for the Brave provider. */
+function isAiGatewayWebSearchCredentialPath(path: readonly string[]): boolean {
+	return path.join('.') === 'config.webSearch.credential';
+}
+
 /** Managed credential tokens allowed to survive sanitization at the given path. */
 function allowedManagedTokensForPath(path: readonly string[]): string[] {
 	const tokens: string[] = [];
 	if (isManagedEpisodicMemoryCredentialPath(path)) tokens.push(MANAGED_CREDENTIAL_TOKEN);
-	if (isAiGatewayModelCredentialPath(path)) tokens.push(AI_GATEWAY_MANAGED_TAG);
+	if (isAiGatewayModelCredentialPath(path) || isAiGatewayWebSearchCredentialPath(path)) {
+		tokens.push(AI_GATEWAY_MANAGED_TAG);
+	}
 	return tokens;
 }
 

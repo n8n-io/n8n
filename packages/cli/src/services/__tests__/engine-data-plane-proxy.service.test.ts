@@ -15,7 +15,7 @@ describe('EngineDataPlaneProxyService', () => {
 		graph: { nodes: [], edges: [] },
 		workflow: {},
 		executionId,
-		callerContext: {},
+		callerContext: { hostMode: 'trigger' },
 	};
 
 	let proxy: EngineDataPlaneProxyService;
@@ -49,6 +49,24 @@ describe('EngineDataPlaneProxyService', () => {
 	it('reads no execution when no provider is registered', async () => {
 		// A read degrades to a miss; only a start is worth failing loudly.
 		await expect(proxy.getExecution(executionId)).resolves.toBeUndefined();
+	});
+
+	it('returns an empty search without a provider', async () => {
+		await expect(proxy.searchExecutions({ workflowIds: 'all', limit: 20 })).resolves.toEqual({
+			items: [],
+			nextCursor: null,
+			total: 0,
+		});
+	});
+
+	it('forwards search filters and propagates provider failures', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		proxy.registerProvider(provider);
+		provider.searchExecutions.mockRejectedValue(new Error('unavailable'));
+		await expect(proxy.searchExecutions({ workflowIds: ['wf'], limit: 20 })).rejects.toThrow(
+			'unavailable',
+		);
+		expect(provider.searchExecutions).toHaveBeenCalledWith({ workflowIds: ['wf'], limit: 20 });
 	});
 
 	it('delegates a read to the registered provider', async () => {
