@@ -25,7 +25,11 @@ onMounted(() => {
 		<aside v-if="!!$slots.sidebar" id="sidebar" :class="$style.sidebar">
 			<slot name="sidebar" />
 		</aside>
-		<component :is="asMain ? 'main' : 'div'" :id="asMain ? 'content' : undefined" :class="$style.content">
+		<component
+			:is="asMain ? 'main' : 'div'"
+			:id="asMain ? 'content' : undefined"
+			:class="$style.content"
+		>
 			<div :class="$style.contentWrapper">
 				<slot />
 			</div>
