@@ -109,6 +109,7 @@ import { createListTagsTool } from './tools/list-tags.tool';
 import { createMoveWorkflowsToFolderTool } from './tools/move-workflows-to-folder.tool';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
+import { createSaveUserPreferenceTool } from './tools/save-user-preference.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
@@ -619,6 +620,17 @@ export class McpService {
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
 			registerIfAllowed(listTagsTool);
+		}
+
+		// SPIKE (CONTEXT-142): preference write tool with elicitation probing.
+		// On by default so a deployed test build needs no env setup; opt out with
+		// N8N_SPIKE_AI_PREFERENCES=false. Gated on its own env, not the shared
+		// aiPreferencesEnabled flag, so it does not turn on the production
+		// preference-injection feature.
+		if (process.env.N8N_SPIKE_AI_PREFERENCES !== 'false') {
+			registerIfAllowed(
+				createSaveUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
+			);
 		}
 
 		if (featureFlags.instanceContextEnabled) {

@@ -107,6 +107,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// than an MCP-only string. Not builder-gated: preferences apply to Agents, data tables and
 	// folders too, none of which need the builder.
 	'aiPreference:read': [MCP_GET_USER_PREFERENCES_TOOL_NAME],
+	'aiPreference:write': ['save_user_preference'],
 };
 
 /**
