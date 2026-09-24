@@ -17,10 +17,11 @@ import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import { assertJsonContentType } from '@/public-api/public-api-media-type';
-import type { ResolvedRouteArg } from '@/public-api/public-api-route-resolver';
+import type { ValidatedParamArg } from '@/public-api/public-api-route-resolver';
 import {
 	apiKeyScopesSatisfy,
 	findBodyArg,
+	findValidatedParamArgs,
 	isRequestBodyRequired,
 	resolveRouteArgs,
 	resolveSuccessStatus,
@@ -129,13 +130,9 @@ export class PublicApiControllerRegistry {
 
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
 
-			// A path param that breaks its declared schema addresses no resource, so it is a 400 for
-			// every caller. The scope checks run a lookup on that same value and would answer 404 or
-			// 403 first, which made the status depend on the caller's access. eov validated first.
-			const paramArgs = resolvedArgs.filter(
-				(arg): arg is Extract<ResolvedRouteArg, { type: 'param' }> & { schema: ZodTypeAny } =>
-					arg.type === 'param' && arg.schema !== undefined,
-			);
+			// Path param validation must run before the scope checks, so that a malformed param always
+			// returns 400, rather than 404 or 403 depending on the caller's access.
+			const paramArgs = findValidatedParamArgs(resolvedArgs);
 
 			if (paramArgs.length) {
 				middlewares.push(this.createPathParamMiddleware(paramArgs));
@@ -244,9 +241,7 @@ export class PublicApiControllerRegistry {
 	 * Rejects a path param that breaks its `@Param` schema, ahead of the scope middlewares. The
 	 * handler parses the params again to bind its arguments; by then they are known to be valid.
 	 */
-	private createPathParamMiddleware(
-		args: Array<{ key: string; schema: ZodTypeAny }>,
-	): RequestHandler {
+	private createPathParamMiddleware(args: ValidatedParamArg[]): RequestHandler {
 		return (req, res, next) => {
 			try {
 				for (const { key, schema } of args) {
