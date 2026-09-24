@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
@@ -360,6 +360,24 @@ describe('MigrationRuleDetail', () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			expect(await screen.findByTestId('workflow-probably-unused-badge')).toBeInTheDocument();
+		});
+
+		it('explains the threshold in the badge tooltip', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [{ ...mockWorkflowWithIssue, lastExecutedAt: undefined }],
+				}),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await hoverTooltipTrigger(await screen.findByTestId('workflow-probably-unused-badge'));
+
+			await waitFor(() =>
+				expect(getTooltip()).toHaveTextContent(
+					`This workflow hasn't run in the last ${UNUSED_WORKFLOW_THRESHOLD_DAYS} days.`,
+				),
+			);
 		});
 
 		it('does not flag a workflow that ran recently', async () => {
