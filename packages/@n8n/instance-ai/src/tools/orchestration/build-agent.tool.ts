@@ -26,12 +26,15 @@ import { APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
+	agentActivitySchema,
+	agentChangeSchema,
 	channelSuspendPayloadSchema,
 	credentialSuspendPayloadSchema,
 	questionAnswerSchema,
 	questionsResumeSchema,
 	questionsSuspendPayloadSchema,
 	type InstanceAiAgentActivity,
+	type InstanceAiAgentChange,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
@@ -108,20 +111,16 @@ function didUpdateConfig(workSummary: WorkSummary): boolean {
 	return workSummary.toolCalls.some((call) => call.succeeded && call.configMutated === true);
 }
 
-type AgentChange = 'created' | 'updated' | 'none';
 const buildAgentOperationSchema = z
 	.enum(['editing', 'exploring', 'testing', 'publishing'])
 	.optional();
 
-function mergeAgentChange(current: AgentChange, configUpdated: boolean): AgentChange {
-	if (current === 'created') return current;
-	return configUpdated ? 'updated' : current;
-}
-
-function activityForOperation(
-	operation: z.infer<typeof buildAgentOperationSchema>,
-): InstanceAiAgentActivity {
-	return operation ?? 'working';
+function agentChangeFor(
+	activity: InstanceAiAgentActivity,
+	configUpdated: boolean,
+): InstanceAiAgentChange {
+	if (activity === 'creating') return 'created';
+	return configUpdated ? 'updated' : 'none';
 }
 
 function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): string {
@@ -253,7 +252,7 @@ const buildAgentOutputSchema = z.object({
 	ok: z.boolean(),
 	builderReply: z.string().optional(),
 	configUpdated: z.boolean().optional(),
-	agentChange: z.enum(['created', 'updated', 'none']).optional(),
+	agentChange: agentChangeSchema.optional(),
 	error: z.string().optional(),
 	agentId: z
 		.string()
@@ -289,11 +288,7 @@ const builderCheckpointRefSchema = z.object({
 	toolCallId: z.string(),
 	/** Whether any builder pass before this suspension already mutated the agent config. */
 	configUpdated: z.boolean(),
-	agentChange: z.enum(['created', 'updated', 'none']).optional().default('none'),
-	activity: z
-		.enum(['creating', 'editing', 'exploring', 'testing', 'publishing', 'working'])
-		.optional()
-		.default('working'),
+	activity: agentActivitySchema.optional().default('working'),
 	/** Host-owned artifacts reported before this suspension. */
 	requiredArtifacts: builderRequiredArtifactsSchema.optional(),
 	/** Target the suspended build belongs to; optional for checkpoints persisted before this field existed. */
@@ -447,13 +442,13 @@ async function finishTurn(
 	builderAgentId: string,
 	result: Extract<ConsumeStreamCascadingResult, { status: 'completed' | 'cancelled' | 'errored' }>,
 	carriedConfigUpdated: boolean,
-	carriedAgentChange: AgentChange,
+	activity: InstanceAiAgentActivity,
 	requiredArtifacts: BuilderRequiredArtifact[],
 ): Promise<BuildAgentOutput> {
+	const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
+	const agentChange = agentChangeFor(activity, configUpdated);
 	if (result.status === 'completed') {
 		const text = await result.text;
-		const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
-		const agentChange = mergeAgentChange(carriedAgentChange, configUpdated);
 		context.eventBus.publish(context.threadId, {
 			type: 'agent-completed',
 			runId: context.runId,
@@ -469,8 +464,6 @@ async function finishTurn(
 	}
 
 	const error = `The agent builder run ${result.status}.`;
-	const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
-	const agentChange = mergeAgentChange(carriedAgentChange, configUpdated);
 	context.eventBus.publish(context.threadId, {
 		type: 'agent-completed',
 		runId: context.runId,
@@ -512,7 +505,6 @@ async function runBuilderConsumeLoop(params: {
 	builderAgentId: string;
 	turn: BuilderTurnStream;
 	activity: InstanceAiAgentActivity;
-	carriedAgentChange: AgentChange;
 	/** configUpdated already accumulated by passes before this one (false on the first leg; carried from the suspend payload on resume). */
 	carriedConfigUpdated: boolean;
 	/** Host-owned artifacts accumulated by passes before this one. */
@@ -532,7 +524,6 @@ async function runBuilderConsumeLoop(params: {
 		builderAgentId,
 		turn,
 		activity,
-		carriedAgentChange,
 		carriedConfigUpdated,
 		carriedRequiredArtifacts,
 		onSettled,
@@ -548,7 +539,7 @@ async function runBuilderConsumeLoop(params: {
 		if (output.configUpdated) await snapshotAgent(context, delegate, target, 'config-updated');
 		return {
 			...output,
-			agentChange: mergeAgentChange(carriedAgentChange, output.configUpdated === true),
+			agentChange: agentChangeFor(activity, output.configUpdated === true),
 		};
 	};
 
@@ -640,7 +631,7 @@ async function runBuilderConsumeLoop(params: {
 			builderAgentId,
 			result,
 			carriedConfigUpdated,
-			carriedAgentChange,
+			activity,
 			requiredArtifacts,
 		);
 		if (output.ok) {
@@ -653,7 +644,6 @@ async function runBuilderConsumeLoop(params: {
 	}
 
 	const configUpdatedSoFar = carriedConfigUpdated || didUpdateConfig(result.workSummary);
-	const agentChangeSoFar = mergeAgentChange(carriedAgentChange, configUpdatedSoFar);
 	const builderRunId = result.suspension.runId;
 	const parsedSuspendPayload = builderRunId
 		? builderSuspendPayloadSchema.safeParse(result.suspension.suspendPayload)
@@ -703,7 +693,6 @@ async function runBuilderConsumeLoop(params: {
 			runId: builderRunId,
 			toolCallId: result.suspension.toolCallId,
 			configUpdated: configUpdatedSoFar,
-			agentChange: agentChangeSoFar,
 			activity,
 			...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
 			target: {
@@ -820,7 +809,6 @@ async function handleResume(
 		builderAgentId,
 		turn,
 		activity: ref.activity,
-		carriedAgentChange: ref.agentChange,
 		carriedConfigUpdated: ref.configUpdated,
 		carriedRequiredArtifacts: ref.requiredArtifacts ?? [],
 		traceInputs: { resumed: true },
@@ -1142,8 +1130,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext, context);
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 			const activity: InstanceAiAgentActivity =
-				resolution.mode === 'create' ? 'creating' : activityForOperation(input.operation);
-			const initialAgentChange: AgentChange = resolution.mode === 'create' ? 'created' : 'none';
+				resolution.mode === 'create' ? 'creating' : (input.operation ?? 'working');
 
 			publishAgentSpawned(context, builderAgentId, boundTarget, activity);
 
@@ -1173,7 +1160,6 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				builderAgentId,
 				turn,
 				activity,
-				carriedAgentChange: initialAgentChange,
 				carriedConfigUpdated: false,
 				carriedRequiredArtifacts: [],
 				traceInputs: { message: outboundMessage },

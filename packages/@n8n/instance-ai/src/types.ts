@@ -10,7 +10,6 @@ import type {
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
-	ToolDescriptor,
 	Workspace,
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
@@ -19,7 +18,6 @@ import type {
 	AgentSessionOrigin,
 	AgentSessionStatus,
 	AgentSkill,
-	AgentTaskDto,
 	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
@@ -1553,129 +1551,9 @@ export type AgentContextLookup =
 	| { type: 'integrations'; queries?: string[] }
 	| { type: 'attachable-workflows'; searchTerm?: string };
 
-export interface AgentContextAgentsResult {
-	agents: Array<{
-		agentId: string;
-		name: string;
-		published: boolean;
-		updatedAt: string;
-	}>;
-}
-
-export interface AgentContextConfigResult {
-	agent: {
-		id: string;
-		name: string;
-		published: boolean;
-		draftVersionId: string | null;
-		activeVersionId: string | null;
-		updatedAt: string;
-	};
-	configState: 'current-draft';
-	config: AgentJsonConfig | null;
-	configHash: string | null;
-}
-
-export interface AgentContextSkillsResult {
-	skills: Array<{
-		id: string;
-		name: string;
-		description: string;
-		attached: boolean;
-	}>;
-}
-
-export interface AgentContextSkillResult {
-	id: string;
-	skillHash: string;
-	skill: Omit<AgentSkill, 'references'> & {
-		references?: Array<{
-			path: string;
-			characterCount: number;
-			content?: string;
-		}>;
-	};
-}
-
-export interface AgentContextTasksResult {
-	tasks: Array<AgentTaskDto & { enabled: boolean }>;
-}
-
-export interface AgentContextCustomToolsResult {
-	tools: Array<{
-		id: string;
-		name: string;
-		description: string;
-		attached: boolean;
-	}>;
-}
-
-export interface AgentContextCustomToolResult {
-	id: string;
-	code: string;
-	descriptor: ToolDescriptor;
-}
-
-export interface AgentContextSessionsResult {
-	sessions: AgentSessionSummary[];
-	nextCursor: string | null;
-}
-
-export type AgentContextSessionResult =
-	| { session: AgentSessionSummary; transcript: string }
-	| { notFound: true };
-
-export interface AgentContextCapabilitiesResult {
-	channels: ChatIntegrationDescriptor[];
-	agentCapabilities: string[];
-	limitations: string[];
-}
-
-export interface AgentContextMcpIntegration {
-	slug: string;
-	name: string;
-	title: string;
-	description: string;
-	url: string;
-	transport: 'streamableHttp' | 'sse';
-	authentication: string;
-	credentialType: string;
-	tools: Array<{ name: string; title?: string }>;
-	metadata: { nodeTypeName: string };
-	isTemplated: boolean;
-}
-
-export type AgentContextIntegrationsResult =
-	| { channels: ChatIntegrationDescriptor[] }
-	| { kind: 'mcp'; results: AgentContextMcpIntegration[] }
-	| { kind: 'node'; results: string; queriesWithNoResults: string[] };
-
-export interface AgentContextAttachableWorkflowsResult {
-	workflows: Array<{
-		id: string;
-		name: string;
-		published: boolean;
-		triggerType: string;
-	}>;
-}
-
-export type AgentContextResult =
-	| AgentContextAgentsResult
-	| AgentContextConfigResult
-	| AgentContextSkillsResult
-	| AgentContextSkillResult
-	| AgentContextTasksResult
-	| AgentContextCustomToolsResult
-	| AgentContextCustomToolResult
-	| AgentContextSessionsResult
-	| AgentContextSessionResult
-	| AgentContextCapabilitiesResult
-	| AgentContextIntegrationsResult
-	| AgentContextAttachableWorkflowsResult;
-
 /** Read-only Agent context. The host binds this reader to one user and project. */
 export interface InstanceAiAgentContextReader {
-	lookup(input: AgentContextLookup): Promise<AgentContextResult>;
+	lookup(input: AgentContextLookup): Promise<Record<string, unknown>>;
 }
 
 // ── Context bundle ───────────────────────────────────────────────────────────

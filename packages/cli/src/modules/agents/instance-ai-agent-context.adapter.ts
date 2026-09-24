@@ -2,7 +2,6 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	AgentContextLookup,
-	AgentContextResult,
 	AgentSessionSummary,
 	InstanceAiAgentContextReader,
 } from '@n8n/instance-ai';
@@ -104,7 +103,7 @@ export class InstanceAiAgentContextAdapterService {
 		user: User,
 		projectId: string,
 		input: AgentContextLookup,
-	): Promise<AgentContextResult> {
+	): Promise<Record<string, unknown>> {
 		if (input.type === 'agents') {
 			const agents = await this.agentsService.findByProjectId(projectId);
 			return {
