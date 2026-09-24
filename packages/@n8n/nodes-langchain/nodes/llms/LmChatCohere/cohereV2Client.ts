@@ -79,10 +79,10 @@ function getToolCallKey(toolCall: V1ToolCall): string {
 function toV2ToolMessages(
 	toolResults: V1ToolResult[] | undefined,
 	toolCalls: ToolCallWithId[],
+	usedToolCallIds: Set<string>,
 ): Cohere.ChatMessageV2[] {
 	if (!toolResults?.length) return [];
 
-	const usedToolCallIds = new Set<string>();
 	return toolResults.flatMap((toolResult) => {
 		const toolCall = toolCalls.find(
 			({ call, id }) =>
@@ -104,6 +104,7 @@ function toV2ToolMessages(
 function toV2Messages(request: V1ChatRequest): Cohere.ChatMessages {
 	const messages: Cohere.ChatMessages = [];
 	let latestToolCalls: ToolCallWithId[] = [];
+	let usedToolCallIds = new Set<string>();
 
 	if (request.preamble) messages.push({ role: 'system', content: request.preamble });
 
@@ -123,6 +124,7 @@ function toV2Messages(request: V1ChatRequest): Cohere.ChatMessages {
 					call: toolCall,
 					id: `tool_call_${historyIndex}_${toolCallIndex}`,
 				}));
+				usedToolCallIds = new Set<string>();
 				messages.push({
 					role: 'assistant',
 					content,
@@ -135,12 +137,12 @@ function toV2Messages(request: V1ChatRequest): Cohere.ChatMessages {
 				break;
 			}
 			case 'TOOL':
-				messages.push(...toV2ToolMessages(item.toolResults, latestToolCalls));
+				messages.push(...toV2ToolMessages(item.toolResults, latestToolCalls, usedToolCallIds));
 				break;
 		}
 	}
 
-	messages.push(...toV2ToolMessages(request.toolResults, latestToolCalls));
+	messages.push(...toV2ToolMessages(request.toolResults, latestToolCalls, usedToolCallIds));
 	if (request.message) messages.push({ role: 'user', content: request.message });
 
 	return messages;
