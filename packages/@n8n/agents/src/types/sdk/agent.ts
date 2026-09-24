@@ -8,6 +8,7 @@ import type {
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
+import type { ToolApprovalContext } from './tool';
 import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
 import type {
 	AgentEvent,
@@ -224,6 +225,8 @@ export interface ExecutionOptions {
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
 	executionCounter?: AgentExecutionCounter;
+	/** Thread allowances supplied for this execution. Not stored in checkpoints. */
+	approvalContext?: ToolApprovalContext;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/** @deprecated Use `onStepEnd` instead. */

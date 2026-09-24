@@ -38,6 +38,7 @@ import type { StartExecutionParams } from '../agent-execution.service';
 import { BACKGROUND_SUB_AGENT_METADATA_KEY } from '../background/sub-agent-background-state';
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import {
 	decodeAgentSandboxHostMetadata,
@@ -146,6 +147,7 @@ export class SubAgentRunner {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly logger: Logger,
 		private readonly aiConfig: AiConfig,
+		private readonly toolApprovalService: AgentToolApprovalService,
 	) {}
 
 	async run(
@@ -294,6 +296,7 @@ export class SubAgentRunner {
 			agent = reconstructed.agent;
 			context.abortSignal?.throwIfAborted();
 			const executionOptions = {
+				approvalContext: await this.toolApprovalService.createContext(recording),
 				...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...modelStreamStallOptions(this.aiConfig),

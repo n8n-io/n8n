@@ -10,6 +10,18 @@ it.each([
 			kind: 'approval' as const,
 		},
 		content: '✅ Approved by Alice',
+		resumeData: { approved: true },
+	},
+	{
+		name: 'session approval',
+		background: false,
+		callback: {
+			actionId: 'resume:run-1:tool-1:0',
+			value: JSON.stringify({ approved: true, scope: 'session' }),
+			kind: 'approval' as const,
+		},
+		content: '✅ Approved by Alice',
+		resumeData: { approved: true, scope: 'session' },
 	},
 	{
 		name: 'non-approval selection',
@@ -20,6 +32,7 @@ it.each([
 			label: 'Continue',
 		},
 		content: '✅ Continue selected by Alice',
+		resumeData: { type: 'button', value: 'continue' },
 	},
 	{
 		name: 'background approval after a restart',
@@ -30,8 +43,20 @@ it.each([
 			kind: 'approval' as const,
 		},
 		content: '✅ Approved by Alice',
+		resumeData: { approved: true },
 	},
-])('settles a $name card in place', async ({ callback, content, background }) => {
+	{
+		name: 'background session approval after a restart',
+		background: true,
+		callback: {
+			actionId: 'bg:96fa13fa-75db-4439-b7c8-cd04a2c2f9b7:abcdefghijklmnopqrstuv:s',
+			value: '',
+			kind: 'approval' as const,
+		},
+		content: '✅ Approved by Alice',
+		resumeData: { approved: true, scope: 'session' },
+	},
+])('settles a $name card in place', async ({ callback, content, background, resumeData }) => {
 	const settleActionMessage = vi.fn().mockResolvedValue(undefined);
 	const deleteMessage = vi.fn().mockResolvedValue(undefined);
 	const resumeForChat = vi.fn(() => (async function* () {})());
@@ -71,6 +96,7 @@ it.each([
 	} as never);
 
 	expect(deleteMessage).not.toHaveBeenCalled();
+	expect(resumeForChat).toHaveBeenCalledWith(expect.objectContaining({ resumeData }));
 	expect(settleActionMessage).toHaveBeenCalledWith({
 		agentId: 'agent-1',
 		integration: { type: 'discord', credentialId: 'cred-1' },
@@ -84,7 +110,7 @@ it.each([
 			expect.objectContaining({
 				runId: 'background-job-96fa13fa-75db-4439-b7c8-cd04a2c2f9b7',
 				toolCallId: 'abcdefghijklmnopqrstuv',
-				resumeData: { approved: true },
+				resumeData,
 			}),
 		);
 		expect(settleActionMessage.mock.invocationCallOrder[0]).toBeGreaterThan(

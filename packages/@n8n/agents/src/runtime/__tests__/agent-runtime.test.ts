@@ -9,7 +9,7 @@ import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
 import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
-import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
+import { Tool, Tool as ToolBuilder, wrapToolForApproval } from '../../sdk/tool';
 import { createRuntimeSkillSource } from '../../skills/registry';
 import { createRuntimeSkillTools } from '../../skills/tools';
 import type { RuntimeSkillSource } from '../../skills/types';
@@ -18,7 +18,12 @@ import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
-import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
+import type {
+	BuiltTool,
+	InterruptibleToolContext,
+	ToolContext,
+	ToolApprovalContext,
+} from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { Workspace, getToolResultRunDirectory } from '../../workspace';
 import { AgentRuntime } from '../loop/agent-runtime';
@@ -2529,6 +2534,75 @@ function createRuntimeWithTools(
 }
 
 type ClaimForResume = (key: string, state: SerializableAgentState) => Promise<boolean>;
+
+describe('AgentRuntime — session approvals', () => {
+	beforeEach(() => generateText.mockReset());
+
+	it.each([{ requireApproval: true }, { needsApprovalFn: () => true }])(
+		'uses a new session grant for later calls: %j',
+		async (config) => {
+			const handler = vi.fn(async (input: unknown) => input);
+			const tool = wrapToolForApproval(
+				{
+					name: 'notion_search',
+					description: 'Search',
+					inputSchema: z.object({ id: z.string() }),
+					handler,
+				},
+				config,
+			);
+			const { runtime, bus } = createRuntimeWithTools([tool], 1);
+			const executionStarts = vi.fn();
+			bus.on(AgentEvent.ToolExecutionStart, executionStarts);
+			const approvedKeys = new Set<string>();
+			const approvalContext: ToolApprovalContext = {
+				approvedKeys,
+				onDecision: vi.fn(async (key) => {
+					approvedKeys.add(key);
+				}),
+			};
+			generateText.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-1', tool.name, { id: 'first' }),
+			);
+			const first = await runtime.generate('Search', { approvalContext });
+			const suspension = first.pendingSuspend![0];
+			expect(suspension.suspendPayload).toMatchObject({ supportsSessionApproval: true });
+			expect(handler).not.toHaveBeenCalled();
+
+			generateText
+				.mockResolvedValueOnce(makeGenerateWithToolCall('tc-2', tool.name, { id: 'second' }))
+				.mockResolvedValueOnce(makeGenerateSuccess());
+			const resumed = await runtime.resume(
+				'generate',
+				{ approved: true, scope: 'session' },
+				{
+					runId: suspension.runId,
+					toolCallId: suspension.toolCallId,
+					approvalContext,
+				},
+			);
+			expect(resumed.pendingSuspend).toBeUndefined();
+			expect(handler.mock.calls.map(([input]) => input)).toEqual([
+				{ id: 'first' },
+				{ id: 'second' },
+			]);
+			expect(executionStarts).toHaveBeenCalledTimes(2);
+			expect([...approvedKeys]).toEqual(['["tool","notion_search"]']);
+			expect(approvalContext.onDecision).toHaveBeenCalledExactlyOnceWith(
+				'["tool","notion_search"]',
+				{ approved: true, scope: 'session' },
+			);
+
+			const otherTool = { ...tool, name: 'other_notion_search' };
+			const other = createRuntimeWithTools([otherTool], 1).runtime;
+			generateText.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-3', otherTool.name, { id: 'third' }),
+			);
+			expect((await other.generate('Search', { approvalContext })).pendingSuspend).toHaveLength(1);
+		},
+	);
+});
+
 type ClaimingCheckpointStore = CheckpointStore & {
 	claimForResume: MockedFunction<ClaimForResume>;
 };

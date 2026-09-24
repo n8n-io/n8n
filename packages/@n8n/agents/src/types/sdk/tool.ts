@@ -3,10 +3,17 @@ import type { ZodType } from 'zod';
 
 import type { AgentExecutionCounter } from './agent';
 import type { AgentMessage } from './message';
+import type { ApprovalResumePayload } from '../../sdk/tool';
 import type { RuntimeSkillLoader } from '../../skills/types';
 import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
+
+export interface ToolApprovalContext {
+	readonly approvedKeys: ReadonlySet<string>;
+	/** Record a human decision. Persist a session grant before this resolves. */
+	onDecision(grantKey: string, decision: ApprovalResumePayload): Promise<void>;
+}
 
 export interface ToolSuspendOptions {
 	/** Schema for data accepted when resuming this specific suspension. */
@@ -41,6 +48,8 @@ export interface ToolExecutionContext {
 	abortSignal?: AbortSignal;
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: AgentExecutionCounter;
+	/** Allowances loaded by the host for this thread and run. */
+	approvalContext?: ToolApprovalContext;
 	/** Internal runtime hook used to retain cleanup ownership if abort wins the suspend race. */
 	onSuspend?: (payload: unknown, options?: ToolSuspendOptions) => void | Promise<void>;
 	/**
@@ -72,6 +81,7 @@ export interface ToolContext {
 	abortSignal?: ToolExecutionContext['abortSignal'];
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
+	approvalContext?: ToolExecutionContext['approvalContext'];
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
@@ -102,6 +112,7 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	abortSignal?: ToolExecutionContext['abortSignal'];
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
+	approvalContext?: ToolExecutionContext['approvalContext'];
 	/** The payload this tool passed to `suspend()` when it suspended, restored from the checkpoint. Only set when the tool is being resumed. */
 	suspendPayload?: S;
 	/** Private continuation this tool passed to `suspend()`, restored from the checkpoint. */

@@ -1563,14 +1563,23 @@ describe('AgentChatBridge — consumeStream', () => {
 			componentMapper.toCard.mockImplementationOnce(
 				async (payload, _runId, _toolCallId, _schema, shorten) => {
 					expect(payload.title).toBe('Research: Approval required');
+					expect(payload.components).toContainEqual({
+						type: 'button',
+						label: 'Allow for this session',
+						value: 'session',
+					});
 					if (!shorten) throw new Error('Expected callback encoder');
-					for (const approved of [true, false]) {
-						const callback = await shorten('unused', JSON.stringify({ approved }));
+					for (const decision of [
+						{ approved: true },
+						{ approved: false },
+						{ approved: true, scope: 'session' },
+					]) {
+						const callback = await shorten('unused', JSON.stringify(decision));
 						expect(Buffer.byteLength(callback.id)).toBeLessThanOrEqual(64);
 						expect(parseBackgroundApprovalAction(callback.id)).toEqual({
 							runId: `background-job-${jobId}`,
 							toolCallId: token,
-							resumeData: { approved },
+							resumeData: decision,
 						});
 					}
 					return { type: 'card', children: [] };
@@ -1585,7 +1594,11 @@ describe('AgentChatBridge — consumeStream', () => {
 					runId: 'child-run',
 					toolCallId: 'child-tool',
 					toolName: 'send_email',
-					suspendPayload: { type: 'approval', toolName: 'send_email' },
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_email',
+						supportsSessionApproval: true,
+					},
 				},
 			});
 			expect(thread.post).toHaveBeenCalledExactlyOnceWith({ card: { type: 'card', children: [] } });

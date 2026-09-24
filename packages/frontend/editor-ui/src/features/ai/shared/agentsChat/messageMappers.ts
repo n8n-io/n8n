@@ -136,6 +136,7 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 	return {
 		type: 'approval',
 		toolName: value.toolName,
+		...(value.supportsSessionApproval === true && { supportsSessionApproval: true }),
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
 		args: value.args,

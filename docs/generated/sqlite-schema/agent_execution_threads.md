@@ -20,7 +20,7 @@ CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, 
 | agentName | varchar(255) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | emoji | varchar(8) |  | true |  |  |  |
-| id | varchar(128) |  | false | [agent_execution](agent_execution.md) [agent_message_queue](agent_message_queue.md) |  |  |
+| id | varchar(128) |  | false | [agent_execution](agent_execution.md) [agent_message_queue](agent_message_queue.md) [agent_thread_grants](agent_thread_grants.md) |  |  |
 | ownerId | varchar |  | true |  | [user](user.md) |  |
 | parentAgentId | varchar(36) |  | true |  |  |  |
 | parentThreadId | varchar(128) |  | true |  |  |  |
@@ -65,6 +65,7 @@ erDiagram
 "agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_thread_grants" |o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--o| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_execution_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--o| "agent_history" : "FOREIGN KEY (taskVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -137,6 +138,12 @@ erDiagram
   TEXT payload
   varchar_32_ source
   varchar_128_ threadId FK
+  datetime_3_ updatedAt
+}
+"agent_thread_grants" {
+  datetime_3_ createdAt
+  varchar_512_ grantKey PK
+  varchar_128_ threadId PK
   datetime_3_ updatedAt
 }
 "user" {

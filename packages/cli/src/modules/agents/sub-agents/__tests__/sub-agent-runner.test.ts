@@ -22,6 +22,7 @@ import type { AgentExecutionService } from '../../agent-execution.service';
 import type { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import { AgentTurnExecutionService } from '../../agent-turn-execution.service';
+import type { AgentToolApprovalService } from '../../agent-tool-approval.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import {
 	encodeAgentSandboxHostMetadata,
@@ -36,6 +37,7 @@ import type {
 } from '../sub-agent-source-resolver';
 
 const aiConfigMock = mock<AiConfig>();
+const toolApprovalService = mock<AgentToolApprovalService>();
 
 const projectId = 'project-1';
 const parentThreadId = 'parent-thread-1';
@@ -145,10 +147,12 @@ describe('SubAgentRunner', () => {
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),
 				mock<AgentMessageQueueService>(),
+				toolApprovalService,
 			),
 			checkpointStorage,
 			logger,
 			aiConfigMock,
+			toolApprovalService,
 		);
 
 		childAgent = mock<BuiltAgent>();
@@ -679,13 +683,15 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('resumes a draft child in the same thread', async () => {
+		const approvalContext = { approvedKeys: new Set<string>(), onDecision: vi.fn() };
+		toolApprovalService.createContext.mockResolvedValueOnce(approvalContext);
 		const result = await runner.resumeForeground(
 			{
 				...delegatedRequest,
 				childRunId: 'child-run-1',
 				childToolCallId: 'tool-call-1',
 				childThreadId: 'child-thread-1',
-				resumeData: { approved: true },
+				resumeData: { approved: true, scope: 'session' },
 				resumeContext: { agentId: 'agent-1' },
 				parentThreadId,
 			},
@@ -703,8 +709,14 @@ describe('SubAgentRunner', () => {
 		);
 		expect(childAgent.resume).toHaveBeenCalledWith(
 			'stream',
-			{ approved: true },
-			expect.objectContaining({ runId: 'child-run-1', toolCallId: 'tool-call-1' }),
+			{ approved: true, scope: 'session' },
+			expect.objectContaining({ runId: 'child-run-1', toolCallId: 'tool-call-1', approvalContext }),
+		);
+		expect(toolApprovalService.createContext).toHaveBeenCalledWith(
+			expect.objectContaining({ threadId: 'child-thread-1', agentId: 'agent-1' }),
+		);
+		expect(toolApprovalService.createContext.mock.invocationCallOrder[0]).toBeGreaterThan(
+			agentExecutionService.startExecutionRecording.mock.invocationCallOrder[0],
 		);
 		expect(result).toMatchObject({
 			taskPath: '/root/research_api_0',
@@ -724,7 +736,7 @@ describe('SubAgentRunner', () => {
 						expect.objectContaining({
 							type: 'hitl-response',
 							toolCallId: 'tool-call-1',
-							response: { approved: true },
+							response: { approved: true, scope: 'session' },
 						}),
 					]),
 				}),

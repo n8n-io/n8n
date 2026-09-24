@@ -7976,6 +7976,7 @@
 	"agents.chat.approval.title": "Approval required",
 	"agents.chat.approval.description": "The agent wants to run the {toolName} tool.",
 	"agents.chat.approval.approve": "Approve",
+	"agents.chat.approval.allowForSession": "Allow for this session",
 	"agents.chat.approval.reject": "Reject",
 	"agents.chat.approval.approved": "Approved",
 	"agents.chat.approval.rejected": "Rejected",
