@@ -11,17 +11,19 @@ import type { RedisExecutionResponseChannelNameGenerator } from './redis-executi
 
 type RedisMessageHandler = (channel: string, message: string) => void;
 
+type RedisConnectionHandler = () => void;
+
 type ExecutionSubscription = {
 	executionId: string;
 	handler: (response: ExecutionResponse) => void;
-	/** Resolves when the channel is ready. Shutdown uses it to wait for in-flight subscriptions. */
-	ready: Promise<void>;
 };
 
 export interface RedisResponseSubscriber {
 	subscribe(channel: string): Promise<unknown>;
 	unsubscribe(channel: string): Promise<unknown>;
+	on(event: 'close' | 'ready', handler: RedisConnectionHandler): unknown;
 	on(event: 'message', handler: RedisMessageHandler): unknown;
+	off(event: 'close' | 'ready', handler: RedisConnectionHandler): unknown;
 	off(event: 'message', handler: RedisMessageHandler): unknown;
 	disconnect(): void;
 }
@@ -33,6 +35,8 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 
 	private stopped = false;
 
+	private lostConnection = false;
+
 	constructor(
 		private readonly subscriber: RedisResponseSubscriber,
 		private readonly getChannelName: RedisExecutionResponseChannelNameGenerator,
@@ -43,6 +47,8 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 		if (this.started || this.stopped) return;
 
 		this.subscriber.on('message', this.handleMessage);
+		this.subscriber.on('close', this.handleClose);
+		this.subscriber.on('ready', this.handleReady);
 		this.started = true;
 	}
 
@@ -62,16 +68,14 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 			);
 		}
 
-		const subscription: ExecutionSubscription = {
-			executionId,
-			handler,
-			ready: this.subscriber.subscribe(channel).then(() => {}),
-		};
+		const subscription: ExecutionSubscription = { executionId, handler };
 		this.subscriptionsByChannel.set(channel, subscription);
 		try {
-			await subscription.ready;
+			await this.subscriber.subscribe(channel);
 		} catch (error) {
-			this.subscriptionsByChannel.delete(channel);
+			if (this.subscriptionsByChannel.get(channel) === subscription) {
+				this.subscriptionsByChannel.delete(channel);
+			}
 			throw error;
 		}
 
@@ -97,22 +101,48 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 		};
 	}
 
+	/**
+	 * Closing the connection ends every Redis subscription, so there is nothing to
+	 * unsubscribe. Waiting for Redis here could hold shutdown open while it is down.
+	 */
 	async stop(): Promise<void> {
 		if (this.stopped) return;
 
 		this.stopped = true;
-		const subscriptions = [...this.subscriptionsByChannel.entries()];
 		this.subscriptionsByChannel.clear();
 		this.subscriber.off('message', this.handleMessage);
+		this.subscriber.off('close', this.handleClose);
+		this.subscriber.off('ready', this.handleReady);
+		this.subscriber.disconnect();
+	}
+
+	private readonly handleClose: RedisConnectionHandler = () => {
+		this.lostConnection = true;
+	};
+
+	/**
+	 * ioredis replays SUBSCRIBE on reconnect without awaiting it, so a failed
+	 * replay leaves the connection ready with zero subscriptions. Re-issue our
+	 * own on every recovery. SUBSCRIBE is idempotent.
+	 */
+	private readonly handleReady: RedisConnectionHandler = () => {
+		if (!this.lostConnection) return;
+
+		this.lostConnection = false;
+		void this.resubscribe();
+	};
+
+	private async resubscribe(): Promise<void> {
+		const channels = [...this.subscriptionsByChannel.keys()];
+		if (channels.length === 0) return;
+
 		try {
-			await Promise.allSettled(
-				subscriptions.map(async ([, subscription]) => await subscription.ready),
-			);
-			await Promise.all(
-				subscriptions.map(async ([channel]) => await this.subscriber.unsubscribe(channel)),
-			);
-		} finally {
-			this.subscriber.disconnect();
+			await Promise.all(channels.map(async (channel) => await this.subscriber.subscribe(channel)));
+		} catch (error) {
+			this.lostConnection = true;
+			this.logger.error('Failed to resubscribe to execution responses after Redis reconnect', {
+				error,
+			});
 		}
 	}
 
