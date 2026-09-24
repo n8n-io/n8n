@@ -19,7 +19,7 @@ import {
 	N8nSendStopButton,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
+import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
@@ -140,6 +140,9 @@ const queueRows = computed(() => {
 		return [...queuedMessages.value, edit.item];
 	}
 	return queuedMessages.value;
+});
+const [DefineQueueList, QueueList] = createReusableTemplate<{ items: AgentChatQueueItem[] }>({
+	inheritAttrs: false,
 });
 const canSaveQueueEdit = computed(() => {
 	const edit = queueEdit.value;
@@ -698,6 +701,74 @@ onBeforeUnmount(() => {
 		/>
 
 		<div :class="$style.inputArea">
+			<div
+				v-if="showBackgroundJobs"
+				ref="backgroundJobCard"
+				:class="$style.backgroundJobs"
+				data-testid="agent-background-jobs"
+			>
+				<N8nAiActivityStepGroup
+					:key="continueSessionId"
+					:label="backgroundTitle"
+					full-width
+					content-position="above"
+				>
+					<template #prefix>
+						<N8nIcon
+							:icon="backgroundRunningCount ? 'loader-circle' : 'circle'"
+							:spin="backgroundRunningCount > 0"
+							size="small"
+							:class="{ [$style.jobSpinner]: backgroundRunningCount > 0 }"
+							aria-hidden="true"
+						/>
+					</template>
+					<template #header-trailing>
+						<span
+							:class="$style.jobTimer"
+							aria-live="off"
+							data-testid="agent-background-jobs-timer"
+							>{{ backgroundElapsed }}</span
+						>
+					</template>
+					<div :class="$style.backgroundJobDetails">
+						<ul :class="$style.backgroundJobList">
+							<li v-for="job in backgroundJobRows" :key="job.id">
+								<span
+									role="img"
+									:aria-label="job.indicator.label"
+									:title="job.indicator.label"
+									:class="[
+										$style.jobStatus,
+										{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
+									]"
+									:data-status="job.status"
+								>
+									<N8nIcon
+										:icon="job.indicator.icon"
+										:spin="job.indicator.icon === 'loader-circle'"
+										size="small"
+										:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
+									/>
+								</span>
+								<span>{{ job.label }}</span>
+							</li>
+						</ul>
+						<N8nLink
+							v-if="continueSessionId"
+							:to="backgroundTraceRoute"
+							theme="text"
+							size="small"
+							underline
+							data-testid="agent-background-jobs-trace"
+						>
+							<span :class="$style.jobTraceLabel">
+								<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
+								{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
+							</span>
+						</N8nLink>
+					</div>
+				</N8nAiActivityStepGroup>
+			</div>
 			<ChatInputBase
 				ref="chatInput"
 				v-model="inputText"
@@ -715,26 +786,11 @@ onBeforeUnmount(() => {
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
-				<template v-if="queueRows.length || showBackgroundJobs" #header>
-					<div
-						v-if="queueRows.length"
-						:class="$style.backgroundJobs"
-						data-testid="agent-message-queue"
-					>
-						<N8nAiActivityStepGroup
-							:key="continueSessionId"
-							:label="
-								queuedMessages.length
-									? locale.baseText('agents.chat.queue.title', {
-											interpolate: { count: queuedMessages.length },
-										})
-									: locale.baseText('agents.chat.queue.edit')
-							"
-							full-width
-							content-position="above"
-						>
+				<template v-if="queueRows.length" #header>
+					<div :class="$style.messageQueue" data-testid="agent-message-queue">
+						<DefineQueueList v-slot="{ items }">
 							<ul :class="[$style.backgroundJobList, $style.queueList]">
-								<li v-for="item in queueRows" :key="item.id" data-testid="agent-queued-message">
+								<li v-for="item in items" :key="item.id" data-testid="agent-queued-message">
 									<div :class="$style.queuePreview" :title="item.message">
 										<N8nInput
 											v-if="queueEdit?.item.id === item.id"
@@ -839,74 +895,23 @@ onBeforeUnmount(() => {
 									</div>
 								</li>
 							</ul>
-						</N8nAiActivityStepGroup>
-					</div>
-					<div
-						v-if="showBackgroundJobs"
-						ref="backgroundJobCard"
-						:class="$style.backgroundJobs"
-						data-testid="agent-background-jobs"
-					>
+						</DefineQueueList>
+						<QueueList :items="queueRows.slice(0, 2)" />
 						<N8nAiActivityStepGroup
+							v-if="queueRows.length > 2"
 							:key="continueSessionId"
-							:label="backgroundTitle"
+							:label="
+								queuedMessages.length > 2
+									? locale.baseText('agents.chat.queue.title', {
+											adjustToNumber: queuedMessages.length - 2,
+											interpolate: { count: queuedMessages.length - 2 },
+										})
+									: locale.baseText('agents.chat.queue.edit')
+							"
 							full-width
 							content-position="above"
 						>
-							<template #prefix>
-								<N8nIcon
-									:icon="backgroundRunningCount ? 'loader-circle' : 'circle'"
-									:spin="backgroundRunningCount > 0"
-									size="small"
-									:class="{ [$style.jobSpinner]: backgroundRunningCount > 0 }"
-									aria-hidden="true"
-								/>
-							</template>
-							<template #header-trailing>
-								<span
-									:class="$style.jobTimer"
-									aria-live="off"
-									data-testid="agent-background-jobs-timer"
-									>{{ backgroundElapsed }}</span
-								>
-							</template>
-							<div :class="$style.backgroundJobDetails">
-								<ul :class="$style.backgroundJobList">
-									<li v-for="job in backgroundJobRows" :key="job.id">
-										<span
-											role="img"
-											:aria-label="job.indicator.label"
-											:title="job.indicator.label"
-											:class="[
-												$style.jobStatus,
-												{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
-											]"
-											:data-status="job.status"
-										>
-											<N8nIcon
-												:icon="job.indicator.icon"
-												:spin="job.indicator.icon === 'loader-circle'"
-												size="small"
-												:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
-											/>
-										</span>
-										<span>{{ job.label }}</span>
-									</li>
-								</ul>
-								<N8nLink
-									v-if="continueSessionId"
-									:to="backgroundTraceRoute"
-									theme="text"
-									size="small"
-									underline
-									data-testid="agent-background-jobs-trace"
-								>
-									<span :class="$style.jobTraceLabel">
-										<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
-										{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
-									</span>
-								</N8nLink>
-							</div>
+							<QueueList :items="queueRows.slice(2)" />
 						</N8nAiActivityStepGroup>
 					</div>
 				</template>
@@ -967,9 +972,8 @@ onBeforeUnmount(() => {
 	margin: 0 auto;
 }
 
-.backgroundJobs {
-	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
-	border-bottom: var(--border);
+.backgroundJobs,
+.messageQueue {
 	min-width: 0;
 
 	--ai-activity-step--height: auto;
@@ -978,8 +982,15 @@ onBeforeUnmount(() => {
 	--ai-activity-step--color: var(--text-color);
 }
 
-.backgroundJobs + .backgroundJobs {
-	margin-top: 0;
+.backgroundJobs {
+	background: var(--background--surface);
+	box-shadow: var(--shadow--outline), var(--shadow--xs);
+	border-radius: var(--radius--xs);
+}
+
+.messageQueue {
+	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
+	border-bottom: var(--border);
 }
 
 .backgroundJobDetails {
@@ -1013,7 +1024,15 @@ onBeforeUnmount(() => {
 }
 
 .queueList {
-	padding: var(--spacing--sm);
+	padding: 0 var(--spacing--sm) var(--spacing--2xs);
+}
+
+.messageQueue > .queueList {
+	padding-top: var(--spacing--2xs);
+}
+
+.messageQueue > .queueList:not(:last-child) {
+	padding-bottom: 0;
 }
 
 .queueActions {

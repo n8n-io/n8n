@@ -154,9 +154,12 @@ global Design System guidance.
 ## Preview composer queue
 
 Keep Send on the right. Put Stop at the left end when a turn can be stopped.
-Show pending messages above background tasks in the composer panel. Keep them
-out of the conversation until processing starts. Use the existing activity
-group and a Remove action for each pending message. Hide an empty queue section.
-Removal discards the message. It does not restore the composer draft.
+Stack the background task card above the composer. Attach pending messages to
+the top of the composer. Keep the first two messages visible. Put the third and
+later messages in a collapsed activity group. Show the number of additional
+pending messages in its header. Keep messages in queue order when expanded.
+Keep pending messages out of the conversation until processing starts. Give each
+message a Remove action. Hide an empty queue section. Removal discards the
+message. It does not restore the composer draft.
 
 Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.

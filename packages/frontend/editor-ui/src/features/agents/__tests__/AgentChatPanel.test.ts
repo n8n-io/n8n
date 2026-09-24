@@ -51,6 +51,7 @@ vi.mock('@n8n/i18n', () => {
 	) => {
 		const translations: Record<string, string> = {
 			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
+			'agents.chat.queue.title': `${options?.interpolate?.count} more pending ${options?.adjustToNumber === 1 ? 'message' : 'messages'}`,
 			'agents.chat.misconfigured.issuesPrefix': 'Check:',
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
@@ -279,7 +280,7 @@ describe('AgentChatPanel', () => {
 		});
 	}
 
-	it('shows pending messages before background tasks and removes them without adding conversation bubbles', async () => {
+	it('keeps two pending messages in the composer below background tasks and removes them without adding conversation bubbles', async () => {
 		queuedMessagesMock.value = [
 			{ id: '1', message: 'Next message', createdAt: new Date().toISOString() },
 			{
@@ -302,12 +303,17 @@ describe('AgentChatPanel', () => {
 		];
 		isStreamingMock.value = true;
 		const wrapper = mountPanel({ backgroundJobsActive: true });
-		await wrapper.get('[data-testid="agent-message-queue"] button').trigger('click');
+		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(composer.find('[data-testid="agent-message-queue"]').exists()).toBe(true);
+		expect(composer.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-message-queue"] [aria-expanded]').exists()).toBe(
+			false,
+		);
 		expect(
 			wrapper.findAll('[data-testid="agent-queued-message"]').map((row) => row.text()),
 		).toEqual(['Next message', 'notes.txt']);
-		expect(wrapper.html().indexOf('agent-message-queue')).toBeLessThan(
-			wrapper.html().indexOf('agent-background-jobs'),
+		expect(wrapper.html().indexOf('agent-background-jobs')).toBeLessThan(
+			wrapper.html().indexOf('agent-message-queue'),
 		);
 		expect(messagesMock.value).toEqual([]);
 		const removeButtons = wrapper.findAll('[aria-label="agents.chat.queue.remove"]');
@@ -323,6 +329,45 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('collapses only the third and later pending messages as the queue grows and shrinks', async () => {
+		const items = [1, 2, 3, 4].map((id) => ({
+			id: String(id),
+			message: `Message ${id}`,
+			createdAt: '2026-09-24T12:00:00.000Z',
+		}));
+		queuedMessagesMock.value = items.slice(0, 2);
+		const wrapper = mountPanel();
+		const queue = wrapper.get('[data-testid="agent-message-queue"]');
+		expect(queue.find('[aria-expanded]').exists()).toBe(false);
+
+		queuedMessagesMock.value = items.slice(0, 3);
+		await nextTick();
+		const toggle = queue.get('button[aria-expanded]');
+		expect(toggle.attributes('aria-expanded')).toBe('false');
+		expect(toggle.text()).toBe('1 more pending message');
+		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
+
+		queuedMessagesMock.value = items;
+		await nextTick();
+		expect(toggle.text()).toBe('2 more pending messages');
+		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
+		await toggle.trigger('click');
+		expect(queue.findAll('li').map((row) => row.text())).toEqual([
+			'Message 1',
+			'Message 2',
+			'Message 3',
+			'Message 4',
+		]);
+		await toggle.trigger('click');
+		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
+
+		queuedMessagesMock.value = items.slice(1, 3);
+		await nextTick();
+		expect(queue.find('[aria-expanded]').exists()).toBe(false);
+		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 2', 'Message 3']);
+		wrapper.unmount();
+	});
+
 	it('edits queued text inline while preserving attachments and the composer draft', async () => {
 		queuedMessagesMock.value = [
 			{
@@ -335,7 +380,6 @@ describe('AgentChatPanel', () => {
 		const wrapper = mountPanel();
 		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
 		composer.vm.$emit('update:modelValue', 'next draft');
-		await wrapper.get('[data-testid="agent-message-queue"] button').trigger('click');
 		await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
 		let editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
 		await editor.setValue('changed');
@@ -365,7 +409,6 @@ describe('AgentChatPanel', () => {
 				{ id: '1', message: 'original', createdAt: new Date().toISOString() },
 			];
 			const wrapper = mountPanel();
-			await wrapper.get('[data-testid="agent-message-queue"] button').trigger('click');
 			await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
 			const editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
 			await editor.setValue('unsaved text');
@@ -505,7 +548,7 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
 			backgroundJobsMock.value = [job, { ...job, id: 'job-2', title: 'Check tickets' }];
 			await flushPromises();
-			const panel = wrapper.get('[data-testid="chat-input"] [data-testid="agent-background-jobs"]');
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
 			const trigger = panel.get('button');
 			expect(trigger.text()).toContain('Running 2 background tasks');
 			expect(trigger.attributes('aria-expanded')).toBe('false');
