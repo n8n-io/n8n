@@ -242,6 +242,7 @@ describe('useWorkflowActivate', () => {
 			expect(result).toEqual({ success: false, errorHandled: true });
 			expect(mockSetPublicationStatus).not.toHaveBeenCalled();
 			expect(mockShowError).toHaveBeenCalled();
+			expect(mockSetWorkflowInactive).toHaveBeenCalledWith(WORKFLOW_ID);
 		});
 
 		it('leaves a publish refused by policy to the policy violation toast', async () => {
@@ -259,9 +260,11 @@ describe('useWorkflowActivate', () => {
 				refusal,
 				expect.any(String),
 				'publish',
+				`${WORKFLOW_ID}@latest`,
 			);
 			expect(mockShowError).not.toHaveBeenCalled();
-			expect(mockSetWorkflowInactive).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();
+			expect(mockSetActiveState).not.toHaveBeenCalled();
 		});
 
 		it('sends the document checksum and refreshes it when the document is open in an editor', async () => {

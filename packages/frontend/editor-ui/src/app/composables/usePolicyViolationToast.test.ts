@@ -1,4 +1,4 @@
-import { defineComponent } from 'vue';
+import { defineComponent, reactive } from 'vue';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
@@ -8,6 +8,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
+import { VIEWS } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
@@ -25,6 +26,22 @@ showMessageSpy.mockReturnValue({ close: closeSpy });
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: showMessageSpy }),
+}));
+
+const trackSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackSpy }),
+}));
+
+const mockRoute = reactive<{ name: string; params: Record<string, string> }>({
+	name: VIEWS.WORKFLOW,
+	params: { workflowId: 'w1' },
+});
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => mockRoute,
 }));
 
 const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
@@ -70,6 +87,14 @@ describe('usePolicyViolationToast', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		showMessageSpy.mockClear();
 		closeSpy.mockClear();
+		trackSpy.mockClear();
+		mockRoute.name = VIEWS.WORKFLOW;
+		mockRoute.params = { workflowId: 'w1' };
+	});
+
+	afterEach(() => {
+		const { closePolicyViolationToast } = usePolicyViolationToast();
+		for (const action of ['save', 'publish', 'execute'] as const) closePolicyViolationToast(action);
 	});
 
 	it('shows one toast that jumps to every node of the refused type', async () => {
@@ -115,6 +140,7 @@ describe('usePolicyViolationToast', () => {
 		});
 		useWorkflowsStore().setWorkflowId(workflow.id);
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+		mockRoute.params = { workflowId: workflow.id };
 		mockedStore(useCredentialsStore).getCredentialTypeByName = vi
 			.fn()
 			.mockReturnValue({ name: 'githubApi', displayName: 'GitHub API', properties: [] });
@@ -191,6 +217,68 @@ describe('usePolicyViolationToast', () => {
 			defineComponent({ render: () => showMessageSpy.mock.calls[0][0].message }),
 		);
 		expect(queryByTestId('policy-violation-jump')).not.toBeInTheDocument();
+	});
+
+	it('jumps within the workflow it was given, not the globally selected one', async () => {
+		prepareWorkflowWithTwoSlackNodes();
+		useWorkflowsStore().setWorkflowId('w-other');
+		const emitSpy = vi.spyOn(canvasEventBus, 'emit');
+
+		const { showPolicyViolationToast } = usePolicyViolationToast();
+		showPolicyViolationToast(
+			refusedWith([slackViolation]),
+			'Problem publishing',
+			'publish',
+			createWorkflowDocumentId('w1'),
+		);
+
+		const { getByTestId } = render(
+			defineComponent({ render: () => showMessageSpy.mock.calls[0][0].message }),
+		);
+		await userEvent.click(getByTestId('policy-violation-jump'));
+
+		expect(emitSpy).toHaveBeenCalledWith('nodes:select', {
+			ids: ['slack-1', 'slack-2'],
+			panIntoView: true,
+		});
+
+		emitSpy.mockRestore();
+	});
+
+	it.each([
+		['another workflow is on the canvas', VIEWS.WORKFLOW, 'w2'],
+		['the version history is open', VIEWS.WORKFLOW_HISTORY, 'w1'],
+	])('offers no jump when %s', (_label, routeName, routeWorkflowId) => {
+		prepareWorkflowWithTwoSlackNodes();
+		mockRoute.name = routeName;
+		mockRoute.params = { workflowId: routeWorkflowId };
+
+		const { showPolicyViolationToast } = usePolicyViolationToast();
+		showPolicyViolationToast(
+			refusedWith([slackViolation]),
+			'Problem publishing',
+			'publish',
+			createWorkflowDocumentId('w1'),
+		);
+
+		const { queryByTestId } = render(
+			defineComponent({ render: () => showMessageSpy.mock.calls[0][0].message }),
+		);
+		expect(queryByTestId('policy-violation')).toBeInTheDocument();
+		expect(queryByTestId('policy-violation-jump')).not.toBeInTheDocument();
+	});
+
+	it('reports the backend messages to error telemetry instead of the rendered list', () => {
+		const { showPolicyViolationToast } = usePolicyViolationToast();
+		showPolicyViolationToast(refusedWith([slackViolation]), 'Problem saving', 'save');
+
+		expect(showMessageSpy).toHaveBeenCalledWith(expect.any(Object), false);
+		expect(trackSpy).toHaveBeenCalledWith('Instance FE emitted error', {
+			error_title: 'Problem saving',
+			error_message: slackViolation.message,
+			caused_by_credential: false,
+			workflow_id: 'w1',
+		});
 	});
 
 	it('leaves an error without violations to the caller', () => {

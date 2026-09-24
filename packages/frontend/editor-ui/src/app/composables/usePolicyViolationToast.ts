@@ -1,6 +1,8 @@
 import { h } from 'vue';
+import { useRoute } from 'vue-router';
 import type { PolicyViolation } from '@n8n/api-types';
 import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	getPolicyViolations,
 	PolicyViolationList,
@@ -11,6 +13,8 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { INodeUi } from '@/Interface';
 import { hasNodeCredentialFilled } from '@/app/utils/nodes/nodeTransforms';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -32,9 +36,12 @@ const NODE_MATCHER: Record<string, ((subject: string) => (node: INodeUi) => bool
 
 export function usePolicyViolationToast() {
 	const toast = useToast();
+	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
+	const route = useRoute();
+	const routeWorkflowId = useRouteWorkflowId();
 
 	function displayNameOf({ subject, subjectType }: PolicyViolation): string | undefined {
 		if (subject === undefined) return undefined;
@@ -45,6 +52,13 @@ export function usePolicyViolationToast() {
 		}
 
 		return undefined;
+	}
+
+	function isOpenOnCanvas(documentId: WorkflowDocumentId): boolean {
+		return (
+			EDITABLE_CANVAS_VIEWS.some((view) => view === route?.name) &&
+			createWorkflowDocumentId(routeWorkflowId.value) === documentId
+		);
 	}
 
 	function nodeIdsFor(
@@ -69,19 +83,29 @@ export function usePolicyViolationToast() {
 		if (!violations) return false;
 
 		activeToast?.handle.close();
-		const handle = toast.showMessage({
-			title,
-			type: 'error',
-			duration: 0,
-			message: h(PolicyViolationList, {
-				violations,
-				labelOf: displayNameOf,
-				isJumpable: (violation: PolicyViolation) => nodeIdsFor(violation, documentId).length > 0,
-				onJump: (violation: PolicyViolation) => {
-					const ids = nodeIdsFor(violation, documentId);
-					if (ids.length > 0) canvasEventBus.emit('nodes:select', { ids, panIntoView: true });
-				},
-			}),
+		const handle = toast.showMessage(
+			{
+				title,
+				type: 'error',
+				duration: 0,
+				message: h(PolicyViolationList, {
+					violations,
+					labelOf: displayNameOf,
+					isJumpable: (violation: PolicyViolation) =>
+						isOpenOnCanvas(documentId) && nodeIdsFor(violation, documentId).length > 0,
+					onJump: (violation: PolicyViolation) => {
+						const ids = nodeIdsFor(violation, documentId);
+						if (ids.length > 0) canvasEventBus.emit('nodes:select', { ids, panIntoView: true });
+					},
+				}),
+			},
+			false,
+		);
+		telemetry.track('Instance FE emitted error', {
+			error_title: title,
+			error_message: violations.map(({ message }) => message).join('; '),
+			caused_by_credential: false,
+			workflow_id: routeWorkflowId.value,
 		});
 		activeToast = { handle, refusedAction };
 
@@ -93,7 +117,10 @@ export function usePolicyViolationToast() {
 	 * so a publish or execution refusal can still apply after it.
 	 */
 	function closePolicyViolationToast(resolvedAction: PolicyRefusedAction) {
-		if (activeToast?.refusedAction === resolvedAction) activeToast.handle.close();
+		if (activeToast?.refusedAction !== resolvedAction) return;
+
+		activeToast.handle.close();
+		activeToast = undefined;
 	}
 
 	return { showPolicyViolationToast, closePolicyViolationToast };

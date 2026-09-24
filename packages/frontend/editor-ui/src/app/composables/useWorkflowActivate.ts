@@ -280,7 +280,14 @@ export function useWorkflowActivate() {
 				});
 				const policyTitle = i18n.baseText('typeAvailabilityPolicies.violations.publishTitle');
 
-				if (!showPolicyViolationToast(error, policyTitle, 'publish')) {
+				const isPolicyRefusal = showPolicyViolationToast(
+					error,
+					policyTitle,
+					'publish',
+					createWorkflowDocumentId(workflowId),
+				);
+
+				if (!isPolicyRefusal) {
 					activationErrorNodeId.value = error.meta?.nodeId as string | undefined;
 					toast.showError(error, title, {
 						message: activationErrorMessage.value,
@@ -288,8 +295,7 @@ export function useWorkflowActivate() {
 					});
 				}
 
-				// Only update workflow state to inactive if this is not a validation error
-				if (!error.meta?.validationError) {
+				if (!error.meta?.validationError && !isPolicyRefusal) {
 					workflowsStore.setWorkflowInactive(workflowId);
 					workflowDocumentStore.setActiveState({
 						activeVersionId: null,
