@@ -154,14 +154,11 @@ describe('MigrateMcpToolPermissions migration', () => {
 		});
 	}
 
-	it('migrates legacy settings and connection filters', async () => {
+	it('resets every connection to the default tool permissions', async () => {
 		const noFilterId = randomUUID();
 		const allowFilterId = randomUUID();
 		const excludeFilterId = randomUUID();
 		await seedLegacyData({
-			settings: {
-				permissions: { executeMcpTool: 'require_approval', createWorkflow: 'blocked' },
-			},
 			filters: [
 				{ id: noFilterId, filter: null },
 				{ id: allowFilterId, filter: { mode: 'allow', tools: ['search'] } },
@@ -172,48 +169,48 @@ describe('MigrateMcpToolPermissions migration', () => {
 		await runSingleMigration(MIGRATION_NAME);
 		dataSource = Container.get(DataSource);
 
-		expect(await readSetting()).toEqual({
-			permissions: {
-				createWorkflow: 'blocked',
-				mcpRead: 'always_allow',
-				mcpWrite: 'require_approval',
-			},
-		});
+		const defaultPermissions = { categories: { read: 'always_allow', write: 'require_approval' } };
 		const connections = await readConnections('toolPermissions');
-		expect(connections.get(noFilterId)).toEqual({
-			categories: { read: 'always_allow', write: 'require_approval' },
-		});
-		expect(connections.get(allowFilterId)).toEqual({
-			categories: { read: 'blocked', write: 'blocked' },
-			tools: { search: 'require_approval' },
-		});
-		expect(connections.get(excludeFilterId)).toEqual({
-			categories: { read: 'always_allow', write: 'require_approval' },
-			tools: { delete: 'blocked' },
-		});
+		expect(connections.get(noFilterId)).toEqual(defaultPermissions);
+		expect(connections.get(allowFilterId)).toEqual(defaultPermissions);
+		expect(connections.get(excludeFilterId)).toEqual(defaultPermissions);
 		expect(await connectionColumns()).toContain('toolPermissions');
 		expect(await connectionColumns()).not.toContain('toolFilter');
 	});
 
-	it('uses the default policy when settings are absent and a filter is invalid', async () => {
-		const connectionId = randomUUID();
+	it('removes the legacy MCP permission and keeps other settings', async () => {
 		await seedLegacyData({
-			filters: [{ id: connectionId, filter: { mode: 'unknown', tools: [] } }],
+			settings: {
+				enabled: true,
+				permissions: { executeMcpTool: 'always_allow', createWorkflow: 'blocked' },
+			},
+			filters: [],
 		});
 
 		await runSingleMigration(MIGRATION_NAME);
 		dataSource = Container.get(DataSource);
 
-		expect(await readSetting()).toBeUndefined();
-		expect((await readConnections('toolPermissions')).get(connectionId)).toEqual({
-			categories: { read: 'always_allow', write: 'require_approval' },
+		expect(await readSetting()).toEqual({
+			enabled: true,
+			permissions: { createWorkflow: 'blocked' },
 		});
 	});
 
-	it('restores legacy settings, filters, and schema on revert', async () => {
+	it('leaves the settings row absent when none is saved', async () => {
+		await seedLegacyData({ filters: [] });
+
+		await runSingleMigration(MIGRATION_NAME);
+		dataSource = Container.get(DataSource);
+
+		expect(await readSetting()).toBeUndefined();
+	});
+
+	it('restores the tool filter column and removes the new permissions on revert', async () => {
 		const connectionId = randomUUID();
 		await seedLegacyData({
-			settings: { permissions: { executeMcpTool: 'always_allow' } },
+			settings: {
+				permissions: { createWorkflow: 'blocked', mcpRead: 'always_allow', mcpWrite: 'blocked' },
+			},
 			filters: [{ id: connectionId, filter: { mode: 'exclude', tools: ['delete'] } }],
 		});
 		await runSingleMigration(MIGRATION_NAME);
@@ -222,13 +219,8 @@ describe('MigrateMcpToolPermissions migration', () => {
 		await undoLastSingleMigration();
 		dataSource = Container.get(DataSource);
 
-		expect(await readSetting()).toEqual({
-			permissions: { executeMcpTool: 'always_allow' },
-		});
-		expect((await readConnections('toolFilter')).get(connectionId)).toEqual({
-			mode: 'exclude',
-			tools: ['delete'],
-		});
+		expect(await readSetting()).toEqual({ permissions: { createWorkflow: 'blocked' } });
+		expect((await readConnections('toolFilter')).get(connectionId)).toBeNull();
 		expect(await connectionColumns()).toContain('toolFilter');
 		expect(await connectionColumns()).not.toContain('toolPermissions');
 	});
