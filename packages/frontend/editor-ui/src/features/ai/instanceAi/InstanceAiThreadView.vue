@@ -185,7 +185,8 @@ const currentThreadTitle = computed<string | undefined>(() =>
 	),
 );
 
-// An onboarding thread hides the header until the user leaves the onboarding.
+// An onboarding thread hides the header and the artifacts panel until the user leaves the
+// onboarding. The header keeps its space, so the chat does not move to the top edge.
 const isOnboardingChromeHidden = computed(() => store.isOnboardingChromeHidden(props.threadId));
 
 // The tab names the conversation, not the workflow previewed inside it — the
@@ -384,6 +385,7 @@ const canShowArtifactsPanel = computed(
 const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
+		!isOnboardingChromeHidden.value &&
 		!preview.isPreviewVisible.value &&
 		(isArtifactsPanelInLayout.value
 			? !isArtifactsPanelDismissedInLayout.value
@@ -731,8 +733,7 @@ function handleNewThreadClick() {
 			data-test-id="instance-ai-builder-chat"
 		>
 			<div
-				v-if="!isOnboardingChromeHidden"
-				:class="$style.builderChatHeader"
+				:class="[$style.builderChatHeader, { [$style.chromeHidden]: isOnboardingChromeHidden }]"
 				data-test-id="instance-ai-builder-chat-header"
 			>
 				<InstanceAiViewHeader :show-thread-history-label="!currentThreadTitle">
@@ -1020,6 +1021,10 @@ function handleNewThreadClick() {
 
 .builderChatHeader {
 	flex-shrink: 0;
+}
+
+.chromeHidden {
+	visibility: hidden;
 }
 
 .chatArea {
