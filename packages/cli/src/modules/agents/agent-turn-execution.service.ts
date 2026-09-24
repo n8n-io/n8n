@@ -19,6 +19,7 @@ import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
+import { AgentToolApprovalService } from './agent-tool-approval.service';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
 	AgentExecutionService,
@@ -117,6 +118,7 @@ export class AgentTurnExecutionService {
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly steering: AgentMessageSteeringService,
+		private readonly toolApprovalService: AgentToolApprovalService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -190,6 +192,7 @@ export class AgentTurnExecutionService {
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
 	): Promise<ReadableStream<StreamChunk>> {
+		turn.options.approvalContext = await this.toolApprovalService.createContext(turn.recording);
 		if (turn.type === 'start') {
 			state.executionStarted = true;
 			return (await config.agentInstance.stream(turn.input, turn.options)).stream;

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import InteractiveCard from '../components/interactive/InteractiveCard.vue';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
+import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappers';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -14,6 +15,7 @@ vi.mock('@n8n/i18n', () => {
 				return `The agent wants to run the ${options?.interpolate?.toolName ?? ''} tool.`;
 			}
 			if (key === 'agents.chat.approval.approve') return 'Approve';
+			if (key === 'agents.chat.approval.allowForSession') return 'Allow for this session';
 			if (key === 'agents.chat.approval.reject') return 'Reject';
 			if (key === 'agents.chat.approval.approved') return 'Approved';
 			if (key === 'agents.chat.approval.rejected') return 'Rejected';
@@ -61,8 +63,17 @@ const approvalPayload: InteractivePayload = {
 };
 
 describe('InteractiveCard', () => {
+	it('preserves session support from the backend and emits the chosen scope', async () => {
+		const input = parseApprovalInput({ ...approvalPayload.input, supportsSessionApproval: true });
+		const wrapper = mountCard({ ...approvalPayload, input: input! });
+		expect(wrapper.text()).toContain('Allow for this session');
+		await wrapper.get('[data-testid="agent-approval-session"]').trigger('click');
+		expect(wrapper.emitted('submit')).toEqual([[{ approved: true, scope: 'session' }]]);
+	});
+
 	it('renders approval details and emits approved resume data', async () => {
 		const wrapper = mountCard(approvalPayload);
+		expect(wrapper.find('[data-testid="agent-approval-session"]').exists()).toBe(false);
 
 		expect(wrapper.text()).toContain('Approval required');
 		expect(wrapper.text()).toContain('The agent wants to run the Calculator tool.');

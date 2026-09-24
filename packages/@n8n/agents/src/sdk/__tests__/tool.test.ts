@@ -176,6 +176,59 @@ describe('Tool builder — .systemInstruction()', () => {
 // ---------------------------------------------------------------------------
 
 describe('wrapToolForApproval — requireApproval: true', () => {
+	it.each([
+		{ approved: true },
+		{ approved: true, scope: 'once' },
+		{ approved: false, scope: 'session' },
+	])('passes the decision to the host without skipping the gate: %j', async (decision) => {
+		const handler = vi.fn().mockResolvedValue('done');
+		const wrapped = wrapToolForApproval(makeBuiltTool({ handler }), { requireApproval: true });
+		const { ctx, suspendMock } = makeCtx(decision);
+		const onDecision = vi.fn().mockResolvedValue(undefined);
+		ctx.approvalContext = { approvedKeys: new Set(), onDecision };
+
+		await wrapped.handler!({ id: '1' }, ctx);
+		expect(onDecision).toHaveBeenCalledWith('["tool","testTool"]', decision);
+		expect(handler).toHaveBeenCalledTimes(decision.approved ? 1 : 0);
+		ctx.resumeData = undefined;
+		await wrapped.handler!({ id: '2' }, ctx);
+		expect(suspendMock).toHaveBeenCalledWith(
+			expect.objectContaining({ supportsSessionApproval: true }),
+			expect.anything(),
+		);
+	});
+
+	it.each(['save fails', 'run is canceled'])(
+		'does not execute the tool when the %s',
+		async (reason) => {
+			const handler = vi.fn();
+			const wrapped = wrapToolForApproval(makeBuiltTool({ handler }), { requireApproval: true });
+			const { ctx } = makeCtx({ approved: true, scope: 'session' });
+			const controller = new AbortController();
+			ctx.abortSignal = controller.signal;
+			ctx.approvalContext = {
+				approvedKeys: new Set(),
+				onDecision: async () => {
+					if (reason === 'save fails') throw new Error(reason);
+					controller.abort(new Error(reason));
+				},
+			};
+			await expect(wrapped.handler!({ id: '1' }, ctx)).rejects.toThrow(reason);
+			expect(handler).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['session', 'invalid'])(
+		'rejects unsupported scope %s without executing',
+		async (scope) => {
+			const handler = vi.fn();
+			const wrapped = wrapToolForApproval(makeBuiltTool({ handler }), { requireApproval: true });
+			const { ctx } = makeCtx({ approved: true, scope });
+			await expect(wrapped.handler!({ id: '1' }, ctx)).rejects.toThrow();
+			expect(handler).not.toHaveBeenCalled();
+		},
+	);
+
 	it('suspends on first call when requireApproval is true', async () => {
 		const baseTool = makeBuiltTool();
 		const wrapped = wrapToolForApproval(baseTool, { requireApproval: true });
@@ -260,13 +313,16 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		outerApproval.ctx.continuation = outerSuspendOptions?.continuation;
 		await wrapped.handler!({ id: 'parent-call' }, outerApproval.ctx);
 
-		const innerApproval = makeCtx({ approved: true });
+		const innerApproval = makeCtx({ approved: true, scope: 'session' });
 		innerApproval.ctx.suspendPayload = approvalPayload;
 		innerApproval.ctx.continuation = continuation;
+		const onDecision = vi.fn();
+		innerApproval.ctx.approvalContext = { approvedKeys: new Set(), onDecision };
 		const result = await wrapped.handler!({ id: 'parent-call' }, innerApproval.ctx);
 
 		expect(innerApproval.suspendMock).not.toHaveBeenCalled();
-		expect(result).toEqual({ resumedWith: { approved: true } });
+		expect(result).toEqual({ resumedWith: { approved: true, scope: 'session' } });
+		expect(onDecision).not.toHaveBeenCalled();
 	});
 
 	it('does not run inner cancellation cleanup when the outer approval is cancelled', async () => {

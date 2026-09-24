@@ -74,6 +74,7 @@ export interface ApprovalInput {
 	type: 'approval';
 	toolName: string;
 	displayName?: string;
+	supportsSessionApproval?: boolean;
 	args: unknown;
 	/** Sanitized full tool configuration, included only by preview chat. */
 	details?: unknown;
@@ -81,6 +82,7 @@ export interface ApprovalInput {
 
 export interface ApprovalResume {
 	approved: boolean;
+	scope?: 'once' | 'session';
 }
 
 /**

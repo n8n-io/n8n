@@ -46,6 +46,7 @@ import { AgentExecutionRecordingError } from '../agent-execution-recording.error
 import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
+import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
@@ -183,6 +184,7 @@ function makeRuntime(
 
 function makeService(sandboxEnabled = false) {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
+	const toolApprovalService = mock<AgentToolApprovalService>();
 	const executionService = mock<AgentExecutionService>();
 	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 	const executionRepository = mock<AgentExecutionRepository>();
@@ -256,6 +258,7 @@ function makeService(sandboxEnabled = false) {
 			chatExecutionService,
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
+			toolApprovalService,
 		),
 		telemetry,
 		runtimeCacheService,
@@ -278,6 +281,7 @@ function makeService(sandboxEnabled = false) {
 		executionRepository,
 		checkpointStorage,
 		executionService,
+		toolApprovalService,
 		telemetry,
 		runtimeCacheService,
 		integrationMessageContextService,
@@ -622,9 +626,12 @@ describe('AgentExecutionOrchestratorService', () => {
 		}
 
 		it('announces the recorded execution before the SDK starts', async () => {
-			const { stream, onExecutionStarted, sdkStart, executionService } = makeTurn({
-				previewChat: true,
-			});
+			const { stream, onExecutionStarted, sdkStart, executionService, toolApprovalService } =
+				makeTurn({
+					previewChat: true,
+				});
+			const approvalContext = { approvedKeys: new Set<string>(), onDecision: vi.fn() };
+			toolApprovalService.createContext.mockResolvedValue(approvalContext);
 			onExecutionStarted.mockImplementation(() => {
 				expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
 				expect(sdkStart).not.toHaveBeenCalled();
@@ -633,6 +640,13 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(onExecutionStarted).toHaveBeenCalledExactlyOnceWith('execution-1', 'thread-1', [
 				'message-1',
 			]);
+			expect(toolApprovalService.createContext).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'thread-1', agentId }),
+			);
+			expect(toolApprovalService.createContext.mock.invocationCallOrder[0]).toBeGreaterThan(
+				executionService.startExecutionRecording.mock.invocationCallOrder[0],
+			);
+			expect(sdkStart.mock.calls[0].at(-1)).toMatchObject({ approvalContext });
 		});
 
 		it('rejects a competing preview without creating an execution or claiming a resume', async () => {

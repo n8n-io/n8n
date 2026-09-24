@@ -28,9 +28,9 @@ const detailsText = computed(() => {
 	}
 });
 
-function submit(approved: boolean) {
+function submit(approved: boolean, scope?: ApprovalResume['scope']) {
 	if (props.disabled) return;
-	emit('submit', { approved });
+	emit('submit', { approved, ...(scope ? { scope } : {}) });
 }
 </script>
 
@@ -83,6 +83,16 @@ function submit(approved: boolean) {
 					@click="submit(true)"
 				>
 					{{ i18n.baseText('agents.chat.approval.approve') }}
+				</N8nButton>
+				<N8nButton
+					v-if="input.supportsSessionApproval"
+					size="medium"
+					variant="outline"
+					:disabled="disabled"
+					data-testid="agent-approval-session"
+					@click="submit(true, 'session')"
+				>
+					{{ i18n.baseText('agents.chat.approval.allowForSession') }}
 				</N8nButton>
 				<N8nButton
 					size="medium"
@@ -150,6 +160,7 @@ function submit(approved: boolean) {
 }
 
 .actions {
+	flex-wrap: wrap;
 	justify-content: flex-end;
 	padding-top: var(--spacing--2xs);
 }
