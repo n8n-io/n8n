@@ -89,6 +89,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			void loadThreads();
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
+		onOnboardingLeft: (threadId) => leaveOnboarding(threadId),
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
@@ -389,9 +390,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		threadId: string,
 		metadata: Record<string, unknown>,
 	): Promise<void> {
-		// Optimistic update
-		const thread = threads.value.find((t) => t.id === threadId);
-		if (thread) {
+		// Optimistic update, on every local copy
+		for (const thread of localThreadEntries(threadId)) {
 			thread.metadata = { ...thread.metadata, ...metadata };
 		}
 
@@ -432,16 +432,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		clearCanvasSelectionRequest.value++;
 	}
 
-	// ponytail: what "leaving the onboarding" means is not defined yet, so the exit is
-	// session-only state. Move it into thread metadata when the exit exists.
-	const leftOnboardingThreadIds = ref(new Set<string>());
-	/** An onboarding thread hides the host chrome (chat header, sidebar) until the user leaves it. */
+	/** An onboarding thread hides the host chrome (chat header, sidebar, artifacts) until the user leaves it. */
 	function isOnboardingChromeHidden(threadId: string): boolean {
-		if (leftOnboardingThreadIds.value.has(threadId)) return false;
-		return localThreadEntries(threadId).some((t) => t.metadata?.source === 'onboarding');
+		return localThreadEntries(threadId).some(
+			(t) => t.metadata?.source === 'onboarding' && !t.metadata.onboardingLeft,
+		);
 	}
+	/** The exit lives in thread metadata, so a reload keeps it. Idempotent. */
 	function leaveOnboarding(threadId: string): void {
-		leftOnboardingThreadIds.value.add(threadId);
+		if (!isOnboardingChromeHidden(threadId)) return;
+		void updateThreadMetadata(threadId, { onboardingLeft: true });
 	}
 
 	return {

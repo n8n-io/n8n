@@ -103,6 +103,8 @@ export interface PendingConfirmationItem {
 export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
 const MAX_DEBUG_EVENTS = 1000;
+/** Tool calls that end the onboarding flow: the agent's explicit exit, or the start of a build. */
+const ONBOARDING_EXIT_TOOL_NAMES = new Set(['leave-onboarding', 'build-workflow']);
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
 
@@ -138,6 +140,8 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
+	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`). */
+	onOnboardingLeft?: (threadId: string) => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
 }
@@ -1091,6 +1095,12 @@ export function createThreadRuntime(
 			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
+			}
+			if (
+				parsed.data.type === 'tool-call' &&
+				ONBOARDING_EXIT_TOOL_NAMES.has(parsed.data.payload.toolName)
+			) {
+				hooks.onOnboardingLeft?.(threadId);
 			}
 			if (parsed.data.type === 'run-finish') {
 				const ids = parsed.data.payload.archivedWorkflowIds;

@@ -2444,6 +2444,11 @@ export class InstanceAiService {
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
+		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
+		// starts a build, so a thread that left gets the tool no more.
+		const thread = await memory.getThread(threadId);
+		const onboardingThread =
+			thread?.metadata?.source === 'onboarding' && !thread.metadata.onboardingLeft;
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2458,6 +2463,7 @@ export class InstanceAiService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			onboardingThread,
 			modelId,
 		});
 
