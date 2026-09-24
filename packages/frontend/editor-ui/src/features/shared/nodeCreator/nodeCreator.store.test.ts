@@ -5,6 +5,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	AI_UNCATEGORIZED_CATEGORY,
 	CUSTOM_API_CALL_KEY,
+	NODE_CREATOR_OPEN_SOURCES,
 	REGULAR_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import type { ActionsRecord, INodeCreateElement, INodeUi, SimplifiedNodeType } from '@/Interface';
@@ -575,11 +576,13 @@ describe('useNodeCreatorStore', () => {
 					},
 				],
 			} as ActionsRecord<SimplifiedNodeType[]>;
+			nodeCreatorStore.openSource = NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT;
 
 			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
 			expect(nodeCreatorStore.isCreateNodeActive).toBe(true);
+			expect(nodeCreatorStore.openSource).toBe('');
 			expect(mockedPrepareCommunityNodeDetailsViewStack).toHaveBeenCalledWith(
 				{
 					key: nodeType.name,

@@ -2379,6 +2379,29 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		it('tracks workflow activation when feature flag lookup fails', async () => {
+			postHogClient.getFeatureFlags.mockRejectedValueOnce(new Error('PostHog unavailable'));
+			const event: RelayEventMap['workflow-activated'] = {
+				user: {
+					id: 'user123',
+					createdAt: new Date('2025-01-01T00:00:00.000Z'),
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				} as User,
+				workflowId: 'workflow123',
+				workflow: mock<IWorkflowDb>({ nodes: [], connections: {} }),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-activated', event);
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_ACTIVATED_WORKFLOW,
+				expect.not.objectContaining({ empty_group_count: expect.anything() }),
+			);
+		});
+
 		it('should track on `workflow-deactivated` event with source', () => {
 			const event: RelayEventMap['workflow-deactivated'] = {
 				user: {

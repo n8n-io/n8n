@@ -17,6 +17,7 @@ import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type {
 	ExecutionStatus,
+	FeatureFlags,
 	INode,
 	INodesGraphResult,
 	ITelemetryTrackProperties,
@@ -1294,7 +1295,7 @@ export class TelemetryEventRelay extends EventRelay {
 				? { id: user.id, createdAt: user.createdAt }
 				: undefined;
 		const featureFlags = featureFlagUser
-			? await this.postHogClient.getFeatureFlags(featureFlagUser)
+			? await this.postHogClient.getFeatureFlags(featureFlagUser).catch((): FeatureFlags => ({}))
 			: {};
 		const emptyGroupCount =
 			featureFlags[EMPTY_CANVAS_GROUPS_FLAG] === true

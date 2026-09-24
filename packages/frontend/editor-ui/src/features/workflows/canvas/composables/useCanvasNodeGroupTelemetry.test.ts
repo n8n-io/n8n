@@ -134,7 +134,7 @@ describe('useCanvasNodeGroupTelemetry', () => {
 			workflow_id: 'wf-test',
 			group_id: 'group-1',
 			push_ref: 'push-ref-test',
-			was_first_connection: true,
+			was_first_connection: false,
 		});
 	});
 
