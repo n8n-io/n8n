@@ -1,4 +1,4 @@
-import isPlainObject from 'lodash/isPlainObject';
+import { isRecord } from '@n8n/utils/is-record';
 import type { INode } from 'n8n-workflow';
 import { isSafeObjectProperty, jsonParse, NodeOperationError } from 'n8n-workflow';
 
@@ -6,29 +6,33 @@ import { isSafeObjectProperty, jsonParse, NodeOperationError } from 'n8n-workflo
 type NodeContext = { getNode: () => INode };
 
 /**
- * Parses the raw JSON a builder typed into an Extra Body field.
+ * Reads the Extra Body field of a model node.
  *
  * Shared so every model node rejects the same shapes with the same wording. The result is meant
- * to be merged into `modelKwargs`, which the client spreads into the request body.
+ * to be merged into `modelKwargs`, which the client puts into the request body.
  */
 export function parseExtraBody(
 	ctx: NodeContext,
-	value: string,
+	value: unknown,
 	itemIndex: number,
 ): Record<string, unknown> {
-	let extraBody: Record<string, unknown>;
+	// A whole-value expression on a `json` field resolves to a real object, not a string, so
+	// parse only what still needs parsing. `HttpRequestV3` handles its JSON Body the same way.
+	let extraBody: unknown = value;
 
-	try {
-		extraBody = jsonParse<Record<string, unknown>>(value);
-	} catch (error) {
-		throw new NodeOperationError(
-			ctx.getNode(),
-			'The value in the "Extra Body" field is not valid JSON',
-			{ itemIndex, description: error instanceof Error ? error.message : String(error) },
-		);
+	if (typeof value === 'string') {
+		try {
+			extraBody = jsonParse(value);
+		} catch (error) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'The value in the "Extra Body" field is not valid JSON',
+				{ itemIndex, description: error instanceof Error ? error.message : String(error) },
+			);
+		}
 	}
 
-	if (!isPlainObject(extraBody)) {
+	if (!isRecord(extraBody)) {
 		throw new NodeOperationError(
 			ctx.getNode(),
 			'The value in the "Extra Body" field must be a JSON object',
@@ -36,9 +40,9 @@ export function parseExtraBody(
 		);
 	}
 
-	// `JSON.parse` keeps a key like `__proto__` as an own property, and merging that into the
-	// request options with `Object.assign` replaces the prototype of the options object. No model
-	// parameter has one of these names, so refuse the key instead of silently dropping it.
+	// `JSON.parse` keeps a name like `__proto__` as an own key. Depending on how the caller merges,
+	// it either repoints the prototype of the options object or rides into the request body as a
+	// literal key. None of these names is a model parameter either way, so refuse rather than drop.
 	const unsafeKey = Object.keys(extraBody).find((key) => !isSafeObjectProperty(key));
 	if (unsafeKey) {
 		throw new NodeOperationError(
@@ -46,7 +50,7 @@ export function parseExtraBody(
 			`The "Extra Body" field cannot set "${unsafeKey}"`,
 			{
 				itemIndex,
-				description: 'This name changes the request object itself, not a model parameter.',
+				description: `"${unsafeKey}" is reserved and is not a model parameter. Remove it from the Extra Body field.`,
 			},
 		);
 	}
