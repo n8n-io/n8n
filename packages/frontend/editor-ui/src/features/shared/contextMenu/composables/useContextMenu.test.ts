@@ -1042,7 +1042,7 @@ describe('useContextMenu', () => {
 			);
 		});
 
-		it('keeps replace, rename, open and deactivate available but blocks running, pinning, copying and duplicating', () => {
+		it('keeps replace, rename, open, deactivate and copy available but blocks running, pinning and duplicating', () => {
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'node-right-click', nodeId: restrictedNode.id });
 
@@ -1054,17 +1054,17 @@ describe('useContextMenu', () => {
 			expect(byId.toggle_activation?.disabled).toBe(false);
 			expect(byId.execute?.disabled).toBe(true);
 			expect(byId.toggle_pin?.disabled).toBe(true);
-			expect(byId.copy?.disabled).toBe(true);
+			expect(byId.copy?.disabled).toBeFalsy();
 			expect(byId.duplicate?.disabled).toBe(true);
 		});
 
-		it('blocks pinning, copying and duplicating a selection that contains a restricted node', () => {
+		it('blocks pinning and duplicating but allows copying a selection that contains a restricted node', () => {
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, restrictedNode.id] });
 
 			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
 			expect(byId.toggle_pin?.disabled).toBe(true);
-			expect(byId.copy?.disabled).toBe(true);
+			expect(byId.copy?.disabled).toBeFalsy();
 			expect(byId.duplicate?.disabled).toBe(true);
 		});
 	});

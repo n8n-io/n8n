@@ -53,7 +53,6 @@ import {
 } from '@/__tests__/mocks';
 import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -254,10 +253,6 @@ describe('useCanvasOperations', () => {
 		) as WritableDocumentStore;
 
 		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
-		mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
-			(name) => ({ name, available: true }),
-		);
-
 		// These actions are stubbed by createTestingPinia, so provide safe defaults.
 		// Tests that need custom behavior can override via vi.spyOn.
 		vi.mocked(workflowDocumentStoreInstance.getParentNodesByDepth).mockReturnValue([]);
@@ -4662,22 +4657,6 @@ describe('useCanvasOperations', () => {
 
 			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
 			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
-		});
-
-		it('should not copy a selection that contains a restricted node type', async () => {
-			const nodes = buildImportNodes();
-			nodes[1].type = 'n8n-nodes-base.slack';
-			workflowDocumentStoreInstance.allNodes = nodes;
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
-			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
-				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
-			);
-
-			const { copyNodes } = useCanvasOperations();
-			const copied = await copyNodes(['1', '2']);
-
-			expect(copied).toBe(false);
-			expect(useClipboard().copy).not.toHaveBeenCalled();
 		});
 
 		it('should include nodeGroups when all group members are copied', async () => {
