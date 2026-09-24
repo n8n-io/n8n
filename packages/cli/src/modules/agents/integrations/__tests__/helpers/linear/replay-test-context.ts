@@ -20,7 +20,6 @@ import {
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 
 export interface LinearUserFixture {
@@ -263,6 +262,7 @@ export async function createLinearReplayContext(
 		userName: 'n8n-agent-agent-1',
 		adapters: { linear: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		concurrency: 'concurrent',
 	});
 
 	const integration: AgentIntegrationConfig = { type: 'linear', credentialId: 'cred-linear' };
@@ -287,7 +287,7 @@ export async function createLinearReplayContext(
 			'linear-signature',
 			createHmac('sha256', LINEAR_WEBHOOK_SECRET).update(rawBody).digest('hex'),
 		);
-		return await sendJsonWebhook(
+		return await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.linear(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/linear',
 			signed,
