@@ -74,6 +74,8 @@ const toDataTablePublicDto = (dataTable: DataTable, sizeBytes: number): DataTabl
 		name: column.name,
 		type: column.type,
 		index: column.index,
+		createdAt: column.createdAt.toISOString(),
+		updatedAt: column.updatedAt.toISOString(),
 	})),
 	projectId: dataTable.projectId,
 	createdAt: dataTable.createdAt.toISOString(),

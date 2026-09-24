@@ -21,6 +21,8 @@ const dataTableColumnPublicSchema = z.object({
 	name: z.string().openapi(dataTableColumnFieldDocs.name),
 	type: z.string().openapi(dataTableColumnFieldDocs.type),
 	index: z.number().openapi(dataTableColumnFieldDocs.index),
+	createdAt: z.string().datetime().openapi(dataTableColumnFieldDocs.createdAt),
+	updatedAt: z.string().datetime().openapi(dataTableColumnFieldDocs.updatedAt),
 });
 
 export const dataTablePublicSchema = z.object({
