@@ -996,8 +996,7 @@ function onNodeCreatorClose() {
 	nodeCreatorReplaceTargetId.value = undefined;
 }
 
-// Reuse the auto-connection context, but only while the creator is open from an explicit output-plus action.
-function getRequestedNodeGroupId(): string | undefined {
+function getOutputPlusEmptyGroupAnchorId(): string | undefined {
 	const isExplicitOutputAdd =
 		nodeCreatorStore.isCreateNodeActive &&
 		(nodeCreatorStore.openSource === NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT ||
@@ -1007,8 +1006,12 @@ function getRequestedNodeGroupId(): string | undefined {
 	const { type, mode } = parseCanvasConnectionHandleString(uiStore.lastInteractedWithNodeHandle);
 	if (type !== NodeConnectionTypes.Main || mode !== CanvasConnectionMode.Output) return undefined;
 
-	// Group selection can leave the previous workflow node here, so the open source above is the intent guard.
-	return workflowDocumentStore.value.getGroupForNode(uiStore.lastInteractedWithNodeId)?.id;
+	const sourceNodeId = uiStore.lastInteractedWithNodeId;
+	const group = workflowDocumentStore.value.getGroupForNode(sourceNodeId);
+	if (!group) return undefined;
+
+	const anchor = getEmptyGroupAnchor(group, workflowDocumentStore.value.allNodes);
+	return anchor?.id === sourceNodeId ? anchor.id : undefined;
 }
 
 async function onAddNodesAndConnections(
@@ -1019,9 +1022,9 @@ async function onAddNodesAndConnections(
 	if (!checkIfEditingIsAllowed()) {
 		return;
 	}
-	const nodeGroupId = getRequestedNodeGroupId();
+	const replaceNodeId = nodeCreatorReplaceTargetId.value ?? getOutputPlusEmptyGroupAnchorId();
 
-	if (nodeCreatorReplaceTargetId.value !== undefined) {
+	if (replaceNodeId !== undefined) {
 		uiStore.resetLastInteractedWith();
 
 		nodes = nodes.map((x) => ({
@@ -1035,8 +1038,7 @@ async function onAddNodesAndConnections(
 		position,
 		viewport: viewportBoundaries.value,
 		telemetry: true,
-		replaceNodeId: nodeCreatorReplaceTargetId.value,
-		nodeGroupId,
+		replaceNodeId,
 	});
 
 	if (addedNodes.length > 0) {

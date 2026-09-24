@@ -1577,20 +1577,6 @@ const groupNodeFallbackDataById = computed(() =>
 	}, {}),
 );
 
-watch(
-	() => props.nodes.filter((node): node is CanvasGroupNode => isCanvasGroupNode(node)),
-	(groupNodes) => {
-		void nextTick(() => {
-			// Vue Flow can miss the group update that immediately follows adding a node batch.
-			// Sync the mapped node because its width controls the visible group frame.
-			for (const groupNode of groupNodes) {
-				vueFlow.updateNode<CanvasGroupNodeData>(groupNode.id, groupNode);
-			}
-		});
-	},
-	{ flush: 'post' },
-);
-
 /**
  * Context menu
  */
