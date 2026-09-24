@@ -21,119 +21,46 @@ import {
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
-import type { RuntimeSkillLoader } from '../../skills/types';
-import type {
-	AgentExecutionCounter,
-	BuiltTelemetry,
-	BuiltTool,
-	PendingToolCall,
-	ToolSuspendOptions,
-} from '../../types';
+import type { BuiltTool, PendingToolCall, ToolSuspendOptions } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
-import type { AgentPersistenceOptions, ToolResultEntry } from '../../types/sdk/agent';
+import type {
+	ProcessToolCallParams,
+	ResumeToolBatchContext,
+	ToolBatchContext,
+	ToolCallBatchResult,
+	ToolCallError,
+	ToolCallExecutorDeps,
+	ToolCallIdentity,
+	ToolCallInput,
+	ToolCallOutcome,
+	ToolCallSuccess,
+	ToolCallSuspension,
+} from '../../types/runtime/tool-execution';
 import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
-import type { WorkspaceFilesystem } from '../../workspace/types';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import { stringifyError } from '../loop/runtime-helpers';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
-import type { TokenCounter } from '../model/model-token-counter';
 import type { AgentEventBus } from '../state/event-bus';
 import type { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
-/** Pending tool calls from a suspended run, passed into the loop to execute before the first LLM call. */
-export interface PendingResume {
-	pendingToolCalls: Record<string, PendingToolCall>;
-	/** The tool call being resumed with new data. */
-	resumeToolCallId: string;
-	resumeData: unknown;
-}
-
-type ToolCallOutcome =
-	| {
-			outcome: 'success';
-			toolEntry: ToolResultEntry;
-			/**
-			 * Output as the LLM sees it (after `toModelOutput`). Same as
-			 * `toolEntry.output` when no `toModelOutput` transform is configured.
-			 * Surfaced on the `tool-result` wire chunk so consumers see what the
-			 * LLM saw (rather than the larger raw output).
-			 */
-			modelOutput: unknown;
-			customMessage?: AgentMessage;
-			mcpServerName?: string;
-	  }
-	| {
-			outcome: 'suspended';
-			payload: unknown;
-			resumeSchema: JSONSchema7;
-			continuation?: JSONValue;
-	  }
-	| {
-			outcome: 'cancelled';
-			toolEntry: ToolResultEntry;
-			modelOutput: string;
-			userMessage: string;
-			canceled: true;
-	  }
-	| { outcome: 'retryable-error' }
-	| { outcome: 'error'; error: unknown }
-	| { outcome: 'noop' }; // tool call shouldn't be saved or logged anywhere, usually means that if was executed by AI SDK
-
-/** A tool call that completed successfully. */
-export interface ToolCallSuccess {
-	toolCallId: string;
-	toolName: string;
-	input: JSONValue;
-	toolEntry: ToolResultEntry;
-	modelOutput: unknown;
-	customMessage?: AgentMessage;
-	/** Set when the tool belongs to an MCP server, so hosts can attribute the result to it. */
-	mcpServerName?: string;
-}
-
-/** Info about a tool call that suspended (before persistence — no runId yet). */
-export interface ToolCallSuspension {
-	toolCallId: string;
-	toolName: string;
-	input: JSONValue;
-	payload: unknown;
-	/** JSON Schema describing the shape of resume data, derived from the tool's resumeSchema. */
-	resumeSchema: JSONSchema7;
-}
-
-/** Info about a tool call that failed — carries enough data for stream chunks. */
-export interface ToolCallError {
-	toolCallId: string;
-	toolName: string;
-	input: JSONValue;
-	error: unknown;
-}
-
-/** Result of executing a batch of tool calls (before persistence). */
-export interface ToolCallBatchResult {
-	results: ToolCallSuccess[];
-	suspensions: ToolCallSuspension[];
-	errors: ToolCallError[];
-	/** All items to persist: suspended tools (with suspendPayload) + unexecuted tools (without). */
-	pending: Record<string, PendingToolCall>;
-}
-
-interface ToolCallInput {
-	toolCallId: string;
-	toolName: string;
-	input: unknown;
-	providerExecuted?: boolean;
-}
+export type {
+	PendingResume,
+	ToolCallSuccess,
+	ToolCallSuspension,
+	ToolCallError,
+	ToolCallBatchResult,
+	ToolBatchContext,
+	ToolCallExecutorDeps,
+} from '../../types/runtime/tool-execution';
 
 interface RuntimeToolCall extends ToolCallInput {
 	input: JSONObject;
 }
 
-type ToolCallIdentity = Pick<PendingToolCall, 'toolCallId' | 'toolName' | 'input'>;
 type SuspendedToolOutcome = Extract<ToolCallOutcome, { outcome: 'suspended' }>;
 
 interface InterruptedToolSuspension {
@@ -144,43 +71,8 @@ interface InterruptedToolSuspension {
 	cleanup?: Promise<void>;
 }
 
-/** Shared input for the tool-call batch iterators. */
-export interface ToolBatchContext {
-	toolMap: Map<string, BuiltTool>;
-	list: AgentMessageList;
-	runId: string;
-	persistence?: AgentPersistenceOptions;
-	telemetry?: BuiltTelemetry;
-	executionCounter?: AgentExecutionCounter;
-	abortSignal: AbortSignal;
-	isAborted: () => boolean;
-}
-
 /** A tool-call content block that has already been settled by the AI SDK. */
 type SettledToolCall = ContentToolCall & { state: 'resolved' | 'rejected' };
-
-/** Inputs for executing a single tool call. */
-interface ProcessToolCallParams {
-	toolCallId: string;
-	toolName: string;
-	input: JSONValue;
-	toolMap: Map<string, BuiltTool>;
-	list: AgentMessageList;
-	runId: string;
-	persistence?: AgentPersistenceOptions;
-	resumeData?: unknown;
-	resolvedTelemetry?: BuiltTelemetry;
-	executionCounter?: AgentExecutionCounter;
-	abortSignal?: AbortSignal;
-	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
-	countToolCall?: boolean;
-	/** Checkpointed suspend payload of the tool call being resumed. */
-	suspendPayload?: unknown;
-	/** Checkpointed private continuation of the tool call being resumed. */
-	continuation?: JSONValue;
-	/** Checkpointed resume schema of the tool call being resumed. */
-	resumeSchema?: ToolSuspendOptions['resumeSchema'];
-}
 
 function isDeniedApprovalResumeData(value: unknown): boolean {
 	return value !== null && typeof value === 'object' && Reflect.get(value, 'approved') === false;
@@ -200,18 +92,6 @@ function getToolResumeJsonSchema(
 	const resolvedSchema = resumeSchemaOverride ?? tool.resumeSchema;
 	if (!resolvedSchema) return undefined;
 	return isZodSchema(resolvedSchema) ? zodSchemaToJsonSchema(resolvedSchema) : resolvedSchema;
-}
-
-export interface ToolCallExecutorDeps {
-	loadSkill?: RuntimeSkillLoader;
-	telemetry: RuntimeTelemetry;
-	eventBus: AgentEventBus;
-	/** Effective tool-call concurrency (default 1 = sequential). */
-	concurrency: number;
-	/** Invoked when a run is aborted mid-batch so the runtime can set cancelled state. */
-	onCancelled: () => void;
-	tokenCounter: TokenCounter;
-	workspaceFilesystem?: WorkspaceFilesystem;
 }
 
 /**
@@ -546,7 +426,7 @@ export class ToolCallExecutor {
 	 * Returns a `ToolCallBatchResult` — the caller handles persistence.
 	 */
 	async iteratePendingToolCallsConcurrent(
-		ctx: ToolBatchContext & { pendingResume: PendingResume },
+		ctx: ResumeToolBatchContext,
 	): Promise<ToolCallBatchResult> {
 		const { pendingResume } = ctx;
 		const resumedId = pendingResume.resumeToolCallId;
@@ -602,7 +482,7 @@ export class ToolCallExecutor {
 	}
 
 	private async cancelSiblingToolCalls(
-		ctx: ToolBatchContext & { pendingResume: PendingResume },
+		ctx: ResumeToolBatchContext,
 		batch: ToolCallBatchResult,
 		userMessage: string,
 	): Promise<void> {
@@ -626,7 +506,7 @@ export class ToolCallExecutor {
 	}
 
 	private async executeRemainingToolCalls(
-		ctx: ToolBatchContext & { pendingResume: PendingResume },
+		ctx: ResumeToolBatchContext,
 		result: ToolCallBatchResult,
 	): Promise<void> {
 		const unexecuted: ToolCallInput[] = [];

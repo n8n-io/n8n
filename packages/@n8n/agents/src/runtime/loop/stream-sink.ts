@@ -1,14 +1,14 @@
 import type { StreamTextTransform, TextStreamPart, ToolSet } from 'ai';
 
-import {
-	finalizeRun,
-	type CompleteEmission,
-	type ModelCallContext,
-	type ModelTurnResult,
-	type RunOutputSink,
-	type RunServices,
-	type SuspendEmission,
-} from './run-output-sink';
+import { finalizeRun } from './run-output-sink';
+import type {
+	CompleteEmission,
+	ModelCallContext,
+	ModelTurnResult,
+	RunOutputSink,
+	RunServices,
+	SuspendEmission,
+} from '../../types/runtime/agent-loop';
 import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
@@ -28,7 +28,7 @@ import {
 	withChunkIdleTimeout,
 } from '../streaming/stream-stall';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
-import type { ToolCallBatchResult } from '../tools/tool-call-executor';
+import type { ToolCallBatchResult } from '../../types/runtime/tool-execution';
 
 /**
  * Chunk types that are pure transport bookkeeping: an attempt that stalled

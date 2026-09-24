@@ -1,7 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { TelemetryOptions, ToolCallRepairFunction, ToolSet } from 'ai';
-import type { JSONSchema7 } from 'json-schema';
-import type { z } from 'zod';
 
 import { incrementMessageCount, incrementTokenCountFromUsage } from './execution-counter';
 import { GenerateSink } from './generate-sink';
@@ -11,7 +9,7 @@ import type {
 	ModelTurnResult,
 	RunOutputSink,
 	RunServices,
-} from './run-output-sink';
+} from '../../types/runtime/agent-loop';
 import { RuntimeContextBuilder, type StaticLoopContext } from './runtime-context';
 import {
 	extractSettledToolCalls,
@@ -25,49 +23,35 @@ import {
 import { StreamSink } from './stream-sink';
 import { isCancellation } from '../../sdk/cancellation';
 import { computeCost, getModelCost, type ModelCost } from '../../sdk/catalog';
-import type { RuntimeSkillSource } from '../../skills/types';
 import type {
-	BuiltFileStore,
-	BuiltMemory,
-	BuiltProviderTool,
 	BuiltTelemetry,
 	BuiltTool,
-	CheckpointStore,
-	EpisodicMemoryConfig,
 	FinishReason,
 	GenerateResult,
-	McpConnectionFailedEvent,
-	ObservationalMemoryConfig,
-	ObservationLogMemoryConfig,
 	PendingToolCall,
 	RunOptions,
-	ReasoningLevel,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
-	ThinkingConfig,
-	TitleGenerationConfig,
 	TokenUsage,
 } from '../../types';
+import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { AgentEvent } from '../../types/runtime/event';
 import type {
 	AgentPersistenceOptions,
 	ExecutionOptions,
-	ModelConfig,
 	PersistedExecutionOptions,
-	PromptCachingConfig,
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
-import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
+import { removeToolResultRun } from '../../workspace';
 import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
-import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
-import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
+import { supportsSplitSystemMessages } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
@@ -84,81 +68,18 @@ import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
-import {
-	ToolCallExecutor,
-	type PendingResume,
-	type ToolBatchContext,
-	type ToolCallBatchResult,
-} from '../tools/tool-call-executor';
+import { ToolCallExecutor } from '../tools/tool-call-executor';
+import type {
+	PendingResume,
+	ToolBatchContext,
+	ToolCallBatchResult,
+} from '../../types/runtime/tool-execution';
 
-export interface VolatileInstructionsContext {
-	persistence?: AgentPersistenceOptions;
-}
-
-export type VolatileInstructionsProvider = (
-	context: VolatileInstructionsContext,
-) => Promise<string | undefined>;
-
-export interface AgentRuntimeConfig {
-	name: string;
-	model: ModelConfig;
-	/**
-	 * Proxy-aware `fetch` used for all model calls in this runtime (main model and
-	 * title generation). When unset, model construction falls back to the ambient
-	 * HTTP_PROXY resolver.
-	 */
-	modelFetch?: FetchFn;
-	instructions: string;
-	skillSource?: RuntimeSkillSource;
-	instructionProviderOptions?: ProviderOptions;
-	tools?: BuiltTool[];
-	deferredTools?: BuiltTool[];
-	workspaceFilesystem?: WorkspaceFilesystem;
-	toolSearch?: {
-		topK?: number;
-	};
-	providerTools?: BuiltProviderTool[];
-	memory?: BuiltMemory;
-	/** Host store resolving file-reference content parts to bytes before LLM calls. */
-	fileStore?: BuiltFileStore;
-	observationLog?: ObservationLogMemoryConfig;
-	observationalMemory?: ObservationalMemoryConfig;
-	episodicMemory?: EpisodicMemoryConfig;
-	structuredOutput?: z.ZodType | JSONSchema7;
-	checkpointStorage?: 'memory' | CheckpointStore;
-	thinking?: ThinkingConfig;
-	reasoning?: ReasoningLevel;
-	promptCaching?: PromptCachingConfig;
-	eventBus?: AgentEventBus;
-	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
-	toolCallConcurrency?: number;
-	titleGeneration?: TitleGenerationConfig;
-	telemetry?: BuiltTelemetry;
-	/** Existing run id to continue, used when resuming a suspended run. */
-	runId?: string;
-	/**
-	 * Pre-fetched model cost from the catalog. When provided, skips the per-run
-	 * catalog fetch. Set once during Agent.build() and shared across per-run runtimes.
-	 */
-	modelCost?: ModelCost;
-	/**
-	 * Shared RunStateManager for suspend/resume. When provided, per-run runtimes
-	 * use the same store so resume() can find state from a prior run.
-	 */
-	runState?: RunStateManager;
-	/** Host callback for observational-memory background task lifecycle events. */
-	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
-	/**
-	 * Per-server MCP connection failures recorded during `Agent.build()` when
-	 * resolving MCP tools. Tools from these servers were skipped; the runtime
-	 * surfaces each as a non-fatal `warning` stream chunk at the start of a
-	 * stream so hosts can tell the user an MCP server was unavailable without
-	 * aborting the run.
-	 */
-	mcpConnectionFailures?: McpConnectionFailedEvent[];
-	/** The runtime loads these host instructions before each model call but does not save them. */
-	volatileInstructionsProvider?: VolatileInstructionsProvider;
-}
+export type {
+	AgentRuntimeConfig,
+	VolatileInstructionsContext,
+	VolatileInstructionsProvider,
+} from '../../types/runtime/agent-runtime';
 
 const MAX_LOOP_ITERATIONS = 100;
 
