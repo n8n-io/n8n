@@ -64,7 +64,6 @@ export interface InstanceAiThreadStatus {
 }
 
 export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
-export type TestState = 'fresh' | 'reset' | 'signin-only';
 
 export class ApiHelpers {
 	request: APIRequestContext;
@@ -115,40 +114,6 @@ export class ApiHelpers {
 
 		this.publicApi = new PublicApiHelper(this);
 	}
-
-	// ===== MAIN SETUP METHODS =====
-	/**
-	 * Setup test environment based on desired state (programmatic approach)
-	 * @param state - 'fresh': new container, 'reset': reset DB + signin, 'signin-only': just signin
-	 * @param role - User role to sign in as
-	 * @param memberIndex - Which member to use (if role is 'member')
-	 */
-	async setupTest(
-		state: TestState,
-		role: UserRole = 'owner',
-		memberIndex: number = 0,
-	): Promise<LoginResponseData | null> {
-		switch (state) {
-			case 'fresh':
-				// For fresh docker container - just reset, no signin needed yet
-				await this.resetDatabase();
-				return null;
-
-			case 'reset':
-				// Reset database then sign in
-				await this.resetDatabase();
-				return await this.signin(role, memberIndex);
-
-			case 'signin-only':
-				// Just sign in without reset
-				return await this.signin(role, memberIndex);
-
-			default:
-				throw new TestError('Unknown test state');
-		}
-	}
-
-	// ===== CORE METHODS =====
 
 	async resetDatabase(): Promise<void> {
 		const response = await this.request.post('/rest/e2e/reset', {
