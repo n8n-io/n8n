@@ -150,7 +150,9 @@ describe('cleanStoredUserMessage', () => {
 				buildProjectContextBlock(
 					getProjectContextSection({ name: 'Nath an <nathan@n8n.io>', type: 'personal' }),
 				),
-				buildCurrentDateTimeBlock('\n## Current Date and Time\n\n2026-09-16T10:28+02:00'),
+				buildCurrentDateTimeBlock(
+					"The user's current local date and time is: 2026-09-16T10:28+02:00.",
+				),
 			]),
 			'test; do nothing',
 		].join('\n\n');
@@ -968,7 +970,7 @@ describe('buildThreadContextBlock', () => {
 			}),
 			buildProjectContextBlock(getProjectContextSection({ name: 'Ops', type: 'team' })),
 			buildPastConversationsBlock('This project has 1 past conversation with you.'),
-			buildCurrentDateTimeBlock('\n## Current Date and Time\n\nMonday'),
+			buildCurrentDateTimeBlock('Monday'),
 		]);
 
 		expect(block.startsWith('<thread-context>\n')).toBe(true);
@@ -976,7 +978,7 @@ describe('buildThreadContextBlock', () => {
 		expect(block).toContain('<thread-artifacts>');
 		expect(block).toContain('<project-context>');
 		expect(block).toContain('<past-conversations>');
-		expect(block).toContain('<current-date-time>');
+		expect(block).toContain('<current-date-time>\nMonday\n</current-date-time>');
 		expect(block.indexOf('<thread-artifacts>')).toBeLessThan(block.indexOf('<project-context>'));
 		expect(block.indexOf('<project-context>')).toBeLessThan(block.indexOf('<current-date-time>'));
 	});

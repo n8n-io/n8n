@@ -37,11 +37,7 @@ export function getDateTimeSection(timeZone?: string): string {
 		.startOf('minute')
 		.toISO({ includeOffset: true, suppressSeconds: true, suppressMilliseconds: true });
 	const tzLabel = timeZone ? ` (timezone: ${timeZone})` : '';
-	return `
-## Current Date and Time
-
-The user's current local date and time is: ${isoTime}${tzLabel}.
-When you need to reference "now", use this date and time.`;
+	return `The user's current local date and time is: ${isoTime}${tzLabel}. When you need to reference "now", use this date and time.`;
 }
 
 function getToolDiscoverySection(

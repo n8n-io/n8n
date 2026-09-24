@@ -156,7 +156,7 @@ function stripTrailingContextBlocks(message: string): string {
 }
 
 export function buildCurrentDateTimeBlock(dateTimeSection: string): string {
-	return `<current-date-time>${dateTimeSection}\n</current-date-time>`;
+	return `<current-date-time>\n${dateTimeSection.trim()}\n</current-date-time>`;
 }
 
 export function buildProjectContextBlock(projectSection: string): string {
