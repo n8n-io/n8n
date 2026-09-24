@@ -573,7 +573,7 @@ describe('UserService', () => {
 			const result = await userService.getInvitationIdsFromPayload(token);
 
 			expect(result).toEqual({ inviterId, inviteeId });
-			expect(jwtService.verify).toHaveBeenCalledWith(token);
+			expect(jwtService.verify).toHaveBeenCalledWith('invite', token);
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			});

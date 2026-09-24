@@ -31,6 +31,30 @@ const instanceAiLazyRuntimeImports = [
 	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
 }));
 
+// Only JwtService may reach the raw signing API: it derives the `aud` claim from
+// the token's purpose, which is what keeps a token for one purpose from being
+// presented for another. The error classes and types stay importable.
+const jsonwebtokenSigningRestriction = {
+	name: 'jsonwebtoken',
+	// An allowlist, not a denylist: the module's whole runtime surface is off
+	// limits except the error classes, so a member added upstream is restricted
+	// from the start. `allowTypeImports` keeps `Secret`, `Algorithm` and friends
+	// importable. A namespace import is restricted too — the linter cannot see
+	// which members it reaches for.
+	allowImportNames: ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'],
+	allowTypeImports: true,
+	message:
+		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
+// `jsonwebtoken` declares no `exports`, so `jsonwebtoken/sign` and its siblings
+// resolve straight to the same functions and would slip past a name-only rule.
+const jsonwebtokenSubpathRestriction = {
+	group: ['jsonwebtoken/*'],
+	message:
+		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
 const engineV2ModuleOnlyImport = {
 	name: '@n8n/engine',
 	allowTypeImports: true,
@@ -184,7 +208,14 @@ export default defineConfig({
 				// wholesale rather than merging them.
 				'no-restricted-imports': [
 					'error',
-					{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+					{
+						paths: [
+							POLICY_INTERNAL_RESTRICTION,
+							engineV2ModuleOnlyImport,
+							jsonwebtokenSigningRestriction,
+						],
+						patterns: [jsonwebtokenSubpathRestriction],
+					},
 				],
 			},
 		},
@@ -201,7 +232,9 @@ export default defineConfig({
 							POLICY_INTERNAL_RESTRICTION,
 							...instanceAiLazyRuntimeImports,
 							engineV2ModuleOnlyImport,
+							jsonwebtokenSigningRestriction,
 						],
+						patterns: [jsonwebtokenSubpathRestriction],
 					},
 				],
 			},
@@ -214,6 +247,55 @@ export default defineConfig({
 		{
 			files: ['./src/modules/agents/runtime/agent-isolate-pool.ts'],
 			rules: { 'prefer-const': 'off' },
+		},
+		{
+			// engine-v2 owns `@n8n/engine`, so the block above skips it wholesale — which
+			// would drop the JWT restriction too. Reinstate it here, without the engine
+			// restriction these files are exempt from.
+			files: ['./src/modules/engine-v2/**/*.ts'],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{
+						paths: [POLICY_INTERNAL_RESTRICTION, jsonwebtokenSigningRestriction],
+						patterns: [jsonwebtokenSubpathRestriction],
+					},
+				],
+			},
+		},
+		{
+			// The two places that hold the raw signing API. NEVER add to this list.
+			files: [
+				// Owns the signing key and derives every audience from a purpose.
+				'./src/services/jwt.service.ts',
+				// Verifies subject tokens with a foreign key from the trusted-key store,
+				// against the audience that key is registered for.
+				'./src/modules/token-exchange/services/token-exchange.service.ts',
+			],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				],
+			},
+		},
+		{
+			// Tests mint tokens as fixtures, including malformed ones a purpose cannot express.
+			files: ['./src/**/__tests__/**/*.ts'],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				],
+			},
+		},
+		{
+			// engine-v2 tests reach for `@n8n/engine` the same way the module does, and
+			// the tests block above would reinstate the restriction they are exempt from.
+			files: ['./src/modules/engine-v2/**/__tests__/**/*.ts'],
+			rules: {
+				'no-restricted-imports': ['error', { paths: [POLICY_INTERNAL_RESTRICTION] }],
+			},
 		},
 		{
 			// Only the PEP may import the clearance minter.
