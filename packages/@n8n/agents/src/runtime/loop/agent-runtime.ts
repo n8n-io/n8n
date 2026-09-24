@@ -55,14 +55,8 @@ import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
-import { supportsSplitSystemMessages } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
-import {
-	applyRuntimeCacheBreakpoints,
-	buildInstructionPromptCacheOptions,
-	getEffectiveAnthropicCacheTtl,
-	mergeProviderOptions,
-} from '../model/prompt-cache';
+import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
@@ -758,11 +752,7 @@ export class AgentRuntime {
 			...options,
 			persistence: options?.persistence,
 		});
-		// Explicit instruction options take precedence over cache defaults.
-		const instructionProviderOptions = mergeProviderOptions(
-			buildInstructionPromptCacheOptions(this.config.promptCaching, this.modelIdString),
-			this.config.instructionProviderOptions,
-		);
+		const instructionProviderOptions = this.context.buildInstructionProviderOptions();
 		const state: LoopState = {
 			totalUsage: undefined,
 			lastFinishReason: 'stop',
@@ -900,23 +890,20 @@ export class AgentRuntime {
 			list,
 		);
 		const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
-		const { system, messages } = this.buildModelPrompt(ctx, tools, hostVolatileInstructions);
-		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
-		const cached = applyRuntimeCacheBreakpoints({
-			system,
-			messages: this.activeSkills?.modelMessages(messages, list) ?? messages,
-			aiTools: tools.aiTools,
-			promptCaching: this.config.promptCaching,
-			modelId: this.modelIdString,
-			staticToolCacheName: tools.staticToolCacheName,
+		const prompt = this.context.buildModelPrompt({
+			list,
+			tools,
+			instructionProviderOptions: ctx.instructionProviderOptions,
+			hostVolatileInstructions,
+			activeSkills: this.activeSkills,
 		});
 		const modelCallContext: ModelCallContext = {
 			model: staticContext.model,
-			system,
-			messages: cached.messages,
+			system: prompt.system,
+			messages: prompt.messages,
 			abortSignal: abortScope.signal,
 			hasTools: tools.hasTools,
-			aiTools: cached.aiTools,
+			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
 			providerOptions: staticContext.providerOptions,
 			outputSpec: staticContext.outputSpec,
@@ -925,26 +912,6 @@ export class AgentRuntime {
 			onInputRejected: this.createInputRejectionHandler(ctx, iterationCount),
 		};
 		return { toolMap: tools.toolMap, modelCallContext };
-	}
-
-	private buildModelPrompt(
-		ctx: PreparedLoopContext,
-		tools: ReturnType<RuntimeContextBuilder['buildToolLoopContext']>,
-		hostVolatileInstructions: string | undefined,
-	) {
-		const combinedVolatileInstructions = [tools.volatileInstructions, hostVolatileInstructions]
-			.map((value) => value?.trim())
-			.filter((value): value is string => Boolean(value))
-			.join('\n\n');
-		return ctx.list.forLlm(
-			// Skill content changes only on activation. Keep it cached when memory compacts.
-			[tools.effectiveInstructions, this.activeSkills?.instructions()]
-				.filter(Boolean)
-				.join('\n\n'),
-			ctx.instructionProviderOptions,
-			combinedVolatileInstructions || undefined,
-			supportsSplitSystemMessages(this.config.model),
-		);
 	}
 
 	private createInputRejectionHandler(
