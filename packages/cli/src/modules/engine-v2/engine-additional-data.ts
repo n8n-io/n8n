@@ -12,7 +12,7 @@ import { UrlService } from '@/services/url.service';
 /** A capability the data plane does not have yet. The step that reaches it fails and says why. */
 function unimplemented(feature: string) {
 	return async (): Promise<never> => {
-		throw new UnimplementedError(`${feature} is not supported on Engine 2.0 yet`);
+		throw new UnimplementedError(`${feature} is not supported on Engine v2 yet`);
 	};
 }
 
