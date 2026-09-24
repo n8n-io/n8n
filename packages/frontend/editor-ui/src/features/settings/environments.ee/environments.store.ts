@@ -44,14 +44,22 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 		return data;
 	}
 
+	function setProjectScope(data: EnvironmentVariable, projectId?: string | null) {
+		if (!projectId) return;
+
+		const project =
+			projectStore.availableProjects.find((p) => p.id === projectId) ??
+			projectStore.myProjects.find((p) => p.id === projectId) ??
+			(projectStore.personalProject?.id === projectId ? projectStore.personalProject : undefined) ??
+			(projectStore.currentProject?.id === projectId ? projectStore.currentProject : undefined);
+		if (project) {
+			data.project = { id: project.id, name: project.name ?? '' };
+		}
+	}
+
 	async function createVariable(variable: CreateEnvironmentVariable) {
 		const data = await environmentsApi.createVariable(rootStore.restApiContext, variable);
-		if (variable.projectId) {
-			const project = projectStore.availableProjects?.find((p) => p.id === variable.projectId);
-			if (project) {
-				data.project = { ...project, name: project?.name ?? '' };
-			}
-		}
+		setProjectScope(data, variable.projectId);
 		allVariables.value.unshift(data);
 
 		return data;
@@ -59,12 +67,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 
 	async function updateVariable(variable: UpdateEnvironmentVariable) {
 		const data = await environmentsApi.updateVariable(rootStore.restApiContext, variable);
-		if (variable.projectId) {
-			const project = projectStore.availableProjects?.find((p) => p.id === variable.projectId);
-			if (project) {
-				data.project = { ...project, name: project?.name ?? '' };
-			}
-		}
+		setProjectScope(data, variable.projectId);
 		allVariables.value = allVariables.value.map((v) => (v.id === data.id ? data : v));
 
 		return data;
