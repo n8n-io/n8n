@@ -141,7 +141,7 @@ function toLegacyFilter(
 	return blockedTools.length > 0 ? { mode: 'exclude', tools: blockedTools } : null;
 }
 
-export class MigrateMcpToolPermissions1790100563525 implements ReversibleMigration {
+export class MigrateMcpToolPermissions1790236643232 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		try {
 			await this.migratePermissions(ctx);
