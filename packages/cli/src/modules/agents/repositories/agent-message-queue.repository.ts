@@ -42,6 +42,20 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		return result.affected === 1;
 	}
 
+	async updatePendingPayload(
+		threadId: string,
+		id: string,
+		payload: AgentQueuedMessage,
+		ctx: OperationContext,
+	) {
+		const result = await this.managerFor(ctx).update(
+			AgentMessageQueue,
+			{ threadId, id, executionId: IsNull() },
+			{ payload },
+		);
+		return result.affected === 1;
+	}
+
 	async findHead(threadId: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(AgentMessageQueue, {
 			where: { threadId },

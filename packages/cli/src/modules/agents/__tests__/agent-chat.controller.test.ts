@@ -160,11 +160,37 @@ describe('AgentChatController route access scopes', () => {
 		['getChatMessages', 'agent:read'],
 		['getQueuedMessages', 'agent:read'],
 		['removeQueuedMessage', 'agent:execute'],
+		['updateQueuedMessage', 'agent:execute'],
 		['getBackgroundJobs', 'agent:read'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+});
+
+describe('AgentChatController queue editing', () => {
+	it('reads the message after the request and response arguments supplied by the registry', async () => {
+		const { controller, agentsService, messageQueue } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		const params = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			queueId: '1',
+		};
+
+		await Reflect.apply(controller.updateQueuedMessage, controller, [
+			{ params, user: { id: 'user-1' } },
+			makeSseResponse([]),
+			{ message: 'Edited message' },
+		]);
+
+		expect(messageQueue.updatePending).toHaveBeenCalledWith({
+			...params,
+			userId: 'user-1',
+			message: 'Edited message',
+		});
 	});
 });
 

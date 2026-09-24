@@ -98,6 +98,8 @@ describe('AgentMessageQueueConsumer', () => {
 
 	it('runs independent sessions without waiting and reuses each claimed execution', async () => {
 		const first = claim('first');
+		first.item.payload.message = 'edited first message';
+		first.recording.userMessage = first.item.payload.message;
 		const second = claim('second');
 		const waiting = createDeferredPromise();
 		repository.findThreadIds.mockResolvedValue(['first', 'second']);
@@ -119,6 +121,12 @@ describe('AgentMessageQueueConsumer', () => {
 				expect(queue.settle).toHaveBeenCalledWith('second', second.admission.executionId),
 			);
 			expect(queue.settle).not.toHaveBeenCalledWith('first', first.admission.executionId);
+			expect(sender.send).toHaveBeenCalledWith({
+				type: 'execution-started',
+				executionId: first.admission.executionId,
+				sessionId: 'first',
+				message: 'edited first message',
+			});
 			expect(testRuns.prepareDraftRun).toHaveBeenCalledWith(
 				expect.objectContaining({
 					newSession: false,

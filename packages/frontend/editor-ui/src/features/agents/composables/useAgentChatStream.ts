@@ -22,6 +22,7 @@ import {
 	getChatMessages,
 	getAgentChatQueue,
 	removeAgentQueuedMessage,
+	updateAgentQueuedMessage,
 	getTestChatMessages,
 } from './useAgentApi';
 
@@ -305,6 +306,39 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (!disposed && target === targetKey() && version === queueVersion) {
 				showError(error, locale.baseText('agents.chat.queue.loadError'));
 			}
+		}
+	}
+
+	async function updateQueuedMessage(
+		queueId: string,
+		message: string,
+	): Promise<'updated' | 'unavailable' | 'failed'> {
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		if (!threadId || disposed) return 'failed';
+		const target = targetKey();
+		try {
+			await updateAgentQueuedMessage(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				threadId,
+				queueId,
+				{ message },
+			);
+			if (disposed || target !== targetKey()) return 'failed';
+			queueVersion++;
+			queuedMessages.value = queuedMessages.value.map((item) =>
+				item.id === queueId ? { ...item, message: message.trim() } : item,
+			);
+			return 'updated';
+		} catch (error) {
+			if (disposed || target !== targetKey()) return 'failed';
+			const status = isRecord(error) ? error.httpStatusCode : undefined;
+			if (status === 404 || status === 409) return 'unavailable';
+			showError(error, locale.baseText('agents.chat.queue.editError'));
+			return 'failed';
+		} finally {
+			if (!disposed && target === targetKey()) refreshHistoryFromPush();
 		}
 	}
 
@@ -659,7 +693,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							(message) => message.role === 'user' && message.executionId === event.executionId,
 						)
 					) {
-						messages.value.push({ ...session.userMessage, executionId: event.executionId });
+						messages.value.push({
+							...session.userMessage,
+							content: event.message ?? session.userMessage.content,
+							executionId: event.executionId,
+						});
 					}
 				}
 				queueVersion++;
@@ -1436,6 +1474,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		queuedMessages,
 		removingQueueIds,
 		removeQueuedMessage,
+		updateQueuedMessage,
 		isSubmitting,
 		isLoadingHistory,
 		messages,

@@ -28,6 +28,7 @@ const isLoadingHistoryMock = ref(false);
 const trackSubmittedMessageMock = vi.fn();
 const queuedMessagesMock = ref<AgentChatQueueItem[]>([]);
 const removeQueuedMessageMock = vi.fn();
+const updateQueuedMessageMock = vi.fn();
 const isCancellingMock = ref(false);
 const backgroundJobsMock = ref<AgentBackgroundJobDto[]>([]);
 vi.mock('../composables/useAgentBackgroundJobs', () => ({
@@ -86,6 +87,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	N8nLink: (await importOriginal<typeof import('@n8n/design-system')>()).N8nLink,
 	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
 		.useDropdownSearch,
+	N8nInput: (await importOriginal<typeof import('@n8n/design-system')>()).N8nInput,
 	N8nButton: { template: '<button><slot name="icon" /><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
@@ -194,6 +196,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			queuedMessages: queuedMessagesMock,
 			removingQueueIds: ref(new Set()),
 			removeQueuedMessage: removeQueuedMessageMock,
+			updateQueuedMessage: updateQueuedMessageMock,
 			isCancelling: isCancellingMock,
 			messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
 			fatalError: fatalErrorMock,
@@ -229,6 +232,7 @@ vi.mock('../composables/agentTelemetry.utils', () => ({
 describe('AgentChatPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		updateQueuedMessageMock.mockReset().mockResolvedValue('updated');
 		messagesMock.value = [];
 		isStreamingMock.value = false;
 		isSubmittingMock.value = false;
@@ -318,6 +322,70 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
 		wrapper.unmount();
 	});
+
+	it('edits queued text inline while preserving attachments and the composer draft', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				message: 'original',
+				createdAt: new Date().toISOString(),
+				attachments: [{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 }],
+			},
+		];
+		const wrapper = mountPanel();
+		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+		composer.vm.$emit('update:modelValue', 'next draft');
+		await wrapper.get('[data-testid="agent-message-queue"] button').trigger('click');
+		await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
+		let editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
+		await editor.setValue('changed');
+		await editor.trigger('keydown', { key: 'Escape' });
+		expect(wrapper.find('textarea[aria-label="agents.chat.queue.edit"]').exists()).toBe(false);
+		expect(updateQueuedMessageMock).not.toHaveBeenCalled();
+		await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
+		editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
+		await editor.setValue('updated text');
+		await editor.trigger('keydown', { key: 'Enter', shiftKey: true });
+		expect(updateQueuedMessageMock).not.toHaveBeenCalled();
+		await editor.trigger('keydown', { key: 'Enter', isComposing: true });
+		expect(updateQueuedMessageMock).not.toHaveBeenCalled();
+		await editor.trigger('keydown', { key: 'Enter' });
+		await flushPromises();
+		expect(updateQueuedMessageMock).toHaveBeenCalledExactlyOnceWith('1', 'updated text');
+		expect(composer.props('modelValue')).toBe('next draft');
+		expect(wrapper.get('[data-testid="agent-queued-message"]').text()).toContain('notes.txt');
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it.each(['notification', 'conflict'])(
+		'preserves edits when a message starts before saving (%s)',
+		async (source) => {
+			queuedMessagesMock.value = [
+				{ id: '1', message: 'original', createdAt: new Date().toISOString() },
+			];
+			const wrapper = mountPanel();
+			await wrapper.get('[data-testid="agent-message-queue"] button').trigger('click');
+			await wrapper.get('[aria-label="agents.chat.queue.edit"]').trigger('click');
+			const editor = wrapper.get('textarea[aria-label="agents.chat.queue.edit"]');
+			await editor.setValue('unsaved text');
+			if (source === 'notification') queuedMessagesMock.value = [];
+			else {
+				updateQueuedMessageMock.mockResolvedValueOnce('unavailable');
+				await editor.trigger('keydown', { key: 'Enter' });
+			}
+			await flushPromises();
+			expect(editor.element).toHaveProperty('value', 'unsaved text');
+			expect(editor.attributes('readonly')).toBeDefined();
+			expect(
+				wrapper.get('[aria-label="agents.chat.queue.save"]').attributes('disabled'),
+			).toBeDefined();
+			expect(wrapper.text()).toContain('agents.chat.queue.editUnavailable');
+			await wrapper.get('[aria-label="agents.chat.queue.cancelEdit"]').trigger('click');
+			expect(wrapper.find('textarea[aria-label="agents.chat.queue.edit"]').exists()).toBe(false);
+			wrapper.unmount();
+		},
+	);
 
 	describe('background task panel', () => {
 		afterEach(() => vi.useRealTimers());

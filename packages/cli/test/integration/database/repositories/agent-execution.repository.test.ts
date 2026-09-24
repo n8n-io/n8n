@@ -1093,9 +1093,66 @@ describe('AgentExecutionRepository', () => {
 			await finish(services, active);
 		});
 
-		it.each(['claim', 'remove'] as const)(
-			'serializes pending removal with a concurrent claim when %s wins',
-			async (winner) => {
+		it('edits pending text without changing identity, attachments, or queue position', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const data = input(threadId, 'original', 'new');
+			data.payload.attachments = [
+				{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
+			];
+			const first = await services.queue.enqueue(data);
+			const second = await services.queue.enqueue(input(threadId, 'second'));
+			const target = {
+				projectId,
+				agentId,
+				threadId,
+				userId: owner.id,
+				queueId: first.id,
+				message: 'updated',
+			};
+			await expect(
+				services.queue.updatePending({ ...target, userId: 'other-user' }),
+			).rejects.toThrow('Session not found');
+			await expect(
+				services.queue.updatePending({ ...target, agentId: 'other-agent' }),
+			).rejects.toThrow('Session not found');
+			await expect(
+				services.queue.updatePending({ ...target, queueId: second.id, message: ' ' }),
+			).rejects.toThrow('message or attachment');
+			await services.queue.updatePending({ ...target, message: ' ' });
+			expect((await services.queue.listPending(target)).items[0]).toMatchObject({
+				message: '',
+				attachments: data.payload.attachments,
+			});
+			await services.queue.updatePending(target);
+			const stored = await services.queueRepository.findOneByOrFail({ id: first.id });
+			expect(stored).toMatchObject({
+				id: first.id,
+				createdAt: first.createdAt,
+				source: first.source,
+				payload: { ...first.payload, message: 'updated' },
+			});
+			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				first.id,
+				second.id,
+			]);
+			expect(services.attachmentService.deleteByIds).not.toHaveBeenCalled();
+			const claimed = await claim(services, threadId);
+			expect(claimed.item.payload.message).toBe('updated');
+			await finish(services, claimed);
+			await expect(services.queue.updatePending(target)).rejects.toThrow(
+				'Queued message not found',
+			);
+		});
+
+		it.each([
+			['claim', 'remove'],
+			['remove', 'remove'],
+			['claim', 'edit'],
+			['edit', 'edit'],
+		] as const)(
+			'serializes a concurrent claim when %s wins against %s',
+			async (winner, operation) => {
 				const local = recordingServices();
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
@@ -1111,15 +1168,15 @@ describe('AgentExecutionRepository', () => {
 					return thread;
 				});
 				const observe = observePeerTransaction();
+				const mutate = async (services: ReturnType<typeof recordingServices>) =>
+					operation === 'edit'
+						? await services.queue.updatePending({ ...target, message: 'edited' })
+						: await services.queue.removePending(target);
 				const first =
-					winner === 'claim'
-						? local.queue.claimNext(threadId, async () => true)
-						: local.queue.removePending(target);
+					winner === 'claim' ? local.queue.claimNext(threadId, async () => true) : mutate(local);
 				await acquired.promise;
 				const second =
-					winner === 'claim'
-						? remote.queue.removePending(target)
-						: remote.queue.claimNext(threadId, async () => true);
+					winner === 'claim' ? mutate(remote) : remote.queue.claimNext(threadId, async () => true);
 				const results = Promise.allSettled([first, second]);
 				try {
 					await observe.started;
@@ -1137,6 +1194,11 @@ describe('AgentExecutionRepository', () => {
 					const claimed = await first;
 					if (!claimed) throw new Error('Expected a claim');
 					await finish(local, claimed);
+				} else if (operation === 'edit') {
+					const claimed = await second;
+					if (!claimed) throw new Error('Expected a claim');
+					expect(claimed.item.payload.message).toBe('edited');
+					await finish(remote, claimed);
 				} else {
 					expect(settled[1]).toEqual({ status: 'fulfilled', value: null });
 					expect(await repository.countBy({ threadId })).toBe(0);

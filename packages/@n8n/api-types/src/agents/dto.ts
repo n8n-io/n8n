@@ -259,6 +259,10 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 	}
 }
 
+export class AgentChatQueueUpdateDto extends Z.class({
+	message: z.string(),
+}) {}
+
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),

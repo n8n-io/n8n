@@ -4,6 +4,7 @@ import type {
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentChatQueueResponse,
+	AgentChatQueueUpdateDto,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
@@ -556,6 +557,22 @@ export const getAgentChatQueue = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/queue`,
+	);
+};
+
+export const updateAgentQueuedMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	payload: AgentChatQueueUpdateDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/queue/${queueId}`,
+		payload,
 	);
 };
 

@@ -2,6 +2,7 @@ import {
 	type AgentBackgroundJobsResponse,
 	type AgentChatAttachmentPayload,
 	AgentChatMessageDto,
+	AgentChatQueueUpdateDto,
 	type AgentChatMessagesResponse,
 	type AgentChatQueueResponse,
 	AgentChatResumeDto,
@@ -10,7 +11,16 @@ import {
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	RestController,
+} from '@n8n/decorators';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
@@ -332,6 +342,28 @@ export class AgentChatController {
 		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError('Agent not found');
 		return await this.messageQueue.listPending({ ...req.params, userId: req.user.id });
+	}
+
+	@Patch('/:agentId/chat/:threadId/queue/:queueId')
+	@ProjectScope('agent:execute')
+	async updateQueuedMessage(
+		req: AuthenticatedRequest<{
+			projectId: string;
+			agentId: string;
+			threadId: string;
+			queueId: string;
+		}>,
+		_res: Response,
+		@Body payload: AgentChatQueueUpdateDto,
+	): Promise<void> {
+		if (!/^[1-9]\d*$/.test(req.params.queueId)) throw new BadRequestError('Invalid queue ID');
+		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError('Agent not found');
+		await this.messageQueue.updatePending({
+			...req.params,
+			userId: req.user.id,
+			message: payload.message,
+		});
 	}
 
 	@Delete('/:agentId/chat/:threadId/queue/:queueId')

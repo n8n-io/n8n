@@ -24,6 +24,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 const getAgentChatQueueMock = vi.fn().mockResolvedValue({ items: [] });
 const removeAgentQueuedMessageMock = vi.fn().mockResolvedValue({ removed: true });
+const updateAgentQueuedMessageMock = vi.fn();
 const getChatMessagesMock = vi.fn();
 const getTestChatMessagesMock = vi.fn();
 const cancelAgentChatRunMock = vi.fn();
@@ -55,6 +56,7 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 		...actual,
 		getAgentChatQueue: (...args: unknown[]) => getAgentChatQueueMock(...args),
 		removeAgentQueuedMessage: (...args: unknown[]) => removeAgentQueuedMessageMock(...args),
+		updateAgentQueuedMessage: (...args: unknown[]) => updateAgentQueuedMessageMock(...args),
 		getChatMessages: (...args: unknown[]) => getChatMessagesMock(...args),
 		getTestChatMessages: (...args: unknown[]) => getTestChatMessagesMock(...args),
 		cancelAgentChatRun: (...args: unknown[]) => cancelAgentChatRunMock(...args),
@@ -3628,6 +3630,60 @@ describe('useAgentChatStream — queued submissions', () => {
 				expect(hook.fatalError.value).toEqual({ message: 'Missing model', missing: ['model'] });
 			expect(hook.messages.value).toEqual([]);
 			expect(hook.queuedMessages.value).toEqual([]);
+		},
+	);
+
+	it('shows the accepted edit on start even when the waiting stream and queue snapshot have old text', async () => {
+		const item = { id: '1', message: 'original', createdAt: new Date().toISOString() };
+		getAgentChatQueueMock.mockResolvedValue({ items: [item] });
+		updateAgentQueuedMessageMock.mockResolvedValueOnce(undefined);
+		let stream: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse(
+					[{ type: 'message-queued', queueId: '1', sessionId: 'thread-1' }],
+					init.signal ?? null,
+				);
+				return stream.response;
+			}),
+		);
+		const hook = buildHook('thread-1');
+		await hook.sendMessage('original');
+		expect(await hook.updateQueuedMessage('1', 'edited')).toBe('updated');
+		expect(updateAgentQueuedMessageMock).toHaveBeenLastCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'thread-1',
+			'1',
+			{ message: 'edited' },
+		);
+		stream!.emit([
+			{
+				type: 'execution-started',
+				executionId: 'A',
+				sessionId: 'thread-1',
+				message: 'edited in another tab',
+			},
+		]);
+		await flushPromises();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['edited in another tab']);
+		hook.detachStream();
+	});
+
+	it.each([404, 409, 500])(
+		'reports edit failure %i without replacing the queued input',
+		async (status) => {
+			const item = { id: '1', message: 'original', createdAt: new Date().toISOString() };
+			getAgentChatQueueMock.mockResolvedValue({ items: [item] });
+			updateAgentQueuedMessageMock.mockRejectedValueOnce({ httpStatusCode: status });
+			const hook = buildHook('thread-1');
+			await hook.loadHistory();
+			expect(await hook.updateQueuedMessage('1', 'unsaved')).toBe(
+				status === 500 ? 'failed' : 'unavailable',
+			);
+			expect(hook.queuedMessages.value).toEqual([item]);
 		},
 	);
 

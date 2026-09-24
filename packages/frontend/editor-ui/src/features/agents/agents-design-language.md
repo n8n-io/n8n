@@ -158,3 +158,5 @@ Show pending messages above background tasks in the composer panel. Keep them
 out of the conversation until processing starts. Use the existing activity
 group and a Remove action for each pending message. Hide an empty queue section.
 Removal discards the message. It does not restore the composer draft.
+
+Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.

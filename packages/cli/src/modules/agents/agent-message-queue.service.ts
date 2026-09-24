@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -128,6 +129,36 @@ export class AgentMessageQueueService {
 		});
 		this.updates.notifyQueueUpdated(item.threadId);
 		await this.attachments.deleteByIds(item.payload.attachments?.map(({ id }) => id) ?? []);
+	}
+
+	async updatePending(input: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		userId: string;
+		queueId: string;
+		message: string;
+	}): Promise<void> {
+		await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(input.threadId, ctx);
+			if (!thread) throw new NotFoundError('Session not found');
+			await this.assertPreviewAccess(thread, input, ctx);
+			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
+			if (!item || item.payload.kind !== 'preview')
+				throw new NotFoundError('Queued message not found');
+			if (item.executionId !== null) throw new ConflictError('This message has already started');
+			const message = input.message.trim();
+			if (!message && !item.payload.attachments?.length)
+				throw new BadRequestError('A message or attachment is required');
+			const updated = await this.repository.updatePendingPayload(
+				thread.id,
+				item.id,
+				{ ...item.payload, message },
+				ctx,
+			);
+			if (!updated) throw new ConflictError('This message has already started');
+		});
+		this.updates.notifyQueueUpdated(input.threadId);
 	}
 
 	private async assertPreviewAccess(

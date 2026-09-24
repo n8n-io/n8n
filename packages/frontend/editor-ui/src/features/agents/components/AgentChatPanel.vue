@@ -14,6 +14,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
+	N8nInput,
 	N8nLink,
 	N8nSendStopButton,
 	N8nTooltip,
@@ -21,6 +22,7 @@ import {
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
+	type AgentChatQueueItem,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -96,6 +98,7 @@ const {
 	queuedMessages,
 	removingQueueIds,
 	removeQueuedMessage,
+	updateQueuedMessage,
 	isSubmitting,
 	isLoadingHistory,
 	isStreaming,
@@ -124,6 +127,59 @@ const {
 	},
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 });
+
+const queueEdit = ref<{
+	item: AgentChatQueueItem;
+	text: string;
+	unavailable: boolean;
+	saving: boolean;
+}>();
+const queueRows = computed(() => {
+	const edit = queueEdit.value;
+	if (edit && !queuedMessages.value.some((item) => item.id === edit.item.id)) {
+		return [...queuedMessages.value, edit.item];
+	}
+	return queuedMessages.value;
+});
+const canSaveQueueEdit = computed(() => {
+	const edit = queueEdit.value;
+	return (
+		edit &&
+		!edit.saving &&
+		!edit.unavailable &&
+		(edit.text.trim().length > 0 || !!edit.item.attachments?.length)
+	);
+});
+watch(queuedMessages, (items) => {
+	if (queueEdit.value && !items.some((item) => item.id === queueEdit.value?.item.id)) {
+		queueEdit.value.unavailable = true;
+	}
+});
+function startQueueEdit(item: AgentChatQueueItem) {
+	queueEdit.value = { item, text: item.message, unavailable: false, saving: false };
+}
+async function saveQueueEdit() {
+	const edit = queueEdit.value;
+	if (!edit || !canSaveQueueEdit.value) return;
+	edit.saving = true;
+	const result = await updateQueuedMessage(edit.item.id, edit.text);
+	if (queueEdit.value !== edit) return;
+	edit.saving = false;
+	if (result === 'updated') queueEdit.value = undefined;
+	else if (result === 'unavailable') edit.unavailable = true;
+}
+function onQueueEditKeydown(event: KeyboardEvent) {
+	if (event.isComposing) return;
+	if (event.key === 'Escape') {
+		event.preventDefault();
+		event.stopPropagation();
+		if (!queueEdit.value?.saving) queueEdit.value = undefined;
+	} else if (event.key === 'Enter' && !event.shiftKey) {
+		event.preventDefault();
+		event.stopPropagation();
+		void saveQueueEdit();
+	}
+}
 
 const { jobs: backgroundJobs } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
@@ -447,6 +503,7 @@ watch(
 	() => [props.projectId, props.agentId, props.continueSessionId],
 	() => {
 		queuedExternalMessage = undefined;
+		queueEdit.value = undefined;
 	},
 );
 
@@ -658,52 +715,128 @@ onBeforeUnmount(() => {
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
-				<template v-if="queuedMessages.length || showBackgroundJobs" #header>
+				<template v-if="queueRows.length || showBackgroundJobs" #header>
 					<div
-						v-if="queuedMessages.length"
+						v-if="queueRows.length"
 						:class="$style.backgroundJobs"
 						data-testid="agent-message-queue"
 					>
 						<N8nAiActivityStepGroup
 							:key="continueSessionId"
 							:label="
-								locale.baseText('agents.chat.queue.title', {
-									interpolate: { count: queuedMessages.length },
-								})
+								queuedMessages.length
+									? locale.baseText('agents.chat.queue.title', {
+											interpolate: { count: queuedMessages.length },
+										})
+									: locale.baseText('agents.chat.queue.edit')
 							"
 							full-width
 							content-position="above"
 						>
 							<ul :class="[$style.backgroundJobList, $style.queueList]">
-								<li
-									v-for="item in queuedMessages"
-									:key="item.id"
-									data-testid="agent-queued-message"
-								>
+								<li v-for="item in queueRows" :key="item.id" data-testid="agent-queued-message">
 									<div :class="$style.queuePreview" :title="item.message">
-										<span v-if="item.message">{{ item.message }}</span>
+										<N8nInput
+											v-if="queueEdit?.item.id === item.id"
+											v-model="queueEdit.text"
+											type="textarea"
+											size="small"
+											:autosize="{ minRows: 1, maxRows: 6 }"
+											:readonly="queueEdit.unavailable || queueEdit.saving"
+											:aria-label="locale.baseText('agents.chat.queue.edit')"
+											autofocus
+											@keydown="onQueueEditKeydown"
+										/>
+										<span v-else-if="item.message">{{ item.message }}</span>
+										<p
+											v-if="queueEdit?.item.id === item.id && queueEdit.unavailable"
+											:class="$style.queueEditNotice"
+											role="status"
+										>
+											{{ locale.baseText('agents.chat.queue.editUnavailable') }}
+										</p>
 										<span v-for="attachment in item.attachments" :key="attachment.id">{{
 											attachment.fileName
 										}}</span>
 									</div>
-									<N8nTooltip
-										:content="locale.baseText('agents.chat.queue.remove')"
-										:disabled="removingQueueIds.has(item.id)"
-										placement="top"
-									>
-										<N8nButton
-											icon-only
-											variant="ghost"
-											size="xsmall"
-											:disabled="removingQueueIds.has(item.id)"
-											:aria-label="locale.baseText('agents.chat.queue.remove')"
-											@click="removeQueuedMessage(item.id)"
-										>
-											<template #icon>
-												<N8nIcon icon="trash-2" size="xsmall" aria-hidden="true" />
-											</template>
-										</N8nButton>
-									</N8nTooltip>
+									<div :class="$style.queueActions">
+										<template v-if="queueEdit?.item.id === item.id">
+											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.save')"
+												:disabled="!canSaveQueueEdit"
+												placement="top"
+											>
+												<N8nButton
+													icon-only
+													variant="ghost"
+													size="xsmall"
+													:disabled="!canSaveQueueEdit"
+													:aria-label="locale.baseText('agents.chat.queue.save')"
+													@click="saveQueueEdit"
+												>
+													<template #icon
+														><N8nIcon icon="check" size="xsmall" aria-hidden="true"
+													/></template>
+												</N8nButton>
+											</N8nTooltip>
+											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.cancelEdit')"
+												:disabled="queueEdit.saving"
+												placement="top"
+											>
+												<N8nButton
+													icon-only
+													variant="ghost"
+													size="xsmall"
+													:disabled="queueEdit.saving"
+													:aria-label="locale.baseText('agents.chat.queue.cancelEdit')"
+													@click="queueEdit = undefined"
+												>
+													<template #icon
+														><N8nIcon icon="x" size="xsmall" aria-hidden="true"
+													/></template>
+												</N8nButton>
+											</N8nTooltip>
+										</template>
+										<template v-else>
+											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.edit')"
+												:disabled="!!queueEdit || removingQueueIds.has(item.id)"
+												placement="top"
+											>
+												<N8nButton
+													icon-only
+													variant="ghost"
+													size="xsmall"
+													:disabled="!!queueEdit || removingQueueIds.has(item.id)"
+													:aria-label="locale.baseText('agents.chat.queue.edit')"
+													@click="startQueueEdit(item)"
+												>
+													<template #icon
+														><N8nIcon icon="pencil" size="xsmall" aria-hidden="true"
+													/></template>
+												</N8nButton>
+											</N8nTooltip>
+											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.remove')"
+												:disabled="removingQueueIds.has(item.id)"
+												placement="top"
+											>
+												<N8nButton
+													icon-only
+													variant="ghost"
+													size="xsmall"
+													:disabled="removingQueueIds.has(item.id)"
+													:aria-label="locale.baseText('agents.chat.queue.remove')"
+													@click="removeQueuedMessage(item.id)"
+												>
+													<template #icon>
+														<N8nIcon icon="trash-2" size="xsmall" aria-hidden="true" />
+													</template>
+												</N8nButton>
+											</N8nTooltip>
+										</template>
+									</div>
 								</li>
 							</ul>
 						</N8nAiActivityStepGroup>
@@ -881,6 +1014,16 @@ onBeforeUnmount(() => {
 
 .queueList {
 	padding: var(--spacing--sm);
+}
+
+.queueActions {
+	display: flex;
+	flex-shrink: 0;
+}
+
+.queueEditNotice {
+	margin: var(--spacing--3xs) 0;
+	font-size: var(--font-size--2xs);
 }
 
 .queuePreview {
