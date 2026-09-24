@@ -2912,12 +2912,14 @@ describe('useCanvasOperations', () => {
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
 			const nodeD = createGroupedNode('d', 'D');
-			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], name: 'Group 1' };
+			// B and C both feed D and neither feeds the other, so the drawn edge gives
+			// the group a second entry node rather than an edge into its middle.
+			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id, nodeD.id], name: 'Group 1' };
 			const { workflowDocumentStore } = setupGroupedCanvas({
 				nodes: [nodeA, nodeB, nodeC, nodeD],
 				connections: createConnectionsBySource(
 					workflowConnection(nodeA, nodeB),
-					workflowConnection(nodeB, nodeC),
+					workflowConnection(nodeB, nodeD),
 					workflowConnection(nodeC, nodeD),
 				),
 				groups: [group],
