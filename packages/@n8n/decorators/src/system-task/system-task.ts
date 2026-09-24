@@ -154,20 +154,33 @@ export function validateSystemTask(task: SystemTask): void {
 }
 
 /**
- * Resolves the schedule a task is planned with. An interval is rounded to the
- * whole second the scheduler requires, so a cadence derived from a fractional
- * config value keeps running as it did on the legacy timers.
+ * Resolves the schedule a task is planned with. A cluster task's interval is
+ * rounded to the whole second the scheduler requires, so a cadence derived from
+ * a fractional config value keeps running as it did on the legacy timers. An
+ * instance task's interval keeps its sub-second part, rounded to the millisecond.
  */
 export function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule {
 	const { schedule } = task;
 	if (schedule.kind !== 'interval') return schedule;
 
-	return { ...schedule, intervalSeconds: wholeSeconds(schedule.intervalSeconds) };
+	const intervalSeconds =
+		task.placement.scope === 'instance'
+			? wholeMilliseconds(schedule.intervalSeconds)
+			: wholeSeconds(schedule.intervalSeconds);
+
+	return { ...schedule, intervalSeconds };
 }
 
 /** Rounds to the whole second the scheduler requires, never below one. */
 function wholeSeconds(seconds: number): number {
 	return Math.max(1, Math.round(seconds));
+}
+
+/** Rounds to the whole millisecond a timer honors, never below one. */
+function wholeMilliseconds(seconds: number): number {
+	return (
+		Math.max(1, Math.round(seconds * Time.seconds.toMilliseconds)) / Time.seconds.toMilliseconds
+	);
 }
 
 function assertInRange(taskName: string, field: string, value: number, min: number) {

@@ -119,6 +119,17 @@ describe('SystemTaskRunner', () => {
 			});
 		});
 
+		it('fires a cluster-scoped task with a sub-second interval every whole second', async () => {
+			const { runner, metadata } = setup({ isLeader: true });
+			dummy.schedule = { kind: 'interval', intervalSeconds: 0.5 };
+			metadata.register(DummySystemTask);
+
+			await initRunner(runner);
+			await vi.advanceTimersByTimeAsync(2 * Time.seconds.toMilliseconds);
+
+			expect(dummy.runCount).toBe(2);
+		});
+
 		it('fires a task registered after it took over the registry', async () => {
 			const { runner, metadata } = setup({ isLeader: true });
 			await initRunner(runner);
@@ -1330,6 +1341,18 @@ describe('SystemTaskRunner', () => {
 
 			expect(perInstance.runCount).toBe(1);
 			expect(dummy.runCount).toBe(0);
+		});
+
+		it('fires an instance-scoped task with a sub-second interval on its sub-second cadence', async () => {
+			const { runner, metadata, errorReporter } = setup();
+			perInstance.schedule = { kind: 'interval', intervalSeconds: 0.5 };
+			metadata.register(PerInstanceDummySystemTask);
+
+			await runner.init();
+			await vi.advanceTimersByTimeAsync(2 * Time.seconds.toMilliseconds);
+
+			expect(errorReporter.error).not.toHaveBeenCalled();
+			expect(perInstance.runCount).toBe(4);
 		});
 
 		it('fires an instance-scoped task on a worker, which has no role at all', async () => {
