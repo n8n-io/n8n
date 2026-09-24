@@ -29,8 +29,6 @@ be approved
   implement the missing parts** based on the real requirements / API docs.
 - Never output `Wordpress`-specific code unless the project is actually about
   WordPress.
-- For action and trigger node categories in a codex file or inline codex,
-  follow `.agents/nodes.md` and check the supported community categories.
 
 ## Project structure
 There are two main folders in this project:

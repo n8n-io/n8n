@@ -81,24 +81,6 @@ description: INodeTypeDescription = {
     applicable to the node you're developing** (i.e. data transformation
     nodes, etc.)
 
-## Node categories
-For each action or trigger node with codex data, set `categories` to values
-from the [community node category list](https://docs.n8n.io/connect/create-nodes/build-your-node/reference/codex-files/#node-categories).
-Check the list for the exact spelling and punctuation before you use a category.
-The current values are `Data & Storage`, `Finance & Accounting`,
-`Marketing & Content`, `Productivity`, `Miscellaneous`, `Sales`, `Development`,
-`Analytics`, `Communication`, and `Utility`.
-
-- In a `<Node>.node.json` codex file, set the top-level `categories` array.
-- For inline codex data, set `description.codex.categories` in the node's
-  `.node.ts` file.
-- Choose categories for each node based on what it does. The `group` field is
-  separate from codex categories. Do not use `trigger` or `output` as a category.
-- Do not copy categories from built-in nodes or examples without checking the
-  community list. For example, use `Marketing & Content`, not `Marketing`.
-- Run `n8n-node lint` after changing categories. Check inline categories
-  against the list yourself; the category lint rule checks `.node.json` files.
-
 ## Resource and operation pattern
 Example "operations":
 ```typescript
