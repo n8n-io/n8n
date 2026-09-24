@@ -8,6 +8,7 @@ import {
 } from '../response-channel/redis-execution-response-receiver';
 import {
 	RedisExecutionResponseSender,
+	SHUTDOWN_DRAIN_TIMEOUT_MS,
 	type RedisResponsePublisher,
 } from '../response-channel/redis-execution-response-sender';
 
@@ -57,6 +58,51 @@ describe('Redis execution response sender', () => {
 
 		expect(publisher.disconnect).toHaveBeenCalledTimes(1);
 		expect(publisher.publish).not.toHaveBeenCalled();
+	});
+
+	it('waits for an in-flight publish before it disconnects', async () => {
+		const publisher = mock<RedisResponsePublisher>();
+		let finishPublish: (() => void) | undefined;
+		publisher.publish.mockReturnValue(
+			new Promise((resolve) => {
+				finishPublish = () => resolve(1);
+			}),
+		);
+		const sender = new RedisExecutionResponseSender(publisher, getChannelName, mockLogger());
+		sender.send(ended());
+
+		const stop = sender.stop();
+		await Promise.resolve();
+
+		expect(publisher.disconnect).not.toHaveBeenCalled();
+		finishPublish?.();
+		await stop;
+		expect(publisher.disconnect).toHaveBeenCalledTimes(1);
+	});
+
+	it('disconnects after the drain timeout when a publish never settles', async () => {
+		vi.useFakeTimers();
+		try {
+			const publisher = mock<RedisResponsePublisher>();
+			publisher.publish.mockReturnValue(new Promise(() => {}));
+			const logger = mockLogger();
+			const sender = new RedisExecutionResponseSender(publisher, getChannelName, logger);
+			sender.send(ended());
+
+			const stop = sender.stop();
+			await vi.advanceTimersByTimeAsync(SHUTDOWN_DRAIN_TIMEOUT_MS - 1);
+			expect(publisher.disconnect).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(1);
+			await stop;
+			expect(publisher.disconnect).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Execution responses were still being published at shutdown',
+				{ count: 1 },
+			);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
 
