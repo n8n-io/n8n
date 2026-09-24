@@ -489,22 +489,15 @@ function onWrapperPointerDown(event: PointerEvent) {
 				</div>
 			</div>
 
-			<div v-if="hasTrigger && isCollapsed" :class="$style.triggerMark">
-				<N8nTooltip
-					:content="i18n.baseText('canvas.nodeGroup.holdsTrigger')"
-					:show-after="HOVER_DELAY.SHOW"
-					placement="left"
-				>
-					<!-- N8nIcon marks its svg aria-hidden, so the name lives on this wrapper. -->
-					<span
-						role="img"
-						tabindex="0"
-						:aria-label="i18n.baseText('canvas.nodeGroup.holdsTrigger')"
-						data-test-id="canvas-node-group-trigger-mark"
-					>
-						<N8nIcon icon="bolt-filled" size="large" />
-					</span>
-				</N8nTooltip>
+			<!-- N8nIcon marks its svg aria-hidden, so the name lives on this wrapper. -->
+			<div
+				v-if="hasTrigger && isCollapsed"
+				:class="$style.triggerMark"
+				role="img"
+				:aria-label="i18n.baseText('canvas.nodeGroup.holdsTrigger')"
+				data-test-id="canvas-node-group-trigger-mark"
+			>
+				<N8nIcon icon="bolt-filled" size="large" />
 			</div>
 
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
@@ -904,6 +897,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	position: absolute;
 	right: 100%;
 	top: 0;
+	pointer-events: none;
 	display: flex;
 	align-items: center;
 	height: 100%;
