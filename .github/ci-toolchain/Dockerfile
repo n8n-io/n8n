@@ -13,7 +13,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins /usr/local/libexec/docker/cli-plugins
 
-RUN npm install --global --ignore-scripts "pnpm@${PNPM_VERSION}" \
+RUN npm install --global "pnpm@${PNPM_VERSION}" \
     && npm install --prefix /opt/ci-playwright --ignore-scripts --no-save "playwright@${PLAYWRIGHT_VERSION}" \
     && apt-get update \
     && apt-get install -y --no-install-recommends git jq rsync sudo \
