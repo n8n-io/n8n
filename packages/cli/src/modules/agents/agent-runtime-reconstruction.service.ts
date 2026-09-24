@@ -1011,7 +1011,13 @@ export class AgentRuntimeReconstructionService {
 			instrumentation,
 		};
 		await this.attachSubAgentDelegationTool({ ...delegationParams, config, parentWorkspaceHandle });
-		this.attachWriteTodosTool(agent, agentId);
+		if (Container.get(AgentsConfig).planToolsEnabled) {
+			const { AgentPlanService } = await import('./agent-plan.service.js');
+			const { createAgentPlanTools } = await import('./plans/agent-plan-tools.js');
+			agent.tool(createAgentPlanTools(Container.get(AgentPlanService)));
+		} else {
+			this.attachWriteTodosTool(agent, agentId);
+		}
 		if (!backgroundTasksEnabled) return;
 		await this.attachBackgroundJobTools({
 			...delegationParams,
