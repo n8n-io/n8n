@@ -20,10 +20,11 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { generateText } from 'ai';
 
 import type { InstanceAiModelService } from '../instance-ai-model.service';
-import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiVerificationService } from '../instance-ai-verification.service';
 
 import type { Telemetry } from '@/telemetry';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 describe('InstanceAiVerificationService', () => {
 	const globalConfig = mock<GlobalConfig>({
@@ -85,6 +86,33 @@ describe('InstanceAiVerificationService', () => {
 	});
 
 	describe('verifyModel', () => {
+		it.each(['legacy-data-sharing', 'legacy-data-sharing-env'] as const)(
+			'rejects verification before calling a model for %s',
+			async (reason) => {
+				settingsService.isAgentEnabled.mockReturnValue(false);
+				settingsService.getDisabledReason.mockReturnValue(reason);
+				settingsService.assertEnabled.mockImplementation((options) =>
+					InstanceAiSettingsService.prototype.assertEnabled.call(settingsService, options),
+				);
+
+				await expect(service.verifyModel(user, {})).rejects.toThrow(ForbiddenError);
+				expect(modelService.resolveAgentModelConfig).not.toHaveBeenCalled();
+				expect(createModelMock).not.toHaveBeenCalled();
+				expect(generateTextMock).not.toHaveBeenCalled();
+			},
+		);
+
+		it('allows provider verification when disabled without a legacy restriction', async () => {
+			settingsService.isAgentEnabled.mockReturnValue(false);
+			settingsService.getDisabledReason.mockReturnValue(undefined);
+			settingsService.assertEnabled.mockImplementation((options) =>
+				InstanceAiSettingsService.prototype.assertEnabled.call(settingsService, options),
+			);
+
+			await expect(service.verifyModel(user, {})).resolves.toMatchObject({ ok: true });
+			expect(generateTextMock).toHaveBeenCalledTimes(1);
+		});
+
 		it('verifies a draft connection with restored credential data', async () => {
 			const connection = { type: 'openAiApi', data: { apiKey: '__redacted__' } };
 			const restored = { type: 'openAiApi', data: { apiKey: 'saved-key' } };

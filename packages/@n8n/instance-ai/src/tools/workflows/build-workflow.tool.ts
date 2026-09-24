@@ -697,6 +697,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						'Call workflows(action="get-as-code") for this workflow before rebuilding. ' +
 						'If it reports a conflict, preserve your edits separately, remove the stale file, and read the workflow again. Then reapply your edits.',
 				});
+				trackWorkflowSourceBuild(context, {
+					result: 'blocked',
+					stage: 'source_read',
+					binding,
+					targetWorkflowId: binding.workflowId ?? input.workflowId,
+					remediation,
+					errorCount: 1,
+				});
 				return {
 					success: false,
 					...sourceResponseBase(binding),

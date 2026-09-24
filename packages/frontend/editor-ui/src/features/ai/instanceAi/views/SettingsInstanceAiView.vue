@@ -385,6 +385,7 @@ onMounted(() => {
 
 async function handleEnable() {
 	if (isDisabledByEnvironment.value) return;
+	// Explicit enablement permits model verification. Closing setup keeps this choice.
 	if (store.settings?.disabledReason && !(await store.persistEnabled(true))) return;
 	if (!showCredentialsRows.value && (!showSandboxRow.value || isSandboxConfigured.value)) {
 		await store.persistEnabled(true);

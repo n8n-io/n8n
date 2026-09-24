@@ -10,8 +10,8 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { fetchSettings } from '../instanceAi.settings.api';
-import type { FrontendModuleSettings } from '@n8n/api-types';
+import { fetchSettings, updateSettings } from '../instanceAi.settings.api';
+import type { FrontendModuleSettings, InstanceAiAdminSettingsResponse } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
 
@@ -362,6 +362,113 @@ describe('SettingsInstanceAiView', () => {
 
 			const { getByText } = renderComponent();
 			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
+		});
+	});
+
+	describe('legacy data-sharing settings', () => {
+		beforeEach(() => {
+			vi.mocked(store.fetch).mockResolvedValue(undefined);
+			vi.spyOn(settingsStore, 'getModuleSettings').mockResolvedValue(undefined);
+			store.$patch({
+				settings: {
+					...store.settings!,
+					enabled: false,
+					disabledReason: 'legacy-data-sharing',
+				},
+			});
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+		});
+
+		it.each([
+			['legacy-data-sharing', 'settings.n8nAgent.legacyDataSharing.notice'],
+			['legacy-data-sharing-env', 'settings.n8nAgent.legacyDataSharing.environmentNotice'],
+		] as const)('shows the notice for %s', (disabledReason, message) => {
+			store.$patch({ settings: { ...store.settings!, disabledReason } });
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-data-sharing-notice')).toHaveTextContent(message);
+		});
+
+		it.each([
+			{ configured: false, buttonLabel: 'settings.n8nAgent.empty.enable' },
+			{ configured: true, buttonLabel: 'settings.n8nAgent.status.enable' },
+		])(
+			'disables environment-restricted enablement when configured=$configured',
+			async ({ configured, buttonLabel }) => {
+				store.$patch({
+					settings: {
+						...store.settings!,
+						disabledReason: 'legacy-data-sharing-env',
+						modelCredentialId: configured ? 'openai-id' : null,
+						modelName: configured ? 'gpt-4o' : null,
+					},
+				});
+				const { getByRole, queryByTestId } = renderComponent();
+				const enableButton = getByRole('button', { name: buttonLabel });
+
+				expect(enableButton).toBeDisabled();
+				await fireEvent.click(enableButton);
+
+				expect(store.persistEnabled).not.toHaveBeenCalled();
+				expect(queryByTestId('n8n-agent-model-dialog')).toBeNull();
+			},
+		);
+
+		it.each(['legacy-data-sharing', 'legacy-data-sharing-env'] as const)(
+			'hides the %s notice and enable action from non-admins',
+			(disabledReason) => {
+				store.$patch({ settings: { ...store.settings!, disabledReason } });
+				vi.mocked(hasPermission).mockReturnValue(false);
+
+				const { queryByTestId, queryByRole } = renderComponent();
+
+				expect(queryByTestId('n8n-agent-data-sharing-notice')).toBeNull();
+				expect(queryByTestId('n8n-agent-enable-button')).toBeNull();
+				expect(queryByRole('button', { name: 'settings.n8nAgent.empty.enable' })).toBeNull();
+			},
+		);
+
+		it('persists explicit enablement before setup and keeps it when setup is canceled', async () => {
+			const response = { ...store.settings!, enabled: true, disabledReason: undefined };
+			const pendingSave = Promise.withResolvers<InstanceAiAdminSettingsResponse>();
+			vi.mocked(updateSettings).mockReturnValueOnce(pendingSave.promise);
+			const { getByRole, findByTestId, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByRole('button', { name: 'settings.n8nAgent.empty.enable' }));
+
+			expect(updateSettings).toHaveBeenCalledWith(expect.anything(), { enabled: true });
+			expect(store.settings?.enabled).toBe(false);
+			expect(queryByTestId('n8n-agent-model-dialog')).toBeNull();
+
+			pendingSave.resolve(response);
+			expect(await findByTestId('n8n-agent-model-api-key-input')).toBeVisible();
+			expect(store.settings?.enabled).toBe(true);
+			expect(queryByTestId('n8n-agent-data-sharing-notice')).toBeNull();
+
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-cancel'));
+
+			await waitFor(() => expect(queryByTestId('n8n-agent-model-dialog')).toBeNull());
+			expect(store.settings?.enabled).toBe(true);
+			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+			expect(updateSettings).toHaveBeenCalledTimes(1);
+			expect(getByTestId('n8n-agent-status-menu')).toHaveTextContent(
+				'settings.n8nAgent.status.setupRequired',
+			);
+		});
+
+		it('keeps setup closed when explicit enablement fails', async () => {
+			vi.mocked(updateSettings).mockRejectedValueOnce(new Error('Save failed'));
+			const { getByRole, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByRole('button', { name: 'settings.n8nAgent.empty.enable' }));
+
+			expect(updateSettings).toHaveBeenCalledWith(expect.anything(), { enabled: true });
+			await waitFor(() => expect(store.isSaving).toBe(false));
+			expect(store.settings?.enabled).toBe(false);
+			expect(getByTestId('n8n-agent-data-sharing-notice')).toBeVisible();
+			expect(queryByTestId('n8n-agent-model-dialog')).toBeNull();
+			expect(store.verifyModel).not.toHaveBeenCalled();
 		});
 	});
 

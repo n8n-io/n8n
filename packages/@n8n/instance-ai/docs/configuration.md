@@ -179,7 +179,7 @@ The `instance-ai` module is in the default module set. It does not need to be
 listed in `N8N_ENABLED_MODULES`. `N8N_AI_ENABLED` controls older global AI
 features and does not gate Instance AI.
 
-Admins can enable or disable the Assistant in **Settings > n8n Assistant**.
+Owners and admins can enable or disable the Assistant in **Settings > n8n Assistant**.
 The AI usage page and its data-sharing controls are no longer available.
 
 On startup, either a saved `ai.allowSendingParameterValues=false` setting or
@@ -187,7 +187,9 @@ On startup, either a saved `ai.allowSendingParameterValues=false` setting or
 persists after restarts and after removal of the environment variable.
 To re-enable the Assistant, remove the environment restriction and restart n8n.
 Then select **Enable** in **Settings > n8n Assistant**. This permits the Assistant
-to send workflow data to the model. The Assistant must refresh older workflow source
+to send workflow data to the model. Closing connection setup does not undo this choice.
+Use **Disable** in Assistant settings to turn it off again.
+The Assistant must refresh older workflow source
 files before it can rebuild existing workflows. Normal workflow execution and AI nodes
 are unchanged.
 

@@ -1330,7 +1330,9 @@ export class InstanceAiSettingsService {
 	assertEnabled(options?: { forVerification: true }): void {
 		if (!this.isAgentEnabled() && (!options?.forVerification || this.getDisabledReason())) {
 			throw new ForbiddenError(
-				'The n8n Assistant is disabled. An instance owner can enable it in Settings > n8n Assistant.',
+				this.legacyDataSharingRestricted
+					? 'Remove N8N_AI_ALLOW_SENDING_PARAMETER_VALUES=false and restart n8n before enabling the n8n Assistant.'
+					: 'The n8n Assistant is disabled. An instance owner can enable it in Settings > n8n Assistant.',
 			);
 		}
 	}

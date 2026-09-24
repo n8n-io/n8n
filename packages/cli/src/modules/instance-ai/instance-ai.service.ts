@@ -1542,6 +1542,13 @@ export class InstanceAiService {
 	}
 
 	cancelRun(threadId: string, reason = 'user_cancelled'): void {
+		if (
+			reason === 'assistant_disabled' &&
+			!this.runState.hasLiveRun(threadId) &&
+			this.backgroundTasks.getRunningTasks(threadId).length === 0
+		) {
+			return;
+		}
 		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {

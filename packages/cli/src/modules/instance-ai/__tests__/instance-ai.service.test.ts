@@ -795,6 +795,35 @@ describe('InstanceAiService — MCP connections availability', () => {
 });
 
 describe('InstanceAiService — runtime workspace setup', () => {
+	it('rejects environment creation before reading thread data when disabled', async () => {
+		const service = Object.create(InstanceAiService.prototype) as {
+			settingsService: InstanceAiSettingsService;
+			agentMemory: { getThreadProjectId: Mock };
+			createExecutionEnvironment: (
+				user: User,
+				threadId: string,
+				runId: string,
+				abortSignal: AbortSignal,
+			) => Promise<unknown>;
+		};
+		service.settingsService = mock<InstanceAiSettingsService>({
+			assertEnabled: () => {
+				throw new ForbiddenError('Assistant disabled');
+			},
+		});
+		service.agentMemory = { getThreadProjectId: vi.fn() };
+
+		await expect(
+			service.createExecutionEnvironment(
+				fakeUser,
+				'thread-1',
+				'run-1',
+				new AbortController().signal,
+			),
+		).rejects.toThrow(ForbiddenError);
+		expect(service.agentMemory.getThreadProjectId).not.toHaveBeenCalled();
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		(createSandbox as Mock).mockReset();
@@ -1481,6 +1510,19 @@ describe('InstanceAiService — memory task observer', () => {
 });
 
 describe('InstanceAiService — run start', () => {
+	it('rejects a new run when the Assistant is disabled', () => {
+		const service = createStartRunService();
+		service.settingsService = mock<InstanceAiSettingsService>({
+			assertEnabled: () => {
+				throw new ForbiddenError('Assistant disabled');
+			},
+		});
+
+		expect(() => service.startRun(fakeUser, 'thread-a', 'hello')).toThrow(ForbiddenError);
+		expect(service.runState.startRun).not.toHaveBeenCalled();
+		expect(service.executeRun).not.toHaveBeenCalled();
+	});
+
 	describe('concurrency admission', () => {
 		it('refuses a new turn when the user is at their limit', () => {
 			const service = createStartRunService();
@@ -1957,6 +1999,14 @@ function userWithScopes(scopes: string[], overrides: Partial<User> = {}): User {
 }
 
 describe('InstanceAiService — revalidateActiveUser', () => {
+	it('does not resume a user when the Assistant is disabled', async () => {
+		const service = createRevalidationService();
+		service.settingsService = mock<InstanceAiSettingsService>({ isAgentEnabled: () => false });
+
+		await expect(service.revalidateActiveUser('user-1')).resolves.toBeNull();
+		expect(service.userRepository.findOne).not.toHaveBeenCalled();
+	});
+
 	it('returns the user when active and scoped for n8n Assistant', async () => {
 		const service = createRevalidationService();
 		const fresh = userWithScopes(['instanceAi:message']);
@@ -5276,10 +5326,12 @@ describe('InstanceAiService — planned task settlement', () => {
 		backgroundTasks: {
 			cancelThread: Mock;
 			cancelTask: Mock;
+			getRunningTasks: Mock;
 		};
 		runState: {
 			getThreadUser: Mock;
 			cancelThread: Mock;
+			hasLiveRun: Mock;
 		};
 		tracing: { finalizeBackgroundTaskTracing: Mock };
 		terminalOutcome: { recordBackgroundTerminalOutcome: Mock };
@@ -5309,10 +5361,12 @@ describe('InstanceAiService — planned task settlement', () => {
 			backgroundTasks: {
 				cancelThread: vi.fn(() => [task]),
 				cancelTask: vi.fn(() => task),
+				getRunningTasks: vi.fn(() => []),
 			},
 			runState: {
 				getThreadUser: vi.fn(() => fakeUser),
 				cancelThread: vi.fn(() => ({ active: undefined, suspended: undefined })),
+				hasLiveRun: vi.fn(() => false),
 			},
 			tracing: { finalizeBackgroundTaskTracing: vi.fn(async () => {}) },
 			eventBus: { publish: vi.fn() },
@@ -5324,6 +5378,35 @@ describe('InstanceAiService — planned task settlement', () => {
 
 	/** cancelRun/cancelBackgroundTask fire settlement with `void`, so let it settle. */
 	const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+
+	it('leaves idle thread approval state intact when the Assistant is disabled', () => {
+		const { service } = createSettlementService();
+
+		service.cancelRun('thread-a', 'assistant_disabled');
+
+		expect(service.backgroundTasks.cancelThread).not.toHaveBeenCalled();
+		expect(service.runState.cancelThread).not.toHaveBeenCalled();
+		expect(service.cancelAwaitingApprovalPlan).not.toHaveBeenCalled();
+		expect(service.suspendedThreads.dropPendingConfirmationsForThread).not.toHaveBeenCalled();
+	});
+
+	it.each(['live run', 'background task'])(
+		'cancels a thread with a %s when the Assistant is disabled',
+		async (work) => {
+			const { service } = createSettlementService();
+			service.runState.hasLiveRun.mockReturnValue(work === 'live run');
+			service.backgroundTasks.getRunningTasks.mockReturnValue(
+				work === 'background task' ? [task] : [],
+			);
+
+			service.cancelRun('thread-a', 'assistant_disabled');
+			await flush();
+
+			expect(service.backgroundTasks.cancelThread).toHaveBeenCalledWith('thread-a');
+			expect(service.runState.cancelThread).toHaveBeenCalledWith('thread-a');
+			expect(service.cancelAwaitingApprovalPlan).toHaveBeenCalledWith('thread-a');
+		},
+	);
 
 	it('marks the planned task cancelled but does not re-tick when the whole thread is cancelled', async () => {
 		const { service, plannedTaskService, graph } = createSettlementService();
@@ -6471,6 +6554,17 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 	});
 
 	describe('startInternalFollowUpRun circuit breaker', () => {
+		it('does not start a follow-up when the Assistant is disabled', async () => {
+			const service = createFollowUpStreakService();
+			service.settingsService = mock<InstanceAiSettingsService>({ isAgentEnabled: () => false });
+
+			await expect(service.startInternalFollowUpRun(fakeUser, 'thread-a', 'verify')).resolves.toBe(
+				'',
+			);
+			expect(service.runState.startRun).not.toHaveBeenCalled();
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
+		});
+
 		it('starts the follow-up while the streak is below the cap', async () => {
 			const service = createFollowUpStreakService();
 			service.failedInternalFollowUpStreaks.set('thread-a', 2);
