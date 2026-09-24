@@ -63,18 +63,20 @@ function serializedName(serialized: Serialized | undefined, fallback: string): s
 
 /**
  * JSON with path-based cycle detection, so a value LangChain reuses across
- * branches survives and only a true cycle is cut.
+ * branches survives and only a true cycle is cut. A value JSON cannot encode,
+ * such as `undefined`, becomes `null` so the attribute stays parseable.
  */
 function stringifySafely(value: unknown): string {
-	const seen = new Set<object>();
-	return (
-		JSON.stringify(value, function (_key, raw: unknown) {
-			if (raw === null || typeof raw !== 'object') return raw;
-			if (seen.has(raw)) return '[circular]';
-			seen.add(raw);
-			return raw;
-		}) ?? ''
-	);
+	const ancestors: unknown[] = [];
+	const json = JSON.stringify(value, function (this: unknown, _key, raw: unknown) {
+		if (raw === null || typeof raw !== 'object') return raw;
+		// `this` holds `raw`, so entries above it belong to a finished sibling branch.
+		while (ancestors.length > 0 && ancestors.at(-1) !== this) ancestors.pop();
+		if (ancestors.includes(raw)) return '[circular]';
+		ancestors.push(raw);
+		return raw;
+	});
+	return json ?? 'null';
 }
 
 /** Shortens every string in place, keeping the surrounding structure. */
@@ -276,6 +278,8 @@ export class MlflowSpanCollector extends BaseCallbackHandler {
 
 	private responsePreview?: string;
 
+	private tokenUsage?: TokenUsage;
+
 	/** Walks up through dropped runs to the closest run that became a span. */
 	private nearestKeptAncestor(runId: string | undefined): MlflowSpan | undefined {
 		let cursor = runId;
@@ -354,13 +358,21 @@ export class MlflowSpanCollector extends BaseCallbackHandler {
 
 		span.attributes[MLFLOW_ATTRIBUTE.SpanOutputs] = toAttributeJson(outputs);
 		if (tokenUsage) {
-			span.tokenUsage = tokenUsage;
+			this.addTokenUsage(tokenUsage);
 			span.attributes[MLFLOW_ATTRIBUTE.TokenUsage] = toAttributeJson({
 				input_tokens: tokenUsage.inputTokens,
 				output_tokens: tokenUsage.outputTokens,
 				total_tokens: tokenUsage.totalTokens,
 			});
 		}
+	}
+
+	private addTokenUsage(usage: TokenUsage): void {
+		this.tokenUsage = {
+			inputTokens: (this.tokenUsage?.inputTokens ?? 0) + usage.inputTokens,
+			outputTokens: (this.tokenUsage?.outputTokens ?? 0) + usage.outputTokens,
+			totalTokens: (this.tokenUsage?.totalTokens ?? 0) + usage.totalTokens,
+		};
 	}
 
 	private failSpan(runId: string, error: unknown): void {
@@ -551,7 +563,10 @@ export class MlflowSpanCollector extends BaseCallbackHandler {
 			spans,
 			startTimeMs: this.startedAtMs,
 			endTimeMs,
-			state: spans.some((span) => span.status.code === 'ERROR') ? 'ERROR' : 'OK',
+			// MLflow derives the trace state from the root span. A failed step the agent
+			// recovered from, such as a fallback model call, keeps its own ERROR span.
+			state: root.status.code,
+			tokenUsage: this.tokenUsage,
 			executionId: this.executionId,
 			workflowId: this.workflowId,
 			nodeName: this.nodeName,

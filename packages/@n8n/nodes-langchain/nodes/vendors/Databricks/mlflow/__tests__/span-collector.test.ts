@@ -42,6 +42,11 @@ function typeOf(span: MlflowSpan): unknown {
 	return JSON.parse(span.attributes[MLFLOW_ATTRIBUTE.SpanType]);
 }
 
+function usageOf(span: MlflowSpan): unknown {
+	const usage = span.attributes[MLFLOW_ATTRIBUTE.TokenUsage];
+	return usage === undefined ? undefined : JSON.parse(usage);
+}
+
 /** Root agent chain, an inner plumbing chain, one model call and one tool call. */
 function collectRun() {
 	const collector = new MlflowSpanCollector();
@@ -181,7 +186,7 @@ describe('MlflowSpanCollector', () => {
 			collector.handleChatModelStart(CHAT_MODEL, [[]], 'model', 'root');
 			collector.handleLLMEnd(llmResult(llmOutput), 'model');
 
-			expect(collector.finish()!.spans[1].tokenUsage?.totalTokens).toBe(total);
+			expect(usageOf(collector.finish()!.spans[1])).toMatchObject({ total_tokens: total });
 		});
 
 		it('falls back to per-generation usage', () => {
@@ -193,10 +198,10 @@ describe('MlflowSpanCollector', () => {
 				'model',
 			);
 
-			expect(collector.finish()!.spans[1].tokenUsage).toEqual({
-				inputTokens: 2,
-				outputTokens: 5,
-				totalTokens: 7,
+			expect(usageOf(collector.finish()!.spans[1])).toEqual({
+				input_tokens: 2,
+				output_tokens: 5,
+				total_tokens: 7,
 			});
 		});
 
@@ -206,17 +211,46 @@ describe('MlflowSpanCollector', () => {
 			collector.handleChatModelStart(CHAT_MODEL, [[]], 'model', 'root');
 			collector.handleLLMEnd(llmResult({ other: true }), 'model');
 
-			expect(collector.finish()!.spans[1].tokenUsage).toBeUndefined();
+			const trace = collector.finish()!;
+			expect(usageOf(trace.spans[1])).toBeUndefined();
+			expect(trace.tokenUsage).toBeUndefined();
 		});
 
 		it('keeps the real Databricks counts from a live run', () => {
 			const trace = collectRun().finish()!;
 
-			expect(trace.spans[1].tokenUsage).toEqual({
-				inputTokens: 183,
-				outputTokens: 67,
-				totalTokens: 250,
+			expect(usageOf(trace.spans[1])).toEqual({
+				input_tokens: 183,
+				output_tokens: 67,
+				total_tokens: 250,
 			});
+		});
+
+		it('sums every model call into the trace total', () => {
+			const collector = new MlflowSpanCollector();
+			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
+			collector.handleChatModelStart(CHAT_MODEL, [[]], 'first', 'root');
+			collector.handleLLMEnd(
+				llmResult({ tokenUsage: { promptTokens: 183, completionTokens: 67 } }),
+				'first',
+			);
+			collector.handleChatModelStart(CHAT_MODEL, [[]], 'second', 'root');
+			collector.handleLLMEnd(
+				llmResult({ tokenUsage: { promptTokens: 236, completionTokens: 28 } }),
+				'second',
+			);
+
+			expect(collector.finish()!.tokenUsage).toEqual({
+				inputTokens: 419,
+				outputTokens: 95,
+				totalTokens: 514,
+			});
+		});
+
+		it('keeps usage off the uploaded span object', () => {
+			for (const span of collectRun().finish()!.spans) {
+				expect(Object.keys(span)).not.toContain('tokenUsage');
+			}
 		});
 	});
 
@@ -224,16 +258,36 @@ describe('MlflowSpanCollector', () => {
 		it.each([
 			['tool', (c: MlflowSpanCollector, e: Error) => c.handleToolError(e, 'tool')],
 			['model', (c: MlflowSpanCollector, e: Error) => c.handleLLMError(e, 'tool')],
-		])('marks a failed %s span and the trace as ERROR', (_label, fail) => {
+		])('marks a failed %s span as ERROR', (_label, fail) => {
 			const collector = new MlflowSpanCollector();
 			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
 			collector.handleToolStart(SEARCH_TOOL, 'x', 'tool', 'root');
 
 			fail(collector, new Error('it broke'));
 
+			expect(collector.finish()!.spans[1].status).toEqual({ code: 'ERROR', message: 'it broke' });
+		});
+
+		it('keeps the trace OK when the agent recovers from a failed step', () => {
+			const collector = new MlflowSpanCollector();
+			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
+			collector.handleChatModelStart(CHAT_MODEL, [[]], 'primary', 'root');
+			collector.handleLLMError(new Error('rate limited'), 'primary');
+			collector.handleChatModelStart(CHAT_MODEL, [[]], 'fallback', 'root');
+			collector.handleLLMEnd(llmResult(), 'fallback');
+			collector.handleChainEnd({ output: 'done' }, 'root');
+
 			const trace = collector.finish()!;
-			expect(trace.spans[1].status).toEqual({ code: 'ERROR', message: 'it broke' });
-			expect(trace.state).toBe('ERROR');
+			expect(trace.spans[1].status.code).toBe('ERROR');
+			expect(trace.state).toBe('OK');
+		});
+
+		it('marks the trace as ERROR when the agent itself fails', () => {
+			const collector = new MlflowSpanCollector();
+			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
+			collector.handleChainError(new Error('max iterations'), 'root');
+
+			expect(collector.finish()!.state).toBe('ERROR');
 		});
 
 		it('reports a successful run as OK', () => {
@@ -255,6 +309,17 @@ describe('MlflowSpanCollector', () => {
 			const message = collector.finish()!.spans[1].status.message!;
 			expect(message).not.toContain('dapi0123456789abcdef');
 			expect(message).toContain('https://adb-1.azuredatabricks.net/api');
+		});
+
+		it('scrubs a bare Databricks personal access token from error text', () => {
+			const token = ['dapi', '0123456789abcdef0123456789abcdef'].join('');
+			const collector = new MlflowSpanCollector();
+			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
+			collector.handleToolStart(SEARCH_TOOL, 'x', 'tool', 'root');
+
+			collector.handleToolError(new Error(`workspace rejected ${token}`), 'tool');
+
+			expect(collector.finish()!.spans[1].status.message).not.toContain(token);
 		});
 
 		it('handles a thrown non-Error value', () => {
@@ -357,6 +422,26 @@ describe('MlflowSpanCollector', () => {
 			);
 		});
 
+		it('keeps a value that appears twice without being a cycle', () => {
+			const shared = { city: 'Berlin' };
+
+			const collector = new MlflowSpanCollector();
+			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
+			collector.handleToolStart(SEARCH_TOOL, 'x', 'tool', 'root');
+			collector.handleToolEnd({ from: shared, to: shared }, 'tool');
+
+			expect(outputsOf(collector.finish()!.spans[1])).toEqual({ from: shared, to: shared });
+		});
+
+		it('writes valid JSON for a tool that returns nothing', () => {
+			const collector = new MlflowSpanCollector();
+			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
+			collector.handleToolStart(SEARCH_TOOL, 'x', 'tool', 'root');
+			collector.handleToolEnd(undefined, 'tool');
+
+			expect(outputsOf(collector.finish()!.spans[1])).toBeNull();
+		});
+
 		it('records retriever documents', () => {
 			const collector = new MlflowSpanCollector();
 			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
@@ -423,7 +508,7 @@ describe('MlflowSpanCollector', () => {
 			expect(typeOf(root)).toBe('AGENT');
 			expect(root.parent_span_id).toBeUndefined();
 			expect(model.parent_span_id).toBe(root.span_id);
-			expect(model.tokenUsage?.totalTokens).toBe(3);
+			expect(usageOf(model)).toMatchObject({ total_tokens: 3 });
 		});
 	});
 });

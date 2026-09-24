@@ -58,8 +58,7 @@ export interface TokenUsage {
  * `convertHrTimeToNanoSeconds` in its TypeScript SDK).
  *
  * `attributes` values are JSON-encoded strings, per MLflow's span serialization.
- * Token usage stays a separate field: MLflow's published `SpanAttributeKey` list
- * has no token-usage key, so the writer decides where it goes.
+ * The object is uploaded as it is, so it holds only MLflow fields.
  */
 export interface MlflowSpan {
 	trace_id: string;
@@ -70,8 +69,6 @@ export interface MlflowSpan {
 	end_time_unix_nano: string;
 	status: MlflowSpanStatus;
 	attributes: Record<string, string>;
-	/** Also written to `mlflow.chat.tokenUsage`; kept for the trace-level total. */
-	tokenUsage?: TokenUsage;
 }
 
 export interface CollectedTrace {
@@ -81,7 +78,10 @@ export interface CollectedTrace {
 	spans: MlflowSpan[];
 	startTimeMs: number;
 	endTimeMs: number;
+	/** The root span's status, so a run that recovered from a failed step is OK. */
 	state: MlflowStatusCode;
+	/** The sum over all model calls. Unset when no model reported usage. */
+	tokenUsage?: TokenUsage;
 	/** From `getTracingConfig`, for MLflow's TraceInfo. */
 	executionId?: string;
 	workflowId?: string;
