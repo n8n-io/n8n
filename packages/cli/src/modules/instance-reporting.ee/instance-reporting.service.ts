@@ -115,14 +115,6 @@ export class InstanceReportingService {
 		const now = new Date();
 		let report = await this.reportRepository.findPending();
 
-		// A crash between recording a failure and skipping the report leaves an
-		// exhausted row pending, so the budget is re-checked before sending rather
-		// than only after. Settling it here also ends the day for the scheduler.
-		if (report && report.attempts >= MAX_ATTEMPTS) {
-			await this.skip(report.id, report.attempts, 'max-retries');
-			return;
-		}
-
 		if (!report) {
 			const days = await this.missedDays(now);
 			if (days.length === 0) return;
@@ -133,7 +125,21 @@ export class InstanceReportingService {
 				});
 			}
 
-			report = await this.reportRepository.createPending(await this.collectDataPoints(days));
+			report = await this.reportRepository.createPending(await this.collectDataPoints(days), now);
+			if (!report) {
+				this.logger.warn(
+					'Skipping the instance report because another process already settled the report for today. Check that only one main reports for this database.',
+				);
+				return;
+			}
+		}
+
+		// A crash between recording a failure and skipping the report leaves an
+		// exhausted row pending, so the budget is re-checked before sending rather
+		// than only after. Settling it here also ends the day for the scheduler.
+		if (report.attempts >= MAX_ATTEMPTS) {
+			await this.skip(report.id, report.attempts, 'max-retries');
+			return;
 		}
 
 		const payload = {

@@ -21,7 +21,10 @@ import { InsightsService } from '@/modules/insights/insights.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { createOwner } from '@test-integration/db/users';
 
-import type { InstanceReportDataPoint } from '../database/entities/instance-monitoring-report';
+import type {
+	InstanceMonitoringReport,
+	InstanceReportDataPoint,
+} from '../database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
 import { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
@@ -188,25 +191,25 @@ describe('instance reporting retries', () => {
 		);
 	}
 
-	/**
-	 * The database stamps `createdAt` with the real clock, not the fake one, so
-	 * a row from a fake "yesterday" reads as today's. Pin it to the day meant.
-	 */
-	async function stampCreatedAt(id: string, createdAt: Date) {
-		await repository.update({ id }, { createdAt });
+	async function createPendingOn(createdAt: Date, dataPoints: InstanceReportDataPoint[]) {
+		const report = await repository.createPending(dataPoints, createdAt);
+		if (!report) throw new Error(`A report was already created on ${createdAt.toISOString()}`);
+		// The database stamps `createdAt` with the real clock, not the fake one.
+		await repository.update({ id: report.id }, { createdAt });
+
+		return report;
 	}
 
 	/** A delivered report that covers `day`, generated the morning after it. */
 	async function seedDeliveredReport(day: string) {
-		const report = await repository.createPending([
-			{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
-			{ kind: 'daily', name: 'billableExecutions', value: 3, date: day },
-		]);
-		await repository.markDelivered(report.id, new Date());
-		await stampCreatedAt(
-			report.id,
+		const report = await createPendingOn(
 			new Date(new Date(`${day}T07:43:00.000Z`).getTime() + Time.days.toMilliseconds),
+			[
+				{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
+				{ kind: 'daily', name: 'billableExecutions', value: 3, date: day },
+			],
 		);
+		await repository.markDelivered(report.id, new Date());
 		return report;
 	}
 
@@ -230,7 +233,7 @@ describe('instance reporting retries', () => {
 			createdAt,
 		}: { attempts: number; lastAttemptAt: Date; createdAt: Date },
 	) {
-		const report = await repository.createPending([
+		const report = await createPendingOn(createdAt, [
 			{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
 			{ kind: 'daily', name: 'billableExecutions', value: 5, date: day },
 		]);
@@ -238,7 +241,6 @@ describe('instance reporting retries', () => {
 			{ id: report.id },
 			{ attempts, lastError: 'ECONNREFUSED', lastAttemptAt },
 		);
-		await stampCreatedAt(report.id, createdAt);
 		return report;
 	}
 
@@ -326,8 +328,6 @@ describe('instance reporting retries', () => {
 		const [abandoned] = await repository.find({ where: { status: 'skipped_after_max_retries' } });
 		expect(abandoned).toMatchObject({ attempts: MAX_ATTEMPTS });
 		expect(dailyPoints(sentPayload(harness, 0))).toEqual([{ date: '2026-03-25', value: 5 }]);
-		// Keep the abandoned row on the day it was made, or tomorrow reads as settled too.
-		await stampCreatedAt(abandoned.id, new Date(AFTER_SLOT));
 
 		// The next pass finds the day settled and moves on to tomorrow's slot.
 		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
@@ -665,5 +665,92 @@ describe('instance reporting retries', () => {
 
 		const dates = await deliveredDailyDates();
 		expect(new Set(dates).size).toBe(dates.length);
+	});
+
+	describe('two processes reporting on one database', () => {
+		const OTHER_POINTS: InstanceReportDataPoint[] = [
+			{ kind: 'cumulative', name: 'billableExecutions', value: 999 },
+		];
+
+		/** Run `between` after this process found nothing pending but before it inserts. */
+		function onMeasure(between: () => Promise<void>) {
+			const insights = Container.get(InsightsService);
+			const measure = insights.getInsightsByTime.bind(insights);
+			vi.spyOn(insights, 'getInsightsByTime').mockImplementation(async (args) => {
+				await between();
+				return await measure(args);
+			});
+		}
+
+		async function createAsOtherProcess() {
+			const report = await repository.createPending(OTHER_POINTS, new Date());
+			if (!report) throw new Error('The other process found a report already');
+			return report;
+		}
+
+		test('sends the report the other process created when that process stopped before sending', async () => {
+			let other: InstanceMonitoringReport | undefined;
+			onMeasure(async () => {
+				other ??= await createAsOtherProcess();
+			});
+
+			const harness = makeHarness([accepted()]);
+			harness.scheduler.start();
+			await armed(harness, 1);
+
+			expect(harness.httpRequest).toHaveBeenCalledTimes(1);
+			expect(sentPayload(harness, 0)).toMatchObject({
+				batchId: other?.id,
+				dataPoints: OTHER_POINTS,
+			});
+			await expect(repository.find()).resolves.toEqual([
+				expect.objectContaining({ id: other?.id, status: 'delivered' }),
+			]);
+		});
+
+		test('sends nothing when the other process delivered the report meanwhile', async () => {
+			let other: InstanceMonitoringReport | undefined;
+			onMeasure(async () => {
+				if (other) return;
+				other = await createAsOtherProcess();
+				await repository.markDelivered(other.id, new Date());
+			});
+
+			const harness = makeHarness([accepted()]);
+			harness.scheduler.start();
+			await armed(harness, 1);
+
+			expect(harness.httpRequest).not.toHaveBeenCalled();
+			await expect(repository.find()).resolves.toEqual([
+				expect.objectContaining({ id: other?.id, status: 'delivered' }),
+			]);
+		});
+
+		test('two passes that measure at the same time create one report and send only its batchId', async () => {
+			let arrived = 0;
+			let releaseBoth = () => {};
+			const bothMeasuring = new Promise<void>((resolve) => (releaseBoth = resolve));
+			onMeasure(async () => {
+				if (++arrived === 2) releaseBoth();
+				await bothMeasuring;
+			});
+
+			const first = makeHarness([accepted()]);
+			const second = makeHarness([accepted()]);
+			first.scheduler.start();
+			second.scheduler.start();
+			await armed(first, 1);
+			await armed(second, 1);
+
+			const reports = await repository.find();
+			expect(reports).toEqual([expect.objectContaining({ status: 'delivered' })]);
+			const batchIds = [first, second].flatMap(({ httpRequest }) =>
+				httpRequest.mock.calls.map(
+					([options]) => (options.body as unknown as ReportPayload).batchId,
+				),
+			);
+			expect(batchIds.length).toBeGreaterThanOrEqual(1);
+			expect(new Set(batchIds)).toEqual(new Set([reports[0].id]));
+		});
 	});
 });

@@ -330,11 +330,25 @@ describe('InstanceReportingService', () => {
 
 			await service.sendReport();
 
-			expect(reportRepository.createPending).toHaveBeenCalledWith([
-				{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
-				{ kind: 'daily', name: 'billableExecutions', value: 42, date: REPORT_DATE },
-			]);
+			expect(reportRepository.createPending).toHaveBeenCalledWith(
+				[
+					{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
+					{ kind: 'daily', name: 'billableExecutions', value: 42, date: REPORT_DATE },
+				],
+				new Date('2026-03-26T07:42:00.000Z'),
+			);
 			expect(reportRepository.markDelivered).toHaveBeenCalledWith(BATCH_ID, expect.any(Date));
+		});
+
+		test('sends nothing when the report for today has already settled', async () => {
+			const { service, reportRepository, http } = makeHarness();
+			reportRepository.createPending.mockResolvedValue(null);
+
+			await expect(service.sendReport()).resolves.toBeUndefined();
+
+			expect(http.request).not.toHaveBeenCalled();
+			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
+			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
 		});
 
 		test('records the failure and rethrows when the request fails', async () => {
@@ -490,6 +504,16 @@ describe('InstanceReportingService', () => {
 
 			expect(http.request).not.toHaveBeenCalled();
 			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
+			expect(reportRepository.markSkipped).toHaveBeenCalledWith(BATCH_ID);
+		});
+
+		test("skips another process's report for today without attempting it when its attempts ran out", async () => {
+			const { service, reportRepository, http } = makeHarness();
+			reportRepository.createPending.mockResolvedValue(makeReport({ attempts: 3 }));
+
+			await expect(service.sendReport()).resolves.toBeUndefined();
+
+			expect(http.request).not.toHaveBeenCalled();
 			expect(reportRepository.markSkipped).toHaveBeenCalledWith(BATCH_ID);
 		});
 	});
