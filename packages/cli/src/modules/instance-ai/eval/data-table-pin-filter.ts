@@ -1,4 +1,9 @@
-import { readDataTableReadParameters, type DataTableReadCondition } from '@n8n/workflow-sdk';
+import {
+	literalParameter,
+	readDataTableReadParameters,
+	type DataTableReadCondition,
+	type DataTableReadParameters,
+} from '@n8n/workflow-sdk';
 import type { INode, INodeExecutionData } from 'n8n-workflow';
 
 type Row = INodeExecutionData['json'];
@@ -14,8 +19,8 @@ export interface PinnedReadFilterResult {
 }
 
 /**
- * Apply a pinned Data Table read's own conditions, match type and limit to the
- * rows generated for it, the way the real node would. A condition the harness
+ * Apply a pinned Data Table read's own conditions, match type, order and limit to
+ * the rows generated for it, the way the real node would. A condition the harness
  * cannot evaluate (an expression, an unknown operator) counts as a match and is
  * reported; the limit is skipped in that case so no row the real node might
  * have returned is dropped. An empty pin stays empty.
@@ -34,7 +39,7 @@ export function applyDataTableReadParameters(
 			flags: [],
 		};
 	}
-	const { matchType, conditions, returnAll, limit } = read;
+	const { matchType, conditions, returnAll, limit, sortBy } = read;
 	const warnings: string[] = [];
 	const evaluators = conditions.map((condition) =>
 		conditionPredicate(condition, node.name, warnings),
@@ -51,8 +56,10 @@ export function applyDataTableReadParameters(
 					!allEvaluable || predicates.some((p) => p(item.json)),
 		);
 	}
-	if (!returnAll && allEvaluable) kept = kept.slice(0, limit);
-	const flags = !allEvaluable && !returnAll && kept.length > limit ? warnings : [];
+	if (sortBy) kept = sortRows(kept, sortBy);
+	if (!returnAll && limit !== undefined && allEvaluable) kept = kept.slice(0, limit);
+	const flags =
+		!allEvaluable && !returnAll && limit !== undefined && kept.length > limit ? warnings : [];
 	return { items: kept, warnings, flags };
 }
 
@@ -61,13 +68,17 @@ function conditionPredicate(
 	nodeName: string,
 	warnings: string[],
 ): RowPredicate | undefined {
-	const { keyName, condition: operator, keyValue } = condition;
-	if (typeof keyValue === 'string' && keyValue.startsWith('=')) {
+	const { condition: operator } = condition;
+	const key = literalParameter(condition.keyName);
+	const value = literalParameter(condition.keyValue);
+	if (key.isExpression || value.isExpression) {
 		warnings.push(
-			`Pinned Data Table read "${nodeName}": the condition on "${keyName}" uses an expression that cannot be evaluated before the run; rows were not filtered by it`,
+			`Pinned Data Table read "${nodeName}": the condition on "${condition.keyName}" uses an expression that cannot be evaluated before the run; rows were not filtered by it`,
 		);
 		return undefined;
 	}
+	const keyName = typeof key.literal === 'string' ? key.literal : condition.keyName;
+	const keyValue = value.literal;
 	switch (operator) {
 		case 'isEmpty':
 			return (row) => isEmptyCell(row[keyName]);
@@ -96,6 +107,18 @@ function conditionPredicate(
 			);
 			return undefined;
 	}
+}
+
+function sortRows(
+	items: INodeExecutionData[],
+	[column, direction]: NonNullable<DataTableReadParameters['sortBy']>,
+): INodeExecutionData[] {
+	const sign = direction === 'ASC' ? 1 : -1;
+	return [...items].sort((a, b) => {
+		if (compareCells(a.json[column], b.json[column], 'lt')) return -sign;
+		if (compareCells(a.json[column], b.json[column], 'gt')) return sign;
+		return 0;
+	});
 }
 
 function isEmptyCell(value: unknown): boolean {
@@ -170,7 +193,7 @@ function compareCells(
 // The node wraps a value without `%` in `%…%`; only `%` is a wildcard.
 function matchesLike(cell: unknown, value: unknown, caseSensitive: boolean): boolean {
 	const text = asText(cell);
-	if (text === undefined || text === '' || typeof value !== 'string') return false;
+	if (text === undefined || typeof value !== 'string') return false;
 	const pattern = value.includes('%') ? value : `%${value}%`;
 	const haystack = caseSensitive ? text : text.toLowerCase();
 	const parts = (caseSensitive ? pattern : pattern.toLowerCase()).split('%');

@@ -153,9 +153,54 @@ describe('applyDataTableReadParameters', () => {
 			'harbor books',
 		]);
 		expect(names([{ keyName: 'status', condition: 'isEmpty' }])).toEqual(['Harbor Cafe', 'Cedar']);
+		expect(names([{ keyName: 'status', condition: 'like', keyValue: '%' }])).toEqual([
+			'Harbor Cafe',
+			'harbor books',
+		]);
 		expect(names([{ keyName: 'amount', condition: 'gte', keyValue: '120.5' }])).toEqual([
 			'Harbor Cafe',
 			'Cedar',
 		]);
+	});
+
+	it('resolves a literal written in expression mode and skips a column name that is an expression', () => {
+		const literal = applyDataTableReadParameters(
+			readNode(filter([{ keyName: '=country', condition: 'eq', keyValue: '=US' }])),
+			seeded,
+		);
+		expect(literal.items.map((item) => item.json.country)).toEqual(['US']);
+		expect(literal.warnings).toEqual([]);
+
+		const dynamicColumn = applyDataTableReadParameters(
+			readNode(filter([{ keyName: '={{ $json.column }}', condition: 'eq', keyValue: 'US' }])),
+			seeded,
+		);
+		expect(dynamicColumn.items).toEqual(seeded);
+		expect(dynamicColumn.warnings[0]).toContain('uses an expression');
+	});
+
+	it('orders the rows the way the node does before applying the limit', () => {
+		const ascending = applyDataTableReadParameters(
+			readNode({ orderBy: true, orderByColumn: 'employees', orderByDirection: 'ASC', limit: 2 }),
+			seeded,
+		);
+		expect(ascending.items.map((item) => item.json.country)).toEqual(['DE', 'FR']);
+
+		const descending = applyDataTableReadParameters(
+			readNode({ orderBy: true, orderByColumn: 'employees' }),
+			seeded,
+		);
+		expect(descending.items.map((item) => item.json.country)).toEqual(['US', 'FR', 'DE']);
+	});
+
+	it('keeps every row without a flag when the limit or returnAll is an expression', () => {
+		const openLimit = applyDataTableReadParameters(readNode({ limit: '={{ $json.n }}' }), seeded);
+		expect(openLimit.items).toEqual(seeded);
+		expect(openLimit.flags).toEqual([]);
+
+		expect(
+			applyDataTableReadParameters(readNode({ returnAll: '={{ $json.all }}', limit: 1 }), seeded)
+				.items,
+		).toEqual(seeded);
 	});
 });

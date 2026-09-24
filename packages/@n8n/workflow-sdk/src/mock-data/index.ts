@@ -24,6 +24,7 @@ export {
 	collectDownstreamConsumers,
 } from './context';
 export {
+	literalParameter,
 	readDataTableReadParameters,
 	describeDataTableRead,
 	type DataTableReadCondition,

@@ -1,5 +1,6 @@
 import { buildSchemaContexts, findOutputParserTargets } from './context';
 import { buildDateAnchors } from './date-anchors';
+import { describeDataTableRead, readDataTableReadParameters } from './data-table-read';
 import { workflowToMermaid } from './mermaid';
 import { parsePinDataResponse, repairStructuredOutput } from './parse';
 import { buildNodeSchemaSection, buildPinDataUserPrompt } from './prompt';
@@ -155,6 +156,67 @@ describe('Data Table read parameters', () => {
 		);
 		expect(prompt).toContain('resolve it from the Test Scenario');
 		expect(prompt).toContain('never the whole table');
+	});
+
+	it('reads an expression-filled match type, returnAll or limit as the widest setting', () => {
+		const dynamic = {
+			...lookup,
+			parameters: {
+				...lookup.parameters,
+				matchType: '={{ $json.mode }}',
+				returnAll: '={{ $json.all }}',
+				limit: '={{ $json.n }}',
+			},
+		};
+
+		expect(readDataTableReadParameters(dynamic)).toEqual({
+			matchType: 'anyCondition',
+			conditions: [{ keyName: 'country', condition: 'eq', keyValue: '={{ $json.country }}' }],
+			returnAll: true,
+		});
+	});
+
+	it('reads the order the node applies and leaves an expression-filled limit open', () => {
+		const ordered = {
+			...lookup,
+			parameters: {
+				...lookup.parameters,
+				orderBy: true,
+				orderByColumn: 'employees',
+				limit: '={{ $json.n }}',
+			},
+		};
+
+		expect(readDataTableReadParameters(ordered)).toMatchObject({ sortBy: ['employees', 'DESC'] });
+		expect(readDataTableReadParameters(ordered)?.limit).toBeUndefined();
+		expect(
+			describeDataTableRead({
+				matchType: 'anyCondition',
+				conditions: [],
+				returnAll: false,
+				sortBy: ['createdAt', 'DESC'],
+			}),
+		).toBe('no filter (every row); ordered by `createdAt` DESC; the row limit is an expression');
+	});
+
+	it('keeps the read description when the real table columns are known', () => {
+		const section = buildNodeSchemaSection({
+			nodeName: 'Zone Lookup',
+			nodeType: 'n8n-nodes-base.dataTable',
+			typeVersion: 1.1,
+			dataTableColumns: [{ name: 'country', type: 'string' }],
+			dataTableRead: {
+				matchType: 'allConditions',
+				conditions: [{ keyName: 'country', condition: 'eq', keyValue: 'FR' }],
+				returnAll: false,
+				limit: 1,
+			},
+		}).join('\n');
+
+		expect(section).toContain(
+			'OUTPUTS only the table rows its filter selects — `country` eq "FR"; at most 1 row(s)',
+		);
+		expect(section).toContain('REAL Data Table columns');
 	});
 });
 

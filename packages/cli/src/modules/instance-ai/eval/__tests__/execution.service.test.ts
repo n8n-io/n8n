@@ -5,13 +5,14 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type {
+	IConnections,
 	INode,
 	IRunExecutionData,
 	IRun,
 	IWorkflowBase,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -82,15 +83,16 @@ vi.mock('n8n-workflow', async () => {
 	const actual = await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
 	class MockWorkflow {
 		nodes: Record<string, unknown>;
+		connections: IConnections;
 		getStartNode = mockGetStartNode;
-		constructor(options: { nodes?: Array<{ name: string }> }) {
+		constructor(options: { nodes?: Array<{ name: string }>; connections?: IConnections }) {
 			// Key the entity's node objects by name (same references, so the SUT's
 			// in-place parameter patching propagates to the executed workflow).
 			this.nodes = Object.fromEntries((options?.nodes ?? []).map((node) => [node.name, node]));
+			this.connections = options?.connections ?? {};
 		}
-		// Every other node counts as downstream of the start node.
 		getChildNodes(nodeName: string) {
-			return Object.keys(this.nodes).filter((name) => name !== nodeName);
+			return actual.getChildNodes(this.connections, nodeName);
 		}
 	}
 	return {
@@ -478,64 +480,92 @@ describe('EvalExecutionService', () => {
 			});
 		});
 
-		it('refuses to start when a node downstream of the trigger still has a parameter issue', async () => {
+		describe('engine readiness', () => {
 			// An id-mode locator that fails its validation is what the engine rejects with
 			// WorkflowHasIssuesError before any node runs; the patcher leaves it alone.
-			const jiraNode = {
-				id: 'node-2',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [200, 0],
-				parameters: { project: { __rl: true, mode: 'id', value: 'IT' } },
-			} as INode;
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				makeWorkflowEntity({ nodes: [makeStartNode(), jiraNode] }) as never,
-			);
-			nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
-				if (nodeType !== 'n8n-nodes-base.httpRequest') {
-					return { description: { properties: [] } as unknown as INodeTypeDescription } as never;
-				}
-				return {
-					description: {
-						properties: [
-							{
-								displayName: 'Project',
-								name: 'project',
-								type: 'resourceLocator',
-								default: { mode: 'list', value: '' },
-								required: true,
-								modes: [
-									{
-										displayName: 'ID',
-										name: 'id',
-										type: 'string',
-										validation: [
-											{
-												type: 'regex',
-												properties: {
-													regex: '^[0-9]+$',
-													errorMessage: 'Not a valid Jira Project ID',
+			const idLocatorNode = (): INode =>
+				({
+					id: 'node-2',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: { project: { __rl: true, mode: 'id', value: 'IT' } },
+				}) as INode;
+			const startToLocator: IConnections = {
+				Webhook: { main: [[{ node: 'HTTP Request', type: NodeConnectionTypes.Main, index: 0 }]] },
+			};
+
+			function mockIdLocatorNodeType() {
+				nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
+					if (nodeType !== 'n8n-nodes-base.httpRequest') {
+						return { description: { properties: [] } as unknown as INodeTypeDescription } as never;
+					}
+					return {
+						description: {
+							properties: [
+								{
+									displayName: 'Project',
+									name: 'project',
+									type: 'resourceLocator',
+									default: { mode: 'list', value: '' },
+									required: true,
+									modes: [
+										{
+											displayName: 'ID',
+											name: 'id',
+											type: 'string',
+											validation: [
+												{
+													type: 'regex',
+													properties: {
+														regex: '^[0-9]+$',
+														errorMessage: 'Not a valid Jira Project ID',
+													},
 												},
-											},
-										],
-									},
-								],
-							},
-						],
-					} as unknown as INodeTypeDescription,
-				} as never;
+											],
+										},
+									],
+								},
+							],
+						} as unknown as INodeTypeDescription,
+					} as never;
+				});
+			}
+
+			it('refuses to start when a node downstream of the start node still has a parameter issue', async () => {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeWorkflowEntity({
+						nodes: [makeStartNode(), idLocatorNode()],
+						connections: startToLocator,
+					}) as never,
+				);
+				mockIdLocatorNodeType();
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+				expect(result.success).toBe(false);
+				expect(result.errors[0]).toMatch(
+					/^Execution failed: n8n refused to start the workflow: .*'HTTP Request' node has issues:\n- Not a valid Jira Project ID/,
+				);
+				expect(result.nodeResults['HTTP Request']?.configIssues).toBeDefined();
+				expect(result.nodeResults.Webhook?.executionMode).not.toBe('pinned');
 			});
 
-			const result = await service.executeWithLlmMock('wf-1', makeUser());
+			it('runs when the node with the parameter issue is not downstream of the start node', async () => {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeWorkflowEntity({
+						nodes: [makeStartNode(), idLocatorNode()],
+						connections: {},
+					}) as never,
+				);
+				mockIdLocatorNodeType();
 
-			expect(workflowRunner.run).not.toHaveBeenCalled();
-			expect(result.success).toBe(false);
-			expect(result.errors[0]).toMatch(
-				/^Execution failed: n8n refused to start the workflow: .*'HTTP Request' node has issues:\n- Not a valid Jira Project ID/,
-			);
-			expect(result.nodeResults['HTTP Request']?.configIssues).toBeDefined();
-			expect(result.nodeResults.Webhook?.executionMode).not.toBe('pinned');
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		it("applies a pinned Data Table read's literal conditions and limit to the generated rows", async () => {
