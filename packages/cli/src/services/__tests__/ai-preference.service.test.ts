@@ -788,9 +788,30 @@ describe('AiPreferenceService', () => {
 			const dto = await service.getById(member, 'pref-1');
 
 			expect(dto).toMatchObject({ id: 'pref-1', content: 'Mine.', userId: 'user-1' });
-			expect(dto.scopes).toEqual(
-				expect.arrayContaining(['aiPreference:read', 'aiPreference:update', 'aiPreference:delete']),
+			expect(dto.scopes).toEqual([
+				'aiPreference:read',
+				'aiPreference:update',
+				'aiPreference:delete',
+			]);
+		});
+
+		// The card reads the rights off the dto, so a row the caller may see and not write must
+		// come back without them.
+		it('reports read alone for a row the caller may see but not write', async () => {
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({
+					id: 'pref-1',
+					content: 'Everyone.',
+					userId: null,
+					projectId: null,
+					createdAt: new Date('2025-01-01'),
+					updatedAt: new Date('2025-01-02'),
+				}),
 			);
+
+			const dto = await service.getById(member, 'pref-1');
+
+			expect(dto.scopes).toEqual(['aiPreference:read']);
 		});
 
 		it("hides another user's row like a missing one", async () => {

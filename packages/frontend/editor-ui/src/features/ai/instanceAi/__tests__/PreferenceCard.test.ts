@@ -562,7 +562,9 @@ describe('PreferenceCard', () => {
 			);
 		});
 
-		it('falls back to the current user as the owner when the result carried none', async () => {
+		// The owner is never guessed: the server refuses a user-scope edit that names none, and a
+		// guess here would read as a move of the row to whoever is editing it.
+		it('names no owner for a user-scoped row whose result carried none', async () => {
 			editPreferenceCard.mockResolvedValue({
 				preference: { id: 'pref-1', content: 'Keep replies brief.' },
 				event: editedEvent,
@@ -574,6 +576,34 @@ describe('PreferenceCard', () => {
 
 			await userEvent.clear(input);
 			await userEvent.type(input, 'Keep replies brief.');
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-save'));
+
+			await waitFor(() =>
+				expect(editPreferenceCard).toHaveBeenCalledWith(
+					expect.anything(),
+					'thread-1',
+					'pref-1',
+					expect.objectContaining({ scope: 'user', userId: null, projectId: null }),
+				),
+			);
+		});
+
+		it('names the caller when a row moves into the user scope, which has no prior owner', async () => {
+			editPreferenceCard.mockResolvedValue({
+				preference: { id: 'pref-1', content: STORED_TEXT },
+				event: editedEvent,
+			});
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'instance',
+					projectId: null,
+				},
+			});
+			await openModal();
+
+			await pickScope('settings.context.preferences.scope.user');
 			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-save'));
 
 			await waitFor(() =>

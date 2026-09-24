@@ -134,12 +134,12 @@ function parseScope(): {
 	if (value.startsWith(PROJECT_SCOPE_PREFIX)) {
 		return { scope: 'project', projectId: value.slice(PROJECT_SCOPE_PREFIX.length), userId: null };
 	}
-	// An edit must name its owner. The result carries it; an older result falls back to the caller.
-	return {
-		scope: 'user',
-		projectId: null,
-		userId: props.userId ?? usersStore.currentUser?.id ?? null,
-	};
+	// An edit must name its owner, and the server refuses a user-scope edit that does not.
+	// A row that is already user-scoped keeps the owner the result gave, so a missing one is
+	// refused instead of being read as a move to the caller. A move into user scope from
+	// another scope has no prior owner, so it names the caller.
+	const owner = props.scope === 'user' ? props.userId : usersStore.currentUser?.id;
+	return { scope: 'user', projectId: null, userId: owner ?? null };
 }
 
 const draft = ref(props.content);

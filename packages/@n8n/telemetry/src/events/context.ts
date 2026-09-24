@@ -24,8 +24,14 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A user opened the preferences list in the Context settings area. Fires on every visit, so it is the first step of the create funnel and the only sign that somebody read their saved preferences without changing one.',
 		properties: z.object({
-			count: z.number().describe('Preferences the list held at that moment'),
-			scope_types: z.array(scopeType).describe('Distinct scopes the listed preferences covered'),
+			count: z
+				.number()
+				.describe('Preferences the user can see in total, not the number the page showed'),
+			scope_types: z
+				.array(scopeType)
+				.describe(
+					'Distinct scopes on the page the visit loaded. The list pages at 50 rows, so a longer list reports the scopes of the first page only and does not cover `count`',
+				),
 		}),
 	},
 	USER_OPENED_PREFERENCE_MODAL: {

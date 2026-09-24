@@ -114,18 +114,24 @@ export function canWriteInstanceScope(): boolean {
 	return getResourcePermissions(currentUser?.globalScopes).aiPreference?.create === true;
 }
 
+/** The service builds the cap message from the scope and the number, so match the fixed part. */
+const SCOPE_FULL_MESSAGE = 'cannot hold more than';
+
 /**
  * Why a save from the settings page did not land, in the same words the assistant surfaces use.
- * The status is what the service throws: 409 for the duplicate check, 400 for the per-scope cap,
- * 403 for a scope the user may not write. The text length is checked in the form, so it never
- * reaches the server as a 400.
+ * The status is what the service throws: 409 for the duplicate check, 403 for a scope the user
+ * may not write. A 400 covers the per-scope cap and several malformed requests alike, so only
+ * the cap message counts as `scope_full`. Anything else is `failed`, which keeps a form bug out
+ * of the number that reviews the cap.
  */
 export function preferenceWriteRejectionReason(
 	error: unknown,
 ): 'duplicate' | 'scope_full' | 'not_permitted' | 'failed' {
-	const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
-	if (status === 409) return 'duplicate';
-	if (status === 400) return 'scope_full';
-	if (status === 403) return 'not_permitted';
+	if (!(error instanceof ResponseError)) return 'failed';
+	if (error.httpStatusCode === 409) return 'duplicate';
+	if (error.httpStatusCode === 403) return 'not_permitted';
+	if (error.httpStatusCode === 400 && error.message.includes(SCOPE_FULL_MESSAGE)) {
+		return 'scope_full';
+	}
 	return 'failed';
 }

@@ -17,6 +17,8 @@ describe('InstanceAiPreferenceCardService', () => {
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => vi.resetAllMocks());
+	// A test that fakes the clock must not leave it faked for the next one, even when it throws.
+	afterEach(() => vi.useRealTimers());
 
 	it('undo deletes the row, then appends an undone fact to the run', async () => {
 		aiPreferenceService.getById.mockResolvedValue(userDto());
@@ -38,8 +40,11 @@ describe('InstanceAiPreferenceCardService', () => {
 	});
 
 	it('undo reports the removal as a late refusal of the assistant write', async () => {
+		// A fixed clock: the age is read inside `undo`, so a slow run would round to 13 seconds.
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-09-24T12:00:12.000Z'));
 		aiPreferenceService.getById.mockResolvedValue(
-			userDto({ createdAt: new Date(Date.now() - 12_000).toISOString() }),
+			userDto({ createdAt: '2026-09-24T12:00:00.000Z' }),
 		);
 
 		await service.undo(user, 'thread-1', 'pref-1', { runId: 'run-1', toolCallId: 'tc-1' });

@@ -203,14 +203,26 @@ describe('context.utils', () => {
 
 	describe('preferenceWriteRejectionReason', () => {
 		it.each([
-			[409, 'duplicate'],
-			[400, 'scope_full'],
-			[403, 'not_permitted'],
-			[500, 'failed'],
-		])('maps %s to %s', (status, reason) => {
+			[409, 'dup', 'duplicate'],
+			[400, 'A user cannot hold more than 50 preferences', 'scope_full'],
+			[403, 'no', 'not_permitted'],
+			[500, 'boom', 'failed'],
+		])('maps %s to %s', (status, message, reason) => {
 			expect(
-				preferenceWriteRejectionReason(new ResponseError('no', { httpStatusCode: status })),
+				preferenceWriteRejectionReason(new ResponseError(message, { httpStatusCode: status })),
 			).toBe(reason);
+		});
+
+		// A 400 covers malformed requests too, and calling one of those a full scope would
+		// corrupt the number that reviews the cap.
+		it('reports a 400 that is not the cap as a failure', () => {
+			expect(
+				preferenceWriteRejectionReason(
+					new ResponseError('An edit of a user preference must name the user', {
+						httpStatusCode: 400,
+					}),
+				),
+			).toBe('failed');
 		});
 
 		it('reports anything that is not a response as a failure', () => {
