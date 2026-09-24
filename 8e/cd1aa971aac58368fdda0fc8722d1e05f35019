@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_c5954c3047b5ed::t_fec3e15031d85f 275,280-303,307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8ecd1aa971aac58368fdda0fc8722d1e05f35019",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
