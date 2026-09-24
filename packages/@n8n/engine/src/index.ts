@@ -38,7 +38,12 @@ export {
 	executionResponseSchema,
 	noopExecutionResponseSender,
 } from './response-channel';
-export type { EndedMessage, ExecutionResponse, ExecutionResponseSender } from './response-channel';
+export type {
+	EndedMessage,
+	ExecutionResponse,
+	ExecutionResponseSender,
+	UndeliverableMessage,
+} from './response-channel';
 
 export { UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
@@ -85,6 +90,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionRecord,
 	ExecutionStatus,
+	DueStep,
 	ExecutionStore,
 	ExecutionView,
 	NewExecutionRecord,
@@ -95,11 +101,13 @@ export type {
 	StepKey,
 	StepKeyId,
 	StepRecord,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	StepStore,
 	StepView,
 	TriggerOutputs,
+	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';
 

@@ -7,6 +7,7 @@ import type { Push } from '@/push';
 import type { RoleService } from '@/services/role.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentPushRecipientsService } from '../agent-push-recipients.service';
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -46,12 +47,11 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		});
 		broadcaster = new AgentExecutionUpdateBroadcaster(
 			logger,
-			userRepository,
+			new AgentPushRecipientsService(userRepository, roleService),
 			push,
 			publisher,
 			instanceSettings,
 			threadRepository,
-			roleService,
 		);
 	});
 

@@ -19,6 +19,37 @@ describe('executionResponseSchema', () => {
 		});
 	});
 
+	it('accepts an undeliverable response', () => {
+		expect(
+			executionResponseSchema.parse({
+				type: 'undeliverable',
+				executionId: 'exec-1',
+				error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+			}),
+		).toEqual({
+			type: 'undeliverable',
+			executionId: 'exec-1',
+			error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+		});
+	});
+
+	it.each([
+		[
+			'execution id',
+			{ type: 'undeliverable', executionId: '', error: { code: 'CODE', message: 'Bad' } },
+		],
+		[
+			'error code',
+			{ type: 'undeliverable', executionId: 'exec-1', error: { code: '', message: 'Bad' } },
+		],
+		[
+			'error message',
+			{ type: 'undeliverable', executionId: 'exec-1', error: { code: 'CODE', message: '' } },
+		],
+	])('rejects an undeliverable response without an %s', (_field, response) => {
+		expect(executionResponseSchema.safeParse(response).success).toBe(false);
+	});
+
 	it('accepts a step that produced nothing', () => {
 		const parsed = executionResponseSchema.parse(
 			ended({
@@ -32,6 +63,7 @@ describe('executionResponseSchema', () => {
 				},
 			}),
 		);
+		if (parsed.type !== 'ended') throw new Error('Expected an ended response');
 
 		expect(parsed.lastStep).toEqual({
 			nodeId: 'a',

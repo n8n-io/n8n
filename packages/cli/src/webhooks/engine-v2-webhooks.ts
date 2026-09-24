@@ -132,7 +132,7 @@ export class EngineV2Webhooks {
 
 	/** Converts the data plane's answer to the shape the v1 response path reads. */
 	async toRun(
-		outcome: Exclude<WebhookRunOutcome, { status: 'timeout' }>,
+		outcome: Exclude<WebhookRunOutcome, { status: 'timeout' | 'undeliverable' }>,
 		executionMode: WorkflowExecuteMode,
 	): Promise<IRun> {
 		const runData: IRunData = {};

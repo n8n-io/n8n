@@ -12,6 +12,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { UrlService } from '@/services/url.service';
 
+import { AgentChangePublisher } from '../../agent-change-publisher.service';
 import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentChannelStatusReporter } from '../agent-channel-status-reporter';
@@ -153,7 +154,7 @@ function buildServiceWith(
 		urlService,
 		registry,
 		instanceSettings,
-		publisher,
+		new AgentChangePublisher(publisher, globalConfig, logger),
 		globalConfig,
 		chatSubscriptionStateService,
 		statusReporter,
@@ -277,7 +278,7 @@ describe('ChatIntegrationService', () => {
 			mock(),
 			mock(),
 			mock<InstanceSettings>({ isLeader: true }),
-			mock(),
+			mock<AgentChangePublisher>(),
 			mock<GlobalConfig>({ multiMainSetup: { enabled: false } } as Partial<GlobalConfig>),
 			mock<AgentChatSubscriptionStateService>(),
 			mock<AgentChannelStatusReporter>(),

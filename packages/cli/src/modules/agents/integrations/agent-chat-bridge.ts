@@ -9,23 +9,21 @@ import {
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
-import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-import {
-	AgentChatAttachmentService,
-	type StoredAttachmentRef,
-} from '../agent-chat-attachment.service';
+import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import { AgentConversationStateService } from '../agent-conversation-state.service';
 import type {
 	AgentExecutionOrchestratorService,
 	ExecuteForChatPublishedConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentSessionMode } from '../utils/agent-thread-access';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
@@ -59,9 +57,8 @@ import { rateLimitMessageFromError } from './channel-rate-limit';
 
 const RESET_SESSION_COMMAND = '/new';
 
-/** Cache key prefix for the per-conversation session-generation pointer, shared across mains. */
-const SESSION_GENERATION_KEY_PREFIX = 'agents:chat-session-generation';
-const SESSION_GENERATION_TTL_MS = 90 * Time.days.toMilliseconds;
+/** Lock key prefix for the per-conversation session state, shared across mains. */
+const SESSION_LOCK_KEY_PREFIX = 'agents:chat-session-generation';
 /** Matches the rotation suffix appended to a rotated thread id, e.g. "#3". */
 const SESSION_GENERATION_SUFFIX_RE = /#\d+$/;
 
@@ -80,10 +77,49 @@ function formatPlatformMessageContext(context: IntegrationPlatformMessageContext
 	].join('\n');
 }
 
-interface SessionGenerationState {
-	/** Current rotation counter for a base thread id; 0 means the original, unsuffixed thread. */
-	generation: number;
-	lastActivityAt: number;
+interface InboundMessage {
+	/** Prepared, trimmed text. It can be empty when the message has attachments. */
+	text: string;
+	attachments: Attachment[];
+}
+
+interface TurnSession {
+	/** The active platform session, with the `/new` or idle generation applied. */
+	activeThreadId: InternalThread;
+	/** The session that the turn runs in. A task-session binding can redirect it. */
+	memory: { threadId: InternalThread; resourceId: string };
+	sessionMode: AgentSessionMode;
+}
+
+/**
+ * Detects `/new` for adapters that deliver it as plain text rather than a
+ * slash command (i.e. everything but Telegram — see the `onSlashCommand`
+ * registration). Only treated as the reset command alone: a `/new`
+ * sent together with an attachment falls through to a normal turn instead
+ * of silently dropping the attachment along with the reset. Returns
+ * whether the caller must reset the session instead of running a turn.
+ */
+function isResetCommand(inbound: InboundMessage): boolean {
+	return inbound.text.toLowerCase() === RESET_SESSION_COMMAND && inbound.attachments.length === 0;
+}
+
+function buildModelMessage(
+	labelledText: string,
+	bridgeExecutionContext: BridgeExecutionContext,
+): string {
+	const modelContext: string[] = [];
+	if (bridgeExecutionContext.historyContext) {
+		modelContext.push(bridgeExecutionContext.historyContext);
+	}
+	if (bridgeExecutionContext.platformMessage) {
+		modelContext.push(formatPlatformMessageContext(bridgeExecutionContext.platformMessage));
+	}
+	modelContext.push(
+		bridgeExecutionContext.platformMessage
+			? `The actual user message follows.\n${labelledText}`
+			: labelledText,
+	);
+	return modelContext.join('\n\n');
 }
 
 /**
@@ -344,7 +380,7 @@ export class AgentChatBridge {
 				if (shouldSubscribe) {
 					await anchoredThread.subscribe();
 				}
-				await this.executeAndStream(anchoredThread, message, { isNewMention: true });
+				await this.handleInboundMessage(anchoredThread, message, { isNewMention: true });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -354,7 +390,7 @@ export class AgentChatBridge {
 			try {
 				if (!this.canUserAccess(message.author)) return;
 				const anchoredThread = this.anchorInboundThread(thread, message);
-				await this.executeAndStream(anchoredThread, message, { isNewMention: false });
+				await this.handleInboundMessage(anchoredThread, message, { isNewMention: false });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -489,27 +525,9 @@ export class AgentChatBridge {
 	}
 
 	/**
-	 * Handles `/new` for adapters that deliver it as plain text rather than a
-	 * slash command (i.e. everything but Telegram — see the `onSlashCommand`
-	 * registration above). Only treated as the reset command alone: a `/new`
-	 * sent together with an attachment falls through to a normal turn instead
-	 * of silently dropping the attachment along with the reset. Returns
-	 * whether it was handled — the caller must not run a turn when it was.
-	 */
-	private async handleResetCommand(
-		thread: Thread,
-		text: string,
-		inboundAttachments: Attachment[],
-	): Promise<boolean> {
-		if (text.toLowerCase() !== RESET_SESSION_COMMAND || inboundAttachments.length > 0) return false;
-		await this.resetSession(thread);
-		return true;
-	}
-
-	/**
 	 * Rotates to a brand-new session for `thread` and confirms it there.
 	 * Unbinding a task-run session (see {@link resolveSession} in
-	 * `executeAndStream`) and rotating the generation happen inside the same
+	 * `resolveTurnSession`) and rotating the generation happen inside the same
 	 * critical section, in that order, as one unit:
 	 * - Same critical section: splitting them would let a concurrent message
 	 *   land in between and read the just-rotated generation while the old
@@ -544,7 +562,7 @@ export class AgentChatBridge {
 	private async withSessionLock<T>(baseId: string, fn: () => Promise<T>): Promise<T> {
 		return await Container.get(LockService).withLease(
 			LockNamespace.KNOWN_LOCKS,
-			this.sessionGenerationCacheKey(baseId),
+			this.sessionLockKey(baseId),
 			fn,
 		);
 	}
@@ -553,9 +571,9 @@ export class AgentChatBridge {
 	 * Resolves the currently active generation for `baseId`, rotating to a new
 	 * one when `forceRotate` is set (an explicit `/new`) or the channel's
 	 * configured idle timeout has elapsed since the last message on it. The
-	 * generation pointer lives in the shared cache (not the
-	 * `AgentExecutionThread` table) so a `/new` reset — which never runs an
-	 * agent turn, and so never creates a thread row — still takes effect on the
+	 * generation pointer lives in the database, keyed by `baseId` and not by a
+	 * session's thread row, so it survives restarts and session deletion, and a
+	 * `/new` reset — which never runs an agent turn — still takes effect on the
 	 * very next unrelated message. Must be called from inside
 	 * {@link withSessionLock} for `baseId` — see there for why.
 	 *
@@ -570,9 +588,8 @@ export class AgentChatBridge {
 		forceRotate: boolean,
 		idleTimeoutMinutes: number | null,
 	): Promise<string> {
-		const cache = Container.get(CacheService);
-		const key = this.sessionGenerationCacheKey(baseId);
-		const state = await cache.get<SessionGenerationState>(key);
+		const resources = Container.get(AgentResourceRepository);
+		const state = await resources.findChatSessionGeneration(baseId);
 		if (!forceRotate && !state && !idleTimeoutMinutes) return baseId;
 
 		const now = Date.now();
@@ -580,7 +597,7 @@ export class AgentChatBridge {
 		const idleExpired =
 			!forceRotate &&
 			idleTimeoutMinutes !== null &&
-			state !== undefined &&
+			state !== null &&
 			now - state.lastActivityAt > idleTimeoutMinutes * 60_000;
 		const currentId = currentGeneration === 0 ? baseId : `${baseId}#${currentGeneration}`;
 		const rotate = forceRotate || (idleExpired && !(await this.hasOpenSuspension(currentId)));
@@ -592,7 +609,7 @@ export class AgentChatBridge {
 		// Otherwise this thread has never been touched by either mechanism, or
 		// the timeout was turned off after an earlier reset — nothing to track.
 		if (rotate || idleTimeoutMinutes !== null) {
-			await cache.set(key, { generation, lastActivityAt: now }, SESSION_GENERATION_TTL_MS);
+			await resources.saveChatSessionGeneration(baseId, { generation, lastActivityAt: now });
 		}
 		return generation === 0 ? baseId : `${baseId}#${generation}`;
 	}
@@ -602,8 +619,8 @@ export class AgentChatBridge {
 		return open !== null && open !== undefined;
 	}
 
-	private sessionGenerationCacheKey(baseId: string): string {
-		return `${SESSION_GENERATION_KEY_PREFIX}:${baseId}`;
+	private sessionLockKey(baseId: string): string {
+		return `${SESSION_LOCK_KEY_PREFIX}:${baseId}`;
 	}
 
 	/**
@@ -626,23 +643,64 @@ export class AgentChatBridge {
 	// Core execution pipeline
 	// ---------------------------------------------------------------------------
 
-	private async executeAndStream(
+	private async handleInboundMessage(
 		thread: Thread,
 		message: Message,
 		options: { isNewMention: boolean },
 	): Promise<void> {
-		const { isNewMention } = options;
+		const inbound = await this.readInboundMessage(message);
+		if (!inbound) return;
+		if (isResetCommand(inbound)) {
+			await this.resetSession(thread);
+			return;
+		}
+		await this.runTurn(thread, message, inbound, options);
+	}
+
+	private async readInboundMessage(message: Message): Promise<InboundMessage | null> {
 		const platformAgentContext = this.getPlatformAgentContext();
 		const text = this.prepareInboundText(
 			await this.getInboundText(message),
 			platformAgentContext,
 		).trim();
 		// `?? []` guards rehydrated/serialized messages that predate the field.
-		const inboundAttachments = message.attachments ?? [];
-		if (!text && inboundAttachments.length === 0) return;
-		if (await this.handleResetCommand(thread, text, inboundAttachments)) return;
+		const attachments = message.attachments ?? [];
+		if (!text && attachments.length === 0) return null;
+		return { text, attachments };
+	}
 
-		const threadId = await this.resolveActiveThreadId(thread);
+	private async runTurn(
+		thread: Thread,
+		message: Message,
+		inbound: InboundMessage,
+		options: { isNewMention: boolean },
+	): Promise<void> {
+		const platformAgentContext = this.getPlatformAgentContext();
+		const session = await this.resolveTurnSession(thread, message);
+		// The run parks against the session it executes in, which for a bound reply
+		// is the task's thread rather than the platform one — so this has to come
+		// after the binding is resolved, and before anything is stored for a turn
+		// that is not going to run.
+		if (await this.postStillWaitingReply(thread, session.memory.threadId.id)) return;
+		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
+			inbound.attachments,
+			session.memory.threadId.id,
+			session.memory.resourceId,
+		);
+		await this.deliverTurn({
+			thread,
+			message,
+			text: inbound.text,
+			session,
+			attachments,
+			attachmentNotes,
+			isNewMention: options.isNewMention,
+			platformAgentContext,
+		});
+	}
+
+	private async resolveTurnSession(thread: Thread, message: Message): Promise<TurnSession> {
+		const activeThreadId = await this.resolveActiveThreadId(thread);
 		const resourceId = integrationMemoryResourceId(this.integration.type, message.author.userId);
 		// If this thread was established by an outbound task send, continue that
 		// task's session instead of starting a fresh one. Attachments are stored
@@ -653,21 +711,42 @@ export class AgentChatBridge {
 		// so it has to be looked up the same way, not by whatever generation is
 		// currently active.
 		const sessionOrigin = await this.messageContextBridge.resolveSession(this.baseThreadId(thread));
-		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
-		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
-		const sessionMode = sessionOrigin
-			? 'existing'
-			: ((await this.agentService.getSessionMode?.(memoryThreadId.id)) ?? 'new');
-		// The run parks against the session it executes in, which for a bound reply
-		// is the task's thread rather than the platform one — so this has to come
-		// after the binding is resolved, and before anything is stored for a turn
-		// that is not going to run.
-		if (await this.postStillWaitingReply(thread, memoryThreadId.id)) return;
-		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
-			inboundAttachments,
-			memoryThreadId.id,
-			memoryResourceId,
-		);
+		if (sessionOrigin) {
+			return {
+				activeThreadId,
+				memory: {
+					threadId: toInternalThreadId(sessionOrigin.threadId),
+					resourceId: sessionOrigin.resourceId,
+				},
+				sessionMode: 'existing',
+			};
+		}
+		return {
+			activeThreadId,
+			memory: { threadId: activeThreadId, resourceId },
+			sessionMode: (await this.agentService.getSessionMode?.(activeThreadId.id)) ?? 'new',
+		};
+	}
+
+	private async deliverTurn({
+		thread,
+		message,
+		text,
+		session,
+		attachments,
+		attachmentNotes,
+		isNewMention,
+		platformAgentContext,
+	}: {
+		thread: Thread;
+		message: Message;
+		text: string;
+		session: TurnSession;
+		attachments: StoredAttachmentRef[];
+		attachmentNotes: string[];
+		isNewMention: boolean;
+		platformAgentContext: PlatformAgentContext;
+	}): Promise<void> {
 		const statusRetry = new AbortController();
 		const replyExpectation =
 			this.integrationImpl?.getReplyExpectation?.({
@@ -711,33 +790,21 @@ export class AgentChatBridge {
 			const author = toMessageAuthor(message.author);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const labelledText = `[${author.name} (${author.id})]: ${textWithNotes}`;
-			const modelContext: string[] = [];
-			if (bridgeExecutionContext.historyContext) {
-				modelContext.push(bridgeExecutionContext.historyContext);
-			}
-			if (bridgeExecutionContext.platformMessage) {
-				modelContext.push(formatPlatformMessageContext(bridgeExecutionContext.platformMessage));
-			}
-			modelContext.push(
-				bridgeExecutionContext.platformMessage
-					? `The actual user message follows.\n${labelledText}`
-					: labelledText,
-			);
-			const modelMessage = modelContext.join('\n\n');
+			const modelMessage = buildModelMessage(labelledText, bridgeExecutionContext);
 			const stream = this.agentService.executeForChatPublished({
 				messageContext,
-				contextConversation: { threadId: threadId.id, resourceId: message.author.userId },
+				contextConversation: {
+					threadId: session.activeThreadId.id,
+					resourceId: message.author.userId,
+				},
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
 				message: textWithNotes,
 				modelMessage,
 				author,
 				attachments: attachments.length > 0 ? attachments : undefined,
-				memory: {
-					threadId: memoryThreadId,
-					resourceId: memoryResourceId,
-				},
-				sessionMode,
+				memory: session.memory,
+				sessionMode: session.sessionMode,
 				integrationType: this.integration.type,
 				sandboxPrincipalHash: hashAgentSandboxPrincipal({
 					type: 'integration-thread',

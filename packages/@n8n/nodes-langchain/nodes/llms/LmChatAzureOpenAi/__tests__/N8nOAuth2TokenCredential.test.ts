@@ -3,8 +3,8 @@ import { type ClientOAuth2Options } from '@n8n/client-oauth2';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { AZURE_COGNITIVE_SERVICES_SCOPE } from '../credentials/constants';
 import { N8nOAuth2TokenCredential } from '../credentials/N8nOAuth2TokenCredential';
+import { AZURE_AI_FOUNDRY_AUDIENCE, AZURE_OPENAI_INFERENCE_AUDIENCE } from '../types';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 
 const { MockClientOAuth2, mockGetToken } = vi.hoisted(() => {
@@ -94,6 +94,32 @@ describe('N8nOAuth2TokenCredential', () => {
 			);
 		});
 
+		it('requests the cognitiveservices audience by default', async () => {
+			await credential.getToken();
+
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: `${AZURE_OPENAI_INFERENCE_AUDIENCE}/` },
+				}),
+			);
+		});
+
+		it('requests the audience passed to the constructor, when one is given', async () => {
+			credential = new N8nOAuth2TokenCredential(
+				mockNode,
+				mockCredential,
+				AZURE_AI_FOUNDRY_AUDIENCE,
+			);
+
+			await credential.getToken();
+
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: `${AZURE_AI_FOUNDRY_AUDIENCE}/` },
+				}),
+			);
+		});
+
 		// The caller's token cycler compares this against `Date.now()`, so seconds would put every
 		// token in 1970 and re-authenticate on every model call.
 		it('should report the expiry in epoch milliseconds, from expires_in', async () => {
@@ -153,7 +179,7 @@ describe('N8nOAuth2TokenCredential', () => {
 	// it is the reason the expiry has to be in milliseconds.
 	describe('through getBearerTokenProvider', () => {
 		it('should mint one token for many calls', async () => {
-			const provider = getBearerTokenProvider(credential, AZURE_COGNITIVE_SERVICES_SCOPE);
+			const provider = getBearerTokenProvider(credential, `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`);
 
 			await expect(provider()).resolves.toBe('fresh-test-token');
 			await expect(provider()).resolves.toBe('fresh-test-token');
@@ -167,7 +193,7 @@ describe('N8nOAuth2TokenCredential', () => {
 			mockGetToken.mockResolvedValue({
 				data: { access_token: 'fresh-test-token', expires_in: '30' },
 			});
-			const provider = getBearerTokenProvider(credential, AZURE_COGNITIVE_SERVICES_SCOPE);
+			const provider = getBearerTokenProvider(credential, `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`);
 
 			await provider();
 			await provider();

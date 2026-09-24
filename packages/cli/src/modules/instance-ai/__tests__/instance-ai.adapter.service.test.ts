@@ -72,6 +72,8 @@ import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
@@ -1570,6 +1572,7 @@ import type {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UserError, UnexpectedError } from 'n8n-workflow';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -1580,10 +1583,13 @@ import { WorkflowEditorLockedError } from '../../../../../@n8n/instance-ai/src/e
 import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { License } from '@/license';
+import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { RoleService } from '@/services/role.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
@@ -2284,6 +2290,7 @@ describe('createDataTableAdapter', () => {
 // ---------------------------------------------------------------------------
 
 function createWorkflowAdapterForTests(overrides?: {
+	setupPanelVariant?: 'control' | 'variant';
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
 	teamProjectsLicensed?: boolean;
@@ -2469,6 +2476,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		threadId: 'thread-1',
 		projectId: boundProjectId,
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
+		setupPanelVariant: overrides?.setupPanelVariant,
 	});
 	const adapter = context.workflowService;
 
@@ -3587,6 +3595,38 @@ describe('createWorkflowAdapter', () => {
 			executed_by: 'ai',
 		});
 	});
+
+	it.each(['control', 'variant', undefined] as const)(
+		'carries setup assignment %s on workflow creation, updates, and publishing',
+		async (setupPanelVariant) => {
+			const { adapter, mockTelemetry } = createWorkflowAdapterForTests({ setupPanelVariant });
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+			await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+			await adapter.publish('wf-new');
+
+			for (const event of [
+				'Builder created workflow',
+				'Builder modified workflow',
+				'Builder published workflow',
+			]) {
+				const properties = mockTelemetry.track.mock.calls.find(([name]) => name === event)?.[1];
+				expect(properties).toMatchObject({
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					workflow_id: 'wf-new',
+				});
+				if (setupPanelVariant) {
+					expect(properties).toMatchObject({
+						variant: setupPanelVariant,
+						[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: setupPanelVariant,
+					});
+				} else {
+					expect(properties).not.toHaveProperty('variant');
+					expect(properties).not.toHaveProperty(`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`);
+				}
+			}
+		},
+	);
 
 	it('marks the workflow as AI-builder temporary when markAsAiTemporary is true', async () => {
 		const {
@@ -5379,6 +5419,8 @@ function createAdapterWithGatewayMock(
 		settingsService?: unknown;
 		getWallet?: Mock;
 		instanceContext?: InstanceContextService;
+		aiPreferenceService?: unknown;
+		logger?: unknown;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -5393,11 +5435,11 @@ function createAdapterWithGatewayMock(
 		{ length: 34 },
 		() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
 	);
-	args[0] = {
+	args[0] = (overrides?.logger ?? {
 		error: vi.fn(),
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
-	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
+	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
 	args[1] = globalConfigStub();
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
@@ -5429,6 +5471,14 @@ function createAdapterWithGatewayMock(
 		typeof InstanceAiAdapterService
 	>[32];
 	args[42] = overrides?.instanceContext;
+	if (overrides?.aiPreferenceService) {
+		// Last constructor parameter — extending the array beyond index 33 leaves
+		// every index in between as an unassigned (undefined) hole, same as when
+		// this override is not given.
+		args[45] = overrides.aiPreferenceService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[45];
+	}
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
@@ -6086,6 +6136,7 @@ describe('resolveExperimentGates', () => {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
@@ -6099,6 +6150,8 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
 			progressiveBuildingEnabled: true,
+			setupPanelEnabled: true,
+			setupPanelVariant: 'variant',
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
@@ -6164,6 +6217,7 @@ describe('resolveExperimentGates', () => {
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
+			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
@@ -6174,12 +6228,26 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			setupPanelEnabled: false,
+			setupPanelVariant: 'control',
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 		});
 	});
+
+	it.each([true, 'unexpected'])(
+		'keeps setup disabled for invalid assignment %s',
+		async (assignment) => {
+			stubContainer({ [INSTANCE_AI_SETUP_PANEL_FLAG]: assignment });
+
+			const gates = await createAdapter().resolveExperimentGates(user);
+
+			expect(gates.setupPanelEnabled).toBe(false);
+			expect(gates).not.toHaveProperty('setupPanelVariant');
+		},
+	);
 
 	// Regression guard for the shipped bug: the flag is multivariate, so a
 	// boolean `true` is not a value PostHog can return for it. Reading it as one
@@ -6210,6 +6278,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
@@ -6226,6 +6295,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
@@ -6654,6 +6724,192 @@ describe('createContext — run model wiring', () => {
 
 		expect(service.createContext(mockUser).modelId).toBeUndefined();
 	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — aiPreferenceService
+// ---------------------------------------------------------------------------
+
+describe('createContext: aiPreferenceService', () => {
+	const user = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	function buildService() {
+		const aiPreferenceService = mock<AiPreferenceService>();
+		const logger = { error: vi.fn(), warn: vi.fn(), scoped: vi.fn().mockReturnThis() };
+		const telemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), {
+			aiPreferenceService,
+			logger,
+			telemetry,
+		});
+		return { service, aiPreferenceService, logger, telemetry };
+	}
+
+	it('is absent when the preferences gate is closed', () => {
+		const { service } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+		expect(context.aiPreferenceService).toBeUndefined();
+	});
+
+	it('is present when the gate is open', () => {
+		const { service } = buildService();
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		expect(context.aiPreferenceService).toBeDefined();
+	});
+
+	it('writes with source aia and returns the saved row', async () => {
+		const { service, aiPreferenceService } = buildService();
+		aiPreferenceService.create.mockResolvedValue({
+			id: 'pref-1',
+			content: 'Keep replies short.',
+		} as never);
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		const result = await context.aiPreferenceService!.create({
+			content: 'Keep replies short.',
+			scope: 'user',
+		});
+
+		expect(aiPreferenceService.create).toHaveBeenCalledWith(
+			user,
+			{ content: 'Keep replies short.', scope: 'user' },
+			'aia',
+		);
+		expect(result).toEqual({
+			ok: true,
+			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		});
+	});
+
+	it.each([
+		[new ConflictError('dup'), 'duplicate', 'dup'],
+		[new BadRequestError('cap'), 'scope_full', 'cap'],
+		[new ForbiddenError('no'), 'not_permitted', 'no'],
+		[new Error('boom'), 'failed', 'The preference could not be saved.'],
+	])('maps %s to reason %s without throwing', async (error, reason, message) => {
+		const { service, aiPreferenceService, logger } = buildService();
+		aiPreferenceService.create.mockRejectedValue(error);
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		const result = await context.aiPreferenceService!.create({ content: 'x', scope: 'user' });
+
+		// The three mapped classes carry their own user-facing text; anything
+		// else keeps its message internal and gets logged instead.
+		expect(result).toEqual({ ok: false, reason, message });
+		if (reason === 'failed') {
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Saving an AI preference from the assistant failed',
+				{ error },
+			);
+		} else {
+			expect(logger.error).not.toHaveBeenCalled();
+		}
+	});
+
+	// The row is committed before any event fires, so a telemetry fault must not turn
+	// a saved preference into a failed one that the model retries into a duplicate.
+	it('still reports the write as saved when telemetry throws afterwards', async () => {
+		const { service, aiPreferenceService, telemetry } = buildService();
+		aiPreferenceService.create.mockResolvedValue({
+			id: 'pref-1',
+			content: 'Keep replies short.',
+		} as never);
+		telemetry.track.mockImplementation(() => {
+			throw new Error('telemetry down');
+		});
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		const result = await context.aiPreferenceService!.create({
+			content: 'Keep replies short.',
+			scope: 'user',
+		});
+
+		expect(result).toEqual({
+			ok: true,
+			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		});
+		expect(aiPreferenceService.create).toHaveBeenCalledTimes(1);
+	});
+
+	it('fires shown, resolved(accepted), scope_accepted and saved on a successful write', async () => {
+		const { service, aiPreferenceService, telemetry } = buildService();
+		aiPreferenceService.create.mockResolvedValue({
+			id: 'pref-1',
+			content: 'Keep replies short.',
+		} as never);
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		await context.aiPreferenceService!.create({ content: 'Keep replies short.', scope: 'user' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
+			{ surface: 'aia', scope_type: 'user', text_length: 19 },
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
+			{ surface: 'aia', outcome: 'accepted', scope_type: 'user', text_length: 19 },
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			{
+				surface: 'aia',
+				offered_scope: 'user',
+				accepted_scope: 'user',
+				scope_changed: false,
+			},
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE,
+			{
+				surface: 'aia',
+				scope_type: 'user',
+				text_length: 19,
+				replaced_existing: false,
+			},
+		);
+	});
+
+	it('fires write_rejected with the mapped reason, and nothing else, on a refused write', async () => {
+		const { service, aiPreferenceService, telemetry } = buildService();
+		aiPreferenceService.create.mockRejectedValue(new ConflictError('dup'));
+		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+		await context.aiPreferenceService!.create({ content: 'Keep replies short.', scope: 'user' });
+
+		expect(telemetry.track).toHaveBeenCalledTimes(1);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+			{
+				surface: 'aia',
+				reason: 'duplicate',
+				scope_type: 'user',
+				text_length: 19,
+			},
+		);
+	});
+
+	it.each(['blocked_by_admin', 'too_long', 'failed'] as const)(
+		'recordRejection(%s) fires write_rejected directly, without calling create',
+		(reason) => {
+			const { service, aiPreferenceService, telemetry } = buildService();
+			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+			context.aiPreferenceService!.recordRejection(reason, 19);
+
+			expect(telemetry.track).toHaveBeenCalledTimes(1);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+				{
+					surface: 'aia',
+					reason,
+					scope_type: 'user',
+					text_length: 19,
+				},
+			);
+			expect(aiPreferenceService.create).not.toHaveBeenCalled();
+		},
+	);
 });
 
 describe('createCredentialAdapter', () => {

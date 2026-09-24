@@ -28,3 +28,33 @@ export const testRunListFieldDocs = {
 export const listTestRunsQueryFieldDocs = {
 	status: { description: 'Status to filter the test runs by.' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const testCaseExecutionFieldDocs = {
+	id: { example: '1a2b3c4d5e6f7080' },
+	metrics: alsoNullable({
+		type: 'object',
+		additionalProperties: true,
+		description: 'Metrics produced by this test case.',
+	}),
+	errorDetails: alsoNullable({ type: 'object', additionalProperties: true }),
+	inputs: alsoNullable({
+		type: 'object',
+		additionalProperties: true,
+		description: 'Input data for this test case.',
+	}),
+	outputs: alsoNullable({
+		type: 'object',
+		additionalProperties: true,
+		description: 'Output data produced by this test case.',
+	}),
+	executionId: { description: 'ID of the underlying workflow execution, if still retained.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const testCaseExecutionListFieldDocs = {
+	nextCursor: {
+		description:
+			'Paginate through test cases by setting the cursor parameter to the nextCursor attribute ' +
+			'returned by a previous request. Default value fetches the first "page" of the collection.',
+		example: 'MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
