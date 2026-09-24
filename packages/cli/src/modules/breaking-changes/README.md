@@ -21,6 +21,9 @@ breaking-changes/
          file-access.rule.ts
          ...
       index.ts                # Side-effect imports for all rules
+   database/
+      entities/               # migration_finding + migration_finding_sync tables
+      repositories/           # Use-case-named DB access (BaseRepository + OperationContext)
    breaking-changes.service.ts              # Detection orchestration
    breaking-changes.rule-registry.service.ts # Rule management
    breaking-changes.controller.ts           # REST API
