@@ -77,6 +77,9 @@ import TypeToConfirmDialog from './TypeToConfirmDialog.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import { useCredentialForm } from '../../composables/useCredentialForm';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
+import { useAiGateway } from '@/app/composables/useAiGateway';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
 type Props = {
 	modalName: string;
@@ -167,6 +170,8 @@ const router = useRouter();
 const rootStore = useRootStore();
 const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { getQuickConnectOption, connect: quickConnect } = useQuickConnect();
+const aiGateway = useAiGateway();
+const aiGatewayStore = useAiGatewayStore();
 const isQuickConnectMode = ref(false);
 const activeTab = ref('connection');
 const modalBus = ref(createEventBus());
@@ -185,7 +190,9 @@ const pendingAuthType = ref<string | null>(null);
 // Pending OAuth connect flow; aborted on re-click and on unmount so its
 // listeners and backend polling don't outlive the modal.
 const oauthFlowAbortController = ref<AbortController | null>(null);
+let isUnmounted = false;
 onBeforeUnmount(() => {
+	isUnmounted = true;
 	oauthFlowAbortController.value?.abort();
 });
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
@@ -208,13 +215,19 @@ const telemetryWorkflowId = computed(() => {
 });
 
 const contextNode = computed<INode | null>(() => {
-	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	if (isCredentialModalState(modalState) && modalState.contextNode) {
 		return modalState.contextNode;
 	}
+	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
 	const fallbackName = isCredentialModalState(modalState) ? modalState.nodeName : undefined;
 	return fallbackName ? (workflowDocumentStore.value?.getNodeByName(fallbackName) ?? null) : null;
+});
+
+const workflowContextNode = computed(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	if (!isCredentialModalState(modalState) || !modalState.contextNode) return null;
+	return workflowDocumentStore.value.getNodeById(modalState.contextNode.id);
 });
 
 const overrideProjectId = computed(() => {
@@ -394,7 +407,57 @@ const showHeaderSaveButton = computed(
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
+const showAiGatewayErrorNudge = computed(() => {
+	const node = workflowContextNode.value;
+	const type = credentialTypeName.value;
+	const nodeType = activeNodeType.value;
+	if (
+		activeTab.value !== 'connection' ||
+		!authError.value ||
+		!node ||
+		!type ||
+		!nodeType ||
+		!aiGateway.isEnabled.value ||
+		aiGateway.balance.value === undefined ||
+		aiGateway.balance.value <= 0
+	) {
+		return false;
+	}
+	if (!nodeType.credentials?.some((credential) => credential.name === type)) return false;
+	if (node.credentials?.[type]?.id !== credentialId.value) return false;
+	if (node.credentials?.[type]?.__aiGatewayManaged === true) return false;
+
+	const resolvedParameters =
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			node.parameters,
+			true,
+			false,
+			node,
+			nodeType,
+		) ?? node.parameters;
+
+	return aiGatewayStore.isNodeEligible(node, type, resolvedParameters);
+});
+
+let hasTrackedAiGatewayErrorNudge = false;
+watch(showAiGatewayErrorNudge, (isVisible) => {
+	const node = workflowContextNode.value;
+	const type = credentialTypeName.value;
+	if (!isVisible || hasTrackedAiGatewayErrorNudge || !node || !type) return;
+
+	hasTrackedAiGatewayErrorNudge = true;
+	telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE, {
+		credential_type: type,
+		node_type: node.type,
+		workflow_id: telemetryWorkflowId.value || undefined,
+	});
+});
+
 onMounted(async () => {
+	void aiGateway.fetchConfig();
+	void aiGateway.fetchWallet();
+
 	// Inner try isolates optional secrets loading; outer try catches all other initialization failures.
 	try {
 		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
@@ -675,6 +738,65 @@ async function closeDialog() {
 
 function onDialogOpenUpdate(open: boolean) {
 	if (!open) void closeDialog();
+}
+
+async function useGatewayCredits(): Promise<void> {
+	const node = workflowContextNode.value;
+	const type = credentialTypeName.value;
+	if (!node || !type || !showAiGatewayErrorNudge.value) return;
+	const sourceWorkflowDocumentStore = workflowDocumentStore.value;
+	const previousCredentials = { ...(node.credentials ?? {}) };
+	const updateCredentials = (credentials: INode['credentials'], nodeName = node.name) => {
+		sourceWorkflowDocumentStore.updateNodeProperties({
+			name: nodeName,
+			properties: { credentials },
+		});
+		nodeHelpers.updateNodesCredentialsIssues();
+	};
+	const getCurrentContextNode = () => {
+		if (
+			isUnmounted ||
+			workflowDocumentStore.value !== sourceWorkflowDocumentStore ||
+			credentialTypeName.value !== type
+		) {
+			return null;
+		}
+		const currentNode = workflowContextNode.value;
+		return currentNode?.id === node.id ? currentNode : null;
+	};
+
+	updateCredentials({
+		...previousCredentials,
+		[type]: { id: null, name: '', __aiGatewayManaged: true },
+	});
+	if (!(await aiGateway.saveAfterToggle())) {
+		const currentNode = getCurrentContextNode();
+		if (currentNode) updateCredentials(previousCredentials, currentNode.name);
+		return;
+	}
+	if (!getCurrentContextNode()) return;
+
+	const workflowId = telemetryWorkflowId.value || undefined;
+	telemetry.track('User toggled n8n connect credential', {
+		credential_type: type,
+		node_type: node.type,
+		mode: 'n8n_connect',
+		workflow_id: workflowId,
+	});
+	telemetry.track('Node credential assigned', {
+		credential_type: type,
+		node_type: node.type,
+		workflow_id: workflowId,
+		credential_id: null,
+		credential_kind: 'n8n_connect',
+		source: 'credential_error_nudge',
+	});
+
+	closeDialog();
+	toast.showMessage({
+		title: i18n.baseText('credentialEdit.credentialConfig.aiGatewayErrorNudge.toast.title'),
+		type: 'success',
+	});
 }
 
 function onNameEdit(text: string) {
@@ -1530,6 +1652,10 @@ const { width } = useElementSize(credNameRef);
 								:use-custom-oauth="useCustomOAuth"
 								:is-quick-connect-mode="isQuickConnectMode"
 								:context-node="contextNode"
+								:show-ai-gateway-error-nudge="showAiGatewayErrorNudge"
+								:ai-gateway-credits-are-free="
+									aiGateway.creditsLabelKey.value === 'generic.freeCredits'
+								"
 								:hide-ask-assistant="hideAskAssistant"
 								:instance-ai-credential-help="instanceAiCredentialHelp"
 								@update="onDataChange"
@@ -1540,6 +1666,7 @@ const { width } = useElementSize(credNameRef);
 								@scroll-to-top="scrollToTop"
 								@auth-type-changed="onAuthTypeChanged"
 								@claimed="closeDialog"
+								@use-gateway-credits="useGatewayCredits"
 								@update:is-resolvable="onResolvableChange"
 							/>
 						</div>

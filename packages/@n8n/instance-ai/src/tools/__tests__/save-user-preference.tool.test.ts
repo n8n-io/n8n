@@ -69,15 +69,30 @@ describe('save_user_preference tool', () => {
 		);
 	});
 
-	it('returns too_long for text over the cap without calling the service', async () => {
+	it('returns too_long with the limit and the measured length, without calling the service', async () => {
 		const context = makeContext();
 		const result = await executeTool(createSaveUserPreferenceTool(context), {
 			content: 'x'.repeat(AI_PREFERENCE_CONTENT_MAX_LENGTH + 1),
 			scope: 'user',
 		});
-		expect(result).toMatchObject({ ok: false, reason: 'too_long' });
+		expect(result).toEqual({
+			ok: false,
+			reason: 'too_long',
+			message: `A preference is at most ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters. This one is ${AI_PREFERENCE_CONTENT_MAX_LENGTH + 1}.`,
+			limit: AI_PREFERENCE_CONTENT_MAX_LENGTH,
+			actual: AI_PREFERENCE_CONTENT_MAX_LENGTH + 1,
+		});
 		expect(context.aiPreferenceService?.create).not.toHaveBeenCalled();
 		expect(context.aiPreferenceService?.recordRejection).toHaveBeenCalledWith('too_long', 2001);
+	});
+
+	it('measures the trimmed text, so padding does not count against the cap', async () => {
+		const context = makeContext();
+		const result = await executeTool(createSaveUserPreferenceTool(context), {
+			content: `  ${'x'.repeat(AI_PREFERENCE_CONTENT_MAX_LENGTH + 1)}  `,
+			scope: 'user',
+		});
+		expect(result).toMatchObject({ actual: AI_PREFERENCE_CONTENT_MAX_LENGTH + 1 });
 	});
 
 	it('returns failed for blank text without calling the service', async () => {
@@ -86,7 +101,11 @@ describe('save_user_preference tool', () => {
 			content: '   ',
 			scope: 'user',
 		});
-		expect(result).toMatchObject({ ok: false, reason: 'failed' });
+		expect(result).toEqual({
+			ok: false,
+			reason: 'failed',
+			message: 'A preference must not be empty.',
+		});
 		expect(context.aiPreferenceService?.create).not.toHaveBeenCalled();
 		expect(context.aiPreferenceService?.recordRejection).toHaveBeenCalledWith('failed', 3);
 	});

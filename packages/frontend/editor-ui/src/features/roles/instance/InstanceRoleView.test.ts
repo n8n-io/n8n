@@ -299,6 +299,45 @@ describe('InstanceRoleView', () => {
 		});
 	});
 
+	describe('Loading', () => {
+		it('shows the name and description of a role the roles list already holds before the fetch resolves', async () => {
+			// Never resolves: everything asserted below comes from the store, not the fetch.
+			rolesStore.fetchRoleBySlug.mockReturnValue(new Promise(() => {}));
+			rolesStore.roles.global = [mockCustomRole];
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput, descriptionInput } = getFormElements(container);
+				expect(nameInput.value).toBe('Support');
+				expect(descriptionInput.value).toBe('A custom instance role');
+			});
+			expect(getByRole('heading', { level: 1 })).toHaveTextContent('Role "Support"');
+		});
+
+		it('replaces the cached role with the fetched one and keeps the form clean', async () => {
+			rolesStore.roles.global = [mockCustomRole];
+			rolesStore.fetchRoleBySlug.mockResolvedValue({ ...mockCustomRole, displayName: 'Helpdesk' });
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => expect(getFormElements(container).nameInput.value).toBe('Helpdesk'));
+			expect(getByRole('button', { name: 'Save' })).toBeDisabled();
+		});
+
+		it('empties the form when the fetch fails, even for a cached role', async () => {
+			rolesStore.roles.global = [mockCustomRole];
+			const error = new Error('boom');
+			rolesStore.fetchRoleBySlug.mockRejectedValue(error);
+
+			const { container, queryByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(error, 'Error fetching role'));
+			expect(getFormElements(container).nameInput.value).toBe('');
+			expect(queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+		});
+	});
+
 	describe('Edit', () => {
 		it('updates an existing custom role', async () => {
 			rolesStore.fetchRoleBySlug.mockResolvedValue(mockCustomRole);
