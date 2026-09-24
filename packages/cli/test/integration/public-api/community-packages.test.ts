@@ -218,7 +218,7 @@ describe('Community packages (Public API)', () => {
 				.send({ name: mockPackageName() });
 
 			expect(response.status).toBe(403);
-			expect(response.body).toEqual({ message: 'Forbidden' });
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
 		});
 
 		it('should return 400 when package name is missing', async () => {
@@ -274,7 +274,7 @@ describe('Community packages (Public API)', () => {
 				.send({ name: mockPackageName() });
 
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual({
+			expect(response.body).toStrictEqual({
 				packageName: pkg.packageName,
 				installedVersion: pkg.installedVersion,
 				authorName: pkg.authorName,
@@ -363,7 +363,7 @@ describe('Community packages (Public API)', () => {
 				.send({ version: COMMUNITY_PACKAGE_VERSION.UPDATED });
 
 			expect(response.status).toBe(403);
-			expect(response.body).toEqual({ message: 'Forbidden' });
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
 			expect(communityPackagesService.updatePackage).not.toHaveBeenCalled();
 		});
 
@@ -401,7 +401,7 @@ describe('Community packages (Public API)', () => {
 				.send({ version: COMMUNITY_PACKAGE_VERSION.UPDATED });
 
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual({
+			expect(response.body).toStrictEqual({
 				packageName: pkg.packageName,
 				installedVersion: COMMUNITY_PACKAGE_VERSION.UPDATED,
 				authorName: updatedPkg.authorName,
@@ -451,7 +451,7 @@ describe('Community packages (Public API)', () => {
 				.delete(`/community-packages/${encodeURIComponent(mockPackageName())}`);
 
 			expect(response.status).toBe(403);
-			expect(response.body).toEqual({ message: 'Forbidden' });
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
 		});
 
 		it('should return 400 when package name is invalid', async () => {
@@ -465,7 +465,7 @@ describe('Community packages (Public API)', () => {
 				.delete(`/community-packages/${encodeURIComponent(name)}`);
 
 			expect(response.status).toBe(400);
-			expect(response.body).toEqual({ message: 'Package name must start with n8n-nodes-' });
+			expect(response.body).toStrictEqual({ message: 'Package name must start with n8n-nodes-' });
 			expect(communityPackagesService.removePackage).not.toHaveBeenCalled();
 		});
 

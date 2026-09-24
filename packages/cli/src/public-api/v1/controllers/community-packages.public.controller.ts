@@ -67,7 +67,7 @@ export class CommunityPackagesPublicController {
 			'publicApi',
 		);
 
-		return CommunityPackagePublicDto.parse(toCommunityPackagePublic(installedPackage));
+		return toCommunityPackagePublic(installedPackage);
 	}
 
 	@Patch('/:name')
@@ -89,7 +89,7 @@ export class CommunityPackagesPublicController {
 			'notFound',
 		);
 
-		return CommunityPackagePublicDto.parse(toCommunityPackagePublic(updated));
+		return toCommunityPackagePublic(updated);
 	}
 
 	@Delete('/:name')
