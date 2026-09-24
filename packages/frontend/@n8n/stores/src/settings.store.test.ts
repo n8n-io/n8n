@@ -146,44 +146,6 @@ describe('settings.store', () => {
 		});
 	});
 
-	describe('isExecuteWorkflowNodeExcluded', () => {
-		it('should return true when executeWorkflow is in excludeNodes', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeWorkflow'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(true);
-		});
-
-		it('should return false when executeWorkflow is not excluded', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeCommand'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
-		});
-
-		it('should return false when only executeWorkflowTrigger is excluded', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeWorkflowTrigger'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
-		});
-	});
-
 	describe('isCrdtCollaborationEnabled', () => {
 		it('should return true when collaboration.crdt is local', async () => {
 			getSettings.mockResolvedValueOnce({

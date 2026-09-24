@@ -503,6 +503,16 @@ describe('useContextMenu', () => {
 			expect(byId.add_sticky?.disabled).toBe(true);
 		});
 
+		it('leaves out add sticky when the sticky note type is not loaded', () => {
+			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockImplementation(
+				(type) => type === STICKY_NODE_TYPE,
+			);
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			expect(actions.value.some((action) => action.id === 'add_sticky')).toBe(false);
+		});
+
 		it('keeps the mutating actions enabled when the target is not read-only', () => {
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });

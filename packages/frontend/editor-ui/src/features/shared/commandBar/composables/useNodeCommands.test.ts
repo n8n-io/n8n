@@ -344,6 +344,17 @@ describe('useNodeCommands', () => {
 			expect(stickyCommand).toBeDefined();
 		});
 
+		it('should not include add sticky note command when the sticky note type is not loaded', () => {
+			vi.mocked(mockNodeTypesStore.isNodeTypeUnavailable).mockReturnValue(true);
+
+			const { commands } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			expect(commands.value.find((cmd) => cmd.id === 'add-sticky')).toBeUndefined();
+		});
+
 		it('should not include add sticky note command when user lacks update permission', () => {
 			mockGetResourcePermissions.mockReturnValue({
 				workflow: { update: false, execute: true },

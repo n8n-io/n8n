@@ -80,7 +80,7 @@ const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDi
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const nodeTypesStore = useNodeTypesStore();
-const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
+const communityNodesAndActions = computed(() => nodeTypesStore.communityNodesAndActions);
 
 const moreFromCommunity = computed(() => {
 	const hits = filterAndSearchNodes(
@@ -170,7 +170,7 @@ function onSelected(item: INodeCreateElement) {
 		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 		let nodeActions = getFilteredActions(item, actions);
 		const notInstalledCommunityNode =
-			isCommunityPackageName(item.key) && !useNodeTypesStore().getIsNodeInstalled(item.key);
+			isCommunityPackageName(item.key) && !nodeTypesStore.getIsNodeInstalled(item.key);
 		const nodeIcon = getNodeIconSource(
 			item.properties,
 			null,

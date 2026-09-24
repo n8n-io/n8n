@@ -136,6 +136,29 @@ describe('useActions', () => {
 			});
 		});
 
+		test('should fall back to a manual trigger when the Chat Trigger type is not loaded', () => {
+			const nodeCreatorStore = useNodeCreatorStore();
+			mockDocumentStoreState.workflowTriggerNodes = [];
+			mockDocumentStoreState.allNodes = [];
+			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
+				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+			);
+			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
+			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockImplementation(
+				(type) => type === CHAT_TRIGGER_NODE_TYPE,
+			);
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
+				connections: [{ from: { nodeIndex: 0 }, to: { nodeIndex: 1 } }],
+				nodes: [
+					{ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true },
+					{ type: AGENT_NODE_TYPE, openDetail: true },
+				],
+			});
+		});
+
 		test('should insert a ChatTrigger node when an AI Agent is added on an empty canvas', () => {
 			mockDocumentStoreState.workflowTriggerNodes = [];
 			mockDocumentStoreState.allNodes = [];

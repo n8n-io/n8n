@@ -3704,7 +3704,12 @@ export function useCanvasOperations() {
 		},
 	) {
 		// New nodes only: imports go through `addNodes` and keep unknown types as placeholders.
-		if (nodes.some((node) => nodeTypesStore.isNodeTypeUnavailable(node.type))) {
+		const unavailable = nodes.filter((node) => nodeTypesStore.isNodeTypeUnavailable(node.type));
+		if (unavailable.length > 0) {
+			console.warn(
+				'Skipped adding node types this instance does not load:',
+				unavailable.map((node) => node.type),
+			);
 			return { addedNodes: [] };
 		}
 

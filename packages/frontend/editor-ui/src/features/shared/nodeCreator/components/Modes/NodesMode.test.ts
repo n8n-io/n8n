@@ -230,6 +230,26 @@ describe('NodesMode', () => {
 			expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.webhook' }]]]);
 		});
 
+		it('drops a node type that is not loaded from the empty-search suggestions', async () => {
+			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockImplementation(
+				(type) => type === HTTP_REQUEST_NODE_TYPE,
+			);
+			useViewStacks().pushViewStack({
+				title: 'What triggers this workflow?',
+				mode: 'nodes',
+				rootView: TRIGGER_NODE_CREATOR_VIEW,
+				search: 'missing node',
+				items: [],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expect(screen.getByText('No results for "missing node"')).toBeInTheDocument();
+			expect(screen.queryByText('HTTP Request')).not.toBeInTheDocument();
+			expect(screen.getByText('Webhook')).toBeInTheDocument();
+		});
+
 		it('still adds an available node on Enter', async () => {
 			pushSearchStackWith([setNodeElement()]);
 

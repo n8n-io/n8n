@@ -23,6 +23,7 @@ describe('CommunityNodeTypesService', () => {
 	let configMock: any;
 	let communityPackagesServiceMock: any;
 	let loggerMock: any;
+	let globalConfigMock: any;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -37,11 +38,17 @@ describe('CommunityNodeTypesService', () => {
 			nodesApiVersion: N8N_NODES_API_VERSION,
 		};
 		communityPackagesServiceMock = {};
+		globalConfigMock = { nodes: { exclude: [], include: [] } };
 
 		if (mockDateNow.mockRestore) mockDateNow.mockRestore();
 		if (mockMathRandom.mockRestore) mockMathRandom.mockRestore();
 
-		service = new CommunityNodeTypesService(loggerMock, configMock, communityPackagesServiceMock);
+		service = new CommunityNodeTypesService(
+			loggerMock,
+			configMock,
+			communityPackagesServiceMock,
+			globalConfigMock,
+		);
 	});
 
 	afterEach(() => {
@@ -901,6 +908,17 @@ describe('CommunityNodeTypesService', () => {
 			expect(result).toHaveLength(2);
 			expect(result[0].isInstalled).toBe(true);
 			expect(result[1].isInstalled).toBe(false);
+		});
+
+		it.each([
+			[{ exclude: ['package-2.node2'], include: [] }],
+			[{ exclude: [], include: ['package-1.node1'] }],
+		])('should leave out node types the loader would skip with %j', async (nodes) => {
+			globalConfigMock.nodes = nodes;
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.map((n) => n.name)).toEqual(['package-1.node1']);
 		});
 
 		it('should fetch updates when interval has passed', async () => {

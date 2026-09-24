@@ -1,5 +1,6 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import { inProduction, Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import cloneDeep from 'lodash/cloneDeep';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -32,7 +33,15 @@ export class CommunityNodeTypesService {
 		private readonly logger: Logger,
 		private config: CommunityPackagesConfig,
 		private communityPackagesService: CommunityPackagesService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	/** Same rule the node loader applies, so the editor never offers a type that would not load. */
+	private isLoadable(nodeTypeName: string) {
+		const { exclude, include } = this.globalConfig.nodes;
+		if (exclude.includes(nodeTypeName)) return false;
+		return include.length === 0 || include.includes(nodeTypeName);
+	}
 
 	private async detectUpdates(
 		environment: 'staging' | 'production',
@@ -227,10 +236,12 @@ export class CommunityNodeTypesService {
 
 		const isInstalled = await this.createIsInstalled();
 
-		return Array.from(this.communityNodeTypes.values()).map((nodeType) => ({
-			...nodeType,
-			isInstalled: isInstalled(nodeType),
-		}));
+		return Array.from(this.communityNodeTypes.values())
+			.filter((nodeType) => this.isLoadable(nodeType.name))
+			.map((nodeType) => ({
+				...nodeType,
+				isInstalled: isInstalled(nodeType),
+			}));
 	}
 
 	async getCommunityNodeType(type: string): Promise<CommunityNodeType | null> {
