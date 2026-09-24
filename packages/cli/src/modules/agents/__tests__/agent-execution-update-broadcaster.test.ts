@@ -135,12 +135,13 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 
-	it('delivers relayed task updates without another relay', () => {
+	it.each([
+		['handleBackgroundJobsRelay', 'agentBackgroundTasksUpdated'],
+		['handleQueueRelay', 'agentMessageQueueUpdated'],
+	] as const)('delivers %s updates without another relay', (handler, type) => {
 		const data = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
-		broadcaster.handleBackgroundJobsRelay({ data, userIds: ['user-2'] });
-		expect(push.sendToUsers).toHaveBeenCalledWith({ type: 'agentBackgroundTasksUpdated', data }, [
-			'user-2',
-		]);
+		broadcaster[handler]({ data, userIds: ['user-2'] });
+		expect(push.sendToUsers).toHaveBeenCalledWith({ type, data }, ['user-2']);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 

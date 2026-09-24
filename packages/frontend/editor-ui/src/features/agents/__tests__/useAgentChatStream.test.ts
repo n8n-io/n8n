@@ -2886,6 +2886,30 @@ describe('useAgentChatStream — transcript push', () => {
 		}
 	});
 
+	it('keeps initial loading active until the pending queue has loaded', async () => {
+		const queue = Promise.withResolvers<{ items: [] }>();
+		getAgentChatQueueMock.mockReturnValueOnce(queue.promise);
+		getChatMessagesMock.mockResolvedValueOnce({
+			...history('running'),
+			activeExecutionId: 'exec-1',
+		});
+		const { hook, dispose } = scopedHook('thread-1');
+		try {
+			const loading = hook.loadHistory();
+			await flushPromises();
+			expect(hook.messages.value.map((message) => message.content)).toEqual(['running']);
+			expect(hook.isLoadingHistory.value).toBe(true);
+			expect(await hook.sendMessage('too soon')).toBe('busy');
+			queue.resolve({ items: [] });
+			await loading;
+			expect(hook.isLoadingHistory.value).toBe(false);
+			expect(hook.isStreaming.value).toBe(true);
+		} finally {
+			queue.resolve({ items: [] });
+			dispose();
+		}
+	});
+
 	it('blocks submission during initial load and discards its stale snapshot', async () => {
 		const stale = Promise.withResolvers<ReturnType<typeof history>>();
 		getChatMessagesMock.mockReturnValueOnce(stale.promise).mockResolvedValue(history('current'));

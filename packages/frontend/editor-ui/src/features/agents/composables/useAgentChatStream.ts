@@ -120,7 +120,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const abortController = ref<AbortController | null>(null);
 	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
 	const historyLoaded = ref(false);
-	const isLoadingHistory = computed(() => isRecovering.value && !historyLoaded.value);
+	const isLoadingHistory = ref(false);
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
 	let disposed = false;
@@ -251,11 +251,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function loadHistory(): Promise<void> {
 		if (historyLoaded.value) return;
+		isLoadingHistory.value = true;
 		isRecovering.value = true;
 		const queue = refreshQueue();
 		const loaded = await refreshHistory({ clearOnNotFound: true });
 		await queue;
 		historyLoaded.value = true;
+		isLoadingHistory.value = false;
 		// A running resume can have no messages yet. Keep its session selected.
 		if (loaded && (messages.value.length > 0 || !isStreaming.value)) {
 			params.onHistoryLoaded?.(messages.value.length);

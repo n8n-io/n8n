@@ -1151,7 +1151,7 @@ describe('AgentExecutionRepository', () => {
 			['claim', 'edit'],
 			['edit', 'edit'],
 		] as const)(
-			'serializes a concurrent claim when %s wins against %s',
+			'serializes concurrent connections when %s wins the claim-versus-%s race',
 			async (winner, operation) => {
 				const local = recordingServices();
 				const remote = recordingServices(undefined, peer);
@@ -1193,6 +1193,10 @@ describe('AgentExecutionRepository', () => {
 					});
 					const claimed = await first;
 					if (!claimed) throw new Error('Expected a claim');
+					expect(await local.queueRepository.findOneByOrFail({ id: item.id })).toMatchObject({
+						threadId,
+						executionId: claimed.admission.executionId,
+					});
 					await finish(local, claimed);
 				} else if (operation === 'edit') {
 					const claimed = await second;

@@ -556,7 +556,7 @@ export const getAgentChatQueue = async (
 	return await makeRestApiRequest(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/queue`,
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue`,
 	);
 };
 
@@ -571,7 +571,7 @@ export const updateAgentQueuedMessage = async (
 	await makeRestApiRequest(
 		context,
 		'PATCH',
-		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/queue/${queueId}`,
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
 		payload,
 	);
 };
@@ -586,7 +586,7 @@ export const removeAgentQueuedMessage = async (
 	return await makeRestApiRequest(
 		context,
 		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/queue/${queueId}`,
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
 	);
 };
 
