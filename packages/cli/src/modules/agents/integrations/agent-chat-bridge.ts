@@ -1058,11 +1058,10 @@ export class AgentChatBridge {
 	}
 
 	/**
-	 * Put the card where the platform's rules allow. Teams addresses a channel
-	 * card at the user whose turn raised it, so nobody else can answer their
-	 * approval; a platform with no ephemeral delivery, and a turn with no acting
-	 * user, fall back to the conversation. Losing the card would leave the run
-	 * parked with nothing to click, so privacy never costs delivery.
+	 * Address the card at the user whose turn raised it where the platform can,
+	 * so nobody else answers their approval. Everything else falls back to the
+	 * conversation: a card nobody receives leaves the run parked with nothing to
+	 * click, so privacy never costs delivery.
 	 */
 	private async deliverSuspensionCard(
 		thread: Thread,

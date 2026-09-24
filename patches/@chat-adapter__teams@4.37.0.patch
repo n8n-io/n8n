@@ -1,5 +1,5 @@
 diff --git a/dist/index.js b/dist/index.js
-index 5278d648103068f1f3875c27e42c775ab02238ed..d82beaf0ac3efe633898fa0df08b69313c6bd0ab 100644
+index 5278d648103068f1f3875c27e42c775ab02238ed..3e5956347d7df5c0ee080184bab1b290e9b6d01d 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -1622,6 +1622,9 @@ var MESSAGEID_STRIP_PATTERN2 = /;messageid=\d+/;
@@ -82,7 +82,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..d82beaf0ac3efe633898fa0df08b6931
        try {
 -        await this.app.api.conversations.activities(conversationId).update(messageId, activity2);
 +        const activities2 = this.app.api.conversations.activities(conversationId);
-+        await (await this.isTargetedActivity(conversationId, messageId) ? activities2.updateTargeted(messageId, activity2) : activities2.update(messageId, activity2));
++        await (!this.isDM(threadId) && await this.isTargetedActivity(conversationId, messageId) ? activities2.updateTargeted(messageId, activity2) : activities2.update(messageId, activity2));
        } catch (error) {
          this.logger.error("Teams API: updateActivity failed", {
            conversationId,
@@ -92,7 +92,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..d82beaf0ac3efe633898fa0df08b6931
      try {
 -      await this.app.api.conversations.activities(conversationId).update(messageId, activity);
 +      const activities2 = this.app.api.conversations.activities(conversationId);
-+      await (await this.isTargetedActivity(conversationId, messageId) ? activities2.updateTargeted(messageId, activity) : activities2.update(messageId, activity));
++      await (!this.isDM(threadId) && await this.isTargetedActivity(conversationId, messageId) ? activities2.updateTargeted(messageId, activity) : activities2.update(messageId, activity));
      } catch (error) {
        this.logger.error("Teams API: updateActivity failed", {
          conversationId,
@@ -102,7 +102,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..d82beaf0ac3efe633898fa0df08b6931
      try {
 -      await this.app.api.conversations.activities(conversationId).delete(messageId);
 +      const activities2 = this.app.api.conversations.activities(conversationId);
-+      await (await this.isTargetedActivity(conversationId, messageId) ? activities2.deleteTargeted(messageId) : activities2.delete(messageId));
++      await (!this.isDM(threadId) && await this.isTargetedActivity(conversationId, messageId) ? activities2.deleteTargeted(messageId) : activities2.delete(messageId));
      } catch (error) {
        this.logger.error("Teams API: deleteActivity failed", {
          conversationId,
@@ -110,7 +110,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..d82beaf0ac3efe633898fa0df08b6931
        });
        handleTeamsError(error, "deleteMessage");
      }
-+    await this.forgetTargetedActivity(conversationId, messageId);
++    if (!this.isDM(threadId)) await this.forgetTargetedActivity(conversationId, messageId);
      this.logger.debug("Teams API: deleteActivity response", { ok: true });
    }
    async addReaction(threadId, messageId, emoji) {

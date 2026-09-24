@@ -86,11 +86,9 @@ export class AgentChatHitlResumeHandler {
 		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
 		if (!parsed) return;
 
-		// A card whose run is gone cannot be resumed, and resuming anyway reports
-		// it as an agent misconfiguration — which it is not. Check before the card
-		// is settled, so a stale card is never relabelled with a decision that
-		// never took effect, and so a card that outlived its run (a failed delete,
-		// or a click that races the cleanup) is answered rather than retried.
+		// Resuming a gone run reports it as an agent misconfiguration, which it is
+		// not. Check before the card is settled, so a stale one is answered rather
+		// than relabelled with a decision that never took effect.
 		if (!(await this.isRunResumable(parsed.runId))) {
 			await postToUserOrThread(thread, event.user, STALE_ACTION_NOTICE);
 			return;

@@ -111,13 +111,10 @@ export function onceStatusHandle(
 type EphemeralPostable = Parameters<Thread<unknown, unknown>['postEphemeral']>[1];
 
 /**
- * Deliver `payload` to `user` alone where the platform can, and to the whole
- * thread where it cannot. Slack and Teams post natively; the SDK returns `null`
- * for an adapter with no ephemeral support, and the payload reaches the thread
- * rather than being dropped.
- *
- * `fallbackToDM: false` is deliberate: the SDK's own DM fallback would turn an
- * in-channel message into an unsolicited direct message on Discord and Telegram.
+ * Post to `user` alone where the platform supports it (Slack, Teams), and to
+ * the thread where it does not, so the payload is never dropped.
+ * `fallbackToDM: false` because the SDK's own fallback would turn this into an
+ * unsolicited direct message on Discord and Telegram.
  */
 export async function postToUserOrThread(
 	thread: Thread<unknown, unknown>,
