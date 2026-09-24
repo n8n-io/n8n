@@ -256,10 +256,11 @@ n8n-cli promotion-connection promote-selection proj-abc -w wf-1 -m "Promote chec
 | `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. Required. |
 | `-m, --message` | Commit message. A default is used when omitted. |
 
-Archived workflows stay on the branch as archived; only an id whose workflow no
-longer exists leaves the branch. An id from another project rejects the whole
-request before any write. Clone the `promote` direction first. The API key
-also needs `variable:list` when the workflows reference variables.
+Archived workflows stay on the branch as archived. A selected workflow that was
+deleted or moved to another project leaves this project's branch. The request
+fails before any write if the branch does not hold that workflow under this
+project. Clone the `promote` direction first. The API key also needs
+`variable:list` when the workflows reference variables.
 
 ## `promotion-connection apply`
 
