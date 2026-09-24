@@ -170,7 +170,7 @@ async function resolveSession({ name, fresh, directory, server }) {
 		const query = new URLSearchParams({ directory, roots: 'true' });
 		const response = await request(server, `/session?${query}`, directory);
 		if (!response.ok) throw new Error(`Cannot list OpenCode sessions (${response.status}).`);
-		const sessions = await response.json().catch(() => []);
+		const sessions = await response.json();
 		const latest = Array.isArray(sessions)
 			? sessions.find((entry) => typeof entry?.id === 'string' && entry.id.length > 0)
 			: undefined;
