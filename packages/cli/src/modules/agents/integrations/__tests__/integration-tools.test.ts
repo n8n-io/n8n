@@ -1616,9 +1616,9 @@ describe('integration tools', () => {
 			const approvedKeys = new Set<string>();
 			const approvalContext: ToolApprovalContext = {
 				approvedKeys,
-				onDecision: async (key) => {
+				onDecision: vi.fn<ToolApprovalContext['onDecision']>(async (key) => {
 					approvedKeys.add(key);
-				},
+				}),
 			};
 			const { tool, actionExecutor } = approvalTool({ ...slackA, approval: { mode: 'global' } });
 			const ctx = makeInterruptibleCtx({ approvalContext });
@@ -1640,9 +1640,10 @@ describe('integration tools', () => {
 					resumeData: { approved: true, scope: 'session' },
 				}),
 			);
-			expect([...approvedKeys]).toEqual([
+			expect(approvalContext.onDecision).toHaveBeenCalledWith(
 				'["integration_action","slack:cred-a","send_channel_message"]',
-			]);
+				{ approved: true, scope: 'session' },
+			);
 
 			const result = await tool.handler!(
 				{
