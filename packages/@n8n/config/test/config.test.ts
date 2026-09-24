@@ -306,6 +306,7 @@ describe('GlobalConfig', () => {
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
 			health: '/healthz',
+			healthCheckTimeoutMs: 5000,
 		},
 		cache: {
 			backend: 'auto',

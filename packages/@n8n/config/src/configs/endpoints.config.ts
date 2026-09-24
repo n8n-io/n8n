@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 @Config
 export class PrometheusMetricsConfig {
@@ -228,4 +229,8 @@ export class EndpointsConfig {
 		z.string().transform((val) => (val.startsWith('/') ? val : `/${val}`)),
 	)
 	health: string = '/healthz';
+
+	/** Milliseconds the editor waits for a health check response before showing offline status. */
+	@Env('N8N_HEALTH_CHECK_TIMEOUT_MS', positiveIntSchema.max(2_147_483_647))
+	healthCheckTimeoutMs: number = 5000;
 }

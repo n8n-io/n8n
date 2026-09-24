@@ -5,7 +5,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 const HEALTH_CHECK_INTERVAL = 10000;
-const HEALTH_CHECK_TIMEOUT = 5000;
+const DEFAULT_HEALTH_CHECK_TIMEOUT = 5000;
 
 export function useBackendStatus() {
 	const backendConnectionStore = useBackendConnectionStore();
@@ -22,7 +22,10 @@ export function useBackendStatus() {
 		}
 
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
+		const timeoutId = setTimeout(
+			() => controller.abort(),
+			settingsStore.settings.healthCheckTimeoutMs ?? DEFAULT_HEALTH_CHECK_TIMEOUT,
+		);
 
 		// When baseUrl is a full URL (e.g. http://localhost:5678/ in dev mode),
 		// extract the origin so the health request targets the backend directly.
