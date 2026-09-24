@@ -2,8 +2,14 @@ import { jsonParse } from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { WeaviateClient } from 'weaviate-client';
+import weaviate, { Filters } from 'weaviate-client';
 
-import { registerIntegrationHeader, getIntegrationVersion } from './Weaviate.utils';
+import {
+	registerIntegrationHeader,
+	getIntegrationVersion,
+	parseCompositeFilter,
+} from './Weaviate.utils';
+import type { WeaviateCompositeFilter } from './Weaviate.utils';
 
 /**
  * Counts `readFile` calls while delegating to the real implementation, so the
@@ -55,8 +61,9 @@ describe('getIntegrationVersion', () => {
 	it('reads package.json once, even for concurrent first callers', async () => {
 		// Fresh module instance, so the memo cache starts empty.
 		vi.resetModules();
-		const { getIntegrationVersion: freshGetIntegrationVersion } =
-			await import('./Weaviate.utils.js');
+		const { getIntegrationVersion: freshGetIntegrationVersion } = await import(
+			'./Weaviate.utils.js'
+		);
 
 		// Reset after the import, so only the calls below are counted.
 		fsReads.paths.length = 0;
@@ -97,5 +104,65 @@ describe('registerIntegrationHeader', () => {
 		await registerIntegrationHeader(clientWithHeaders(headers));
 
 		expect(headers).toEqual([['X-Existing', '1']]);
+	});
+});
+
+describe('parseCompositeFilter', () => {
+	const authorIs = (valueString: string) => ({
+		path: ['author'],
+		operator: 'Equal',
+		valueString,
+	});
+	const byAuthor = (value: string) => weaviate.filter.byProperty('author').equal(value);
+
+	it('builds a single filter unit', () => {
+		expect(parseCompositeFilter(authorIs('Elis'))).toEqual(byAuthor('Elis'));
+	});
+
+	it('builds AND and OR groups', () => {
+		expect(parseCompositeFilter({ AND: [authorIs('Elis'), authorIs('Pinnacle')] })).toEqual(
+			Filters.and(byAuthor('Elis'), byAuthor('Pinnacle')),
+		);
+		expect(parseCompositeFilter({ OR: [authorIs('Elis'), authorIs('Pinnacle')] })).toEqual(
+			Filters.or(byAuthor('Elis'), byAuthor('Pinnacle')),
+		);
+	});
+
+	it('builds NOT around a filter unit', () => {
+		expect(parseCompositeFilter({ NOT: authorIs('Elis') })).toEqual(Filters.not(byAuthor('Elis')));
+	});
+
+	it('builds NOT around a group', () => {
+		expect(parseCompositeFilter({ NOT: { OR: [authorIs('Elis'), authorIs('Pinnacle')] } })).toEqual(
+			Filters.not(Filters.or(byAuthor('Elis'), byAuthor('Pinnacle'))),
+		);
+	});
+
+	it('builds deeply nested groups', () => {
+		const filter = {
+			AND: [
+				{ path: ['year'], operator: 'GreaterThan', valueNumber: 2020 },
+				{ NOT: { OR: [authorIs('Elis'), authorIs('Pinnacle')] } },
+			],
+		};
+
+		expect(parseCompositeFilter(filter)).toEqual(
+			Filters.and(
+				weaviate.filter.byProperty('year').greaterThan(2020),
+				Filters.not(Filters.or(byAuthor('Elis'), byAuthor('Pinnacle'))),
+			),
+		);
+	});
+
+	it('throws when NOT contains an array', () => {
+		const filter = { NOT: [authorIs('Elis')] } as unknown as WeaviateCompositeFilter;
+
+		expect(() => parseCompositeFilter(filter)).toThrow("'NOT' must contain exactly one filter.");
+	});
+
+	it('throws on an unsupported operator', () => {
+		expect(() =>
+			parseCompositeFilter({ path: ['author'], operator: 'Unknown', valueString: 'Elis' }),
+		).toThrow('Unsupported operator: Unknown');
 	});
 });
