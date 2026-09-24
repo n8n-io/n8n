@@ -254,20 +254,17 @@ export abstract class AgentChatIntegration {
 	readonly disableStreaming: boolean = false;
 
 	/**
-	 * Give up on a streaming post that has not settled this long after the
-	 * agent's text stream ended, and post the accumulated text as an ordinary
-	 * message instead. Undefined waits indefinitely.
-	 *
-	 * Set it for a platform whose adapter can wait on its own acknowledgement
-	 * with no deadline of its own: a rejection swallowed there hangs the turn and
-	 * leaves the user with no reply at all.
+	 * Give up on a streaming post this long after the text stream ended and post
+	 * the text as an ordinary message. Undefined waits indefinitely, which hangs
+	 * the turn on an adapter that waits for its own acknowledgement without a
+	 * deadline and swallows the rejection that would end that wait.
 	 */
 	readonly streamingPostTimeoutMs?: number;
 
 	/**
-	 * True when the platform renders only one streamed run per inbound turn. Text
-	 * that follows a card or other discrete message is then posted buffered,
-	 * rather than streamed into the message that preceded the card.
+	 * True when the platform renders only one streamed run per inbound turn, so
+	 * text following a card is posted buffered rather than streamed into the
+	 * message that preceded the card.
 	 */
 	readonly singleStreamedRunPerTurn: boolean = false;
 
@@ -311,10 +308,7 @@ export abstract class AgentChatIntegration {
 	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;
 
-	/**
-	 * Called when a streaming post on this connection had to be abandoned, so
-	 * the platform can stop streaming on it.
-	 */
+	/** Lets the platform stop streaming a connection whose post was abandoned. */
 	onStreamingPostStalled?(integration: AgentIntegrationConfig): void;
 
 	/**

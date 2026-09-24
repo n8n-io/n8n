@@ -44,7 +44,7 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	latestThreadId: () => string | undefined;
 	lastPost: () => ReplayApiCall | undefined;
 	lastEdit: () => ReplayApiCall | undefined;
-	/** Every activity the adapter sent, in order. */
+	/** Every activity the adapter attempted, in order, refused ones included. */
 	activities: () => ReplayApiCall[];
 	lastPostedMessageId: () => string | undefined;
 }

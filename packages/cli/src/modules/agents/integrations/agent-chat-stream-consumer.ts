@@ -44,18 +44,10 @@ interface AgentChatStreamConsumerOptions {
 	 * tools returning a `silent` field must not mute the reply.
 	 */
 	isIntegrationActionTool?: (toolName: string) => boolean;
-	/**
-	 * Give up on a streaming post that has not settled this long after the text
-	 * stream ended, and post the accumulated text as an ordinary message
-	 * instead. Unset means wait indefinitely.
-	 */
+	/** Unset waits indefinitely. See `AgentChatIntegration` for when to set it. */
 	streamingPostTimeoutMs?: number;
-	/**
-	 * True when the platform renders only one streamed run per inbound turn.
-	 * Text after the first run is buffered and posted as its own message.
-	 */
+	/** Text after the first streamed run is buffered and posted on its own. */
 	singleStreamedRunPerTurn?: boolean;
-	/** Called when a streaming post had to be abandoned and posted buffered. */
 	onStreamingPostStalled?: () => void;
 }
 
@@ -125,20 +117,15 @@ export class AgentChatStreamConsumer {
 		let streamingPost: Promise<unknown> | null = null;
 		/** Text the platform is not yet known to have rendered. */
 		let pendingText = '';
-		/** Set once this turn must finish without streaming. */
 		let streamingStopped = false;
-		/**
-		 * Only a platform that can stop streaming mid-turn ever re-reads the text,
-		 * so nothing else pays for a second copy of every delta.
-		 */
+		/** Only a platform that can stop streaming mid-turn re-reads the text. */
 		const retainText =
 			this.options.streamingPostTimeoutMs !== undefined ||
 			this.options.singleStreamedRunPerTurn === true;
 		/**
-		 * Set when a post outlived its deadline and the turn recovered without it.
-		 * Its rejection handler is already attached and cannot be detached, so it
-		 * has to know to stay quiet: an error posted then would land after the
-		 * reply the user already has, and after the turn is over.
+		 * A post's rejection handler cannot be detached, so it reads this to stay
+		 * quiet once the turn has recovered without it — an error posted then
+		 * would land after the reply the user already has.
 		 */
 		let streamingPostAbandoned = false;
 
@@ -210,17 +197,11 @@ export class AgentChatStreamConsumer {
 			if (streamingPost) {
 				const post = streamingPost;
 				streamingPost = null;
-				// A platform that renders one streamed run per turn cannot open a
-				// second one: Teams reuses a single open stream per inbound activity,
-				// so a second run refills the first bubble, which sits above anything
-				// posted in between.
 				if (this.options.singleStreamedRunPerTurn) streamingStopped = true;
 				const outcome = await this.awaitStreamingPost(post, thread);
 				if (outcome === 'stalled') {
 					streamingPostAbandoned = true;
-					// Re-opening a stream the platform never acknowledged would stall
-					// again, so the rest of the turn is buffered whatever the platform
-					// asked for.
+					// Re-opening a stream the platform never acknowledged stalls again.
 					streamingStopped = true;
 					this.options.onStreamingPostStalled?.();
 				} else {
@@ -298,14 +279,12 @@ export class AgentChatStreamConsumer {
 	}
 
 	/**
-	 * Wait for a streaming post to settle, and report whether it never did.
+	 * An adapter can wait on its own acknowledgement with no deadline and swallow
+	 * the rejection that would end that wait, hanging the turn.
 	 *
-	 * A platform adapter can wait on its own acknowledgement with no deadline and
-	 * swallow the rejection that would end that wait, which leaves the turn hung
-	 * and the user with no reply at all. The deadline is anchored to the end of
-	 * the text stream rather than its start because the post promise is the only
-	 * signal this layer gets, and it does not settle until the stream ends even
-	 * on a healthy run.
+	 * The deadline is anchored to the end of the text stream, not its start: the
+	 * post promise is the only signal this layer gets, and it does not settle
+	 * until the stream ends even on a healthy run.
 	 */
 	private async awaitStreamingPost(
 		post: Promise<unknown>,
@@ -339,9 +318,8 @@ export class AgentChatStreamConsumer {
 	}
 
 	/**
-	 * Chat SDK's streaming path wraps accumulated deltas as `{ markdown }` so the
-	 * adapter applies its markdown parse mode. A raw string bypasses that and
-	 * renders as plain text, so buffered text is posted in the same shape.
+	 * `{ markdown }` matches what Chat SDK's streaming path sends, so the adapter
+	 * applies its markdown parse mode. A raw string renders as plain text.
 	 */
 	private async postBufferedText(
 		thread: Thread<unknown, unknown>,

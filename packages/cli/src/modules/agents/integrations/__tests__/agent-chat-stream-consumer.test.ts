@@ -117,10 +117,7 @@ function isAsyncIterable(value: unknown): boolean {
 	return typeof (value as Record<symbol, unknown>)?.[Symbol.asyncIterator] === 'function';
 }
 
-/**
- * A thread whose `post` separates a streamed post (an async iterable) from a
- * discrete one, and can be told to leave the streamed post pending forever.
- */
+/** Separates streamed posts (an async iterable) from discrete ones. */
 function makeStreamingThread({
 	stall = false,
 	settleAfterMs,

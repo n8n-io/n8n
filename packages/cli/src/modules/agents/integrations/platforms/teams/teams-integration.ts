@@ -29,20 +29,14 @@ const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 /** Interval picked to match Discord's; Teams does not document the expiry. */
 const TEAMS_TYPING_REFRESH_MS = 8000;
 
-/** How long a connection stays buffered after its stream stalled. */
 const BUFFERED_ONLY_TTL_MS = 30 * 60 * 1000;
 
 /**
- * The adapter waits for Teams to acknowledge the first chunk before it finishes
- * the post, and the Teams SDK swallows the 403 a tenant without streaming
- * returns — so a stream that never starts would hang the turn for good.
- *
- * Set above the SDK's own retry ceiling, not just above a healthy round trip.
- * Teams throttles streaming to one request a second and the SDK flushes twice
- * that, so a 429 is ordinary; the SDK then retries five times over 7.5s of
- * backoff and can still succeed. Giving up sooner than that would post the
- * reply here while the stream went on to deliver it too, and the user would
- * read it twice.
+ * Above the SDK's retry ceiling, not just above a healthy round trip. Teams
+ * throttles streaming to a request a second and the SDK flushes twice that, so
+ * a 429 is ordinary and the SDK retries five times over 7.5s of backoff before
+ * it gives up. Giving up sooner posts the reply here while the stream goes on
+ * to deliver it too, and the user reads it twice.
  */
 const TEAMS_STREAMING_POST_TIMEOUT_MS = 45_000;
 
@@ -127,16 +121,14 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	/**
 	 * Teams keeps one open stream per inbound activity and the adapter never
-	 * closes it, so a second streamed run would refill the first message bubble —
-	 * which sits above any card posted in between.
+	 * closes it, so a second run refills the first bubble — which sits above any
+	 * card posted in between.
 	 */
 	readonly singleStreamedRunPerTurn = true;
 
 	/**
-	 * When each connection's stream last stalled. A stall can be a passing
-	 * throttle rather than a tenant that refuses streaming, so the entry expires
-	 * and the next turn tries again instead of demoting the connection for the
-	 * life of the process.
+	 * A stall can be a passing throttle rather than a tenant that refuses
+	 * streaming, so entries expire and the connection is tried again.
 	 */
 	private readonly bufferedOnlyUntil = new Map<string, number>();
 
@@ -202,9 +194,9 @@ export class TeamsIntegration extends AgentChatIntegration {
 	}
 
 	/**
-	 * Teams streams natively in 1:1 chats only. A group chat or channel posts one
-	 * buffered message instead: post-and-edit is what Discord and Telegram
-	 * rejected, for edit rate limits and half-formed intermediate Markdown.
+	 * A group chat or channel posts one buffered message rather than
+	 * post-and-edit, which Discord and Telegram rejected for edit rate limits and
+	 * half-formed intermediate Markdown.
 	 */
 	async createBridgeExecutionContext(
 		params: BridgeMessageContextParams,

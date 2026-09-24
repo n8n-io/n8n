@@ -271,12 +271,6 @@ describe('Microsoft Teams streaming', () => {
 		}
 	});
 
-	/**
-	 * A tenant that refuses streaming never acknowledges the first chunk, and the
-	 * Teams SDK swallows that rejection, so the adapter would wait forever. The
-	 * SDK then spends its own 30s close budget waiting for a stream id it will
-	 * never get, which is what makes this turn slow rather than the fallback.
-	 */
 	it('falls back to an ordinary message when Teams refuses the stream, then stops streaming that connection', async () => {
 		const ctx = await createTeamsReplayContext({
 			stream: oneDelta,
@@ -296,8 +290,7 @@ describe('Microsoft Teams streaming', () => {
 			ctx.nextStream(oneDelta);
 			await ctx.sendWebhook(dmFollowUp);
 
-			// The connection is marked buffered-only, so the second turn never
-			// opens a stream and never pays the wait again.
+			// The connection is paused, so the second turn never opens a stream.
 			const secondTurn = ctx.activities().slice(firstTurn.length);
 			expect(secondTurn.every((call) => streamInfo(call.body) === undefined)).toBe(true);
 			const messages = secondTurn.filter((call) => call.body.type === 'message');
@@ -353,7 +346,6 @@ describe('Microsoft Teams streaming', () => {
 			await ctx.sendWebhook(dmMessage);
 
 			const activities = ctx.activities();
-			// One streamed run: every streaming activity shares a single stream.
 			const streamIds = new Set(
 				activities
 					.map((call) => streamInfo(call.body)?.streamId)
