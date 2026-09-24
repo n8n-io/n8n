@@ -12,18 +12,25 @@ describe('reportSystemTaskOverlaps', () => {
 		taskType,
 	});
 
-	it('reports one overlap skip for each occurrence, named after its task', () => {
+	it('reports one overlap skip for each task, counting its occurrences', () => {
 		const eventService = mock<EventService>();
 
 		reportSystemTaskOverlaps(eventService, [
 			occurrence('system:prune-executions', '1'),
 			occurrence('system:prune-executions', '2'),
+			occurrence('system:prune-insights', '3'),
 		]);
 
 		expect(eventService.emit).toHaveBeenCalledTimes(2);
 		expect(eventService.emit).toHaveBeenCalledWith('system-task-run-skipped', {
 			name: 'prune-executions',
 			reason: 'overlap',
+			count: 2,
+		});
+		expect(eventService.emit).toHaveBeenCalledWith('system-task-run-skipped', {
+			name: 'prune-insights',
+			reason: 'overlap',
+			count: 1,
 		});
 	});
 
@@ -44,7 +51,7 @@ describe('reportSystemTaskOverlaps', () => {
 		expect(() =>
 			reportSystemTaskOverlaps(eventService, [
 				occurrence('system:prune-executions', '1'),
-				occurrence('system:prune-executions', '2'),
+				occurrence('system:prune-insights', '2'),
 			]),
 		).not.toThrow();
 		expect(eventService.emit).toHaveBeenCalledTimes(2);
