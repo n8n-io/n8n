@@ -45,7 +45,11 @@ const UNSUPPORTED_TRIGGERS = new Set<string>([
  * lands, so a mode that is not ready yet fails with a reason rather than
  * answering wrongly.
  */
-const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>(['onReceived', 'lastNode']);
+const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
+	'onReceived',
+	'lastNode',
+	'responseNode',
+]);
 
 /** What the request says about a run, before the webhook node has produced anything. */
 export type EngineV2WebhookRequest = {
@@ -122,7 +126,6 @@ export class EngineV2Webhooks {
 			);
 		}
 
-		// TODO(CAT-4079): Support `responseNode`.
 		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 			throw new UserError(
 				`Engine 2.0 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
@@ -132,7 +135,7 @@ export class EngineV2Webhooks {
 
 	/** Converts the data plane's answer to the shape the v1 response path reads. */
 	async toRun(
-		outcome: Exclude<WebhookRunOutcome, { status: 'timeout' }>,
+		outcome: Exclude<WebhookRunOutcome, { status: 'response' | 'timeout' | 'undeliverable' }>,
 		executionMode: WorkflowExecuteMode,
 	): Promise<IRun> {
 		const runData: IRunData = {};

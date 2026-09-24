@@ -500,6 +500,9 @@ export class WorkflowExecutionService {
 						userId: data.userId,
 						dirtyNodeNames: data.dirtyNodeNames,
 						triggerToStartFrom: data.triggerToStartFrom,
+						// A run of a single tool node needs this to reach the worker, or the
+						// tool runs on empty arguments.
+						agentRequest: data.agentRequest,
 						source: data.source,
 					},
 					// Set this to null so `createRunExecutionData` doesn't initialize it.

@@ -92,7 +92,7 @@ export class StepSettledHandler {
 		}
 
 		// TODO(CAT-3990): this sweep names no rows, so it announces nothing.
-		await this.stepStore.cancelQueuedSteps(execution.id);
+		await this.stepStore.cancelPendingSteps(execution.id);
 	}
 
 	/** Plans the settled step's direct successors, returning how many were queued. */

@@ -54,9 +54,18 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			source: z
 				.enum(['row', 'bulk', 'rejected'])
 				.describe(
-					'`row` is the per-row Delete button and `bulk` the selection toolbar on the settings page. `rejected` is the Undo on the chat card: the user did not accept a preference the assistant saved, a late refusal of one they first let stand',
+					'`row` is the per-row Delete button and `bulk` the selection toolbar on the settings page. `rejected` is the Undo on the chat card, Decline on the MCP review form, or the MCP undo tool: the user did not accept a preference the assistant saved, a late refusal of one they first let stand',
 				),
 			scope_types: z.array(scopeType).describe('Distinct scopes the deleted preferences covered'),
+			surface: assistantSurfaceSchema
+				.optional()
+				.describe('Set on a `rejected` delete, to tell the chat card from an MCP client'),
+			seconds_since_saved: z
+				.number()
+				.optional()
+				.describe(
+					'On a `rejected` delete, how long after the assistant write the user took it back. A short gap means the write itself was wrong, not a later change of mind',
+				),
 		}),
 	},
 
@@ -108,7 +117,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCE_CONFIRMATION_SHOWN: {
 		name: 'Preference confirmation shown',
 		description:
-			'The assistant saved a preference and the card that lets the user edit or undo it was shown. Fires with the write, whatever the user does next.',
+			'The assistant saved a preference and the user was given the way to edit or undo it: the chat card, the MCP review form, or, on an MCP client without elicitation, the tool result that tells the client to relay the saved text and the settings link. Fires with the write, whatever the user does next.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			scope_type: scopeType.describe('Scope the assistant offered'),
@@ -125,7 +134,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			outcome: z
 				.enum(['accepted', 'accepted_after_edit', 'rejected'])
 				.describe(
-					'`accepted` is implicit, fired with the write. `accepted_after_edit` means the user changed the text from the card. `rejected` is reserved for a surface that asks before it writes',
+					'`accepted` is implicit, fired with the write. `accepted_after_edit` means the user changed the text from the card or the MCP review form. `rejected` is reserved for a surface that asks before it writes',
 				),
 			scope_type: scopeType.describe(
 				'Scope the preference was saved with, or the offered scope on a rejection',

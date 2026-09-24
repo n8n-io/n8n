@@ -3,11 +3,13 @@ import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { CredentialsEntity } from '@n8n/db';
+import { ShutdownMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { StateAdapter } from 'chat';
 
+import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { UrlService } from '@/services/url.service';
@@ -31,6 +33,14 @@ import {
 	type LeaderChannelRelayService,
 } from '../leader-channel-relay.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+
+/**
+ * `@OnShutdown` registers at class-decoration time, so this has to be read
+ * before the first `Container.reset()` replaces the metadata it registered into.
+ */
+const shutdownHandlersAtLowestPriority = [
+	...(Container.get(ShutdownMetadata).getHandlersByPriority()[LOWEST_SHUTDOWN_PRIORITY] ?? []),
+];
 
 /**
  * The peer-reconciliation and leader-request handlers deliberately call the
@@ -503,6 +513,125 @@ describe('ChatIntegrationService', () => {
 			await expect(service.disconnectAll()).resolves.toBeUndefined();
 		});
 
+		it('runs on shutdown, after the components that start channels', () => {
+			expect(shutdownHandlersAtLowestPriority).toContainEqual({
+				serviceClass: ChatIntegrationService,
+				methodName: 'disconnectAll',
+			});
+		});
+
+		it('waits for an in-flight leader connect, then closes what it built', async () => {
+			const service = buildService();
+			const shutdown = vi.fn().mockResolvedValue(undefined);
+			const internal = service as unknown as {
+				connections: Map<string, unknown>;
+				leaderOperations: Map<string, { action: string; done: Promise<void> }>;
+			};
+			// A connect accepted as leader that has yet to register its connection.
+			// Deliberately a macrotask: a microtask would land on one of the awaits
+			// the sweep already has, so the test would pass without the drain.
+			const done = new Promise<void>((resolve) =>
+				setTimeout(() => {
+					internal.connections.set('agent-1:telegram:cred-3', { chat: { shutdown } });
+					resolve();
+				}, 0),
+			);
+			internal.leaderOperations.set('agent-1:telegram:cred-3', { action: 'connect', done });
+
+			await service.disconnectAll();
+
+			expect(shutdown).toHaveBeenCalledTimes(1);
+			expect(internal.connections.size).toBe(0);
+		});
+
+		it('refuses connects that arrive after the drain', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('slack', false));
+			const { service, credentialsService } = buildServiceWith({ registry });
+
+			await service.disconnectAll();
+
+			// Rejects rather than resolving: a caller reads a resolved connect as a
+			// running channel and would report it as connected.
+			await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
+				'shutting down',
+			);
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(service.getChatInstance('agent-1', slackIntegration)).toBeUndefined();
+		});
+
+		it('closes a startup that outlasts the sweep instead of storing it', async () => {
+			const integration = new FakeIntegration('slack', false);
+			(integration as unknown as { createAdapter: () => Promise<unknown> }).createAdapter = vi
+				.fn()
+				.mockResolvedValue({ name: 'slack' });
+			const registry = new ChatIntegrationRegistry();
+			registry.register(integration);
+
+			const credentialsService = mock<CredentialsService>();
+			mockProjectCredential(credentialsService, { id: 'cred-1' } as CredentialsEntity);
+			const urlService = mock<UrlService>();
+			urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.test/');
+			const state = mock<StateAdapter>();
+			state.disconnect.mockResolvedValue(undefined);
+			const chatSubscriptionStateService = mock<AgentChatSubscriptionStateService>();
+			chatSubscriptionStateService.createStateAdapter.mockReturnValue(state);
+
+			// A channel whose platform handshake outlasts the whole drain.
+			let finishInitialize: () => void = () => {};
+			const chatInstance = {
+				initialize: vi.fn(
+					async () =>
+						await new Promise<void>((resolve) => {
+							finishInitialize = resolve;
+						}),
+				),
+				shutdown: vi.fn().mockResolvedValue(undefined),
+				webhooks: {},
+				onNewMention: vi.fn(),
+				onSubscribedMessage: vi.fn(),
+				onAction: vi.fn(),
+			};
+			const loadMemoryStateSpy = vi.spyOn(esmLoader, 'loadMemoryState').mockResolvedValue({
+				createMemoryState: vi.fn(() => mock<StateAdapter>()),
+			} as never);
+			const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue({
+				Chat: vi.fn(function ChatMock() {
+					return chatInstance;
+				}),
+			} as never);
+			const bridgeSpy = vi
+				.spyOn(AgentChatBridge, 'create')
+				.mockReturnValue(mock<AgentChatBridge>());
+			Container.set(AgentExecutionOrchestratorService, mock());
+
+			try {
+				const { service } = buildServiceWith({
+					registry,
+					credentialsService,
+					urlService,
+					chatSubscriptionStateService,
+				});
+
+				const connecting = service.connect('agent-1', slackIntegration, 'project-1');
+				await vi.waitFor(() => expect(chatInstance.initialize).toHaveBeenCalled());
+
+				await service.disconnectAll();
+				finishInitialize();
+
+				// The startup has to tear down what it built rather than register it:
+				// the sweep has been and gone, so nothing would ever close it.
+				await expect(connecting).rejects.toThrow('shutting down');
+				expect(chatInstance.shutdown).toHaveBeenCalledTimes(1);
+				expect(service.getChatInstance('agent-1', slackIntegration)).toBeUndefined();
+			} finally {
+				loadMemoryStateSpy.mockRestore();
+				loadChatSdkSpy.mockRestore();
+				bridgeSpy.mockRestore();
+				Container.reset();
+			}
+		});
+
 		it('continues disconnecting remaining connections when one shutdown rejects', async () => {
 			const service = buildService();
 			const shutdownA = vi.fn().mockRejectedValue(new Error('boom'));
@@ -776,6 +905,105 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 		);
 		expect(service.getChatInstance('agent-1', slackIntegration)).toBe(liveChat);
 		expect(internal.outboundConnections.size).toBe(0);
+	});
+
+	it('gives a follower an outbound connection for a published leader-only channel', async () => {
+		const createAdapter = vi.fn().mockResolvedValue({ name: 'telegram' });
+		const onAfterConnect = vi.fn().mockResolvedValue(undefined);
+		const integration = new FakeIntegration('telegram', true);
+		(integration as unknown as { createAdapter: typeof createAdapter }).createAdapter =
+			createAdapter;
+		(integration as unknown as { onAfterConnect: typeof onAfterConnect }).onAfterConnect =
+			onAfterConnect;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findOne.mockResolvedValue(
+			makeAgent({ integrations: [telegramIntegration], activeVersionId: 'version-1' }),
+		);
+		const credentialsService = mock<CredentialsService>();
+		mockProjectCredential(credentialsService, { id: 'cred-3' } as CredentialsEntity);
+		const memoryState = mock<StateAdapter>();
+		vi.spyOn(esmLoader, 'loadMemoryState').mockResolvedValue({
+			createMemoryState: vi.fn(() => memoryState),
+		} as never);
+		const chatInstance = {
+			initialize: vi.fn().mockResolvedValue(undefined),
+			shutdown: vi.fn().mockResolvedValue(undefined),
+			webhooks: {},
+		};
+		vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue({
+			Chat: vi.fn(function ChatMock() {
+				return chatInstance;
+			}),
+		} as never);
+
+		const { service, leaderChannelRelay, chatSubscriptionStateService } = buildServiceWith({
+			registry,
+			agentRepository,
+			credentialsService,
+			isLeader: false,
+			multiMainEnabled: true,
+		});
+
+		await expect(service.getChatInstanceForTools('agent-1', telegramIntegration)).resolves.toBe(
+			chatInstance,
+		);
+
+		expect(createAdapter).toHaveBeenCalledWith(expect.objectContaining({ ingressEnabled: false }));
+		// The leader keeps sole ownership of ingress: nothing relayed, no ingress
+		// runtime here, no state adapter, no external setup.
+		expect(leaderChannelRelay.request).not.toHaveBeenCalled();
+		expect(service.getChatInstance('agent-1', telegramIntegration)).toBeUndefined();
+		expect(chatSubscriptionStateService.createStateAdapter).not.toHaveBeenCalled();
+		expect(onAfterConnect).not.toHaveBeenCalled();
+	});
+
+	it('does not create an outbound fallback for a published channel this main owns', async () => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('telegram', true));
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findOne.mockResolvedValue(
+			makeAgent({ integrations: [telegramIntegration], activeVersionId: 'version-1' }),
+		);
+		// Leader: the channel runs here, so an absent connection means not running,
+		// not "runs elsewhere".
+		const { service, credentialsService } = buildServiceWith({
+			registry,
+			agentRepository,
+			isLeader: true,
+			multiMainEnabled: true,
+		});
+
+		await expect(
+			service.getChatInstanceForTools('agent-1', telegramIntegration),
+		).resolves.toBeUndefined();
+
+		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+	});
+
+	it('does not create an outbound fallback on a follower for a published webhook channel', async () => {
+		const registry = new ChatIntegrationRegistry();
+		// Not leader-only: a follower runs this channel itself, so no connection
+		// means it failed to start — a fallback would paper over that.
+		registry.register(new FakeIntegration('slack', false));
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findOne.mockResolvedValue(
+			makeAgent({ integrations: [slackIntegration], activeVersionId: 'version-1' }),
+		);
+		const { service, credentialsService } = buildServiceWith({
+			registry,
+			agentRepository,
+			isLeader: false,
+			multiMainEnabled: true,
+		});
+
+		await expect(
+			service.getChatInstanceForTools('agent-1', slackIntegration),
+		).resolves.toBeUndefined();
+
+		expect(credentialsService.decrypt).not.toHaveBeenCalled();
 	});
 });
 
@@ -1288,6 +1516,17 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			expect(connectLocal).toHaveBeenCalledWith('agent-1', telegram, 'p1');
 			expect(leaderChannelRelay.respond).toHaveBeenCalledWith(request);
+		});
+
+		it('reports failure for a request that arrives once this leader is shutting down', async () => {
+			const { service, leaderChannelRelay } = buildLeader();
+			await service.disconnectAll();
+
+			await service.handleLeaderChannelRequest(request);
+
+			// Acknowledging success here would tell the requester its channel is
+			// running when no main is running it.
+			expect(leaderChannelRelay.respond).toHaveBeenCalledWith(request, expect.any(Error));
 		});
 
 		it('joins a concurrent request for the same channel instead of running it twice', async () => {

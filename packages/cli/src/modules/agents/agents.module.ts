@@ -87,12 +87,14 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { TeamsIntegration } = await import('./integrations/platforms/teams-integration.js');
 		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 		registry.register(Container.get(DiscordIntegration));
+		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
 		// Resume Chat and Task services on startup so this main runs what its
@@ -229,6 +231,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
+		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
@@ -270,6 +273,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentMessageEntity,
 			AgentExecutionThread,
 			AgentExecution,
+			AgentMessageQueue,
 			AgentBackgroundJob,
 			AgentHistory,
 			AgentCredentialDependency,

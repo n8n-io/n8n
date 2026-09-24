@@ -14,6 +14,7 @@ export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
 export type * from './node-type-availability';
+export type * from './credential-type-availability';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -353,11 +354,6 @@ export {
 } from './schemas/secrets-provider.schema';
 
 export {
-	communityPackageResponseSchema,
-	type CommunityPackageResponse,
-} from './schemas/community-package.schema';
-
-export {
 	publicApiCredentialResponseSchema,
 	type PublicApiCredentialResponse,
 } from './schemas/credential-response.schema';
@@ -528,6 +524,7 @@ export type {
 	InstanceAiPromptConfiguration,
 	InstanceAiPrefillType,
 	InstanceAiPrefillTypeReported,
+	InstanceAiPrefillPayload,
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,

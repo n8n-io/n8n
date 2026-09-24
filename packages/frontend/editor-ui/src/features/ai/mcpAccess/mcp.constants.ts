@@ -30,8 +30,6 @@ export const MCP_SCOPE_RESOURCE_ICONS: Record<string, IconName> = {
 	communityPackage: 'package-open',
 	aiPreference: 'sliders-horizontal',
 };
-export const ELIGIBLE_WORKFLOWS_DOCS_SECTION = 'workflow-eligibility';
-
 export const MCP_SETTINGS_VIEW = 'McpSettings';
 export const MCP_WORKFLOWS_VIEW = 'McpSettingsWorkflows';
 export const MCP_AGENTS_VIEW = 'McpSettingsAgents';

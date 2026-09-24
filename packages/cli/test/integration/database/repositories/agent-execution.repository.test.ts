@@ -42,6 +42,13 @@ import { AgentExecutionService } from '@/modules/agents/agent-execution.service'
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
+import {
+	AgentMessageQueueService,
+	type ClaimedAgentMessage,
+} from '@/modules/agents/agent-message-queue.service';
+import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
+import { AgentTurnAlreadyRunningError } from '@/modules/agents/agent-turn-already-running.error';
+import { EXECUTION_METADATA_KEY } from '@/modules/agents/types/agent-queued-message';
 import type { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import type { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import { ExecutionRecorder, type TimelineEvent } from '@/modules/agents/execution-recorder';
@@ -108,6 +115,7 @@ describe('AgentExecutionRepository', () => {
 	});
 
 	afterEach(async () => {
+		await Container.get(AgentMessageQueueRepository).delete({});
 		await repository.delete({});
 		await threadRepo.delete({});
 		await agentRepo.delete({});
@@ -130,6 +138,19 @@ describe('AgentExecutionRepository', () => {
 		const threads = connection
 			? new AgentExecutionThreadRepository(connection, txRunner)
 			: threadRepo;
+		const queueRepository = new AgentMessageQueueRepository(
+			connection ?? repository.manager.connection,
+			txRunner,
+		);
+		const checkpointStorage = new N8NCheckpointStorage(
+			new AgentCheckpointRepository(connection ?? repository.manager.connection, txRunner),
+			mockLogger(),
+			new AgentsConfig(),
+			txRunner,
+			executions,
+			threads,
+			queueRepository,
+		);
 		const memory = mock<N8nMemory>();
 		memory.getImplementation.mockReturnValue(memoryBackend);
 		const attachmentService = mock<AgentChatAttachmentService>();
@@ -145,12 +166,25 @@ describe('AgentExecutionRepository', () => {
 			mock<StorageConfig>({ modeTag: 'db' }),
 			mock<ErrorReporter>(),
 			mock<AgentExecutionUpdateBroadcaster>(),
-			Container.get(N8NCheckpointStorage),
+			checkpointStorage,
 			txRunner,
+			queueRepository,
+		);
+		const queue = new AgentMessageQueueService(
+			txRunner,
+			queueRepository,
+			threads,
+			executions,
+			executionService,
+			checkpointStorage,
+			connection ? new AgentRepository(connection) : agentRepo,
 		);
 		return {
 			txRunner,
 			threads,
+			queue,
+			queueRepository,
+			checkpointStorage,
 			executionService,
 			attachmentService,
 			executionLogStore,
@@ -158,6 +192,7 @@ describe('AgentExecutionRepository', () => {
 				mockLogger(),
 				executionService,
 				mock<AgentChatExecutionService>(),
+				queue,
 			),
 		};
 	}
@@ -326,7 +361,7 @@ describe('AgentExecutionRepository', () => {
 	}
 
 	async function startSuspendedApprovalRun(user?: User, approvals = 1) {
-		const { turns, executionService } = recordingServices();
+		const { turns, executionService, checkpointStorage: storage } = recordingServices();
 		const threadId = uuid();
 		const recording = {
 			access: user
@@ -339,7 +374,6 @@ describe('AgentExecutionRepository', () => {
 			userMessage: 'Start',
 		};
 		const checkpointRepo = Container.get(AgentCheckpointRepository);
-		const storage = new N8NCheckpointStorage(checkpointRepo, mockLogger(), new AgentsConfig());
 		const { action, makeAgent } = createApprovalAgentFactory(threadId, user?.id, approvals);
 		const common = {
 			toolRegistry: new Map(),
@@ -400,36 +434,34 @@ describe('AgentExecutionRepository', () => {
 		fixture: Awaited<ReturnType<typeof startSuspendedApprovalRun>>,
 	) {
 		const { common, makeAgent, recording, storage, suspension, turns } = fixture;
-		const secondConnection = await new DataSource({
-			...repository.manager.connection.options,
-			name: uuid(),
-		}).initialize();
+		const { checkpointStorage: otherStorage, turns: otherTurns } = recordingServices(
+			undefined,
+			peer,
+		);
+		const admitted = createDeferredPromise<OperationContext>();
+		const releaseAdmission = createDeferredPromise();
+		const save = repository.saveInContext.bind(repository);
+		const saveSpy = vi
+			.spyOn(repository, 'saveInContext')
+			.mockImplementationOnce(async (execution, ctx) => {
+				const saved = await save(execution, ctx);
+				admitted.resolve(ctx);
+				await releaseAdmission.promise;
+				return saved;
+			});
+		const competing = observePeerTransaction();
 		try {
-			const otherStorage = new N8NCheckpointStorage(
-				new AgentCheckpointRepository(secondConnection),
-				mockLogger(),
-				new AgentsConfig(),
-			);
-			const bothLoaded = createDeferredPromise<boolean>();
-			let loaded = 0;
 			const onResumeClaimed = vi.fn();
-			const attempts = [storage, otherStorage].map(async (checkpointStorage) => {
+			const attempts = [
+				{ storage, turns },
+				{ storage: otherStorage, turns: otherTurns },
+			].map(async ({ storage: checkpointStorage, turns: executingTurns }, index) => {
+				if (index === 1) await admitted.promise;
 				let agent: ReturnType<typeof makeAgent> | undefined;
 				try {
-					const store = checkpointStorage.getStorage(agentId);
-					agent = makeAgent({
-						...store,
-						load: async (key) => {
-							const state = await store.load(key);
-							if (++loaded === 2) bothLoaded.resolve(true);
-							if (!(await bothLoaded.promise)) {
-								throw new Error('A resume attempt failed before both checkpoints loaded');
-							}
-							return state;
-						},
-					});
+					agent = makeAgent(checkpointStorage.getStorage(agentId));
 					return await collect(
-						turns.execute({
+						executingTurns.execute({
 							...common,
 							agentInstance: agent,
 							prepare: async () => ({
@@ -444,17 +476,21 @@ describe('AgentExecutionRepository', () => {
 							}),
 						}),
 					);
-				} catch (error) {
-					bothLoaded.resolve(false);
-					throw error;
 				} finally {
 					await agent?.close();
 				}
 			});
 
-			return { outcomes: await Promise.allSettled(attempts), onResumeClaimed };
+			const outcomes = Promise.allSettled(attempts);
+			const ctx = await admitted.promise;
+			await competing.started;
+			await waitForPeerLock(ctx);
+			releaseAdmission.resolve();
+			return { outcomes: await outcomes, onResumeClaimed };
 		} finally {
-			await secondConnection.destroy();
+			releaseAdmission.resolve();
+			saveSpy.mockRestore();
+			competing.restore();
 		}
 	}
 
@@ -810,7 +846,7 @@ describe('AgentExecutionRepository', () => {
 		}
 	});
 
-	it('records one accepted resume and one failed attempt when separate connections claim the same checkpoint', async () => {
+	it('admits one resume when separate connections claim the same checkpoint', async () => {
 		const fixture = await startSuspendedApprovalRun();
 		const { outcomes, onResumeClaimed } = await resumeApprovalFromSeparateConnections(fixture);
 
@@ -818,16 +854,12 @@ describe('AgentExecutionRepository', () => {
 		expect(onResumeClaimed).toHaveBeenCalledOnce();
 		expect(fixture.action).toHaveBeenCalledOnce();
 		const executions = await repository.findByThreadIdOrdered(fixture.threadId);
-		expect(executions).toHaveLength(3);
-		expect(executions.map(({ status }) => status).sort()).toEqual(['error', 'success', 'success']);
+		expect(executions).toHaveLength(2);
+		expect(executions.map(({ status }) => status)).toEqual(['success', 'success']);
 		const resumed = executions.find(({ hitlStatus }) => hitlStatus === 'resumed');
 		expect(resumed).toMatchObject({ userMessage: null, status: 'success' });
 		expect(resumed?.timeline).toContainEqual(expect.objectContaining({ type: 'hitl-response' }));
-		const rejected = executions.find(({ status }) => status === 'error');
-		expect(rejected).toMatchObject({ userMessage: null, hitlStatus: null });
-		expect(rejected?.timeline ?? []).not.toContainEqual(
-			expect.objectContaining({ type: 'hitl-response' }),
-		);
+
 		expect(await fixture.checkpointRepo.findByRunId(fixture.suspension.runId)).toMatchObject({
 			expired: true,
 			state: null,
@@ -979,6 +1011,329 @@ describe('AgentExecutionRepository', () => {
 			}),
 		).rejects.toMatchObject({ phase: 'finalize', executionId });
 		expect(await repository.findOneByOrFail({ id: executionId })).toEqual(recovered);
+	});
+
+	describe('durable message queue', () => {
+		let owner: User;
+		beforeEach(async () => {
+			owner = await createMember();
+		});
+
+		function input(
+			threadId: string,
+			message: string,
+			sessionMode: 'new' | 'existing' = 'existing',
+		): Parameters<AgentMessageQueueService['enqueue']>[0] {
+			return {
+				agentId,
+				projectId,
+				threadId,
+				sessionMode,
+				source: 'chat',
+				payload: {
+					kind: 'preview',
+					message,
+					userId: owner.id,
+					resourceId: `draft-chat:${owner.id}`,
+				},
+			};
+		}
+
+		async function claim(services: ReturnType<typeof recordingServices>, threadId: string) {
+			const item = await services.queue.claimNext(threadId, async () => true);
+			if (!item) throw new Error('Expected a queue claim');
+			return item;
+		}
+
+		async function finish(
+			services: ReturnType<typeof recordingServices>,
+			item: ClaimedAgentMessage,
+		) {
+			const recorder = new ExecutionRecorder();
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+			await services.executionService.finalizeExecution(item.admission.executionId, {
+				...item.recording,
+				record: recorder.getMessageRecord(),
+			});
+			await services.queue.settle(item.thread.id, item.admission.executionId);
+		}
+
+		it('serializes acceptance and claims across connections while other sessions progress', async () => {
+			const local = recordingServices();
+			const remote = recordingServices(undefined, peer);
+			const threadId = uuid();
+			const first = await local.queue.enqueue(input(threadId, 'first', 'new'));
+			const inserted = createDeferredPromise<OperationContext>();
+			const release = createDeferredPromise();
+			const insert = local.queueRepository.enqueue.bind(local.queueRepository);
+			const spy = vi
+				.spyOn(local.queueRepository, 'enqueue')
+				.mockImplementationOnce(async (...args) => {
+					const item = await insert(...args);
+					inserted.resolve(args[3]);
+					await release.promise;
+					return item;
+				});
+			const competing = observePeerTransaction();
+			try {
+				const second = local.queue.enqueue(input(threadId, 'second'));
+				const ctx = await inserted.promise;
+				const third = remote.queue.enqueue(input(threadId, 'third'));
+				await competing.started;
+				await waitForPeerLock(ctx);
+				release.resolve();
+				const accepted = [first, ...(await Promise.all([second, third]))];
+				expect(accepted.map(({ id }) => BigInt(id))).toEqual(
+					accepted.map(({ id }) => BigInt(id)).sort((a, b) => (a < b ? -1 : 1)),
+				);
+			} finally {
+				release.resolve();
+				spy.mockRestore();
+				competing.restore();
+			}
+			const claims = await Promise.all(
+				[local, remote].map(async (services) => ({
+					services,
+					item: await services.queue.claimNext(threadId, async () => true),
+				})),
+			);
+			const winner = claims.find(({ item }) => item !== null);
+			if (!winner?.item) throw new Error('Expected one consumer');
+			expect(claims.filter(({ item }) => item !== null)).toHaveLength(1);
+			expect(winner.item.item.id).toBe(first.id);
+			expect(await repository.countBy({ threadId, status: 'running' })).toBe(1);
+			await expect(
+				local.executionService.startExecutionRecording(winner.item.recording, new Date()),
+			).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+			const independentId = uuid();
+			await remote.queue.enqueue(input(independentId, 'independent', 'new'));
+			const independent = await claim(remote, independentId);
+			await finish(remote, independent);
+			await finish(winner.services, winner.item);
+			for (const message of ['second', 'third']) {
+				const next = await claim(local, threadId);
+				expect(next.item.payload.message).toBe(message);
+				await finish(local, next);
+			}
+			expect(await local.queueRepository.count()).toBe(0);
+			const later = await local.queue.enqueue(input(threadId, 'later'));
+			expect(BigInt(later.id)).toBeGreaterThan(BigInt(independent.item.id));
+		});
+
+		it('rolls back acceptance and claim without partial session or execution records', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const insert = services.queueRepository.enqueue.bind(services.queueRepository);
+			const failedInsert = vi
+				.spyOn(services.queueRepository, 'enqueue')
+				.mockImplementationOnce(async (...args) => {
+					await insert(...args);
+					throw new Error('acceptance failed');
+				});
+			await expect(services.queue.enqueue(input(threadId, 'first', 'new'))).rejects.toThrow(
+				'acceptance failed',
+			);
+			failedInsert.mockRestore();
+			expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
+			expect(await services.queueRepository.count()).toBe(0);
+			const accepted = await services.queue.enqueue(input(threadId, 'first', 'new'));
+			const failedLink = vi
+				.spyOn(services.queueRepository, 'linkExecution')
+				.mockResolvedValueOnce(false);
+			await expect(claim(services, threadId)).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+			failedLink.mockRestore();
+			expect(await repository.countBy({ threadId })).toBe(0);
+			expect(await services.queueRepository.findDeliveryState(accepted.id)).toMatchObject({
+				executionId: null,
+			});
+			await finish(services, await claim(services, threadId));
+		});
+
+		it('enforces active-slot uniqueness and prevents execution deletion from requeuing a message', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			await services.queue.enqueue(input(threadId, 'first', 'new'));
+			const pending = await services.queue.enqueue(input(threadId, 'second'));
+			const active = await claim(services, threadId);
+			await expect(
+				services.queueRepository.update(pending.id, { executionId: active.admission.executionId }),
+			).rejects.toThrow();
+			await expect(repository.delete(active.admission.executionId)).rejects.toThrow();
+			expect(await services.queueRepository.findDeliveryState(active.item.id)).toMatchObject({
+				executionId: active.admission.executionId,
+			});
+			await finish(services, active);
+		});
+
+		it('recovers pending and abandoned work without replaying the interrupted input', async () => {
+			const local = recordingServices();
+			const remote = recordingServices(undefined, peer);
+			const threadId = uuid();
+			await local.queue.enqueue(input(threadId, 'interrupted', 'new'));
+			await local.queue.enqueue(input(threadId, 'next'));
+			const active = await claim(remote, threadId);
+			const cutoff = new Date(Date.now() - 120_000);
+			await repository.update(active.admission.executionId, {
+				updatedAt: new Date(cutoff.getTime() - 1),
+			});
+			const stale = await repository.findOneByOrFail({ id: active.admission.executionId });
+			await repository.touchRunning(stale.id);
+			expect(await local.executionService.finalizeInterruptedExecution(stale, cutoff)).toBe(false);
+			await repository.update(stale.id, { updatedAt: new Date(cutoff.getTime() - 1) });
+			expect(await local.executionService.finalizeInterruptedExecution(stale, cutoff)).toBe(true);
+			const next = await claim(local, threadId);
+			expect(next.item.payload.message).toBe('next');
+			await expect(finish(remote, active)).rejects.toThrow('no longer running');
+			await finish(local, next);
+			expect(
+				(await repository.findByThreadIdOrdered(threadId)).map(({ userMessage, status }) => ({
+					userMessage,
+					status,
+				})),
+			).toEqual([
+				{ userMessage: 'interrupted', status: 'interrupted' },
+				{ userMessage: 'next', status: 'success' },
+			]);
+		});
+
+		it.each(['settled', 'running', 'interrupted'] as const)(
+			'keeps approval ownership when its predecessor is %s and ignores late callbacks',
+			async (predecessor) => {
+				const local = recordingServices();
+				const remote = recordingServices(undefined, peer);
+				const threadId = uuid();
+				await local.queue.enqueue(input(threadId, 'approval', 'new'));
+				const pending = await local.queue.enqueue(input(threadId, 'later'));
+				const active = await claim(local, threadId);
+				const runId = uuid();
+				const state: SerializableAgentState = {
+					status: 'suspended',
+					messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+					pendingToolCalls: {},
+					persistence: {
+						threadId,
+						resourceId: `draft-chat:${owner.id}`,
+						hostMetadata: { [EXECUTION_METADATA_KEY]: active.admission.executionId },
+					},
+				};
+				await local.checkpointStorage.save(runId, state, agentId);
+				if (predecessor === 'settled') await finish(local, active);
+				if (predecessor === 'interrupted') {
+					const cutoff = new Date(Date.now() - 120_000);
+					await repository.update(active.admission.executionId, {
+						updatedAt: new Date(cutoff.getTime() - 1),
+					});
+					const stale = await repository.findOneByOrFail({ id: active.admission.executionId });
+					expect(await remote.executionService.finalizeInterruptedExecution(stale, cutoff)).toBe(
+						true,
+					);
+				}
+				expect(await remote.queue.claimNext(threadId, async () => true)).toBeNull();
+				expect(await remote.queueRepository.findDeliveryState(active.item.id)).not.toBeNull();
+				const resumedId = await remote.executionService.startExecutionRecording(
+					{ ...active.recording, userMessage: null, resumeRunId: runId },
+					new Date(),
+				);
+				await local.queue.settle(threadId, active.admission.executionId);
+				expect(await local.queueRepository.findDeliveryState(active.item.id)).toMatchObject({
+					executionId: resumedId,
+				});
+				await expect(local.checkpointStorage.save(runId, state, agentId)).rejects.toThrow(
+					'no longer owns',
+				);
+				await expect(
+					local.checkpointStorage.getStorage(agentId).delete(runId, state),
+				).rejects.toThrow('no longer owns');
+				expect(await local.checkpointStorage.cancelSuspended(runId, state, agentId)).toBe(false);
+				if (predecessor === 'running') await finish(local, active);
+				const resumedState = {
+					...state,
+					persistence: {
+						...state.persistence!,
+						hostMetadata: { [EXECUTION_METADATA_KEY]: resumedId },
+					},
+				};
+				await remote.checkpointStorage.getStorage(agentId).delete(runId, resumedState);
+				await finish(remote, {
+					...active,
+					admission: { executionId: resumedId, startedAt: new Date() },
+				});
+				const next = await claim(local, threadId);
+				expect(next.item.id).toBe(pending.id);
+				await local.queue.settle(threadId, active.admission.executionId);
+				expect(await local.queueRepository.findDeliveryState(next.item.id)).toMatchObject({
+					executionId: next.admission.executionId,
+				});
+				await finish(local, next);
+			},
+		);
+
+		it('advances after approval expiry without waiting for pruning', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			await services.queue.enqueue(input(threadId, 'approval', 'new'));
+			const pending = await services.queue.enqueue(input(threadId, 'later'));
+			const active = await claim(services, threadId);
+			const runId = uuid();
+			await services.checkpointStorage.save(
+				runId,
+				{
+					status: 'suspended',
+					persistence: { threadId, resourceId: owner.id },
+					messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+					pendingToolCalls: {},
+				},
+				agentId,
+			);
+			await finish(services, active);
+			expect(await services.queue.claimNext(threadId, async () => true)).toBeNull();
+			await Container.get(AgentCheckpointRepository).update(runId, {
+				updatedAt: new Date(Date.now() - (new AgentsConfig().checkpointTtlSeconds + 1) * 1000),
+			});
+			const next = await claim(services, threadId);
+			expect(next.item.id).toBe(pending.id);
+			await expect(services.checkpointStorage.load(runId, agentId)).rejects.toThrow('expired');
+			expect(await Container.get(AgentCheckpointRepository).findByRunId(runId)).toMatchObject({
+				expired: false,
+			});
+			await finish(services, next);
+		});
+
+		it('removes pending input and attachments on session deletion and never recreates it', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const attachment = await attachmentRepo.save(buildAttachment(threadId));
+			const accepted = input(threadId, 'pending', 'new');
+			accepted.payload.attachments = [
+				{
+					id: attachment.id,
+					fileName: attachment.fileName,
+					mimeType: attachment.mimeType,
+					sizeBytes: attachment.fileSizeBytes,
+				},
+			];
+			await services.queue.enqueue(accepted);
+			expect(
+				await services.executionService.deleteThread(projectId, agentId, threadId, owner.id),
+			).toBe(true);
+			expect(await services.queueRepository.countBy({ threadId })).toBe(0);
+			expect(await attachmentRepo.findOneBy({ id: attachment.id })).toBeNull();
+			expect(services.attachmentService.deleteStoredData).toHaveBeenCalledWith(
+				[attachment.binaryDataId],
+				{ threadId },
+			);
+			expect(await services.queue.claimNext(threadId, async () => true)).toBeNull();
+			await expect(services.queue.enqueue(input(threadId, 'late'))).rejects.toThrow();
+			expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
+		});
+
+		it('cascades agent deletion through pending queue rows', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			await services.queue.enqueue(input(threadId, 'pending', 'new'));
+			await agentRepo.delete(agentId);
+			expect(await services.queueRepository.countBy({ threadId })).toBe(0);
+		});
 	});
 
 	const createThread = async (overrides: Partial<AgentExecutionThread> = {}) => {
