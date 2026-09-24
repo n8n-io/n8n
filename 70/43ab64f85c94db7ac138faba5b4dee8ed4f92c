@@ -1,0 +1,64 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_159d8efde9b20c::t_c60dd21b3d0df2 69
+  s_159d8efde9b20c::t_bf20d0beb3b091 718-719
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/DitherTrailGrid.vue
+  s_cb231a8d0fc542::t_2cda840e0e5e35 21-40
+  s_159d8efde9b20c::t_399824e1cf84a4 201
+  s_159d8efde9b20c::t_52757a379d4eda 216,219,242-245,275,279
+  s_ad6cf7dacc805b::t_8ff885c45643cc 173-178,181-189,193-195,198-200,210-212
+  s_159d8efde9b20c::t_640b2dc34236ce 179,190-191
+  s_159d8efde9b20c::t_e131b09e371c67 10,46-54,58,62,68,141,146,169-172,213-215,217-218,220-222,224-226,231,246,278,286,298-303,306-307,310,313-318,360
+  s_159d8efde9b20c::t_a583d55bfd4152 9,148,153-157,159-162,164-168,255-269
+  s_159d8efde9b20c::t_68b8341d8e9b32 180,192,196-197,202-207,272
+  s_159d8efde9b20c::t_c4d4a6a87b6bc9 232-241,311,319-341
+  s_ad6cf7dacc805b::t_a3497cdc282a59 2
+  s_cb231a8d0fc542::t_5127056885f112 304-305
+  s_cb231a8d0fc542::t_3870ec8b104f8b 79-134,140,151,158,163,208-209,223,249-251,273,288-291
+  s_ad6cf7dacc805b::t_d1b4380c994915 1
+  s_159d8efde9b20c::t_ce250cf2e7fb99 55-57
+  s_159d8efde9b20c::t_cb52d60d89a45f 59-61
+  s_159d8efde9b20c::t_2c375e292ca759 63-67
+  s_cb231a8d0fc542::t_5b345a565d7055 135-139
+  s_159d8efde9b20c::t_36210d030452b9 142-145
+  s_159d8efde9b20c::t_32eca3b2ec06e8 147
+  s_159d8efde9b20c::t_d4d92d868c63dd 227-230
+  s_159d8efde9b20c::t_f706d0639b4f25 270-271
+  s_159d8efde9b20c::t_e7fa2335b64dad 276-277
+  s_159d8efde9b20c::t_a25a014641d618 280-285
+  s_159d8efde9b20c::t_b886c7291393ae 308-309
+  s_159d8efde9b20c::t_da808807e67c42 312
+  s_159d8efde9b20c::t_0f6866c88a1efc 342-344,357-359
+  s_159d8efde9b20c::t_4794283d06a7a9 361-363
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7043ab64f85c94db7ac138faba5b4dee8ed4f92c",
+  "prompts": {},
+  "sessions": {
+    "s_159d8efde9b20c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d2d0-56bd-7524-8e4b-fa3e263388d2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ad6cf7dacc805b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d342-507f-7524-8e4b-fa445503b72e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cb231a8d0fc542": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d2f0-083c-7524-8e4b-fa4090b5cc34",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
