@@ -321,3 +321,37 @@ describe('AgentChatStreamConsumer — a streamed post that settles after the dea
 		expect(discrete).toEqual([{ markdown: 'Recovered text' }]);
 	});
 });
+
+describe('AgentChatStreamConsumer — a rejection that outruns the deadline', () => {
+	it('lets the error reply own the turn instead of posting the text on top of it', async () => {
+		const onStreamingPostStalled = vi.fn();
+		let releaseError: (() => void) | undefined;
+		const postErrorToThread = vi.fn(
+			async () =>
+				await new Promise<void>((resolve) => {
+					releaseError = resolve;
+				}),
+		);
+		const { thread, discrete } = makeStreamingThread({ rejectAfterMs: 5 });
+		const consumer = makeStreamingConsumer({
+			streamingPostTimeoutMs: 40,
+			onStreamingPostStalled,
+			postErrorToThread,
+		});
+
+		// The post rejects, its error reply hangs, and the deadline fires while
+		// that reply is still in flight.
+		await consumer.consume(
+			makeStream([{ type: 'text-delta', id: 't-1', delta: 'Half a reply' }]),
+			thread,
+		);
+
+		expect(discrete).toEqual([]);
+		expect(onStreamingPostStalled).not.toHaveBeenCalled();
+
+		releaseError?.();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(postErrorToThread).toHaveBeenCalledTimes(1);
+		expect(discrete).toEqual([]);
+	});
+});

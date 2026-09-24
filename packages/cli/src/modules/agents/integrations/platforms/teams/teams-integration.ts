@@ -29,7 +29,7 @@ const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 /** Interval picked to match Discord's; Teams does not document the expiry. */
 const TEAMS_TYPING_REFRESH_MS = 8000;
 
-const BUFFERED_ONLY_TTL_MS = 30 * 60 * 1000;
+export const BUFFERED_ONLY_TTL_MS = 30 * 60 * 1000;
 
 /**
  * Above the SDK's retry ceiling, not just above a healthy round trip. Teams

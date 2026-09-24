@@ -128,6 +128,12 @@ export class AgentChatStreamConsumer {
 		 * would land after the reply the user already has.
 		 */
 		let streamingPostAbandoned = false;
+		/**
+		 * Recorded before the handler's first await, so the deadline can still see
+		 * a rejection whose error reply is in flight. Without it a slow error reply
+		 * outlives the deadline and the turn posts the text on top of it.
+		 */
+		let streamingPostRejected = false;
 
 		const createTextIterable = (): AsyncIterable<string> => {
 			const queue: string[] = [];
@@ -175,7 +181,9 @@ export class AgentChatStreamConsumer {
 		const startStreamingPost = () => {
 			const iterable = createTextIterable();
 			streamingPostAbandoned = false;
+			streamingPostRejected = false;
 			streamingPost = thread.post(iterable).catch(async (postError: unknown) => {
+				streamingPostRejected = true;
 				const message = postError instanceof Error ? postError.message : String(postError);
 				if (streamingPostAbandoned) {
 					this.options.logger.debug('[AgentChatBridge] Abandoned streaming post failed', {
@@ -199,7 +207,9 @@ export class AgentChatStreamConsumer {
 				streamingPost = null;
 				if (this.options.singleStreamedRunPerTurn) streamingStopped = true;
 				const outcome = await this.awaitStreamingPost(post, thread);
-				if (outcome === 'stalled') {
+				// A rejection that outran the deadline is not a stall: its error reply
+				// owns the turn, and the platform may have rendered part of the text.
+				if (outcome === 'stalled' && !streamingPostRejected) {
 					streamingPostAbandoned = true;
 					// Re-opening a stream the platform never acknowledged stalls again.
 					streamingStopped = true;
