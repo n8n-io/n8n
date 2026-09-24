@@ -127,7 +127,7 @@ export class EngineAdditionalDataBuilder {
 			getRuntimeCredential: unimplemented('Runtime credentials (getRuntimeCredential)'),
 			setExecutionStatus: () => {
 				throw new UnimplementedError(
-					'Setting the execution status from a node (setExecutionStatus) is not supported on Engine 2.0 yet',
+					'Setting the execution status from a node (setExecutionStatus) is not supported on Engine v2 yet',
 				);
 			},
 		};
