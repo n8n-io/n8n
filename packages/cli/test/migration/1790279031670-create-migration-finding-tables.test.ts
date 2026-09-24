@@ -15,7 +15,8 @@ const TABLES = ['migration_finding', 'migration_finding_sync'];
 describe('CreateMigrationFindingTables migration', () => {
 	let dataSource: DataSource;
 
-	beforeAll(async () => {
+	// Each case starts from the pre-migration schema, so the cases stay independent.
+	beforeEach(async () => {
 		await Container.get(DbConnection).init();
 		dataSource = Container.get(DataSource);
 		const context = createTestMigrationContext(dataSource);
@@ -24,7 +25,7 @@ describe('CreateMigrationFindingTables migration', () => {
 		await initDbUpToMigration(MIGRATION_NAME);
 	});
 
-	afterAll(async () => {
+	afterEach(async () => {
 		await Container.get(DbConnection).close();
 	});
 
@@ -67,6 +68,7 @@ describe('CreateMigrationFindingTables migration', () => {
 	});
 
 	it('limits targetVersion to the known versions', async () => {
+		await runSingleMigration(MIGRATION_NAME);
 		await insertSyncRecord('v3');
 
 		await expect(insertSyncRecord('v9')).rejects.toThrow();
