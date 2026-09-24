@@ -6,7 +6,11 @@ paths:
   /community-packages:
     get:
       $ref: ./handlers/community-packages/spec/paths/getInstalledPackages.generated.yml
+    post:
+      $ref: ./handlers/community-packages/spec/paths/installPackage.generated.yml
   /community-packages/{name}:
+    patch:
+      $ref: ./handlers/community-packages/spec/paths/updatePackage.generated.yml
     delete:
       $ref: ./handlers/community-packages/spec/paths/uninstallPackage.generated.yml
   /credential-type-policies/instance:

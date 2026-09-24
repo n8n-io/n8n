@@ -1,0 +1,89 @@
+operationId: updatePackage
+tags:
+  - CommunityPackage
+summary: Update a community package
+description: Update an installed community package to a new version.
+x-required-scope: communityPackage:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: npm package name
+    name: name
+    in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          version:
+            type: string
+            description: Semver version or npm dist-tag to update to, such as latest or beta
+          verify:
+            type: boolean
+            description: Whether to verify the package against the n8n-vetted package list. Setting to false will allow installing or updating to an unverified version. Default is true.
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            packageName:
+              type: string
+              description: npm package name
+            installedVersion:
+              type: string
+              description: Currently installed version
+            authorName:
+              type: string
+              description: Package author name
+            authorEmail:
+              type: string
+              description: Package author email
+            installedNodes:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  type:
+                    type: string
+                  latestVersion:
+                    type: number
+              description: Nodes included in this package
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            updateAvailable:
+              type: string
+              description: Version available for update, if any
+            failedLoading:
+              type: boolean
+              description: Whether the package failed to load
+          required:
+            - packageName
+            - installedVersion
+            - installedNodes
+            - createdAt
+            - updatedAt
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

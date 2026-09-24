@@ -262,7 +262,10 @@ export {
 
 export {
 	CommunityPackageListPublicDto,
+	CommunityPackagePublicDto,
+	InstallCommunityPackagePublicDto,
 	ListCommunityPackagesQueryDto,
+	UpdateCommunityPackagePublicDto,
 	communityPackagePublicSchema,
 	type CommunityPackagePublic,
 } from './community-packages/community-package-public.dto';

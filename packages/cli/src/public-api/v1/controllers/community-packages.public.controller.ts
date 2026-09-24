@@ -1,6 +1,9 @@
 import {
 	CommunityPackageListPublicDto,
+	CommunityPackagePublicDto,
+	InstallCommunityPackagePublicDto,
 	ListCommunityPackagesQueryDto,
+	UpdateCommunityPackagePublicDto,
 	communityPackageNameParamSchema,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -11,9 +14,12 @@ import {
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
 	Delete,
 	Get,
 	Param,
+	Patch,
+	Post,
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
@@ -42,6 +48,48 @@ export class CommunityPackagesPublicController {
 		const packages = await this.communityPackagesLifecycleService.listInstalledPackages();
 
 		return packages.map(toCommunityPackagePublic);
+	}
+
+	@Post('/')
+	@ApiKeyScope('communityPackage:install')
+	@ApiSummary('Install a community package')
+	@ApiDescription('Install a community package by npm name and optional version.')
+	@ApiTags(['CommunityPackage'])
+	@ApiResponse(200, CommunityPackagePublicDto)
+	async installPackage(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: InstallCommunityPackagePublicDto,
+	): Promise<CommunityPackagePublicDto> {
+		const installedPackage = await this.communityPackagesLifecycleService.install(
+			{ name: body.name, version: body.version, verify: body.verify ?? true },
+			req.user,
+			'publicApi',
+		);
+
+		return CommunityPackagePublicDto.parse(toCommunityPackagePublic(installedPackage));
+	}
+
+	@Patch('/:name')
+	@ApiKeyScope('communityPackage:update')
+	@ApiSummary('Update a community package')
+	@ApiDescription('Update an installed community package to a new version.')
+	@ApiTags(['CommunityPackage'])
+	@ApiResponse(200, CommunityPackagePublicDto)
+	@ApiErrorResponse(404)
+	async updatePackage(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('name', communityPackageNameParamSchema) name: string,
+		@Body body: UpdateCommunityPackagePublicDto,
+	): Promise<CommunityPackagePublicDto> {
+		const updated = await this.communityPackagesLifecycleService.update(
+			{ name, version: body.version, verify: body.verify ?? true },
+			req.user,
+			'notFound',
+		);
+
+		return CommunityPackagePublicDto.parse(toCommunityPackagePublic(updated));
 	}
 
 	@Delete('/:name')

@@ -47,6 +47,7 @@ mockInstance(CommunityPackagesService);
 mockInstance(InstanceSettings, {
 	isMultiMain: false,
 	n8nFolder: '/tmp/n8n-test',
+	nodesDownloadDir: '/tmp/n8n-test/nodes',
 });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
