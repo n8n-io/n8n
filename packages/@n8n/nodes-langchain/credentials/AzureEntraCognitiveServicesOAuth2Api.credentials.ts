@@ -88,6 +88,12 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			default: '=https://login.microsoftonline.com/{{$self["tenantId"]}}/oauth2/token',
 		},
 		{
+			displayName: 'Send Additional Body Properties',
+			name: 'sendAdditionalBodyProperties',
+			type: 'hidden',
+			default: false,
+		},
+		{
 			displayName: 'Additional Body Properties',
 			name: 'additionalBodyProperties',
 			type: 'hidden',

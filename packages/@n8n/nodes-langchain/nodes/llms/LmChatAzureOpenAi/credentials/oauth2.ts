@@ -9,7 +9,6 @@ import type {
 import { AZURE_OPENAI_INFERENCE_AUDIENCE } from '../types';
 
 const AZURE_OPENAI_SCOPE = `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`;
-
 /**
  * Creates Entra ID (OAuth2) authentication for Azure OpenAI
  */

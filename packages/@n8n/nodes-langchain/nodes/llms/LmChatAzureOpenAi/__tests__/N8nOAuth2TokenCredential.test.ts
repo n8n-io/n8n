@@ -163,7 +163,6 @@ describe('N8nOAuth2TokenCredential', () => {
 
 		it('should not require oauthTokenData', async () => {
 			const withoutBrowserToken = { ...mockCredential };
-			// @ts-expect-error: a client-credentials credential never holds this
 			delete withoutBrowserToken.oauthTokenData;
 			credential = new N8nOAuth2TokenCredential(
 				mockNode,
@@ -196,17 +195,17 @@ describe('N8nOAuth2TokenCredential', () => {
 			expect(mockGetToken).toHaveBeenCalledTimes(1);
 		});
 
-		it('should mint a new token once the old one is near expiry', async () => {
-			mockGetToken.mockResolvedValue({
-				data: { access_token: 'fresh-test-token', expires_in: '30' },
-			});
+		it('should serve the old token while it refreshes near expiry', async () => {
+			mockGetToken
+				.mockResolvedValueOnce({ data: { access_token: 'first-token', expires_in: '30' } })
+				.mockResolvedValueOnce({ data: { access_token: 'second-token', expires_in: '3599' } });
 			const provider = getBearerTokenProvider(
 				credential,
 				`${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`,
 			);
 
-			await provider();
-			await provider();
+			await expect(provider()).resolves.toBe('first-token');
+			await expect(provider()).resolves.toBe('first-token');
 
 			expect(mockGetToken).toHaveBeenCalledTimes(2);
 		});

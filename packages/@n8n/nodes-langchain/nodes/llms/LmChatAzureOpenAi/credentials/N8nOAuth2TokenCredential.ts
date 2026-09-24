@@ -10,7 +10,7 @@ import {
 } from '../types';
 
 /** Entra reports seconds; `AccessToken.expiresOnTimestamp` is epoch milliseconds. An unreadable expiry reads as already expired. */
-function expiresOnTimestamp(data: ClientOAuth2TokenData & { expires_on?: string }): number {
+function expiresOnTimestamp(data: ClientOAuth2TokenData): number {
 	const expiresIn = Number(data.expires_in);
 	if (Number.isFinite(expiresIn) && expiresIn > 0) return Date.now() + expiresIn * 1000;
 
@@ -50,7 +50,6 @@ export class N8nOAuth2TokenCredential implements TokenCredential {
 				expiresOnTimestamp: expiresOnTimestamp(token.data),
 			};
 		} catch (error) {
-			// Re-throw with better error message
 			throw new NodeOperationError(this.node, 'Failed to retrieve OAuth2 access token', error);
 		}
 	}
