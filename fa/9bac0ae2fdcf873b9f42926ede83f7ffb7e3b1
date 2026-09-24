@@ -1,0 +1,93 @@
+packages/@n8n/db/src/migrations/common/1790259878851-AddAgentMessageSteering.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 1-57
+packages/@n8n/agents/src/runtime/streaming/stream-writer-guard.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 14,19-27
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 2-3,16,58-76
+packages/@n8n/agents/src/types/runtime/agent-loop.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 14,116-118
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_c5954c3047b5ed::t_174ed1f168939c 320-331
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 1,12-20
+  s_c5954c3047b5ed::t_307973a0a526d0 21
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 10,93-94,189-196,198-199
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 8,266,388-399
+  s_c5954c3047b5ed::t_45c58b316e867b 400
+packages/cli/src/modules/agents/builder/__tests__/format-preview-context.test.ts
+  s_c5954c3047b5ed::t_174ed1f168939c 79-90,110
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 49,60-64,68-69,74-75,77-78,81-82
+packages/@n8n/agents/src/runtime/__tests__/file-parts.test.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 99,105,108,114-128
+  s_c5954c3047b5ed::t_1d379d849ffb72 129
+packages/cli/test/migration/1790259878851-add-agent-message-steering.test.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 1-120
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 45-51
+packages/@n8n/db/src/migrations/sqlite/1790259878851-AddAgentMessageSteering.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 1-28
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_c5954c3047b5ed::t_174ed1f168939c 37-47
+packages/@n8n/agents/src/types/index.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 49
+packages/@n8n/agents/src/runtime/loop/hydrate-file-parts.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 6,35,37,44,48-50,52,54-57,59
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 3,24-31,48,61,74-128
+  s_c5954c3047b5ed::t_d1b04b314d9e0d 129
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 1-2,4-5,10-41
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 19,176-178,414,417,420,613-615,644-709,711-716,727-736,739,741-745,748-750,754-838,840-983
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 20-23,58-72
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 78,80-87,91-111,118-129,137
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 313-336,338-368,370-376
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 142,276-290,436,450
+packages/@n8n/agents/src/index.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 78
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 56,111,724-726,729,732-734,747-775,806-808,814-817,819-824,826-831,887,890,922,953,961-962,965
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 429-435
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_c5954c3047b5ed::t_e97343495fdb3f 291,294
+docs/generated/postgres-schema/README.md
+  s_c5954c3047b5ed::t_542a1f624723ce 22,26,203,524,598-599
+docs/generated/postgres-schema/public.agent_execution.md
+  s_c5954c3047b5ed::t_b2d40a47477674 7,40,63,67,97-98
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_c5954c3047b5ed::t_c25b49a6b527e6 110,140-141
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_c5954c3047b5ed::t_45e882fac9e531 12-13,23,37,48,57-58,63
+docs/generated/sqlite-schema/README.md
+  s_c5954c3047b5ed::t_1a59fbe795d9ac 22,26,184,186,510,584-585
+docs/generated/sqlite-schema/agent_execution.md
+  s_c5954c3047b5ed::t_e7fdc3f3b87538 9,18,66,71,101-102
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_c5954c3047b5ed::t_a32635cbfd8db6 110,140-141
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_c5954c3047b5ed::t_103002a519d086 9,23-24,32,34,42,52,61-62,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fa9bac0ae2fdcf873b9f42926ede83f7ffb7e3b1",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
