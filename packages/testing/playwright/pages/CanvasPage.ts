@@ -507,6 +507,14 @@ export class CanvasPage extends BasePage {
 			.first();
 	}
 
+	async getNodePlusEndpointBoundingBox(
+		nodeName: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.canvasNodePlusEndpointByName(nodeName).boundingBox();
+		if (!box) throw new Error(`Output plus for "${nodeName}" not found or not visible`);
+		return box;
+	}
+
 	nodeCreatorSearchBar(): Locator {
 		return this.page.getByTestId('node-creator-search-bar');
 	}
@@ -648,6 +656,36 @@ export class CanvasPage extends BasePage {
 		return this.connectionToolbarBetweenNodes(sourceNodeName, targetNodeName).getByTestId(
 			'add-connection-button',
 		);
+	}
+
+	async getAddConnectionButtonBoundingBox(
+		sourceNodeName: string,
+		targetNodeName: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.getAddConnectionButtonBetweenNodes(
+			sourceNodeName,
+			targetNodeName,
+		).boundingBox();
+		if (!box) throw new Error('Connection add button not found or not visible');
+		return box;
+	}
+
+	async hoverConnectionBetweenNodes(sourceNodeName: string, targetNodeName: string): Promise<void> {
+		const interactionPath = this.connectionBetweenNodes(sourceNodeName, targetNodeName)
+			.locator('.vue-flow__edge-interaction')
+			.first();
+		await expect(interactionPath).toHaveCount(1);
+
+		const point = await interactionPath.evaluate((element) => {
+			const path = element as SVGPathElement;
+			const matrix = path.getScreenCTM();
+			if (!matrix) throw new Error('Connection path has no screen transform');
+
+			const screenPoint = path.getPointAtLength(path.getTotalLength() / 2).matrixTransform(matrix);
+			return { x: screenPoint.x, y: screenPoint.y };
+		});
+
+		await this.page.mouse.move(point.x, point.y);
 	}
 
 	// Canvas action helpers

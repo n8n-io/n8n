@@ -69,6 +69,59 @@ test.describe(
 			expect(after.width).toBeGreaterThan(before.width);
 		});
 
+		test('keeps a cross-group connection add button inside its source group after tidy up', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.hoverConnectionBetweenNodes('Set A', 'Set B');
+			await n8n.canvas.getAddConnectionButtonBetweenNodes('Set A', 'Set B').click();
+			await n8n.canvas.fillNodeCreatorSearchBar('group');
+			await n8n.canvas.clickNodeCreatorItemName('Group');
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
+
+			await n8n.canvas.selectNodes(['Set B', 'Set C']);
+			await n8n.canvas.selectionToolbar.groupButton().click();
+			await n8n.canvas.deselectAll();
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(2);
+
+			await n8n.canvas.clickTidyUpButton();
+			await n8n.canvas.clickZoomToFitButton();
+			await n8n.canvas.hoverConnectionBetweenNodes('No Operation, do nothing', 'Set B');
+			await expect(
+				n8n.canvas.getAddConnectionButtonBetweenNodes('No Operation, do nothing', 'Set B'),
+			).toBeVisible();
+
+			const sourceGroup = await n8n.canvas.getNodeGroupFrameBoundingBox('Group 1');
+			const addButton = await n8n.canvas.getAddConnectionButtonBoundingBox(
+				'No Operation, do nothing',
+				'Set B',
+			);
+			expect(addButton.x).toBeGreaterThanOrEqual(sourceGroup.x + 8);
+			expect(addButton.y).toBeGreaterThanOrEqual(sourceGroup.y + 8);
+			expect(addButton.x + addButton.width).toBeLessThanOrEqual(
+				sourceGroup.x + sourceGroup.width - 40,
+			);
+			expect(addButton.y + addButton.height).toBeLessThanOrEqual(
+				sourceGroup.y + sourceGroup.height - 8,
+			);
+		});
+
+		test('keeps the output plus inside a regular multi-node group after tidy up', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.selectNodes(['Set B', 'Set C']);
+			await n8n.canvas.selectionToolbar.groupButton().click();
+			await n8n.canvas.deselectAll();
+
+			await n8n.canvas.clickTidyUpButton();
+			await n8n.canvas.clickZoomToFitButton();
+
+			const groupFrame = await n8n.canvas.getNodeGroupFrameBoundingBox(DEFAULT_GROUP_TITLE);
+			const outputPlus = await n8n.canvas.getNodePlusEndpointBoundingBox('Set C');
+			expect(outputPlus.x + outputPlus.width).toBeLessThanOrEqual(
+				groupFrame.x + groupFrame.width - 8,
+			);
+		});
+
 		test('drags the group when grabbing the title bar beside a short name', async ({ n8n }) => {
 			await n8n.canvas.selectNodes(['Set A', 'Set B']);
 			await n8n.canvas.selectionToolbar.groupButton().click();

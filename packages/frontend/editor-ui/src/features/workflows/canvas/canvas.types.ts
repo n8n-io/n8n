@@ -258,6 +258,7 @@ export interface CanvasInjectionData {
 	viewport: Ref<ViewportTransform>;
 	isExperimentalNdvActive: ComputedRef<boolean>;
 	isPaneMoving: Ref<boolean>;
+	getContainingGroupRect: (nodeId: string) => BoundingBox | undefined;
 }
 
 export type CanvasNodeEventBusEvents = {

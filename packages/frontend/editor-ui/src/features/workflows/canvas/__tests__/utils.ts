@@ -4,12 +4,14 @@ import type {
 	CanvasGroupNode,
 	CanvasGroupNodeData,
 	CanvasInjectionData,
+	BoundingBox,
 	CanvasNode,
 	CanvasNodeData,
 	CanvasNodeEventBusEvents,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
 	ConnectStartEvent,
+	NodeExecutionSnapshot,
 } from '@/features/workflows/canvas/canvas.types';
 import type { ExecutionOutputMapData } from '@/app/types/executionData';
 import {
@@ -18,7 +20,6 @@ import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
 } from '@/features/workflows/canvas/canvas.types';
-import type { NodeExecutionSnapshot } from '@/features/workflows/canvas/canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
@@ -204,11 +205,13 @@ export function createCanvasProvide({
 	isExecuting = false,
 	connectingHandle = undefined,
 	viewport = { x: 0, y: 0, zoom: 1 },
+	getContainingGroupRect = () => undefined,
 }: {
 	initialized?: boolean;
 	isExecuting?: boolean;
 	connectingHandle?: ConnectStartEvent;
 	viewport?: ViewportTransform;
+	getContainingGroupRect?: (nodeId: string) => BoundingBox | undefined;
 } = {}) {
 	return {
 		[String(CanvasKey)]: {
@@ -218,6 +221,7 @@ export function createCanvasProvide({
 			viewport: ref(viewport),
 			isExperimentalNdvActive: computed(() => false),
 			isPaneMoving: ref(false),
+			getContainingGroupRect,
 		} satisfies CanvasInjectionData,
 	};
 }

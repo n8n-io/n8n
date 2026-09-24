@@ -2,13 +2,43 @@ import type { EdgeProps } from '@vue-flow/core';
 import { getBezierPath, getSmoothStepPath, Position } from '@vue-flow/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType } from 'n8n-workflow';
+import type { BoundingBox } from '../../../../canvas.types';
 
 const EDGE_PADDING_BOTTOM = 130;
 const EDGE_PADDING_X = 40;
 const EDGE_BORDER_RADIUS = 16;
 const HANDLE_SIZE = 20; // Required to avoid connection line glitching when initially interacting with the handle
+const EDGE_TOOLBAR_INSET_X = 48;
+const EDGE_TOOLBAR_INSET_Y = 36;
 
 const isRightOfSourceHandle = (sourceX: number, targetX: number) => sourceX - HANDLE_SIZE > targetX;
+
+function clampToInset(start: number, size: number, inset: number, value: number) {
+	if (size < inset * 2) return start + size / 2;
+	return Math.min(Math.max(value, start + inset), start + size - inset);
+}
+
+export function getEdgeToolbarPosition(
+	labelPosition: [number, number],
+	containingGroupRect?: BoundingBox,
+): [number, number] {
+	if (!containingGroupRect) return labelPosition;
+
+	return [
+		clampToInset(
+			containingGroupRect.x,
+			containingGroupRect.width,
+			EDGE_TOOLBAR_INSET_X,
+			labelPosition[0],
+		),
+		clampToInset(
+			containingGroupRect.y,
+			containingGroupRect.height,
+			EDGE_TOOLBAR_INSET_Y,
+			labelPosition[1],
+		),
+	];
+}
 
 export function getEdgeRenderData(
 	props: Pick<

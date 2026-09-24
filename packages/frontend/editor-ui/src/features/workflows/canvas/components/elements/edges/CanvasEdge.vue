@@ -7,7 +7,7 @@ import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, watch } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
-import { getEdgeRenderData } from './utils';
+import { getEdgeRenderData, getEdgeToolbarPosition } from './utils';
 import { useCanvas } from '../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
 import { resolveCanonicalConnection } from '../../../canvas.utils';
@@ -30,7 +30,7 @@ const data = toRef(props, 'data');
 
 const $style = useCssModule();
 
-const { viewport } = useCanvas();
+const { viewport, getContainingGroupRect } = useCanvas();
 const { calculateEdgeLightness } = useZoomAdjustedValues(viewport);
 
 const connectionType = computed(() =>
@@ -76,7 +76,7 @@ const edgeClasses = computed(() => ({
 }));
 
 const edgeToolbarStyle = computed(() => ({
-	transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px, ${labelPosition.value[1]}px)`,
+	transform: `translate(-50%, -50%) translate(${renderedLabelPosition.value[0]}px, ${renderedLabelPosition.value[1]}px)`,
 	...(delayedHovered.value && props.bringToFront ? { zIndex: 1 } : {}),
 }));
 
@@ -95,7 +95,19 @@ const renderData = computed(() =>
 
 const segments = computed(() => renderData.value.segments);
 
-const labelPosition = computed(() => renderData.value.labelPosition);
+const labelPosition = computed<[number, number]>(() => {
+	const [x, y] = renderData.value.labelPosition;
+	return [x, y];
+});
+
+const toolbarPosition = computed(() => {
+	const canonicalSourceId = data.value.canonicals?.[0]?.source ?? props.source;
+	return getEdgeToolbarPosition(labelPosition.value, getContainingGroupRect(canonicalSourceId));
+});
+
+const renderedLabelPosition = computed(() =>
+	renderToolbar.value ? toolbarPosition.value : labelPosition.value,
+);
 
 const connection = computed<Connection>(() =>
 	resolveCanonicalConnection({

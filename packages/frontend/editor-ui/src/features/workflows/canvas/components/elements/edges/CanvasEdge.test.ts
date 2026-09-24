@@ -7,6 +7,7 @@ import { setActivePinia } from 'pinia';
 import CanvasEdge, { type CanvasEdgeProps } from './CanvasEdge.vue';
 import type { CanvasConnectionPort } from '../../../canvas.types';
 import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
+import { getEdgeToolbarPosition } from './utils';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -36,6 +37,24 @@ beforeEach(() => {
 });
 
 describe('CanvasEdge', () => {
+	describe('getEdgeToolbarPosition', () => {
+		it('keeps the edge midpoint when the source is not inside a group', () => {
+			expect(getEdgeToolbarPosition([450, 310])).toEqual([450, 310]);
+		});
+
+		it('keeps the toolbar inset from every edge of its source group', () => {
+			expect(getEdgeToolbarPosition([450, 310], { x: 0, y: 0, width: 400, height: 300 })).toEqual([
+				352, 264,
+			]);
+		});
+
+		it('does not move a toolbar that is already safely inside its source group', () => {
+			expect(getEdgeToolbarPosition([200, 150], { x: 0, y: 0, width: 400, height: 300 })).toEqual([
+				200, 150,
+			]);
+		});
+	});
+
 	it('should emit delete event when toolbar delete is clicked', async () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: {

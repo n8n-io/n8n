@@ -4,6 +4,7 @@ import type { ContextMenuTarget } from '@/features/shared/contextMenu/composable
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { CanvasLayoutEvent, CanvasLayoutResult } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
+import { computeGroupFrameRects } from '../composables/useCanvasMapping.groups';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
@@ -1964,6 +1965,27 @@ watch([vueFlow.nodes, () => experimentalNdvStore.nodeNameToBeFocused], ([nodes, 
 
 const isExecuting = toRef(props, 'executing');
 
+function getContainingGroupRect(nodeId: string) {
+	const groupNode = vueFlow.nodes.value.find(
+		(node): node is GraphNode<CanvasGroupNodeData> =>
+			isCanvasGroupNode(node) && node.data.group.nodeIds.includes(nodeId),
+	);
+	if (!groupNode) return undefined;
+
+	const frameRects = computeGroupFrameRects(groupNode.data.nodesRect);
+	const frameRect = groupNode.data.isCollapsed ? frameRects.collapsed : frameRects.expanded;
+	const position = groupNode.computedPosition ?? groupNode.position;
+
+	return {
+		x: position.x,
+		y: position.y,
+		width: groupNode.dimensions.width || frameRect.width,
+		height: groupNode.data.isCollapsed
+			? groupNode.dimensions.height || frameRect.height
+			: frameRect.height,
+	};
+}
+
 provide(CanvasKey, {
 	connectingHandle,
 	isExecuting,
@@ -1971,6 +1993,7 @@ provide(CanvasKey, {
 	viewport,
 	isExperimentalNdvActive,
 	isPaneMoving,
+	getContainingGroupRect,
 });
 
 defineExpose({
