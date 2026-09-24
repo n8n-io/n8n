@@ -38,6 +38,19 @@ export class NodeTypes implements INodeTypes {
 		};
 	}
 
+	/** `resolveBaseName` that refuses generated tool variants listed in `NODES_EXCLUDE`. */
+	private resolveLoadableBaseName(nodeTypeName: string) {
+		const resolved = this.resolveBaseName(nodeTypeName);
+		if (
+			resolved.isSyntheticTool &&
+			this.loadNodesAndCredentials.excludeNodes.includes(nodeTypeName)
+		) {
+			const [packageName, nodeType] = nodeTypeName.split('.');
+			throw new UnrecognizedNodeTypeError(packageName, nodeType);
+		}
+		return resolved;
+	}
+
 	/**
 	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
 	 */
@@ -95,7 +108,7 @@ export class NodeTypes implements INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		const origType = nodeType;
 
-		const { baseName, isSyntheticTool } = this.resolveBaseName(nodeType);
+		const { baseName, isSyntheticTool } = this.resolveLoadableBaseName(nodeType);
 
 		// If an existing node name ends in `Tool`, then return that node, instead of creating a fake Tool node
 		if (nodeType.endsWith('Tool') && !isSyntheticTool) {
@@ -173,7 +186,7 @@ export class NodeTypes implements INodeTypes {
 		// prototype-chain values that throw at any of the reads below. Fold any
 		// such failure into "unknown type" instead of failing the caller.
 		try {
-			const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
+			const { baseName, isSyntheticTool } = this.resolveLoadableBaseName(nodeTypeName);
 
 			const { type } = this.loadNodesAndCredentials.getNode(baseName);
 
@@ -244,7 +257,7 @@ export class NodeTypes implements INodeTypes {
 
 	getNodeTypeDescriptions(nodeTypes: NeededNodeType[]): INodeTypeDescription[] {
 		return nodeTypes.map(({ name: nodeTypeName, version: nodeTypeVersion }) => {
-			const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
+			const { baseName, isSyntheticTool } = this.resolveLoadableBaseName(nodeTypeName);
 
 			const nodeType = this.loadNodesAndCredentials.getNode(baseName);
 			const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, nodeTypeVersion);

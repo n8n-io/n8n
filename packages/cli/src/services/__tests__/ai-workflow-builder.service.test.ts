@@ -867,6 +867,7 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock(),
 			mock(),
 		);
+		loadNodesAndCredentials.excludeNodes = [];
 
 		// Real LazyPackageDirectoryLoader reading from the mocked filesystem
 		const loader = new LazyPackageDirectoryLoader(packageDir);
