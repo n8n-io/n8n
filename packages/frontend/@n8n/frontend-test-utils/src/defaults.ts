@@ -170,6 +170,7 @@ export const defaultSettings: FrontendSettings = {
 	aiAssistant: {
 		enabled: false,
 		setup: false,
+		cloudUbbEnabled: false,
 	},
 	aiCredits: {
 		enabled: false,
