@@ -37,7 +37,7 @@ without reading this document:
 |---|---|
 | `pending` | Not delivered yet, and attempts remain |
 | `delivered` | The receiver answered 201 |
-| `skipped_after_max_retries` | Three attempts failed, so the instance stopped for that day |
+| `skipped_after_max_retries` | The instance stopped delivering that day, either after three failed attempts or because the report's own slot passed before it landed |
 
 A skipped report is **not** lost data. Only a delivered report crosses a day
 off, so the days a skipped report covered are measured again and sent by the
@@ -50,7 +50,7 @@ five minutes since the last attempt before trying again — otherwise a crash lo
 would spend the whole budget in seconds. `InstanceReportingScheduler` keeps no
 attempt state of its own.
 
-The same-day retry above and the missed-day backfill are two separate
+The delivery retry above and the missed-day backfill are two separate
 mechanisms. [RETRIES.md](./RETRIES.md) explains each one, how they connect,
 and where the logic lives.
 

@@ -24,6 +24,7 @@ import { canContinueThreadInPreview, type AgentSessionMode } from './utils/agent
 export interface ClaimedAgentMessage {
 	item: AgentMessageQueue;
 	thread: AgentExecutionThread;
+	/** Admission identifies the committed execution that the turn pipeline must reuse. */
 	admission: AgentExecutionAdmission;
 	recording: StartExecutionParams;
 }
@@ -45,6 +46,7 @@ export class AgentMessageQueueService {
 		private readonly updates: AgentExecutionUpdateBroadcaster,
 	) {}
 
+	/** Save a pending message. It is durably accepted when the transaction commits. */
 	async enqueue(
 		input: {
 			agentId: string;
@@ -176,6 +178,10 @@ export class AgentMessageQueueService {
 		}
 	}
 
+	/**
+	 * Give the oldest pending message exclusive use of the session for its execution.
+	 * Running work and valid suspended checkpoints block a claim.
+	 */
 	async claimNext(
 		threadId: string,
 		canConsume: (
@@ -193,6 +199,8 @@ export class AgentMessageQueueService {
 			const item = await this.repository.findHead(threadId, ctx);
 			if (!item || !(await canConsume(item, thread, ctx))) return null;
 			const recording = this.recordingFor(item, thread);
+			// Reservation creates the running execution and links it to this item in one transaction.
+			// Runtime work starts only after the transaction commits.
 			const reservation = await this.executionService.reserveExecution(recording, new Date(), ctx);
 			return { item, thread, recording, reservation };
 		});
@@ -208,6 +216,10 @@ export class AgentMessageQueueService {
 		};
 	}
 
+	/**
+	 * Release the queue item after execution and any suspension have ended.
+	 * Ignore callbacks for an execution that no longer owns the item.
+	 */
 	async settle(threadId: string, executionId: string): Promise<void> {
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(threadId, ctx);

@@ -49,6 +49,7 @@ export class AgentQueuedPreviewStreamService {
 		});
 	}
 
+	/** Attach the browser stream to a queue item. Disconnecting detaches delivery only. */
 	subscribe(queueId: string, stream: ReturnType<typeof initSseStream>) {
 		const done = createDeferredPromise();
 		const close = () => {
@@ -70,6 +71,7 @@ export class AgentQueuedPreviewStreamService {
 		};
 	}
 
+	/** Forward events to the main with the browser stream. Heartbeats detect a lost relay. */
 	createSender(queueId: string) {
 		let sequence = 0;
 		let pending = Promise.resolve();
@@ -120,6 +122,7 @@ export class AgentQueuedPreviewStreamService {
 		};
 	}
 
+	/** Forward relayed events to the browser. Close on a missing event so the client can load history. */
 	@OnPubSubEvent('relay-agent-queued-chat', { instanceType: 'main' })
 	handleRelay({ queueId, sequence, event }: QueueStreamEvent): void {
 		const listener = this.listeners.get(queueId);

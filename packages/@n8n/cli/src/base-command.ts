@@ -63,7 +63,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	/** Check if we're in JSON output mode. */
-	private isJsonMode(flags: { format?: string; json?: boolean; jq?: string }): boolean {
+	protected isJsonMode(flags: { format?: string; json?: boolean; jq?: string }): boolean {
 		return this.resolveFormat(flags) === 'json';
 	}
 

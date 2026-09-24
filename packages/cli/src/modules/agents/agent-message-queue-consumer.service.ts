@@ -56,6 +56,7 @@ export class AgentMessageQueueConsumer {
 		this.queue.onAvailable = undefined;
 	}
 
+	/** Find queued sessions after a missed notification, a restart, or acceptance on another main. */
 	private async scan(): Promise<void> {
 		if (this.stopped || this.scanning) return;
 		this.scanning = true;
@@ -69,6 +70,7 @@ export class AgentMessageQueueConsumer {
 		}
 	}
 
+	/** Start a local drain attempt. Database claims coordinate ownership across mains. */
 	private kick(threadId: string): void {
 		if (this.stopped || this.activeThreads.has(threadId)) return;
 		this.activeThreads.add(threadId);
@@ -79,12 +81,14 @@ export class AgentMessageQueueConsumer {
 			.finally(() => this.activeThreads.delete(threadId));
 	}
 
+	/** Run messages in FIFO order until the session is empty, blocked, or unavailable on this main. */
 	private async drain(threadId: string): Promise<void> {
 		while (!this.stopped) {
 			if (!(await this.consumeNext(threadId))) return;
 		}
 	}
 
+	/** Claim and process one message. A bridge lease prevents teardown until the attempt finishes. */
 	private async consumeNext(threadId: string): Promise<boolean> {
 		let lease: ReturnType<ChatIntegrationService['acquireQueueBridge']>;
 		try {
@@ -116,6 +120,7 @@ export class AgentMessageQueueConsumer {
 		}
 	}
 
+	/** Execute a claimed message, deliver its output, and settle its queue item. */
 	private async consume(claim: ClaimedAgentMessage, bridge?: AgentChatBridge): Promise<void> {
 		const { item, thread, admission } = claim;
 		const controller = new AbortController();

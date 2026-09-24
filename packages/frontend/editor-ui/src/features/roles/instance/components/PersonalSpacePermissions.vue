@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nCallout, N8nCheckbox, N8nIcon, N8nInfoTip, N8nLink } from '@n8n/design-system';
+import { N8nCallout, N8nCheckbox, N8nIconButton, N8nInfoTip, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ref, useId } from 'vue';
 import { I18nT } from 'vue-i18n';
@@ -37,21 +37,17 @@ function toggleLabel(group: PersonalSpaceGroup): string {
 	<div :class="$style.container" data-test-id="personal-space-permissions">
 		<div v-for="group in PERSONAL_SPACE_GROUPS" :key="group" :class="$style.group">
 			<div :class="$style.groupHeader">
-				<button
-					type="button"
-					:class="$style.toggle"
+				<N8nIconButton
+					:icon="expanded[group] ? 'chevron-down' : 'chevron-right'"
+					variant="ghost"
+					size="xsmall"
+					icon-size="small"
 					:aria-expanded="expanded[group]"
 					:aria-controls="`${listId}-${group}`"
 					:aria-label="toggleLabel(group)"
 					:data-test-id="`personal-space-toggle-${group}`"
 					@click="toggle(group)"
-				>
-					<N8nIcon
-						icon="chevron-down"
-						:size="14"
-						:class="[$style.chevron, { [$style.chevronCollapsed]: !expanded[group] }]"
-					/>
-				</button>
+				/>
 				<N8nCheckbox
 					:label="i18n.baseText(PERSONAL_SPACE_GROUP_LABEL_KEYS[group])"
 					:model-value="true"
@@ -81,13 +77,13 @@ function toggleLabel(group: PersonalSpaceGroup): string {
 			</ul>
 		</div>
 
-		<N8nCallout theme="info" :class="$style.callout" data-test-id="personal-space-callout">
+		<N8nCallout theme="info" slim :class="$style.callout" data-test-id="personal-space-callout">
 			<I18nT keypath="instanceRoles.personalSpace.callout" scope="global">
 				<template #link>
 					<N8nLink
 						:to="{ name: VIEWS.SECURITY_SETTINGS }"
 						size="small"
-						theme="secondary"
+						theme="text"
 						:bold="true"
 						:underline="true"
 					>
@@ -103,7 +99,7 @@ function toggleLabel(group: PersonalSpaceGroup): string {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	/* Opt out of the option alignment of the parent list: the callout spans the card. */
 	align-self: stretch;
 }
@@ -114,47 +110,20 @@ function toggleLabel(group: PersonalSpaceGroup): string {
 	gap: var(--spacing--2xs);
 }
 
+/* The chevron is an `xsmall` icon button, so the row is `--height--xs` tall. The
+   instance permission rows in ScopeGroupSelector reserve the same column and
+   height, so every checkbox lines up across the cards. */
 .groupHeader {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.toggle {
-	all: unset;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 20px;
-	height: 20px;
-	border: var(--border);
-	border-radius: var(--radius--sm);
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-}
-
-.toggle:hover {
-	color: var(--color--text);
-}
-
-.toggle:focus-visible {
-	outline: 2px solid var(--color--primary);
-	outline-offset: 1px;
-}
-
-.chevron {
-	transition: transform var(--animation--duration) var(--animation--easing);
-}
-
-.chevronCollapsed {
-	transform: rotate(-90deg);
+	gap: var(--spacing--4xs);
 }
 
 .resources {
 	list-style: none;
 	margin: 0;
-	/* Indent under the group checkbox: toggle width plus the header gap. */
-	padding: 0 0 0 calc(20px + var(--spacing--2xs));
+	/* Indent under the group checkbox: chevron width plus the header gap. */
+	padding: 0 0 0 calc(var(--height--xs) + var(--spacing--4xs));
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
@@ -164,6 +133,7 @@ function toggleLabel(group: PersonalSpaceGroup): string {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	min-height: var(--height--xs);
 }
 
 .checkbox {
@@ -172,5 +142,16 @@ function toggleLabel(group: PersonalSpaceGroup): string {
 
 .callout {
 	margin-top: var(--spacing--2xs);
+	/* The info callout is white by default. On the white card it needs the page
+	   background to read as a callout. */
+	--callout--color--background--info: var(--color--background);
+}
+
+/* The link keeps the callout's text color; the underline marks it as a link.
+   Both the callout (on the anchor) and N8nLink (on its span) set the purple
+   secondary color, so both are reset. */
+.callout a:global(.n8n-link),
+.callout a:global(.n8n-link) > span {
+	color: inherit;
 }
 </style>

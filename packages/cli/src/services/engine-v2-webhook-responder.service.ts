@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
+import { decodeBufferBody } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -60,7 +61,7 @@ export class EngineV2WebhookResponder {
 	 * @throws {UnexpectedError} If the execution response receiver is not set.
 	 * @throws {OperationalError} If the service is at capacity.
 	 */
-	waitForResponse(executionId: ExecutionIdV2): PendingWebhookResponse {
+	waitForResponse(executionId: ExecutionIdV2, acceptsResponse = false): PendingWebhookResponse {
 		const { receiver } = this;
 		if (!receiver) {
 			throw new UnexpectedError('Engine 2.0 cannot wait for a response without a receiver');
@@ -74,6 +75,7 @@ export class EngineV2WebhookResponder {
 
 		const response = new PendingWebhookResponse({
 			executionId,
+			acceptsResponse,
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});
@@ -87,21 +89,33 @@ export class EngineV2WebhookResponder {
 
 	private handle(received: ExecutionResponse, response: PendingWebhookResponse): void {
 		try {
-			if (received.type === 'undeliverable') {
-				response.resolve({
-					status: 'undeliverable',
-					error: { name: received.error.code, message: received.error.message },
-				});
-				return;
-			}
-
-			this.onEnded(received, response);
+			this.route(received, response);
 		} catch (error) {
 			this.logger.error('Failed to relay an engine 2.0 response', {
 				executionId: received.executionId,
 				type: received.type,
 				error,
 			});
+		}
+	}
+
+	private route(received: ExecutionResponse, response: PendingWebhookResponse): void {
+		switch (received.type) {
+			case 'undeliverable':
+				response.resolve({
+					status: 'undeliverable',
+					error: { name: received.error.code, message: received.error.message },
+				});
+				return;
+
+			case 'response':
+				// A Buffer body arrives base64-encoded, because the channel is JSON.
+				response.resolveResponse(decodeBufferBody(received.payload));
+				return;
+
+			case 'ended':
+				this.onEnded(received, response);
+				return;
 		}
 	}
 

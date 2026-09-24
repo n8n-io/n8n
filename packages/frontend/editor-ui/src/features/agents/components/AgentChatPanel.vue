@@ -1018,6 +1018,7 @@ onBeforeUnmount(() => {
 
 .queueActions {
 	display: flex;
+	align-self: center;
 	flex-shrink: 0;
 }
 

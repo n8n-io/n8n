@@ -236,6 +236,9 @@ catalogs:
     '@chat-adapter/state-memory':
       specifier: 4.37.0
       version: 4.37.0
+    '@chat-adapter/teams':
+      specifier: 4.37.0
+      version: 4.37.0
     '@chat-adapter/telegram':
       specifier: 4.37.0
       version: 4.37.0
@@ -2536,6 +2539,9 @@ importers:
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       express:
         specifier: 'catalog:'
         version: 5.1.0(supports-color@8.1.1)
@@ -4399,6 +4405,9 @@ importers:
       '@chat-adapter/state-memory':
         specifier: 'catalog:'
         version: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      '@chat-adapter/teams':
+        specifier: 'catalog:'
+        version: 4.37.0(ai@7.0.74(zod@3.25.76))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(zod@3.25.76)
       '@chat-adapter/telegram':
         specifier: 'catalog:'
         version: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
@@ -4943,6 +4952,12 @@ importers:
       '@vvo/tzdb':
         specifier: ^6.141.0
         version: 6.141.0
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
+      ajv-draft-04:
+        specifier: ^1.0.0
+        version: 1.0.0(ajv@8.20.0)
       axios:
         specifier: 1.18.0
         version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
@@ -8749,6 +8764,10 @@ packages:
     resolution: {integrity: sha512-shSDU7Ioecya+Aob5xliW9IGq1Ui8y4EVSdWGyI1Gbm4Vg61WpP95LuzcY214/wEjSn6w4PZYD4/iVldErHayQ==}
     engines: {node: '>=0.8.0'}
 
+  '@azure/msal-common@16.13.0':
+    resolution: {integrity: sha512-rOAy0KUcyBbdwVJ+f3uPpthXatFLLZN+/KWAsTLzk1aB23Xl9DRmmXYwSvBFOZyXj4jUQQ5FKxxRkhAFW1fOow==}
+    engines: {node: '>=0.8.0'}
+
   '@azure/msal-common@16.5.2':
     resolution: {integrity: sha512-GkDEL6TYo3HgT3UuqakdgE9PZfc1hMki6+Hwgy1uddb/EauvAKfu85vVhuofRSo22D1xTnWt8Ucwfg4vSCVwvA==}
     engines: {node: '>=0.8.0'}
@@ -8759,6 +8778,10 @@ packages:
 
   '@azure/msal-node@5.1.5':
     resolution: {integrity: sha512-ObTeMoNPmq19X3z40et9Xvs4ZoWVeJg43PZMRLG5iwVL+2nCtAerG3YTDItqPp1CfXNwmCXBbg8jn1DOx65c3g==}
+    engines: {node: '>=20'}
+
+  '@azure/msal-node@5.6.0':
+    resolution: {integrity: sha512-uFY9NxrWHw8PwZx7gAX6PDn+9vdfS05+levc/kwkx77IkjfaldnQbbcQzzDIZ5Hq5Zdr6/z92oAIoRWKp6MnOA==}
     engines: {node: '>=20'}
 
   '@azure/search-documents@12.1.0':
@@ -9557,6 +9580,10 @@ packages:
 
   '@chat-adapter/state-memory@4.37.0':
     resolution: {integrity: sha512-dI3dk+PUxkL1q5FZ7fn7T9nq9SIBnoovw3moTIl8xwuB4kWRNsvFa5CM7H0fGeaDPeyJPR+PQ+rUKPGKumMKTg==}
+    engines: {node: '>=20'}
+
+  '@chat-adapter/teams@4.37.0':
+    resolution: {integrity: sha512-vlMooVt6jYWd13LLR4dJ+EzU/z1EuXHo+jHCDWrQvsP9syYcllnJEu5Qd6cCma5nA7Ri6OEBGNJhCFWGa+Hctg==}
     engines: {node: '>=20'}
 
   '@chat-adapter/telegram@4.37.0':
@@ -11207,6 +11234,30 @@ packages:
   '@microsoft/api-extractor@7.52.1':
     resolution: {integrity: sha512-m3I5uAwE05orsu3D1AGyisX5KxsgVXB+U4bWOOaX/Z7Ftp/2Cy41qsNhO6LPvSxHBaapyser5dVorF1t5M6tig==}
     hasBin: true
+
+  '@microsoft/teams.api@2.0.16':
+    resolution: {integrity: sha512-ds2SK6JvAcDL1EfVYWJ1Cmvyytm3CIfdPZS7CxYPvsebhfnMNmvxQlDFuh0Hh0hmjLxIJtycqBddMVulZITs1w==}
+    engines: {node: '>=20'}
+
+  '@microsoft/teams.apps@2.0.16':
+    resolution: {integrity: sha512-LwNy2MgP92ZZziGs/8f+17xttjgdzxgP2IYQCwNQ5ENoBFoQewRb53mARxeLEBhKtVfAtDG2yKHAqRuQvvltEg==}
+    engines: {node: '>=20'}
+
+  '@microsoft/teams.cards@2.0.16':
+    resolution: {integrity: sha512-hOt+2m6oKI5LdASgsQmGB8yOMs/DTMlypgnQDf9dKWFlDiaZ6fkOy3zuNvVRdT3qZ70EOlq1MlhlT8AZxBbcRg==}
+    engines: {node: '>=20'}
+
+  '@microsoft/teams.common@2.0.16':
+    resolution: {integrity: sha512-Z/D0RLTNzkcgGNOdfCzq591UUgtuWIaSu6bbieDxIrLERcu6qI3O6EeeMQLCu/+xkxJrjPJny97CtQEhfLwY8Q==}
+    engines: {node: '>=20'}
+
+  '@microsoft/teams.graph-endpoints@2.0.16':
+    resolution: {integrity: sha512-yNqxdr/elYyzL0xcrGF5/muZniFLbel4QIQgGalwyropRzupasBuaWmIgFU4RVOG9i1dlvRAIq3sLj8E2OhVQQ==}
+    engines: {node: '>=20'}
+
+  '@microsoft/teams.graph@2.0.16':
+    resolution: {integrity: sha512-tEdVCj76gEdgvxoYkBH3li+mr8Tfe94pp1cSOUMQNwOnsuKYvretKMZfAnt9adJCgGzGH2MYZeDDtgwmOBufGQ==}
+    engines: {node: '>=20'}
 
   '@microsoft/tsdoc-config@0.17.1':
     resolution: {integrity: sha512-UtjIFe0C6oYgTnad4q1QP4qXwLhe6tIpNTRStJ2RZEPIkqQPREAwE5spzVxsdn9UaEMUqhh0AqSx3X4nWAKXWw==}
@@ -19546,12 +19597,20 @@ packages:
   jwa@2.0.1:
     resolution: {integrity: sha512-hRF04fqJIP8Abbkq5NKGN0Bbr3JxlQ+qhZufXVr0DvujKy93ZCbXZMHDL4EOtodSbCWxOqR8MS1tXA5hwqCXDg==}
 
+  jwks-rsa@3.2.2:
+    resolution: {integrity: sha512-BqTyEDV+lS8F2trk3A+qJnxV5Q9EqKCBJOPti3W97r7qTympCZjb7h2X6f2kc+0K3rsSTY1/6YG2eaXKoj497w==}
+    engines: {node: '>=14'}
+
   jwks-rsa@4.0.1:
     resolution: {integrity: sha512-poXwUA8S4cP9P5N8tZS3xnUDJH8WmwSGfKK9gIaRPdjLHyJtd9iX/cngX9CUIe0Caof5JhK2EbN7N5lnnaf9NA==}
     engines: {node: ^20.19.0 || ^22.12.0 || >= 23.0.0}
 
   jws@4.0.1:
     resolution: {integrity: sha512-EKI/M/yqPncGUUh44xz0PxSidXFr/+r0pA70+gIYhjv+et7yxM+s29Y+VGDkovRofQem0fs7Uvf4+YmAdyRduA==}
+
+  jwt-decode@4.0.0:
+    resolution: {integrity: sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==}
+    engines: {node: '>=18'}
 
   kafkajs@2.2.4:
     resolution: {integrity: sha512-j/YeapB1vfPT2iOIUn/vxdyKEuhuY2PxMBvf5JWux6iSaukAccrMtXEY/Lb7OvavDhOWME589bpLrEdnVHjfjA==}
@@ -19994,6 +20053,9 @@ packages:
   lru-cache@9.1.2:
     resolution: {integrity: sha512-ERJq3FOzJTxBbFjZ7iDs+NiK4VI9Wz+RdrrAB8dio1oV+YvdPzUEE4QNiT2VD51DkIbCYRUUzCRkssXCHqSnKQ==}
     engines: {node: 14 || >=16.14}
+
+  lru-memoizer@2.3.0:
+    resolution: {integrity: sha512-GXn7gyHAMhO13WSKrIiNfztwxodVsP8IoZ3XfrJV4yH2x0/OeTO/FIaAHTY5YekdGgW94njfuKmyyt1E0mR6Ug==}
 
   lru-memoizer@3.0.0:
     resolution: {integrity: sha512-m83w/cYXLdUIboKSPxzPAGfYnk+vqeDYXuoSrQRw1q+yVEd8IXhvMufN8Q5TIPe7e2jyX4SRNrDJI2Skw1yznQ==}
@@ -26754,6 +26816,8 @@ snapshots:
 
   '@azure/msal-common@15.13.3': {}
 
+  '@azure/msal-common@16.13.0': {}
+
   '@azure/msal-common@16.5.2': {}
 
   '@azure/msal-node@3.8.4':
@@ -26765,6 +26829,11 @@ snapshots:
   '@azure/msal-node@5.1.5':
     dependencies:
       '@azure/msal-common': 16.5.2
+      jsonwebtoken: 9.0.3
+
+  '@azure/msal-node@5.6.0':
+    dependencies:
+      '@azure/msal-common': 16.13.0
       jsonwebtoken: 9.0.3
 
   '@azure/search-documents@12.1.0(supports-color@8.1.1)':
@@ -27830,6 +27899,21 @@ snapshots:
       chat: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
     transitivePeerDependencies:
       - ai
+      - supports-color
+      - workflow
+      - zod
+
+  '@chat-adapter/teams@4.37.0(ai@7.0.74(zod@3.25.76))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(zod@3.25.76)':
+    dependencies:
+      '@chat-adapter/shared': 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      '@microsoft/teams.api': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      '@microsoft/teams.apps': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      '@microsoft/teams.cards': 2.0.16
+      '@microsoft/teams.graph-endpoints': 2.0.16
+      chat: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+    transitivePeerDependencies:
+      - ai
+      - debug
       - supports-color
       - workflow
       - zod
@@ -29790,6 +29874,51 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
     optional: true
+
+  '@microsoft/teams.api@2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+    dependencies:
+      '@microsoft/teams.cards': 2.0.16
+      '@microsoft/teams.common': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      jwt-decode: 4.0.0
+      qs: 6.15.2
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
+  '@microsoft/teams.apps@2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+    dependencies:
+      '@azure/msal-node': 5.6.0
+      '@microsoft/teams.api': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      '@microsoft/teams.common': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      '@microsoft/teams.graph': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      cors: 2.8.5
+      express: 5.2.1(supports-color@8.1.1)
+      jsonwebtoken: 9.0.3
+      jwks-rsa: 3.2.2(supports-color@8.1.1)
+      reflect-metadata: 0.2.2
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
+  '@microsoft/teams.cards@2.0.16': {}
+
+  '@microsoft/teams.common@2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+    dependencies:
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
+  '@microsoft/teams.graph-endpoints@2.0.16': {}
+
+  '@microsoft/teams.graph@2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+    dependencies:
+      '@microsoft/teams.common': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      qs: 6.15.2
+    transitivePeerDependencies:
+      - debug
+      - supports-color
 
   '@microsoft/tsdoc-config@0.17.1':
     dependencies:
@@ -39217,6 +39346,16 @@ snapshots:
       ecdsa-sig-formatter: 1.0.11
       safe-buffer: 5.2.1
 
+  jwks-rsa@3.2.2(supports-color@8.1.1):
+    dependencies:
+      '@types/jsonwebtoken': 9.0.10
+      debug: 4.4.3(supports-color@8.1.1)
+      jose: 6.2.9
+      limiter: 1.1.5
+      lru-memoizer: 2.3.0
+    transitivePeerDependencies:
+      - supports-color
+
   jwks-rsa@4.0.1(supports-color@8.1.1):
     dependencies:
       '@types/jsonwebtoken': 9.0.10
@@ -39231,6 +39370,8 @@ snapshots:
     dependencies:
       jwa: 2.0.1
       safe-buffer: 5.2.1
+
+  jwt-decode@4.0.0: {}
 
   kafkajs@2.2.4: {}
 
@@ -39655,6 +39796,11 @@ snapshots:
   lru-cache@8.0.5: {}
 
   lru-cache@9.1.2: {}
+
+  lru-memoizer@2.3.0:
+    dependencies:
+      lodash.clonedeep: 4.5.0
+      lru-cache: 6.0.0
 
   lru-memoizer@3.0.0:
     dependencies:
