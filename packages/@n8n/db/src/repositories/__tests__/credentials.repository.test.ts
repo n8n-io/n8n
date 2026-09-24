@@ -1,3 +1,5 @@
+import { credentialContentSubject, type PolicySubject } from '@n8n/decorators';
+import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Container } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { In, Like, Not, QueryFailedError } from '@n8n/typeorm';
@@ -45,6 +47,47 @@ describe('CredentialsRepository', () => {
 		await expect(credentialsRepository.findGlobalProjectCredentialIds([])).resolves.toEqual([]);
 
 		expect(entityManager.find).not.toHaveBeenCalled();
+	});
+
+	describe('findNamesByIds', () => {
+		it('returns the id and name for each matching credential', async () => {
+			const credentials = [mock<CredentialsEntity>({ id: 'cred-1', name: 'Cred One' })];
+			entityManager.find.mockResolvedValueOnce(credentials);
+
+			const result = await credentialsRepository.findNamesByIds(['cred-1', 'cred-2']);
+
+			expect(result).toEqual(credentials);
+			expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { id: In(['cred-1', 'cred-2']) },
+				select: ['id', 'name'],
+			});
+		});
+
+		it('does not query for an empty id list', async () => {
+			await expect(credentialsRepository.findNamesByIds([])).resolves.toEqual([]);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findExistingIds', () => {
+		it('returns only the ids that still have a row', async () => {
+			entityManager.find.mockResolvedValueOnce([mock<CredentialsEntity>({ id: 'cred-1' })]);
+
+			const result = await credentialsRepository.findExistingIds(['cred-1', 'deleted-cred']);
+
+			expect(result).toEqual(['cred-1']);
+			expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { id: In(['cred-1', 'deleted-cred']) },
+				select: ['id'],
+			});
+		});
+
+		it('does not query for an empty id list', async () => {
+			await expect(credentialsRepository.findExistingIds([])).resolves.toEqual([]);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
 	});
 
 	it('loads only binding metadata and preserves credential and project pairs', async () => {
@@ -120,6 +163,7 @@ describe('CredentialsRepository', () => {
 		const ctx = { trx: new TypeOrmTransaction(transactionManager) };
 		const credential = mock<CredentialsEntity>({
 			id: 'credential-id',
+			type: 'openAiApi',
 			usageScope: 'instance',
 		});
 		transactionManager.save.mockResolvedValue(credential);
@@ -128,12 +172,17 @@ describe('CredentialsRepository', () => {
 		transactionManager.delete.mockRejectedValue(
 			new QueryFailedError('DELETE', [], new Error('foreign key constraint')),
 		);
+		const clearedFor = (subject: PolicySubject) =>
+			mintPolicyCleared({ point: 'credentialSave', subject, decision: { violations: [] } });
 
-		await credentialsRepository.saveInstanceCredential(credential, ctx);
+		await credentialsRepository.saveInstanceCredential(credential, {
+			...ctx,
+			policyCleared: clearedFor(credentialContentSubject(credential)),
+		});
 		await credentialsRepository.updateInstanceCredential(
 			credential.id,
 			{ ...credential, name: 'Updated', type: 'openAiApi', data: 'encrypted' },
-			ctx,
+			{ ...ctx, policyCleared: clearedFor({ type: 'credential', id: credential.id }) },
 		);
 		await expect(
 			credentialsRepository.deleteInstanceCredentialIfUnassigned(credential.id, ctx),

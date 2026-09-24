@@ -878,6 +878,40 @@ describe('POST /credentials/:id/test', () => {
 
 		expect(response.statusCode).toBe(403);
 	});
+
+	test('should not test a non-owned credential for a role that may see but not use it', async () => {
+		// Testing makes a live call with the secret, so it is a use. The route's
+		// `credential:read` scope decorator short-circuits on the global scope and
+		// cannot express the distinction, so the check lives in the finder instead.
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+		const agent = await makeGlobalRoleUserAgent(['credential:read', 'credential:list']);
+
+		const response = await agent.post(`/credentials/${savedCredential.id}/test`);
+
+		// The finder refuses, which surfaces as a 404 on this route rather than a 403.
+		expect(response.statusCode).toBe(404);
+		expect(mockCredentialsTester.testCredentials).not.toHaveBeenCalled();
+	});
+
+	test('should test a non-owned credential once the role carries credential:use', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+		// `credential:use` is not an ApiKeyScope, so the key carries only read/list.
+		// The gate reads the user's role scopes, not the key's.
+		const agent = await makeGlobalRoleUserAgent([
+			'credential:read',
+			'credential:list',
+			'credential:use',
+		]);
+
+		const response = await agent.post(`/credentials/${savedCredential.id}/test`);
+
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials).toHaveBeenCalled();
+	});
 });
 
 // Custom GLOBAL role carrying the given scopes, plus an API key whose scopes are
@@ -1726,7 +1760,7 @@ describe('PATCH /credentials/:id', () => {
 	});
 
 	test('should not require omitted fields when isPartialData is true', async () => {
-		// `ftp` marks `host` and `port` as unconditionally required in its schema
+		// `ftp` marks `host` as unconditionally required in its schema
 		const savedCredential = await saveCredential(
 			{
 				name: randomName(),
@@ -1892,7 +1926,8 @@ describe('GET /credentials/schema/:credentialType', () => {
 		expect(properties.port.type).toBe('number');
 		expect(properties.username.type).toBe('string');
 		expect(properties.password.type).toBe('string');
-		expect(required).toEqual(expect.arrayContaining(['host', 'port']));
+		// `port` has a default value, so it is not required.
+		expect(required).toEqual(['host']);
 		expect(response.statusCode).toBe(200);
 	});
 });

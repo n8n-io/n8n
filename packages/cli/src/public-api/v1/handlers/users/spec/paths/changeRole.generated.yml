@@ -1,0 +1,47 @@
+operationId: changeRole
+tags:
+  - User
+summary: Change a user's global role
+description: Change a user's global role
+x-required-scope: user:changeRole
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the user.
+    name: userId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          newRoleName:
+            anyOf:
+              - type: string
+                enum:
+                  - global:admin
+                  - global:member
+                  - global:chatUser
+              - type: string
+                minLength: 1
+        required:
+          - newRoleName
+responses:
+  '204':
+    description: Operation successful.
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

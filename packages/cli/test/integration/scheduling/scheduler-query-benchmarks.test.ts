@@ -466,6 +466,7 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 					maxAttempts: 1,
 					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 					misfireGraceSeconds: 60,
+					concurrencyLimit: null,
 				}));
 				const ids = await dataSource.transaction(
 					async (trx) => await jobRepository.insertMany(trx, newJobs),

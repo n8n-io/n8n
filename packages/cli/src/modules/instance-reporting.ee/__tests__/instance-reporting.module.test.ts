@@ -8,6 +8,8 @@ import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { License } from '@/license';
+
 import { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
 import { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
@@ -24,12 +26,19 @@ const LAST_DELIVERY = new Date('2026-03-25T07:42:13.000Z');
 
 function setUpContainer({
 	baseUrl = 'https://example.com',
+	licenseCert = 'base64-license-cert',
+	authToken = '',
 	disabledModules = [] as ModuleName[],
 	lastDelivery = LAST_DELIVERY as Date | null,
 } = {}) {
 	const config = new InstanceReportingConfig();
 	config.instanceReportingBaseUrl = baseUrl;
+	config.instanceReportingAuthToken = authToken;
 	Container.set(InstanceReportingConfig, config);
+
+	const license = mock<License>();
+	license.loadCertStr.mockResolvedValue(licenseCert);
+	Container.set(License, license);
 
 	Container.set(ModulesConfig, mock<ModulesConfig>({ disabledModules }));
 	Container.set(Logger, mockLogger());
@@ -67,6 +76,26 @@ describe('InstanceReportingModule', () => {
 			expect(settingsService.getReportTime).not.toHaveBeenCalled();
 			expect(reportRepository.findLastDeliveryTime).not.toHaveBeenCalled();
 		});
+
+		// The certificate is the credential, so without one nothing would ever be
+		// accepted and no report time is claimed.
+		it('reports as disabled without a license certificate', async () => {
+			const { settingsService } = setUpContainer({ licenseCert: '' });
+
+			const settings = await new InstanceReportingModule().settings();
+
+			expect(settings).toEqual({ enabled: false });
+			expect(settingsService.getReportTime).not.toHaveBeenCalled();
+		});
+
+		// A token is a credential on its own, so the certificate is not needed.
+		it('reports as enabled with an auth token but no license certificate', async () => {
+			setUpContainer({ licenseCert: '', authToken: 'secret-token' });
+
+			const settings = await new InstanceReportingModule().settings();
+
+			expect(settings).toEqual({ enabled: true, reportTime: REPORT_TIME });
+		});
 	});
 
 	describe('init()', () => {
@@ -90,6 +119,22 @@ describe('InstanceReportingModule', () => {
 			await new InstanceReportingModule().init();
 
 			expect(scheduler.init).not.toHaveBeenCalled();
+		});
+
+		it('leaves the scheduler alone when the instance has no license certificate', async () => {
+			const { scheduler } = setUpContainer({ licenseCert: '' });
+
+			await new InstanceReportingModule().init();
+
+			expect(scheduler.init).not.toHaveBeenCalled();
+		});
+
+		it('starts the scheduler with an auth token but no license certificate', async () => {
+			const { scheduler } = setUpContainer({ licenseCert: '', authToken: 'secret-token' });
+
+			await new InstanceReportingModule().init();
+
+			expect(scheduler.init).toHaveBeenCalled();
 		});
 
 		// The route belongs to the loaded module, not to the receiver, so a client

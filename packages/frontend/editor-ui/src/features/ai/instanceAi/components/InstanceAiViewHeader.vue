@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nButton, N8nCallout, N8nIcon, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -24,7 +24,7 @@ const props = withDefaults(
 		};
 	}>(),
 	{
-		showThreadHistoryLabel: false,
+		showThreadHistoryLabel: true,
 		threadId: undefined,
 		threadList: undefined,
 	},
@@ -63,43 +63,42 @@ function handleThreadSelect(threadId: string) {
 
 <template>
 	<div :class="$style.header">
-		<InstanceAiThreadList
-			max-height="calc(var(--spacing--5xl) + var(--spacing--4xl) + var(--spacing--3xl))"
-			:filter="threadList?.filter"
-			:navigate="threadList?.navigate"
-			:disabled="threadList?.disabled"
-			:active-thread-id="threadId"
-			@select="handleThreadSelect"
-			@deleted="emit('deleted', $event)"
-		>
-			<template #trigger>
-				<N8nTooltip
-					as-child
-					:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
-					:disabled="props.showThreadHistoryLabel"
-					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<N8nButton
-						variant="ghost"
-						size="small"
-						:class="[
-							$style.threadHistoryButton,
-							{ [$style.threadHistoryButtonCollapsed]: !props.showThreadHistoryLabel },
-						]"
-						data-test-id="instance-ai-sidebar-toggle"
-						:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+		<div :class="$style.threadHistory">
+			<InstanceAiThreadList
+				max-height="calc(var(--spacing--5xl) + var(--spacing--4xl) + var(--spacing--3xl))"
+				:filter="threadList?.filter"
+				:navigate="threadList?.navigate"
+				:disabled="threadList?.disabled"
+				:active-thread-id="threadId"
+				@select="handleThreadSelect"
+				@deleted="emit('deleted', $event)"
+			>
+				<template #trigger>
+					<N8nTooltip
+						as-child
+						:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+						:disabled="props.showThreadHistoryLabel"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
 					>
-						<template #icon>
-							<N8nIcon icon="history" size="large" />
-						</template>
-						<span :class="$style.threadHistoryLabel" :aria-hidden="!props.showThreadHistoryLabel">
-							{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
-						</span>
-					</N8nButton>
-				</N8nTooltip>
-			</template>
-		</InstanceAiThreadList>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							icon="history"
+							icon-size="large"
+							:icon-only="!props.showThreadHistoryLabel"
+							:class="$style.threadHistoryButton"
+							data-test-id="instance-ai-sidebar-toggle"
+							:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+						>
+							<span v-if="props.showThreadHistoryLabel" :class="$style.threadHistoryLabel">
+								{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
+							</span>
+						</N8nButton>
+					</N8nTooltip>
+				</template>
+			</InstanceAiThreadList>
+		</div>
 		<slot name="title" />
 		<div :class="$style.headerActions">
 			<CreditsSettingsDropdown
@@ -127,15 +126,13 @@ function handleThreadSelect(threadId: string) {
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/motion' as motion;
-
 .header {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	background-color: var(--background--surface);
+	background-color: var(--n8n-ia-header--background, var(--background--surface));
 }
 
 .headerActions {
@@ -145,36 +142,24 @@ function handleThreadSelect(threadId: string) {
 	gap: var(--spacing--4xs);
 }
 
+.threadHistory {
+	// The dropdown trigger wrapper sets `min-width: 0`. A long title would
+	// shrink it and the button would paint over the heading. Keep the button
+	// at its content width; the title is the part that truncates.
+	flex-shrink: 0;
+}
+
 .threadHistoryButton {
 	--thread-history-button-inline-padding: calc((var(--height--sm) - var(--font-size--md)) / 2);
 
 	padding-inline: var(--thread-history-button-inline-padding);
 }
 
-.threadHistoryButtonCollapsed {
-	overflow: hidden;
-}
-
 .threadHistoryLabel {
-	display: inline-block;
+	// Bound the label so a long translation does not crowd out the title.
 	max-width: var(--spacing--4xl);
-	margin-inline-start: 0;
 	overflow: hidden;
-	opacity: 1;
-	transform: translateX(0);
-	transition:
-		max-width var(--duration--snappy) var(--easing--ease-in-out),
-		margin-inline-start var(--duration--snappy) var(--easing--ease-in-out),
-		opacity var(--duration--snappy) var(--easing--ease-in-out),
-		transform var(--duration--snappy) var(--easing--ease-in-out);
-	@include motion.reduced-motion;
-}
-
-.threadHistoryButtonCollapsed .threadHistoryLabel {
-	max-width: 0;
-	margin-inline-start: calc(var(--spacing--3xs) * -1);
-	opacity: 0;
-	transform: translateX(calc(var(--spacing--3xs) * -1));
+	text-overflow: ellipsis;
 }
 
 .readOnlyBanner {
