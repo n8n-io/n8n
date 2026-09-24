@@ -44,6 +44,7 @@ import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGroupCleanup';
+import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
 
 function getErrorMessage(error: unknown): string {
 	if (error instanceof Error) {
@@ -140,10 +141,14 @@ export function useWorkflowSaving({
 	const settingsStore = useSettingsStore();
 	const workflowId = useWorkflowId();
 	const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+	const { showPolicyViolationToast, closePolicyViolationToast } = usePolicyViolationToast();
 
-	function showSaveErrorToast(errorMessage: string, retryDelay?: number) {
+	function showSaveErrorToast(error: unknown, errorMessage: string, retryDelay?: number) {
+		const title = i18n.baseText('workflowHelpers.showMessage.title');
+		if (showPolicyViolationToast(error, title, 'save')) return;
+
 		toast.showMessage({
-			title: i18n.baseText('workflowHelpers.showMessage.title'),
+			title,
 			message:
 				retryDelay === undefined
 					? errorMessage
@@ -175,7 +180,7 @@ export function useWorkflowSaving({
 		if (!shouldRetryAutoSaveFailure(error)) {
 			saveStore.resetRetry();
 			saveStore.setLastError(errorMessage);
-			showSaveErrorToast(errorMessage);
+			showSaveErrorToast(error, errorMessage);
 
 			return false;
 		}
@@ -186,7 +191,7 @@ export function useWorkflowSaving({
 		// Schedule retry with exponential backoff
 		const retryDelay = saveStore.getRetryDelay();
 		scheduleAutoSaveRetry(retryDelay);
-		showSaveErrorToast(errorMessage, retryDelay);
+		showSaveErrorToast(error, errorMessage, retryDelay);
 
 		return false;
 	}
@@ -500,6 +505,7 @@ export function useWorkflowSaving({
 
 				// Reset retry count on successful save
 				saveStore.resetRetry();
+				closePolicyViolationToast('save');
 
 				onSaved?.(false); // Update of existing workflow
 				return true;
@@ -522,7 +528,7 @@ export function useWorkflowSaving({
 					return handleAutoSaveFailure(error, errorMessage);
 				}
 
-				showSaveErrorToast(errorMessage);
+				showSaveErrorToast(error, errorMessage);
 
 				return false;
 			}
@@ -747,6 +753,7 @@ export function useWorkflowSaving({
 				if (!autosaved) cancelAutoSave();
 			}
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
+			closePolicyViolationToast('save');
 
 			onSaved?.(true); // First save of new workflow
 			return workflowData.id;
@@ -762,7 +769,7 @@ export function useWorkflowSaving({
 				return null;
 			}
 
-			showSaveErrorToast(getErrorMessage(e));
+			showSaveErrorToast(e, getErrorMessage(e));
 
 			return null;
 		}

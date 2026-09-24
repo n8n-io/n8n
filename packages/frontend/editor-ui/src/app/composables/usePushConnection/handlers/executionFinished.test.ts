@@ -57,6 +57,12 @@ vi.mock('@n8n/composables/useToast', () => ({
 	}),
 }));
 
+const mockShowPolicyViolationToast = vi.hoisted(() => vi.fn(() => false));
+
+vi.mock('@/app/composables/usePolicyViolationToast', () => ({
+	usePolicyViolationToast: () => ({ showPolicyViolationToast: mockShowPolicyViolationToast }),
+}));
+
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		setDocumentTitle: vi.fn(),
@@ -986,6 +992,54 @@ describe('manual execution stats tracking', () => {
 			);
 
 			expect(incrementSpy).toHaveBeenCalledWith('error');
+		});
+
+		it('leaves a run refused by policy to the policy violation toast for the document that ran', () => {
+			setActivePinia(createTestingPinia());
+			mockShowMessage.mockClear();
+			mockShowPolicyViolationToast.mockReturnValueOnce(true);
+
+			const error = {
+				message: 'Workflow start is blocked by a project policy',
+				violations: [{ kind: 'workflow-start-denied', checkId: 'c', message: 'Blocked' }],
+			};
+			const execution = mock<SimplifiedExecution>({
+				status: 'error',
+				data: { resultData: { error } },
+			});
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				mock<IRunExecutionData>({ resultData: { error } }),
+				createWorkflowDocumentId(''),
+			);
+
+			expect(mockShowPolicyViolationToast).toHaveBeenCalledWith(
+				error,
+				'Problem executing workflow',
+				'execute',
+				createWorkflowDocumentId(''),
+			);
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('shows the generic error toast when the run error carries no violations', () => {
+			setActivePinia(createTestingPinia());
+			mockShowMessage.mockClear();
+
+			const error = { message: 'test error', name: 'Error' };
+			const execution = mock<SimplifiedExecution>({
+				status: 'error',
+				data: { resultData: { error } },
+			});
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				mock<IRunExecutionData>({ resultData: { error } }),
+				createWorkflowDocumentId(''),
+			);
+
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		});
 
 		it('does not increment stats for canceled executions', () => {
