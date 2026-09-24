@@ -2,13 +2,10 @@ name: 'Build: CI Toolchain Image'
 
 on:
   push:
-    branches: [master, ci/toolchain-image-pilot]
+    branches: [master, ci/seed-toolchain-image]
     paths:
       - .github/ci-toolchain/Dockerfile
       - .github/workflows/build-ci-toolchain-image.yml
-      - .github/actions/setup-nodejs/action.yml
-      - package.json
-      - pnpm-workspace.yaml
   pull_request:
     paths:
       - .github/ci-toolchain/Dockerfile
@@ -49,7 +46,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   seed-blacksmith:
-    if: github.event_name != 'pull_request' && github.repository == 'n8n-io/n8n'
+    if: github.event_name == 'push' && github.repository == 'n8n-io/n8n'
     needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     permissions:
@@ -63,3 +60,41 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Seed shared Docker image cache
         run: docker pull "$IMAGE"
+
+  smoke:
+    name: Smoke test toolchain image
+    needs: [build, seed-blacksmith]
+    if: >-
+      always() && github.repository == 'n8n-io/n8n' &&
+      (github.event_name == 'workflow_dispatch' || needs.seed-blacksmith.result == 'success')
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+      - name: Verify installed tools and browser
+        run: |
+          test "$(node --version)" = 'v26.5.1'
+          test "$(pnpm --version)" = '12.4.2'
+          test "$(node -p 'require("./package.json").packageManager')" = 'pnpm@12.4.2'
+          node -e 'const { chromium } = require("/opt/ci-playwright/node_modules/playwright"); chromium.launch().then(async browser => { console.log(await browser.version()); await browser.close(); }).catch(error => { console.error(error); process.exitCode = 1; });'
+          docker info --format '{{.ServerVersion}}'
+          docker buildx version
+      - name: Activate SafeChain
+        run: |
+          mkdir -p "$HOME/.safe-chain/bin"
+          cp "$GITHUB_WORKSPACE/.github/actions/setup-nodejs/safe-chain.config.json" "$HOME/.safe-chain/config.json"
+          cp /opt/ci-toolchain/safe-chain "$HOME/.safe-chain/bin/safe-chain"
+          "$HOME/.safe-chain/bin/safe-chain" setup-ci
+      - name: Verify SafeChain and lockfile install
+        run: |
+          pnpm safe-chain-verify
+          pnpm install --frozen-lockfile --filter n8n-monorepo --ignore-scripts --trust-lockfile
