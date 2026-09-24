@@ -170,6 +170,65 @@ describe('useAssistantAtMentions', () => {
 		expect(text.value).toBe('"Orders" this');
 	});
 
+	it('removes a typed @ when the menu is dismissed without a query', async () => {
+		const { text, input, mentions } = setup('hello @');
+		input.focus();
+		input.setSelectionRange(7, 7);
+		await mentions.handleTextChange('hello @');
+		expect(mentions.menuOpen.value).toBe(true);
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(mentions.menuOpen.value).toBe(false);
+		expect(text.value).toBe('hello ');
+		expect(input.selectionStart).toBe(6);
+	});
+
+	it('removes a typed @ and the whitespace after it when the menu is dismissed', async () => {
+		const { text, input, mentions } = setup('hello @  world');
+		input.focus();
+		input.setSelectionRange(7, 7);
+		await mentions.handleTextChange('hello @  world');
+		input.setSelectionRange(9, 9);
+		await mentions.handleTextChange('hello @  world');
+		expect(mentions.menuOpen.value).toBe(true);
+		expect(mentions.query.value).toBe('  ');
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(text.value).toBe('hello world');
+		expect(input.selectionStart).toBe(6);
+	});
+
+	it('keeps a typed @ with a query when the menu is dismissed', async () => {
+		const { text, input, mentions } = setup('hello @or');
+		input.setSelectionRange(9, 9);
+		await mentions.handleTextChange('hello @or');
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(text.value).toBe('hello @or');
+		input.value = 'hello @ord';
+		input.setSelectionRange(10, 10);
+		await mentions.handleTextChange('hello @ord');
+		expect(mentions.menuOpen.value).toBe(false);
+	});
+
+	it('does not touch the draft when a button-opened menu is dismissed', async () => {
+		const { text, input, mentions } = setup('Replace this');
+		input.setSelectionRange(0, 7);
+		mentions.openFromButton();
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(mentions.menuOpen.value).toBe(false);
+		expect(text.value).toBe('Replace this');
+	});
+
 	it('closes when the trigger is deleted or mentions are disabled', async () => {
 		const { enabled, input, mentions } = setup('@');
 		input.setSelectionRange(1, 1);
