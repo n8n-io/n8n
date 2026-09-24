@@ -1,0 +1,29 @@
+packages/@n8n/cli/src/client.ts
+  s_eb18f8dee46988::t_9b626b865640a6 35-49
+  s_eb18f8dee46988::t_b540e80eb36b00 707-732
+packages/@n8n/cli/README.md
+  s_eb18f8dee46988::t_4d9dd98eb7607d 66
+packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
+  s_eb18f8dee46988::t_7d2eee1a4a1d59 194-196
+  s_eb18f8dee46988::t_558aaf1c3ec46f 1-193,197-199
+packages/@n8n/cli/docs/commands/package.md
+  s_eb18f8dee46988::t_16955000eb4b4c 122-154
+packages/@n8n/cli/src/commands/package/import-selection.ts
+  s_eb18f8dee46988::t_77919457a8b92a 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a0fe3d82f793a8d647e6b1018ddb59a0346e174",
+  "prompts": {},
+  "sessions": {
+    "s_eb18f8dee46988": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d4dc1fe-2f8e-499e-a92b-dc069931aff9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

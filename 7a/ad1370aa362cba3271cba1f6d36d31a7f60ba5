@@ -1,0 +1,53 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_a0365df61f0da7::t_6b8ddaf4d11f8e 258-262,275-299
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_a0365df61f0da7::t_6dcd18fc92f0d0 523
+  s_92d10ec3c1bd93::t_07793561738150 83-86
+  s_a0365df61f0da7::t_ad8a6bbda2bb64 87-119
+  s_a0365df61f0da7::t_dda31a6c2424ae 47-48,58-59,62
+  s_a0365df61f0da7::t_4cf883b9047d27 455,457-461,490-493,496-522
+  s_92d10ec3c1bd93::t_699607b4096452 446-454,462-479,483-484,486-489
+  s_a0365df61f0da7::t_257d9c6fb567bf 494-495
+  s_a0365df61f0da7::t_8b8eff15a35857 456
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_a0365df61f0da7::t_0e4893e377cf30 5-6
+  s_a0365df61f0da7::t_e3402892deb869 359,367-373,434,437-439,442-443,446-447,450-451,454-455,457,459-466,469-481
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_a0365df61f0da7::t_42974b6dbe1dc2 1-22,24,26-30,32-77,79,81-82,92,94,121-122,136-137,139-152,154-160,162-169,171-187,189-204,206-219,221-237,239-249,251-259,266-267,269-271,286-289,291-303,305-308,310-319,321-342,344-354,356-371,375-386,391-397
+  s_a0365df61f0da7::t_163bb091ad7471 23,25,31,78,80,83-91,93,95-96,100-120,123-135,138,153,161,170,188,205,220,238,250,261-265,268,290,304,309,320,343,355,372-374,387-390
+  s_a0365df61f0da7::t_2ee2ef8cbda0f9 97-99
+  s_a0365df61f0da7::t_a62b2729a6047d 260,272-285
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_a0365df61f0da7::t_7d5c4f08dc71b1 74-84
+  s_a0365df61f0da7::t_5093dd44647dd0 117
+  s_a0365df61f0da7::t_3060c91587e517 259-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7aad1370aa362cba3271cba1f6d36d31a7f60ba5",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_92d10ec3c1bd93": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5e37c32b-1c8f-45f6-b79b-eb7625ad32b1",
+        "model": "grok-4.7"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a0365df61f0da7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1652a565-6ec5-45a6-8314-fa08732ffc4b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
