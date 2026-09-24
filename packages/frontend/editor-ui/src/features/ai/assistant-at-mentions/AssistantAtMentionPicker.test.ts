@@ -274,6 +274,51 @@ describe('AssistantAtMentionPicker', () => {
 		expect(groupRow?.querySelector('[data-sub-menu-action="open"]')).toHaveTextContent('2');
 	});
 
+	it('shows node counts for every artifact without opening a sub-menu', async () => {
+		const input = document.createElement('textarea');
+		const reference = document.createElement('div');
+		document.body.append(input, reference);
+		const artifacts = [
+			{ id: 'w1', name: 'Odd numbers', nodeCount: 1 },
+			{ id: 'w2', name: 'Even numbers', nodeCount: 2 },
+		];
+		getWorkflow.mockImplementation(async (_context: unknown, workflowId: string) => {
+			const artifact = artifacts.find(({ id }) => id === workflowId);
+			return {
+				id: workflowId,
+				name: artifact?.name,
+				versionId: `${workflowId}-version`,
+				nodes: Array.from({ length: artifact?.nodeCount ?? 0 }, (_, index) => ({
+					id: `${workflowId}-node-${index + 1}`,
+					name: `Node ${index + 1}`,
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				})),
+				connections: {},
+			};
+		});
+
+		const { getByText } = renderComponent({
+			props: {
+				modelValue: true,
+				query: '',
+				artifacts: artifacts.map(({ id, name }) => ({ id, name })),
+				inputElement: input,
+				reference,
+			},
+		});
+		const openActionFor = (label: string) =>
+			getByText(label).closest('[role="menuitem"]')?.querySelector('[data-sub-menu-action="open"]');
+
+		await waitFor(() => {
+			expect(openActionFor('Odd numbers')).toHaveTextContent('1');
+			expect(openActionFor('Even numbers')).toHaveTextContent('2');
+		});
+		expect(getWorkflow).toHaveBeenCalledTimes(2);
+	});
+
 	it('shows a retry action when workflow browse fails', async () => {
 		setActivePinia(createTestingPinia());
 		const { useRecentWorkflowsStore } = await import('@/app/stores/recentWorkflows.store');

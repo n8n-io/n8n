@@ -290,6 +290,7 @@ watch(
 		} else {
 			searchPending.value = false;
 			void sources.browse();
+			void artifactIndex.loadAll();
 		}
 	},
 	{ immediate: true },
