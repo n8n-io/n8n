@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { MCP_ENDPOINT, MCP_STORE } from './mcp.constants';
+import { MCP_CLIENTS_PREVIEW_LIMIT, MCP_ENDPOINT, MCP_STORE } from './mcp.constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
@@ -49,6 +49,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	/** The current user's first few connected clients, previewed on the settings overview. */
+	const oauthClientsPreview = ref<OAuthClientResponseDto[]>([]);
 	const oauthClientScopeTools = ref<Record<string, string[]> | undefined>(undefined);
 	const oauthClientsOwnership = ref<'mine' | 'all'>('mine');
 	const oauthClientTotals = ref<{ mine: number; all?: number }>({ mine: 0 });
@@ -321,6 +323,27 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return response.data;
 	}
 
+	/**
+	 * Fetches the current user's first connected clients for the overview preview.
+	 * Always scoped to `mine`, and independent of the clients page's list state
+	 * (ownership, page, filters), so a visit to the "All" tab can't leak other
+	 * users' clients onto the overview. Totals and scope tools are instance-wide,
+	 * so the response refreshes them too.
+	 */
+	async function fetchOAuthClientsPreview(
+		limit = MCP_CLIENTS_PREVIEW_LIMIT,
+	): Promise<OAuthClientResponseDto[]> {
+		const response = await fetchOAuthClients(rootStore.restApiContext, {
+			ownership: 'mine',
+			skip: 0,
+			take: limit,
+		});
+		oauthClientsPreview.value = response.data;
+		oauthClientScopeTools.value = response.scopeTools;
+		oauthClientTotals.value = response.totals;
+		return response.data;
+	}
+
 	async function setOAuthClientsOwnership(ownership: 'mine' | 'all'): Promise<void> {
 		oauthClientsOwnership.value = ownership;
 		oauthClientsPage.value = 0;
@@ -425,6 +448,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		generateNewApiKey,
 		resetCurrentUserMCPKey,
 		oauthClients,
+		oauthClientsPreview,
+		fetchOAuthClientsPreview,
 		oauthClientsOwnership,
 		oauthClientTotals,
 		oauthClientOwners,

@@ -16,16 +16,31 @@ import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflow
 import type { Agent } from '@/features/agents/agent.types';
 
 import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
+import { createOAuthClient } from '@/features/ai/mcpAccess/mcp.test.utils';
 import { useToast } from '@n8n/composables/useToast';
+
+vi.mock('@/app/components/TimeAgo.vue', () => ({
+	default: {
+		name: 'TimeAgo',
+		props: ['date'],
+		template: '<span>{{ date }}</span>',
+	},
+}));
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
 const { hasPermissionMock } = vi.hoisted(() => ({
 	hasPermissionMock: vi.fn().mockReturnValue(true),
 }));
-const { trackSpy, trackAutoExposeToggledSpy, trackConnectClientClickedSpy } = vi.hoisted(() => ({
+const {
+	trackSpy,
+	trackAutoExposeToggledSpy,
+	trackConnectClientClickedSpy,
+	trackClientAccessRevokedSpy,
+} = vi.hoisted(() => ({
 	trackSpy: vi.fn(),
 	trackAutoExposeToggledSpy: vi.fn(),
 	trackConnectClientClickedSpy: vi.fn(),
+	trackClientAccessRevokedSpy: vi.fn(),
 }));
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
@@ -66,6 +81,7 @@ vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
 		trackUserToggledMcpAccess: vi.fn(),
 		trackAutoExposeToggled: trackAutoExposeToggledSpy,
 		trackConnectClientClicked: trackConnectClientClickedSpy,
+		trackClientAccessRevoked: trackClientAccessRevokedSpy,
 	}),
 }));
 
@@ -136,7 +152,8 @@ describe('SettingsMCPView', () => {
 
 		mcpStore.allowedRedirectUris = [];
 		mcpStore.oauthClientTotals = { mine: 0 };
-		mcpStore.getAllOAuthClients.mockResolvedValue([]);
+		mcpStore.oauthClientsPreview = [];
+		mcpStore.fetchOAuthClientsPreview.mockResolvedValue([]);
 		mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
 		mcpStore.fetchAllowedRedirectUris.mockResolvedValue([]);
 	});
@@ -175,25 +192,45 @@ describe('SettingsMCPView', () => {
 
 		it('should keep the connected-clients row (stating the count) when there are none', async () => {
 			mcpStore.oauthClientTotals = { mine: 0 };
-			mcpStore.getAllOAuthClients.mockResolvedValue([]);
+			mcpStore.fetchOAuthClientsPreview.mockResolvedValue([]);
 
 			const { getByTestId, queryByTestId } = createComponent({ pinia });
 
 			await waitFor(() => {
 				expect(queryByTestId('mcp-clients-empty')).not.toBeInTheDocument();
+				expect(queryByTestId('mcp-clients-preview')).not.toBeInTheDocument();
 				const row = getByTestId('mcp-clients-view-all-row');
 				expect(row).toBeVisible();
 				expect(row).toHaveTextContent('0');
 			});
 		});
 
-		it('should navigate to the connected clients page from the view-all row', async () => {
+		it("should navigate to the user's own clients from the view-all row", async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
 			await userEvent.click(getByTestId('mcp-clients-view-all-row'));
 
-			expect(routerPush).toHaveBeenCalledWith({ name: MCP_CLIENTS_VIEW });
+			expect(routerPush).toHaveBeenCalledWith({
+				name: MCP_CLIENTS_VIEW,
+				query: { tab: 'mine' },
+			});
+		});
+
+		it("should open everyone's clients when a manager has none of their own", async () => {
+			mcpStore.oauthClientTotals = { mine: 0, all: 4 };
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitFor(() => {
+				expect(getByTestId('mcp-clients-view-all-row')).toHaveTextContent('4 clients have access');
+			});
+
+			await userEvent.click(getByTestId('mcp-clients-view-all-row'));
+
+			expect(routerPush).toHaveBeenCalledWith({
+				name: MCP_CLIENTS_VIEW,
+				query: { tab: 'all' },
+			});
 		});
 
 		it('should show the exposed workflows count on the access row', async () => {
@@ -232,13 +269,13 @@ describe('SettingsMCPView', () => {
 			enableMcpSettings();
 		});
 
-		it('should show placeholder instead of 0 while getAllOAuthClients is pending', async () => {
+		it('should show placeholder instead of 0 while the clients preview is pending', async () => {
 			// Create a promise we control so we can keep it pending
 			let resolveClients!: (value: OAuthClientResponseDto[]) => void;
 			const clientsPromise = new Promise<OAuthClientResponseDto[]>((res) => {
 				resolveClients = res;
 			});
-			mcpStore.getAllOAuthClients.mockReturnValue(clientsPromise);
+			mcpStore.fetchOAuthClientsPreview.mockReturnValue(clientsPromise);
 
 			const { getAllByText, queryByText, queryAllByText } = createComponent({ pinia });
 			await nextTick();
@@ -252,9 +289,9 @@ describe('SettingsMCPView', () => {
 			});
 		});
 
-		it('should show 0 after getAllOAuthClients resolves with zero clients', async () => {
+		it('should show 0 after the clients preview resolves with zero clients', async () => {
 			mcpStore.oauthClientTotals = { mine: 0 };
-			mcpStore.getAllOAuthClients.mockResolvedValue([]);
+			mcpStore.fetchOAuthClientsPreview.mockResolvedValue([]);
 
 			const { getByTestId } = createComponent({ pinia });
 
@@ -265,17 +302,123 @@ describe('SettingsMCPView', () => {
 			});
 		});
 
-		it('should keep — and not silently show 0 when getAllOAuthClients fails', async () => {
-			mcpStore.getAllOAuthClients.mockRejectedValue(new Error('network error'));
+		it('should keep — and not silently show 0 when the clients preview fails', async () => {
+			mcpStore.fetchOAuthClientsPreview.mockRejectedValue(new Error('network error'));
 
 			const { getAllByText, queryByText } = createComponent({ pinia });
 
 			await waitFor(() => {
-				expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
+				expect(mcpStore.fetchOAuthClientsPreview).toHaveBeenCalled();
 			});
 
 			expect(getAllByText(UNKNOWN_COUNT_VALUE).length).toBeGreaterThan(0);
 			expect(queryByText('0 clients have access')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Connected clients preview', () => {
+		const ownClients = [
+			createOAuthClient({ id: 'client-1', name: 'Cursor' }),
+			createOAuthClient({ id: 'client-2', name: 'Claude Code' }),
+		];
+
+		beforeEach(() => {
+			enableMcpSettings();
+			mcpStore.oauthClientsPreview = ownClients;
+			mcpStore.oauthClientTotals = { mine: 2 };
+			mcpStore.fetchOAuthClientsPreview.mockResolvedValue(ownClients);
+		});
+
+		it("should preview the user's own clients and drop the view-all row when it shows them all", async () => {
+			const { getAllByTestId, queryByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			const rows = getAllByTestId('mcp-client-preview-row');
+			expect(rows).toHaveLength(2);
+			expect(rows[0]).toHaveTextContent('Cursor');
+			expect(rows[0]).toHaveTextContent('IDE');
+			expect(rows[1]).toHaveTextContent('Claude Code');
+			expect(rows[1]).toHaveTextContent('CLI');
+			expect(queryByTestId('mcp-clients-view-all-row')).not.toBeInTheDocument();
+		});
+
+		it('should keep the view-all row when the user has more clients than the preview shows', async () => {
+			mcpStore.oauthClientTotals = { mine: 5 };
+
+			const { getAllByTestId, getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getAllByTestId('mcp-client-preview-row')).toHaveLength(2);
+			expect(getByTestId('mcp-clients-view-all-row')).toHaveTextContent('5 clients have access');
+		});
+
+		it("should keep the view-all row for a manager when other users' clients exist", async () => {
+			mcpStore.oauthClientTotals = { mine: 2, all: 6 };
+
+			const { getAllByTestId, getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			// Only the user's own clients are previewed; the others stay behind the clients page.
+			expect(getAllByTestId('mcp-client-preview-row')).toHaveLength(2);
+			expect(getByTestId('mcp-clients-view-all-row')).toHaveTextContent('6 clients have access');
+		});
+
+		it('should open the client details when a preview row is clicked', async () => {
+			const { getAllByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			await userEvent.click(getAllByTestId('mcp-client-preview-row')[0]);
+
+			await waitFor(() => {
+				expect(within(document.body).getByTestId('mcp-client-details-modal')).toBeVisible();
+			});
+			expect(within(document.body).getByTestId('mcp-client-details-modal')).toHaveTextContent(
+				'Cursor',
+			);
+		});
+
+		it('should confirm before revoking from a preview row, then refresh the preview', async () => {
+			mcpStore.removeOAuthClient.mockResolvedValue({ success: true, message: '' });
+
+			const { getAllByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+			mcpStore.fetchOAuthClientsPreview.mockClear();
+
+			await userEvent.click(getAllByTestId('mcp-client-preview-revoke-button')[1]);
+
+			// nothing is revoked until the dialog is confirmed
+			await waitFor(() => {
+				expect(
+					within(document.body).getByText('Revoke access for "Claude Code"?'),
+				).toBeInTheDocument();
+			});
+			expect(mcpStore.removeOAuthClient).not.toHaveBeenCalled();
+
+			await userEvent.click(within(document.body).getByRole('button', { name: 'Revoke' }));
+
+			await waitFor(() => {
+				expect(mcpStore.removeOAuthClient).toHaveBeenCalledWith('client-2', undefined);
+			});
+			expect(trackClientAccessRevokedSpy).toHaveBeenCalledWith({
+				clientId: 'client-2',
+				clientName: 'Claude Code',
+				revokedForOther: false,
+			});
+			await waitFor(() => {
+				expect(mcpStore.fetchOAuthClientsPreview).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		it('should not open the client details when the revoke action is clicked', async () => {
+			const { getAllByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			await userEvent.click(getAllByTestId('mcp-client-preview-revoke-button')[0]);
+
+			await waitFor(() => {
+				expect(within(document.body).getByText('Revoke access for "Cursor"?')).toBeInTheDocument();
+			});
+			expect(within(document.body).queryByTestId('mcp-client-details-modal')).toBeNull();
 		});
 	});
 
@@ -444,7 +587,7 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('enable-mcp-button'));
 
 			expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 1);
-			expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
+			expect(mcpStore.fetchOAuthClientsPreview).toHaveBeenCalled();
 		});
 
 		it('should only disable after the confirmation dialog is confirmed', async () => {

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { ElSwitch } from 'element-plus';
+import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
@@ -24,8 +25,12 @@ import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflow
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from '@/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
+import McpConnectedClientRow from '@/features/ai/mcpAccess/components/McpConnectedClientRow.vue';
 import McpStatusControl from '@/features/ai/mcpAccess/components/McpStatusControl.vue';
+import OAuthClientDetailsModal from '@/features/ai/mcpAccess/components/OAuthClientDetailsModal.vue';
+import RevokeOAuthClientConfirmModal from '@/features/ai/mcpAccess/components/RevokeOAuthClientConfirmModal.vue';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useOAuthClientRevoke } from '@/features/ai/mcpAccess/composables/useOAuthClientRevoke';
 import {
 	MCP_AGENTS_VIEW,
 	MCP_CLIENTS_VIEW,
@@ -149,7 +154,7 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 			await Promise.all([
 				fetchExposedWorkflowsCount(),
 				fetchExposedAgentsCount(),
-				fetchoAuthCLients(),
+				fetchConnectedClientsPreview(),
 			]);
 		}
 		mcp.trackUserToggledMcpAccess(enabled);
@@ -172,20 +177,36 @@ const onConfirmDisable = async () => {
 	await onToggleMCPAccess(false);
 };
 
-/** Populates the store's client totals so the "N clients have access" count renders. */
-const fetchoAuthCLients = async () => {
+/**
+ * Loads the user's own first clients for the inline preview, along with the
+ * totals the "N clients have access" count renders. Only the user's own clients
+ * are previewed here; other users' clients stay behind the clients page, which
+ * gates them by permission.
+ */
+const fetchConnectedClientsPreview = async () => {
 	isLoadingClients.value = true;
 	try {
-		await mcpStore.getAllOAuthClients();
+		await mcpStore.fetchOAuthClientsPreview();
 		isLoadingClients.value = false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	}
 };
 
+const previewClients = computed(() => mcpStore.oauthClientsPreview);
+
 /** Instance-wide count when the user can see it, own count otherwise. */
 const connectedClientsTotal = computed(
 	() => mcpStore.oauthClientTotals.all ?? mcpStore.oauthClientTotals.mine,
+);
+
+// The "View all" row is the section's only content while clients load or when the
+// user has none. Next to a preview it only earns its place when more clients exist
+// than the preview shows (more of the user's own, or other users' for managers).
+const showViewAllRow = computed(
+	() =>
+		previewClients.value.length === 0 ||
+		connectedClientsTotal.value > previewClients.value.length,
 );
 
 const onConnectClient = () => {
@@ -194,8 +215,23 @@ const onConnectClient = () => {
 };
 
 const openClientsView = () => {
-	void router.push({ name: MCP_CLIENTS_VIEW });
+	// The preview is the user's own clients, so "View all" continues into that list.
+	// With none of their own to land on, a manager goes straight to everyone's.
+	const { mine, all } = mcpStore.oauthClientTotals;
+	const tab = mine === 0 && (all ?? 0) > 0 ? 'all' : 'mine';
+	void router.push({ name: MCP_CLIENTS_VIEW, query: { tab } });
 };
+
+const detailsClient = ref<OAuthClientResponseDto | null>(null);
+const detailsOpen = ref(false);
+
+const openClientDetails = (client: OAuthClientResponseDto) => {
+	detailsClient.value = client;
+	detailsOpen.value = true;
+};
+
+const { revokeClient, revoking, isRevokingForOther, requestRevoke, cancelRevoke, confirmRevoke } =
+	useOAuthClientRevoke({ onRevoked: fetchConnectedClientsPreview });
 
 const openWorkflowsView = () => {
 	void router.push({ name: MCP_WORKFLOWS_VIEW });
@@ -237,7 +273,7 @@ onMounted(async () => {
 	const fetches: Array<Promise<unknown>> = [
 		fetchExposedWorkflowsCount(),
 		fetchExposedAgentsCount(),
-		fetchoAuthCLients(),
+		fetchConnectedClientsPreview(),
 	];
 	if (canManageMcpInstance.value) {
 		fetches.push(loadRedirectUris());
@@ -366,7 +402,17 @@ onMounted(async () => {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection :title="i18n.baseText('settings.mcp.connectedClients.title')">
-				<N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="previewClients.length > 0" data-test-id="mcp-clients-preview">
+					<McpConnectedClientRow
+						v-for="client in previewClients"
+						:key="client.id"
+						:client="client"
+						:scope-tools="mcpStore.oauthClientScopeTools"
+						@click="openClientDetails(client)"
+						@revoke="requestRevoke(client)"
+					/>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="showViewAllRow">
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.connectedClients.viewAll.title')"
 						:description="
@@ -412,6 +458,22 @@ onMounted(async () => {
 		</N8nDialog>
 
 		<McpConnectClientDialog />
+
+		<OAuthClientDetailsModal
+			v-model:open="detailsOpen"
+			:client="detailsClient"
+			@revoke="requestRevoke"
+		/>
+
+		<RevokeOAuthClientConfirmModal
+			:client="revokeClient"
+			:open="!!revokeClient"
+			:loading="revoking"
+			:revoking-for-other="!!revokeClient && isRevokingForOther(revokeClient)"
+			@confirm="confirmRevoke"
+			@cancel="cancelRevoke"
+			@update:open="cancelRevoke"
+		/>
 
 		<McpAllowedCallbackUrlsDialog
 			v-model:open="showCallbackUrlsDialog"

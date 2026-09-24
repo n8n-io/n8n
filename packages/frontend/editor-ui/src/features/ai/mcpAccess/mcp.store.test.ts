@@ -208,6 +208,53 @@ describe('mcp.store', () => {
 		});
 	});
 
+	describe('fetchOAuthClientsPreview', () => {
+		it("fetches the user's own first clients regardless of the list's ownership and filters", async () => {
+			const client = createOAuthClient();
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [client],
+				count: 1,
+				totals: { mine: 1, all: 3 },
+				scopeTools: { 'workflow:read': ['list_workflows'] },
+			});
+			store.oauthClientsOwnership = 'all';
+			store.oauthClientsPage = 2;
+			store.oauthClientsFilters = {
+				search: 'claude',
+				type: 'cli',
+				ownerId: 'user-1',
+				connected: 'last7',
+			};
+
+			await store.fetchOAuthClientsPreview();
+
+			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'mine', skip: 0, take: 3 });
+			expect(store.oauthClientsPreview).toEqual([client]);
+			expect(store.oauthClientTotals).toEqual({ mine: 1, all: 3 });
+			expect(store.oauthClientScopeTools).toEqual({ 'workflow:read': ['list_workflows'] });
+		});
+
+		it("leaves the clients page's list state untouched", async () => {
+			const listed = createOAuthClient({ id: 'listed' });
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [createOAuthClient({ id: 'previewed' })],
+				count: 1,
+				totals: { mine: 1 },
+			});
+			store.oauthClients = [listed];
+			store.oauthClientsOwnership = 'all';
+			store.oauthClientsPage = 2;
+			store.oauthClientsCount = 40;
+
+			await store.fetchOAuthClientsPreview();
+
+			expect(store.oauthClients).toEqual([listed]);
+			expect(store.oauthClientsOwnership).toBe('all');
+			expect(store.oauthClientsPage).toBe(2);
+			expect(store.oauthClientsCount).toBe(40);
+		});
+	});
+
 	describe('OAuth clients ownership', () => {
 		it('fetches the current page with ownership, pagination and filters', async () => {
 			const client = createOAuthClient();
