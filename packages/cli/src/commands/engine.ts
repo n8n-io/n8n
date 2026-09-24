@@ -2,7 +2,7 @@ import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { Expression, UserError } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
@@ -34,7 +34,6 @@ export class Engine extends BaseCommand {
 		assertControlPlaneIsolated(process.env);
 		assertRemoteControlPlane(Container.get(EngineConfig));
 
-		await this.initCrashJournal();
 		this.logger.info('Starting engine 2.0 data plane...');
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
@@ -63,11 +62,14 @@ export class Engine extends BaseCommand {
 
 		try {
 			await this.runtime?.shutdown();
+			await Expression.disposeExpressionEngine();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down the engine.', error);
 		}
 
-		await this.exitSuccessFully();
+		// No control plane database to close and no crash journal to clear, so
+		// the base exit helper does not apply.
+		process.exit();
 	}
 }
 

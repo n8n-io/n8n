@@ -3,6 +3,7 @@ import { EngineConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { ErrorReporter } from 'n8n-core';
 
+import * as CrashJournal from '@/crash-journal';
 import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
@@ -85,8 +86,6 @@ describe('Engine', () => {
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			generic: { gracefulShutdownTimeout: 30 },
 		};
-		// @ts-expect-error - Accessing protected method for testing
-		engine.initCrashJournal = vi.fn().mockResolvedValue(undefined);
 		return engine;
 	};
 
@@ -152,6 +151,12 @@ describe('Engine', () => {
 			expect(encryptionBootstrap.run).not.toHaveBeenCalled();
 		});
 
+		it('starts no crash journal', async () => {
+			await createEngine().init();
+
+			expect(CrashJournal.init).not.toHaveBeenCalled();
+		});
+
 		it('loads the nodes and starts no task runner', async () => {
 			await createEngine().init();
 
@@ -171,22 +176,24 @@ describe('Engine', () => {
 	});
 
 	describe('stopProcess', () => {
-		it('shuts the data plane down before exiting', async () => {
+		it('shuts the data plane down before exiting, without touching the crash journal', async () => {
 			const engine = createEngine();
 			await engine.init();
-			// @ts-expect-error - Accessing protected method for testing
-			engine.exitSuccessFully = vi.fn().mockResolvedValue(undefined);
-
-			// @ts-expect-error - Accessing protected method for testing
-			await engine.stopProcess();
-
-			expect(runtime.shutdown).toHaveBeenCalled();
-			// @ts-expect-error - Accessing protected method for testing
-			expect(engine.exitSuccessFully).toHaveBeenCalled();
-			expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			try {
 				// @ts-expect-error - Accessing protected method for testing
-				vi.mocked(engine.exitSuccessFully).mock.invocationCallOrder[0],
-			);
+				await engine.stopProcess();
+
+				expect(runtime.shutdown).toHaveBeenCalled();
+				expect(exit).toHaveBeenCalledWith();
+				expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
+					exit.mock.invocationCallOrder[0],
+				);
+				expect(CrashJournal.cleanup).not.toHaveBeenCalled();
+				expect(dbConnection.close).not.toHaveBeenCalled();
+			} finally {
+				exit.mockRestore();
+			}
 		});
 	});
 });
