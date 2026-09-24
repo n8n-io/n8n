@@ -1,6 +1,5 @@
 import type { ChatOllamaInput } from '@langchain/ollama';
 import { ChatOllama } from '@langchain/ollama';
-import { AIMessage } from '@langchain/core/messages';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
@@ -20,38 +19,29 @@ import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
 
+type ChatOllamaClient = ChatOllama['client'];
+type NonStreamingChatRequest = Parameters<ChatOllamaClient['chat']>[0];
+
+/**
+ * `ChatOllama` always sends `stream: true` to Ollama, so its `streaming` option
+ * has no effect. Send `stream: false` and return the single complete response
+ * as a one-item iterator, so the SDK keeps handling message conversion and
+ * chunk assembly instead of this class reimplementing them.
+ */
 class NonStreamingChatOllama extends ChatOllama {
-	async _generate(messages: any, options: any, runManager?: any): Promise<any> {
-		const params = this.invocationParams(options);
-		const ollamaMessages = (this as any).convertToOllamaMessages
-			? (this as any).convertToOllamaMessages(messages)
-			: messages;
-		const response = await this.client.chat({
-			...params,
-			messages: ollamaMessages,
-			stream: false,
-		});
-		const aiMessage = new AIMessage({
-			content: response.message?.content ?? '',
-			additional_kwargs: response.message?.thinking
-				? { reasoning_content: response.message.thinking }
-				: {},
-			response_metadata: {
-				model: response.model,
-				done: response.done,
-				done_reason: response.done_reason,
-				created_at: response.created_at,
-				model_provider: 'ollama',
-			},
-		});
-		return {
-			generations: [
-				{
-					text: aiMessage.content as string,
-					message: aiMessage,
-				},
-			],
-		};
+	constructor(fields: ChatOllamaInput) {
+		super(fields);
+
+		const client = this.client;
+		const chat = client.chat.bind(client);
+
+		// `chat` is overloaded on the `stream` literal, so a single function cannot
+		// satisfy every overload. The cast is safe: callers only observe the
+		// one-item iterator this returns.
+		client.chat = (async (request: NonStreamingChatRequest) =>
+			chat({ ...request, stream: false }).then(async function* (response) {
+				yield response;
+			})) as ChatOllamaClient['chat'];
 	}
 }
 
