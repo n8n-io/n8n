@@ -284,10 +284,13 @@ describe('emit-instance-ai', () => {
 			'collectDownstreamConsumers',
 			'collectPinFieldViolations',
 			'describeAiRootShape',
+			'describeDataTableRead',
 			'findEnvelopeKey',
 			'findOutputParserTargets',
 			'isAiRootNodeType',
+			'literalParameter',
 			'parsePinDataResponse',
+			'readDataTableReadParameters',
 			'repairStructuredOutput',
 			'workflowToMermaid',
 			// Display-options matching
