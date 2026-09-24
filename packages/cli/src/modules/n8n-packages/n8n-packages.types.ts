@@ -255,6 +255,11 @@ export type ImportRequest = {
 	folderId?: string;
 	bindings?: Partial<PackageImportBindings>;
 	apiKeyScopes?: string[];
+	/**
+	 * When present, imports only the named subset from one source project (cherry-pick),
+	 * instead of the whole package. Undefined means a whole-scope import.
+	 */
+	selection?: ImportSelection;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportProjectProperties &
@@ -265,6 +270,31 @@ export type ImportRequest = {
 
 export type ImportPackageRequest = ImportRequest & {
 	packageBuffer: Buffer;
+};
+
+/**
+ * A cherry-pick subset to import: only `selectedWorkflowIds` (SOURCE ids) from the single source
+ * project `selectedProjectId`. It is a pure filter applied before the pipeline — no dependency
+ * closure and no auto-pull of referenced sub-workflows. (Explicit deletes arrive in a later phase.)
+ */
+export interface ImportSelection {
+	selectedProjectId: string;
+	selectedWorkflowIds: string[];
+}
+
+/**
+ * The narrow request a selection import accepts. It carries the actor, an optional destination and
+ * bindings, and only the two overridable policies; every other policy is locked to the cherry-pick
+ * profile inside the service entry point. Contrast with {@link ImportRequest}, the whole-scope shape.
+ */
+export type ImportSelectionRequest = {
+	user: User;
+	projectId?: string;
+	folderId?: string;
+	apiKeyScopes?: string[];
+	bindings?: Partial<PackageImportBindings>;
+	workflowConflictPolicy?: WorkflowConflictPolicy;
+	workflowIdPolicy?: WorkflowIdPolicy;
 };
 
 export type ImportCredentialProperties = {

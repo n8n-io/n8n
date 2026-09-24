@@ -71,7 +71,17 @@ export class ProjectPackageImporter {
 	): Promise<ImportOutcome> {
 		this.assertAdequatePermissions(request, manifest);
 
-		const projects = await this.packageParser.getProjects(reader);
+		const { selection } = request;
+		// A selection cherry-picks one source project, so plan and write only that project's shell;
+		// every other package project is left untouched.
+		const selectedProjects = selection
+			? (manifest.projects ?? []).filter((project) => project.id === selection.selectedProjectId)
+			: (manifest.projects ?? []);
+
+		const allProjects = await this.packageParser.getProjects(reader);
+		const projects = selection
+			? allProjects.filter((project) => project.sourceProjectId === selection.selectedProjectId)
+			: allProjects;
 		const projectPlan = await this.projectImporter.plan(
 			request.user,
 			projects,
@@ -104,7 +114,7 @@ export class ProjectPackageImporter {
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
 		// any project leaves nothing behind — not folders, workflows, nor the project shells.
 		const planned: Array<{ project: ManifestEntry; plan: ImportPlan }> = [];
-		for (const project of manifest.projects ?? []) {
+		for (const project of selectedProjects) {
 			const input = await this.buildImportContextForProject(
 				request,
 				reader,
@@ -246,7 +256,16 @@ export class ProjectPackageImporter {
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
-		const workflows = await this.packageParser.getWorkflows(reader, basePrefix);
+		const allWorkflows = await this.packageParser.getWorkflows(reader, basePrefix);
+
+		// Cherry-pick is a pure literal filter over the source id — no closure, no auto-pull of
+		// referenced sub-workflows. An id that names a workflow in another project matches nothing
+		// here (this scope is `basePrefix`-bound) and is simply dropped.
+		const workflows = request.selection
+			? allWorkflows.filter((workflow) =>
+					request.selection!.selectedWorkflowIds.includes(workflow.sourceWorkflowId),
+				)
+			: allWorkflows;
 
 		// Requirements and bindings are both scoped to this project's workflows so another project's
 		// binding is not seen as an orphan here (which would block the whole multi-project import).

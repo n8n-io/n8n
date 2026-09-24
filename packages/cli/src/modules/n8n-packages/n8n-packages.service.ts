@@ -44,6 +44,8 @@ import { PackageImportConfig } from './n8n-packages.config';
 import {
 	CredentialExportPolicy,
 	MissingWorkflowDependencyPolicy,
+	WorkflowConflictPolicy,
+	WorkflowIdPolicy,
 	WorkflowVersionPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
@@ -53,8 +55,11 @@ import {
 	type ImportPackageRequest,
 	type ImportRequest,
 	type ImportResult,
+	type ImportSelection,
+	type ImportSelectionRequest,
 	type PackageImportSource,
 	type ResolvedImportPackageRequest,
+	type ResolvedImportRequest,
 	createBindings,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
@@ -74,6 +79,43 @@ interface WrittenExport {
 	credentialExportPolicy: CredentialExportPolicy;
 	includeArchivedWorkflows: boolean;
 }
+
+type DirectoryProjectPackage =
+	| { status: 'empty'; result: ImportResult }
+	| { status: 'project'; reader: PackageReader; manifest: PackageManifest };
+
+/**
+ * The locked policy profile a selection import runs under (D6). `folderConflictPolicy=merge` keeps
+ * the import additive — nothing the package omits is reconciled away — and `tagConflictPolicy=skip`
+ * never mutates a shared tag. The rest mirror the promotion apply context. `workflowConflictPolicy`
+ * and `workflowIdPolicy` are the only overridable policies, so they are set by the caller, not here.
+ */
+const CHERRY_PICK_IMPORT_POLICY = {
+	projectConflictPolicy: 'merge',
+	folderConflictPolicy: 'merge',
+	overwriteDeletionPolicy: 'archive',
+	workflowPublishingPolicy: 'match-source',
+	missingNodeTypeMode: 'fail',
+	credentialMatchingMode: 'id-only',
+	credentialMissingMode: 'must-preexist',
+	dataTableMatchingMode: 'by-id',
+	dataTableMissingMode: 'create',
+	dataTableSchemaConflictPolicy: 'fail',
+	variableMissingMode: 'must-preexist',
+	variableConflictPolicy: 'keep-existing',
+	tagMissingMode: 'create',
+	tagConflictPolicy: 'skip',
+} as const satisfies Omit<
+	ResolvedImportRequest,
+	| 'user'
+	| 'projectId'
+	| 'folderId'
+	| 'apiKeyScopes'
+	| 'bindings'
+	| 'selection'
+	| 'workflowConflictPolicy'
+	| 'workflowIdPolicy'
+>;
 
 @Service()
 export class N8nPackagesService {
@@ -401,17 +443,84 @@ export class N8nPackagesService {
 		request: ImportRequest,
 		source: { sourceDir: string },
 	): Promise<ImportResult> {
+		const opened = await this.readDirectoryProjectPackage(source);
+		if (opened.status === 'empty') return opened.result;
+		const { result } = await this.dispatchImport(
+			request,
+			opened.reader,
+			opened.manifest,
+			'git-pull',
+		);
+		return result;
+	}
+
+	async importPackageSelectionFromDirectory(
+		request: ImportSelectionRequest,
+		source: { sourceDir: string },
+		selection: ImportSelection,
+	): Promise<ImportResult> {
+		const opened = await this.readDirectoryProjectPackage(source);
+		if (opened.status === 'empty') return opened.result;
+		const { result } = await this.dispatchSelectionImport(
+			request,
+			opened.reader,
+			opened.manifest,
+			selection,
+		);
+		return result;
+	}
+
+	/**
+	 * Reads a directory package. Directory import accepts only a project package.
+	 * A package with content and no projects is rejected. An empty package is a no-op.
+	 */
+	private async readDirectoryProjectPackage(source: {
+		sourceDir: string;
+	}): Promise<DirectoryProjectPackage> {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
 		await reader.listEntries();
 		const manifest = await this.packageParser.getManifest(reader);
-		if (!isProjectPackage(manifest)) {
-			if (hasContentWithoutProjects(manifest)) {
-				throw new BadRequestError('Directory packages must contain projects');
-			}
-			return emptyImportResult(manifest);
+		if (isProjectPackage(manifest)) {
+			return { status: 'project', reader, manifest };
 		}
-		const { result } = await this.dispatchImport(request, reader, manifest, 'git-pull');
-		return result;
+		if (hasContentWithoutProjects(manifest)) {
+			throw new BadRequestError('Directory packages must contain projects');
+		}
+		return { status: 'empty', result: emptyImportResult(manifest) };
+	}
+
+	/**
+	 * Validates a selection import and routes it to {@link ProjectPackageImporter} with the locked
+	 * cherry-pick profile. The caller guarantees a project package; a selected project the manifest
+	 * does not contain is rejected up front.
+	 */
+	private async dispatchSelectionImport(
+		request: ImportSelectionRequest,
+		reader: PackageReader,
+		manifest: PackageManifest,
+		selection: ImportSelection,
+	): Promise<ImportOutcome> {
+		const packageProjectIds = new Set((manifest.projects ?? []).map((project) => project.id));
+		if (!packageProjectIds.has(selection.selectedProjectId)) {
+			throw new BadRequestError(
+				`The selected project "${selection.selectedProjectId}" is not present in the package.`,
+			);
+		}
+
+		const resolvedRequest: ResolvedImportRequest = {
+			user: request.user,
+			...(request.projectId !== undefined ? { projectId: request.projectId } : {}),
+			...(request.folderId !== undefined ? { folderId: request.folderId } : {}),
+			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
+			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
+			...CHERRY_PICK_IMPORT_POLICY,
+			// The only two policies the caller may steer; every other policy is locked above.
+			workflowConflictPolicy: request.workflowConflictPolicy ?? WorkflowConflictPolicy.NewVersion,
+			workflowIdPolicy: request.workflowIdPolicy ?? WorkflowIdPolicy.Source,
+			selection,
+		};
+
+		return await this.projectPackageImporter.import(resolvedRequest, reader, manifest, 'git-pull');
 	}
 
 	private async dispatchImport(
