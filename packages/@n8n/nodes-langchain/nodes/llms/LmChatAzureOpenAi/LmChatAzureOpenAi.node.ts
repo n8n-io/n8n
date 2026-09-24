@@ -11,6 +11,7 @@ import {
 
 import { parseExtraBody } from '../shared/extra-body';
 import { setupApiKeyAuthentication } from './credentials/api-key';
+import { makeAzureFoundryFailedAttemptHandler } from './error-handling';
 import { setupOAuth2Authentication } from './credentials/oauth2';
 import { searchModels } from './methods/searchModels';
 import { properties } from './properties';
@@ -159,7 +160,10 @@ export class LmChatAzureOpenAi implements INodeType {
 					// or /chat/completions to a path Azure serves either way.
 					useResponsesApi: responsesApiEnabled,
 					modelKwargs: hasModelKwargs ? modelKwargs : undefined,
-					onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+					onFailedAttempt: makeN8nLlmFailedAttemptHandler(
+						this,
+						makeAzureFoundryFailedAttemptHandler(modelName, responsesApiEnabled),
+					),
 				});
 
 				this.logger.info(`Azure OpenAI (Foundry) client initialized for model: ${modelName}`);

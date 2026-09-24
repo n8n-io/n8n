@@ -1,5 +1,5 @@
 import { AzureChatOpenAI, ChatOpenAI } from '@langchain/openai';
-import { getProxyAgent } from '@n8n/ai-utilities';
+import { getProxyAgent, makeN8nLlmFailedAttemptHandler } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
@@ -107,6 +107,24 @@ describe('LmChatAzureOpenAi', () => {
 			expect(vi.mocked(ChatOpenAI).mock.calls[0][0]).toMatchObject({
 				useResponsesApi: enabled,
 			});
+		});
+
+		// Azure answers the route it does not serve with a bare 404, which reads as a missing
+		// deployment. The handler has to say which API the node asked for.
+		it.each([
+			[false, 'Chat Completions', "Turn on 'Use Responses API'"],
+			[true, 'the Responses API', "Turn off 'Use Responses API'"],
+		])('should explain a Foundry 404 when the setting is %s', async (enabled, api, remedy) => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, {}, enabled);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			const handler = vi.mocked(makeN8nLlmFailedAttemptHandler).mock.calls[0][1];
+			expect(handler).toBeDefined();
+			expect(() => handler!({ status: 404 } as never)).toThrow(
+				`Azure did not accept the deployment "gpt-4o" on ${api}`,
+			);
+			expect(() => handler!({ status: 404 } as never)).toThrow(remedy);
 		});
 
 		// The classic base URL ends in /openai/deployments/<name>, which has no Responses API
