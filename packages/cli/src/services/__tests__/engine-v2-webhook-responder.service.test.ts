@@ -159,7 +159,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('restores a Buffer body the data plane sent as a base64 envelope', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2(), true);
+		const pending = await responder.waitForResponse(createExecutionIdV2(), true);
 		const bytes = Buffer.from([0x00, 0xff, 0x10]);
 		const headers = { 'content-type': 'application/octet-stream', 'content-length': 3 };
 
