@@ -1,5 +1,6 @@
 import { MOONSHOTAI_KIMI_K3_MODEL_ID, UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
+import { MockLanguageModelV3 } from 'ai/test';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -39,12 +40,17 @@ describe('InstanceAiModelService', () => {
 	const settingsService = mock<InstanceAiSettingsService>();
 	const aiService = mock<AiService>();
 	const outboundHttp = mock<OutboundHttp>();
+	const transport = mock<ReturnType<OutboundHttp['transport']>>();
 
 	let service: InstanceAiModelService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedTokenGetters.length = 0;
+		vi.stubEnv('HTTP_PROXY', '');
+		vi.stubEnv('HTTPS_PROXY', '');
+		outboundHttp.transport.mockReturnValue(transport);
+		transport.asCustomFetch.mockReturnValue(vi.fn());
 		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
 	});
 
@@ -111,7 +117,9 @@ describe('InstanceAiModelService', () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude' as never);
 
-			await expect(service.resolveAgentModelConfig(fakeUser)).resolves.toBe('anthropic/claude');
+			await expect(service.resolveAgentModelConfig(fakeUser)).resolves.toMatchObject({
+				id: 'anthropic/claude',
+			});
 		});
 
 		it('should mint proxy tokens via the instance-ai endpoint when the proxy is active', async () => {
@@ -137,10 +145,12 @@ describe('InstanceAiModelService', () => {
 
 		it('passes the exact Kimi id to the shared proxy factory', async () => {
 			settingsService.getConfiguredModelId.mockReturnValue(MOONSHOTAI_KIMI_K3_MODEL_ID);
-			createProxyLanguageModel.mockResolvedValue({
-				provider: 'moonshotai',
-				modelId: 'kimi-k3',
-			});
+			createProxyLanguageModel.mockResolvedValue(
+				new MockLanguageModelV3({
+					provider: 'moonshotai',
+					modelId: 'kimi-k3',
+				}),
+			);
 
 			await service.resolveProxyModel(fakeUser, 'https://proxy.base/', tokenManager);
 
@@ -159,10 +169,12 @@ describe('InstanceAiModelService', () => {
 
 		it('forwards the caller-provided run and thread ids to the proxy factory', async () => {
 			settingsService.getConfiguredModelId.mockReturnValue(MOONSHOTAI_KIMI_K3_MODEL_ID);
-			createProxyLanguageModel.mockResolvedValue({
-				provider: 'moonshotai',
-				modelId: 'kimi-k3',
-			});
+			createProxyLanguageModel.mockResolvedValue(
+				new MockLanguageModelV3({
+					provider: 'moonshotai',
+					modelId: 'kimi-k3',
+				}),
+			);
 
 			await service.resolveProxyModel(fakeUser, 'https://proxy.base/', tokenManager, {
 				runId: 'run-42',
@@ -177,10 +189,12 @@ describe('InstanceAiModelService', () => {
 		it('keeps Anthropic routing for other configured models', async () => {
 			settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude-opus-5');
 			settingsService.resolveModelName.mockReturnValue('claude-opus-5');
-			createProxyLanguageModel.mockResolvedValue({
-				provider: 'anthropic.messages',
-				modelId: 'claude-opus-5',
-			});
+			createProxyLanguageModel.mockResolvedValue(
+				new MockLanguageModelV3({
+					provider: 'anthropic.messages',
+					modelId: 'claude-opus-5',
+				}),
+			);
 
 			await service.resolveProxyModel(fakeUser, 'https://proxy.base', tokenManager);
 

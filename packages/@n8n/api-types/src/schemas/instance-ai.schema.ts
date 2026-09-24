@@ -2300,6 +2300,7 @@ export interface InstanceAiEnvManagedFields {
 
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
+	disabledReason?: 'legacy-data-sharing' | 'legacy-data-sharing-env';
 	permissions: InstanceAiPermissions;
 	mcpAccessEnabled: boolean;
 	sandboxEnabled: boolean;

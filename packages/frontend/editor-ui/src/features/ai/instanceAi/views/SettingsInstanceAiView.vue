@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import {
+	N8nCallout,
 	N8nBadge,
 	N8nButton,
 	N8nDropdownMenu,
@@ -23,8 +24,7 @@ import {
 } from '@n8n/design-system';
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -43,7 +43,6 @@ import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const message = useMessage();
-const router = useRouter();
 const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const store = useInstanceAiSettingsStore();
@@ -67,6 +66,9 @@ const isEnabled = computed(
 	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
 );
 const isOff = computed(() => !isEnabled.value);
+const isDisabledByEnvironment = computed(
+	() => store.settings?.disabledReason === 'legacy-data-sharing-env',
+);
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
 const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudManaged);
 const showCredentialsRows = computed(() => isAdmin.value && isSelfManaged.value);
@@ -358,6 +360,8 @@ onMounted(() => {
 });
 
 async function handleEnable() {
+	if (isDisabledByEnvironment.value) return;
+	if (store.settings?.disabledReason && !(await store.persistEnabled(true))) return;
 	if (!showCredentialsRows.value && (!showSandboxRow.value || isSandboxConfigured.value)) {
 		await store.persistEnabled(true);
 		return;
@@ -448,10 +452,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 	store.setPermission(key, value);
 	void store.save();
 }
-
-function openAiUsageSettings() {
-	void router.push({ name: VIEWS.AI_SETTINGS });
-}
 </script>
 
 <template>
@@ -467,6 +467,20 @@ function openAiUsageSettings() {
 			</template>
 		</N8nSettingsPageHeader>
 
+		<N8nCallout
+			v-if="isAdmin && store.settings?.disabledReason"
+			theme="warning"
+			data-test-id="n8n-agent-data-sharing-notice"
+		>
+			{{
+				i18n.baseText(
+					isDisabledByEnvironment
+						? 'settings.n8nAgent.legacyDataSharing.environmentNotice'
+						: 'settings.n8nAgent.legacyDataSharing.notice',
+				)
+			}}
+		</N8nCallout>
+
 		<N8nLoading v-if="store.isLoading" :rows="3" :shrink-last="false" />
 
 		<N8nEmptyState
@@ -475,7 +489,7 @@ function openAiUsageSettings() {
 			:heading="i18n.baseText('settings.n8nAgent.empty.title')"
 			:description="i18n.baseText('settings.n8nAgent.empty.description')"
 			:button-text="isAdmin ? i18n.baseText('settings.n8nAgent.empty.enable') : undefined"
-			:button-disabled="store.isSaving || isTestingCredential"
+			:button-disabled="store.isSaving || isTestingCredential || isDisabledByEnvironment"
 			button-variant="solid"
 			@click:button="handleEnable"
 		>
@@ -499,7 +513,7 @@ function openAiUsageSettings() {
 								variant="solid"
 								size="medium"
 								:label="i18n.baseText('settings.n8nAgent.status.enable')"
-								:disabled="store.isSaving || isTestingCredential"
+								:disabled="store.isSaving || isTestingCredential || isDisabledByEnvironment"
 								data-test-id="n8n-agent-enable-button"
 								@click="handleEnable"
 							/>
@@ -796,26 +810,6 @@ function openAiUsageSettings() {
 									</N8nSelect>
 								</div>
 							</div>
-						</template>
-					</N8nSettingsRow>
-				</N8nSettingsRowGroup>
-			</N8nSettingsSection>
-
-			<N8nSettingsSection
-				:title="i18n.baseText('settings.n8nAgent.dataSharing.title')"
-				:description="i18n.baseText('settings.n8nAgent.dataSharing.description')"
-			>
-				<N8nSettingsRowGroup>
-					<N8nSettingsRow
-						:class="{ [$style.dim]: isOff }"
-						:title="i18n.baseText('settings.n8nAgent.dataSharing.manage.label')"
-						:description="i18n.baseText('settings.n8nAgent.dataSharing.manage.description')"
-						:clickable="!isOff && store.canManageAiUsage"
-						data-test-id="n8n-agent-data-sharing-row"
-						@click="openAiUsageSettings"
-					>
-						<template v-if="!isOff && store.canManageAiUsage" #action>
-							<N8nSettingsRowConfigure />
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>

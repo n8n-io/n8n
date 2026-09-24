@@ -4,7 +4,6 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import { VIEWS } from '@/app/constants';
 import SettingsInstanceAiView from '../views/SettingsInstanceAiView.vue';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -62,15 +61,9 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { computerUseExperimentMock, browserUseExperimentMock, routerPushMock } = vi.hoisted(() => ({
+const { computerUseExperimentMock, browserUseExperimentMock } = vi.hoisted(() => ({
 	browserUseExperimentMock: vi.fn(),
 	computerUseExperimentMock: vi.fn(),
-	routerPushMock: vi.fn(),
-}));
-
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRouter: () => ({ push: routerPushMock }),
 }));
 
 vi.mock('@/experiments/instanceAiBrowserUse', () => ({
@@ -519,27 +512,6 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryByTestId('n8n-agent-model-row')).toBeNull();
 			expect(queryByTestId('n8n-agent-sandbox-row')).toBeNull();
 			expect(queryByTestId('n8n-agent-search-row')).toBeNull();
-		});
-	});
-
-	describe('data sharing', () => {
-		it('links to the AI usage settings instead of duplicating its controls', async () => {
-			const { getByTestId } = renderComponent();
-
-			await fireEvent.click(getByTestId('n8n-agent-data-sharing-row'));
-
-			expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.AI_SETTINGS });
-		});
-
-		it('does not link without permission to manage AI usage', async () => {
-			vi.mocked(hasPermission).mockImplementation(
-				(_permissionNames, options) => options?.rbac?.scope !== 'aiAssistant:manage',
-			);
-			const { getByTestId } = renderComponent();
-
-			await fireEvent.click(getByTestId('n8n-agent-data-sharing-row'));
-
-			expect(routerPushMock).not.toHaveBeenCalled();
 		});
 	});
 

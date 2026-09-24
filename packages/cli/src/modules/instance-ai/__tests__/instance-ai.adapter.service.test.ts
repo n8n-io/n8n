@@ -1591,6 +1591,9 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
+
+const instanceAiSettings = mock<InstanceAiSettingsService>();
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -1653,7 +1656,7 @@ function createNodeAdapterServiceForTests(
 		{
 			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		instanceAiSettings,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{ isLicensed: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
@@ -2075,7 +2078,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		mockInstanceWriteAccess as unknown as InstanceWriteAccessService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		instanceAiSettings,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{ isLicensed: vi.fn().mockReturnValue(false) } as unknown as License,
@@ -2415,7 +2418,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{
 			isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
 		} as unknown as InstanceWriteAccessService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		instanceAiSettings,
 		mockWorkflowHistoryService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[23],
@@ -4405,7 +4408,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{
 			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as InstanceWriteAccessService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		instanceAiSettings,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		mockLicense as unknown as License,
@@ -4674,7 +4677,7 @@ function createRunAdapterForTests(
 		{
 			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		instanceAiSettings,
 		mockWorkflowHistoryService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[23],
@@ -5411,6 +5414,7 @@ function createAdapterWithGatewayMock(
 	args[21] = {
 		isReadOnly: vi.fn().mockReturnValue(false),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
+	args[22] = instanceAiSettings;
 	if (overrides?.settingsService) {
 		args[22] = overrides.settingsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService

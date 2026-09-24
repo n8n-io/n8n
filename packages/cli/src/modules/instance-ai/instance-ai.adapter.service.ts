@@ -463,6 +463,7 @@ export class InstanceAiAdapterService {
 			modelId?: ModelConfig;
 		},
 	): InstanceAiContext {
+		this.settingsService.assertEnabled();
 		const {
 			searchProxyConfig,
 			pushRef,
@@ -534,6 +535,7 @@ export class InstanceAiAdapterService {
 			// adapter tests construct the service with placeholder deps.
 			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup?.(),
 			allowSendingParameterValues: this.allowSendingParameterValues,
+			requireFullWorkflowSource: this.settingsService.hasMigratedLegacyDataSharingOptOut(),
 			...(builderDelegateAdapter && agentId && projectId
 				? { agentBuilderTarget: { agentId, projectId } }
 				: {}),
@@ -831,6 +833,7 @@ export class InstanceAiAdapterService {
 	}
 
 	private assertInstanceNotReadOnly(resourceType: string) {
+		this.settingsService.assertEnabled();
 		if (this.instanceWriteAccess.isReadOnly()) {
 			throw new Error(
 				`Cannot modify ${resourceType} on a protected instance. This instance is in read-only mode.`,
@@ -905,6 +908,7 @@ export class InstanceAiAdapterService {
 			workflowDependencyQueryService,
 		} = this;
 		const logger = this.logger;
+		const assertEnabled = () => this.settingsService.assertEnabled();
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		// Resolved once per context, upstream in `createContext`: the tool registers the action from
 		// the method's presence, so nothing downstream has to know a rollout flag exists.
@@ -1305,6 +1309,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async get(workflowId: string) {
+				assertEnabled();
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
@@ -1394,6 +1399,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async unpublish(workflowId: string) {
+				assertEnabled();
 				await assertNotLockedByEditor(workflowId);
 				await workflowService.deactivateWorkflow(user, workflowId, {
 					source: 'n8n-ai',
@@ -1402,6 +1408,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async getAsWorkflowJSON(workflowId: string, versionId?: string) {
+				assertEnabled();
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
@@ -1435,6 +1442,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async getWorkflowSnapshot(workflowId: string) {
+				assertEnabled();
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);

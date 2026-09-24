@@ -2,11 +2,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { Settings } from '@n8n/db';
 import { SettingsRepository } from '@n8n/db';
 
-import config from '@/config';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { CacheService } from '@/services/cache/cache.service';
-
-vi.mock('@/config', () => ({ default: { set: vi.fn() } }));
 
 describe('AiUsageService', () => {
 	const settingsRepository = mockInstance(SettingsRepository);
@@ -66,34 +63,6 @@ describe('AiUsageService', () => {
 
 			expect(result).toBe(true);
 			expect(cacheService.set).toHaveBeenCalledWith('ai.allowSendingParameterValues', 'true');
-		});
-	});
-
-	describe('updateAiUsageSettings()', () => {
-		it('should update setting to true', async () => {
-			settingsRepository.upsert.mockResolvedValue(undefined as never);
-
-			await aiUsageService.updateAiUsageSettings(true);
-
-			expect(settingsRepository.upsert).toHaveBeenCalledWith(
-				{ key: 'ai.allowSendingParameterValues', value: 'true', loadOnStartup: true },
-				['key'],
-			);
-			expect(cacheService.set).toHaveBeenCalledWith('ai.allowSendingParameterValues', 'true');
-			expect(config.set).toHaveBeenCalledWith('ai.allowSendingParameterValues', true);
-		});
-
-		it('should update setting to false', async () => {
-			settingsRepository.upsert.mockResolvedValue(undefined as never);
-
-			await aiUsageService.updateAiUsageSettings(false);
-
-			expect(settingsRepository.upsert).toHaveBeenCalledWith(
-				{ key: 'ai.allowSendingParameterValues', value: 'false', loadOnStartup: true },
-				['key'],
-			);
-			expect(cacheService.set).toHaveBeenCalledWith('ai.allowSendingParameterValues', 'false');
-			expect(config.set).toHaveBeenCalledWith('ai.allowSendingParameterValues', false);
 		});
 	});
 });

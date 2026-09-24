@@ -301,6 +301,8 @@ import {
 import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiService } from '../instance-ai.service';
+import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { mock } from 'vitest-mock-extended';
 import { buildThreadContextBlock } from '../internal-messages';
 import { InstanceAiSandboxService } from '../sandbox';
 import type {
@@ -308,7 +310,10 @@ import type {
 	ResumableOrphan,
 } from '../suspended-run-restorer.service';
 
+const enabledSettings = mock<InstanceAiSettingsService>({ isAgentEnabled: () => true });
+
 type StartRunServiceInternals = {
+	settingsService: InstanceAiSettingsService;
 	startRun: InstanceAiService['startRun'];
 	liveness: {
 		clearThreadState: MockedFunction<(threadId: string) => void>;
@@ -340,6 +345,7 @@ type StartRunServiceInternals = {
 
 function createStartRunService(): StartRunServiceInternals {
 	const service = Object.create(InstanceAiService.prototype) as unknown as StartRunServiceInternals;
+	service.settingsService = enabledSettings;
 	service.liveness = {
 		clearThreadState: vi.fn((_threadId: string) => {}),
 	};
@@ -857,6 +863,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				};
 			}>;
 			settingsService: {
+				assertEnabled: Mock;
 				getAdminSettings: Mock;
 				getSandboxStatus: Mock;
 				isLocalGatewayDisabledForUser: Mock;
@@ -913,6 +920,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
 		service.settingsService = {
+			assertEnabled: enabledSettings.assertEnabled,
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
 				enabled: true,
@@ -1199,6 +1207,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				};
 			}>;
 			settingsService: {
+				assertEnabled: Mock;
 				getAdminSettings: Mock;
 				getSandboxStatus: Mock;
 				isLocalGatewayDisabledForUser: Mock;
@@ -1255,6 +1264,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
 		service.settingsService = {
+			assertEnabled: enabledSettings.assertEnabled,
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
 				enabled: true,
@@ -1910,6 +1920,7 @@ describe('InstanceAiService — expired thread pruning', () => {
 });
 
 type RevalidationServiceInternals = {
+	settingsService: InstanceAiSettingsService;
 	revalidateActiveUser: (userId: string) => Promise<User | null>;
 	userRepository: { findOne: Mock };
 	logger: { debug: Mock; warn: Mock; error: Mock };
@@ -1919,6 +1930,7 @@ function createRevalidationService(): RevalidationServiceInternals {
 	const service = Object.create(
 		InstanceAiService.prototype,
 	) as unknown as RevalidationServiceInternals;
+	service.settingsService = enabledSettings;
 	service.userRepository = { findOne: vi.fn() };
 	service.logger = { debug: vi.fn(), warn: vi.fn(), error: vi.fn() };
 	return service;
@@ -6363,6 +6375,7 @@ describe('InstanceAiService — routeCancelRun zombie fallback', () => {
 });
 
 type FollowUpStreakServiceInternals = {
+	settingsService: InstanceAiSettingsService;
 	failedInternalFollowUpStreaks: Map<string, number>;
 	updateInternalFollowUpFailureStreak: (
 		threadId: string,
@@ -6387,6 +6400,7 @@ function createFollowUpStreakService(): FollowUpStreakServiceInternals {
 	const service = Object.create(
 		InstanceAiService.prototype,
 	) as unknown as FollowUpStreakServiceInternals;
+	service.settingsService = enabledSettings;
 
 	service.failedInternalFollowUpStreaks = new Map();
 	service.startExecuteRun = vi.fn();

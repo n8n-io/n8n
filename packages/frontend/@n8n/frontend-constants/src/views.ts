@@ -90,7 +90,6 @@ export enum VIEWS {
 	ENTITY_NOT_FOUND = 'EntityNotFound',
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
 	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
-	AI_SETTINGS = 'AISettingsView',
 	AI_GATEWAY_SETTINGS = 'AIGatewaySettingsView',
 	OAUTH_CONSENT = 'OAuthConsent',
 	MIGRATION_REPORT = 'MigrationReport',

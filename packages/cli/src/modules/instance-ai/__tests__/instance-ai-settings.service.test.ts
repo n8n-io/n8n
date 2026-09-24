@@ -35,9 +35,11 @@ type CredentialOperationContext = NonNullable<
 
 describe('InstanceAiSettingsService', () => {
 	const globalConfig = mock<{
+		ai: { allowSendingParameterValues: boolean };
 		instanceAi: InstanceAiConfig;
 		deployment: { type: string };
 	}>({
+		ai: { allowSendingParameterValues: true },
 		instanceAi: {
 			model: 'openai/gpt-4',
 			modelUrl: '',

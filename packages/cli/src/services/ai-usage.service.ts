@@ -1,7 +1,6 @@
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
 
 const KEY = 'ai.allowSendingParameterValues';
@@ -27,17 +26,5 @@ export class AiUsageService {
 		const allowSending = (row?.value ?? 'true') === 'true';
 		await this.cacheService.set(KEY, allowSending.toString());
 		return allowSending;
-	}
-
-	/**
-	 * Update the AI usage setting for sending parameter data.
-	 */
-	async updateAiUsageSettings(allowSendingActualData: boolean): Promise<void> {
-		await this.settingsRepository.upsert(
-			{ key: KEY, value: allowSendingActualData.toString(), loadOnStartup: true },
-			['key'],
-		);
-		await this.cacheService.set(KEY, allowSendingActualData.toString());
-		config.set(KEY, allowSendingActualData);
 	}
 }

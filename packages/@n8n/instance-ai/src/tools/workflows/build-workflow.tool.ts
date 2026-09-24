@@ -684,6 +684,28 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
+			if (
+				context.requireFullWorkflowSource &&
+				(binding.workflowId || input.workflowId) &&
+				!binding.parameterValuesIncluded
+			) {
+				const remediation = createRemediation({
+					category: 'code_fixable',
+					shouldEdit: false,
+					reason: 'workflow_source_refresh_required',
+					guidance:
+						'Call workflows(action="get-as-code") for this workflow before rebuilding. ' +
+						'If it reports a conflict, preserve your edits separately, remove the stale file, and read the workflow again. Then reapply your edits.',
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: binding.workflowId ?? input.workflowId,
+					errors: ['This workflow source may omit saved parameter values. Nothing was saved.'],
+					remediation,
+				};
+			}
+
 			if (input.workflowId && !binding.workflowId) {
 				try {
 					binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
@@ -1459,6 +1481,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
 					binding = await saveWorkflowSourceFileBinding(context, {
 						...binding,
+						...(context.requireFullWorkflowSource && operation === 'create'
+							? { parameterValuesIncluded: true }
+							: {}),
 						workflowId: saved.id,
 						workflowVersionId: saved.versionId,
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),

@@ -51,15 +51,6 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.USERS_SETTINGS } },
 			},
 			{
-				id: 'settings-ai',
-				icon: 'sparkles',
-				label: i18n.baseText('settings.ai'),
-				position: 'top',
-				available:
-					settingsStore.isAiAssistantEnabled && canUserAccessRouteByName(VIEWS.AI_SETTINGS),
-				route: { to: { name: VIEWS.AI_SETTINGS } },
-			},
-			{
 				id: 'settings-n8n-connect',
 				icon: 'plug-zap',
 				label: i18n.baseText(

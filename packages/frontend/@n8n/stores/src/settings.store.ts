@@ -7,7 +7,6 @@ import {
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import * as aiUsageApi from '@n8n/rest-api-client/api/ai-usage';
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
@@ -165,10 +164,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	);
 
 	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
-
-	const isAiDataSharingEnabled = computed(
-		() => settings.value.ai?.allowSendingParameterValues ?? true,
-	);
 
 	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
 
@@ -447,16 +442,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		moduleSettings.value = fetched;
 	};
 
-	const updateAiDataSharingSettings = async (allowSendingParameterValues: boolean) => {
-		const rootStore = useRootStore();
-		await aiUsageApi.updateAiUsageSettings(rootStore.restApiContext, {
-			allowSendingParameterValues,
-		});
-		if (settings.value.ai) {
-			settings.value.ai.allowSendingParameterValues = allowSendingParameterValues;
-		}
-	};
-
 	return {
 		settings,
 		userManagement,
@@ -524,7 +509,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
-		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
 		isAiGatewayCloudUbbEnabled,
 		aiGatewayBudget,
@@ -539,7 +523,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		initialize,
 		getModuleSettings,
 		moduleSettings,
-		updateAiDataSharingSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
 		activeModules,

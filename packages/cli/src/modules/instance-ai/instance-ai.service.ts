@@ -921,6 +921,11 @@ export class InstanceAiService {
 		// Runtime clients capture provider settings at creation, so rebuild them
 		// after admin settings change. In-flight sandbox users retain their entry.
 		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
+			if (!this.settingsService.isAgentEnabled()) {
+				for (const threadId of this.runState.getThreadIds()) {
+					this.cancelRun(threadId, 'assistant_disabled');
+				}
+			}
 			this.sandboxService.invalidateCachedWorkspaces();
 			if (!mcpSettingsChanged) return;
 			if (!this._mcpClientManager) return;
@@ -1450,6 +1455,7 @@ export class InstanceAiService {
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
 		observerThresholdTokens?: number,
 	): string {
+		this.settingsService.assertEnabled();
 		if (
 			promptVersion !== undefined &&
 			resolvePromptProfile({ version: promptVersion }).fallbackFrom
@@ -2467,6 +2473,7 @@ export class InstanceAiService {
 		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
 		instanceContextGates?: InstanceContextGates,
 	) {
+		this.settingsService.assertEnabled();
 		const memory = this.agentMemory;
 		const boundProjectId = await memory.getThreadProjectId(threadId);
 		if (!boundProjectId) {
@@ -3340,6 +3347,7 @@ export class InstanceAiService {
 		resumeReasonOverride?: OrchestratorResumeReason,
 		plannedBuild?: PlannedBuildFollowUp,
 	): Promise<string> {
+		if (!this.settingsService.isAgentEnabled()) return '';
 		if (this.runState.hasLiveRun(threadId)) {
 			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
 			return '';
@@ -5228,6 +5236,7 @@ export class InstanceAiService {
 	}
 
 	private async revalidateActiveUser(userId: string): Promise<User | null> {
+		if (!this.settingsService.isAgentEnabled()) return null;
 		try {
 			const user = await this.userRepository.findOne({
 				where: { id: userId },

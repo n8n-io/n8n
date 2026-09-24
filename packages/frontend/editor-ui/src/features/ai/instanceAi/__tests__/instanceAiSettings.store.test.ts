@@ -138,21 +138,14 @@ describe('useInstanceAiSettingsStore', () => {
 
 	describe('permissions', () => {
 		it('checks related admin scopes independently', () => {
-			vi.mocked(hasPermission)
-				.mockReturnValueOnce(true)
-				.mockReturnValueOnce(false)
-				.mockReturnValueOnce(false);
+			vi.mocked(hasPermission).mockReturnValueOnce(true).mockReturnValueOnce(false);
 
 			expect(store.canManage).toBe(true);
-			expect(store.canManageAiUsage).toBe(false);
 			expect(store.canManageInstanceCredentials).toBe(false);
 			expect(hasPermission).toHaveBeenNthCalledWith(1, ['rbac'], {
 				rbac: { scope: 'instanceAi:manage' },
 			});
 			expect(hasPermission).toHaveBeenNthCalledWith(2, ['rbac'], {
-				rbac: { scope: 'aiAssistant:manage' },
-			});
-			expect(hasPermission).toHaveBeenNthCalledWith(3, ['rbac'], {
 				rbac: { scope: 'credential:manageInstance' },
 			});
 		});

@@ -32,6 +32,11 @@ const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed
 export class DeprecationService {
 	private readonly deprecations: Deprecation[] = [
 		{
+			envVar: 'N8N_AI_ALLOW_SENDING_PARAMETER_VALUES',
+			message:
+				'This variable will be removed in v4. False now disables the n8n Assistant. Remove the variable and restart n8n, then manage the Assistant in Settings > n8n Assistant. Removing the variable does not re-enable the Assistant.',
+		},
+		{
 			envVar: 'N8N_BINARY_DATA_STORAGE_PATH',
 			message: 'Use N8N_STORAGE_PATH instead.',
 		},

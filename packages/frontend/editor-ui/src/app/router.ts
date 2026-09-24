@@ -112,7 +112,6 @@ const CompareCollectionView = async () =>
 	await import('@/features/ai/evaluation.ee/views/CompareCollectionView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
-const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
 const SettingsAiGatewayView = async () =>
 	await import('@/features/ai/gateway/views/SettingsAiGatewayView.vue');
 const ResourceCenterView = async () =>
@@ -745,31 +744,6 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'users',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'ai',
-				name: VIEWS.AI_SETTINGS,
-				component: SettingsAIView,
-				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'aiAssistant:manage',
-						},
-						custom: () => {
-							const settingsStore = useSettingsStore();
-							return settingsStore.isAiAssistantEnabled || settingsStore.isAskAiEnabled;
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'assistant',
 							};
 						},
 					},
