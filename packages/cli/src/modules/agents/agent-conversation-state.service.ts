@@ -23,10 +23,7 @@ export class AgentConversationStateService {
 		return { running, suspendedCheckpoint };
 	}
 
-	/**
-	 * Whether the run behind a parked tool call can still be resumed. A click on
-	 * a card whose run has expired or was already resolved must not start one.
-	 */
+	/** A click on a card whose run expired or was already resolved must not resume it. */
 	async isResumable(agentId: string, runId: string): Promise<boolean> {
 		const { status } = await this.checkpointStorage.getStatus(runId, agentId);
 		return status === 'active';

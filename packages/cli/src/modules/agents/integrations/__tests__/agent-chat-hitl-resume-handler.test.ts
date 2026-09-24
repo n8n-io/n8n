@@ -29,7 +29,6 @@ function createHandler(overrides: Partial<HandlerOptions> = {}) {
 	} as HandlerOptions);
 }
 
-/** A thread whose `postEphemeral` either lands natively or is unsupported. */
 function createThread(nativeEphemeral: boolean) {
 	return {
 		post: vi.fn().mockResolvedValue(undefined),
@@ -263,8 +262,7 @@ describe('notices that answer one click', () => {
 		expect(thread.postEphemeral).toHaveBeenCalledWith(ALICE, EXPIRED_NOTICE, {
 			fallbackToDM: false,
 		});
-		// No resume, so the misconfiguration error never reaches the thread, and
-		// the card is not relabelled with a decision that never took effect.
+		// No resume, so the misconfiguration error never reaches the thread.
 		expect(resumeForChat).not.toHaveBeenCalled();
 		expect(settleActionMessage).not.toHaveBeenCalled();
 	});

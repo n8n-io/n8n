@@ -147,10 +147,7 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 		threadId: string;
 	}): Promise<OpenSuspension | null>;
 
-	/**
-	 * Whether the parked run is still resumable. Optional so a caller that
-	 * cannot look checkpoints up (tests) simply skips the gate.
-	 */
+	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
 	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
 }
 
@@ -1058,10 +1055,10 @@ export class AgentChatBridge {
 	}
 
 	/**
-	 * Address the card at the user whose turn raised it where the platform can,
-	 * so nobody else answers their approval. Everything else falls back to the
-	 * conversation: a card nobody receives leaves the run parked with nothing to
-	 * click, so privacy never costs delivery.
+	 * Where the platform can address one user, the card goes to them alone, so
+	 * the rest of the conversation never sees it. Everything else falls back to
+	 * the thread: a card nobody receives leaves the run parked with nothing to
+	 * click.
 	 */
 	private async deliverSuspensionCard(
 		thread: Thread,

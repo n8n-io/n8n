@@ -87,10 +87,9 @@ export class TeamsIntegration extends AgentChatIntegration {
 	];
 
 	/**
-	 * A channel or group chat card goes out as a Teams targeted message, so only
-	 * the user who asked can answer it. A public card would let any channel
-	 * member approve on their behalf: this is an authorization boundary, not
-	 * tidiness.
+	 * A channel or group chat card goes out as a Teams targeted message, so the
+	 * rest of the channel never sees the approval. Delivery-scoped only: nothing
+	 * verifies who clicks.
 	 *
 	 * Deleting the answered card relies on
 	 * `patches/@chat-adapter__teams@4.37.0.patch`, because the adapter mutates a

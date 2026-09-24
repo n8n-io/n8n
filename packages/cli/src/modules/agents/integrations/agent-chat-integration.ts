@@ -104,17 +104,14 @@ export function onceStatusHandle(
 	};
 }
 
-/**
- * What an ephemeral post accepts — text and cards, but not a stream. Narrower
- * than `Thread.post`, which also takes an `AsyncIterable` for streamed replies.
- */
+/** Narrower than `Thread.post`, which also takes an `AsyncIterable` to stream. */
 type EphemeralPostable = Parameters<Thread<unknown, unknown>['postEphemeral']>[1];
 
 /**
- * Post to `user` alone where the platform supports it (Slack, Teams), and to
- * the thread where it does not, so the payload is never dropped.
- * `fallbackToDM: false` because the SDK's own fallback would turn this into an
- * unsolicited direct message on Discord and Telegram.
+ * Posts to `user` alone where the platform supports it, and to the thread where
+ * it does not, so the payload is never dropped. `fallbackToDM: false` because
+ * the SDK's own fallback would make this an unsolicited DM on Discord and
+ * Telegram.
  */
 export async function postToUserOrThread(
 	thread: Thread<unknown, unknown>,
@@ -280,9 +277,9 @@ export abstract class AgentChatIntegration {
 
 	/**
 	 * True to deliver a suspension card only to the user whose turn raised it,
-	 * so a bystander in a channel cannot answer someone else's approval. The
-	 * card still goes to the whole conversation when the platform has no
-	 * ephemeral delivery — a HITL card is never dropped for want of privacy.
+	 * so the rest of a channel never sees it. Delivery-scoped only: nothing
+	 * verifies who clicks. The card still goes to the whole conversation where
+	 * the platform has no ephemeral delivery, rather than being dropped.
 	 */
 	readonly targetSuspensionCardAtActingUser: boolean = false;
 

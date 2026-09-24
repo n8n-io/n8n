@@ -19,17 +19,11 @@ import type {
 } from '../agent-execution-orchestrator.service';
 
 type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> & {
-	/**
-	 * Whether the parked run is still resumable. Optional so a caller that
-	 * cannot look checkpoints up (tests) simply skips the gate.
-	 */
+	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
 	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
 };
 
-/**
- * Sent when a card is answered but its run is no longer there to resume: an
- * expired callback key, or a checkpoint that expired or was already resolved.
- */
+/** Covers both an expired callback key and a checkpoint that is gone. */
 const STALE_ACTION_NOTICE =
 	'This action is no longer available. The link may have expired or already been used.';
 
@@ -90,8 +84,7 @@ export class AgentChatHitlResumeHandler {
 		// not. Check before the card is settled, so a stale one is answered rather
 		// than relabelled with a decision that never took effect.
 		if (!(await this.isRunResumable(parsed.runId))) {
-			// Remove the card where the platform removes answered ones — settling
-			// is not an option here, because there is no decision to name.
+			// Settling is not an option here: there is no decision to name.
 			if (this.options.deleteActionMessageBeforeResume) await this.deleteActionMessage(event);
 			await postToUserOrThread(thread, event.user, STALE_ACTION_NOTICE);
 			return;
@@ -277,10 +270,9 @@ export class AgentChatHitlResumeHandler {
 		resumeData: unknown,
 		options: Pick<ResumeForChatConfig, 'messageContext' | 'contextConversation'> & {
 			/**
-			 * The user who clicked, when there is one. They are told privately that
-			 * the action was already handled, and a card the resumed turn raises is
-			 * addressed to them. A resume the user did not trigger (a sub-workflow
-			 * waking the run) omits it and stays silent.
+			 * Present means the duplicate-click notice goes to them and a card the
+			 * resumed turn raises is addressed to them. A resume no user triggered
+			 * omits it and stays silent.
 			 */
 			actingUser?: Author;
 		} = {},

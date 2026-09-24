@@ -91,12 +91,8 @@ const mentionEntity = {
 	mentioned: { id: `28:${TEAMS_APP_ID}`, name: 'n8n Agent' },
 };
 
-// ---------------------------------------------------------------------------
-// Group chat
-//
 // A group chat conversation id carries no message id, so the whole chat is one
 // conversation and one session.
-// ---------------------------------------------------------------------------
 
 export const TEAMS_GROUP_CHAT_CONVERSATION_ID = '19:group_chat_test@thread.v2';
 

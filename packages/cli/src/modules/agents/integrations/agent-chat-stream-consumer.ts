@@ -46,9 +46,8 @@ interface ConsumeStreamOptions {
 	throwOnDeliveryError?: boolean;
 	statusHandle?: BridgeStatusHandle;
 	/**
-	 * The user whose message or click drove this turn. A suspension card can be
-	 * addressed to them instead of the whole conversation. Absent for a turn no
-	 * user drove, such as a sub-workflow waking a parked run.
+	 * The user whose message or click drove this turn, so a suspension card can
+	 * be addressed to them. Absent for a turn no user drove.
 	 */
 	actingUserId?: string;
 }

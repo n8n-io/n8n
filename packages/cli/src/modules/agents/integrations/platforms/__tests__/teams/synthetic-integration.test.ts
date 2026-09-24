@@ -188,8 +188,7 @@ describe('Microsoft Teams integration scenarios', () => {
 				}),
 			);
 
-			// The answered card is removed rather than relabelled, so a stale button
-			// cannot be clicked again.
+			// Removed rather than relabelled, so a stale button cannot be clicked.
 			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
 			expect(ctx.lastEdit()).toBeUndefined();
 		} finally {
@@ -274,9 +273,8 @@ describe('Microsoft Teams integration scenarios', () => {
 				expect.objectContaining({ runId: 'run-group-1', toolCallId: 'tool-group-1' }),
 			);
 
-			// Teams refuses an update that would make a targeted card public, so the
-			// card is deleted instead of being settled in place — through the
-			// targeted endpoint, which is the only one it accepts for such a card.
+			// A targeted card is only mutable through the targeted endpoint, so the
+			// answered one is deleted there rather than settled in place.
 			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
 			expect(ctx.lastDelete()?.body.uri).toContain('isTargetedActivity=true');
 			expect(ctx.lastEdit()).toBeUndefined();

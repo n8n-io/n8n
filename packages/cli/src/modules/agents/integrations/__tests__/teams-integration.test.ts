@@ -72,9 +72,7 @@ describe('TeamsIntegration', () => {
 				// no callback store is needed.
 				needsShortCallbackData: false,
 				targetSuspensionCardAtActingUser: true,
-				// A targeted card cannot be edited, so an answered one is deleted —
-				// the base-class default, asserted because targeting is what makes it
-				// the right choice here.
+				// A targeted card cannot be edited, so an answered one is deleted.
 				deleteActionMessageBeforeResume: true,
 			});
 		});
