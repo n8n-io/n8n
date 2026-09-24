@@ -44,7 +44,7 @@ import {
 	type MemorySpanAttributes,
 	type RuntimeTelemetry,
 } from '../telemetry/runtime-telemetry';
-import { sanitizeOffloadedToolResultsForMemory } from '../tools/tool-result-guard';
+import { sanitizeOffloadedToolResultsForMemory } from './tool-result-memory';
 
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 /** Fraction of observerThresholdTokens at which the mid-run observer starts in the background. */
