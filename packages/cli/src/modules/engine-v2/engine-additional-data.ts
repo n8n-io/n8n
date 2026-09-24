@@ -21,12 +21,17 @@ function unimplemented(feature: string) {
  * database, and an empty object would turn `$vars.x` into a silent `undefined`
  * inside a request or a parameter.
  */
+const unimplementedVariablesAccess = (): never => {
+	throw new UnimplementedError('Variables ($vars) are not supported on Engine 2.0 yet');
+};
+
 const unimplementedVariables: IWorkflowExecuteAdditionalData['variables'] = new Proxy(
 	{},
 	{
-		get() {
-			throw new UnimplementedError('Variables ($vars) are not supported on Engine 2.0 yet');
-		},
+		get: unimplementedVariablesAccess,
+		ownKeys: unimplementedVariablesAccess,
+		has: unimplementedVariablesAccess,
+		getOwnPropertyDescriptor: unimplementedVariablesAccess,
 	},
 );
 

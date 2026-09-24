@@ -13,7 +13,7 @@ import { EngineAdditionalDataBuilder } from '../engine-additional-data';
 describe('EngineAdditionalDataBuilder', () => {
 	const urlService = mock<UrlService>({
 		getWebhookBaseUrl: () => 'http://n8n.test/',
-		getTestWebhookBaseUrl: () => 'http://n8n.test/',
+		getTestWebhookBaseUrl: () => 'http://n8n.test-test/',
 		getInstanceBaseUrl: () => 'http://n8n.test',
 	});
 	const globalConfig = mock<GlobalConfig>({
@@ -72,12 +72,12 @@ describe('EngineAdditionalDataBuilder', () => {
 			instanceBaseUrl: 'http://n8n.test/',
 			formBaseUrl: 'http://n8n.test/form',
 			formWaitingBaseUrl: 'http://n8n.test/form-waiting',
-			formTestBaseUrl: 'http://n8n.test/form-test',
+			formTestBaseUrl: 'http://n8n.test-test/form-test',
 			webhookBaseUrl: 'http://n8n.test/webhook',
 			webhookWaitingBaseUrl: 'http://n8n.test/webhook-waiting',
-			webhookTestBaseUrl: 'http://n8n.test/webhook-test',
+			webhookTestBaseUrl: 'http://n8n.test-test/webhook-test',
 			mcpBaseUrl: 'http://n8n.test/mcp',
-			mcpTestBaseUrl: 'http://n8n.test/mcp-test',
+			mcpTestBaseUrl: 'http://n8n.test-test/mcp-test',
 		});
 	});
 
@@ -91,6 +91,15 @@ describe('EngineAdditionalDataBuilder', () => {
 
 	it('fails on the first $vars read instead of resolving undefined', () => {
 		expect(() => build().variables.someName).toThrow(UnimplementedError);
+	});
+
+	it.each([
+		['spread', () => ({ ...build().variables })],
+		['keys', () => Object.keys(build().variables)],
+		['membership', () => 'someName' in build().variables],
+		['descriptor', () => Object.getOwnPropertyDescriptor(build().variables, 'someName')],
+	])('fails on $vars %s instead of looking empty', (_operation, access) => {
+		expect(access).toThrow(UnimplementedError);
 	});
 
 	it('attaches the SSRF bridge when protection is enabled', () => {
