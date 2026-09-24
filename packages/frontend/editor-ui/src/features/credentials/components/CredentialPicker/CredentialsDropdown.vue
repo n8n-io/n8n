@@ -88,6 +88,12 @@ const onFilter = (newFilter = '') => {
 	filter.value = newFilter;
 };
 
+// Reset the filter when the dropdown closes so a leftover filter cannot keep
+// the managed row hidden on reopen. Covers click-outside, not just closeSelect.
+const onVisibleChange = (visible: boolean) => {
+	if (!visible) filter.value = '';
+};
+
 const closeSelect = () => {
 	selectRefs.value?.innerSelect?.handleClose();
 	selectRefs.value?.blur();
@@ -120,6 +126,7 @@ const onCreateNewCredential = async () => {
 			:class="{ [$style.selectWithBalance]: isManagedSelected && managedOption?.pill }"
 			:popper-class="$style.selectPopper"
 			@update:model-value="onCredentialSelected"
+			@visible-change="onVisibleChange"
 		>
 			<template v-if="selectedPrefixIcon" #prefix>
 				<N8nIcon :icon="selectedPrefixIcon" size="large" :class="$style.optionIcon" />
