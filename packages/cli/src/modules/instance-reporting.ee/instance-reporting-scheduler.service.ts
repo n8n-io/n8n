@@ -112,14 +112,19 @@ export class InstanceReportingScheduler {
 	private async tick(): Promise<void> {
 		try {
 			const reportTime = await this.settingsService.getReportTime();
+			const now = new Date();
+
+			// Read the row once and answer every question below from it, rather than
+			// asking the database the same thing three times.
+			const pending = await this.reportRepository.findPending();
 
 			// Wait out the gap between retries, but never past the pending row's own
 			// next slot — at that slot it is skipped, not retried. A wait that reaches
 			// the slot collapses to zero, so this pass falls through to reportIfDue,
 			// which skips the stale row and sends a fresh report.
 			const waitMs = Math.min(
-				await this.reportingService.msUntilRetryAllowed(new Date()),
-				await this.msUntilNextSlot(reportTime),
+				this.reportingService.msUntilRetryAllowed(pending, now),
+				this.msUntilNextSlot(pending, reportTime, now),
 			);
 			if (waitMs > 0) {
 				this.scheduleNext(waitMs);
@@ -128,8 +133,13 @@ export class InstanceReportingScheduler {
 
 			// A failed delivery retries; the row decides when the attempts run out,
 			// after which the day reads as settled and this waits for the next slot.
-			if ((await this.reportIfDue(reportTime)) === 'failed') {
-				this.scheduleNext(Math.min(RETRY_DELAY_MS, await this.msUntilNextSlot(reportTime)));
+			if ((await this.reportIfDue(pending, reportTime, now)) === 'failed') {
+				// reportIfDue may have skipped a stale row and created a new one, so the
+				// cap belongs to the row just attempted, not to the one read above.
+				const attempted = await this.reportRepository.findPending();
+				this.scheduleNext(
+					Math.min(RETRY_DELAY_MS, this.msUntilNextSlot(attempted, reportTime, now)),
+				);
 				return;
 			}
 
@@ -151,10 +161,11 @@ export class InstanceReportingScheduler {
 	 * day. A new report waits for the slot, which makes sure the day is complete
 	 * before the code measures it.
 	 */
-	private async reportIfDue(reportTime: string): Promise<'sent' | 'skipped' | 'failed'> {
-		const now = new Date();
-		const pending = await this.reportRepository.findPending();
-
+	private async reportIfDue(
+		pending: InstanceMonitoringReport | null,
+		reportTime: string,
+		now: Date,
+	): Promise<'sent' | 'skipped' | 'failed'> {
 		if (pending) {
 			if (pendingIsStale(pending, reportTime, now)) {
 				await this.reportingService.skip(pending.id, pending.attempts, 'slot-passed');
@@ -175,14 +186,17 @@ export class InstanceReportingScheduler {
 	 * the slot, where the row is skipped and a fresh report takes over — otherwise a
 	 * slot near the end of the UTC day would defer the next report by almost a day.
 	 */
-	private async msUntilNextSlot(reportTime: string): Promise<number> {
-		const pending = await this.reportRepository.findPending();
+	private msUntilNextSlot(
+		pending: InstanceMonitoringReport | null,
+		reportTime: string,
+		now: Date,
+	): number {
 		if (!pending) return Number.POSITIVE_INFINITY;
 
 		const nextSlot =
 			slotOn(reportTime, pending.createdAt) + MINUTES_PER_DAY * Time.minutes.toMilliseconds;
 
-		return nextSlot - Date.now();
+		return nextSlot - now.getTime();
 	}
 
 	private async trySend(): Promise<'sent' | 'failed'> {

@@ -13,7 +13,10 @@ import { License } from '@/license';
 import { InsightsService } from '@/modules/insights/insights.service';
 import { OwnershipService } from '@/services/ownership.service';
 
-import type { InstanceReportDataPoint } from './database/entities/instance-monitoring-report';
+import type {
+	InstanceMonitoringReport,
+	InstanceReportDataPoint,
+} from './database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingConfig } from './instance-reporting.config';
 import { INSTANCE_REPORTS_PATH } from './instance-reporting.constants';
@@ -206,12 +209,11 @@ export class InstanceReportingService {
 	 * How long the scheduler must wait before attempting today's report again, or
 	 * `0` when it may attempt now.
 	 *
-	 * Derived from the report row, so the wait survives a restart. Without it, a
-	 * crash loop would attempt at once every time and spend the whole budget in
-	 * seconds.
+	 * Derived from the pending row's last attempt, so the wait survives a restart.
+	 * Without it, a crash loop would attempt at once every time and spend the
+	 * whole budget in seconds. The scheduler passes the row it read this pass.
 	 */
-	async msUntilRetryAllowed(now: Date): Promise<number> {
-		const pending = await this.reportRepository.findPending();
+	msUntilRetryAllowed(pending: InstanceMonitoringReport | null, now: Date): number {
 		if (!pending?.lastAttemptAt) return 0;
 
 		const elapsed = now.getTime() - pending.lastAttemptAt.getTime();

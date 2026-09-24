@@ -497,37 +497,31 @@ describe('InstanceReportingService', () => {
 	describe('msUntilRetryAllowed', () => {
 		const now = new Date('2026-03-26T07:42:00.000Z');
 
-		test('allows an attempt when no report is pending', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(null);
+		test('allows an attempt when no report is pending', () => {
+			const { service } = makeHarness();
 
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
+			expect(service.msUntilRetryAllowed(null, now)).toBe(0);
 		});
 
-		test('allows the first attempt, which has nothing to wait for', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(makeReport({ lastAttemptAt: null }));
+		test('allows the first attempt, which has nothing to wait for', () => {
+			const { service } = makeHarness();
 
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
+			expect(service.msUntilRetryAllowed(makeReport({ lastAttemptAt: null }), now)).toBe(0);
 		});
 
-		test('returns the remaining wait when the last attempt was recent', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(
-				makeReport({ lastAttemptAt: new Date('2026-03-26T07:40:00.000Z') }),
-			);
+		test('returns the remaining wait when the last attempt was recent', () => {
+			const { service } = makeHarness();
+			const pending = makeReport({ lastAttemptAt: new Date('2026-03-26T07:40:00.000Z') });
 
 			// Two of the five minutes are spent, so three remain.
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(3 * 60 * 1000);
+			expect(service.msUntilRetryAllowed(pending, now)).toBe(3 * 60 * 1000);
 		});
 
-		test('allows an attempt once the wait has passed', async () => {
-			const { service, reportRepository } = makeHarness();
-			reportRepository.findPending.mockResolvedValue(
-				makeReport({ lastAttemptAt: new Date('2026-03-26T07:30:00.000Z') }),
-			);
+		test('allows an attempt once the wait has passed', () => {
+			const { service } = makeHarness();
+			const pending = makeReport({ lastAttemptAt: new Date('2026-03-26T07:30:00.000Z') });
 
-			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
+			expect(service.msUntilRetryAllowed(pending, now)).toBe(0);
 		});
 	});
 

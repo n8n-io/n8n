@@ -39,7 +39,7 @@ function makeHarness({
 } = {}): Harness {
 	const reportingService = mock<InstanceReportingService>();
 	// No attempt has been made yet, so nothing is holding the next one back.
-	reportingService.msUntilRetryAllowed.mockResolvedValue(0);
+	reportingService.msUntilRetryAllowed.mockReturnValue(0);
 
 	const reportRepository = mock<InstanceMonitoringReportRepository>();
 	reportRepository.hasSettledToday.mockResolvedValue(false);
@@ -286,7 +286,7 @@ describe('InstanceReportingScheduler', () => {
 			// once, and a crash loop would spend the whole budget in seconds.
 			vi.setSystemTime(new Date(AFTER_SLOT));
 			const { scheduler, reportingService } = makeHarness();
-			reportingService.msUntilRetryAllowed.mockResolvedValueOnce(2 * Time.minutes.toMilliseconds);
+			reportingService.msUntilRetryAllowed.mockReturnValueOnce(2 * Time.minutes.toMilliseconds);
 
 			scheduler.init();
 			await settle();
