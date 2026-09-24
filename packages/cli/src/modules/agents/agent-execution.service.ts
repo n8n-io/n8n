@@ -97,6 +97,7 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
 	hideUserMessageFromTranscript?: boolean;
 	access: AgentThreadAccess;
+	previewChat?: boolean;
 	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
 	/** Internal admission data. These fields are not stored on the execution. */
@@ -218,6 +219,7 @@ export class AgentExecutionService {
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
 			status: 'running',
+			acceptsSteering: params.previewChat === true,
 			startedAt,
 			stoppedAt: null,
 			duration: 0,

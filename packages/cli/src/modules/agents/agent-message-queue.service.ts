@@ -7,6 +7,7 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentMessageSteeringService } from './agent-message-steering.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
@@ -58,6 +59,7 @@ export class AgentMessageQueueService {
 		private readonly attachments: AgentChatAttachmentService,
 		private readonly updates: AgentExecutionUpdateBroadcaster,
 		private readonly messages: AgentMessageRepository,
+		private readonly steering: AgentMessageSteeringService,
 	) {}
 
 	/** Save a pending message. It is durably accepted when the transaction commits. */
@@ -167,15 +169,18 @@ export class AgentMessageQueueService {
 	}): Promise<AgentChatQueueResponse> {
 		const thread = await this.threadRepository.findOneBy({ id: input.threadId });
 		// A client-created Preview session can have no accepted messages yet.
-		if (!thread) return { items: [] };
+		if (!thread) return { items: [], steerableExecutionId: null };
 		await this.assertPreviewAccess(thread, input);
 		const items = await this.repository.listPending(thread.id);
+		const steerable = await this.steering.findEligible(thread);
 		return {
+			steerableExecutionId: steerable?.id ?? null,
 			items: items
 				.filter((item) => item.payload.kind === 'preview')
 				.map((item) => ({
 					id: item.id,
 					...readInboundUserMessage(item.message.content),
+					steeringExecutionId: item.steeringExecutionId,
 					createdAt: item.createdAt.toISOString(),
 				})),
 		};
@@ -197,6 +202,7 @@ export class AgentMessageQueueService {
 				throw new NotFoundError('Queued message not found');
 			if (
 				item.executionId !== null ||
+				item.steeringExecutionId !== null ||
 				!(await this.repository.removePending(thread.id, item.id, ctx))
 			) {
 				throw new ConflictError('This message has already started');
@@ -227,12 +233,44 @@ export class AgentMessageQueueService {
 			if (!item || item.payload.kind !== 'preview')
 				throw new NotFoundError('Queued message not found');
 			if (item.executionId !== null) throw new ConflictError('This message has already started');
+			if (item.steeringExecutionId !== null)
+				throw new ConflictError('This message is no longer available');
 			const message = input.message.trim();
 			const { attachments } = readInboundUserMessage(item.message.content);
 			if (!message && !attachments.length)
 				throw new BadRequestError('A message or attachment is required');
 			const [content] = buildInboundUserMessage(message, attachments);
 			await this.messages.updatePendingInput(item.messageId, content, ctx);
+		});
+		this.updates.notifyQueueUpdated(input.threadId);
+	}
+
+	async steer(input: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		userId: string;
+		queueId: string;
+		executionId: string;
+	}): Promise<void> {
+		await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(input.threadId, ctx);
+			if (!thread) throw new NotFoundError('Session not found');
+			await this.assertPreviewAccess(thread, input, ctx);
+			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
+			if (!item || item.payload.kind !== 'preview')
+				throw new ConflictError('This message is no longer available');
+			const execution = await this.steering.findEligible(thread, ctx);
+			if (
+				execution?.id !== input.executionId ||
+				item.executionId !== null ||
+				item.steeringExecutionId !== null
+			) {
+				throw new ConflictError('This message cannot be added to that execution');
+			}
+			if (!(await this.repository.reserveSteering(thread.id, item.id, execution.id, ctx))) {
+				throw new ConflictError('This message is no longer available');
+			}
 		});
 		this.updates.notifyQueueUpdated(input.threadId);
 	}
@@ -264,14 +302,18 @@ export class AgentMessageQueueService {
 			ctx: OperationContext,
 		) => Promise<boolean>,
 	): Promise<ClaimedAgentMessage | null> {
+		let steeringChanged = false;
 		const claimed = await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(threadId, ctx);
-			if (!thread || (await this.isBlocked(thread, ctx))) return null;
+			if (!thread) return null;
+			steeringChanged = await this.steering.releaseInactive(thread, ctx);
+			if (await this.isBlocked(thread, ctx)) return null;
 			const active = await this.repository.findActive(threadId, ctx);
 			if (active?.executionId)
 				await this.repository.removeActive(threadId, active.executionId, ctx);
 			const item = await this.repository.findHead(threadId, ctx);
-			if (!item || !(await canConsume(item, thread, ctx))) return null;
+			if (!item || item.steeringExecutionId !== null || !(await canConsume(item, thread, ctx)))
+				return null;
 			const payload = this.restoreInput(item);
 			const recording = this.recordingFor(item, thread, payload);
 			await this.threadRepository.bumpUpdatedAt(threadId, ctx);
@@ -285,6 +327,7 @@ export class AgentMessageQueueService {
 			);
 			return { item, thread, payload, recording, reservation };
 		});
+		if (steeringChanged) this.updates.notifyQueueUpdated(threadId);
 		if (!claimed) return null;
 		this.executionService.activateExecution(claimed.reservation, claimed.recording);
 		const { execution } = claimed.reservation;
@@ -310,10 +353,12 @@ export class AgentMessageQueueService {
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(threadId, ctx);
 			if (!thread) return;
+			await this.steering.release(threadId, executionId, ctx);
 			const active = await this.repository.findActive(threadId, ctx);
 			if (active?.executionId !== executionId || (await this.isBlocked(thread, ctx))) return;
 			await this.repository.removeActive(threadId, executionId, ctx);
 		});
+		this.updates.notifyQueueUpdated(threadId);
 		this.onAvailable?.(threadId);
 	}
 
@@ -329,6 +374,8 @@ export class AgentMessageQueueService {
 		if (!signal?.aborted) recorder.record({ type: 'error', error });
 		recorder.record({ type: 'finish', finishReason: 'error' });
 		const record = recorder.getMessageRecord();
+		// Preserve committed input when a later preparation or recording step fails.
+		if (execution.timeline) record.timeline = execution.timeline;
 		await this.executionService.finalizeExecution(executionId, {
 			...claim.recording,
 			record: signal?.aborted ? { ...record, finishReason: 'cancelled', error: null } : record,
@@ -355,6 +402,7 @@ export class AgentMessageQueueService {
 			access: { accessScope: thread.accessScope, ownerId: thread.ownerId },
 			sessionMode: 'existing',
 			queueItemId: item.id,
+			previewChat: item.payload.kind === 'preview',
 			userMessage: payload.message,
 			resourceId: payload.resourceId,
 			source: item.message.origin?.source ?? undefined,

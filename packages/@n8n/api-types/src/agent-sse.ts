@@ -25,7 +25,7 @@
  *
  */
 
-import type { AgentPersistedMessageContentPart } from './agents';
+import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from './agents';
 
 export interface ToolSuspendedPayload {
 	toolCallId: string;
@@ -73,6 +73,12 @@ export type ForwardedChildChunkWire =
 	  };
 
 export type AgentSseEvent =
+	| {
+			type: 'message-steered';
+			queueId: string;
+			executionId: string;
+			message: AgentPersistedMessageDto;
+	  }
 	| { type: 'message-queued'; queueId: string; sessionId: string }
 	| {
 			type: 'execution-started';

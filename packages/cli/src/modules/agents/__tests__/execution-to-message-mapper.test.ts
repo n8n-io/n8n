@@ -17,6 +17,38 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 }
 
 describe('execution-to-message-mapper', () => {
+	it('splits assistant output around stable additional user messages', () => {
+		const input = {
+			id: 'steered-message',
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'C' }],
+			createdAt: new Date(150).toISOString(),
+		};
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: 'Failed after input',
+				timeline: [
+					{ type: 'text', content: 'before', timestamp: 100, endTime: 120 },
+					{ type: 'input', queueId: '3', message: input, timestamp: 150 },
+					{ type: 'text', content: 'after', timestamp: 200, endTime: 220 },
+				],
+			}),
+		);
+		expect(result.map(({ role, content }) => ({ role, content }))).toEqual([
+			{ role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'before' }] },
+			{ role: 'user', content: input.content },
+			{ role: 'assistant', content: [{ type: 'text', text: 'after' }] },
+		]);
+		expect(result[2]).toMatchObject({ ...input, executionId: 'execution-1' });
+		expect(new Set(result.map(({ id }) => id)).size).toBe(4);
+		expect(result[1].executionStatus).toBe('success');
+		expect(result[3]).toMatchObject({
+			executionStatus: 'error',
+			executionError: 'Failed after input',
+		});
+	});
 	it.each(['running', 'success', 'error', 'cancelled', 'interrupted'] as const)(
 		'keeps a signal-only turn with status %s',
 		(status) => {
