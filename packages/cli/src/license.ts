@@ -172,7 +172,9 @@ export class License implements LicenseProvider {
 	}
 
 	private async onFeatureChange() {
-		void this.broadcastReloadLicenseCommand();
+		if (this.instanceSettings.isLeader) {
+			void this.broadcastReloadLicenseCommand();
+		}
 		await this.notifyRefreshCallbacks();
 	}
 
@@ -182,7 +184,7 @@ export class License implements LicenseProvider {
 	}
 
 	private async broadcastReloadLicenseCommand() {
-		if (this.globalConfig.executions.mode === 'queue' && this.instanceSettings.isLeader) {
+		if (this.globalConfig.executions.mode === 'queue') {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}
