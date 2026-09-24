@@ -200,6 +200,7 @@ export class ToolCallExecutor {
 						persistence: ctx.persistence,
 						resolvedTelemetry: ctx.telemetry,
 						executionCounter: ctx.executionCounter,
+						guardrails: ctx.guardrails,
 						abortSignal: ctx.abortSignal,
 						countToolCall: true,
 					}),
@@ -521,6 +522,7 @@ export class ToolCallExecutor {
 			resumeData,
 			resolvedTelemetry: ctx.telemetry,
 			executionCounter: ctx.executionCounter,
+			guardrails: ctx.guardrails,
 			abortSignal: ctx.abortSignal,
 			countToolCall: false,
 			...(entry.suspended

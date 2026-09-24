@@ -48,9 +48,11 @@ import type {
 	ExecutionOptions,
 	ResumeOptions,
 } from '../../types/sdk/agent';
+import type { GuardrailStop } from '../../types/sdk/guardrail';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
+import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-memory';
@@ -118,6 +120,7 @@ interface LoopState {
 	maxIterations: number;
 	iterationCount: number;
 	reachedStopCondition: boolean;
+	guardrailStop?: GuardrailStop;
 }
 
 type ToolBatchSettlement<T> = { suspended: false } | { suspended: true; result: T };
@@ -743,6 +746,7 @@ export class AgentRuntime {
 			finishReason: state.lastFinishReason,
 			usage: state.totalUsage,
 			structuredOutput: state.structuredOutput,
+			guardrail: state.guardrailStop,
 		});
 	}
 
@@ -844,6 +848,7 @@ export class AgentRuntime {
 			persistence: ctx.options?.persistence,
 			telemetry: ctx.runTelemetry,
 			executionCounter: ctx.options?.executionCounter,
+			guardrails: ctx.options?.guardrails,
 			abortSignal: ctx.abortScope.signal,
 			isAborted: () => ctx.abortScope.isAborted,
 		};
@@ -888,6 +893,13 @@ export class AgentRuntime {
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
+		// A guardrail refused the call. Usage from any discarded empty attempt
+		// is already folded in; end the run without a new model turn.
+		if (!turn) {
+			state.lastFinishReason = 'guardrail';
+			state.reachedStopCondition = true;
+			return { suspended: false };
+		}
 		this.assertNotAborted(ctx.abortScope);
 		for (const message of ctx.list.inputDelta()) ctx.acceptedInputIds.add(message.id);
 
@@ -974,14 +986,30 @@ export class AgentRuntime {
 		sink: RunOutputSink<T>,
 		state: LoopState,
 		modelCallContext: ModelCallContext,
-	): Promise<ModelTurnResult> {
-		let turn = await sink.callModel(modelCallContext);
+	): Promise<ModelTurnResult | undefined> {
+		const guardrails = GuardrailRunner.from(ctx.options?.guardrails);
+		const callModel = async (): Promise<ModelTurnResult | undefined> => {
+			const guardCtx = guardrails?.modelCallContext('turn', this.modelIdString);
+			if (guardrails && guardCtx) {
+				const stop = await guardrails.before(guardCtx);
+				if (stop) {
+					state.guardrailStop = stop;
+					return undefined;
+				}
+			}
+			const turn = await sink.callModel(modelCallContext);
+			if (guardrails && guardCtx) await guardrails.after(guardCtx, turn.usage);
+			return turn;
+		};
+
+		let turn = await callModel();
 		// Retry empty stop turns. Charge each attempt before checking for cancellation.
-		for (let retry = 0; retry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn); retry++) {
+		for (let retry = 0; turn && retry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn); retry++) {
 			this.recordTurnUsage(ctx, sink, state, turn);
 			this.assertNotAborted(ctx.abortScope);
-			turn = await sink.callModel(modelCallContext);
+			turn = await callModel();
 		}
+		if (!turn) return undefined;
 		this.recordTurnUsage(ctx, sink, state, turn);
 		return turn;
 	}

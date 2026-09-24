@@ -10,6 +10,7 @@ import type {
 	AgentExecutionCounter,
 	BuiltTelemetry,
 	BuiltTool,
+	GuardrailsOptions,
 	PendingToolCall,
 	ToolSuspendOptions,
 } from '../index';
@@ -103,6 +104,7 @@ export interface ToolBatchContext {
 	persistence?: AgentPersistenceOptions;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	guardrails?: GuardrailsOptions;
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
 }
@@ -120,6 +122,7 @@ export interface ProcessToolCallParams extends ToolCallIdentity {
 	resumeData?: unknown;
 	resolvedTelemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	guardrails?: GuardrailsOptions;
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
