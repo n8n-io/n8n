@@ -292,6 +292,73 @@ async function collect(generator: AsyncGenerator<StreamChunk>) {
 describe('background approvals', () => {
 	afterEach(() => Container.reset());
 
+	it('delivers a published approval through its stored connection and reply thread', async () => {
+		const { service, chatIntegrationService, bridge } = makeService();
+		const approval: NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>> = {
+			...mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			runId: 'child-run-1',
+			token: 'gate-1',
+			metadata: {
+				jobId: 'job-1',
+				taskPath: '/root/research_0',
+				resumeContext: { agentId: 'child-1' },
+				sharedWorkspace: false,
+				messageContext: {
+					...selectedContext,
+					integrationConnectionId: 'slack:approval-credential',
+					replyTarget: { type: 'thread', threadId: 'slack:approval-reply:1' },
+				},
+			},
+			pending: {
+				suspended: true,
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-1',
+				toolName: 'check_ledger',
+				input: { id: 'entry-1' },
+				suspendPayload: { type: 'approval', toolName: 'check_ledger', args: { id: 'entry-1' } },
+				resumeSchema: { type: 'object', properties: { approved: { type: 'boolean' } } },
+			},
+		};
+
+		await service.deliverBackgroundApproval(
+			{
+				agentId,
+				projectId,
+				memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+				identity: {
+					type: 'published',
+					integrationType: 'slack',
+					principalHash: integrationPrincipalHash,
+				},
+			},
+			'Research',
+			approval,
+		);
+
+		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(
+			agentId,
+			'slack',
+			'approval-credential',
+		);
+		expect(bridge.deliverBackgroundApproval).toHaveBeenCalledExactlyOnceWith(
+			'slack:approval-reply:1',
+			{
+				jobId: 'job-1',
+				title: 'Research',
+				token: 'gate-1',
+				toolCall: {
+					type: 'tool-call-suspended',
+					runId: 'child-run-1',
+					toolCallId: 'child-tool-1',
+					toolName: 'check_ledger',
+					input: { id: 'entry-1' },
+					suspendPayload: { type: 'approval', toolName: 'check_ledger', args: { id: 'entry-1' } },
+					resumeSchema: { type: 'object', properties: { approved: { type: 'boolean' } } },
+				},
+			},
+		);
+	});
+
 	it.each([
 		{ expectedMemory: { threadId: 'other-thread' } },
 		{ expectedMemory: { resourceId: 'draft-chat:other-user' } },
@@ -1448,31 +1515,44 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it.each(['chat', 'wake'] as const)(
+	it.each(['chat', 'wake', 'approval'] as const)(
 		'rejects an inaccessible draft %s before runtime acquisition',
 		async (operation) => {
 			const { service, executionService, runtimeCacheService } = makeService();
 			executionService.canUseDraftThread.mockResolvedValue(false);
-			const result =
-				operation === 'chat'
-					? collect(
-							service.executeForChat({
-								agentId,
-								projectId,
-								message: 'hello',
-								user,
-								memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-							}),
-						)
-					: service.executeForWake({
-							backgroundJobSignal,
-							agentId,
-							projectId,
-							message: 'Wake',
-							memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-							identity: { type: 'draft', user, principalHash: userPrincipalHash },
-							abortSignal: new AbortController().signal,
-						});
+			let result: Promise<unknown>;
+			if (operation === 'chat') {
+				result = collect(
+					service.executeForChat({
+						agentId,
+						projectId,
+						message: 'hello',
+						user,
+						memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					}),
+				);
+			} else if (operation === 'wake') {
+				result = service.executeForWake({
+					backgroundJobSignal,
+					agentId,
+					projectId,
+					message: 'Wake',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					identity: { type: 'draft', user, principalHash: userPrincipalHash },
+					abortSignal: new AbortController().signal,
+				});
+			} else {
+				result = service.deliverBackgroundApproval(
+					{
+						agentId,
+						projectId,
+						memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+						identity: { type: 'draft', user, principalHash: userPrincipalHash },
+					},
+					'Research',
+					mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+				);
+			}
 
 			await expect(result).rejects.toThrow('Session not found');
 			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
