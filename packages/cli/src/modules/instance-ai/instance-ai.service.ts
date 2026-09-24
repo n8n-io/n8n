@@ -4168,10 +4168,12 @@ export class InstanceAiService {
 				instanceContext.state === 'injected' ? instanceContext.block : '',
 				threadArtifactsBlock,
 				projectSection ? buildProjectContextBlock(projectSection) : undefined,
-				buildInstanceUrlsBlock({
-					webhookBaseUrl: this.webhookBaseUrl,
-					formBaseUrl: this.formBaseUrl,
-				}),
+				resumeReason === undefined
+					? buildInstanceUrlsBlock({
+							webhookBaseUrl: this.webhookBaseUrl,
+							formBaseUrl: this.formBaseUrl,
+						})
+					: undefined,
 				pastConversationsSection
 					? buildPastConversationsBlock(pastConversationsSection)
 					: undefined,
