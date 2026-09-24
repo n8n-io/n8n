@@ -172,6 +172,56 @@ describe('MigrationRuleDetail', () => {
 		});
 	});
 
+	describe('how to fix panel', () => {
+		it('renders the recommendations as resolution steps', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const panel = await screen.findByTestId('migration-rule-how-to-fix');
+			expect(panel).toHaveTextContent('How to fix');
+			expect(panel).toHaveTextContent('Update the node');
+			expect(panel).toHaveTextContent('Please update to the latest version');
+			expect(screen.queryByTestId('migration-rule-how-to-fix-docs-link')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('migration-rule-how-to-fix-migratable')).not.toBeInTheDocument();
+		});
+
+		it('links to the rule documentation when there are no recommendations', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ recommendations: [] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const link = await screen.findByTestId('migration-rule-how-to-fix-docs-link');
+			expect(link).toHaveAttribute('href', 'https://docs.example.com/rule-1');
+			expect(screen.getByTestId('migration-rule-how-to-fix')).toHaveTextContent(
+				'Follow the steps in the documentation to resolve this change.',
+			);
+		});
+
+		it('links to the general breaking-changes docs when the rule has no documentation', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ recommendations: [], ruleDocumentationUrl: undefined }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const link = await screen.findByTestId('migration-rule-how-to-fix-docs-link');
+			expect(link).toHaveAttribute('href', expect.stringContaining('breaking-changes'));
+		});
+
+		it('mentions the Migrate action when the rule is migratable', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			expect(await screen.findByTestId('migration-rule-how-to-fix-migratable')).toHaveTextContent(
+				'Use the Migrate action in the table',
+			);
+		});
+	});
+
 	describe('migration', () => {
 		it('should not render a Migrate button when the rule is not migratable', async () => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
