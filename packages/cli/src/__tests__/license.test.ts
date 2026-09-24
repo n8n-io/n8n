@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { mockLogger } from '@n8n/backend-test-utils';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { SettingsRepository } from '@n8n/db';
 import { LicenseManager } from '@n8n_io/license-sdk';
@@ -294,6 +294,44 @@ describe('License', () => {
 				expect(reloadSpy).not.toHaveBeenCalled();
 			}
 		});
+	});
+
+	describe('reload-license broadcast', () => {
+		const lastManagerConfig = () => {
+			const { calls } = (LicenseManager as MockedClass<typeof LicenseManager>).mock;
+			return calls[calls.length - 1][0];
+		};
+
+		it.each([
+			{ hook: 'onLicenseRenewed', isLeader: false, mode: 'queue', publishes: true },
+			{ hook: 'onLicenseRenewed', isLeader: true, mode: 'queue', publishes: true },
+			{ hook: 'onLicenseRenewed', isLeader: false, mode: 'regular', publishes: false },
+			{ hook: 'onFeatureChange', isLeader: true, mode: 'queue', publishes: true },
+			{ hook: 'onFeatureChange', isLeader: false, mode: 'queue', publishes: false },
+		] as const)(
+			'$hook on a main with isLeader=$isLeader in $mode mode publishes=$publishes',
+			async ({ hook, isLeader, mode, publishes }) => {
+				const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+				const publisher = mockInstance(Publisher, { publishCommand: vi.fn() });
+				license = new License(
+					mockLogger(),
+					mock<InstanceSettings>({ instanceType: 'main', isLeader }),
+					mock(),
+					mock(),
+					mock<GlobalConfig>({ license: licenseConfig, executions: { mode } }),
+				);
+				await license.init();
+
+				await lastManagerConfig()[hook]!({});
+				await new Promise(setImmediate);
+
+				if (publishes) {
+					expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-license' });
+				} else {
+					expect(publisher.publishCommand).not.toHaveBeenCalled();
+				}
+			},
+		);
 	});
 
 	describe('device fingerprint', () => {
