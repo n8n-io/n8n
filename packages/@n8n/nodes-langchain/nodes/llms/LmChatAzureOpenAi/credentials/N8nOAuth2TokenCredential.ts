@@ -4,7 +4,10 @@ import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
+import {
+	AZURE_OPENAI_INFERENCE_AUDIENCE,
+	type AzureEntraCognitiveServicesOAuth2ApiCredential,
+} from '../types';
 /**
  * Adapts n8n's credential retrieval into the TokenCredential interface expected by @azure/identity
  */
@@ -12,6 +15,7 @@ export class N8nOAuth2TokenCredential implements TokenCredential {
 	constructor(
 		private node: INode,
 		private credential: AzureEntraCognitiveServicesOAuth2ApiCredential,
+		private audience: string = AZURE_OPENAI_INFERENCE_AUDIENCE,
 	) {}
 
 	/**
@@ -30,7 +34,7 @@ export class N8nOAuth2TokenCredential implements TokenCredential {
 				authentication: this.credential.authentication,
 				authorizationUri: this.credential.authUrl,
 				additionalBodyProperties: {
-					resource: 'https://cognitiveservices.azure.com/',
+					resource: `${this.audience}/`,
 				},
 			});
 

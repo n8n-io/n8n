@@ -15,9 +15,11 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
-import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { AiGatewayConfigDto, AiPreferenceDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
@@ -80,6 +82,8 @@ import type {
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
+	InstanceAiPreferenceService,
+	InstanceAiPreferenceWriteRejection,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
 	ExecuteNodeResult as InstanceAiExecuteNodeResult,
@@ -143,7 +147,9 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
@@ -172,6 +178,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -320,6 +327,21 @@ function toTelemetryReason(
 	}
 }
 
+/** The tool package cannot import cli error classes, so the boundary speaks in
+ *  reasons. Only `scope: 'user'` reaches the service from here, so the one
+ *  BadRequestError it can raise is the per-scope cap. The three mapped classes
+ *  carry user-facing text, so their message passes through; anything else is
+ *  an unexpected fault, so its message stays internal (the caller logs it). */
+function toPreferenceWriteRejection(error: unknown): {
+	reason: InstanceAiPreferenceWriteRejection;
+	message: string;
+} {
+	if (error instanceof ConflictError) return { reason: 'duplicate', message: error.message };
+	if (error instanceof BadRequestError) return { reason: 'scope_full', message: error.message };
+	if (error instanceof ForbiddenError) return { reason: 'not_permitted', message: error.message };
+	return { reason: 'failed', message: 'The preference could not be saved.' };
+}
+
 // Credential types are loaded once at boot, so the derived host index is
 // process-global and safe to memoize across users.
 let httpCredentialHostsCache: CredentialHostInfo[] | undefined;
@@ -414,6 +436,9 @@ export class InstanceAiAdapterService {
 		// Optional for the same positional-construction reason as above.
 		// See `teamProjectsLicensed()` for the absent case.
 		private readonly licenseState?: LicenseState,
+		// Optional for the same reason as the other services above: existing tests
+		// construct this class positionally, and this must stay the last parameter.
+		private readonly aiPreferenceService?: AiPreferenceService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -443,6 +468,7 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
 			/** Resolved MCP registry availability. Falsy → mcp service/tool not wired. */
 			mcpConnectionsAvailable?: boolean;
 			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
@@ -458,6 +484,9 @@ export class InstanceAiAdapterService {
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
 			credentialDescriptionsEnabled?: boolean;
+			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
+			 *  `save_user_preference` tool. */
+			aiPreferencesEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -473,12 +502,14 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
+			setupPanelVariant,
 			mcpConnectionsAvailable,
 			nodeUsageEnabled,
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
+			aiPreferencesEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -502,6 +533,7 @@ export class InstanceAiAdapterService {
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
+				setupPanelVariant,
 			}),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService,
@@ -524,6 +556,7 @@ export class InstanceAiAdapterService {
 			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
+			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -598,7 +631,7 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/** Resolves user experience flags and the shared activity gate. Unreadable flags stay off. */
+	/** Resolves experiment assignments. */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */
 		configEvalsEnabled: boolean;
@@ -606,6 +639,8 @@ export class InstanceAiAdapterService {
 		conversationHistoryEnabled: boolean;
 		/** Progressive workflow policy and planning-tool selection. */
 		progressiveBuildingEnabled: boolean;
+		setupPanelEnabled: boolean;
+		setupPanelVariant?: 'control' | 'variant';
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
@@ -629,8 +664,9 @@ export class InstanceAiAdapterService {
 			if (userFlags.status === 'fulfilled') flags = userFlags.value;
 			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
 		} catch {
-			// Keep the gates closed if the client cannot start an evaluation.
+			// Leave unreadable flags unassigned.
 		}
+		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -640,6 +676,10 @@ export class InstanceAiAdapterService {
 			progressiveBuildingEnabled:
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
+			...(setupPanelVariant === 'control' || setupPanelVariant === 'variant'
+				? { setupPanelVariant }
+				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
@@ -673,6 +713,79 @@ export class InstanceAiAdapterService {
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
 			expand: async (id) => await instanceContext.expand({ id, user, scope }),
+		};
+	}
+
+	/** `source` is chosen here, never by the model: this is the assistant's write. */
+	private createPreferenceAdapter(user: User): InstanceAiPreferenceService {
+		const aiPreferenceService = this.aiPreferenceService;
+		if (!aiPreferenceService) throw new UnexpectedError('AI preference service is not available');
+
+		return {
+			create: async ({ content, scope }) => {
+				const textLength = content.length;
+				// Only the write sits in the try: a telemetry fault after a committed row
+				// must not turn into `ok: false`, or the model reports a failed save and
+				// a retry runs into the duplicate check.
+				let dto: AiPreferenceDto;
+				try {
+					dto = await aiPreferenceService.create(user, { content, scope }, 'aia');
+				} catch (error) {
+					const rejection = toPreferenceWriteRejection(error);
+					// The three mapped classes are expected outcomes with their own
+					// user-facing text. Anything else is a real fault whose message stays
+					// internal, so it must not go unlogged.
+					if (rejection.reason === 'failed') {
+						this.logger.error('Saving an AI preference from the assistant failed', { error });
+					}
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+						surface: 'aia',
+						reason: rejection.reason,
+						scope_type: scope,
+						text_length: textLength,
+					});
+					return { ok: false, ...rejection };
+				}
+
+				try {
+					// Write-first: the card is the confirmation, shown after the write, and
+					// doing nothing is agreement, so shown and resolved(accepted) fire together.
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN, {
+						surface: 'aia',
+						scope_type: scope,
+						text_length: textLength,
+					});
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+						surface: 'aia',
+						outcome: 'accepted',
+						scope_type: scope,
+						text_length: textLength,
+					});
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
+						surface: 'aia',
+						offered_scope: scope,
+						accepted_scope: scope,
+						scope_changed: false,
+					});
+					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE, {
+						surface: 'aia',
+						scope_type: scope,
+						text_length: textLength,
+						replaced_existing: false,
+					});
+				} catch (error) {
+					this.logger.warn('Preference telemetry failed after the row was saved', { error });
+				}
+				return { ok: true, preference: { id: dto.id, content: dto.content, scope } };
+			},
+			recordRejection: (reason, textLength) => {
+				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+					surface: 'aia',
+					reason,
+					scope_type: 'user',
+					text_length: textLength,
+				});
+			},
 		};
 	}
 
@@ -882,8 +995,18 @@ export class InstanceAiAdapterService {
 		user: User,
 		threadId?: string,
 		boundProjectId?: string,
-		options: { nodeUsageGateOpen?: boolean; folderExploration?: boolean } = {},
+		options: {
+			nodeUsageGateOpen?: boolean;
+			folderExploration?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
+		} = {},
 	): InstanceAiWorkflowService {
+		const setupExperimentProperties = options.setupPanelVariant
+			? {
+					variant: options.setupPanelVariant,
+					[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: options.setupPanelVariant,
+				}
+			: {};
 		const foldersOn = options.folderExploration === true;
 		// Attribution reveals folder ids, names and paths on every row, so it needs
 		// the licence as well as the flag. Resolution stays on the flag alone so an
@@ -1386,6 +1509,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
@@ -1622,6 +1746,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: updated.id,
@@ -1713,6 +1838,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,

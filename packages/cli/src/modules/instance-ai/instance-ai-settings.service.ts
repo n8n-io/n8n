@@ -1344,11 +1344,6 @@ export class InstanceAiSettingsService {
 		return this.config.browserUseEnabled;
 	}
 
-	/** Whether the non-blocking setup panel replaces the suspending setup wizard. */
-	isInstanceAiSetupPanelEnabled(): boolean {
-		return this.config.instanceAiSetupPanelEnabled;
-	}
-
 	/** Whether this instance is in the activation-capped trial cohort. */
 	isActivationCapped(): boolean {
 		return this.config.activationCapped;

@@ -30,8 +30,12 @@ import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './
 /**
  * Only a step that ran gets an entry. v1 reports a node that did not run by
  * having no `runData` for it, and an entry would make the canvas claim it ran.
- * `queued` never started, `skipped` was decided against, and `cancelled` is
- * reachable only through `cancelQueuedSteps`, which cancels queued rows.
+ * `queued` never started and `skipped` was decided against.
+ *
+ * Two statuses do not obey that rule. A `waiting` step ran and then suspended.
+ * A `cancelled` step can be a waiting step that `cancelPendingSteps` cancelled.
+ * Neither gets an entry today, so this map hides a run that happened.
+ * TODO(CAT-2928): map the waiting statuses the canvas must show.
  */
 const TASK_STATUS_V1 = new Map<StepStatus, ExecutionStatus>([
 	['completed', 'success'],

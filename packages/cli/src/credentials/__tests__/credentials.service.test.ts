@@ -15,6 +15,7 @@ import type {
 	ListQueryDb,
 	DbLockService,
 	TransactionRunner,
+	ProjectRelation,
 } from '@n8n/db';
 import {
 	CredentialIdConflictError,
@@ -86,6 +87,11 @@ const viewOnlyUser = mock<User>({
 		})),
 	} as Role,
 });
+
+const flags = { credSharingEnabled: false };
+vi.mock('@/constants/credential-sharing', () => ({
+	isCredSharingEnabled: () => flags.credSharingEnabled,
+}));
 
 describe('CredentialsService', () => {
 	const credType = mock<ICredentialType>({
@@ -164,6 +170,7 @@ describe('CredentialsService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		flags.credSharingEnabled = false;
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		policyEnforcementService.enforceCredentialSave.mockResolvedValue(cleared);
 		credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
@@ -2986,6 +2993,7 @@ describe('CredentialsService', () => {
 					sharedWithProjects: [
 						{ id: 'proj-shared', type: 'team', name: 'Shared Project', icon: null },
 					],
+					sharedRoute: 'project',
 				},
 			]);
 		});
@@ -3090,6 +3098,128 @@ describe('CredentialsService', () => {
 			expect(credIds).toEqual(['cred-1', 'cred-2']);
 			// Verify no duplicates
 			expect(new Set(credIds).size).toBe(2);
+		});
+
+		describe('personal route (isCredSharingEnabled)', () => {
+			const personalProject = mock<Project>({ id: 'user-personal-project', type: 'personal' });
+			// A fresh object per call: getCredentialsAUserCanUseInAWorkflow mutates
+			// `.shared` in place on every credential it returns, so reusing one
+			// instance across tests would leak state between them.
+			const makePersonalCredential = () =>
+				({
+					id: 'cred-personal',
+					name: 'Personal Credential',
+					type: 'apiKey',
+					description: null,
+					isGlobal: false,
+					isManaged: false,
+					isResolvable: false,
+					createdAt: credentialCreatedAt,
+					updatedAt: credentialUpdatedAt,
+					shared: [
+						{
+							credentialsId: 'cred-personal',
+							role: 'credential:owner',
+							projectId: personalProject.id,
+						},
+					],
+				}) as Partial<CredentialsEntity> as CredentialsEntity;
+
+			beforeEach(() => {
+				projectService.getPersonalProject.mockResolvedValue(personalProject);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([]);
+			});
+
+			it('excludes the credential when the flag is off, even if the user works in the project', async () => {
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue([personalProject.id]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: personalProject.id }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			it('includes the credential via the personal route when the flag is on and the user works in the project', async () => {
+				flags.credSharingEnabled = true;
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue(['project-in-workflow']);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'project-in-workflow' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal', sharedRoute: 'personal' });
+			});
+
+			it('excludes the credential when the flag is on but the user does not work in the project', async () => {
+				flags.credSharingEnabled = true;
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue(['some-other-project']);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: personalProject.id }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			it('includes the credential via the personal route for an unsaved workflow (projectId option)', async () => {
+				flags.credSharingEnabled = true;
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+				});
+
+				expect(projectService.findProjectsWorkflowIsIn).not.toHaveBeenCalled();
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal', sharedRoute: 'personal' });
+			});
+
+			it('reads as the project route when the credential is both project-shared and personal-route eligible', async () => {
+				flags.credSharingEnabled = true;
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue([personalProject.id]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: personalProject.id }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal', sharedRoute: 'project' });
+			});
 		});
 	});
 

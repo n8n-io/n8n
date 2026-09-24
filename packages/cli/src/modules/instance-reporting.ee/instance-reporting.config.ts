@@ -18,7 +18,8 @@ export class InstanceReportingConfig {
 	instanceReportingBaseUrl: string = '';
 
 	/**
-	 * Sent as a bearer token; leave unset if the receiver does not require one.
+	 * Optional. When set, it is sent as `Authorization: Bearer …` and the license
+	 * certificate is not sent. Leave unset to authenticate with the certificate.
 	 *
 	 * @beta - breaking changes may still occur
 	 */

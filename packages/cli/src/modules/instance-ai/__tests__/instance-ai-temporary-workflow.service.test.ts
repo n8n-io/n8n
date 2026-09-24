@@ -46,6 +46,7 @@ function createService() {
 		configEvalsEnabled: false,
 		conversationHistoryEnabled: false,
 		progressiveBuildingEnabled: false,
+		setupPanelEnabled: false,
 		nodeUsageEnabled: false,
 		folderExplorationEnabled: false,
 		aiPreferencesEnabled: false,

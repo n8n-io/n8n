@@ -145,8 +145,6 @@ function mountHeader(
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
 		isPreviewOpen: boolean;
-		instanceAiAvailable: boolean;
-		isAiPanelOpen: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
@@ -163,8 +161,6 @@ function mountHeader(
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
 			isPreviewOpen: overrides.isPreviewOpen,
-			instanceAiAvailable: overrides.instanceAiAvailable,
-			isAiPanelOpen: overrides.isAiPanelOpen,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
@@ -181,53 +177,6 @@ describe('AgentBuilderHeader', () => {
 		routerResolve.mockClear();
 		trackClickedNewAgentMock.mockReset();
 		agentsListRef.value = null;
-	});
-
-	it('shows the Instance AI toggle when available', () => {
-		const wrapper = mountHeader({ instanceAiAvailable: true, isAiPanelOpen: false });
-		const button = wrapper.get('[data-testid="agent-builder-instance-ai-btn"]');
-
-		expect(button.attributes('aria-label')).toBe('agents.builder.header.editWithAi');
-		expect(button.attributes('aria-pressed')).toBe('false');
-	});
-
-	it('reflects isAiPanelOpen as aria-pressed', () => {
-		const wrapper = mountHeader({ instanceAiAvailable: true, isAiPanelOpen: true });
-
-		expect(
-			wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').attributes('aria-pressed'),
-		).toBe('true');
-	});
-
-	it('emits toggle-instance-ai on click', async () => {
-		const wrapper = mountHeader({ instanceAiAvailable: true });
-
-		await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
-
-		expect(wrapper.emitted('toggle-instance-ai')).toEqual([[]]);
-	});
-
-	it.each([
-		{ label: 'Instance AI is unavailable', instanceAiAvailable: false },
-		{ label: 'artifact mode is active', instanceAiAvailable: true, artifactMode: true },
-	])('hides the Instance AI toggle when $label', (overrides) => {
-		const wrapper = mountHeader(overrides);
-
-		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
-	});
-
-	it('stays visible while the preview is open (both docks can coexist)', () => {
-		const wrapper = mountHeader({ instanceAiAvailable: true, isPreviewOpen: true });
-
-		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
-	});
-
-	it('disables the Instance AI toggle when no agent is loaded', () => {
-		const wrapper = mountHeader({ agent: null, instanceAiAvailable: true });
-
-		expect(
-			wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').attributes('disabled'),
-		).toBeDefined();
 	});
 
 	it('renders breadcrumbs, publish and action dropdown', () => {

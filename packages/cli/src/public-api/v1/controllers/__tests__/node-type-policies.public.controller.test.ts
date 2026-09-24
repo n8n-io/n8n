@@ -32,21 +32,21 @@ describe('NodeTypePoliciesPublicController route metadata', () => {
 		handlerName,
 		route,
 	}));
-	const projectHandlers = new Set(['getProjectPolicy', 'putProjectPolicy']);
+	const projectHandlers = new Set(['getNodeTypeProjectPolicy', 'putNodeTypeProjectPolicy']);
 
 	it('registers every route of the internal instance and project controllers', () => {
 		expect(routeCases.map(({ handlerName }) => handlerName).sort()).toEqual(
 			[
-				'createPolicyDocument',
-				'deletePolicyDocument',
-				'getInstancePolicy',
-				'getPolicyDocument',
-				'getProjectPolicy',
-				'listPolicyDocuments',
-				'putInstancePolicy',
-				'putProjectPolicy',
-				'replaceAttachments',
-				'updatePolicyDocument',
+				'createNodeTypePolicyDocument',
+				'deleteNodeTypePolicyDocument',
+				'getNodeTypeInstancePolicy',
+				'getNodeTypePolicyDocument',
+				'getNodeTypeProjectPolicy',
+				'listNodeTypePolicyDocuments',
+				'putNodeTypeInstancePolicy',
+				'putNodeTypeProjectPolicy',
+				'replaceNodeTypePolicyAttachments',
+				'updateNodeTypePolicyDocument',
 			].sort(),
 		);
 	});
@@ -107,14 +107,14 @@ describe('NodeTypePoliciesPublicController with the module disabled', () => {
 	});
 
 	it('answers 503 before touching the service', async () => {
-		await expect(controller.getInstancePolicy()).rejects.toThrow(ServiceUnavailableError);
-		await expect(controller.getProjectPolicy(req, res, 'project-id')).rejects.toThrow(
+		await expect(controller.getNodeTypeInstancePolicy()).rejects.toThrow(ServiceUnavailableError);
+		await expect(controller.getNodeTypeProjectPolicy(req, res, 'project-id')).rejects.toThrow(
 			ServiceUnavailableError,
 		);
-		await expect(controller.getPolicyDocument(req, res, 'policy-id')).rejects.toThrow(
+		await expect(controller.getNodeTypePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
 			ServiceUnavailableError,
 		);
-		await expect(controller.deletePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
+		await expect(controller.deleteNodeTypePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
 			ServiceUnavailableError,
 		);
 
@@ -160,10 +160,10 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		warnings: [{ ruleId: 'r2', shadowedByRuleId: 'r1' }],
 	};
 
-	it('getInstancePolicy reads the null-project scope and maps the response', async () => {
+	it('getNodeTypeInstancePolicy reads the null-project scope and maps the response', async () => {
 		service.getEffectivePolicy.mockResolvedValue(effectivePolicy);
 
-		const result = await controller.getInstancePolicy();
+		const result = await controller.getNodeTypeInstancePolicy();
 
 		expect(service.getEffectivePolicy).toHaveBeenCalledWith(NODE_TYPES_KIND, null);
 		expect(result).toEqual({
@@ -174,10 +174,10 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		});
 	});
 
-	it('getProjectPolicy reads the given project scope and maps the response', async () => {
+	it('getNodeTypeProjectPolicy reads the given project scope and maps the response', async () => {
 		service.getEffectivePolicy.mockResolvedValue({ ...effectivePolicy, projectId: 'project-id' });
 
-		const result = await controller.getProjectPolicy(req, res, 'project-id');
+		const result = await controller.getNodeTypeProjectPolicy(req, res, 'project-id');
 
 		expect(service.getEffectivePolicy).toHaveBeenCalledWith(NODE_TYPES_KIND, 'project-id');
 		expect(result).toEqual({
@@ -188,11 +188,11 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		});
 	});
 
-	it('putInstancePolicy forwards rules, defaultAction, version, and the caller id, and maps the result', async () => {
+	it('putNodeTypeInstancePolicy forwards rules, defaultAction, version, and the caller id, and maps the result', async () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
 		const dto = { rules, defaultAction: 'deny', version: 3 } as PutInstancePolicyDto;
 
-		const result: PolicyEffectiveWriteResultPublicDto = await controller.putInstancePolicy(
+		const result: PolicyEffectiveWriteResultPublicDto = await controller.putNodeTypeInstancePolicy(
 			req,
 			res,
 			dto,
@@ -214,11 +214,11 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		});
 	});
 
-	it('putProjectPolicy forwards the project id, rules, defaultAction, version, and the caller id, and maps the result', async () => {
+	it('putNodeTypeProjectPolicy forwards the project id, rules, defaultAction, version, and the caller id, and maps the result', async () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
 		const dto = { rules, defaultAction: 'deny', version: 3 } as PutProjectPolicyDto;
 
-		const result = await controller.putProjectPolicy(req, res, 'project-id', dto);
+		const result = await controller.putNodeTypeProjectPolicy(req, res, 'project-id', dto);
 
 		expect(service.setEffectivePolicy).toHaveBeenCalledWith(
 			NODE_TYPES_KIND,
