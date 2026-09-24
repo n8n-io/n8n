@@ -1,5 +1,5 @@
-import type { TSESTree } from '@typescript-eslint/utils';
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import type { TSESTree, TSESLint } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, ASTUtils } from '@typescript-eslint/utils';
 
 import {
 	createRule,
@@ -13,27 +13,43 @@ import {
 	isTriggerNode,
 } from '../utils/index.js';
 
-function getDisplayValue(node: TSESTree.Node | null): string | null {
-	const literal = getLiteralValue(node);
-	if (typeof literal === 'string' || typeof literal === 'number' || typeof literal === 'boolean') {
-		return `${typeof literal}:${String(literal)}`;
-	}
+function getDisplayValue(
+	node: TSESTree.Node | null,
+	sourceCode: TSESLint.SourceCode,
+): string | null {
+	if (!node) return null;
 
-	if (node?.type === AST_NODE_TYPES.Identifier) return `identifier:${node.name}`;
-
+	let value = ASTUtils.getStaticValue(node, sourceCode.getScope(node))?.value;
 	if (
-		node?.type === AST_NODE_TYPES.MemberExpression &&
+		value === undefined &&
+		node.type === AST_NODE_TYPES.MemberExpression &&
 		node.object.type === AST_NODE_TYPES.Identifier &&
 		!node.computed &&
 		node.property.type === AST_NODE_TYPES.Identifier
 	) {
-		return `member:${node.object.name}.${node.property.name}`;
+		const variable = ASTUtils.findVariable(sourceCode.getScope(node), node.object);
+		const definition = variable?.defs.length === 1 ? variable.defs[0]?.node : null;
+		if (definition?.type === AST_NODE_TYPES.TSEnumDeclaration) {
+			const member = definition.body.members.find(
+				({ id }) =>
+					(id.type === AST_NODE_TYPES.Identifier && id.name === node.property.name) ||
+					(id.type === AST_NODE_TYPES.Literal && id.value === node.property.name),
+			);
+			value = getLiteralValue(member?.initializer ?? null) ?? undefined;
+		}
+	}
+
+	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+		return `${typeof value}:${String(value)}`;
 	}
 
 	return null;
 }
 
-function getShowConditions(element: TSESTree.ArrayExpression['elements'][number]) {
+function getShowConditions(
+	element: TSESTree.ArrayExpression['elements'][number],
+	sourceCode: TSESLint.SourceCode,
+) {
 	const conditions = new Map<string, Set<string>>();
 	if (element?.type !== AST_NODE_TYPES.ObjectExpression) return conditions;
 
@@ -56,7 +72,7 @@ function getShowConditions(element: TSESTree.ArrayExpression['elements'][number]
 
 		const values = new Set<string>();
 		for (const valueNode of property.value.elements) {
-			const value = getDisplayValue(valueNode);
+			const value = getDisplayValue(valueNode, sourceCode);
 			if (value === null) {
 				values.clear();
 				break;
@@ -96,9 +112,10 @@ function areMutuallyExclusive(
 	left: TSESTree.ArrayExpression['elements'][number],
 	right: TSESTree.ArrayExpression['elements'][number],
 	multiOptionPropertyNames: Set<string>,
+	sourceCode: TSESLint.SourceCode,
 ): boolean {
-	const leftConditions = getShowConditions(left);
-	const rightConditions = getShowConditions(right);
+	const leftConditions = getShowConditions(left, sourceCode);
+	const rightConditions = getShowConditions(right, sourceCode);
 
 	for (const [name, leftValues] of leftConditions) {
 		if (multiOptionPropertyNames.has(name)) continue;
@@ -149,7 +166,14 @@ export const SingleCredentialPerNodeRule = createRule({
 					) {
 						const leftCredential = credentials.elements[leftIndex] ?? null;
 						const rightCredential = credentials.elements[rightIndex] ?? null;
-						if (!areMutuallyExclusive(leftCredential, rightCredential, multiOptionPropertyNames)) {
+						if (
+							!areMutuallyExclusive(
+								leftCredential,
+								rightCredential,
+								multiOptionPropertyNames,
+								context.sourceCode,
+							)
+						) {
 							context.report({ node: credentials, messageId: 'multipleCredentials' });
 							return;
 						}

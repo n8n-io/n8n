@@ -155,6 +155,58 @@ ${createNodeCode(`[
 			errors: [{ messageId: 'multipleCredentials' }],
 		},
 		{
+			name: 'reports a constant alias and a literal with the same value',
+			filename: 'Test.node.ts',
+			code: `
+const API_KEY_AUTH = 'apiKey';
+${createNodeCode(`[
+	{
+		name: 'firstApi',
+		displayOptions: { show: { authentication: [API_KEY_AUTH] } },
+	},
+	{
+		name: 'secondApi',
+		displayOptions: { show: { authentication: ['apiKey'] } },
+	},
+]`)}`,
+			errors: [{ messageId: 'multipleCredentials' }],
+		},
+		{
+			name: 'reports enum members with the same value',
+			filename: 'Test.node.ts',
+			code: `
+enum AuthenticationType {
+	ApiKey = 'apiKey',
+	AlternateApiKey = 'apiKey',
+}
+${createNodeCode(`[
+	{
+		name: 'firstApi',
+		displayOptions: { show: { authentication: [AuthenticationType.ApiKey] } },
+	},
+	{
+		name: 'secondApi',
+		displayOptions: { show: { authentication: [AuthenticationType.AlternateApiKey] } },
+	},
+]`)}`,
+			errors: [{ messageId: 'multipleCredentials' }],
+		},
+		{
+			name: 'reports unresolved values that might overlap',
+			filename: 'Test.node.ts',
+			code: createNodeCode(`[
+				{
+					name: 'firstApi',
+					displayOptions: { show: { authentication: [EXTERNAL_API_KEY] } },
+				},
+				{
+					name: 'secondApi',
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+			]`),
+			errors: [{ messageId: 'multipleCredentials' }],
+		},
+		{
 			name: 'reports disjoint conditions on a multi-options property',
 			filename: 'Test.node.ts',
 			code: createNodeCode(
