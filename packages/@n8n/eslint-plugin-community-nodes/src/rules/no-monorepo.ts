@@ -34,7 +34,12 @@ export const NoMonorepoRule = createRule({
 				}
 
 				const directory = findJsonProperty(repository.value, 'directory');
-				if (directory) {
+				if (
+					directory &&
+					(directory.value.type !== AST_NODE_TYPES.Literal ||
+						typeof directory.value.value !== 'string' ||
+						!/^\.(?:[\\/]\.)*[\\/]?$/.test(directory.value.value))
+				) {
 					context.report({
 						node: directory,
 						messageId: 'monorepoNotSupported',

@@ -6,7 +6,7 @@
 
 ## Rule Details
 
-This rule rejects a `repository.directory` field in `package.json`. This field identifies a package in a monorepo. Community node tooling requires each published package to use a dedicated repository.
+This rule rejects a nested `repository.directory` in `package.json`. A root directory value such as `.` or `./` is valid. The publication scanner checks the source repository layout. It accepts a repository with its only `package.json` in a subdirectory. Omit `repository.directory` for that layout during local linting.
 
 ## Examples
 
