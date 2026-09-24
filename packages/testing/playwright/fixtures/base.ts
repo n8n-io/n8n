@@ -52,8 +52,7 @@ type TestFixtures = {
 	 *  unless COVERAGE_ENABLED. */
 	backendCoverage: undefined;
 	containerRequirement: undefined;
-	testSetup: undefined;
-	authRole: UserRole | null;
+	testSession: UserRole | null;
 	consoleErrorMonitor: unknown;
 	page: Page;
 	/** Internal auto fixture: sorts a test into its engine 2.0 parity bucket by tag. */
@@ -270,9 +269,10 @@ export const test = base.extend<
 		await use(frontendUrl);
 	},
 
-	// Both API and UI consumers depend on this fixture. A combined consumer resets once.
-	testSetup: async ({ dbSetup, backendUrl }, use, testInfo) => {
+	// Both API and UI consumers share the reset and role for this test.
+	testSession: async ({ dbSetup, backendUrl }, use, testInfo) => {
 		void dbSetup;
+		const role = authRoleFromTags(testInfo.tags);
 		if (testInfo.tags.some((tag) => tag.toLowerCase() === '@db:reset')) {
 			if (getBackendUrl() && process.env.RESET_E2E_DB !== 'true') {
 				throw new TestError('Database reset is not enabled for this target');
@@ -284,12 +284,7 @@ export const test = base.extend<
 				await context.dispose();
 			}
 		}
-		await use(undefined);
-	},
-
-	authRole: async ({ testSetup }, use, testInfo) => {
-		void testSetup;
-		await use(authRoleFromTags(testInfo.tags));
+		await use(role);
 	},
 
 	page: async ({ page, consoleErrorMonitor }, use) => {
@@ -297,14 +292,9 @@ export const test = base.extend<
 		await use(page);
 	},
 
-	n8n: async (
-		{ context, backendUrl, frontendUrl, n8nStackConfig, authRole, consoleErrorMonitor },
-		use,
-	) => {
-		void consoleErrorMonitor;
+	n8n: async ({ page, context, backendUrl, frontendUrl, n8nStackConfig, testSession }, use) => {
 		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
 		await setupDefaultInterceptors(context);
-		const page = await context.newPage();
 
 		// Set debounce multiplier for E2E tests - 1 means normal timing (no change)
 		// Can be lowered (e.g. 0.5) to speed up tests, but avoid 0 as it causes race conditions
@@ -320,7 +310,7 @@ export const test = base.extend<
 
 			try {
 				const n8nInstance = new n8nPage(page, api);
-				if (authRole) await api.signin(authRole);
+				if (testSession) await api.signin(testSession);
 				const apiCookies = await apiContext.storageState();
 				const authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
 
@@ -359,17 +349,17 @@ export const test = base.extend<
 			}
 		} else {
 			const n8nInstance = new n8nPage(page, new ApiHelpers(page.context().request, apiOptions));
-			if (authRole) await n8nInstance.api.signin(authRole);
+			if (testSession) await n8nInstance.api.signin(testSession);
 			await n8nInstance.start.withProjectFeatures();
 			await use(n8nInstance);
 		}
 	},
 
-	api: async ({ backendUrl, n8nStackConfig, authRole }, use) => {
+	api: async ({ backendUrl, n8nStackConfig, testSession }, use) => {
 		const context = await request.newContext({ baseURL: backendUrl });
 		const api = new ApiHelpers(context, { workflowSettings: workflowSettingsFor(n8nStackConfig) });
 		try {
-			if (authRole) await api.signin(authRole);
+			if (testSession) await api.signin(testSession);
 			await use(api);
 		} finally {
 			await context.dispose();
@@ -381,7 +371,7 @@ export const test = base.extend<
 		await use(urls);
 	},
 
-	createApiForMain: async ({ n8nContainer, n8nStackConfig, authRole }, use) => {
+	createApiForMain: async ({ n8nContainer, n8nStackConfig, testSession }, use) => {
 		const contexts: Array<{ dispose: () => Promise<void> }> = [];
 
 		const createApi = async (mainIndex: number): Promise<ApiHelpers> => {
@@ -399,7 +389,7 @@ export const test = base.extend<
 			const api = new ApiHelpers(context, {
 				workflowSettings: workflowSettingsFor(n8nStackConfig),
 			});
-			if (authRole) await api.signin(authRole);
+			if (testSession) await api.signin(testSession);
 
 			return api;
 		};
@@ -432,9 +422,8 @@ export type { A11yBucket, A11yCheckOptions, A11yViolation } from './a11y';
 /*
 Fixture Dependency Graph:
 Worker: capability + project.containerConfig → n8nStackConfig → n8nContainer → [backendUrl, frontendUrl, dbSetup]
-Test:   dbSetup + backendUrl → testSetup → authRole → [api, n8n, createApiForMain]
-        frontendUrl + dbSetup → baseURL → context → n8n
-        context → consoleErrorMonitor → [page, n8n]
+Test:   dbSetup + backendUrl → testSession → [api, n8n, createApiForMain]
+        frontendUrl + dbSetup → baseURL → context → consoleErrorMonitor → page → n8n
         n8nContainer → services
         n8n → a11y
 

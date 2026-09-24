@@ -39,8 +39,10 @@ test.describe(
 			expect(await response.json()).toEqual({ id: INSTANCE_OWNER_CREDENTIALS.email });
 		});
 
-		test('ui-only', async ({ n8n }) => {
+		test('ui-only', async ({ n8n, page, context }) => {
 			record({ type: 'body' });
+			expect(n8n.page).toBe(page);
+			expect(context.pages()).toHaveLength(1);
 			n8n.page.once('close', () => record({ type: 'page-closed' }));
 			const response = await n8n.page.goto('/consumer');
 			expect(response?.ok()).toBe(true);
