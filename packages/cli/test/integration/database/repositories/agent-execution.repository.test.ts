@@ -31,10 +31,7 @@ import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
-import {
-	AgentBackgroundJobService,
-	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
-} from '@/modules/agents/background/agent-background-job.service';
+import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { SubAgentBackgroundRunner } from '@/modules/agents/background/sub-agent-background-runner';
 import { SubAgentRunner } from '@/modules/agents/sub-agents/sub-agent-runner';
 import type { SubAgentSourceResolver } from '@/modules/agents/sub-agents/sub-agent-source-resolver';
@@ -481,9 +478,7 @@ describe('AgentExecutionRepository', () => {
 				const { job, approval, jobs, context, parent, storage } = fixture;
 				expect(fixture.action).not.toHaveBeenCalled();
 				expect(await storage.findSuspendedForThread(agentId, parent.id)).toBeNull();
-				expect(job.timeoutAt!.getTime()).toBeGreaterThan(
-					Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS,
-				);
+				expect(job.timeoutAt).toEqual(approval.expiresAt);
 				expect(await threadRepo.findOneByOrFail({ id: job.childThreadId! })).toMatchObject({
 					parentThreadId: parent.id,
 					parentAgentId: agentId,
