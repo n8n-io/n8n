@@ -49,7 +49,7 @@ export const delegateSubAgentInputSchema = z.object({
 		),
 	taskName: z
 		.string()
-		.min(1)
+		.regex(/[a-z0-9]/i, 'Must contain at least one alphanumeric character')
 		.describe('Short human-readable name for this delegated task, e.g. "research_api".'),
 	goal: z.string().min(1).describe('The concrete goal the sub-agent should accomplish.'),
 	context: z
