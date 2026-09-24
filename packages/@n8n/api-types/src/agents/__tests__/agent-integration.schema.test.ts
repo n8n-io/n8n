@@ -14,7 +14,7 @@ describe('AgentIntegrationSchema', () => {
 		expect(
 			AgentJsonConfigSchema.safeParse({
 				name: 'Agent',
-				model: 'openai:gpt-4o-mini',
+				model: 'openai/gpt-4o-mini',
 				instructions: 'Help',
 				integrations: [{ type: 'n8n_chat' }, { type: 'n8n_chat' }],
 			}).success,

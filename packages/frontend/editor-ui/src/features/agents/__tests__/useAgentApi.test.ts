@@ -198,6 +198,7 @@ describe('useAgentApi', () => {
 				integrations: [
 					{ type: 'telegram', credentialId: 'cred-telegram-1' },
 					{ type: 'slack', credentialId: 'cred-slack-1', settings: { channel: 'C1' } },
+					{ type: 'n8n_chat', credentialId: '' },
 				],
 			} as unknown as AgentJsonConfig;
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
@@ -219,6 +220,7 @@ describe('useAgentApi', () => {
 			expect(postBody.schema.integrations).toEqual([
 				{ type: 'telegram', credentialId: '' },
 				{ type: 'slack', credentialId: '', settings: { channel: 'C1' } },
+				{ type: 'n8n_chat', credentialId: '' },
 			]);
 		});
 	});

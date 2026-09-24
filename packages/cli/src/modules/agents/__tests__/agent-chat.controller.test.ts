@@ -987,6 +987,20 @@ describe('AgentChatController production n8n Chat', () => {
 		);
 	});
 
+	it('rejects production resume when the channel is not published', async () => {
+		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(false);
+		const writes: string[] = [];
+		await controller.productionChatResume(request as never, makeSseResponse(writes), 'agent-1', {
+			runId: 'run-1',
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		} as never);
+
+		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
+		expect(writes.some((line) => line.includes('agent_unavailable'))).toBe(true);
+	});
+
 	it('does not finish a turn that suspended for HITL', async () => {
 		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
 		agentsService.isN8nChatPublished.mockResolvedValue(true);

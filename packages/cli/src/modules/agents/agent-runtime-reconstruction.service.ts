@@ -805,6 +805,8 @@ export class AgentRuntimeReconstructionService {
 			agentId,
 			integrationType,
 			userId,
+			previewChat,
+			publishedN8nChat,
 			supportsHitl,
 			backgroundTasksEnabled,
 		} = runIdentity;
@@ -823,6 +825,8 @@ export class AgentRuntimeReconstructionService {
 			agentId,
 			integrationType,
 			userId,
+			previewChat,
+			publishedN8nChat,
 			supportsHitl,
 			backgroundTasksEnabled,
 		};

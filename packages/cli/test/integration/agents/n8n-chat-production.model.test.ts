@@ -148,6 +148,7 @@ const server = setupTestServer({ endpointGroups: ['ai'] });
 
 describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 	let finishCassette: (() => void) | undefined;
+	let fetchBeforeCassette: typeof globalThis.fetch | undefined;
 
 	beforeAll(async () => {
 		await initCredentialsTypes();
@@ -174,6 +175,7 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 			afterRecord: (definitions) => formatCassette(scrubCassette(definitions)),
 		});
 		finishCassette = cassette.nockDone;
+		fetchBeforeCassette = globalThis.fetch;
 		bypassLocalFetchInterceptors();
 		nock.enableNetConnect(record ? /127\.0\.0\.1|api\.openai\.com/ : /127\.0\.0\.1/);
 		nock('https://models.dev')
@@ -198,6 +200,13 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 	afterEach(() => {
 		finishCassette?.();
 		finishCassette = undefined;
+		if (fetchBeforeCassette) {
+			Object.defineProperty(globalThis, 'fetch', {
+				value: fetchBeforeCassette,
+				configurable: true,
+			});
+			fetchBeforeCassette = undefined;
+		}
 		nock.cleanAll();
 		nock.restore();
 	});

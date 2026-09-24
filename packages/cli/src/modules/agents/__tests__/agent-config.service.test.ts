@@ -442,6 +442,8 @@ describe('AgentConfigService', () => {
 				{ type: 'slack', credentialId: '' },
 				{ type: 'n8n_chat', credentialId: '' },
 			]);
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0];
+			expect(saved?.integrations).toEqual(agent.integrations);
 			expect(composeJsonConfig(agent)?.integrations).toEqual(agent.integrations);
 		});
 
