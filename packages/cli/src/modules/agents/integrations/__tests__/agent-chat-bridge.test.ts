@@ -7,12 +7,14 @@ import type { Author } from 'chat';
 import { mock } from 'vitest-mock-extended';
 import { UserError, type Logger } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service';
-
 import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
+import {
+	AgentResourceRepository,
+	type ChatSessionGeneration,
+} from '../../repositories/agent-resource.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -124,6 +126,23 @@ function makeAgentExecutor(chunks: StreamChunk[]) {
 		resumeForChat: vi.fn(() => toStream(chunks)),
 		captured,
 	};
+}
+
+/** In-memory stand-in for the session pointer storage, so state persists across calls within a test. */
+function mockSessionGenerations(seed?: [baseThreadId: string, session: ChatSessionGeneration]) {
+	const store = new Map<string, ChatSessionGeneration>(seed ? [seed] : []);
+	const resources = {
+		findChatSessionGeneration: vi.fn(
+			async (baseThreadId: string) => store.get(baseThreadId) ?? null,
+		),
+		saveChatSessionGeneration: vi.fn(
+			async (baseThreadId: string, session: ChatSessionGeneration) => {
+				store.set(baseThreadId, session);
+			},
+		),
+	};
+	Container.set(AgentResourceRepository, resources as never);
+	return resources;
 }
 
 async function drainIterable(value: unknown): Promise<string> {
@@ -273,6 +292,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		mockSessionGenerations();
 	});
 
 	afterEach(() => {
@@ -280,6 +300,25 @@ describe('AgentChatBridge — consumeStream', () => {
 		Container.reset();
 		vi.clearAllMocks();
 	});
+
+	it.each([bufferedIntegration, streamingIntegration])(
+		'shows the content-filter reason for $type',
+		async (integration) => {
+			const thread = await runMention(integration, [
+				{
+					type: 'error',
+					error: {
+						type: 'invalid_request_error',
+						message: 'Output blocked by content filtering policy',
+					},
+				},
+				{ type: 'finish', finishReason: 'error' },
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith('⚠️ Output blocked by content filtering policy');
+		},
+	);
 
 	describe('silent outcome from the integration action tool', () => {
 		const silentToolResult: StreamChunk = {
@@ -645,27 +684,40 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
-		it.each(['fetch failed', 'Unknown error', 'Request payload size exceeds the limit'])(
-			'keeps the generic message for unrelated errors: %s',
-			async (message) => {
-				const thread = await runMention(bufferedIntegration, [
-					{ type: 'error', error: new Error(message) },
-					finishChunk,
-				]);
+		it.each([
+			new Error('fetch failed'),
+			new Error('Unknown error'),
+			new Error('Request payload size exceeds the limit'),
+			{ type: 'invalid_request_error', message: 'Invalid request format' },
+		])('keeps the generic message for unrelated errors: $message', async (error) => {
+			const thread = await runMention(bufferedIntegration, [{ type: 'error', error }, finishChunk]);
 
-				expect(thread.post).toHaveBeenCalledOnce();
-				expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it.each([
+			{
+				error: new UserError('Credential "OpenAI" not found.'),
+				expected:
+					'⚠️ This agent is misconfigured: Credential "OpenAI" not found. An agent owner has to fix this in n8n.',
 			},
-		);
-
-		it('names the misconfiguration when the run fails with a UserError', async () => {
+			{
+				error: new Error('Output blocked by content filtering policy'),
+				expected: '⚠️ Output blocked by content filtering policy',
+			},
+			{
+				error: new Error('Provider error: Output blocked by content filtering policy.'),
+				expected: '⚠️ Provider error: Output blocked by content filtering policy.',
+			},
+		])('shows the reason when the run throws: $error.message', async ({ error, expected }) => {
 			const { bot, handlers } = makeBot();
 			const agentExecutor = {
-				// The real method is an async generator: the build error surfaces on
+				// The real method is an async generator: the error surfaces on
 				// the first `next()`, inside the stream consumer.
 				// eslint-disable-next-line require-yield
 				executeForChatPublished: vi.fn(async function* () {
-					throw new UserError('Credential "OpenAI" not found.');
+					throw error;
 				}),
 			};
 			new AgentChatBridge(
@@ -682,9 +734,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledOnce();
-			expect(thread.post).toHaveBeenCalledWith(
-				'⚠️ This agent is misconfigured: Credential "OpenAI" not found. An agent owner has to fix this in n8n.',
-			);
+			expect(thread.post).toHaveBeenCalledWith(expected);
 		});
 
 		it('does not add a generic error when text follows an errored tool result', async () => {
@@ -911,28 +961,8 @@ describe('AgentChatBridge — consumeStream', () => {
 			} as unknown as AgentIntegrationConfig;
 		}
 
-		/** In-memory stand-in for CacheService, so state persists across calls within a test. */
-		function mockCache(seed?: [key: string, value: unknown]) {
-			const store = new Map<string, unknown>(seed ? [seed] : []);
-			const cache = {
-				get: vi.fn(async (key: string) => store.get(key)),
-				set: vi.fn(async (key: string, value: unknown) => {
-					store.set(key, value);
-				}),
-			};
-			Container.set(CacheService, cache as never);
-			return cache;
-		}
-
-		function sessionGenerationKey(baseId: string): string {
-			return `agents:chat-session-generation:${baseId}`;
-		}
-
 		it('stays on the same session while within the idle window', async () => {
-			mockCache([
-				sessionGenerationKey('agent-1:thread-1'),
-				{ generation: 0, lastActivityAt: Date.now() },
-			]);
+			mockSessionGenerations(['agent-1:thread-1', { generation: 0, lastActivityAt: Date.now() }]);
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			new AgentChatBridge(
@@ -960,8 +990,8 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('rotates to a new session once the idle window has elapsed', async () => {
-			mockCache([
-				sessionGenerationKey('agent-1:thread-1'),
+			mockSessionGenerations([
+				'agent-1:thread-1',
 				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
 			]);
 			const { bot, handlers } = makeBot();
@@ -991,8 +1021,8 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('rotates again from an already-rotated generation', async () => {
-			mockCache([
-				sessionGenerationKey('agent-1:thread-1'),
+			mockSessionGenerations([
+				'agent-1:thread-1',
 				{ generation: 3, lastActivityAt: Date.now() - 31 * 60_000 },
 			]);
 			const { bot, handlers } = makeBot();
@@ -1022,7 +1052,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('resets on the /new command without invoking the agent, even without an idle timeout', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			new AgentChatBridge(
@@ -1046,7 +1076,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('resets on a native /new slash command (e.g. Telegram, which never delivers it as a message)', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const thread = makeThread('thread-1');
 			bot.thread.mockReturnValue(thread);
@@ -1072,7 +1102,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('ignores a /new slash command from a user the platform allowlist rejects', async () => {
-			const cache = mockCache();
+			const resources = mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const thread = makeThread('thread-1');
 			bot.thread.mockReturnValue(thread);
@@ -1096,7 +1126,7 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			// Nothing was reset and nothing was said back — a rejected user must not
 			// even learn that the command exists.
-			expect(cache.set).not.toHaveBeenCalled();
+			expect(resources.saveChatSessionGeneration).not.toHaveBeenCalled();
 			expect(messageContextStore.unbindSession).not.toHaveBeenCalled();
 			expect(thread.post).not.toHaveBeenCalled();
 
@@ -1111,7 +1141,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('carries a /new reset over to the next message, even without an idle timeout configured', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			new AgentChatBridge(
@@ -1166,8 +1196,8 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('does not rotate an idle-expired thread that still has an open suspension', async () => {
-			mockCache([
-				sessionGenerationKey('agent-1:thread-1'),
+			mockSessionGenerations([
+				'agent-1:thread-1',
 				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
 			]);
 			const { bot, handlers } = makeBot();
@@ -1200,10 +1230,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('looks up a bound task session by the base thread id, not a rotated one', async () => {
-			mockCache([
-				sessionGenerationKey('agent-1:thread-1'),
-				{ generation: 2, lastActivityAt: Date.now() },
-			]);
+			mockSessionGenerations(['agent-1:thread-1', { generation: 2, lastActivityAt: Date.now() }]);
 			const { bot, handlers } = makeBot();
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			messageContextStore.getLatest.mockResolvedValue(null);
@@ -1232,7 +1259,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('/new clears a bound task session so the next message actually starts fresh', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			messageContextStore.getLatest.mockResolvedValue(null);
@@ -1265,7 +1292,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('reports an error instead of confirming success when unbinding the task session fails', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			messageContextStore.getLatest.mockResolvedValue(null);
@@ -1305,8 +1332,8 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('reports an error and stays on the unbound base session when the rotation write fails', async () => {
-			const cache = mockCache();
-			cache.set.mockRejectedValueOnce(new Error('cache unavailable'));
+			const resources = mockSessionGenerations();
+			resources.saveChatSessionGeneration.mockRejectedValueOnce(new Error('database unavailable'));
 			const { bot, handlers } = makeBot();
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			messageContextStore.getLatest.mockResolvedValue(null);
@@ -1356,7 +1383,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('unbinds and rotates as one unit — a message racing a reset of a bound thread never lands back on the bound task session', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			messageContextStore.getLatest.mockResolvedValue(null);
@@ -3294,6 +3321,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		const registry = new ChatIntegrationRegistry();
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		mockSessionGenerations();
 	});
 
 	afterEach(() => {

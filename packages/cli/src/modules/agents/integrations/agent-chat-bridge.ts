@@ -9,8 +9,8 @@ import {
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
-import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
@@ -24,6 +24,7 @@ import type {
 	ExecuteForChatPublishedConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentSessionMode } from '../utils/agent-thread-access';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
@@ -57,9 +58,8 @@ import { rateLimitMessageFromError } from './channel-rate-limit';
 
 const RESET_SESSION_COMMAND = '/new';
 
-/** Cache key prefix for the per-conversation session-generation pointer, shared across mains. */
-const SESSION_GENERATION_KEY_PREFIX = 'agents:chat-session-generation';
-const SESSION_GENERATION_TTL_MS = 90 * Time.days.toMilliseconds;
+/** Lock key prefix for the per-conversation session state, shared across mains. */
+const SESSION_LOCK_KEY_PREFIX = 'agents:chat-session-generation';
 /** Matches the rotation suffix appended to a rotated thread id, e.g. "#3". */
 const SESSION_GENERATION_SUFFIX_RE = /#\d+$/;
 
@@ -76,12 +76,6 @@ function formatPlatformMessageContext(context: IntegrationPlatformMessageContext
 		'</telegram_message_context>',
 		'Use these values when a tool needs Telegram identifiers.',
 	].join('\n');
-}
-
-interface SessionGenerationState {
-	/** Current rotation counter for a base thread id; 0 means the original, unsuffixed thread. */
-	generation: number;
-	lastActivityAt: number;
 }
 
 interface InboundMessage {
@@ -177,6 +171,13 @@ function errorText(error: unknown): string {
 	if (rateLimitMessage !== undefined) return `⚠️ ${rateLimitMessage}`;
 	if (isAttachmentValidationError(error)) {
 		return '⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.';
+	}
+	if (
+		isRecord(error) &&
+		typeof error.message === 'string' &&
+		error.message.includes('Output blocked by content filtering policy')
+	) {
+		return `⚠️ ${error.message}`;
 	}
 	if (error instanceof UserError) {
 		return `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`;
@@ -569,7 +570,7 @@ export class AgentChatBridge {
 	private async withSessionLock<T>(baseId: string, fn: () => Promise<T>): Promise<T> {
 		return await Container.get(LockService).withLease(
 			LockNamespace.KNOWN_LOCKS,
-			this.sessionGenerationCacheKey(baseId),
+			this.sessionLockKey(baseId),
 			fn,
 		);
 	}
@@ -578,9 +579,9 @@ export class AgentChatBridge {
 	 * Resolves the currently active generation for `baseId`, rotating to a new
 	 * one when `forceRotate` is set (an explicit `/new`) or the channel's
 	 * configured idle timeout has elapsed since the last message on it. The
-	 * generation pointer lives in the shared cache (not the
-	 * `AgentExecutionThread` table) so a `/new` reset — which never runs an
-	 * agent turn, and so never creates a thread row — still takes effect on the
+	 * generation pointer lives in the database, keyed by `baseId` and not by a
+	 * session's thread row, so it survives restarts and session deletion, and a
+	 * `/new` reset — which never runs an agent turn — still takes effect on the
 	 * very next unrelated message. Must be called from inside
 	 * {@link withSessionLock} for `baseId` — see there for why.
 	 *
@@ -595,9 +596,8 @@ export class AgentChatBridge {
 		forceRotate: boolean,
 		idleTimeoutMinutes: number | null,
 	): Promise<string> {
-		const cache = Container.get(CacheService);
-		const key = this.sessionGenerationCacheKey(baseId);
-		const state = await cache.get<SessionGenerationState>(key);
+		const resources = Container.get(AgentResourceRepository);
+		const state = await resources.findChatSessionGeneration(baseId);
 		if (!forceRotate && !state && !idleTimeoutMinutes) return baseId;
 
 		const now = Date.now();
@@ -605,7 +605,7 @@ export class AgentChatBridge {
 		const idleExpired =
 			!forceRotate &&
 			idleTimeoutMinutes !== null &&
-			state !== undefined &&
+			state !== null &&
 			now - state.lastActivityAt > idleTimeoutMinutes * 60_000;
 		const currentId = currentGeneration === 0 ? baseId : `${baseId}#${currentGeneration}`;
 		const rotate = forceRotate || (idleExpired && !(await this.hasOpenSuspension(currentId)));
@@ -617,7 +617,7 @@ export class AgentChatBridge {
 		// Otherwise this thread has never been touched by either mechanism, or
 		// the timeout was turned off after an earlier reset — nothing to track.
 		if (rotate || idleTimeoutMinutes !== null) {
-			await cache.set(key, { generation, lastActivityAt: now }, SESSION_GENERATION_TTL_MS);
+			await resources.saveChatSessionGeneration(baseId, { generation, lastActivityAt: now });
 		}
 		return generation === 0 ? baseId : `${baseId}#${generation}`;
 	}
@@ -627,8 +627,8 @@ export class AgentChatBridge {
 		return open !== null && open !== undefined;
 	}
 
-	private sessionGenerationCacheKey(baseId: string): string {
-		return `${SESSION_GENERATION_KEY_PREFIX}:${baseId}`;
+	private sessionLockKey(baseId: string): string {
+		return `${SESSION_LOCK_KEY_PREFIX}:${baseId}`;
 	}
 
 	/**

@@ -1583,9 +1583,11 @@ import { WorkflowEditorLockedError } from '../../../../../@n8n/instance-ai/src/e
 import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { License } from '@/license';
@@ -6782,30 +6784,54 @@ describe('createContext: aiPreferenceService', () => {
 	});
 
 	it.each([
-		[new ConflictError('dup'), 'duplicate', 'dup'],
-		[new BadRequestError('cap'), 'scope_full', 'cap'],
-		[new ForbiddenError('no'), 'not_permitted', 'no'],
-		[new Error('boom'), 'failed', 'The preference could not be saved.'],
-	])('maps %s to reason %s without throwing', async (error, reason, message) => {
-		const { service, aiPreferenceService, logger } = buildService();
-		aiPreferenceService.create.mockRejectedValue(error);
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		[new ConflictError('dup'), { reason: 'duplicate', message: 'dup' }],
+		[
+			new AiPreferenceScopeFullError('user', { limit: 50, actual: 50 }),
+			{
+				reason: 'scope_full',
+				message: 'A user cannot hold more than 50 preferences',
+				limit: 50,
+				actual: 50,
+			},
+		],
+		[new ForbiddenError('no'), { reason: 'not_permitted', message: 'no' }],
+		// Any other 4xx is a refusal written for a person, so its text passes through.
+		[new BadRequestError('no project'), { reason: 'failed', message: 'no project' }],
+	])(
+		'maps %s to a rejection the model can read, without throwing or logging',
+		async (error, expected) => {
+			const { service, aiPreferenceService, logger } = buildService();
+			aiPreferenceService.create.mockRejectedValue(error);
+			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
 
-		const result = await context.aiPreferenceService!.create({ content: 'x', scope: 'user' });
+			const result = await context.aiPreferenceService!.create({ content: 'x', scope: 'user' });
 
-		// The three mapped classes carry their own user-facing text; anything
-		// else keeps its message internal and gets logged instead.
-		expect(result).toEqual({ ok: false, reason, message });
-		if (reason === 'failed') {
+			expect(result).toEqual({ ok: false, ...expected });
+			expect(logger.error).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([new Error('boom'), new InternalServerError('db down')])(
+		'keeps the message of an unexpected fault internal and logs it: %s',
+		async (error) => {
+			const { service, aiPreferenceService, logger } = buildService();
+			aiPreferenceService.create.mockRejectedValue(error);
+			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+
+			const result = await context.aiPreferenceService!.create({ content: 'x', scope: 'user' });
+
+			expect(result).toEqual({
+				ok: false,
+				reason: 'failed',
+				message: 'The preference could not be saved.',
+			});
 			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(
 				'Saving an AI preference from the assistant failed',
 				{ error },
 			);
-		} else {
-			expect(logger.error).not.toHaveBeenCalled();
-		}
-	});
+		},
+	);
 
 	// The row is committed before any event fires, so a telemetry fault must not turn
 	// a saved preference into a failed one that the model retries into a duplicate.

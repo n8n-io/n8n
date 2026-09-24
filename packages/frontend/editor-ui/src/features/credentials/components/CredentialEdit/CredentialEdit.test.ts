@@ -9,7 +9,10 @@ import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -19,6 +22,9 @@ import { within, waitFor, screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 import type { Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { reactive } from 'vue';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../../templatedAuth.utils';
 
@@ -26,6 +32,21 @@ const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(()
 	confirmMock: vi.fn(),
 	routerCurrentRouteMock: { value: { query: {} } },
 	routerReplaceMock: vi.fn(),
+}));
+const {
+	aiGatewayBalance,
+	aiGatewayEnabled,
+	fetchGatewayConfigMock,
+	fetchGatewayWalletMock,
+	saveAfterGatewayToggleMock,
+	toastShowMessageMock,
+} = vi.hoisted(() => ({
+	aiGatewayBalance: { value: 1 },
+	aiGatewayEnabled: { value: false },
+	fetchGatewayConfigMock: vi.fn(),
+	fetchGatewayWalletMock: vi.fn(),
+	saveAfterGatewayToggleMock: vi.fn(),
+	toastShowMessageMock: vi.fn(),
 }));
 
 vi.mock('vue-router', async () => ({
@@ -44,13 +65,24 @@ vi.mock('vue-router', async () => ({
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
-		showMessage: vi.fn(),
+		showMessage: toastShowMessageMock,
 	}),
 }));
 
 const telemetryTrackMock = vi.hoisted(() => vi.fn());
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackMock }),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: aiGatewayEnabled,
+		balance: aiGatewayBalance,
+		creditsLabelKey: { value: 'generic.freeCredits' },
+		fetchConfig: fetchGatewayConfigMock,
+		fetchWallet: fetchGatewayWalletMock,
+		saveAfterToggle: saveAfterGatewayToggleMock,
+	}),
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
@@ -328,6 +360,11 @@ describe('CredentialEdit', () => {
 	beforeEach(() => {
 		broadcastMessageListener = undefined;
 		routerCurrentRouteMock.value = { query: {} };
+		aiGatewayBalance.value = 1;
+		aiGatewayEnabled.value = false;
+		fetchGatewayConfigMock.mockResolvedValue(undefined);
+		fetchGatewayWalletMock.mockResolvedValue(undefined);
+		saveAfterGatewayToggleMock.mockResolvedValue(true);
 
 		const externalSecretsStore = mockedStore(useExternalSecretsStore);
 		externalSecretsStore.fetchSecretsForProject.mockResolvedValue(undefined);
@@ -1271,6 +1308,100 @@ describe('CredentialEdit', () => {
 			return { credentialsStore, pinia, uiStore };
 		};
 
+		const setupGatewayCredentialError = async ({
+			contextNode = {
+				id: 'node-1',
+				name: 'Test node',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: {
+					testApi: { id: 'cred-1', name: 'Test API account' },
+					otherApi: { id: 'cred-2', name: 'Other API account' },
+				},
+			},
+			activeTab = 'connection',
+			balance = 1,
+			eligible = true,
+			includeAssignmentContext = true,
+		}: {
+			contextNode?: INode;
+			activeTab?: 'connection' | 'sharing';
+			balance?: number;
+			eligible?: boolean;
+			includeAssignmentContext?: boolean;
+		} = {}) => {
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+				test: { request: {} },
+			} as unknown as ICredentialType;
+			const modalState: Partial<NewCredentialsModal> = {
+				closeOnSave: true,
+				workflowId: 'test-workflow-id',
+				...(includeAssignmentContext ? { contextNode, nodeName: contextNode.name } : {}),
+			};
+			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, modalState);
+			credentialsStore.testCredential.mockResolvedValue({
+				status: 'Error',
+				message: 'Could not connect',
+			});
+			aiGatewayBalance.value = balance;
+			aiGatewayEnabled.value = true;
+			mockedStore(useAiGatewayStore).isNodeEligible.mockReturnValue(eligible);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflowId = 'test-workflow-id';
+			if (!includeAssignmentContext) {
+				mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id')).activeNode =
+					contextNode;
+			}
+			const workflowDocumentStore = mockedStore(
+				useWorkflowDocumentStore,
+				createWorkflowDocumentId('test-workflow-id'),
+			);
+			workflowDocumentStore.getNodeById = vi.fn(() => contextNode);
+			mockedStore(useNodeTypesStore).getNodeType = () => ({
+				displayName: 'Test',
+				name: contextNode.type,
+				group: [],
+				version: 1,
+				description: '',
+				defaults: { name: 'Test' },
+				inputs: [],
+				outputs: [],
+				properties: [],
+				credentials: [{ name: credentialType.name, required: true }],
+			});
+
+			const rendered = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			if (activeTab === 'sharing') await userEvent.click(rendered.getByText('Sharing'));
+			await userEvent.click(
+				within(rendered.getByTestId('credential-save-button')).getByRole('button'),
+			);
+			await waitFor(() => expect(credentialsStore.testCredential).toHaveBeenCalled());
+
+			return {
+				...rendered,
+				contextNode,
+				credentialType,
+				credentialsStore,
+				uiStore,
+				workflowDocumentStore,
+			};
+		};
+
 		const setupExistingOAuthCredential = (
 			credentialModalState: Partial<NewCredentialsModal> = {},
 			dataOverrides: {
@@ -1803,6 +1934,185 @@ describe('CredentialEdit', () => {
 
 			await waitFor(() => expect(credentialsStore.testCredential).toHaveBeenCalled());
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
+			expect(
+				screen.queryByTestId('gateway-credits-credential-error-nudge'),
+			).not.toBeInTheDocument();
+		});
+
+		test('switches an eligible node to Gateway credits after a connection test fails', async () => {
+			const { contextNode, credentialType, getByTestId, uiStore, workflowDocumentStore } =
+				await setupGatewayCredentialError();
+			await waitFor(() =>
+				expect(getByTestId('gateway-credits-credential-error-nudge')).toBeVisible(),
+			);
+			expect(telemetryTrackMock).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE,
+				{
+					credential_type: credentialType.name,
+					node_type: contextNode.type,
+					workflow_id: 'test-workflow-id',
+				},
+			);
+			await userEvent.click(getByTestId('gateway-credits-credential-error-nudge-action'));
+
+			expect(workflowDocumentStore.updateNodeProperties).toHaveBeenCalledWith({
+				name: contextNode.name,
+				properties: {
+					credentials: {
+						testApi: { id: null, name: '', __aiGatewayManaged: true },
+						otherApi: { id: 'cred-2', name: 'Other API account' },
+					},
+				},
+			});
+			expect(saveAfterGatewayToggleMock).toHaveBeenCalledOnce();
+			expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
+			expect(toastShowMessageMock).toHaveBeenCalledWith({
+				title: 'Switched to Gateway credits',
+				type: 'success',
+			});
+			expect(telemetryTrackMock).toHaveBeenCalledWith('User toggled n8n connect credential', {
+				credential_type: credentialType.name,
+				node_type: contextNode.type,
+				mode: 'n8n_connect',
+				workflow_id: 'test-workflow-id',
+			});
+			expect(telemetryTrackMock).toHaveBeenCalledWith('Node credential assigned', {
+				credential_type: credentialType.name,
+				node_type: contextNode.type,
+				workflow_id: 'test-workflow-id',
+				credential_id: null,
+				credential_kind: 'n8n_connect',
+				source: 'credential_error_nudge',
+			});
+		});
+
+		test('does not show the Gateway credits nudge for an ineligible node', async () => {
+			const { queryByTestId } = await setupGatewayCredentialError({
+				eligible: false,
+			});
+
+			expect(queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
+			expect(telemetryTrackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE,
+				expect.anything(),
+			);
+		});
+
+		test('does not show the Gateway credits nudge without an available balance', async () => {
+			const { queryByTestId } = await setupGatewayCredentialError({ balance: 0 });
+
+			expect(queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
+			expect(telemetryTrackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE,
+				expect.anything(),
+			);
+		});
+
+		test('shows the Gateway credits nudge after the new credential is assigned', async () => {
+			const contextNode = reactive<INode>({
+				id: 'node-1',
+				name: 'Test node',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: {
+					otherApi: { id: 'cred-2', name: 'Other API account' },
+				},
+			});
+			const { getByTestId, queryByTestId } = await setupGatewayCredentialError({
+				contextNode,
+			});
+
+			expect(queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
+
+			contextNode.credentials = {
+				...contextNode.credentials,
+				testApi: { id: 'cred-1', name: 'Test API account' },
+			};
+
+			await waitFor(() =>
+				expect(getByTestId('gateway-credits-credential-error-nudge')).toBeVisible(),
+			);
+		});
+
+		test('does not show the Gateway credits nudge for a different credential slot', async () => {
+			const contextNode: INode = {
+				id: 'node-1',
+				name: 'Test node',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: {
+					testApi: { id: 'another-credential', name: 'Another account' },
+				},
+			};
+			const { queryByTestId } = await setupGatewayCredentialError({
+				contextNode,
+			});
+
+			expect(queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
+		});
+
+		test('does not use the active NDV node without explicit assignment context', async () => {
+			const { queryByTestId } = await setupGatewayCredentialError({
+				includeAssignmentContext: false,
+			});
+
+			expect(queryByTestId('gateway-credits-credential-error-nudge')).not.toBeInTheDocument();
+		});
+
+		test('does not track a nudge impression while the connection tab is hidden', async () => {
+			await setupGatewayCredentialError({ activeTab: 'sharing' });
+
+			expect(telemetryTrackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE,
+				expect.anything(),
+			);
+		});
+
+		test('keeps the modal open when the Gateway credits assignment is not saved', async () => {
+			saveAfterGatewayToggleMock.mockResolvedValue(false);
+			const { contextNode, getByTestId, uiStore, workflowDocumentStore } =
+				await setupGatewayCredentialError();
+			await waitFor(() =>
+				expect(getByTestId('gateway-credits-credential-error-nudge')).toBeVisible(),
+			);
+
+			await userEvent.click(getByTestId('gateway-credits-credential-error-nudge-action'));
+
+			expect(workflowDocumentStore.updateNodeProperties).toHaveBeenLastCalledWith({
+				name: contextNode.name,
+				properties: { credentials: contextNode.credentials },
+			});
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
+			expect(toastShowMessageMock).not.toHaveBeenCalledWith({
+				title: 'Switched to Gateway credits',
+				type: 'success',
+			});
+			expect(telemetryTrackMock).not.toHaveBeenCalledWith(
+				'Node credential assigned',
+				expect.objectContaining({ source: 'credential_error_nudge' }),
+			);
+		});
+
+		test('does not roll back after the modal unmounts while the save is pending', async () => {
+			const save = Promise.withResolvers<boolean>();
+			saveAfterGatewayToggleMock.mockReturnValue(save.promise);
+			const { getByTestId, unmount, workflowDocumentStore } = await setupGatewayCredentialError();
+			await waitFor(() =>
+				expect(getByTestId('gateway-credits-credential-error-nudge')).toBeVisible(),
+			);
+
+			await userEvent.click(getByTestId('gateway-credits-credential-error-nudge-action'));
+			expect(workflowDocumentStore.updateNodeProperties).toHaveBeenCalledOnce();
+
+			unmount();
+			save.resolve(false);
+			await save.promise;
+
+			expect(workflowDocumentStore.updateNodeProperties).toHaveBeenCalledOnce();
 		});
 
 		test('does not call onCredentialCreated when updating a credential', async function () {

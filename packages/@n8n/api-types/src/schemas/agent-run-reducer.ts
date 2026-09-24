@@ -399,6 +399,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const tc = state.toolCallsById[event.payload.toolCallId];
 			if (tc) {
 				tc.error = event.payload.error;
+				tc.interrupted = true;
 				tc.isLoading = false;
 				tc.completedAt = eventTimestamp(event);
 			}

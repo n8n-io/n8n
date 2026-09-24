@@ -13,6 +13,16 @@ const descriptionProperties = {
 };
 
 export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
+	USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE: {
+		name: 'User viewed Gateway credits credential error nudge',
+		description:
+			'The credential modal showed a Gateway credits suggestion after a failed credential test for an eligible workflow node.',
+		properties: z.object({
+			credential_type: z.string(),
+			node_type: z.string(),
+			workflow_id: z.string().optional(),
+		}),
+	},
 	USER_CREATED_CREDENTIALS: {
 		name: 'User created credentials',
 		description:

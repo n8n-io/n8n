@@ -68,6 +68,34 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		});
 	});
 
+	it('preserves the n8n Connect tag on the web search credential', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			config: {
+				webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+			},
+		});
+	});
+
+	it('clears an unknown web search credential id', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{ config: { webSearch: { enabled: true, provider: 'brave', credential: 'unknown-cred' } } },
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			config: { webSearch: { enabled: true, provider: 'brave', credential: '' } },
+		});
+	});
+
 	it('clears unknown top-level credential fields', () => {
 		const result = sanitizeUnknownAgentCredentials(
 			{

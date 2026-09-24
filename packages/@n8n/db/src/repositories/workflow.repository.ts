@@ -1304,6 +1304,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter?: ListQuery.Options['filter'],
 	): void {
+		this.applyIdsFilter(qb, filter);
 		this.applyNameFilter(qb, filter);
 		this.applyActiveFilter(qb, filter);
 		this.applyIsArchivedFilter(qb, filter);
@@ -1312,6 +1313,19 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
+	}
+
+	private applyIdsFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (filter?.ids === undefined) return;
+
+		const ids = isStringArray(filter.ids) ? filter.ids : [];
+
+		qb.andWhere('workflow.id IN (:...filteredWorkflowIds)', {
+			filteredWorkflowIds: ids.length > 0 ? ids : [''],
+		});
 	}
 
 	private applyAvailableInMCPFilter(

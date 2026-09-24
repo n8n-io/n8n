@@ -2187,6 +2187,7 @@ describe('agent-run-reducer', () => {
 			const tc = state.toolCallsById['tc-1'];
 			expect(tc.isLoading).toBe(false);
 			expect(tc.error).toContain('Interrupted');
+			expect(tc.interrupted).toBe(true);
 			expect(state.status).toBe('cancelled');
 			const agent = findAgent(state, AGENT)!;
 			expect(agent.cancellationReason).toBe('interrupted');

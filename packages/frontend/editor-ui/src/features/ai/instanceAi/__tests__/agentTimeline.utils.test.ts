@@ -843,13 +843,21 @@ describe('buildTimelineBlocks', () => {
 			expect(blocks).toEqual([{ type: 'preference', key: 'preference-0', toolCall: tc }]);
 		});
 
-		test('hides the call while loading and when the write was rejected', () => {
+		// A refusal the person cannot see is a silent failure, so it renders as a card too.
+		test('renders a preference block when the write was rejected or the tool threw', () => {
 			for (const tc of [
-				makeToolCall({ ...base, isLoading: true }),
 				makeToolCall({ ...base, result: { ok: false, reason: 'duplicate', message: 'dup' } }),
+				makeToolCall({ ...base, error: 'boom' }),
 			]) {
-				expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([]);
+				expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([
+					{ type: 'preference', key: 'preference-0', toolCall: tc },
+				]);
 			}
+		});
+
+		test('hides the call while it is still running', () => {
+			const tc = makeToolCall({ ...base, isLoading: true });
+			expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([]);
 		});
 	});
 });
