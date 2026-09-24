@@ -42,6 +42,15 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		super(AgentExecutionThread, dataSource.manager, transactionRunner);
 	}
 
+	async lockById(threadId: string, ctx: OperationContext): Promise<AgentExecutionThread | null> {
+		const manager = this.managerFor(ctx);
+		return await manager.findOne(AgentExecutionThread, {
+			where: { id: threadId },
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
+		});
+	}
+
 	/**
 	 * Find an existing thread or create a new one.
 	 * Assign a display number on creation. Concurrent sessions can share a number.
