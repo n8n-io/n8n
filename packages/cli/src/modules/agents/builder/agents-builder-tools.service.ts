@@ -1565,6 +1565,22 @@ export class AgentsBuilderToolsService {
 				missing: result.missing,
 			};
 		}
+		// A run that stopped on the iteration cap did not finish its work. Without
+		// this the builder reads `completed` plus apologetic prose and retries.
+		if (result.status === 'completed' && result.maxIterations) {
+			return {
+				status: 'error',
+				code: 'max_iterations',
+				message:
+					'The agent stopped on its iteration cap before it answered. It did not complete the task. ' +
+					'A repeat of the same test gives the same result. Common causes: a tool that returns too much data, ' +
+					'so the agent re-queries it; instructions that loop; or a task that needs more steps than the cap allows. ' +
+					'Report this to the user and ask before you change the agent.',
+				sessionId: result.sessionId,
+				response: result.response,
+				...(result.executionId ? { executionId: result.executionId } : {}),
+			};
+		}
 		if (result.status === 'completed') return result;
 
 		const approvals = collectStandardApprovals(result);
