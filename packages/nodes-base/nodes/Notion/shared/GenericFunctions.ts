@@ -23,7 +23,7 @@ import {
 	NodeOperationError,
 	safeInternalRegex,
 	setSafeObjectProperty,
-	UnexpectedError,
+	UserError,
 } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
@@ -1122,7 +1122,7 @@ export function extractDatabaseMentionRLC(blockValues: IDataObject[]) {
 							const extracted = safeInternalRegex.exec(txt.database.__regex, txt.database.value);
 							const databaseId = extracted?.[1];
 							if (databaseId === undefined) {
-								throw new UnexpectedError(
+								throw new UserError(
 									`Could not extract the database ID from "${txt.database.value}"`,
 								);
 							}
