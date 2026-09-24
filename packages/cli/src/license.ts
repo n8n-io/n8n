@@ -248,7 +248,7 @@ export class License implements LicenseProvider {
 		this.logger.debug('License reloaded');
 	}
 
-	/** Runs one auto-renewal pass, gated by the SDK on its auto-renewal flag. */
+	/** Runs one auto-renewal pass. */
 	async renewIfDue(): Promise<void> {
 		await this.manager?.renewIfDue();
 	}
