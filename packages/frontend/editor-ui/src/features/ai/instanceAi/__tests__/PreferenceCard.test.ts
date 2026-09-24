@@ -11,6 +11,8 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mockedStore } from '@/__tests__/utils';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useContextStore } from '@/features/settings/context/context.store';
+import type { Preference } from '@/features/settings/context/context.types';
 
 import PreferenceCard from '../components/PreferenceCard.vue';
 import { createThreadComponentRenderer, makeThread } from './createThreadComponentRenderer';
@@ -138,6 +140,30 @@ async function pickScope(label: string) {
 	await userEvent.click(option);
 }
 
+/** One `ai_preference` row, as the by-id lookup returns it. */
+function preferenceRow(overrides: Partial<Preference> = {}): Preference {
+	return {
+		id: 'pref-1',
+		content: STORED_TEXT,
+		userId: 'user-1',
+		user: null,
+		projectId: null,
+		project: null,
+		source: 'aia',
+		scopes: [],
+		createdAt: '2026-09-24T00:00:00.000Z',
+		updatedAt: '2026-09-24T00:00:00.000Z',
+		...overrides,
+	};
+}
+
+/** The rows the card may resolve. Empty means the read has not landed yet. */
+function resolvedRows(...rows: Preference[]) {
+	const contextStore = mockedStore(useContextStore);
+	contextStore.rowById = new Map(rows.map((row) => [row.id, row])) as never;
+	return contextStore;
+}
+
 describe('PreferenceCard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -145,6 +171,8 @@ describe('PreferenceCard', () => {
 		usersStore.currentUser = { id: 'user-1', globalScopes: [] } as never;
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.myProjects = projectsState[STORES.PROJECTS].myProjects as never;
+		// Nothing resolved by default, so a card falls back to its own fact.
+		resolvedRows();
 	});
 
 	describe('the row', () => {
@@ -904,6 +932,101 @@ describe('PreferenceCard', () => {
 			expect(editPreferenceCard).not.toHaveBeenCalled();
 			expect(undoPreferenceCard).not.toHaveBeenCalled();
 			expect(screen.getByTestId('instance-ai-preference-card-text')).toHaveTextContent(STORED_TEXT);
+		});
+	});
+
+	// The card's fact says where its own last write put the row. A move made on the settings
+	// page or over MCP never reaches that fact, so the row itself is read and wins.
+	describe('the row behind the card', () => {
+		const scopeText = () => screen.getByTestId('instance-ai-preference-card-scope').textContent;
+
+		it('asks for the id the card holds', () => {
+			const contextStore = resolvedRows();
+
+			renderActive();
+
+			expect(contextStore.resolveRows).toHaveBeenCalledWith(['pref-1']);
+		});
+
+		it('names the scope the row holds now, not the one the card wrote', () => {
+			// The card wrote `user`; the row has since moved to a project.
+			resolvedRows(preferenceRow({ userId: null, projectId: 'thread-project' }));
+
+			renderActive();
+
+			expect(scopeText()).toContain('instanceAi.preferenceCard.scope.project');
+			expect(scopeText()).toContain('Marketing');
+		});
+
+		it('keeps the scope the card wrote while the row is unresolved', () => {
+			resolvedRows();
+
+			renderActive();
+
+			expect(scopeText()).toContain('settings.context.preferences.scope.user');
+		});
+
+		it('opens the modal on the scope the row holds now', async () => {
+			resolvedRows(preferenceRow({ userId: null, projectId: 'thread-project' }));
+			renderActive();
+
+			await openModal();
+
+			const scopeInput = screen
+				.getByTestId('instance-ai-preference-modal-scope')
+				.querySelector('input');
+			expect(scopeInput).toHaveValue(
+				'instanceAi.preferenceCard.scope.project:{"name":"Marketing"}',
+			);
+			// The row is where the select says, so Save has nothing to accept.
+			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeDisabled();
+		});
+
+		// Without this the modal would hold the card's guess while the row said otherwise,
+		// and a text-only save would move the row back to that guess.
+		it('follows a row that resolves while the modal is open, when the select is untouched', async () => {
+			const contextStore = resolvedRows();
+			renderActive();
+			await openModal();
+			const scopeInput = () =>
+				screen.getByTestId('instance-ai-preference-modal-scope').querySelector('input');
+			expect(scopeInput()).toHaveValue('settings.context.preferences.scope.user');
+
+			contextStore.rowById = new Map([
+				['pref-1', preferenceRow({ userId: null, projectId: 'thread-project' })],
+			]) as never;
+
+			await waitFor(() =>
+				expect(scopeInput()).toHaveValue(
+					'instanceAi.preferenceCard.scope.project:{"name":"Marketing"}',
+				),
+			);
+			expect(screen.getByTestId('instance-ai-preference-modal-save')).toBeDisabled();
+		});
+
+		it('hands the store the row a save returned', async () => {
+			const contextStore = resolvedRows();
+			const saved = preferenceRow({ content: 'Keep replies brief.' });
+			editPreferenceCard.mockResolvedValue({ preference: saved, event: editedEvent });
+			renderActive();
+			const input = await openModal();
+
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Keep replies brief.');
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-save'));
+
+			await waitFor(() => expect(contextStore.setRow).toHaveBeenCalledWith(saved));
+		});
+
+		it('tells the store to drop the row a removal deleted', async () => {
+			const contextStore = resolvedRows(preferenceRow());
+			undoPreferenceCard.mockResolvedValue({ ok: true, event: undoneEvent });
+			renderActive();
+			await openModal();
+
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-remove'));
+
+			await waitFor(() => expect(contextStore.forgetRow).toHaveBeenCalledWith('pref-1'));
 		});
 	});
 });
