@@ -10,12 +10,14 @@ import type { Response } from 'express';
 
 import { AgentPublishService } from './agent-publish.service';
 import { AgentRunnableStateService } from './agent-runnable-state.service';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentPublishController {
 	constructor(
 		private readonly agentPublishService: AgentPublishService,
 		private readonly agentRunnableStateService: AgentRunnableStateService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@Post('/:agentId/publish')
@@ -26,6 +28,14 @@ export class AgentPublishController {
 		@Param('agentId') agentId: string,
 		@Body payload: PublishAgentDto,
 	) {
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			req.params.projectId,
+			agentId,
+			'publish',
+		);
 		const { agent, draftValidation } = await this.agentPublishService.publishAgent(
 			agentId,
 			req.params.projectId,
@@ -49,6 +59,14 @@ export class AgentPublishController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			req.params.projectId,
+			agentId,
+			'unpublish',
+		);
 		const agent = await this.agentPublishService.unpublishAgent(
 			agentId,
 			req.params.projectId,
@@ -70,6 +88,14 @@ export class AgentPublishController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			req.params.projectId,
+			agentId,
+			'revert to published',
+		);
 		const agent = await this.agentPublishService.revertToPublishedAgent(
 			agentId,
 			req.params.projectId,
@@ -92,6 +118,14 @@ export class AgentPublishController {
 		@Param('agentId') agentId: string,
 		@Body payload: RevertAgentToVersionDto,
 	) {
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			req.params.projectId,
+			agentId,
+			'revert to version',
+		);
 		const agent = await this.agentPublishService.revertToVersion(
 			agentId,
 			req.params.projectId,

@@ -444,13 +444,14 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			appendToBody?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 			workflowId?: string;
+			contextNode?: INodeUi;
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 		patchModalState(CREDENTIAL_EDIT_MODAL_KEY, {
 			projectId: undefined,
-			contextNode: undefined,
+			contextNode: options.contextNode,
 			closeOnSave: false,
 			workflowId: options.workflowId,
 			onCredentialCreated: undefined,

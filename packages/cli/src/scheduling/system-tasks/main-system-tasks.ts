@@ -30,6 +30,11 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 		tasks.push(ExecutionPruningSoftDeleteTask);
 	}
 
+	if (globalConfig.diagnostics.enabled) {
+		const { TelemetryPulseTask } = await import('@/telemetry/telemetry-pulse.task.js');
+		tasks.push(TelemetryPulseTask);
+	}
+
 	if (globalConfig.workflows.useWorkflowPublicationService) {
 		const { WorkflowPublicationOutboxCleanupTask } = await import(
 			'@/workflows/publication/workflow-publication-outbox-cleanup.task.js'

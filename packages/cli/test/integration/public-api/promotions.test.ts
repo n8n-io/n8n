@@ -982,6 +982,7 @@ describe('Promotions in Public API', () => {
 					configId: continueBody.expectedSource.configId,
 					git: { branchName: 'main', commitSha: continueBody.expectedSource.commitSha },
 					preflight: {
+						missingProjects: [],
 						missingBindings: [
 							{
 								kind: 'variable',

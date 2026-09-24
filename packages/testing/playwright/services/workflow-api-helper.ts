@@ -1,3 +1,4 @@
+import type { WorkflowPublicationStatus } from '@n8n/api-types';
 import type { APIResponse } from '@playwright/test';
 import { readFileSync } from 'fs';
 import { isTerminalExecutionStatus, type IWorkflowBase, type ExecutionSummary } from 'n8n-workflow';
@@ -97,6 +98,17 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	async getPublicationStatus(workflowId: string): Promise<WorkflowPublicationStatus> {
+		const response = await this.api.request.get(`/rest/workflows/${workflowId}/publication-status`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get workflow publication status: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
 	async update(
 		workflowId: string,
 		versionId: string,
@@ -143,8 +155,9 @@ export class WorkflowApiHelper {
 	 * on v1 and the spec still passes, which is parity evidence that proves
 	 * nothing.
 	 *
-	 * Only the manual-run entry point is checked. A spec that starts a run
-	 * through a webhook or a trigger gets no such guard yet.
+	 * Only {@link runManually} checks on the way in. A spec that starts a run
+	 * elsewhere, such as from the canvas or through a webhook, calls
+	 * {@link assertLatestExecutionRoutedToEngine} after the run.
 	 */
 	private assertRoutedToEngine(executionId: string): void {
 		if (this.api.options.workflowSettings?.engineType !== 'v2') return;
@@ -156,6 +169,21 @@ export class WorkflowApiHelper {
 				'`api.workflows` applies from the stack, or this main does not run the `engine-v2` ' +
 				'module.',
 		);
+	}
+
+	/**
+	 * {@link assertRoutedToEngine} for a run the spec started outside
+	 * {@link runManually}. Reads the workflow's latest execution and checks the
+	 * shape of its id. A no-op on a stack without engine 2.0.
+	 */
+	async assertLatestExecutionRoutedToEngine(workflowId: string): Promise<void> {
+		if (this.api.options.workflowSettings?.engineType !== 'v2') return;
+
+		const [execution] = await this.getExecutions(workflowId, 1);
+		if (!execution) {
+			throw new TestError(`Workflow ${workflowId} has no execution to check the engine of`);
+		}
+		this.assertRoutedToEngine(execution.id);
 	}
 
 	/**

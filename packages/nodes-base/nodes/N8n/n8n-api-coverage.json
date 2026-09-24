@@ -190,19 +190,19 @@
 		"PUT /workflows/{id}/tags": {
 			"status": "gap"
 		},
-		"GET /workflows/{id}/test-runs": {
+		"GET /workflows/{workflowId}/test-runs": {
 			"status": "gap"
 		},
-		"POST /workflows/{id}/test-runs": {
+		"POST /workflows/{workflowId}/test-runs": {
 			"status": "gap"
 		},
-		"GET /workflows/{id}/test-runs/{runId}": {
+		"GET /workflows/{workflowId}/test-runs/{runId}": {
 			"status": "gap"
 		},
 		"POST /workflows/{id}/test-runs/{runId}/cancel": {
 			"status": "gap"
 		},
-		"GET /workflows/{id}/test-runs/{runId}/test-cases": {
+		"GET /workflows/{workflowId}/test-runs/{runId}/test-cases": {
 			"status": "gap"
 		},
 		"GET /users": {
@@ -211,13 +211,13 @@
 		"POST /users": {
 			"status": "gap"
 		},
-		"GET /users/{id}": {
+		"GET /users/{userId}": {
 			"status": "gap"
 		},
-		"DELETE /users/{id}": {
+		"DELETE /users/{userId}": {
 			"status": "gap"
 		},
-		"PATCH /users/{id}/role": {
+		"PATCH /users/{userId}/role": {
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
@@ -473,6 +473,36 @@
 			"status": "gap"
 		},
 		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/instance": {
+			"status": "gap"
+		},
+		"PUT /credential-type-policies/instance": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"PUT /credential-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/policies": {
+			"status": "gap"
+		},
+		"POST /credential-type-policies/policies": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /credential-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"DELETE /credential-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /credential-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		}
 	}

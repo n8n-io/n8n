@@ -17,6 +17,16 @@ import {
 	type SubAgentRunResult,
 } from '../sub-agents/sub-agent-runner';
 
+export type BackgroundSubAgentRunContext = Pick<
+	SubAgentRunContext,
+	| 'credentialProvider'
+	| 'runType'
+	| 'workflowToolExecutionMode'
+	| 'user'
+	| 'instrumentation'
+	| 'parentWorkspaceHandle'
+>;
+
 export interface BackgroundSpawnRequest {
 	subAgentId: string;
 	source: SubAgentSource;
@@ -55,15 +65,7 @@ export class SubAgentBackgroundRunner {
 		context: {
 			projectId: string;
 			parentAgentId: string;
-		} & Pick<
-			SubAgentRunContext,
-			| 'credentialProvider'
-			| 'runType'
-			| 'workflowToolExecutionMode'
-			| 'user'
-			| 'instrumentation'
-			| 'parentWorkspaceHandle'
-		>,
+		} & BackgroundSubAgentRunContext,
 	): Promise<BackgroundJobReceipt> {
 		// Throws on an unusable task name — before the job row exists, so a bad
 		// name cannot leave a phantom `running` row holding a thread slot.

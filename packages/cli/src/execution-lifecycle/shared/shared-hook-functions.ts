@@ -119,7 +119,7 @@ export async function updateExistingExecution(parameters: {
 			`Skipped saving execution data for execution ID ${executionId} - update conditions not met`,
 			{ executionId, workflowId },
 		);
-		return;
+		return updated;
 	}
 
 	if (executionData.finished === true && executionData.retryOf !== undefined) {
@@ -127,4 +127,6 @@ export async function updateExistingExecution(parameters: {
 			retrySuccessId: executionId,
 		});
 	}
+
+	return updated;
 }

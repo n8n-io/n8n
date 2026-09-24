@@ -1,24 +1,26 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -80,6 +82,7 @@ import type {
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
+	InstanceAiPreferenceService,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
 	ExecuteNodeResult as InstanceAiExecuteNodeResult,
@@ -172,6 +175,8 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { writeAssistantPreference } from '@/services/ai-preference-write';
+import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -411,6 +416,12 @@ export class InstanceAiAdapterService {
 		private readonly folderFinderService?: FolderFinderService,
 		private readonly instanceContext?: InstanceContextService,
 		private readonly executeNodeService?: ExecuteNodeService,
+		// Optional for the same positional-construction reason as above.
+		// See `teamProjectsLicensed()` for the absent case.
+		private readonly licenseState?: LicenseState,
+		// Optional for the same reason as the other services above: existing tests
+		// construct this class positionally, and this must stay the last parameter.
+		private readonly aiPreferenceService?: AiPreferenceService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -426,8 +437,10 @@ export class InstanceAiAdapterService {
 			pushRef?: string;
 			threadId?: string;
 			projectId?: string;
-			/** Eval-only: restrict the credential `list()` view to these IDs. */
-			credentialIdAllowlist?: string[];
+			/** Eval-only: restrict the credential `list()` view to these IDs. A getter,
+			 *  read on every `list()`: the harness appends credentials it creates
+			 *  mid-run, after this context is built. */
+			getCredentialIdAllowlist?: () => string[] | undefined;
 			/** Eval-only: resolve a credential's connection test as successful without
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
@@ -438,12 +451,14 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
-			/** Per-user MCP registry gate (via `resolveExperimentGates`). Falsy →
-			 *  mcp service/tool not wired. */
-			mcpConnectionsEnabled?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
+			/** Resolved MCP registry availability. Falsy → mcp service/tool not wired. */
+			mcpConnectionsAvailable?: boolean;
 			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
 			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
 			nodeUsageEnabled?: boolean;
+			/** Instance activity gate. False disables the activity tool. */
+			instanceContextEnabled?: boolean;
 			/** Past-conversation recall, already bound to the run's user, project and
 			 *  thread by the caller. Absent → conversation-history tool not wired. */
 			conversationHistory?: InstanceAiConversationHistoryReader;
@@ -451,6 +466,10 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			credentialDescriptionsEnabled?: boolean;
+			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
+			 *  `save_user_preference` tool. */
+			aiPreferencesEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -461,14 +480,18 @@ export class InstanceAiAdapterService {
 			pushRef,
 			threadId,
 			projectId,
-			credentialIdAllowlist,
+			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
+			setupPanelVariant,
+			mcpConnectionsAvailable,
 			nodeUsageEnabled,
+			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
+			aiPreferencesEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -480,17 +503,19 @@ export class InstanceAiAdapterService {
 		const credentialService = this.createCredentialAdapter(
 			user,
 			projectId,
-			credentialIdAllowlist,
+			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
 		);
 		return {
 			userId: user.id,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
+				setupPanelVariant,
 			}),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService,
@@ -504,17 +529,18 @@ export class InstanceAiAdapterService {
 						),
 					}
 				: {}),
-			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
+			mcpService: mcpConnectionsAvailable ? this.createMcpAdapter(user) : undefined,
 			executeNodeService: this.executeNodeService
 				? this.createExecuteNodeAdapter(this.executeNodeService, user, projectId)
 				: undefined,
 			conversationHistoryService: conversationHistory,
-			// Presence is the gate, as with the services above: no reader, no `activity` tool.
-			...(this.instanceContext?.enabled
+			// The tool and context block use the same instance gate result.
+			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
+			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
-			workspaceService: this.createWorkspaceAdapter(user),
+			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
@@ -543,7 +569,7 @@ export class InstanceAiAdapterService {
 									targetAgentId,
 								),
 							credentialService,
-							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
+							{ useEvalModelCatalog: getCredentialIdAllowlist?.() !== undefined },
 						),
 					}
 				: {}),
@@ -586,62 +612,62 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/**
-	 * Every experiment gate from one PostHog fetch, so a caller wires its context
-	 * from one call. `mcpConnectionsEnabled` also folds in two instance-wide
-	 * preconditions. Fails closed: `getFeatureFlags` returns `{}` on a PostHog
-	 * outage, and an unexpected throw here still fails every gate closed rather
-	 * than failing the whole context build.
-	 */
+	/** Resolves experiment assignments. */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */
 		configEvalsEnabled: boolean;
-		/** MCP registry discovery: module active, MCP access allowed, user in the experiment. */
-		mcpConnectionsEnabled: boolean;
 		/** Past-conversation recall: tool, prompt section and first-turn hint. */
 		conversationHistoryEnabled: boolean;
 		/** Progressive workflow policy and planning-tool selection. */
 		progressiveBuildingEnabled: boolean;
+		setupPanelEnabled: boolean;
+		setupPanelVariant?: 'control' | 'variant';
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
-		/** Saved AI preferences on the opening turn. */
+		/** Saved AI preferences on every user turn. */
 		aiPreferencesEnabled: boolean;
+		credentialDescriptionsEnabled: boolean;
+		/** Shared activity recording and retrieval use the same instance gate. */
+		instanceContextEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
+		let instanceContextEnabled = false;
 		try {
-			flags = await Container.get(PostHogClient).getFeatureFlags(user);
+			const postHog = Container.get(PostHogClient);
+			const [userFlags, instanceFlag] = await Promise.allSettled([
+				postHog.getFeatureFlags(user),
+				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+			]);
+			if (userFlags.status === 'fulfilled') flags = userFlags.value;
+			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
 		} catch {
-			// getFeatureFlags already swallows PostHog errors and returns {}; this
-			// second layer is for an unexpected throw elsewhere in the call.
+			// Leave unreadable flags unassigned.
 		}
+		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
 		return {
+			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
-			mcpConnectionsEnabled:
-				this.mcpPreconditionsHold() &&
-				flags[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 			progressiveBuildingEnabled:
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
+			...(setupPanelVariant === 'control' || setupPanelVariant === 'variant'
+				? { setupPanelVariant }
+				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
+			instanceContextEnabled,
 		};
-	}
-
-	private mcpPreconditionsHold(): boolean {
-		return (
-			Container.get(ModuleRegistry).isActive('mcp-registry') &&
-			this.settingsService.isMcpAccessEnabled()
-		);
 	}
 
 	/**
@@ -668,6 +694,38 @@ export class InstanceAiAdapterService {
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
 			expand: async (id) => await instanceContext.expand({ id, user, scope }),
+		};
+	}
+
+	/** `source` is chosen here, never by the model: this is the assistant's write. */
+	private createPreferenceAdapter(user: User): InstanceAiPreferenceService {
+		const aiPreferenceService = this.aiPreferenceService;
+		if (!aiPreferenceService) throw new UnexpectedError('AI preference service is not available');
+
+		return {
+			create: async ({ content, scope }) => {
+				// The write, the refusal mapping and the events are shared with the MCP tool.
+				const result = await writeAssistantPreference({
+					aiPreferenceService,
+					telemetry: this.telemetry,
+					logger: this.logger,
+					user,
+					surface: 'aia',
+					content,
+					scope,
+				});
+				if (!result.ok) return result;
+				const { id, content: saved } = result.preference;
+				return { ok: true, preference: { id, content: saved, scope } };
+			},
+			recordRejection: (reason, textLength) => {
+				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+					surface: 'aia',
+					reason,
+					scope_type: 'user',
+					text_length: textLength,
+				});
+			},
 		};
 	}
 
@@ -792,6 +850,11 @@ export class InstanceAiAdapterService {
 		};
 	}
 
+	/** Team projects are a quota, not a feature flag, so the read goes through `LicenseState`. */
+	private teamProjectsLicensed(): boolean {
+		return this.licenseState?.isTeamProjectsLicensed() ?? true;
+	}
+
 	private buildLicenseHints(): string[] {
 		const hints: string[] = [];
 		if (!this.license.isLicensed('feat:namedVersions')) {
@@ -802,6 +865,11 @@ export class InstanceAiAdapterService {
 		if (!this.license.isLicensed('feat:folders')) {
 			hints.push(
 				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+			);
+		}
+		if (!this.teamProjectsLicensed()) {
+			hints.push(
+				'**Team projects** — this instance has no team-project license. `list-projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
 			);
 		}
 		return hints;
@@ -866,8 +934,18 @@ export class InstanceAiAdapterService {
 		user: User,
 		threadId?: string,
 		boundProjectId?: string,
-		options: { nodeUsageGateOpen?: boolean; folderExploration?: boolean } = {},
+		options: {
+			nodeUsageGateOpen?: boolean;
+			folderExploration?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
+		} = {},
 	): InstanceAiWorkflowService {
+		const setupExperimentProperties = options.setupPanelVariant
+			? {
+					variant: options.setupPanelVariant,
+					[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: options.setupPanelVariant,
+				}
+			: {};
 		const foldersOn = options.folderExploration === true;
 		// Attribution reveals folder ids, names and paths on every row, so it needs
 		// the licence as well as the flag. Resolution stays on the flag alone so an
@@ -1368,6 +1446,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
@@ -1601,6 +1680,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: updated.id,
@@ -1692,6 +1772,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
@@ -2421,7 +2502,7 @@ export class InstanceAiAdapterService {
 	private createCredentialAdapter(
 		user: User,
 		boundProjectId?: string,
-		credentialIdAllowlist?: string[],
+		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
 		const {
@@ -2443,7 +2524,14 @@ export class InstanceAiAdapterService {
 						projectId: boundProjectId,
 					});
 					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
-					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
+					return filtered.map(
+						(c): CredentialSummary => ({
+							id: c.id,
+							name: c.name,
+							type: c.type,
+							...(c.description !== undefined && { description: c.description }),
+						}),
+					);
 				}
 
 				// Unbound runs (temporary-workflow archiving, the only caller without a
@@ -2465,6 +2553,7 @@ export class InstanceAiAdapterService {
 							id: c.id,
 							name: c.name,
 							type: c.type,
+							...(c.description !== undefined && { description: c.description }),
 						}),
 					);
 				}
@@ -2481,6 +2570,7 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
+						...(c.description !== undefined && { description: c.description }),
 					}),
 				);
 			},
@@ -2491,6 +2581,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
+					...(credential.description !== undefined && { description: credential.description }),
 				} satisfies CredentialDetail;
 			},
 
@@ -2844,16 +2935,21 @@ export class InstanceAiAdapterService {
 			},
 		};
 
-		if (!credentialIdAllowlist) return adapter;
+		if (!getCredentialIdAllowlist?.()) return adapter;
 
 		// Eval runs pin each build thread to a declared credential set so
 		// concurrent test cases can't observe each other's credentials. Discovery
 		// only: get/test/delete still resolve explicit IDs the caller already has.
-		const allowed = new Set(credentialIdAllowlist);
+		// Read per call, not snapshotted: a credential the harness creates on a
+		// setup card must show on the next card of the same run.
 		return {
 			...adapter,
-			list: async (options) =>
-				allowed.size === 0 ? [] : (await adapter.list(options)).filter((c) => allowed.has(c.id)),
+			list: async (options) => {
+				const allowed = new Set(getCredentialIdAllowlist());
+				return allowed.size === 0
+					? []
+					: (await adapter.list(options)).filter((c) => allowed.has(c.id));
+			},
 		};
 	}
 
@@ -3761,7 +3857,7 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createWorkspaceAdapter(user: User): InstanceAiWorkspaceService {
+	private createWorkspaceAdapter(user: User, boundProjectId?: string): InstanceAiWorkspaceService {
 		const {
 			projectService,
 			folderService,
@@ -3774,6 +3870,7 @@ export class InstanceAiAdapterService {
 		} = this;
 		const assertNotReadOnly = (resource: string) => this.assertInstanceNotReadOnly(resource);
 		const { assertProjectScope } = this.createProjectScopeHelpers(user);
+		const teamProjectsLicensed = this.teamProjectsLicensed();
 
 		const adapter: InstanceAiWorkspaceService = {
 			async getProject(projectId: string): Promise<ProjectSummary | null> {
@@ -3784,11 +3881,18 @@ export class InstanceAiAdapterService {
 
 			async listProjects(): Promise<ProjectSummary[]> {
 				const projects = await projectService.getAccessibleProjects(user);
-				return projects.map((p) => ({
+				const summaries = projects.map((p) => ({
 					id: p.id,
 					name: p.name,
 					type: p.type,
 				}));
+				if (teamProjectsLicensed) return summaries;
+				// An instance that loses its team-project license keeps its projects, and
+				// an admin still reads all of them. The user cannot work in those
+				// projects, so list only their own personal project and the project this
+				// conversation is bound to.
+				const personalProjectId = (await projectService.getPersonalProject(user))?.id;
+				return summaries.filter((p) => p.id === personalProjectId || p.id === boundProjectId);
 			},
 
 			...(this.license.isLicensed('feat:folders')

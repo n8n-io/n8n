@@ -3,7 +3,6 @@ import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { throwIfChatUnsupported } from './sharedGuard';
 import { microsoftApiRequestAllItems, SP_HIDE } from '../../transport';
 
 /** Graph caps `$top` on `GET /chats` at 50 and 400s above it. */
@@ -25,9 +24,6 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/chat-list?view=graph-rest-1.0
-
-	// App-only Graph cannot list chats; fail before any request.
-	throwIfChatUnsupported.call(this);
 
 	const returnAll = this.getNodeParameter('returnAll', i);
 	// Clamp low on `limit`, not on `$top`: a 0 limit is falsy for the early return in
