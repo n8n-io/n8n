@@ -91,7 +91,7 @@ describe('Community packages (Public API)', () => {
 				.get('/community-packages');
 
 			expect(response.status).toBe(403);
-			expect(response.body).toEqual({ message: 'Forbidden' });
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
 		});
 
 		it('should return 400 for an undocumented query parameter', async () => {
@@ -101,7 +101,7 @@ describe('Community packages (Public API)', () => {
 				.query({ unknown: 'value' });
 
 			expect(response.status).toBe(400);
-			expect(response.body).toEqual({
+			expect(response.body).toStrictEqual({
 				message: "request/query Unrecognized key(s) in object: 'unknown'",
 			});
 		});
@@ -137,7 +137,7 @@ describe('Community packages (Public API)', () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/community-packages');
 
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual([
+			expect(response.body).toStrictEqual([
 				{
 					packageName: pkg.packageName,
 					installedVersion: pkg.installedVersion,
