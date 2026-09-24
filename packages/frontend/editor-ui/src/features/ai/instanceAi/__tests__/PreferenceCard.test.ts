@@ -562,9 +562,39 @@ describe('PreferenceCard', () => {
 			);
 		});
 
-		// The owner is never guessed: the server refuses a user-scope edit that names none, and a
-		// guess here would read as a move of the row to whoever is editing it.
-		it('names no owner for a user-scoped row whose result carried none', async () => {
+		// The card remembers the scope of its own last write, which a move made on the settings
+		// page or over MCP leaves stale. Restating it on a text-only edit would move the row back.
+		it('sends no scope on a text-only edit of a project-scoped row', async () => {
+			editPreferenceCard.mockResolvedValue({
+				preference: { id: 'pref-1', content: 'Keep replies brief.' },
+				event: editedEvent,
+			});
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'project',
+					projectId: 'thread-project',
+				},
+			});
+			const input = await openModal();
+
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Keep replies brief.');
+			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-save'));
+
+			await waitFor(() =>
+				expect(editPreferenceCard).toHaveBeenCalledWith(expect.anything(), 'thread-1', 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					content: 'Keep replies brief.',
+				}),
+			);
+		});
+
+		// The owner is never guessed, and a text-only edit never has to name one: it sends no
+		// scope, so the row keeps the owner it holds instead of the one the card remembers.
+		it('names no scope on a text-only edit of a user-scoped row whose result carried no owner', async () => {
 			editPreferenceCard.mockResolvedValue({
 				preference: { id: 'pref-1', content: 'Keep replies brief.' },
 				event: editedEvent,
@@ -578,14 +608,11 @@ describe('PreferenceCard', () => {
 			await userEvent.type(input, 'Keep replies brief.');
 			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-save'));
 
-			await waitFor(() =>
-				expect(editPreferenceCard).toHaveBeenCalledWith(
-					expect.anything(),
-					'thread-1',
-					'pref-1',
-					expect.objectContaining({ scope: 'user', userId: null, projectId: null }),
-				),
-			);
+			await waitFor(() => expect(editPreferenceCard).toHaveBeenCalled());
+			const [, , , body] = editPreferenceCard.mock.calls[0];
+			expect(body).not.toHaveProperty('scope');
+			expect(body).not.toHaveProperty('userId');
+			expect(body).not.toHaveProperty('projectId');
 		});
 
 		it('names the caller when a row moves into the user scope, which has no prior owner', async () => {
@@ -668,9 +695,6 @@ describe('PreferenceCard', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: 'Keep replies brief.',
-					scope: 'user',
-					projectId: null,
-					userId: 'user-1',
 				}),
 			);
 			expect(thread.applyEvent).toHaveBeenCalledWith(editedEvent);

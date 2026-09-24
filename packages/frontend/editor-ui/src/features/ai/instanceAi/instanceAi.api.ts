@@ -255,9 +255,10 @@ export async function editPreferenceCard(
 		runId: string;
 		toolCallId: string;
 		content: string;
-		scope: AiPreferenceScope;
-		projectId: string | null;
-		userId: string | null;
+		/** Absent on a text-only edit, which leaves the row in the scope it holds now. */
+		scope?: AiPreferenceScope;
+		projectId?: string | null;
+		userId?: string | null;
 	},
 ): Promise<InstanceAiPreferenceCardEditResponse> {
 	return await makeRestApiRequest<InstanceAiPreferenceCardEditResponse>(

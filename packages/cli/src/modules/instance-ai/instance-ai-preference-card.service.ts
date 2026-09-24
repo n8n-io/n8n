@@ -85,15 +85,22 @@ export class InstanceAiPreferenceCardService {
 			userId,
 		}: InstanceAiPreferenceCardEditRequestDto,
 	): Promise<InstanceAiPreferenceCardEditResponse> {
-		// The scope the row leaves, read before the write so a move can be reported against it.
-		const before = aiPreferenceTargetOf(await this.aiPreferenceService.getById(user, preferenceId));
+		// The row as it stands, read before the write so a move can be reported against it.
+		const current = await this.aiPreferenceService.getById(user, preferenceId);
+		const before = aiPreferenceTargetOf(current);
+		// An edit that names no scope changes only the text, so it keeps the target the row
+		// holds now. The card remembers the scope its own last write named, and a move made
+		// on the settings page or over MCP leaves that memory stale; restating it would undo
+		// the move the user made there.
+		const target =
+			scope === undefined
+				? { scope: before.scope, projectId: current.projectId, userId: current.userId }
+				: { scope, projectId, userId };
 		// The same update the settings page runs: a move needs the delete right on the old
 		// target and the create right on the new one, and an edit must name its owner.
 		const preference = await this.aiPreferenceService.update(user, preferenceId, {
 			content,
-			scope,
-			projectId,
-			userId,
+			...target,
 		});
 		const after = aiPreferenceTargetOf(preference);
 		const event = this.publish(threadId, {

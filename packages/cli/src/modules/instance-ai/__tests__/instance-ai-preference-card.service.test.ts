@@ -123,6 +123,69 @@ describe('InstanceAiPreferenceCardService', () => {
 		expect(event).toEqual(eventBus.publish.mock.calls[0][1]);
 	});
 
+	// A text-only edit. The card knows only the scope of its own last write, and a move made on
+	// the settings page or over MCP leaves that stale, so it names no scope at all.
+	const textOnlyBody = {
+		runId: 'run-1',
+		toolCallId: 'tc-1',
+		content: 'Keep replies brief.',
+	};
+
+	it('edit without a scope leaves a project row in the project it holds now', async () => {
+		aiPreferenceService.getById.mockResolvedValue(
+			userDto({ content: 'Keep replies short.', userId: null, projectId: 'p-1' }),
+		);
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: 'p-1' }));
+
+		await service.edit(user, 'thread-1', 'pref-1', textOnlyBody);
+
+		expect(aiPreferenceService.update).toHaveBeenCalledWith(user, 'pref-1', {
+			content: 'Keep replies brief.',
+			scope: 'project',
+			projectId: 'p-1',
+			userId: null,
+		});
+	});
+
+	// The update refuses a user-scope write that names no owner, and the row's own owner is the
+	// only right answer: reading it off the caller would hand another user's row to the editor.
+	it('edit without a scope keeps the owner a user row holds now', async () => {
+		aiPreferenceService.getById.mockResolvedValue(
+			userDto({ content: 'Keep replies short.', userId: 'user-2', projectId: null }),
+		);
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: 'user-2' }));
+
+		await service.edit(user, 'thread-1', 'pref-1', textOnlyBody);
+
+		expect(aiPreferenceService.update).toHaveBeenCalledWith(user, 'pref-1', {
+			content: 'Keep replies brief.',
+			scope: 'user',
+			projectId: null,
+			userId: 'user-2',
+		});
+	});
+
+	it('edit without a scope is no move, so it fires no scope event', async () => {
+		aiPreferenceService.getById.mockResolvedValue(
+			userDto({ content: 'Keep replies short.', userId: null, projectId: 'p-1' }),
+		);
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: 'p-1' }));
+
+		await service.edit(user, 'thread-1', 'pref-1', textOnlyBody);
+
+		expect(telemetry.track).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			expect.anything(),
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			scope_type: 'project',
+			text_length: 19,
+			scope_changed: false,
+			project_id: 'p-1',
+			surface: 'aia',
+		});
+	});
+
 	it('edit names the scope the row landed in on the fact, from the saved dto', async () => {
 		aiPreferenceService.getById.mockResolvedValue(userDto());
 		// The request and the saved row disagree on purpose: the fact must follow the row.

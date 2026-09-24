@@ -44,6 +44,13 @@ scope as a move. It reaches only the caller's own personal rows. A project row, 
 row or another user's row answers like a missing row, whatever the role: those rules apply to
 other people, and the settings area owns them.
 
+The chat card endpoint answers the same need from the other side. A card names the scope of
+its own last write, and a move made on the settings page or over MCP leaves that name stale.
+An edit that carries no `scope` therefore keeps the target the row holds now: the endpoint
+reads the row and repeats its scope, so `update()` sees no move. A text-only edit cannot undo
+a move made elsewhere. An edit that carries a `scope` still moves the row, and the owner rule
+below applies to it.
+
 `undoWrite(user, id, source)` removes a row only when the named surface created it for the
 caller and it is still the caller's personal row: `source`, `createdById` and `userId` must
 all match. A row the person has since moved to a project or the instance is out of reach,

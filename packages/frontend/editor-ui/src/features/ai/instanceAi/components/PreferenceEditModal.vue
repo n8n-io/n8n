@@ -163,10 +163,10 @@ const contentValidationRules: Array<Rule | RuleGroup> = [
 
 const validation = computed(() => aiPreferenceContentSchema.safeParse(draft.value));
 
+const scopeChanged = computed(() => scopeDraft.value !== currentScopeValue.value);
+
 // Nothing to accept when neither the text nor the scope changed: the preference is already saved.
-const isDirty = computed(
-	() => draft.value.trim() !== props.content || scopeDraft.value !== currentScopeValue.value,
-);
+const isDirty = computed(() => draft.value.trim() !== props.content || scopeChanged.value);
 const canSave = computed(() => isDirty.value && validation.value.success && !busy.value);
 
 async function save() {
@@ -178,7 +178,10 @@ async function save() {
 			runId: props.runId,
 			toolCallId: props.toolCallId,
 			content: validation.value.data,
-			...parseScope(),
+			// The scope travels only when the user moved it. The card's idea of where the row
+			// lives is its own last write, which a move on the settings page or over MCP makes
+			// stale, so restating it on a text-only edit would undo that move.
+			...(scopeChanged.value ? parseScope() : {}),
 		});
 		if (!applyReturnedFact(response, 'instanceAi.preferenceCard.modal.saveFailed')) return;
 		open.value = false;
