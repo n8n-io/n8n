@@ -8,6 +8,10 @@ describe('RegexEngineConfig', () => {
 		Container.reset();
 	});
 
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
 	it('defaults to the built-in js engine', () => {
 		expect(Container.get(RegexEngineConfig).engine).toBe('js');
 	});
