@@ -184,36 +184,6 @@ describe('settings.store', () => {
 		});
 	});
 
-	describe('isSubworkflowConversionDisabled', () => {
-		it.each([
-			[['n8n-nodes-base.executeWorkflow']],
-			[['n8n-nodes-base.executeWorkflowTrigger']],
-			[['n8n-nodes-base.executeWorkflow', 'n8n-nodes-base.executeWorkflowTrigger']],
-		])('should return true when %j is excluded', async (excludeNodes) => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes,
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isSubworkflowConversionDisabled).toBe(true);
-		});
-
-		it('should return false when both sub-workflow nodes are available', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeCommand'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isSubworkflowConversionDisabled).toBe(false);
-		});
-	});
-
 	describe('isCrdtCollaborationEnabled', () => {
 		it('should return true when collaboration.crdt is local', async () => {
 			getSettings.mockResolvedValueOnce({

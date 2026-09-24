@@ -2,22 +2,17 @@ import { defineComponent, nextTick, watch } from 'vue';
 import type { PropType } from 'vue';
 import { createPinia } from 'pinia';
 import { screen, fireEvent, waitFor } from '@testing-library/vue';
-import { EVALUATION_TRIGGER_NODE_TYPE, type INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
-import { mockNodeTypeDescription, mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
 import {
 	REGULAR_NODE_CREATOR_VIEW,
 	DEBOUNCE_TIME,
-	CHAT_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -82,17 +77,7 @@ describe('NodesListPanel', () => {
 			const { container } = getWrapperComponent(() => {
 				const { setMergeNodes } = useNodeCreatorStore();
 
-				useNodeTypesStore().setNodeTypes(
-					[
-						MANUAL_TRIGGER_NODE_TYPE,
-						SCHEDULE_TRIGGER_NODE_TYPE,
-						WEBHOOK_NODE_TYPE,
-						FORM_TRIGGER_NODE_TYPE,
-						EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-						CHAT_TRIGGER_NODE_TYPE,
-						EVALUATION_TRIGGER_NODE_TYPE,
-					].map((name) => mockNodeTypeDescription({ name })),
-				);
+				vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 				setMergeNodes([...mockedTriggerNodes, ...mockedRegularNodes]);
 				return {};
 			});
@@ -117,6 +102,19 @@ describe('NodesListPanel', () => {
 			await nextTick();
 
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+		});
+
+		it('should hide a listed trigger whose node type is not loaded', async () => {
+			getWrapperComponent(() => {
+				vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+					(type) => type === SCHEDULE_TRIGGER_NODE_TYPE,
+				);
+				return {};
+			});
+			await nextTick();
+
+			expect(screen.queryByText('On a schedule')).not.toBeInTheDocument();
+			expect(screen.getByText('Trigger manually')).toBeInTheDocument();
 		});
 
 		it('should render regular nodes', async () => {

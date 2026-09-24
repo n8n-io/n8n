@@ -81,6 +81,7 @@ describe('useActions', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockReset();
 		mockDocumentStoreState.allNodes = [];
 		mockDocumentStoreState.getNodeById = () => undefined;
 		useUIStore().lastInteractedWithNodeId = undefined;
@@ -242,6 +243,32 @@ describe('useActions', () => {
 				],
 				nodes: [
 					{ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true },
+					{ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true },
+					{ type: OPEN_AI_CHAT_MODEL_NODE_TYPE, openDetail: true },
+				],
+			});
+		});
+
+		test('should skip an auto-added node whose type is not loaded and keep the other connections', () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[OPEN_AI_CHAT_MODEL_NODE_TYPE]: mockLanguageModelNodeType(OPEN_AI_CHAT_MODEL_NODE_TYPE),
+			};
+			vi.mocked(nodeTypesStore.isNodeTypeUnavailable).mockImplementation(
+				(type) => type === CHAT_TRIGGER_NODE_TYPE,
+			);
+			mockDocumentStoreState.aiNodes = [];
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(getAddedNodesAndConnections([{ type: OPEN_AI_CHAT_MODEL_NODE_TYPE }])).toEqual({
+				connections: [
+					{
+						from: { nodeIndex: 1, type: NodeConnectionTypes.AiLanguageModel },
+						to: { nodeIndex: 0 },
+					},
+				],
+				nodes: [
 					{ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true },
 					{ type: OPEN_AI_CHAT_MODEL_NODE_TYPE, openDetail: true },
 				],

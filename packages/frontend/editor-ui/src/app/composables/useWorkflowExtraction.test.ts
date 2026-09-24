@@ -2,6 +2,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_NODE_TYPE } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 
@@ -37,6 +38,7 @@ const {
 		deleteGroup: vi.fn(),
 	},
 	mockNodeTypesStore: {
+		isNodeTypeUnavailable: vi.fn(),
 		getNodeType: vi.fn().mockReturnValue({
 			displayName: 'Set',
 			name: 'n8n-nodes-base.set',
@@ -126,7 +128,6 @@ vi.mock('vue-router', () => ({
 
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { RemoveNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 
 function makeNode(name: string, position: [number, number] = [0, 0]): INodeUi {
 	return {
@@ -205,8 +206,9 @@ describe('useWorkflowExtraction', () => {
 		});
 
 		it('does not start extraction when executeWorkflow is excluded', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+			mockNodeTypesStore.isNodeTypeUnavailable.mockImplementationOnce(
+				(type) => type === EXECUTE_WORKFLOW_NODE_TYPE,
+			);
 
 			const { extractWorkflow } = useWorkflowExtraction();
 			extractWorkflow(['id-A']);

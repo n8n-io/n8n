@@ -117,6 +117,7 @@ const nodePopularityMap = Object.values(nodePopularity).reduce((acc, node) => {
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
+	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { getActiveItemIndex } = useKeyboardNavigation();
 	const i18n = useI18n();
@@ -550,7 +551,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const stack = getLastActiveStack();
 		if (!stack || !activeViewStack.value.uuid) return;
 
-		let stackItems = stack?.items ?? [];
+		// Views list some nodes by hand. Every other list is built from the loaded node types.
+		let stackItems = (stack?.items ?? []).filter(
+			(item) => item.type !== 'node' || !nodeTypesStore.isNodeTypeUnavailable(item.key),
+		);
 
 		if (!stack?.items) {
 			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;

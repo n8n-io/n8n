@@ -9,6 +9,7 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
@@ -59,6 +60,7 @@ const emit = defineEmits<{
 }>();
 
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
 const focusPanelStore = useFocusPanelStore();
 const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
@@ -200,6 +202,7 @@ function openCommandBar(event: MouseEvent) {
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
+			v-if="!nodeTypesStore.isNodeTypeUnavailable(STICKY_NODE_TYPE)"
 			:label="i18n.baseText('nodeView.addStickyHint')"
 			:shortcut="{ keys: ['s'], shiftKey: true }"
 			placement="left"

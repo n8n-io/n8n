@@ -17,6 +17,7 @@ import {
 
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { useActions } from '../../composables/useActions';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
@@ -131,7 +132,7 @@ const containsAPIAction = computed(() => {
 		return ((p as ActionCreateElement).properties.actionKey ?? '') === CUSTOM_API_CALL_KEY;
 	});
 
-	return result;
+	return result && !useNodeTypesStore().isNodeTypeUnavailable(HTTP_REQUEST_NODE_TYPE);
 });
 
 const isTriggerRootView = computed(() => rootView.value === TRIGGER_NODE_CREATOR_VIEW);

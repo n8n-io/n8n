@@ -3703,6 +3703,11 @@ export function useCanvasOperations() {
 			trackBulk?: boolean;
 		},
 	) {
+		// New nodes only: imports go through `addNodes` and keep unknown types as placeholders.
+		if (nodes.some((node) => nodeTypesStore.isNodeTypeUnavailable(node.type))) {
+			return { addedNodes: [] };
+		}
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}

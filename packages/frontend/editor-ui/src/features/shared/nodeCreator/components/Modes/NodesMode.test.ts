@@ -22,6 +22,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { waitAllPromises } from '@n8n/frontend-test-utils';
 import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import NodesMode from './NodesMode.vue';
 
 const mockDocumentStoreState = {
@@ -91,6 +92,7 @@ describe('NodesMode', () => {
 		vi.clearAllMocks();
 		pinia = createPinia();
 		setActivePinia(pinia);
+		vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 	});
 
 	afterEach(() => {

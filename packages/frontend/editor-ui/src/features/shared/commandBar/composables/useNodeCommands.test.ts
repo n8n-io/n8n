@@ -90,6 +90,7 @@ describe('useNodeCommands', () => {
 		mockCanvasEventBusEmit = vi.mocked(canvasEventBus.emit);
 
 		mockNodeTypesStore = useNodeTypesStore();
+		vi.spyOn(mockNodeTypesStore, 'isNodeTypeUnavailable').mockReturnValue(false);
 		mockSourceControlStore = useSourceControlStore();
 		mockWorkflowsStore = useWorkflowsStore();
 
