@@ -1,0 +1,65 @@
+name: 'Build: CI Toolchain Image'
+
+on:
+  push:
+    branches: [master, ci/toolchain-image-pilot]
+    paths:
+      - .github/ci-toolchain/Dockerfile
+      - .github/workflows/build-ci-toolchain-image.yml
+      - .github/actions/setup-nodejs/action.yml
+      - package.json
+      - pnpm-workspace.yaml
+  pull_request:
+    paths:
+      - .github/ci-toolchain/Dockerfile
+      - .github/workflows/build-ci-toolchain-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request' && github.repository == 'n8n-io/n8n'
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build image
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: .github/ci-toolchain/Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' && github.repository == 'n8n-io/n8n' }}
+          tags: ${{ env.IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  seed-blacksmith:
+    if: github.event_name != 'pull_request' && github.repository == 'n8n-io/n8n'
+    needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    permissions:
+      packages: read
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Seed shared Docker image cache
+        run: docker pull "$IMAGE"
