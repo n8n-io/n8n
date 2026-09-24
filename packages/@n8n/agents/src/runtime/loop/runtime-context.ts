@@ -23,13 +23,19 @@ import {
 } from '../memory/episodic-memory-capture';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
-import { createModel } from '../model/model-factory';
-import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prompt-cache';
+import { createModel, supportsSplitSystemMessages } from '../model/model-factory';
+import {
+	applyRuntimeCacheBreakpoints,
+	buildCallPromptCacheOptions,
+	buildInstructionPromptCacheOptions,
+	mergeProviderOptions,
+} from '../model/prompt-cache';
 import {
 	getProviderQuirks,
 	PROVIDER_QUIRKS,
 	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
+import type { ActiveSkills } from '../skills/active-skills';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
@@ -109,6 +115,14 @@ export class RuntimeContextBuilder {
 		return Output.object({ schema });
 	}
 
+	buildInstructionProviderOptions(): ProviderOptions | undefined {
+		// Explicit instruction options take precedence over cache defaults.
+		return mergeProviderOptions(
+			buildInstructionPromptCacheOptions(this.config.promptCaching, this.modelId),
+			this.config.instructionProviderOptions,
+		);
+	}
+
 	/** Build the current local tool view; deferred loads can change this between iterations. */
 	buildToolLoopContext(
 		aiProviderTools: ReturnType<typeof toAiSdkProviderTools>,
@@ -132,6 +146,44 @@ export class RuntimeContextBuilder {
 			volatileInstructions,
 			staticToolCacheName: this.getStaticToolCacheName(allUserTools),
 		};
+	}
+
+	buildModelPrompt({
+		list,
+		tools,
+		instructionProviderOptions,
+		hostVolatileInstructions,
+		activeSkills,
+	}: {
+		list: AgentMessageList;
+		tools: ReturnType<RuntimeContextBuilder['buildToolLoopContext']>;
+		instructionProviderOptions: ProviderOptions | undefined;
+		hostVolatileInstructions: string | undefined;
+		activeSkills: ActiveSkills | undefined;
+	}) {
+		const combinedVolatileInstructions = [tools.volatileInstructions, hostVolatileInstructions]
+			.map((value) => value?.trim())
+			.filter((value): value is string => Boolean(value))
+			.join('\n\n');
+		const { system, messages } = list.forLlm(
+			// Skill content changes only on activation. Keep it cached when memory compacts.
+			[tools.effectiveInstructions, activeSkills?.instructions()]
+				.filter(Boolean)
+				.join('\n\n'),
+			instructionProviderOptions,
+			combinedVolatileInstructions || undefined,
+			supportsSplitSystemMessages(this.config.model),
+		);
+		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
+		const cached = applyRuntimeCacheBreakpoints({
+			system,
+			messages: activeSkills?.modelMessages(messages, list) ?? messages,
+			aiTools: tools.aiTools,
+			promptCaching: this.config.promptCaching,
+			modelId: this.modelId,
+			staticToolCacheName: tools.staticToolCacheName,
+		});
+		return { system, ...cached };
 	}
 
 	/**
