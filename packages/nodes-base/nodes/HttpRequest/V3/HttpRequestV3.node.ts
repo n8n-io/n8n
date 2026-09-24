@@ -991,6 +991,20 @@ export class HttpRequestV3 implements INodeType {
 								response.body = !data ? undefined : data;
 							}
 						}
+					} else if (bodyContentType === 'raw' && responseFormat !== 'file') {
+						// A 'raw' request body always requests a stream (see requestOptions.useStream
+						// above), regardless of the chosen Response Format. Only the autodetect branch
+						// above used to resolve that stream, so pinning an explicit Response Format
+						// (e.g. 'json' or 'text') left the stream itself in response.body instead of its
+						// content. Resolve it into a string here the same way autodetect does, so the
+						// existing json/text handling further below - which already expects
+						// response.body to be a string, and already handles an empty body and invalid
+						// JSON - works the same way it does for every other body content type.
+						response.body = await binaryToStringWithEncodingDetection(
+							response.body as Buffer | Readable,
+							responseContentType,
+							this.helpers,
+						);
 					}
 					// This is a no-op outside of tool usage
 					const optimizeResponse = configureResponseOptimizer(this, itemIndex);

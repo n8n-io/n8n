@@ -813,6 +813,54 @@ describe('HttpRequestV3', () => {
 
 			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
 		});
+
+		it('resolves a raw-body request’s response when Response Format is explicitly "JSON"', async () => {
+			// Regression for https://github.com/n8n-io/n8n/issues/36402: a 'raw' body content type
+			// always requests a stream (requestOptions.useStream), but only the autodetect branch
+			// ever resolved it. Pinning an explicit Response Format left the stream itself in
+			// response.body instead of its parsed content.
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'POST';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendBody':
+						return true;
+					case 'contentType':
+						return 'raw';
+					case 'rawContentType':
+						return 'application/json';
+					case 'body':
+						return '{"input":true}';
+					case 'options':
+						return {
+							...options,
+							response: {
+								response: {
+									responseFormat: 'json',
+								},
+							},
+						};
+					case 'options.response.response.responseFormat':
+						return 'json';
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+		});
 	});
 
 	describe('Continued request errors', () => {
