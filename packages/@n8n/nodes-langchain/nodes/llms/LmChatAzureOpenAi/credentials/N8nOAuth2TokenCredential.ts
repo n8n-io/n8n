@@ -4,6 +4,7 @@ import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type { INode, NodeEgressFilter } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { requireTenantId } from './requireTenantId';
 import {
 	AZURE_OPENAI_INFERENCE_AUDIENCE,
 	type AzureEntraCognitiveServicesOAuth2ApiCredential,
@@ -42,6 +43,10 @@ export class N8nOAuth2TokenCredential implements TokenCredential {
 	 * selects the audience from the `resource` body parameter, which comes from the constructor.
 	 */
 	async getToken(): Promise<AccessToken | null> {
+		// Outside the try: a misconfigured tenant is not a token-endpoint failure and should not
+		// be reported as one.
+		requireTenantId(this.node, this.credential.tenantId);
+
 		try {
 			const oAuthClient = new ClientOAuth2({
 				clientId: this.credential.clientId,

@@ -41,6 +41,8 @@ const mockNode: INode = {
 	parameters: {},
 };
 
+const TENANT_ID = '8f2a1b3c-4d5e-6f70-8192-a3b4c5d6e7f8';
+
 describe('N8nOAuth2TokenCredential', () => {
 	let mockCredential: AzureEntraCognitiveServicesOAuth2ApiCredential;
 	let credential: N8nOAuth2TokenCredential;
@@ -50,14 +52,15 @@ describe('N8nOAuth2TokenCredential', () => {
 			data: { access_token: 'fresh-test-token', expires_in: '3599' },
 		});
 
-		// Create a mock credential with all required properties
+		// A realistic credential: the URLs are what the field expressions resolve to for this
+		// tenant, so the assertions below check real values rather than empty strings.
 		mockCredential = {
 			authQueryParameters: '',
 			authentication: 'body',
-			authUrl: '',
-			accessTokenUrl: '',
+			authUrl: `https://login.microsoftonline.com/${TENANT_ID}/oauth2/authorize`,
+			accessTokenUrl: `https://login.microsoftonline.com/${TENANT_ID}/oauth2/token`,
 			grantType: 'clientCredentials',
-			clientId: '',
+			clientId: 'test-client-id',
 			clientSecret: 'secret',
 			customScopes: false,
 			apiVersion: '2023-05-15',
@@ -69,7 +72,7 @@ describe('N8nOAuth2TokenCredential', () => {
 				ext_expires_on: 0,
 			},
 			scope: '',
-			tenantId: '',
+			tenantId: TENANT_ID,
 		};
 
 		credential = new N8nOAuth2TokenCredential(mockNode, mockCredential);
@@ -90,6 +93,8 @@ describe('N8nOAuth2TokenCredential', () => {
 				expect.objectContaining({
 					clientId: mockCredential.clientId,
 					clientSecret: mockCredential.clientSecret,
+					// The mint must go to the credential's own tenant, not a default host
+					accessTokenUri: `https://login.microsoftonline.com/${TENANT_ID}/oauth2/token`,
 				}),
 			);
 		});
@@ -122,6 +127,18 @@ describe('N8nOAuth2TokenCredential', () => {
 
 		// The mint posts the client secret to a stored URL, so it has to run inside the egress
 		// policy, as the Databricks token provider does.
+		// Saved credentials still hold the old `common` default, so the mint has to refuse it
+		// rather than let Entra answer with an opaque AADSTS code.
+		it('should refuse a multi-tenant alias before contacting Entra', async () => {
+			credential = new N8nOAuth2TokenCredential(mockNode, {
+				...mockCredential,
+				tenantId: 'common',
+			});
+
+			await expect(credential.getToken()).rejects.toThrow('Tenant ID cannot be "common"');
+			expect(mockGetToken).not.toHaveBeenCalled();
+		});
+
 		it('should hand the egress filter to the token client', async () => {
 			const egressFilter = vi.fn();
 			credential = new N8nOAuth2TokenCredential(
