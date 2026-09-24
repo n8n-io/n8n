@@ -34,6 +34,7 @@ Each platform adapter uses a different HTTP client, so the interception mechanis
 | Telegram | native `fetch` | replace `globalThis.fetch` | `installFetchStub` (replay-test-helpers) |
 | Slack | `@slack/web-api` (axios) | `nock` at the HTTP layer | inline in slack `replay-test-context` |
 | Linear | `@linear/sdk` (GraphQL over fetch) | replace `globalThis.fetch` | `installFetchStub` |
+| Teams | `@microsoft/teams.*` (axios) + `jwks-rsa` (node `https`) | `nock` at the HTTP layer | inline in teams `replay-test-context` |
 
 Responses are answered from two sources, in order of preference:
 
@@ -55,6 +56,17 @@ so response stubs only need to be valid enough for the real adapter to proceed.
   reconstructs the streamed text and records it as a synthetic `chat.postMessage` so assertions can
   treat the reply as one outbound post. `webhookVerifier: () => true` bypasses signature checks (the
   fixtures carry sanitized signatures); passing `botUserId` skips the `auth.test` lookup.
+- **Teams** — the only platform whose inbound requests must carry a **real signed token**.
+  `createTeamsAdapter` builds a `@microsoft/teams.apps` `App`, which validates every activity's
+  Bot Framework JWT, and the adapter exposes no bypass: there is no `webhookVerifier` like Slack's,
+  and `TeamsAdapterConfig` cannot pass the Teams SDK's `skipAuth` through. So the helper generates
+  an RSA keypair per run, signs an activity token (issuer `https://api.botframework.com`, audience
+  the app ID, a `serviceurl` claim matching the activity), and serves the matching public JWK from a
+  nocked `https://login.botframework.com/v1/.well-known/keys`. The adapter's own validation then runs
+  for real — `sendUnauthenticatedWebhook` asserts it still rejects. Two non-obvious stubs are also
+  required: the client-credentials token endpoint is **tenant**-scoped, not `botframework.com`-scoped,
+  and the SDK decodes the access token it gets back, so that stub must return a real JWT rather than
+  an opaque string.
 - **Linear** — webhooks are HMAC-signed (`linear-signature`) and timestamp-checked, so the helper
   refreshes `webhookTimestamp` and signs the body. `@linear/sdk` strictly deserializes typed
   entities and lazily fetches relationships, so the GraphQL stub returns fully-shaped entities

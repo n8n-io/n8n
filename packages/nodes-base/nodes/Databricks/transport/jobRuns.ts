@@ -26,7 +26,10 @@ export interface ListJobRunsParams {
 type JobRunsListResponse = { runs?: DatabricksJobRun[]; next_page_token?: string };
 
 function isJobRunsListResponse(value: unknown): value is JobRunsListResponse {
-	return isRecord(value) && (value.runs === undefined || Array.isArray(value.runs));
+	return (
+		isRecord(value) &&
+		(value.runs === undefined || (Array.isArray(value.runs) && value.runs.every(isRecord)))
+	);
 }
 
 function toQuery(params: ListJobRunsParams): IDataObject {

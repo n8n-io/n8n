@@ -42,6 +42,30 @@ describe('buildTranscriptFromEvents', () => {
 		]);
 	});
 
+	describe('run-id tracking', () => {
+		it('collects every run-id (main run + any resumes) that fall inside one user turn', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					evt(USER_TURN_EVENT, { payload: { text: 'build it' } }),
+					evt('run-start', { runId: 'run-1' }),
+					evt('text-delta', { runId: 'run-1', text: 'Working on it.' }),
+					evt('run-start', { runId: 'run-2' }),
+					evt('text-delta', { runId: 'run-2', text: 'Done.' }),
+				],
+			});
+			expect(turns).toHaveLength(1);
+			expect(turns[0].runIds).toEqual(['run-1', 'run-2']);
+		});
+
+		it('omits runIds when no event carries one', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [RUN_START, evt('text-delta', { text: 'hi' })],
+				openingMessage: 'hi',
+			});
+			expect(turns[0].runIds).toBeUndefined();
+		});
+	});
+
 	describe('secret redaction', () => {
 		it('redacts secret-shaped keys in tool-call args', () => {
 			const turns = buildTranscriptFromEvents({

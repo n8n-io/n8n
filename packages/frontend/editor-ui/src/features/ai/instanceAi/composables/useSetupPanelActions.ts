@@ -18,6 +18,7 @@ import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { getWorkflow } from '@/app/api/workflows';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeCredentialTypes } from '@/features/setupPanel/setupPanel.utils';
 import { GENERIC_AUTH_CREDENTIAL_TYPES } from '@n8n/api-types';
 import {
@@ -39,6 +40,25 @@ import {
 export type SetupCredentialItem = Extract<InstanceAiSetupItem, { kind: 'credential' }>;
 
 export type SetupCredentialRef = INodeCredentialsDetails;
+
+export function resolveSetupCredentialItem(
+	item: SetupCredentialItem,
+	nodes: INodeUi[],
+	nodeTypeProvider: NodeTypeProvider,
+): SetupCredentialItem {
+	if (item.nodeBindings?.length || GENERIC_AUTH_CREDENTIAL_TYPES.has(item.credentialType))
+		return item;
+	return {
+		...item,
+		nodeBindings: nodes
+			.filter(
+				(node) =>
+					!node.disabled &&
+					getNodeCredentialTypes(nodeTypeProvider, node).includes(item.credentialType),
+			)
+			.map((node) => ({ nodeName: node.name })),
+	};
+}
 
 export type SetupPanelApplyResult =
 	/** The workflow PATCH landed. */
@@ -142,6 +162,7 @@ export function useSetupPanelActions(options: {
 	 * their return value instead.
 	 */
 	onFlushResult?: (result: SetupPanelApplyResult, workflowId: string) => void;
+	onSaved?: (workflow: IWorkflowDb) => void;
 }) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
@@ -428,28 +449,10 @@ export function useSetupPanelActions(options: {
 				}
 				const resolvedDelta: NodesDelta = {
 					...delta,
-					credentialBinds: delta.credentialBinds.map((bind) => {
-						if (
-							bind.item.nodeBindings?.length ||
-							GENERIC_AUTH_CREDENTIAL_TYPES.has(bind.item.credentialType)
-						)
-							return bind;
-						return {
-							...bind,
-							item: {
-								...bind.item,
-								nodeBindings: nodes
-									.filter(
-										(node) =>
-											!node.disabled &&
-											getNodeCredentialTypes(nodeTypesStore, node).includes(
-												bind.item.credentialType,
-											),
-									)
-									.map((node) => ({ nodeName: node.name })),
-							},
-						};
-					}),
+					credentialBinds: delta.credentialBinds.map((bind) => ({
+						...bind,
+						item: resolveSetupCredentialItem(bind.item, nodes, nodeTypesStore),
+					})),
 				};
 				// applyDeltaToNodes mutates these nodes — snapshot the pre-PATCH
 				// values first so the mirror can spot newer local edits.
@@ -472,6 +475,7 @@ export function useSetupPanelActions(options: {
 					return 'queued';
 				}
 				if (outcome !== 'changed') {
+					if (outcome === 'noop') options.onSaved?.(fresh);
 					await markCredentialsApplied(delta);
 					return outcome;
 				}
@@ -483,6 +487,7 @@ export function useSetupPanelActions(options: {
 						expectedChecksum: fresh.checksum,
 					});
 					syncHydratedDocument(workflowId, resolvedDelta, baseline, updated);
+					options.onSaved?.(updated);
 					await markCredentialsApplied(delta);
 					return 'applied';
 				} catch (error) {

@@ -14,7 +14,7 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
@@ -22,22 +22,34 @@ import {
 	type ExecuteForChatConfig,
 	type ResumeForChatConfig,
 } from './agent-execution-orchestrator.service';
-import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentExecutionService } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import type { AgentSessionMode } from './utils/agent-thread-access';
 
 interface PrepareDraftRunInput {
 	agentId: string;
 	projectId: string;
+	user: User;
 	sessionId?: string;
+	previewChat?: boolean;
+	newSession?: boolean;
 	credentialProvider: CredentialProvider;
 }
 
 export type PrepareDraftRunResult =
-	| { status: 'ready'; sessionId: string }
+	| { status: 'ready'; sessionId: string; sessionMode: AgentSessionMode }
 	| { status: 'session_not_found' }
 	| { status: 'agent_misconfigured'; missing: string[] };
+
+interface DraftRunState {
+	response: string;
+	suspensions: AgentTestRunSuspension[];
+	errorChunk?: Extract<StreamChunk, { type: 'error' }>;
+	observerFailed: boolean;
+	observerError?: unknown;
+}
 
 interface DraftRunConsumptionOptions {
 	errorMode?: 'throw' | 'forward';
@@ -96,7 +108,7 @@ export interface AgentTestRunApproval extends ApprovalSuspendPayload {
 
 export type PreparedDraftRunResult = {
 	response: string;
-	executionId?: string;
+	executionId: string;
 } & ({ status: 'completed' } | { status: 'suspended'; suspensions: AgentTestRunSuspension[] });
 
 export type AgentTestRunResult =
@@ -158,12 +170,23 @@ export class AgentTestRunService {
 	async prepareDraftRun({
 		agentId,
 		projectId,
+		user,
 		sessionId,
+		previewChat,
+		newSession,
 		credentialProvider,
 	}: PrepareDraftRunInput): Promise<PrepareDraftRunResult> {
+		const sessionMode: AgentSessionMode = !sessionId || newSession ? 'new' : 'existing';
 		if (sessionId) {
-			const existing = await this.agentExecutionService.findThreadById(sessionId);
-			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+			if (
+				!(await this.agentExecutionService.canUseDraftThread(
+					sessionId,
+					projectId,
+					agentId,
+					user.id,
+					{ previewChat, sessionMode },
+				))
+			) {
 				return { status: 'session_not_found' };
 			}
 		}
@@ -175,7 +198,11 @@ export class AgentTestRunService {
 		);
 		if (missing.length > 0) return { status: 'agent_misconfigured', missing };
 
-		return { status: 'ready', sessionId: sessionId ?? randomUUID() };
+		return {
+			status: 'ready',
+			sessionId: sessionId ?? randomUUID(),
+			sessionMode,
+		};
 	}
 
 	async executePreparedDraftRun({
@@ -235,6 +262,7 @@ export class AgentTestRunService {
 		const result = await this.executePreparedDraftRun({
 			...input,
 			sessionId: prepared.sessionId,
+			sessionMode: prepared.sessionMode,
 		});
 		return { ...result, sessionId: prepared.sessionId };
 	}
@@ -244,8 +272,15 @@ export class AgentTestRunService {
 		response,
 		...input
 	}: ResumeDraftRunInput): Promise<AgentTestRunResult> {
-		const existing = await this.agentExecutionService.findThreadById(sessionId);
-		if (existing && !threadBelongsTo(existing, input.projectId, input.agentId)) {
+		if (
+			!(await this.agentExecutionService.canUseDraftThread(
+				sessionId,
+				input.projectId,
+				input.agentId,
+				input.user.id,
+				{ previewChat: input.previewChat, sessionMode: 'existing' },
+			))
+		) {
 			return { status: 'session_not_found' };
 		}
 
@@ -272,33 +307,7 @@ export class AgentTestRunService {
 		const continuation = agentTestRunContinuationSchema.safeParse(input.continuation);
 		if (!continuation.success) throw new InvalidAgentTestRunCheckpointError();
 
-		let checkpoint: SerializableAgentState | undefined;
-		try {
-			checkpoint = await this.n8nCheckpointStorage.load(continuation.data.runId, input.agentId);
-		} catch (error) {
-			if (error instanceof UserError) throw new InvalidAgentTestRunCheckpointError();
-			throw error;
-		}
-
-		const pendingToolCall = checkpoint?.pendingToolCalls[continuation.data.toolCallId];
-		const expectedResourceId = draftChatMemoryResourceId(input.user.id);
-		if (
-			checkpoint?.status !== 'suspended' ||
-			checkpoint.persistence?.delegated === true ||
-			checkpoint.persistence?.threadId !== continuation.data.sessionId ||
-			checkpoint.persistence?.resourceId !== expectedResourceId ||
-			!pendingToolCall?.suspended ||
-			pendingToolCall.runId !== continuation.data.runId ||
-			!parseStandardApprovalSuspension({
-				runId: pendingToolCall.runId,
-				toolCallId: pendingToolCall.toolCallId,
-				toolName: pendingToolCall.toolName,
-				suspendPayload: pendingToolCall.suspendPayload,
-				resumeSchema: pendingToolCall.resumeSchema,
-			})
-		) {
-			throw new InvalidAgentTestRunCheckpointError();
-		}
+		await this.validateDraftApprovalCheckpoint(continuation.data, input.agentId, input.user.id);
 
 		return await this.resumeDraftRun({
 			agentId: input.agentId,
@@ -347,50 +356,101 @@ export class AgentTestRunService {
 		getExecutionId: () => string | undefined,
 		{ errorMode = 'throw', onChunk }: DraftRunConsumptionOptions,
 	): Promise<PreparedDraftRunResult> {
-		let response = initialResponse;
-		const suspensions: AgentTestRunSuspension[] = [];
-		let observerFailed = false;
-		let observerError: unknown;
-
+		const state: DraftRunState = {
+			response: initialResponse,
+			suspensions: [],
+			observerFailed: false,
+		};
 		try {
 			for await (const chunk of stream) {
-				if (!observerFailed && onChunk) {
-					try {
-						onChunk(chunk);
-					} catch (error) {
-						observerFailed = true;
-						observerError = error;
-					}
-				}
-				if (chunk.type === 'error' && errorMode === 'throw' && !observerFailed) {
-					throw chunk.error;
-				}
-				if (chunk.type === 'text-delta') {
-					response += chunk.delta;
-				} else if (chunk.type === 'tool-call-suspended') {
-					suspensions.push({
-						runId: chunk.runId,
-						toolCallId: chunk.toolCallId,
-						toolName: chunk.toolName,
-						...(chunk.input !== undefined ? { input: chunk.input } : {}),
-						...(chunk.suspendPayload !== undefined ? { suspendPayload: chunk.suspendPayload } : {}),
-						...(chunk.resumeSchema !== undefined ? { resumeSchema: chunk.resumeSchema } : {}),
-					});
-				}
+				this.observeDraftChunk(chunk, onChunk, state);
+				this.collectDraftChunk(chunk, errorMode, state);
 			}
 		} catch (error) {
-			if (observerFailed) throw observerError;
+			if (state.observerFailed) throw state.observerError;
 			throw error;
 		}
-		if (observerFailed) throw observerError;
-
+		if (state.observerFailed) throw state.observerError;
+		// Drain first so terminal usage and finalization errors are preserved.
+		if (state.errorChunk) throw state.errorChunk.error;
 		const executionId = getExecutionId();
-		const metadata = {
-			response,
-			...(executionId ? { executionId } : {}),
-		};
-		return suspensions.length > 0
-			? { status: 'suspended', ...metadata, suspensions }
-			: { status: 'completed', ...metadata };
+		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');
+		const metadata = { response: state.response, executionId };
+		if (state.suspensions.length > 0) {
+			return { status: 'suspended', ...metadata, suspensions: state.suspensions };
+		}
+		return { status: 'completed', ...metadata };
+	}
+
+	private async validateDraftApprovalCheckpoint(
+		continuation: AgentTestRunContinuation,
+		agentId: string,
+		userId: string,
+	): Promise<void> {
+		let checkpoint: SerializableAgentState | undefined;
+		try {
+			checkpoint = await this.n8nCheckpointStorage.load(continuation.runId, agentId);
+		} catch (error) {
+			if (error instanceof UserError) throw new InvalidAgentTestRunCheckpointError();
+			throw error;
+		}
+
+		const pendingToolCall = checkpoint?.pendingToolCalls[continuation.toolCallId];
+		const expectedResourceId = draftChatMemoryResourceId(userId);
+		if (
+			checkpoint?.status !== 'suspended' ||
+			checkpoint.persistence?.delegated === true ||
+			checkpoint.persistence?.threadId !== continuation.sessionId ||
+			checkpoint.persistence?.resourceId !== expectedResourceId ||
+			!pendingToolCall?.suspended ||
+			pendingToolCall.runId !== continuation.runId ||
+			!parseStandardApprovalSuspension({
+				runId: pendingToolCall.runId,
+				toolCallId: pendingToolCall.toolCallId,
+				toolName: pendingToolCall.toolName,
+				suspendPayload: pendingToolCall.suspendPayload,
+				resumeSchema: pendingToolCall.resumeSchema,
+			})
+		) {
+			throw new InvalidAgentTestRunCheckpointError();
+		}
+	}
+
+	private observeDraftChunk(
+		chunk: StreamChunk,
+		onChunk: DraftRunConsumptionOptions['onChunk'],
+		state: DraftRunState,
+	): void {
+		if (state.observerFailed || !onChunk) return;
+		try {
+			onChunk(chunk);
+		} catch (error) {
+			state.observerFailed = true;
+			state.observerError = error;
+		}
+	}
+
+	private collectDraftChunk(
+		chunk: StreamChunk,
+		errorMode: DraftRunConsumptionOptions['errorMode'],
+		state: DraftRunState,
+	): void {
+		if (chunk.type === 'error' && errorMode === 'throw' && !state.observerFailed) {
+			state.errorChunk ??= chunk;
+			return;
+		}
+		if (state.errorChunk) return;
+		if (chunk.type === 'text-delta') {
+			state.response += chunk.delta;
+		} else if (chunk.type === 'tool-call-suspended') {
+			state.suspensions.push({
+				runId: chunk.runId,
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				...(chunk.input !== undefined ? { input: chunk.input } : {}),
+				...(chunk.suspendPayload !== undefined ? { suspendPayload: chunk.suspendPayload } : {}),
+				...(chunk.resumeSchema !== undefined ? { resumeSchema: chunk.resumeSchema } : {}),
+			});
+		}
 	}
 }

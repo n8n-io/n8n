@@ -31,6 +31,8 @@ import {
 	getNodeParametersIssues,
 } from '@/features/setupPanel/setupPanel.utils';
 
+type OAuthConnectionStatus = 'loading' | 'connected' | 'disconnected' | 'unknown' | 'error';
+
 /**
  * A legacy credential name must be replaced with a stored credential reference.
  */
@@ -60,7 +62,9 @@ export function useWorkflowSetupItems(
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const oauth = useCredentialOAuth();
-	const oauthConnections = shallowReactive(new Map<string, boolean | undefined>());
+	const oauthConnections = shallowReactive(
+		new Map<string, { key: string; status: OAuthConnectionStatus }>(),
+	);
 	const checkedCredentialIds = shallowReactive(new Set<string>());
 	watch(
 		() => toValue(workflowId),
@@ -96,7 +100,10 @@ export function useWorkflowSetupItems(
 	const fetchedWorkflow = ref<IWorkflowDb>();
 	const isRefreshingWorkflow = ref(false);
 	let workflowFetchVersion = 0;
-	onScopeDispose(() => workflowFetchVersion++);
+	onScopeDispose(() => {
+		workflowFetchVersion++;
+		oauthConnections.clear();
+	});
 
 	async function refreshWorkflow({ force = false } = {}) {
 		const id = toValue(workflowId);
@@ -195,52 +202,81 @@ export function useWorkflowSetupItems(
 		return id && fetchedWorkflow.value?.id === id ? fetchedWorkflow.value.nodes : undefined;
 	});
 
-	const boundOAuthCredentials = computed(() => {
-		const ids = new Set(
-			(workflowNodes.value ?? []).flatMap((node) =>
-				Object.values(node.credentials ?? {}).map((credential) => credential.id),
+	const boundCredentialIds = computed(
+		() =>
+			new Set(
+				(workflowNodes.value ?? []).flatMap((node) =>
+					Object.values(node.credentials ?? {}).map((credential) => credential.id),
+				),
 			),
-		);
-		for (const id of checkedCredentialIds) ids.add(id);
+	);
+	// Workflow bindings take over tracking once an early selection is saved.
+	watch(boundCredentialIds, (ids) => {
+		for (const id of checkedCredentialIds) {
+			if (ids.has(id)) checkedCredentialIds.delete(id);
+		}
+	});
+	const boundOAuthCredentials = computed(() => {
+		const ids = new Set([...boundCredentialIds.value, ...checkedCredentialIds]);
 		return [...ids].flatMap((id) => {
 			const credential = getBoundCredential(id);
 			return credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)
-				? [credential]
+				? [
+						{
+							id: credential.id,
+							key: JSON.stringify([
+								toValue(workflowId),
+								credential.type,
+								credential.updatedAt,
+								[...(credential.scopes ?? [])].sort(),
+							]),
+						},
+					]
 				: [];
 		});
 	});
 	const isCheckingOAuthCredentials = computed(() =>
-		boundOAuthCredentials.value.some((credential) => !oauthConnections.has(credential.id)),
+		boundOAuthCredentials.value.some(({ id, key }) => {
+			const connection = oauthConnections.get(id);
+			return connection?.key !== key || connection.status === 'loading';
+		}),
 	);
 	watch(
-		[() => toValue(workflowId), boundOAuthCredentials],
-		async ([, credentials], _previous, onCleanup) => {
-			let stale = false;
-			onCleanup(() => {
-				stale = true;
-			});
-			oauthConnections.clear();
+		boundOAuthCredentials,
+		async (credentials) => {
+			const ids = new Set(credentials.map(({ id }) => id));
+			for (const id of oauthConnections.keys()) {
+				if (!ids.has(id)) oauthConnections.delete(id);
+			}
 			await Promise.all(
-				credentials.map(async (credential) => {
-					let connected: boolean | undefined = false;
+				credentials.map(async ({ id, key }) => {
+					const cached = oauthConnections.get(id);
+					// Equivalent workflow/store updates must preserve results and in-flight reads.
+					if (cached?.key === key && cached.status !== 'error') return;
+					const connection = { key, status: 'loading' as const };
+					oauthConnections.set(id, connection);
+					let status: OAuthConnectionStatus = 'error';
 					try {
-						const loaded = await credentialsStore.getCredentialData({ id: credential.id });
+						const loaded = await credentialsStore.getCredentialData({ id });
 						const data = loaded?.data;
 						if (data && typeof data === 'object') {
 							// Other grants obtain tokens without a user sign-in.
-							connected =
+							status =
 								Boolean(
 									data.grantType && !['authorizationCode', 'pkce'].includes(String(data.grantType)),
-								) || hasOAuthTokenData(loaded);
+								) || hasOAuthTokenData(loaded)
+									? 'connected'
+									: 'disconnected';
 						} else {
-							// ponytail: Shared credentials without data keep the existing completion behavior.
+							// Shared credentials without data keep the existing completion behavior.
 							// Add a scoped status API if setup must verify their authorization.
-							connected = undefined;
+							status = 'unknown';
 						}
 					} catch {
 						// A failed read cannot confirm completion. Retry on the next credential refresh.
 					}
-					if (!stale) oauthConnections.set(credential.id, connected);
+					// A removed or changed credential must not accept an older response.
+					if (oauthConnections.get(id) === connection) oauthConnections.set(id, { key, status });
 				}),
 			);
 		},
@@ -395,9 +431,10 @@ export function useWorkflowSetupItems(
 		if (!isBoundCredential(assigned)) return false;
 		const credential = getBoundCredential(typeof assigned !== 'string' ? assigned?.id : undefined);
 		if (credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)) {
-			checkedCredentialIds.add(credential.id);
+			if (!boundCredentialIds.value.has(credential.id)) checkedCredentialIds.add(credential.id);
 			// Wait for the redacted token flag. Missing data remains unknown for shared credentials.
-			return oauthConnections.has(credential.id) && oauthConnections.get(credential.id) !== false;
+			const status = oauthConnections.get(credential.id)?.status;
+			return status === 'connected' || status === 'unknown';
 		}
 		return !credential?.isResolvable || credential.connectedByMe !== false;
 	}

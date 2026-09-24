@@ -754,6 +754,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 				name: 'Gmail account',
 				type: 'gmailOAuth2',
 				isResolvable: false,
+				scopes: ['credential:read', 'credential:update'],
 			});
 			const credentials = mockedStore(useCredentialsStore);
 			credentials.setCredentials([credential]);

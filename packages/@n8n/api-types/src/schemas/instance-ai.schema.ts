@@ -1,6 +1,7 @@
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
+import type { AiPreferenceDto } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
@@ -235,9 +236,11 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-error',
 	'tool-interrupted',
 	'confirmation-request',
+	'instance-context',
 	'tasks-update',
 	'setup-items',
 	'preferences-applied',
+	'preference-card',
 	'filesystem-request',
 	'thread-title-updated',
 	'status',
@@ -334,6 +337,75 @@ export function isSafeObjectKey(key: string): boolean {
 	return !UNSAFE_OBJECT_KEYS.has(key);
 }
 
+// Instance context summary and later reads.
+
+export const instanceContextSurfaceSchema = z.enum([
+	'activity-list',
+	'activity-expand',
+	'node-usage',
+	'workflow-read',
+]);
+
+export type InstanceContextSurface = z.infer<typeof instanceContextSurfaceSchema>;
+
+/** Each surface has a depth. The map must cover every surface in the schema. */
+export const INSTANCE_CONTEXT_SURFACE_DEPTH: Record<InstanceContextSurface, 0 | 1 | 2 | 3> = {
+	'activity-list': 1,
+	'activity-expand': 2,
+	'node-usage': 2,
+	'workflow-read': 3,
+};
+
+export const instanceContextReachSchema = z.object({
+	surfaces: z
+		.array(instanceContextSurfaceSchema)
+		.describe('Surfaces called this turn, de-duplicated, in first-call order. Empty if none.'),
+});
+
+/** Store the surfaces only. Derive depth from the shared map. */
+export type InstanceContextReach = z.infer<typeof instanceContextReachSchema>;
+
+export const instanceContextLegsSchema = z.object({
+	inventory: z
+		.number()
+		.int()
+		.describe("Workflows named in the inventory leg. Only ever on a thread's opening block."),
+	events: z.number().int().describe('Activity entries listed.'),
+	runs: z.number().int().describe('Workflows contributing a run summary.'),
+});
+
+export type InstanceContextLegs = z.infer<typeof instanceContextLegsSchema>;
+
+/** Keep a failed read distinct from a disabled feature or an empty result. */
+export const instanceContextAbsenceReasonSchema = z.enum([
+	'disabled',
+	'machine-follow-up',
+	'empty',
+	'failed',
+]);
+
+export type InstanceContextAbsenceReason = z.infer<typeof instanceContextAbsenceReasonSchema>;
+
+export const instanceContextInjectionSchema = z.discriminatedUnion('state', [
+	z.object({
+		state: z.literal('injected'),
+		isUpdate: z
+			.boolean()
+			.describe('An addition to a block this thread already saw, rather than a full window.'),
+		legs: instanceContextLegsSchema,
+		chars: z.number().int().describe('Rendered block length, tag included.'),
+	}),
+	z.object({ state: z.literal('absent'), reason: instanceContextAbsenceReasonSchema }),
+]);
+
+/** What a turn was handed, or why it was handed nothing. */
+export type InstanceContextInjection = z.infer<typeof instanceContextInjectionSchema>;
+
+/** Send the summary only. The raw context block stays on the server. */
+export const instanceContextPayloadSchema = z.object({
+	injection: instanceContextInjectionSchema,
+});
+
 // ---------------------------------------------------------------------------
 // Event payloads
 // ---------------------------------------------------------------------------
@@ -360,6 +432,8 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
+	/** Report all context reads when the turn ends. */
+	contextReach: instanceContextReachSchema.optional(),
 	/**
 	 * Workflow IDs the run-finish reap soft-deleted — intermediate
 	 * stepping-stones the agent created but never promoted to the main
@@ -1101,6 +1175,17 @@ export const setupItemsPayloadSchema = z.object({
 		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
 });
 
+/** A later fact about a preference the `save_user_preference` tool saved in this run:
+ *  the user edited it or undid it from the card. Appended by the card endpoints, not
+ *  by the tool, and only while the card is on the latest turn. */
+export const preferenceCardPayloadSchema = z.object({
+	toolCallId: z.string(),
+	preferenceId: z.string(),
+	state: z.enum(['edited', 'undone']),
+	content: z.string().optional(),
+});
+export type PreferenceCardPayload = z.infer<typeof preferenceCardPayloadSchema>;
+
 export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
@@ -1117,7 +1202,7 @@ export const threadTitleUpdatedPayloadSchema = z.object({
  * An empty `preferences` array says that the turn applied none. No event at all says that
  * the code path never ran, which is a different fact.
  *
- * CONTEXT-137 defines the shape. CONTEXT-139 publishes the event on every turn.
+ * This schema defines that shape. The turn publishes the event that carries it.
  */
 const appliedPreferenceSchema = z.object({
 	/** Stable row id, so a reader can link to the preference or edit it. */
@@ -1220,12 +1305,22 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: confirmationRequestPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('instance-context'),
+		...eventBase,
+		payload: instanceContextPayloadSchema,
+	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({
 		type: z.literal('preferences-applied'),
 		...eventBase,
 		payload: aiPreferencesAppliedPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('preference-card'),
+		...eventBase,
+		payload: preferenceCardPayloadSchema,
 	}),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
@@ -1268,6 +1363,7 @@ export type InstanceAiPreferencesAppliedEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'preferences-applied' }
 >;
+export type InstanceAiPreferenceCardEvent = Extract<InstanceAiEvent, { type: 'preference-card' }>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
@@ -1568,6 +1664,9 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	mode: instanceAiBuildModeSchema.optional(),
 	/** Pin a published prompt profile. Takes precedence over mode. */
 	promptVersion: z.string().trim().min(1).max(128).optional(),
+	/** Eval override: observer threshold for THIS thread, so driving compaction
+	 *  for one case does not lower it for every conversation on the instance. */
+	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
@@ -1679,6 +1778,18 @@ export type InstanceAiPrefillTypeReported =
 	| InstanceAiPrefillType
 	| typeof INSTANCE_AI_PREFILL_TYPE_FALLBACK;
 
+/**
+ * Payload for putting n8n-authored text into the composer without sending it.
+ * The submit attributes the message using `prefillType` (and optional
+ * `prefillId`), so pre-fills must go through this shape rather than plain
+ * `setText`.
+ */
+export interface InstanceAiPrefillPayload {
+	text: string;
+	prefillType: InstanceAiPrefillTypeReported;
+	prefillId?: string;
+}
+
 export const INSTANCE_AI_THREAD_ORIGINS = ['internal', 'external'] as const;
 export type InstanceAiThreadOrigin = (typeof INSTANCE_AI_THREAD_ORIGINS)[number];
 
@@ -1742,6 +1853,21 @@ export interface InstanceAiSendMessageResponse {
 }
 
 /**
+ * Both preference-card endpoints hand back the fact they published, so the card
+ * that called them renders the new state at once instead of waiting for the
+ * stream to deliver the same fact. Applying it twice sets the same fields.
+ */
+export interface InstanceAiPreferenceCardUndoResponse {
+	ok: true;
+	event: InstanceAiPreferenceCardEvent;
+}
+
+export interface InstanceAiPreferenceCardEditResponse {
+	preference: AiPreferenceDto;
+	event: InstanceAiPreferenceCardEvent;
+}
+
+/**
  * Why a run was refused admission, sent as `meta.reason` on the 429 so the editor can
  * tell the two cases apart. They need different copy and different advice: an instance
  * limit is transient and not the user's fault, so retrying is right; a user limit means
@@ -1783,6 +1909,8 @@ export interface InstanceAiToolCallState {
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
+	/** Set by a `preference-card` fact; absent means the tool result is the state. */
+	preferenceCard?: { state: 'edited' | 'undone'; content?: string };
 	startedAt?: string;
 	completedAt?: string;
 }
@@ -1791,7 +1919,17 @@ export type InstanceAiTimelineEntry =
 	| { type: 'text'; content: string; responseId?: string }
 	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
-	| { type: 'child'; agentId: string; responseId?: string };
+	| { type: 'child'; agentId: string; responseId?: string }
+	/** Store the context summary in the timeline so normal history replay restores it. */
+	| {
+			type: 'instance-context';
+			/** Match by run ID so each follow-up updates its own row. */
+			runId: string;
+			injection: InstanceContextInjection;
+			/** Absent until the run finishes. */
+			reach?: InstanceContextReach;
+			responseId?: string;
+	  };
 
 export interface InstanceAiAgentNode {
 	agentId: string;
@@ -1996,6 +2134,11 @@ export interface InstanceAiRichMessagesResponse {
 	messages: InstanceAiMessage[];
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;
+	/**
+	 * The latest `preferences-applied` fact of the thread, so a reopened thread can show
+	 * which preferences its last turn carried. Absent when no turn has reported any.
+	 */
+	appliedPreferences?: AiPreferencesAppliedPayload;
 }
 
 // ---------------------------------------------------------------------------
@@ -2075,6 +2218,7 @@ const instanceAiPermissionsSchema = z.object({
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeNode: instanceAiPermissionModeSchema,
 	executeMcpTool: instanceAiPermissionModeSchema,
+	createPreference: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -2102,6 +2246,10 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	restoreWorkflowVersion: 'require_approval',
 	executeNode: 'require_approval',
 	executeMcpTool: 'require_approval',
+	// The save_user_preference tool writes first and lets the user edit or undo
+	// from the chat card, so there is no approval step for require_approval to
+	// gate. always_allow is the only workable default; blocked is the feature off.
+	createPreference: 'always_allow',
 };
 
 /**
@@ -2315,7 +2463,13 @@ export type InstanceAiConnectionUpdate = z.infer<typeof instanceAiConnectionSche
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	permissions: instanceAiPermissionsSchema.partial().optional(),
+	permissions: instanceAiPermissionsSchema
+		.partial()
+		.refine((permissions) => permissions.createPreference !== 'require_approval', {
+			message: 'createPreference supports always_allow and blocked only',
+			path: ['createPreference'],
+		})
+		.optional(),
 	mcpServers: z.string().optional(),
 	mcpAccessEnabled: z.boolean().optional(),
 	sandboxEnabled: z.boolean().optional(),
@@ -2541,11 +2695,6 @@ export const CONFIG_EVALUATIONS_FLAG = '088_config_evaluations';
 /** Enabled arm of `CONFIG_EVALUATIONS_FLAG` (matches the editor-ui experiment). */
 export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 
-/** Enables MCP connections for Instance AI */
-export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections';
-
-export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
-
 /** Enables adding selected canvas nodes as chat context in the n8n Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
@@ -2556,6 +2705,9 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
+
+export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
+export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
 
 /** Enables the node-usage context surface for Instance AI: the `node-usage`
 
@@ -2569,6 +2721,9 @@ export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
  * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
  */
 export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
+
+/** Instance rollout gate for shared activity recording and retrieval. */
+export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
 
 /**
  * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
@@ -2672,6 +2827,22 @@ export interface InstanceAiEvalAgentScenarioSeed {
 export interface InstanceAiEvalAgentSkippedFeature {
 	feature: string;
 	reason: string;
+}
+
+export interface InstanceAiEvalObservation {
+	marker: 'critical' | 'important' | 'info' | 'completion';
+	text: string;
+	tokenCount: number;
+}
+
+/** What observational memory holds for a thread. The rows themselves, not the rendered
+ *  system prompt — a prompt or SDK rename must not read as "never compacted". */
+export interface InstanceAiEvalThreadMemoryResponse {
+	/** Live observations, oldest first. Empty when nothing has been observed. */
+	observations: InstanceAiEvalObservation[];
+	/** Null until the observer runs; `lastObservedMessageId` is the compaction
+	 *  cursor, so everything up to it is masked out of the agent's window. */
+	cursor: { lastObservedMessageId: string; lastObservedAt: string } | null;
 }
 
 export interface InstanceAiEvalAgentExecutionResult {

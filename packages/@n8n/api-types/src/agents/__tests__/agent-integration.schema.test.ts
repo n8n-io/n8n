@@ -10,6 +10,31 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it.each(['discord', 'linear', 'teams'])(
+		'accepts a %s integration with or without a session idle timeout',
+		(type) => {
+			expect(AgentIntegrationSchema.safeParse({ type, credentialId: 'cred-123' }).success).toBe(
+				true,
+			);
+			expect(
+				AgentIntegrationSchema.safeParse({
+					type,
+					credentialId: 'cred-123',
+					settings: { sessionIdleTimeoutMinutes: 30 },
+				}).success,
+			).toBe(true);
+		},
+	);
+
+	it('rejects Teams settings it does not define', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'teams',
+			credentialId: 'cred-123',
+			settings: { accessMode: 'public' },
+		});
+		expect(result.success).toBe(false);
+	});
+
 	it('accepts an existing Slack integration without messaging settings', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'slack',
@@ -78,5 +103,54 @@ describe('AgentIntegrationSchema', () => {
 			cronExpression: '0 9 * * *',
 		});
 		expect(result.success).toBe(false);
+	});
+
+	describe('action approval', () => {
+		it.each(['slack', 'telegram', 'discord', 'linear'])(
+			'accepts selected actions on a %s integration',
+			(type) => {
+				const result = AgentIntegrationSchema.safeParse({
+					type,
+					credentialId: 'cred-123',
+					approval: { mode: 'selected', tools: ['send_channel_message'] },
+				});
+				expect(result.success).toBe(true);
+			},
+		);
+
+		it('leaves approval undefined when it is absent', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+			});
+			expect(result.success && result.data.approval).toBeUndefined();
+		});
+
+		it('accepts the global mode without a list', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				approval: { mode: 'global' },
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it('rejects selected approval with nothing selected', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				approval: { mode: 'selected', tools: [] },
+			});
+			expect(result.success).toBe(false);
+		});
+
+		it('rejects an unknown approval mode', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				approval: { mode: 'always' },
+			});
+			expect(result.success).toBe(false);
+		});
 	});
 });

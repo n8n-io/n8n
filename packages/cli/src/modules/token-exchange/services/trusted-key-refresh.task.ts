@@ -1,5 +1,5 @@
 import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { TrustedKeyService } from './trusted-key.service';
 
@@ -21,7 +21,7 @@ export class TrustedKeyRefreshTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
 
 	constructor(private readonly trustedKeyService: TrustedKeyService) {}
 

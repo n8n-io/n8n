@@ -48,6 +48,33 @@ describe('List query middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
+		test('should parse up to 50 unique workflow ids', async () => {
+			const ids = Array.from({ length: 50 }, (_, index) => `workflow-${index}`);
+			mockReq.query = { filter: JSON.stringify({ ids }) };
+
+			await filterListQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toEqual({ filter: { ids } });
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should reject more than 50 workflow ids', async () => {
+			const ids = Array.from({ length: 51 }, (_, index) => `workflow-${index}`);
+			mockReq.query = { filter: JSON.stringify({ ids }) };
+
+			await filterListQueryMiddleware(...args);
+
+			expect(sendErrorResponse).toHaveBeenCalledTimes(1);
+		});
+
+		test('should reject duplicate workflow ids', async () => {
+			mockReq.query = { filter: JSON.stringify({ ids: ['workflow-1', 'workflow-1'] }) };
+
+			await filterListQueryMiddleware(...args);
+
+			expect(sendErrorResponse).toHaveBeenCalledTimes(1);
+		});
+
 		test('should ignore invalid filter', async () => {
 			mockReq.query = { filter: '{ "query": "My Workflow", "foo": "bar" }' };
 

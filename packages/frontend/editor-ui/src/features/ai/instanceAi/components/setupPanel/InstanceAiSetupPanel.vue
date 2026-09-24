@@ -152,6 +152,7 @@ const actions = useSetupPanelActions({
 	workflowId: () => props.workflowId,
 	isAgentBuilding,
 	onFlushResult: notifyApplyResult,
+	onSaved: (workflow) => panelTelemetry.trackSaved(workflow),
 });
 
 function getNodeByName(name: string, includePendingParameters = true): INodeUi | undefined {
@@ -313,11 +314,15 @@ const panelTelemetry = useSetupPanelTelemetry({
 	rows,
 	groups,
 	shownItemIds,
+	getNodeByName: getSavedNodeByName,
+	isItemDone,
+	isAgentBuilding,
 	ready: () =>
 		!setupDismissed.value &&
 		credentialsReady.value &&
 		(rowSource.value === 'derived' || rows.value.length > 0),
 });
+defineExpose({ getChatTelemetryContext: panelTelemetry.getChatTelemetryContext });
 const selectedGroup = computed(() =>
 	groups.value.find((group) => group.id === selectedItemId.value),
 );

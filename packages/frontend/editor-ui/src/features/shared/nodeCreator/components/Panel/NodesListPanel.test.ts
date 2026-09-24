@@ -5,6 +5,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
 import { REGULAR_NODE_CREATOR_VIEW, DEBOUNCE_TIME } from '@/app/constants';
@@ -662,6 +663,66 @@ describe('NodesListPanel', () => {
 
 			// Context should still be 'replacement' after search
 			expect(nodeCreatorStore.openingContext).toBe('replacement');
+		});
+	});
+
+	describe('restricted node types', () => {
+		const triggerNodes = [...Array(9).keys()].map(
+			(n) =>
+				mockSimplifiedNodeType({
+					name: `Trigger Node ${n}`,
+					displayName: `Trigger Node ${n}`,
+					group: ['trigger'],
+				}) as INodeTypeDescription,
+		);
+
+		function renderTriggerView() {
+			const { container } = getWrapperComponent(() => {
+				const { setMergeNodes } = useNodeCreatorStore();
+				setMergeNodes([...triggerNodes]);
+				return {};
+			});
+			return container;
+		}
+
+		it('hides a restricted type while browsing', async () => {
+			renderTriggerView();
+			mockRestrictedNodeTypes({ 'Trigger Node 3': 'instance' });
+			await nextTick();
+
+			screen.getByText('On app event').click();
+			await nextTick();
+
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(8);
+			expect(screen.queryByText('Trigger Node 3')).not.toBeInTheDocument();
+		});
+
+		it('shows a restricted type last when searched for', async () => {
+			vi.useFakeTimers();
+			try {
+				renderTriggerView();
+				mockRestrictedNodeTypes({ 'Trigger Node 3': 'instance' });
+				await nextTick();
+
+				screen.getByText('On app event').click();
+				await nextTick();
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Trigger Node' },
+				});
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
+				await nextTick();
+
+				const items = screen.getAllByTestId('item-iterator-item');
+				expect(items).toHaveLength(9);
+				expect(items[items.length - 1]).toHaveTextContent('Trigger Node 3');
+				expect(
+					items[items.length - 1].querySelector('[data-test-id="node-creator-restricted-item"]'),
+				).toBeInTheDocument();
+				expect(screen.getAllByTestId('node-creator-restricted-item')).toHaveLength(1);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 });
