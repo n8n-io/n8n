@@ -119,6 +119,27 @@ describe('SupplyDataContext', () => {
 			expect(supplyDataContext.getInputData(inputIndex, connectionType)).toEqual(expectedData);
 		});
 
+		it('should read input data from a map without a prototype', () => {
+			const inputDataWithoutPrototype = { ...inputData };
+			Object.setPrototypeOf(inputDataWithoutPrototype, null);
+			const context = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputDataWithoutPrototype,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(context.getInputData(inputIndex, connectionType)).toEqual(inputData.main[inputIndex]);
+		});
+
 		it('should return an empty array if the input name does not exist', () => {
 			const connectionType = 'nonExistent';
 			expect(
@@ -334,6 +355,33 @@ describe('SupplyDataContext', () => {
 	});
 
 	describe('addExecutionDataFunctions', () => {
+		it('should record input in a run-data map without a prototype', async () => {
+			const runData: IRunData = {};
+			Object.setPrototypeOf(runData, null);
+			const testRunExecutionData = mock<IRunExecutionData>({ resultData: { runData } });
+			const testAdditionalData = { ...additionalData, hooks: undefined };
+			const context = new SupplyDataContext(
+				workflow,
+				node,
+				testAdditionalData,
+				mode,
+				testRunExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+			const data = [[{ json: { test: 'data' } }]];
+			const inputType = NodeConnectionTypes.AiTool;
+
+			await context.addExecutionDataFunctions('input', data, inputType, node.name, 0);
+
+			expect(runData[node.name][0].data).toEqual({ [inputType]: data });
+		});
+
 		it('should preserve canceled status when execution is aborted and output has error', async () => {
 			const errorData = new ManualExecutionCancelledError('Execution was aborted');
 			const abortedSignal = mock<AbortSignal>({ aborted: true });

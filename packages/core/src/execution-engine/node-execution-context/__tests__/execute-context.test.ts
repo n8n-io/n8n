@@ -129,6 +129,26 @@ describe('ExecuteContext', () => {
 			expect(executeContext.getInputData(inputIndex, connectionType)).toEqual(expectedData);
 		});
 
+		it('should read input data from a map without a prototype', () => {
+			const inputDataWithoutPrototype = { ...inputData };
+			Object.setPrototypeOf(inputDataWithoutPrototype, null);
+			const context = new ExecuteContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputDataWithoutPrototype,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(context.getInputData(inputIndex, connectionType)).toEqual(inputData.main[inputIndex]);
+		});
+
 		it('should return an empty array if the input name does not exist', () => {
 			const connectionType = 'nonExistent' as typeof NodeConnectionTypes.Main;
 			expect(executeContext.getInputData(inputIndex, connectionType)).toEqual([]);

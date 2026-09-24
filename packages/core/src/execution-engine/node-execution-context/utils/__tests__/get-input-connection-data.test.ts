@@ -231,13 +231,28 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+			const runData: IRunData = {};
+			Object.setPrototypeOf(runData, null);
+			const context = new ExecuteContext(
+				workflow,
+				agentNode,
+				additionalData,
+				'internal',
+				mock<IRunExecutionData>({ resultData: { runData } }),
+				0,
+				connectionInputData,
+				inputData,
+				executeData,
+				[],
+			);
+			vi.spyOn(context, 'getNode').mockReturnValue(agentNode);
+			vi.spyOn(context, 'getConnections').mockReturnValueOnce([
 				[{ node: node.name, type: connectionType, index: 0 }],
 			]);
 
 			supplyData.mockRejectedValueOnce(new Error('supplyData error'));
 
-			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
+			await expect(context.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				`Error in sub-node ${node.name}`,
 			);
 			expect(supplyData).toHaveBeenCalled();
