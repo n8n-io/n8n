@@ -31,7 +31,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@n8n/frontend-module-mcp';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('vue-router')>();
@@ -48,8 +48,6 @@ vi.mock('@/app/composables/useWorkflowsCache', () => ({
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(),
 }));
-
-vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({}));
 
 const mockEvaluationSetOutputsNodeExist = ref(false);
 vi.mock('@/features/ai/evaluation.ee/composables/useWorkflowEvaluationState', () => ({

@@ -51,8 +51,7 @@ import {
 import OpenInAssistantCardButton from '@/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue';
 import { useOpenInAssistantCard } from '@/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard';
 import WorkflowCardMcpToggle from '@/app/components/WorkflowCardMcpToggle.vue';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useMCPStore, useMcp } from '@n8n/frontend-module-mcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';

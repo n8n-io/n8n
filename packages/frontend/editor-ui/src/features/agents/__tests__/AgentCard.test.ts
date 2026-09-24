@@ -61,13 +61,11 @@ const mcpStoreMock = {
 	toggleAgentMcpAccess: vi.fn().mockResolvedValue({ updatedCount: 1 }),
 };
 
-vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
-	useMCPStore: () => mcpStoreMock,
-}));
-
 const trackMcpAccessEnabledForAgentMock = vi.fn();
 
-vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
+vi.mock('@n8n/frontend-module-mcp', async (importOriginal) => ({
+	...(await importOriginal()),
+	useMCPStore: () => mcpStoreMock,
 	useMcp: () => ({ trackMcpAccessEnabledForAgent: trackMcpAccessEnabledForAgentMock }),
 }));
 
