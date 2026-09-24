@@ -313,33 +313,92 @@ export function prepareOutput(
 
 export const splitQueryToStatements = (query: string, filterOutEmpty = true) => {
 	const statements: string[] = [];
-	let statementStart = 0;
-	let quote: "'" | '"' | undefined;
+	let statementParts: string[] = [];
+	let quote = false;
 	let escaped = false;
+	let lineComment = false;
+	let lineCommentAfterDelimiter = false;
+	let blockComment = false;
+
+	const pushStatement = () => {
+		statements.push(statementParts.join('').trim());
+		statementParts = [];
+	};
 
 	for (let index = 0; index < query.length; index++) {
 		const character = query[index];
+		const nextCharacter = query[index + 1];
 
-		if (quote) {
-			if (escaped) {
-				escaped = false;
-			} else if (character === '\\') {
-				escaped = true;
-			} else if (character === quote) {
-				quote = undefined;
+		if (lineComment) {
+			if (lineCommentAfterDelimiter && character === ';') {
+				pushStatement();
+				lineComment = false;
+				lineCommentAfterDelimiter = false;
+			} else if (character === '\n' || character === '\r') {
+				lineComment = false;
+			} else {
+				statementParts.push(character);
 			}
 			continue;
 		}
 
-		if (character === "'" || character === '"') {
-			quote = character;
+		if (blockComment) {
+			if (character === '*' && nextCharacter === '/') {
+				statementParts.push('*/');
+				blockComment = false;
+				index++;
+			} else if (character !== '\n' && character !== '\r') {
+				statementParts.push(character);
+			}
+			continue;
+		}
+
+		if (quote) {
+			if (character !== '\n' && character !== '\r') {
+				statementParts.push(character);
+			}
+			if (escaped) {
+				escaped = false;
+			} else if (character === '\\') {
+				escaped = true;
+			} else if (character === "'") {
+				quote = false;
+			}
+			continue;
+		}
+
+		if (character === "'") {
+			quote = true;
+			statementParts.push(character);
+		} else if (
+			character === '#' ||
+			(character === '-' && nextCharacter === '-' && /\s/.test(query[index + 2] ?? ''))
+		) {
+			lineComment = true;
+			statementParts.push(character, nextCharacter);
+			index++;
+		} else if (character === '/' && nextCharacter === '*') {
+			blockComment = true;
+			statementParts.push('/*');
+			index++;
 		} else if (character === ';') {
-			statements.push(query.slice(statementStart, index).replace(/\n/g, '').trim());
-			statementStart = index + 1;
+			let lookahead = index + 1;
+			while (/\s/.test(query[lookahead] ?? '')) lookahead++;
+			lineCommentAfterDelimiter =
+				query[lookahead] === '-' &&
+				query[lookahead + 1] === '-' &&
+				/\s/.test(query[lookahead + 2] ?? '');
+			if (lineCommentAfterDelimiter) {
+				statementParts.push(character);
+			} else {
+				pushStatement();
+			}
+		} else if (character !== '\n' && character !== '\r') {
+			statementParts.push(character);
 		}
 	}
 
-	statements.push(query.slice(statementStart).replace(/\n/g, '').trim());
+	pushStatement();
 	return filterOutEmpty ? statements.filter((statement) => statement !== '') : statements;
 };
 

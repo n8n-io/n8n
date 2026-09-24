@@ -360,6 +360,19 @@ describe('Test MySql V2, splitQueryToStatements', () => {
 			"SELECT custom_ship_time FROM models WHERE models.custom_ship_time LIKE CONCAT('%', ';', '%') LIMIT 10",
 		]);
 	});
+	it('should preserve line comment boundaries', () => {
+		const query = "SELECT 1; -- don't run this;\nSELECT 2;";
+
+		expect(splitQueryToStatements(query)).toEqual(["SELECT 1; -- don't run this", 'SELECT 2']);
+	});
+	it('should split statement separators inside SQL comments', () => {
+		const query = 'SELECT 1 /* first; statement */; SELECT 2 # second; statement\n;';
+
+		expect(splitQueryToStatements(query)).toEqual([
+			'SELECT 1 /* first; statement */',
+			'SELECT 2 # second; statement',
+		]);
+	});
 
 	describe('where clause handling', () => {
 		const validOperations = [
