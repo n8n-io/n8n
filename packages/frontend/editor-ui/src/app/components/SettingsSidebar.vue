@@ -29,7 +29,7 @@ onMounted(() => {
 	<div :class="$style.container">
 		<div :class="$style.returnButton" data-test-id="settings-back" @click="emit('return')">
 			<div :class="$style.arrowIcon">
-				<N8nIcon icon="arrow-left" />
+				<N8nIcon icon="arrow-left" size="small" />
 			</div>
 			<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 		</div>
@@ -42,7 +42,7 @@ onMounted(() => {
 			/>
 		</div>
 		<div :class="$style.versionContainer">
-			<N8nLink size="small" color="text-light" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
+			<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
 				{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
 			</N8nLink>
 		</div>
@@ -65,7 +65,7 @@ onMounted(() => {
 	padding: var(--spacing--xs);
 	cursor: pointer;
 	display: flex;
-	gap: var(--spacing--5xs);
+	gap: var(--spacing--4xs);
 	align-items: center;
 
 	.arrowIcon {
