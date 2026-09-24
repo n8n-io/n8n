@@ -111,6 +111,53 @@ describe('buildSchemaContexts', () => {
 	});
 });
 
+describe('Data Table read parameters', () => {
+	const lookup = {
+		name: 'Zone Lookup',
+		type: 'n8n-nodes-base.dataTable',
+		typeVersion: 1.1,
+		parameters: {
+			resource: 'row',
+			operation: 'get',
+			matchType: 'allConditions',
+			filters: {
+				conditions: [{ keyName: 'country', condition: 'eq', keyValue: '={{ $json.country }}' }],
+			},
+			returnAll: false,
+			limit: 1,
+		},
+	} as unknown as NodeJSON;
+
+	it('derives the filter, match type and limit of a get node into its context', () => {
+		expect(buildSchemaContexts([lookup])[0].dataTableRead).toEqual({
+			matchType: 'allConditions',
+			conditions: [{ keyName: 'country', condition: 'eq', keyValue: '={{ $json.country }}' }],
+			returnAll: false,
+			limit: 1,
+		});
+	});
+
+	it('leaves other nodes and Data Table writes without read parameters', () => {
+		const insert = { ...lookup, parameters: { resource: 'row', operation: 'insert' } };
+		expect(buildSchemaContexts([insert])[0].dataTableRead).toBeUndefined();
+		expect(buildSchemaContexts([workflow.nodes[3]])[0].dataTableRead).toBeUndefined();
+	});
+
+	it('tells the generator to pin the rows the node returns, resolving expression values', () => {
+		const prompt = buildPinDataUserPrompt(
+			{ nodes: [lookup], connections: {} } as unknown as WorkflowJSON,
+			buildSchemaContexts([lookup]),
+			{ dateAnchors: 'anchors' },
+		);
+
+		expect(prompt).toContain(
+			'OUTPUTS only the table rows its filter selects — `country` eq "={{ $json.country }}"; at most 1 row(s)',
+		);
+		expect(prompt).toContain('resolve it from the Test Scenario');
+		expect(prompt).toContain('never the whole table');
+	});
+});
+
 describe('buildPinDataUserPrompt', () => {
 	const anchors = buildDateAnchors(new Date('2026-01-15T12:00:00Z'));
 

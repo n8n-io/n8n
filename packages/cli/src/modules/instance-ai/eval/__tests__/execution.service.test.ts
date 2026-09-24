@@ -44,7 +44,6 @@ vi.mock('../workflow-analysis', () => ({
 		rootToSubNode: new Map(),
 	}),
 	generateMockHints: vi.fn(),
-	TRIGGER_CONTENT_CORRECTION: 'trigger-content-correction',
 	identifyNodesForHints: vi.fn(),
 	identifyNodesForPinData: vi.fn(),
 	isDataTableRead: vi.fn().mockReturnValue(false),
@@ -72,7 +71,8 @@ const mockRestoreNoProxy = vi.fn();
 vi.mock('@n8n/backend-network/proxy', () => ({
 	ensureHostsBypassProxy: vi.fn(() => mockRestoreNoProxy),
 }));
-vi.mock('@n8n/workflow-sdk', () => ({
+vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/workflow-sdk')>()),
 	normalizePinData: vi.fn((pd: unknown) => pd),
 }));
 
@@ -113,7 +113,6 @@ import {
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	partitionAiRoots,
-	TRIGGER_CONTENT_CORRECTION,
 } from '../workflow-analysis';
 import type { MockHints } from '../workflow-analysis';
 
@@ -439,44 +438,23 @@ describe('EvalExecutionService', () => {
 				} as never);
 			}
 
-			it('retries Phase 1 once with a correction when a trigger start node gets no trigger content', async () => {
+			it('returns a framework error and does not run when Phase 1 leaves a trigger start node without content', async () => {
 				triggerCapableStart();
 				const empty = makeEmptyHints();
 				empty.triggerContent = {};
-				const filled = makeEmptyHints();
-				filled.triggerContent = { body: { order: 'O-1' } };
-				generateMockHintsMock.mockResolvedValueOnce(empty).mockResolvedValueOnce(filled);
-
-				await service.executeWithLlmMock('wf-1', makeUser());
-
-				expect(generateMockHintsMock).toHaveBeenCalledTimes(2);
-				expect(generateMockHintsMock.mock.calls[1][0]).toEqual(
-					expect.objectContaining({ correction: TRIGGER_CONTENT_CORRECTION }),
-				);
-				expect(workflowRunner.run).toHaveBeenCalledWith(
-					expect.objectContaining({
-						pinData: expect.objectContaining({ Webhook: [{ json: { body: { order: 'O-1' } } }] }),
-					}),
-				);
-			});
-
-			it('returns a framework error and does not run when the corrected retry still has no trigger content', async () => {
-				triggerCapableStart();
-				const empty = makeEmptyHints();
-				empty.triggerContent = {};
+				empty.warnings = ['Phase 1 attempt 2/2: empty triggerContent'];
 				generateMockHintsMock.mockResolvedValue(empty);
 
 				const result = await service.executeWithLlmMock('wf-1', makeUser());
 
-				expect(generateMockHintsMock).toHaveBeenCalledTimes(2);
 				expect(result.success).toBe(false);
 				expect(result.errors[0]).toMatch(
-					/^FRAMEWORK ISSUE: .*no trigger content for start node "Webhook"/,
+					/^FRAMEWORK ISSUE: .*no trigger content for start node "Webhook" \(Phase 1 attempt 2\/2: empty triggerContent\)/,
 				);
 				expect(workflowRunner.run).not.toHaveBeenCalled();
 			});
 
-			it('keeps the zero-item pin without retrying when the scenario says the trigger emits nothing', async () => {
+			it('keeps the zero-item pin when the scenario says the trigger emits nothing', async () => {
 				triggerCapableStart();
 				const hints = makeEmptyHints();
 				hints.triggerContent = {};
@@ -485,19 +463,17 @@ describe('EvalExecutionService', () => {
 
 				await service.executeWithLlmMock('wf-1', makeUser());
 
-				expect(generateMockHintsMock).toHaveBeenCalledTimes(1);
 				const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
 					pinData?: Record<string, unknown[]>;
 				};
 				expect(runArg.pinData?.Webhook).toEqual([]);
 			});
 
-			it('does not retry Phase 1 when the trigger content is present', async () => {
+			it('runs as usual when the trigger content is present', async () => {
 				triggerCapableStart();
 
 				await service.executeWithLlmMock('wf-1', makeUser());
 
-				expect(generateMockHintsMock).toHaveBeenCalledTimes(1);
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			});
 		});

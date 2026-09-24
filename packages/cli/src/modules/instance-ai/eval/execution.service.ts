@@ -71,7 +71,6 @@ import {
 	detectBinaryDependencies,
 	emitsDataTableRows,
 	generateMockHints,
-	TRIGGER_CONTENT_CORRECTION,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	type MockHints,
@@ -249,7 +248,7 @@ export class EvalExecutionService {
 			`[EvalMock] Generating hints for ${nodeNames.length} nodes: ${nodeNames.join(', ')}`,
 		);
 
-		let hints = await timings.time(
+		const hints = await timings.time(
 			'hints',
 			undefined,
 			async () =>
@@ -264,27 +263,9 @@ export class EvalExecutionService {
 		// downstream miss then reads as the builder's fault.
 		const triggerStart = this.triggerStartNode(workflowEntity, hints);
 		if (triggerStart && lacksTriggerContent(hints)) {
-			this.logger.warn(
-				`[EvalMock] Phase 1 returned no trigger content for "${triggerStart.name}" — retrying once with a correction`,
+			throw new Error(
+				`FRAMEWORK ISSUE: Phase 1 produced no trigger content for start node "${triggerStart.name}" (${hints.warnings.join('; ') || 'no details'}); the scenario cannot run without a trigger event`,
 			);
-			const retried = await timings.time(
-				'hints',
-				undefined,
-				async () =>
-					await generateMockHints({
-						workflow: workflowEntity,
-						nodeNames,
-						scenarioHints,
-						correction: TRIGGER_CONTENT_CORRECTION,
-					}),
-			);
-			const warnings = [...hints.warnings, ...retried.warnings];
-			if (lacksTriggerContent(retried)) {
-				throw new Error(
-					`FRAMEWORK ISSUE: Phase 1 produced no trigger content for start node "${triggerStart.name}" after a corrected retry (${warnings.join('; ') || 'no details'}); the scenario cannot run without a trigger event`,
-				);
-			}
-			hints = { ...retried, warnings };
 		}
 
 		if (!hints.globalContext && nodeNames.length > 0) {

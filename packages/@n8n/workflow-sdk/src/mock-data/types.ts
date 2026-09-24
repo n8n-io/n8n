@@ -1,3 +1,5 @@
+import type { DataTableReadParameters } from './data-table-read';
+
 /**
  * Shared types for LLM mock/pin-data generation.
  *
@@ -65,6 +67,8 @@ export interface NodeSchemaContext {
 	outputParser?: OutputParserContext;
 	/** Real Data Table columns for dataTable reads — rendered in the prompt as the authoritative row shape. */
 	dataTableColumns?: DataTableColumnInfo[];
+	/** The filter and limit a Data Table `get` node applies — the pinned rows are the node's output, not the table. */
+	dataTableRead?: DataTableReadParameters;
 	declaredFields?: DeclaredFieldContract;
 }
 

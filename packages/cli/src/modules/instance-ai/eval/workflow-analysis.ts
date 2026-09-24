@@ -590,8 +590,6 @@ export interface GenerateMockHintsOptions {
 	workflow: IWorkflowBase;
 	nodeNames: string[];
 	scenarioHints?: string;
-	/** Appended to the prompt on a retry, naming what the previous answer got wrong. */
-	correction?: string;
 }
 
 export const TRIGGER_CONTENT_CORRECTION =
@@ -697,7 +695,7 @@ const HINT_LLM_TIMEOUT_MS = 300_000;
 
 /** One LLM call → globalContext + triggerContent + per-node hints. Retried once on structural issues. */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
-	const { workflow, nodeNames, scenarioHints, correction } = options;
+	const { workflow, nodeNames, scenarioHints } = options;
 	const emptyResult: MockHints = {
 		globalContext: '',
 		nodeHints: {},
@@ -709,13 +707,15 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 	if (nodeNames.length === 0) return emptyResult;
 
 	const basePrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
-	const userPrompt = correction
-		? `${basePrompt}\n\n## Correction required\n\n${correction}`
-		: basePrompt;
 	const warnings: string[] = [];
+	let lastReason = '';
 
 	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
 		let reason = '';
+		// A retry names what the previous answer got wrong instead of repeating the same ask.
+		const userPrompt = lastReason
+			? `${basePrompt}\n\n## Correction required\n\n${correctionFor(lastReason)}`
+			: basePrompt;
 		try {
 			const agent = createEvalAgent('eval-hint-generator', {
 				instructions: SYSTEM_PROMPT,
@@ -784,6 +784,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		}
 
 		warnings.push(`Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS}: ${reason}`);
+		lastReason = reason;
 		if (attempt < MAX_HINT_ATTEMPTS) {
 			Container.get(Logger).warn(
 				`[EvalMock] Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS} unusable (${reason}) — retrying`,
@@ -795,4 +796,9 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		`[EvalMock] Phase 1 exhausted ${MAX_HINT_ATTEMPTS} attempts — ${warnings.join('; ')}`,
 	);
 	return { ...emptyResult, warnings };
+}
+
+function correctionFor(reason: string): string {
+	if (reason === 'empty triggerContent') return TRIGGER_CONTENT_CORRECTION;
+	return `The previous answer was unusable: ${reason}. Return only the JSON object described under "Expected Output".`;
 }

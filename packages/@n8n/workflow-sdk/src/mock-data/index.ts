@@ -23,6 +23,12 @@ export {
 	findOutputParserTargets,
 	collectDownstreamConsumers,
 } from './context';
+export {
+	readDataTableReadParameters,
+	describeDataTableRead,
+	type DataTableReadCondition,
+	type DataTableReadParameters,
+} from './data-table-read';
 export { workflowToMermaid } from './mermaid';
 export { buildDateAnchors } from './date-anchors';
 export {

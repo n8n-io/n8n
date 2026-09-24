@@ -1,3 +1,4 @@
+import { describeDataTableRead } from './data-table-read';
 import { describeAiRootShape, isAiRootNodeType } from './ai-root-shapes';
 import { collectDownstreamConsumers, resolveEnvelopeKey } from './context';
 import { workflowToMermaid } from './mermaid';
@@ -72,6 +73,14 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 				`for it): ${columnList}`,
 		);
 		return lines;
+	}
+
+	if (ctx.dataTableRead) {
+		lines.push(
+			`- This node OUTPUTS only the table rows its filter selects — ${describeDataTableRead(ctx.dataTableRead)}. ` +
+				'A value written as `={{ … }}` is an expression over the item this node receives: resolve it from the Test Scenario and the data description (for example the trigger payload) and keep only the rows that match. ' +
+				'Pin the rows the node RETURNS, never the whole table; an empty array is the right answer when nothing matches.',
+		);
 	}
 
 	if (ctx.schema) {

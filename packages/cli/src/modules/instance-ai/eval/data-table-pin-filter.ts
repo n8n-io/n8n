@@ -1,26 +1,6 @@
+import { readDataTableReadParameters, type DataTableReadCondition } from '@n8n/workflow-sdk';
 import type { INode, INodeExecutionData } from 'n8n-workflow';
-import { z } from 'zod';
 
-// Mirrors the Data Table node's `get` parameters (nodes-base DataTable/common/selectMany.ts,
-// actions/row/get.operation.ts): absent keys mean the node defaults.
-const ROWS_LIMIT_DEFAULT = 50;
-
-const conditionSchema = z.object({
-	keyName: z.string().min(1),
-	condition: z.string().default('eq'),
-	keyValue: z.unknown().optional(),
-});
-
-const readParametersSchema = z.object({
-	matchType: z.enum(['anyCondition', 'allConditions']).default('anyCondition'),
-	filters: z
-		.object({ conditions: z.array(conditionSchema).default([]) })
-		.default({ conditions: [] }),
-	returnAll: z.boolean().default(false),
-	limit: z.number().int().positive().default(ROWS_LIMIT_DEFAULT),
-});
-
-type Condition = z.infer<typeof conditionSchema>;
 type Row = INodeExecutionData['json'];
 type RowPredicate = (row: Row) => boolean;
 
@@ -44,19 +24,19 @@ export function applyDataTableReadParameters(
 	node: INode,
 	items: INodeExecutionData[],
 ): PinnedReadFilterResult {
-	const parsed = readParametersSchema.safeParse(node.parameters ?? {});
-	if (!parsed.success) {
+	const read = readDataTableReadParameters(node);
+	if (!read) {
 		return {
 			items,
 			warnings: [
-				`Pinned Data Table read "${node.name}": its filter parameters could not be read (${parsed.error.issues[0]?.message ?? 'invalid'}); rows were left as generated`,
+				`Pinned Data Table read "${node.name}": its filter parameters could not be read; rows were left as generated`,
 			],
 			flags: [],
 		};
 	}
-	const { matchType, filters, returnAll, limit } = parsed.data;
+	const { matchType, conditions, returnAll, limit } = read;
 	const warnings: string[] = [];
-	const evaluators = filters.conditions.map((condition) =>
+	const evaluators = conditions.map((condition) =>
 		conditionPredicate(condition, node.name, warnings),
 	);
 	const predicates = evaluators.filter((p): p is RowPredicate => p !== undefined);
@@ -77,7 +57,7 @@ export function applyDataTableReadParameters(
 }
 
 function conditionPredicate(
-	condition: Condition,
+	condition: DataTableReadCondition,
 	nodeName: string,
 	warnings: string[],
 ): RowPredicate | undefined {
