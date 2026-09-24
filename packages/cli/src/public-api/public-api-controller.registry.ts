@@ -17,6 +17,7 @@ import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import { assertJsonContentType } from '@/public-api/public-api-media-type';
+import type { ResolvedRouteArg } from '@/public-api/public-api-route-resolver';
 import {
 	apiKeyScopesSatisfy,
 	findBodyArg,
@@ -128,6 +129,18 @@ export class PublicApiControllerRegistry {
 
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
 
+			// A path param that breaks its declared schema addresses no resource, so it is a 400 for
+			// every caller. The scope checks run a lookup on that same value and would answer 404 or
+			// 403 first, which made the status depend on the caller's access. eov validated first.
+			const paramArgs = resolvedArgs.filter(
+				(arg): arg is Extract<ResolvedRouteArg, { type: 'param' }> & { schema: ZodTypeAny } =>
+					arg.type === 'param' && arg.schema !== undefined,
+			);
+
+			if (paramArgs.length) {
+				middlewares.push(this.createPathParamMiddleware(paramArgs));
+			}
+
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
 			}
@@ -220,6 +233,27 @@ export class PublicApiControllerRegistry {
 		return (_req, res, next) => {
 			if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
 				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	/**
+	 * Rejects a path param that breaks its `@Param` schema, ahead of the scope middlewares. The
+	 * handler parses the params again to bind its arguments; by then they are known to be valid.
+	 */
+	private createPathParamMiddleware(
+		args: Array<{ key: string; schema: ZodTypeAny }>,
+	): RequestHandler {
+		return (req, res, next) => {
+			try {
+				for (const { key, schema } of args) {
+					parsePathParam(key, schema, req.params);
+				}
+			} catch (error) {
+				sendPublicApiErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
 				return;
 			}
 
