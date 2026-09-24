@@ -492,6 +492,7 @@ export class WebhookService {
 		property: string,
 		defaultValue?: string | boolean,
 	) {
+		// TODO(native-evaluation rollout, CAT-4699): remove the native resolution, keep the engine call.
 		const native = resolveWebhookDescriptionField(node, webhookDescription, property);
 		if (native.resolved) return native.value;
 
