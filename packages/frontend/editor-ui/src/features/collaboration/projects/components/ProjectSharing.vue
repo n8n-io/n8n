@@ -128,7 +128,7 @@ const moreResultsCount = computed(() => {
 	return Math.max(0, searchCount.value - searchResults.value.length);
 });
 const showSearchHint = computed(
-	() => filter.value === '' && sortedProjects.value.length === 0 && searchCount.value > 0,
+	() => filter.value === '' && sortedProjects.value.length === 0 && moreResultsCount.value > 0,
 );
 
 const projectIcon = computed<IconOrEmoji>(() => {
