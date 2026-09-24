@@ -27,8 +27,7 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const card = computed(() => resolvePreferenceCard(props.toolCall));
-// A refused write renders too: the person must see the refusal, not only the
-// assistant's account of it.
+// A refused write renders too, so the person does not depend on the assistant's account.
 const rejection = computed(() => resolvePreferenceRejection(props.toolCall));
 const isRemoved = computed(() => card.value?.state === 'undone');
 // Only the latest turn may correct a preference, and a removed one has nothing to correct.
@@ -44,7 +43,7 @@ const rowLabel = computed(() => {
 /** The saved text, or the text the assistant tried to save. */
 const text = computed(() => rejection.value?.content ?? card.value?.content);
 
-/** The server explains a refusal better than a generic line, so prefer its message. */
+/** Prefer the server's explanation over the generic line. */
 const rejectionMessage = computed(
 	() => rejection.value?.message ?? i18n.baseText('instanceAi.preferenceCard.notSavedFallback'),
 );
@@ -229,7 +228,7 @@ const modalOpen = ref(false);
 	color: var(--color--text--tint-1);
 }
 
-/* A refused text can be far over the cap, so it shows a few lines and no more. */
+/* A refused text can be far over the cap, so clamp it. */
 .attemptedText {
 	display: -webkit-box;
 	-webkit-box-orient: vertical;

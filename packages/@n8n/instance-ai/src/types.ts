@@ -1057,9 +1057,9 @@ export type InstanceAiPreferenceWriteResult =
 			ok: false;
 			reason: InstanceAiPreferenceWriteRejection;
 			message: string;
-			/** The cap the write broke, for `too_long` (characters) and `scope_full` (rows). */
+			/** The cap the write broke: characters for `too_long`, rows for `scope_full`. */
 			limit?: number;
-			/** The value measured against `limit`: the text length, or the rows already saved. */
+			/** The measured value: text length, or rows already saved. */
 			actual?: number;
 	  };
 

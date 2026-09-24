@@ -330,11 +330,8 @@ function toTelemetryReason(
 
 type PreferenceWriteRejection = Extract<InstanceAiPreferenceWriteResult, { ok: false }>;
 
-/** The tool package cannot import cli error classes, so the boundary speaks in
- *  reasons. The cap error carries its numbers, so the model reads the limit and
- *  the count instead of parsing the prose. Every 4xx from the service is a
- *  refusal written for a person, so its message passes through; anything else
- *  is an unexpected fault, so its message stays internal (the caller logs it). */
+/** The tool package cannot import cli error classes, so the boundary speaks in reasons.
+ *  A 4xx message is written for a person and passes through; anything else stays internal. */
 function toPreferenceWriteRejection(error: unknown): PreferenceWriteRejection {
 	if (error instanceof AiPreferenceScopeFullError) {
 		return { ok: false, reason: 'scope_full', message: error.message, ...error.meta };
@@ -351,7 +348,7 @@ function toPreferenceWriteRejection(error: unknown): PreferenceWriteRejection {
 	return { ok: false, reason: 'failed', message: 'The preference could not be saved.' };
 }
 
-/** A client error the service raised on purpose, as opposed to a fault in the code. */
+/** A client error the service raised on purpose, not a fault in the code. */
 function isExpectedPreferenceRefusal(error: unknown): error is ResponseError {
 	return error instanceof ResponseError && error.httpStatusCode < 500;
 }
@@ -744,8 +741,7 @@ export class InstanceAiAdapterService {
 					dto = await aiPreferenceService.create(user, { content, scope }, 'aia');
 				} catch (error) {
 					const rejection = toPreferenceWriteRejection(error);
-					// A refusal the service wrote for a person is an expected outcome. Anything
-					// else is a real fault whose message stays internal, so it must not go unlogged.
+					// An unexpected fault keeps its message internal, so log it here.
 					if (!isExpectedPreferenceRefusal(error)) {
 						this.logger.error('Saving an AI preference from the assistant failed', { error });
 					}

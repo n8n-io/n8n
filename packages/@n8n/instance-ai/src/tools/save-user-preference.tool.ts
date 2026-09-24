@@ -82,8 +82,7 @@ export function createSaveUserPreferenceTool(context: InstanceAiContext) {
 				const trimmedLength = input.content.trim().length;
 				if (trimmedLength > AI_PREFERENCE_CONTENT_MAX_LENGTH) {
 					service.recordRejection('too_long', textLength);
-					// The limit and the measured length travel as numbers, so the model can
-					// shorten by the right amount instead of guessing from the prose.
+					// Numbers, so the model can shorten by the right amount.
 					return {
 						ok: false,
 						reason: 'too_long',

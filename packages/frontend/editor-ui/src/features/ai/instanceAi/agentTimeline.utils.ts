@@ -77,9 +77,8 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (tc.renderHint === 'tasks') return 'tasks';
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
 	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
-	// The card is the whole render for a preference write, saved or refused: a refusal
-	// the person cannot see is a silent failure. A call still in flight has nothing to
-	// show yet, so it drops instead of joining the thinking block.
+	// The card is the whole render for a finished preference write, saved or refused.
+	// A call still in flight drops instead of joining the thinking block.
 	if (tc.toolName === SAVE_USER_PREFERENCE_TOOL_NAME) {
 		return isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
 	}

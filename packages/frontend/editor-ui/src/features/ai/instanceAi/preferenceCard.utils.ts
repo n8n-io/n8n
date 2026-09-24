@@ -41,16 +41,14 @@ export interface RejectedPreferenceResult {
 	message?: unknown;
 }
 
-/** True only for a tool result that refused the write. Any non-empty reason counts,
- *  so a reason the backend adds later still shows instead of being swallowed. */
+/** True for a tool result that refused the write. Any non-empty reason counts. */
 export function isRejectedPreferenceResult(result: unknown): result is RejectedPreferenceResult {
 	if (typeof result !== 'object' || result === null) return false;
 	if (!('ok' in result) || result.ok !== false) return false;
 	return 'reason' in result && typeof result.reason === 'string' && result.reason.length > 0;
 }
 
-/** A tool call that has finished with either outcome. A call still in flight, or one
- *  from another tool, has no card. */
+/** A finished `save_user_preference` call, saved or refused. In flight has no card. */
 export function isPreferenceWriteOutcome(tc: InstanceAiToolCallState): boolean {
 	if (tc.toolName !== SAVE_USER_PREFERENCE_TOOL_NAME || tc.isLoading) return false;
 	return (
@@ -79,14 +77,13 @@ export function resolvePreferenceCard(
 
 export interface PreferenceRejection {
 	reason: string;
-	/** The server's explanation. Absent when the tool threw instead of answering. */
+	/** The server's explanation. Absent when the tool threw. */
 	message?: string;
 	/** The text the assistant tried to save, from the call arguments. */
 	content?: string;
 }
 
-/** The refusal the card shows, so the person does not depend on the assistant relaying
- *  it. A tool that threw counts as `failed` with no message: its text is internal. */
+/** The refusal the card shows. A tool that threw counts as `failed` with no message. */
 export function resolvePreferenceRejection(
 	tc: InstanceAiToolCallState,
 ): PreferenceRejection | null {
