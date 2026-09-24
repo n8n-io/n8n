@@ -13,14 +13,14 @@ const resolved = { id: 'cred-1', type: 'googlePalmApi', data: {} } as unknown as
 describe('scopeCredentialProvider', () => {
 	it('lists only the allowlisted credentials', async () => {
 		const provider = { resolve: vi.fn(), list: vi.fn().mockResolvedValue(credentials) };
-		const scoped = scopeCredentialProvider(provider, ['cred-1', 'cred-3']);
+		const scoped = scopeCredentialProvider(provider, () => ['cred-1', 'cred-3']);
 
 		expect(await scoped.list()).toEqual([credentials[0], credentials[2]]);
 	});
 
 	it('resolves by id through the inner provider', async () => {
 		const provider = { resolve: vi.fn().mockResolvedValue(resolved), list: vi.fn() };
-		const scoped = scopeCredentialProvider(provider, ['cred-1']);
+		const scoped = scopeCredentialProvider(provider, () => ['cred-1']);
 
 		expect(await scoped.resolve('cred-1')).toBe(resolved);
 		expect(provider.resolve).toHaveBeenCalledWith('cred-1');
@@ -30,12 +30,29 @@ describe('scopeCredentialProvider', () => {
 		const gateway = vi.fn().mockResolvedValue(resolved);
 		const withGateway = scopeCredentialProvider(
 			{ resolve: vi.fn(), list: vi.fn(), resolveAiGatewayModelCredential: gateway },
-			[],
+			() => [],
 		);
-		const withoutGateway = scopeCredentialProvider({ resolve: vi.fn(), list: vi.fn() }, []);
+		const withoutGateway = scopeCredentialProvider({ resolve: vi.fn(), list: vi.fn() }, () => []);
 
 		expect(await withGateway.resolveAiGatewayModelCredential?.('openai')).toBe(resolved);
 		expect(gateway).toHaveBeenCalledWith('openai');
 		expect(withoutGateway.resolveAiGatewayModelCredential).toBeUndefined();
+	});
+
+	it('reads the allowlist on every list call', async () => {
+		const provider = { resolve: vi.fn(), list: vi.fn().mockResolvedValue(credentials) };
+		let allowed = ['cred-1'];
+		const scoped = scopeCredentialProvider(provider, () => allowed);
+
+		expect(await scoped.list()).toEqual([credentials[0]]);
+		allowed = ['cred-1', 'cred-2'];
+		expect(await scoped.list()).toEqual([credentials[0], credentials[1]]);
+	});
+
+	it('leaves the list unscoped while no allowlist is set', async () => {
+		const provider = { resolve: vi.fn(), list: vi.fn().mockResolvedValue(credentials) };
+		const scoped = scopeCredentialProvider(provider, () => undefined);
+
+		expect(await scoped.list()).toEqual(credentials);
 	});
 });

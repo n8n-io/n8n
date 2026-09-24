@@ -10,16 +10,25 @@ export type AgentCredentialProvider = CredentialProvider &
  * Builder lists credentials through its own provider, so without this scope it
  * sees every credential in the shared project, including the ones concurrent
  * cases seeded, and `resolve_llm` answers `ambiguous_credential`.
+ *
+ * The allowlist is read on every `list` call, not snapshotted: a credential the
+ * harness creates on a setup card must show on the next card of the same run.
+ * An `undefined` allowlist leaves the list unscoped.
  */
 export function scopeCredentialProvider(
 	provider: AgentCredentialProvider,
-	allowedCredentialIds: string[],
+	getAllowedCredentialIds: () => string[] | undefined,
 ): AgentCredentialProvider {
-	const allowed = new Set(allowedCredentialIds);
 	const gateway = provider.resolveAiGatewayModelCredential?.bind(provider);
 	return {
 		resolve: async (credentialId) => await provider.resolve(credentialId),
-		list: async () => (await provider.list()).filter((credential) => allowed.has(credential.id)),
+		list: async () => {
+			const allowedIds = getAllowedCredentialIds();
+			const listed = await provider.list();
+			if (allowedIds === undefined) return listed;
+			const allowed = new Set(allowedIds);
+			return listed.filter((credential) => allowed.has(credential.id));
+		},
 		...(gateway ? { resolveAiGatewayModelCredential: gateway } : {}),
 	};
 }
