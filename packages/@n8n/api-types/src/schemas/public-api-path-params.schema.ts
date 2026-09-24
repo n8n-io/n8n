@@ -53,10 +53,6 @@ export const credentialTypeNameParamSchema = stringIdParamSchema(
 	'The credential type name that you want to get the schema for',
 );
 
-/**
- * The hand-written data-tables spec declared `format: nanoid`, which the legacy validator enforced
- * as a 16-character alphanumeric id. The pattern keeps that rejection, the metadata keeps the format.
- */
 export const dataTableIdParamSchema = z
 	.string()
 	.regex(/^[A-Za-z0-9]{16}$/, 'must match format "nanoid"')
