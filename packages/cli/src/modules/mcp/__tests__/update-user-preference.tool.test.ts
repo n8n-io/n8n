@@ -101,22 +101,20 @@ describe('update_user_preference MCP tool', () => {
 
 	test('reports the edit as an assistant save that replaced an existing row, with the row scope', async () => {
 		const { aiPreferenceService, telemetry, tool } = createMocks();
-		aiPreferenceService.updateContent.mockResolvedValue(
-			dto({ userId: null, projectId: 'p-1', content: 'Team rule.' }),
-		);
+		aiPreferenceService.updateContent.mockResolvedValue(dto({ content: 'Rule text.' }));
 
-		const result = await tool.handler({ id: 'pref-1', content: 'Team rule.' });
+		const result = await tool.handler({ id: 'pref-1', content: 'Rule text.' });
 
-		expect(result.structuredContent).toMatchObject({ preference: { scope: 'project' } });
+		expect(result.structuredContent).toMatchObject({ preference: { scope: 'user' } });
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE,
-			{ surface: 'mcp', scope_type: 'project', text_length: 10, replaced_existing: true },
+			{ surface: 'mcp', scope_type: 'user', text_length: 10, replaced_existing: true },
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
 			user_id: 'user-1',
 			tool_name: 'update_user_preference',
 			parameters: { text_length: 10 },
-			results: { success: true, data: { scope: 'project' } },
+			results: { success: true, data: { scope: 'user' } },
 		});
 	});
 

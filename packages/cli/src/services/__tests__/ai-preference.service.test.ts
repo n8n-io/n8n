@@ -12,7 +12,6 @@ import { AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	AI_PREFERENCES_CLEARED_BLOCK,
@@ -608,7 +607,25 @@ describe('AiPreferenceService', () => {
 			);
 
 			await expect(service.updateContent(member, 'pref-1', 'Mine now.')).rejects.toBeInstanceOf(
-				ForbiddenError,
+				NotFoundError,
+			);
+			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+		});
+
+		// The owner may edit all three in settings. Over this path they are shared rules or somebody
+		// else's, so they answer like a missing row.
+		it.each([
+			['an instance rule', { userId: null, projectId: null }],
+			['a team project rule', { userId: null, projectId: 'p-1' }],
+			["another user's personal rule", { userId: 'user-2', projectId: null }],
+		])('refuses %s even for an owner', async (_label, overrides) => {
+			const owner = mock<User>({ id: 'user-1', role: GLOBAL_OWNER_ROLE });
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', ...overrides }),
+			);
+
+			await expect(service.updateContent(owner, 'pref-1', 'Mine now.')).rejects.toBeInstanceOf(
+				NotFoundError,
 			);
 			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
 		});

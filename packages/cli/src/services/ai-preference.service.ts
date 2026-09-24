@@ -258,10 +258,17 @@ export class AiPreferenceService {
 	 * Replaces the text and leaves the scope where it is. For a caller that holds an id but no
 	 * scope, such as an MCP client editing what `get_user_preferences` returned: `update()` needs
 	 * the full request and would read a missing scope as a move.
+	 *
+	 * Only the caller's own personal rows. A project or instance row is a shared rule that applies
+	 * to other people, and the settings area owns it, as in `undoWrite()`. A row that fails the
+	 * check answers like a row that does not exist.
 	 */
 	async updateContent(user: User, id: string, content: string): Promise<AiPreferenceDto> {
 		const access = this.projectAccess(user);
 		const row = await this.requireVisible(user, id, access);
+		if (row.userId !== user.id) {
+			throw new NotFoundError(`Preference with id ${id} is not one of your personal preferences`);
+		}
 		await this.assertCanWrite(user, row, 'update', access);
 		if (row.content !== content) await this.assertNotDuplicate(row, content, row.id);
 

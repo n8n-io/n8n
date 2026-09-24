@@ -40,7 +40,9 @@ write from a person's own write.
 `updateContent(user, id, content)` replaces the text and keeps the scope where it is. It
 serves callers that hold an id and no scope, such as an MCP client editing a row that
 `get_user_preferences` returned; `update()` needs the full request and would read a missing
-scope as a move.
+scope as a move. It reaches only the caller's own personal rows. A project row, an instance
+row or another user's row answers like a missing row, whatever the role: those rules apply to
+other people, and the settings area owns them.
 
 `undoWrite(user, id, source)` removes a row only when the named surface created it for the
 caller and it is still the caller's personal row: `source`, `createdById` and `userId` must
