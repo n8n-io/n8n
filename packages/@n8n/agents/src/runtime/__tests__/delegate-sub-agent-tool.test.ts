@@ -1010,10 +1010,14 @@ describe('createDelegateSubAgentTool', () => {
 		expect(runSubAgent.mock.calls[2]?.[0]).toMatchObject({ taskPath: '/root/research_api_0' });
 	});
 
-	it('returns a failed output when the runner callback throws', async () => {
+	it.each([
+		{ error: new Error('Runner failed'), message: 'Runner failed' },
+		{ error: undefined, message: 'Unknown error' },
+		{ error: Symbol('failure'), message: 'Unknown error' },
+	])('reports the runner error: $error', async ({ error, message }) => {
 		const events: AgentEventData[] = [];
 		const tool = createDelegateSubAgentTool({
-			runSubAgent: async () => await Promise.reject(new Error('Runner failed')),
+			runSubAgent: vi.fn<DelegateSubAgentRunner>().mockRejectedValue(error),
 		});
 
 		await expect(
@@ -1025,12 +1029,12 @@ describe('createDelegateSubAgentTool', () => {
 			status: 'failed',
 			taskPath: '/root/research_api_0',
 			answer: '',
-			error: 'Runner failed',
+			error: message,
 		});
 		expect(events[events.length - 1]).toMatchObject({
 			type: AgentEvent.SubAgentCompleted,
 			status: 'failed',
-			error: 'Runner failed',
+			error: message,
 		});
 	});
 
