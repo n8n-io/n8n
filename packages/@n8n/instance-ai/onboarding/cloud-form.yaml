@@ -7,10 +7,11 @@
 # add it to the list. The host skips a step the signup survey already answered; that answer
 # still reaches the agent. The next new onboarding thread reads this file again.
 title: Welcome to n8n
-greeting: >-
-  Hi, I'm your Assistant. Think of me as your n8n expert. I'll ask 2
-  questions to finish your setup and suggest automations based on real
-  workflows.
+# One sentence per line: the chat renders a newline as a line break.
+greeting: |-
+  Hi, I'm your Assistant.
+  Think of me as your n8n expert.
+  I'll ask 2 questions to finish your setup and suggest automations based on real workflows.
 # {{apps}} becomes the apps the user picked: one or two names, and "and your other tools" when
 # they picked more ("Gmail, Slack, and your other tools"). No pick: "your tools".
 followUp: >-
