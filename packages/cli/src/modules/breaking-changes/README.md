@@ -65,7 +65,7 @@ Returns:
     "ruleId": "process-env-access-v2",
     "ruleTitle": "Process Environment Access Restrictions",
     "ruleDescription": "Access to process.env is now restricted",
-    "ruleSeverity": "high",
+    "ruleImpact": "executionsFail",
     "instanceIssues": [
      {
       "title": "Environment access detected",
@@ -86,7 +86,7 @@ Returns:
     "ruleId": "removed-nodes-v2",
     "ruleTitle": "Removed Deprecated Nodes",
     "ruleDescription": "Several deprecated nodes have been removed",
-    "ruleSeverity": "critical",
+    "ruleImpact": "executionsFail",
     "affectedWorkflows": [
      {
       "id": "wf-001",
@@ -119,6 +119,19 @@ Returns:
 }
 ```
 
+## Rule Impact
+
+Each rule states what happens if the user does not fix it before the update. Set `impact` in `getMetadata()` to one of these values:
+
+| Impact | Meaning | Example |
+| --- | --- | --- |
+| `upgradeBlocked` | The instance does not start, or the update cannot proceed. | A removed storage or deployment mode that the new version refuses to boot with. |
+| `executionsFail` | Affected executions error. | A removed node or expression helper. |
+| `behaviorChanges` | Executions keep running, but the result changes. | A changed default or fixed semantics. |
+| `capabilityRemoved` | No runtime impact. A removed capability is no longer available. | A removed UI option or CLI flag. |
+
+Pick the impact from the effect on the user, not from how many workflows a rule touches. The migration report sorts rules by impact, from `upgradeBlocked` down to `capabilityRemoved`.
+
 ## Rule Types
 
 The system supports three types of rules:
@@ -127,7 +140,7 @@ The system supports three types of rules:
 
 - **Purpose**: Check individual workflows for breaking changes
 - **Methods**:
-  - `getMetadata()`: Returns rule metadata (version, title, description, severity, etc.)
+  - `getMetadata()`: Returns rule metadata (version, title, description, impact, etc.)
   - `detectWorkflow(workflow, nodesGroupedByType)`: Checks a single workflow and returns issues
   - `getRecommendations(workflowResults)`: Returns recommendations based on detected issues
 - **Returns**: `WorkflowDetectionReport` with workflow-specific issues
@@ -137,7 +150,7 @@ The system supports three types of rules:
 
 - **Purpose**: Check instance-level configuration and environment
 - **Methods**:
-  - `getMetadata()`: Returns rule metadata (version, title, description, severity, etc.)
+  - `getMetadata()`: Returns rule metadata (version, title, description, impact, etc.)
   - `detect()`: Checks the entire instance and returns issues
 - **Returns**: `InstanceDetectionReport` with instance-level issues and recommendations
 - **Example Use Cases**: Environment variable requirements, database version checks, configuration changes
@@ -189,7 +202,7 @@ export class MyWorkflowRule implements IBreakingChangeWorkflowRule {
       title: 'My Workflow Breaking Change',
       description: 'Description of what changed in workflows',
       category: BreakingChangeCategory.workflow,
-      severity: 'high',
+      impact: 'executionsFail',
       documentationUrl: 'https://docs.n8n.io/migration/v2/...',
     };
   }
@@ -252,7 +265,7 @@ export class MyInstanceRule implements IBreakingChangeInstanceRule {
       title: 'My Instance Breaking Change',
       description: 'Description of what changed at instance level',
       category: BreakingChangeCategory.instance,
-      severity: 'medium',
+      impact: 'behaviorChanges',
       documentationUrl: 'https://docs.n8n.io/migration/v2/...',
     };
   }

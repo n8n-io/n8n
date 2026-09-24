@@ -317,7 +317,7 @@ export {
 export type { UsageState } from './schemas/usage.schema';
 
 export type {
-	BreakingChangeRuleSeverity,
+	BreakingChangeRuleImpact,
 	BreakingChangeRecommendation,
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeInstanceIssue,

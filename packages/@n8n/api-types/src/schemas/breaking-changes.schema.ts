@@ -1,8 +1,22 @@
 import { z } from 'zod';
 
 // Enums
-export const breakingChangeRuleSeveritySchema = z.enum(['low', 'medium', 'critical']);
-export type BreakingChangeRuleSeverity = z.infer<typeof breakingChangeRuleSeveritySchema>;
+
+/**
+ * What happens if the user does not fix a breaking change before the update.
+ *
+ * - `upgradeBlocked`: the instance does not start, or the update cannot proceed.
+ * - `executionsFail`: affected executions error.
+ * - `behaviorChanges`: executions keep running, but with a different result.
+ * - `capabilityRemoved`: no runtime impact, a removed capability is no longer available.
+ */
+export const breakingChangeRuleImpactSchema = z.enum([
+	'executionsFail',
+	'behaviorChanges',
+	'capabilityRemoved',
+	'upgradeBlocked',
+]);
+export type BreakingChangeRuleImpact = z.infer<typeof breakingChangeRuleImpactSchema>;
 
 export const breakingChangeIssueLevelSchema = z.enum(['info', 'warning', 'error']);
 
@@ -56,7 +70,7 @@ const ruleResultBaseSchema = z.object({
 	ruleId: z.string(),
 	ruleTitle: z.string(),
 	ruleDescription: z.string(),
-	ruleSeverity: breakingChangeRuleSeveritySchema,
+	ruleImpact: breakingChangeRuleImpactSchema,
 	ruleDocumentationUrl: z.string().optional(),
 	recommendations: z.array(recommendationSchema),
 	// True when an automated migration is registered for this rule, so the UI
