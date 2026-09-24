@@ -207,6 +207,12 @@ describe('ProjectService', () => {
 			expect(projectRelationRepository.save).toHaveBeenCalledWith([
 				{ projectId, userId: 'member', role: { slug: 'project:viewer' } },
 			]);
+			expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledTimes(1);
+			expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledWith({
+				sharer: user,
+				newSharees: [{ userId: 'member', role: 'project:viewer' }],
+				project: { id: projectId, name: 'Team Project' },
+			});
 		});
 
 		it('does not notify when no users are new', async () => {

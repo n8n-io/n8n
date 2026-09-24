@@ -70,7 +70,8 @@ export class ProjectSettingsPage extends BasePage {
 	}
 
 	getMemberRowByEmail(email: string): Locator {
-		return this.getMemberRows().filter({ hasText: email });
+		// Match the exact email, so `a@x.com` does not also match `ba@x.com`.
+		return this.getMemberRows().filter({ has: this.page.getByText(email, { exact: true }) });
 	}
 
 	/**
@@ -83,9 +84,8 @@ export class ProjectSettingsPage extends BasePage {
 		});
 	}
 
-	/** `label` is "Project Owner" for the instance owner and "Full access" for an instance admin. */
-	async expectRowAlwaysHasAccess(row: Locator, label: 'Project Owner' | 'Full access') {
-		await expect(row.getByTestId('project-member-access-label')).toHaveText(label);
+	async expectRowAlwaysHasAccess(row: Locator) {
+		await expect(row.getByTestId('project-member-access-label')).toHaveText('Full access');
 		await expect(this.getMemberRoleDropdownForRow(row)).toHaveCount(0);
 		await expect(row.getByTestId('action-toggle')).toHaveCount(0);
 	}

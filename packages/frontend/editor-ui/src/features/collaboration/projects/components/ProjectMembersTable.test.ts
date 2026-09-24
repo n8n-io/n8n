@@ -584,7 +584,7 @@ describe('ProjectMembersTable', () => {
 			instanceRole: { slug: 'global:admin', displayName: 'Admin' },
 		};
 
-		it('should show "Project Owner" for the instance owner instead of a role dropdown', () => {
+		it('should show "Full access" for the instance owner instead of a role dropdown', () => {
 			renderComponent({
 				props: {
 					data: { items: [ownerMember], count: 1 },
@@ -594,7 +594,7 @@ describe('ProjectMembersTable', () => {
 			});
 
 			expect(screen.queryByTestId(`role-dropdown-${ownerMember.id}`)).not.toBeInTheDocument();
-			expect(screen.getByTestId('project-member-access-label')).toHaveTextContent('Project Owner');
+			expect(screen.getByTestId('project-member-access-label')).toHaveTextContent('Full access');
 		});
 
 		it('should show "Full access" and explain the instance role for an instance admin', () => {

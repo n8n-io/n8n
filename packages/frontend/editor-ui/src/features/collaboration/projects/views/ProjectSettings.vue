@@ -533,8 +533,9 @@ const relationUsers = computed<ProjectMemberData[]>(() => {
 
 	// Append the implicit members who hold no relation, so the existing rows keep
 	// their order.
+	const rowIds = new Set(rows.map((row) => row.id));
 	for (const member of implicitMembers.values()) {
-		if (rows.some((row) => row.id === member.id)) continue;
+		if (rowIds.has(member.id)) continue;
 		rows.push({
 			id: member.id,
 			firstName: member.firstName ?? null,

@@ -114,11 +114,11 @@ test.describe(
 			const currentUserRow = n8n.projectSettings.getMemberRowByEmail(
 				INSTANCE_OWNER_CREDENTIALS.email,
 			);
-			await n8n.projectSettings.expectRowAlwaysHasAccess(currentUserRow, 'Project Owner');
+			await n8n.projectSettings.expectRowAlwaysHasAccess(currentUserRow);
 
 			// The instance admin is listed too, with the same treatment.
 			const adminRow = n8n.projectSettings.getMemberRowByEmail(INSTANCE_ADMIN_CREDENTIALS.email);
-			await n8n.projectSettings.expectRowAlwaysHasAccess(adminRow, 'Full access');
+			await n8n.projectSettings.expectRowAlwaysHasAccess(adminRow);
 		});
 
 		test('should show project settings form validation @auth:owner', async ({ n8n }) => {
@@ -261,11 +261,9 @@ test.describe(
 			// A project admin sees who really has access, and cannot change it.
 			await adminN8n.projectSettings.expectRowAlwaysHasAccess(
 				adminN8n.projectSettings.getMemberRowByEmail(INSTANCE_OWNER_CREDENTIALS.email),
-				'Project Owner',
 			);
 			await adminN8n.projectSettings.expectRowAlwaysHasAccess(
 				adminN8n.projectSettings.getMemberRowByEmail(INSTANCE_ADMIN_CREDENTIALS.email),
-				'Full access',
 			);
 
 			// Their own row is a real relation, so it keeps the project role.
@@ -278,6 +276,20 @@ test.describe(
 			await expect(
 				adminN8n.projectSettings.getVisiblePopoverOption(INSTANCE_ADMIN_CREDENTIALS.email),
 			).toHaveCount(0);
+		});
+
+		test('should show a non-member instance admin their own permanent row @auth:owner', async ({
+			n8n,
+		}) => {
+			const { projectId } = await n8n.projectComposer.createProject(`Admin Own Row ${nanoid(8)}`);
+
+			// The instance admin holds no relation to this project.
+			const adminN8n = await n8n.start.withUser(INSTANCE_ADMIN_CREDENTIALS);
+			await adminN8n.navigate.toProjectSettings(projectId);
+
+			await adminN8n.projectSettings.expectRowAlwaysHasAccess(
+				adminN8n.projectSettings.getMemberRowByEmail(INSTANCE_ADMIN_CREDENTIALS.email),
+			);
 		});
 
 		test('should list the project creator first and the current user second @auth:owner', async ({

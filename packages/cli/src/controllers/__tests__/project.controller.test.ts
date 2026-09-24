@@ -327,6 +327,45 @@ describe('ProjectController', () => {
 			expect(result.relations).toEqual([]);
 		});
 
+		it('keeps an instance admin in both relations and implicitMembers when they also have a relation', async () => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(false);
+			(projectsService.getProject as Mock).mockResolvedValue({
+				id: 'p1',
+				name: 'Project',
+				icon: null,
+				type: 'team',
+				description: null,
+				customTelemetryTags: [],
+			});
+			const adminUser = {
+				id: 'admin-1',
+				email: 'admin@n8n.io',
+				firstName: 'Ada',
+				lastName: 'Min',
+			};
+			(projectsService.getProjectRelations as Mock).mockResolvedValue([
+				{
+					userId: 'admin-1',
+					user: adminUser,
+					role: { slug: 'project:editor', scopes: [] },
+				},
+			]);
+			(projectsService.getImplicitProjectMembers as Mock).mockResolvedValue([
+				{ ...adminUser, role: { slug: 'global:admin', displayName: 'Admin' } },
+			]);
+
+			const scopedReq = {
+				user: { id: 'actor-user', role: { slug: 'global:owner', scopes: [] } },
+			} as unknown as AuthenticatedRequest;
+
+			const result = await controller.getProject(scopedReq, makeRes(), 'p1');
+
+			expect(result.relations).toEqual([{ ...adminUser, role: 'project:editor' }]);
+			expect(result.implicitMembers).toEqual([
+				{ ...adminUser, globalRole: { slug: 'global:admin', displayName: 'Admin' } },
+			]);
+		});
+
 		it.each([
 			['creator-1', 'creator-1'],
 			[null, null],

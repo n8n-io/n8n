@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { GLOBAL_OWNER_ROLE_SLUG, type AllRolesMap } from '@n8n/permissions';
+import type { AllRolesMap } from '@n8n/permissions';
 import { computed } from 'vue';
 import type { ProjectMemberData } from '../projects.types';
 
@@ -12,13 +12,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const label = computed(() =>
-	i18n.baseText(
-		props.data.instanceRole?.slug === GLOBAL_OWNER_ROLE_SLUG
-			? 'projects.settings.table.access.owner'
-			: 'projects.settings.table.access.full',
-	),
-);
+const label = computed(() => i18n.baseText('projects.settings.table.access.full'));
 
 // A stored relation does not limit instance access, but it applies again if
 // the instance role changes, so the tooltip mentions it.
