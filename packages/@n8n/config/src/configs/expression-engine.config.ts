@@ -115,11 +115,9 @@ export class ExpressionEngineConfig {
 	compileCache: boolean = false;
 
 	/**
-	 * Experimental: fast native evaluation. An expression that fits a closed
-	 * subset of the expression grammar (data path access on `$json` and
-	 * `$parameter`, literals, basic operators, a fixed set of native methods)
-	 * is interpreted in-process instead of going through the engine, so it
-	 * never needs an isolate. Every other expression takes the engine unchanged.
+	 * Experimental: fast native evaluation. Simple expressions are evaluated
+	 * directly by n8n instead of the expression engine, so they never need an
+	 * isolate. Every other expression is evaluated by the engine as before.
 	 * Applies to every engine.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION')
