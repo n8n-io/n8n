@@ -222,28 +222,6 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		}
 		credential.usageScope ??= 'project';
 
-		if (credential.usageScope === 'instance') {
-			if (
-				credential.isGlobal ||
-				credential.isResolvable ||
-				credential.isManaged ||
-				credential.resolvableAllowFallback ||
-				credential.resolverId
-			) {
-				throw new UserError(
-					'Provider connections cannot be global, managed, or dynamically resolved',
-				);
-			}
-			Object.assign(credential, {
-				isGlobal: false,
-				isResolvable: false,
-				isManaged: false,
-				resolvableAllowFallback: false,
-				resolverId: null,
-			});
-			await this.validateInstanceCredentialData(transactionManager, credential, existing, ctx);
-		}
-
 		// The payload may omit `type` on an update that doesn't change it (e.g. --exclude=type);
 		// the policy check and the sealed write both need a concrete type to bind to.
 		const type = credential.type ?? existing?.type;
@@ -283,6 +261,30 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				name: credential.name,
 				violations: error.violations.map((violation) => violation.message),
 			};
+		}
+
+		// Validated after the policy gate, so a blocked provider connection is skipped even when
+		// its stored data can't be read.
+		if (credential.usageScope === 'instance') {
+			if (
+				credential.isGlobal ||
+				credential.isResolvable ||
+				credential.isManaged ||
+				credential.resolvableAllowFallback ||
+				credential.resolverId
+			) {
+				throw new UserError(
+					'Provider connections cannot be global, managed, or dynamically resolved',
+				);
+			}
+			Object.assign(credential, {
+				isGlobal: false,
+				isResolvable: false,
+				isManaged: false,
+				resolvableAllowFallback: false,
+				resolverId: null,
+			});
+			await this.validateInstanceCredentialData(transactionManager, credential, existing, ctx);
 		}
 
 		const credentialsId = await Container.get(CredentialsRepository).upsertImportedContent(
