@@ -1,0 +1,142 @@
+post:
+  x-eov-operation-id: importPackageSelection
+  x-required-scope: workflow:import
+  x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
+  tags:
+    - N8nPackage
+  summary: 'Beta: Import a selected subset of workflows from an n8n package'
+  description: |
+    **Beta** — breaking changes may still occur without major version bump.
+
+    Imports a chosen subset of workflows from one source project of a gzip-compressed tar
+    package (`.n8np`), instead of the whole package. Send the archive as the multipart field
+    `package`. The import is **additive** (cherry-pick): it never removes a workflow the
+    selection omits. It creates or updates only the workflows named in `selectedWorkflowIds`,
+    and deletes only the destination workflows named in `deletedWorkflowIds`.
+
+    `selectedProjectId` names the single source project the selection is scoped to (its id as it
+    appears in the package). `selectedWorkflowIds` are source ids within that project; ids that
+    belong to another project are dropped. `deletedWorkflowIds` are destination ids in the same
+    project; an already-archived or absent id is a tolerated no-op, and a delete needs the
+    `workflow:delete` scope.
+
+    The package must be a project package (a workflow package is rejected with a 400). The
+    cherry-pick conflict policies (folder, tag, project, and deletion mode) are fixed and are not
+    accepted here; only `workflowConflictPolicy` and `workflowIdPolicy` are configurable. Maximum
+    upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16). The caller is authorised
+    through the `workflow:import` scope.
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - package
+            - selectedProjectId
+            - selectedWorkflowIds
+          properties:
+            package:
+              type: string
+              format: binary
+              description: Gzip-compressed tar package (`.n8np`).
+            selectedProjectId:
+              type: string
+              description: >
+                Id of the single source project the selection is scoped to, as it appears in the
+                package.
+            selectedWorkflowIds:
+              type: string
+              description: >
+                JSON-encoded array of source workflow ids to import from `selectedProjectId`, e.g.
+                `["wf-1","wf-2"]`. An empty array (`[]`) is allowed — useful for a delete-only
+                request. Ids outside the scoped project are dropped.
+            deletedWorkflowIds:
+              type: string
+              description: >
+                Optional JSON-encoded array of destination workflow ids to remove from the scoped
+                project, e.g. `["wf-3"]`. Removal happens even under the additive profile. An
+                already-archived or absent id is a no-op. Needs the `workflow:delete` scope.
+            projectId:
+              type: string
+              description: >
+                Target project id. Omit or send empty to import into the caller's personal project.
+            folderId:
+              type: string
+              description: >
+                Optional folder within the target project. Omit or send empty for project root.
+            workflowConflictPolicy:
+              type: string
+              enum:
+                - new-version
+                - fail
+                - skip
+              default: new-version
+              description: >
+                What happens when a selected workflow matches an existing workflow by source id in
+                the target project. `new-version` (default) updates it and creates a new version;
+                `fail` rejects the import when any matching workflow exists; `skip` leaves matching
+                workflows unchanged. An archive state change also needs the `workflow:delete` scope.
+            workflowIdPolicy:
+              type: string
+              enum:
+                - new
+                - source
+              default: source
+              description: >
+                Controls the id each newly created workflow receives. `source` (default) reuses the
+                package's own workflow id on the target instance; `new` mints a fresh id and records
+                the package id as `sourceWorkflowId`. Workflows matched to an existing workflow keep
+                that workflow's current id, regardless of policy.
+  responses:
+    '200':
+      description: Import succeeded; the selected workflows were written to the target project.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/importResult.yml'
+    '409':
+      description: >
+        Import blocked by at least one conflict among the issues — for example a workflow source-id
+        conflict under `workflowConflictPolicy=fail`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+              - issues
+            properties:
+              message:
+                type: string
+              issues:
+                type: array
+                items:
+                  $ref: '../schemas/importBlockingIssue.yml'
+    '422':
+      description: >
+        Import blocked by non-conflict issues only — for example a delete the caller may not
+        perform (`workflow-removal-forbidden`), unresolved credentials, or node types this instance
+        does not have.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+              - issues
+            properties:
+              message:
+                type: string
+              issues:
+                type: array
+                items:
+                  $ref: '../schemas/importBlockingIssue.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

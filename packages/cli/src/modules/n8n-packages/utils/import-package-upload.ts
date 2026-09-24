@@ -1,4 +1,7 @@
-import { IMPORT_PACKAGE_REQUEST_FORM_FIELDS } from '@n8n/api-types';
+import {
+	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
+} from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
 import multer from 'multer';
 
@@ -8,8 +11,14 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
  * Allowed keys on `req.body` after multipart parsing. Includes `package` because
  * express-openapi-validator inserts an empty-string placeholder for file parts.
  */
-const IMPORT_PACKAGE_BODY_FIELD_SET = new Set<string>([
+export const IMPORT_PACKAGE_BODY_FIELD_SET = new Set<string>([
 	...IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+	'package',
+]);
+
+/** The smaller field set a selection import accepts; `package` included for the same reason. */
+export const IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET = new Set<string>([
+	...IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 	'package',
 ]);
 
@@ -50,10 +59,13 @@ export function getPackageUploadFile(req: {
 	return files.find((file) => file.fieldname === 'package');
 }
 
-export function resolveImportPackageUpload(req: {
-	files?: Express.Multer.File[] | Record<string, Express.Multer.File[]>;
-	body?: Record<string, unknown>;
-}): Express.Multer.File {
+export function resolveImportPackageUpload(
+	req: {
+		files?: Express.Multer.File[] | Record<string, Express.Multer.File[]>;
+		body?: Record<string, unknown>;
+	},
+	allowedBodyFields: Set<string> = IMPORT_PACKAGE_BODY_FIELD_SET,
+): Express.Multer.File {
 	const packageFile = getPackageUploadFile(req);
 	if (!packageFile?.buffer?.length) {
 		throw new BadRequestError('Multipart field "package" is required');
@@ -66,7 +78,7 @@ export function resolveImportPackageUpload(req: {
 	}
 
 	for (const key of Object.keys(req.body ?? {})) {
-		if (!IMPORT_PACKAGE_BODY_FIELD_SET.has(key)) {
+		if (!allowedBodyFields.has(key)) {
 			throw new BadRequestError(`Unexpected form field "${key}"`);
 		}
 	}

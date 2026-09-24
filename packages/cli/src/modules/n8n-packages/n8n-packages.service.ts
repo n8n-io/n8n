@@ -53,6 +53,7 @@ import {
 	type ExportPackageResult,
 	type ExportPackageSummary,
 	type ImportPackageRequest,
+	type ImportPackageSelectionRequest,
 	type ImportRequest,
 	type ImportResult,
 	type ImportSelection,
@@ -466,7 +467,40 @@ export class N8nPackagesService {
 			opened.reader,
 			opened.manifest,
 			selection,
+			'git-pull',
 		);
+		return result;
+	}
+
+	/**
+	 * Tar counterpart of {@link importPackageSelectionFromDirectory}: the public (user-facing)
+	 * selection import. A tar package may be a workflow package, so it re-checks project-package-ness
+	 * itself (the directory path relies on {@link readDirectoryProjectPackage}). Being user-facing, it
+	 * emits `n8n-package-imported`, mirroring {@link importPackage}; the directory path stays silent.
+	 */
+	async importPackageSelection(
+		request: ImportPackageSelectionRequest,
+		selection: ImportSelection,
+	): Promise<ImportResult> {
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+		const manifest = await this.packageParser.getManifest(reader);
+		if (!isProjectPackage(manifest)) {
+			throw new BadRequestError('A selection import requires a project package.');
+		}
+		const { result, scopes, resolvedRequest } = await this.dispatchSelectionImport(
+			request,
+			reader,
+			manifest,
+			selection,
+			'package-import',
+		);
+
+		emitPackageImportedEvent(this.eventService, {
+			request: { ...resolvedRequest, packageBuffer: request.packageBuffer },
+			manifest,
+			scopes,
+		});
+
 		return result;
 	}
 
@@ -499,7 +533,8 @@ export class N8nPackagesService {
 		reader: PackageReader,
 		manifest: PackageManifest,
 		selection: ImportSelection,
-	): Promise<ImportOutcome> {
+		importSource: PackageImportSource,
+	): Promise<ImportOutcome & { resolvedRequest: ResolvedImportRequest }> {
 		const packageProjectIds = new Set((manifest.projects ?? []).map((project) => project.id));
 		if (!packageProjectIds.has(selection.selectedProjectId)) {
 			throw new BadRequestError(
@@ -520,7 +555,13 @@ export class N8nPackagesService {
 			selection,
 		};
 
-		return await this.projectPackageImporter.import(resolvedRequest, reader, manifest, 'git-pull');
+		const outcome = await this.projectPackageImporter.import(
+			resolvedRequest,
+			reader,
+			manifest,
+			importSource,
+		);
+		return { ...outcome, resolvedRequest };
 	}
 
 	private async dispatchImport(

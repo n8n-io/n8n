@@ -1,0 +1,179 @@
+import {
+	ImportPackageSelectionRequestDto,
+	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
+} from '../import-package-request.dto';
+
+describe('ImportPackageSelectionRequestDto', () => {
+	const base = {
+		selectedProjectId: 'P1',
+		selectedWorkflowIds: '["WFA","WFB"]',
+	};
+
+	it('parses selectedWorkflowIds from a JSON array string and defaults the overridable policies', () => {
+		const result = ImportPackageSelectionRequestDto.safeParse(base);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data).toEqual({
+				selectedProjectId: 'P1',
+				selectedWorkflowIds: ['WFA', 'WFB'],
+				deletedWorkflowIds: undefined,
+				workflowConflictPolicy: 'new-version',
+				workflowIdPolicy: 'source',
+			});
+		}
+	});
+
+	it('parses deletedWorkflowIds when present and trims routing ids', () => {
+		const result = ImportPackageSelectionRequestDto.safeParse({
+			...base,
+			projectId: '  proj-1  ',
+			folderId: 'fld-1',
+			deletedWorkflowIds: '["WFC"]',
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data).toEqual({
+				projectId: 'proj-1',
+				folderId: 'fld-1',
+				selectedProjectId: 'P1',
+				selectedWorkflowIds: ['WFA', 'WFB'],
+				deletedWorkflowIds: ['WFC'],
+				workflowConflictPolicy: 'new-version',
+				workflowIdPolicy: 'source',
+			});
+		}
+	});
+
+	it('treats empty projectId and folderId as omitted', () => {
+		const result = ImportPackageSelectionRequestDto.safeParse({
+			...base,
+			projectId: '',
+			folderId: '   ',
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.projectId).toBeUndefined();
+			expect(result.data.folderId).toBeUndefined();
+		}
+	});
+
+	it('accepts an empty selectedWorkflowIds array', () => {
+		const result = ImportPackageSelectionRequestDto.safeParse({
+			selectedProjectId: 'P1',
+			selectedWorkflowIds: '[]',
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.selectedWorkflowIds).toEqual([]);
+		}
+	});
+
+	it('leaves deletedWorkflowIds undefined when blank', () => {
+		const result = ImportPackageSelectionRequestDto.safeParse({
+			...base,
+			deletedWorkflowIds: '   ',
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.deletedWorkflowIds).toBeUndefined();
+		}
+	});
+
+	it.each([
+		{ name: 'missing (blank)', selectedWorkflowIds: '' },
+		{ name: 'invalid JSON', selectedWorkflowIds: 'not json' },
+		{ name: 'a JSON object rather than array', selectedWorkflowIds: '{"a":"b"}' },
+		{ name: 'a non-string element', selectedWorkflowIds: '["WFA",1]' },
+		{ name: 'an empty-string element', selectedWorkflowIds: '["WFA",""]' },
+	])('rejects selectedWorkflowIds that is $name', ({ selectedWorkflowIds }) => {
+		expect(
+			ImportPackageSelectionRequestDto.safeParse({ selectedProjectId: 'P1', selectedWorkflowIds })
+				.success,
+		).toBe(false);
+	});
+
+	it.each([
+		{ name: 'invalid JSON', deletedWorkflowIds: 'not json' },
+		{ name: 'a non-string element', deletedWorkflowIds: '[1]' },
+	])('rejects deletedWorkflowIds that is $name', ({ deletedWorkflowIds }) => {
+		expect(
+			ImportPackageSelectionRequestDto.safeParse({ ...base, deletedWorkflowIds }).success,
+		).toBe(false);
+	});
+
+	it.each([
+		{ name: 'absent', request: { selectedWorkflowIds: '["WFA"]' } },
+		{ name: 'empty', request: { selectedProjectId: '', selectedWorkflowIds: '["WFA"]' } },
+	])('rejects a $name selectedProjectId', ({ request }) => {
+		expect(ImportPackageSelectionRequestDto.safeParse(request).success).toBe(false);
+	});
+
+	describe('overridable policy enums', () => {
+		it('defaults blank policy fields', () => {
+			const result = ImportPackageSelectionRequestDto.safeParse({
+				...base,
+				workflowConflictPolicy: '',
+				workflowIdPolicy: '   ',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.workflowConflictPolicy).toBe('new-version');
+				expect(result.data.workflowIdPolicy).toBe('source');
+			}
+		});
+
+		it('accepts explicit values', () => {
+			const result = ImportPackageSelectionRequestDto.safeParse({
+				...base,
+				workflowConflictPolicy: 'skip',
+				workflowIdPolicy: 'new',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.workflowConflictPolicy).toBe('skip');
+				expect(result.data.workflowIdPolicy).toBe('new');
+			}
+		});
+
+		it.each([
+			{ field: 'workflowConflictPolicy', value: 'overwrite' },
+			{ field: 'workflowIdPolicy', value: 'reuse' },
+		])('rejects an unsupported $field value', ({ field, value }) => {
+			expect(ImportPackageSelectionRequestDto.safeParse({ ...base, [field]: value }).success).toBe(
+				false,
+			);
+		});
+	});
+
+	it('does not accept the locked cherry-pick policies nor bindings', () => {
+		const result = ImportPackageSelectionRequestDto.safeParse({
+			...base,
+			folderConflictPolicy: 'overwrite',
+			tagConflictPolicy: 'fail',
+			projectConflictPolicy: 'overwrite',
+			overwriteDeletionPolicy: 'hard-delete',
+			bindings: '{"credentials":{"a":"b"}}',
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			// Unknown keys are stripped, so the locked policies never reach the service.
+			expect(result.data).not.toHaveProperty('folderConflictPolicy');
+			expect(result.data).not.toHaveProperty('tagConflictPolicy');
+			expect(result.data).not.toHaveProperty('projectConflictPolicy');
+			expect(result.data).not.toHaveProperty('overwriteDeletionPolicy');
+			expect(result.data).not.toHaveProperty('bindings');
+		}
+	});
+
+	it('lists the selection fields as multipart form fields', () => {
+		expect(IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS).toEqual([
+			'projectId',
+			'folderId',
+			'selectedProjectId',
+			'selectedWorkflowIds',
+			'deletedWorkflowIds',
+			'workflowConflictPolicy',
+			'workflowIdPolicy',
+		]);
+	});
+});

@@ -8,6 +8,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import {
 	createN8nPackageMulterOptions,
 	getPackageUploadFile,
+	IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
 	listUploadFiles,
 	resolveImportPackageUpload,
 } from '../../utils/import-package-upload';
@@ -143,5 +144,51 @@ describe('resolveImportPackageUpload', () => {
 				body: { evil: 'true' },
 			}),
 		).toThrow('Unexpected form field "evil"');
+	});
+
+	describe('with the selection body field set', () => {
+		it('accepts the selection form fields', () => {
+			expect(() =>
+				resolveImportPackageUpload(
+					{
+						files: [makeFile('package', packageBuffer)],
+						body: {
+							projectId: 'proj-1',
+							folderId: 'fld-1',
+							selectedProjectId: 'P1',
+							selectedWorkflowIds: '["WFA"]',
+							deletedWorkflowIds: '["WFB"]',
+							workflowConflictPolicy: 'new-version',
+							workflowIdPolicy: 'source',
+							package: '',
+						},
+					},
+					IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
+				),
+			).not.toThrow();
+		});
+
+		it('rejects a field that is not in the selection set', () => {
+			expect(() =>
+				resolveImportPackageUpload(
+					{
+						files: [makeFile('package', packageBuffer)],
+						// A whole-scope field that the selection endpoint must not accept.
+						body: { selectedProjectId: 'P1', folderConflictPolicy: 'overwrite' },
+					},
+					IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
+				),
+			).toThrow('Unexpected form field "folderConflictPolicy"');
+		});
+
+		it('leaves the default field set unchanged', () => {
+			// A selection-only field is rejected by the default (whole-scope) validation.
+			expect(() =>
+				resolveImportPackageUpload({
+					files: [makeFile('package', packageBuffer)],
+					body: { selectedProjectId: 'P1' },
+				}),
+			).toThrow('Unexpected form field "selectedProjectId"');
+		});
 	});
 });

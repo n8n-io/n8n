@@ -303,6 +303,14 @@ export type ImportSelectionRequest = {
 	workflowIdPolicy?: WorkflowIdPolicy;
 };
 
+/**
+ * The tar variant of {@link ImportSelectionRequest}: carries the package as a buffer, for the
+ * public (user-facing) selection import. The directory variant reads loose files instead.
+ */
+export type ImportPackageSelectionRequest = ImportSelectionRequest & {
+	packageBuffer: Buffer;
+};
+
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
