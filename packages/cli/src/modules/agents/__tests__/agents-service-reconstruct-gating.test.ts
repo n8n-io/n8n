@@ -30,6 +30,8 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import { AgentPlanService } from '../agent-plan.service';
+import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
@@ -857,6 +859,93 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 		expect(toolNames).not.toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(toolNames).not.toContain(WRITE_TODOS_TOOL_NAME);
 	});
+});
+
+describe('AgentRuntimeReconstructionService — plan tools gating', () => {
+	const planToolNames = ['create_plan', 'read_plan', 'update_plan', 'close_plan'];
+	const wakeService = mock<AgentWakeService>();
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+		Container.set(AgentPlanService, mock<AgentPlanService>());
+		Container.set(AgentBackgroundJobService, mock<AgentBackgroundJobService>());
+		Container.set(SubAgentBackgroundRunner, mock<SubAgentBackgroundRunner>());
+		Container.set(AgentWakeService, wakeService);
+	});
+
+	afterEach(() => {
+		Container.get(AgentsConfig).planToolsEnabled = false;
+		Container.get(AgentsConfig).backgroundTasksEnabled = false;
+	});
+
+	it('keeps write_todos and omits planning instructions when disabled', async () => {
+		Container.get(AgentsConfig).planToolsEnabled = false;
+		await makeReconstructionService().reconstructFromAgentEntity(
+			makeAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+		);
+		expect(getInjectedToolNames()).toContain(WRITE_TODOS_TOOL_NAME);
+		for (const name of planToolNames) expect(getInjectedToolNames()).not.toContain(name);
+		expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
+	});
+
+	it.each([false, true])(
+		'replaces write_todos when background tasks are %s',
+		async (backgroundTasksEnabled) => {
+			Container.get(AgentsConfig).planToolsEnabled = true;
+			Container.get(AgentsConfig).backgroundTasksEnabled = backgroundTasksEnabled;
+			await makeReconstructionService().reconstructFromAgentEntity(
+				makeAgentEntity(),
+				mock<CredentialProvider>(),
+				'production',
+			);
+			expect(getInjectedToolNames()).toEqual(expect.arrayContaining(planToolNames));
+			expect(getInjectedToolNames()).not.toContain(WRITE_TODOS_TOOL_NAME);
+			const tools = builtAgent.tool.mock.calls.flatMap(([tool]) =>
+				Array.isArray(tool) ? tool : [tool],
+			) as BuiltTool[];
+			expect(tools.find((tool) => tool.name === 'create_plan')?.systemInstruction).toBe(
+				'Use planning for potentially long-running work, work with multiple steps, or work with complex dependencies. ' +
+					'If the current plan content and revision are not in context, call read_plan before updating the plan. ' +
+					'Keep task and group statuses current. Accept results before marking work Done. ' +
+					'Underlying runs do not set plan statuses.',
+			);
+			if (backgroundTasksEnabled) {
+				expect(getInjectedToolNames()).toContain('check_background_jobs');
+				expect(builtAgent.volatileInstructionsProvider).toHaveBeenCalledTimes(1);
+				const provider = builtAgent.volatileInstructionsProvider.mock.calls[0][0];
+				wakeService.getBackgroundUpdates.mockResolvedValue('Background result');
+				expect(
+					await provider({ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } }),
+				).toBe('Background result');
+				expect(wakeService.getBackgroundUpdates).toHaveBeenCalledWith('thread-1', 'resource-1');
+			} else {
+				expect(builtAgent.volatileInstructionsProvider).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it.each(['sub-agent', 'inline'] as const)(
+		'omits plan tools for %s runtimes',
+		async (runtimeProfile) => {
+			Container.get(AgentsConfig).planToolsEnabled = true;
+			await makeReconstructionService().reconstructFromResolvedSource({
+				config: { name: 'Child', model: 'anthropic/claude-sonnet-4-5', instructions: 'Help' },
+				memoryOwnerAgentId: 'child-agent-1',
+				projectId: 'project-1',
+				credentialProvider: mock<CredentialProvider>(),
+				toolDescriptors: {},
+				toolCodeByName: {},
+				skills: {},
+				runtimeProfile,
+				runType: 'production',
+				parentAgentIdForDelegation: 'parent-agent-1',
+			});
+			for (const name of planToolNames) expect(getInjectedToolNames()).not.toContain(name);
+		},
+	);
 });
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — background job tools gating', () => {
