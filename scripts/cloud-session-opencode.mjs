@@ -236,11 +236,18 @@ export async function connectOpenCode(options, ensureCodespace) {
 			openBrowser(webUrl);
 		} else {
 			console.log(`Connecting to OpenCode ${health.version} in ${state.directory}…`);
-			// `--continue` follows the conversation the user last saw in this workspace,
-			// including one they switched to inside a client. Omit it for `--new`.
+			// OpenCode's own resume spans all worktrees of the repository. The
+			// server resolved the workspace's latest conversation instead, so
+			// target it directly. A fresh TUI conversation needs no target.
 			client = startChild(
 				'opencode',
-				['attach', url, '--dir', state.directory, ...(options.fresh ? [] : ['--continue'])],
+				[
+					'attach',
+					url,
+					'--dir',
+					state.directory,
+					...(state.sessionID ? ['--session', state.sessionID] : []),
+				],
 				{
 					stdio: 'inherit',
 					env: {

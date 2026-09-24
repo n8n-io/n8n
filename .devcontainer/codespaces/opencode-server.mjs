@@ -162,11 +162,10 @@ function prepareWorkspace({ name, directory, mainDirectory, stateDir }) {
 	}
 }
 
-// The TUI resolves its own conversation with `attach --continue`. Only the browser
-// URL needs a concrete session ID, so take the most recently updated root
-// conversation, the one that resume would pick. OpenCode scopes the list to the
-// repository project, so all worktrees share one conversation pool.
-async function resolveWebSession({ name, fresh, directory, server }) {
+// OpenCode's own resume is scoped to the repository project, so all worktrees
+// share one pool. Scope the selection to the workspace directory instead, so
+// each worktree resumes its own most recently updated root conversation.
+async function resolveSession({ name, fresh, directory, server }) {
 	if (!fresh) {
 		const query = new URLSearchParams({ directory, roots: 'true' });
 		const response = await request(server, `/session?${query}`, directory);
@@ -205,9 +204,10 @@ export async function prepareOpenCode({
 	prepareWorkspace({ name, directory, mainDirectory, stateDir });
 	server ??= await startServer({ stateDir, mainDirectory, workspaces });
 	const state = { ...server, directory };
-	if (!web) return state;
+	// A fresh TUI conversation needs no record. The TUI creates it on the first message.
+	if (fresh && !web) return state;
 	// Only the parent process reads stdout. Never send this record to terminal output.
-	return { ...state, sessionID: await resolveWebSession({ name, fresh, directory, server }) };
+	return { ...state, sessionID: await resolveSession({ name, fresh, directory, server }) };
 }
 
 if (process.argv[1] === '-') {

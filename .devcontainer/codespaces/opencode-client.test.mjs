@@ -43,8 +43,12 @@ if (args[0] === 'codespace' && args[1] === 'list') {
   process.stdin.on('end', () => {
     log({ event: 'bootstrap', hasSource: source.includes('prepareOpenCode') });
     if (process.env.TEST_BOOTSTRAP_FAIL) process.exit(1);
-    const name = args.at(-1).split(' ').at(-3);
-    console.log(JSON.stringify({ port: 4242, password: '${secret}', sessionID: 'ses_saved',
+    const parts = args.at(-1).split(' ');
+    const name = parts.at(-3);
+    const fresh = parts.at(-2) === 'true';
+    const web = parts.at(-1) === 'true';
+    console.log(JSON.stringify({ port: 4242, password: '${secret}',
+      ...(fresh && !web ? {} : { sessionID: 'ses_saved' }),
       directory: name === 'agent' ? '/workspaces/n8n' : '/workspaces/wt-' + name }));
   });
 }
@@ -148,7 +152,12 @@ test(
 		const tunnel = calls.find((call) => call.command === 'gh' && call.args.includes('-N'));
 		assert.match(tunnel.args.at(-1), /^127\.0\.0\.1:\d+:127\.0\.0\.1:4242$/);
 		const client = calls.find((call) => call.command === 'opencode');
-		assert.deepEqual(client.args.slice(2), ['--dir', '/workspaces/wt-fix-flaky', '--continue']);
+		assert.deepEqual(client.args.slice(2), [
+			'--dir',
+			'/workspaces/wt-fix-flaky',
+			'--session',
+			'ses_saved',
+		]);
 		assert.equal(client.password, secret);
 		assert.ok(!result.output.includes(secret));
 		assert.ok(calls.some((call) => call.event === 'tunnel-stopped'));

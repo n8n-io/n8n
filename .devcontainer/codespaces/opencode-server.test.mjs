@@ -145,16 +145,17 @@ server.listen(+args[args.indexOf('--port') + 1], '127.0.0.1');
 }
 
 test(
-	'reuses the server, serves web mode the newest conversation, and resumes after restart',
+	'reuses the server, serves each workspace its newest conversation, and resumes after restart',
 	{ timeout: 15000 },
 	async (t) => {
 		const f = fixture(t);
 		const first = await f.prepare({ name: 'fix-flaky' });
 		assert.equal(first.directory, join(f.dir, 'wt-fix-flaky'));
-		assert.ok(!('sessionID' in first));
+		assert.equal(first.sessionID, 'ses_1');
 		assert.deepEqual(await f.prepare({ name: 'fix-flaky' }), first);
 		const second = await f.prepare({ name: 'another-task' });
 		assert.equal(second.port, first.port);
+		assert.equal(second.sessionID, 'ses_2');
 		const webbed = await f.prepare({ name: 'fix-flaky', web: true });
 		assert.equal(webbed.sessionID, 'ses_1');
 		const created = JSON.parse(readFileSync(join(f.dir, 'sessions.json'), 'utf8'));
