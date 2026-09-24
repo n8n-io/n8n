@@ -4973,6 +4973,54 @@ describe('useCanvasOperations', () => {
 			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
 			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
 		});
+		it('does not copy empty groups when the feature is disabled', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: NO_OP_NODE_TYPE });
+			nodeTypesStore.nodeTypes = {
+				[NO_OP_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'Empty group anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			anchor.position = [40, 40];
+			workflowDocumentStoreInstance.allNodes = [anchor];
+			vi.spyOn(workflowDocumentStoreInstance, 'allGroups', 'get').mockReturnValue([
+				{ id: 'group', name: 'Empty group', nodeIds: [anchor.id] },
+			]);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([anchor]);
+
+			const { copyNodes, getNodesToSave } = useCanvasOperations();
+			expect(getNodesToSave([anchor]).nodeGroups).toEqual([
+				{ id: 'group', name: 'Empty group', nodeIds: [anchor.id] },
+			]);
+			await copyNodes([anchor.id]);
+
+			const copiedData = JSON.parse(vi.mocked(useClipboard().copy).mock.calls[0][0] as string);
+			expect(copiedData.nodes).toEqual([]);
+			expect(copiedData.nodeGroups).toBeUndefined();
+		});
+
+		it('should not copy a selection that contains a restricted node type', async () => {
+			const nodes = buildImportNodes();
+			nodes[1].type = 'n8n-nodes-base.slack';
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			const { copyNodes } = useCanvasOperations();
+			const copied = await copyNodes(['1', '2']);
+
+			expect(copied).toBe(false);
+			expect(useClipboard().copy).not.toHaveBeenCalled();
+		});
 
 		it('should include nodeGroups when all group members are copied', async () => {
 			const nodeTypesStore = useNodeTypesStore();

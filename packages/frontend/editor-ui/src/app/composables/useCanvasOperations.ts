@@ -174,6 +174,7 @@ import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composable
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
+import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
 import {
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
@@ -3571,6 +3572,9 @@ export function useCanvasOperations() {
 		if (hasRestrictedNode) return false;
 
 		const workflowData = deepCopy(getNodesToSave(nodes));
+		if (!emptyCanvasGroupsEnabled.value) {
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData, nodes);
+		}
 		workflowData.meta = {
 			...workflowData.meta,
 			...workflowDocumentStore.value.meta,
