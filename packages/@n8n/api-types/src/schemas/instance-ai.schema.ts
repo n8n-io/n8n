@@ -1896,7 +1896,7 @@ export interface InstanceAiToolCallState {
 	args: Record<string, unknown>;
 	result?: unknown;
 	error?: string;
-	/** True when the process died with the call in flight, so its effect is unverified. */
+	/** True when the run ended with the call in flight, so its effect is unverified. */
 	interrupted?: true;
 	isLoading: boolean;
 	renderHint?:

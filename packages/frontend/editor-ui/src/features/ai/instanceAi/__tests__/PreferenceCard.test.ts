@@ -253,7 +253,7 @@ describe('PreferenceCard', () => {
 			expect(error).not.toHaveTextContent('ECONNREFUSED');
 		});
 
-		it('reads "Preference not confirmed" when a restart interrupted the call', () => {
+		it('reads "Preference not confirmed" when the run ended with the call in flight', () => {
 			renderActive({
 				...refused,
 				result: undefined,

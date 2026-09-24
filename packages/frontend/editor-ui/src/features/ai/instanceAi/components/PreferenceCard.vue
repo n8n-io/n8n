@@ -29,7 +29,7 @@ const i18n = useI18n();
 const card = computed(() => resolvePreferenceCard(props.toolCall));
 // A refused write renders too, so the person does not depend on the assistant's account.
 const rejection = computed(() => resolvePreferenceRejection(props.toolCall));
-// The process died mid-call, so the row may or may not exist.
+// The call ended before it answered, so the row may or may not exist.
 const isUnconfirmed = computed(() => rejection.value?.reason === 'interrupted');
 const isRemoved = computed(() => card.value?.state === 'undone');
 // Only the latest turn may correct a preference, and a removed one has nothing to correct.

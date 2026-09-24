@@ -102,7 +102,7 @@ describe('resolvePreferenceRejection', () => {
 		});
 	});
 
-	it('treats a call interrupted by a restart as unconfirmed, not as failed', () => {
+	it('treats a call the run ended mid-flight as unconfirmed, not as failed', () => {
 		expect(
 			resolvePreferenceRejection(
 				toolCall({

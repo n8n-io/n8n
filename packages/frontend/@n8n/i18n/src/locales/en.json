@@ -7359,7 +7359,7 @@
 	"instanceAi.preferenceCard.notSaved": "Preference not saved",
 	"instanceAi.preferenceCard.notSavedFallback": "The preference could not be saved",
 	"instanceAi.preferenceCard.notConfirmed": "Preference not confirmed",
-	"instanceAi.preferenceCard.notConfirmedMessage": "n8n restarted while saving this preference. Open Manage preferences to see whether it was saved.",
+	"instanceAi.preferenceCard.notConfirmedMessage": "The save was interrupted before n8n could confirm it. Open Manage preferences to see whether it was saved.",
 	"instanceAi.preferenceCard.appliesTo": "Applies to {scope}",
 	"instanceAi.preferenceCard.edit": "Edit",
 	"instanceAi.preferenceCard.manage": "Manage preferences",
