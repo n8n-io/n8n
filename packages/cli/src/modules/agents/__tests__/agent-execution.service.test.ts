@@ -272,16 +272,39 @@ describe('AgentExecutionService', () => {
 		return params;
 	}
 
-	it('aborts local processing when the database no longer owns its execution', async () => {
+	it('retries failed heartbeats and aborts only after confirmed ownership loss', async () => {
 		vi.useFakeTimers();
 		try {
 			await startSnapshotExecution();
 			const signal = service.getAbortSignal('execution-1');
-			agentExecutionRepository.touchRunning.mockResolvedValue(false);
+			agentExecutionRepository.touchRunning
+				.mockRejectedValueOnce(new Error('temporarily unavailable'))
+				.mockResolvedValueOnce(true)
+				.mockResolvedValue(false);
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(signal.aborted).toBe(false);
+
+			const timeline: TimelineEvent[] = [{ type: 'text', content: 'Working', timestamp: 1 }];
+			service.recordTimelineSnapshot({
+				executionId: 'execution-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				timeline,
+			});
+			await vi.advanceTimersByTimeAsync(0);
+			expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				timeline,
+			);
+
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledTimes(2);
+			expect(signal.aborted).toBe(false);
 			await vi.advanceTimersByTimeAsync(30_000);
 			expect(signal.aborted).toBe(true);
 			await vi.advanceTimersByTimeAsync(30_000);
-			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledOnce();
+			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledTimes(3);
 		} finally {
 			vi.useRealTimers();
 		}

@@ -391,7 +391,6 @@ export class AgentExecutionService {
 					if (!owned) this.abortLostExecution(executionId);
 				})
 				.catch((error: unknown) => {
-					this.abortLostExecution(executionId);
 					this.logger.warn('Failed to heartbeat a running agent execution', {
 						executionId,
 						error: error instanceof Error ? error.message : String(error),
