@@ -34,6 +34,17 @@ function stringifyToolValue(value: unknown): string {
 }
 
 function formatTimelineEvent(event: TimelineEvent): string {
+	if (event.type === 'input') {
+		const text = event.message.content
+			.flatMap((part) => {
+				if (part.type === 'text') return [part.text];
+				if (part.type === 'file')
+					return [`[Attachment: ${part.fileName ?? part.fileId ?? 'file'}]`];
+				return [];
+			})
+			.join('\n');
+		return `User: ${truncate(text, MAX_TEXT_CHARS)}`;
+	}
 	if (event.type === 'background-task-signal') {
 		return `Background task results received: ${stringifyToolValue(event.signal.tasks)}`;
 	}
