@@ -1,0 +1,50 @@
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_e5a64625bc5cd1::t_37d1ee501202dd 111-112,153-155,295
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e5a64625bc5cd1::t_fcd7722f503b86 12,68,79,82,86-87,98,102,156,175,197,238,252,299,317,344,347,481,524,530,571,578,581,589-590,600,603,616,619,632,669,709-716,726,745,749,761,772,822,825,838,844,858,861,876,884-885,888,901,913,929,932,990
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e5a64625bc5cd1::t_37d1ee501202dd 7940
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_e5a64625bc5cd1::t_fcd7722f503b86 22,261-304
+  s_e5a64625bc5cd1::t_bb56ea99bdea3b 305
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_e5a64625bc5cd1::t_5955a4f4a09dc2 81,125,233,246,255,271,332,349,367,470,511,527,590
+packages/@n8n/db/src/migrations/common/1790277419519-AddSuspendedAgentBackgroundJobStatus.ts
+  s_e5a64625bc5cd1::t_fcd7722f503b86 1-69
+packages/cli/test/migration/1790277419519-add-suspended-agent-background-job-status.test.ts
+  s_e5a64625bc5cd1::t_fcd7722f503b86 1-125
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_e5a64625bc5cd1::t_fcd7722f503b86 126,192,246
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_e5a64625bc5cd1::t_37d1ee501202dd 234-237
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_e5a64625bc5cd1::t_fcd7722f503b86 1,7,19,25-31,143,156,205-211,213-214,216-218,225-305,329-332,372,386,393-414,430,434,457,462-479,532-534,567,650,652-653,657-658,661-672,684,712-715,717-724
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_e5a64625bc5cd1::t_fcd7722f503b86 10,37,42-46,85-89,114-115,118,120,138-159,163,182-223,227,231-235,237-241,247,256
+packages/cli/src/modules/agents/background/sub-agent-background-state.ts
+  s_e5a64625bc5cd1::t_fcd7722f503b86 1-43
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_e5a64625bc5cd1::t_fcd7722f503b86 20-21,80
+packages/@n8n/api-types/src/agents/background-job.ts
+  s_e5a64625bc5cd1::t_fcd7722f503b86 1-2,8-10,20
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_e5a64625bc5cd1::t_2692a75883f312 32,52-53
+docs/generated/sqlite-schema/agent_background_job.md
+  s_e5a64625bc5cd1::t_931520a06b8eb3 9,42-43,54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8fd27e7a7951bd83dffa455946110c4af6ea76fa",
+  "prompts": {},
+  "sessions": {
+    "s_e5a64625bc5cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4bf-db56-7bb1-9663-032c49d21015",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
