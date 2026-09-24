@@ -85,10 +85,15 @@ export class InstanceAiPreferenceCardService {
 			userId,
 		}: InstanceAiPreferenceCardEditRequestDto,
 	): Promise<InstanceAiPreferenceCardEditResponse> {
-		// The scope the row leaves, read before the write so a move can be reported against it.
+		// The scope this edit found, for the report only. A card edit that names no scope
+		// leaves the target to the write itself, so a move that lands between this read and
+		// the write changes what is reported, never what is saved.
 		const before = aiPreferenceTargetOf(await this.aiPreferenceService.getById(user, preferenceId));
+		/** Whether this edit asked for a scope at all. Only then can it have moved the row. */
+		const named = scope !== undefined;
 		// The same update the settings page runs: a move needs the delete right on the old
-		// target and the create right on the new one, and an edit must name its owner.
+		// target and the create right on the new one, and an edit must name its owner. An
+		// edit that names no scope keeps the row where the write finds it.
 		const preference = await this.aiPreferenceService.update(user, preferenceId, {
 			content,
 			scope,
@@ -120,13 +125,18 @@ export class InstanceAiPreferenceCardService {
 		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
 			scope_type: after.scope,
 			text_length: preference.content.length,
-			scope_changed: before.scope !== after.scope,
+			scope_changed: named && before.scope !== after.scope,
 			...(preference.projectId ? { project_id: preference.projectId } : {}),
 			surface: 'aia',
 		});
 		// The tool offered `user`; a later edit may have moved the row already, so the
 		// offered scope is the one this edit found, not always `user`.
-		const moved = before.scope !== after.scope || preference.projectId !== projectIdOf(before);
+		//
+		// An edit that named no scope moved nothing, so it reports no move. The row may still
+		// differ from the one the read above found, because another writer can change it in
+		// between, and reading that as a move would credit this edit with someone else's.
+		const moved =
+			named && (before.scope !== after.scope || preference.projectId !== projectIdOf(before));
 		if (moved) {
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
 				surface: 'aia',

@@ -32,7 +32,8 @@ const RUN_ID = 'run_card_1';
 const TOOL_CALL_ID = 'tc-1';
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['instance-ai'],
+	// `ai-preferences` is the settings page. A card edit must not undo a move made there.
+	endpointGroups: ['instance-ai', 'ai-preferences'],
 	modules: ['instance-ai'],
 });
 
@@ -337,6 +338,62 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit', (
 
 		const row = await preferenceRepository().findOneBy({ id: preference.id });
 		expect(row).toMatchObject({ userId: owner.id, projectId: null });
+	});
+
+	// The card knows only the scope of its own last write. A move made on the settings page
+	// leaves that memory stale, and a text-only edit that restated it would undo the move.
+	test('keeps a move made on the settings page when the card edits only the text', async () => {
+		const preference = await seedPreference(owner.id, 'Use British English.');
+
+		// The settings page moves the row into the project.
+		await ownerAgent
+			.patch(`/ai-preferences/${preference.id}`)
+			.send({ content: 'Use British English.', scope: 'project', projectId: project.id })
+			.expect(200);
+
+		// The card still remembers `user`, so a text-only edit names no scope at all.
+		const response = await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+			})
+			.expect(200);
+
+		// The text changed and the row stayed in the project.
+		expect(response.body.data.event.payload).toMatchObject({
+			state: 'edited',
+			content: 'Use American English.',
+			scope: 'project',
+			projectId: project.id,
+		});
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row).toMatchObject({
+			content: 'Use American English.',
+			userId: null,
+			projectId: project.id,
+		});
+	});
+
+	test('keeps the owner of a user row when the card edits only the text', async () => {
+		const preference = await seedPreference(owner.id, 'Use British English.');
+
+		await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/edit`)
+			.send({
+				runId: RUN_ID,
+				toolCallId: TOOL_CALL_ID,
+				content: 'Use American English.',
+			})
+			.expect(200);
+
+		const row = await preferenceRepository().findOneBy({ id: preference.id });
+		expect(row).toMatchObject({
+			content: 'Use American English.',
+			userId: owner.id,
+			projectId: null,
+		});
 	});
 
 	test('refuses a user-scope edit that names no owner', async () => {

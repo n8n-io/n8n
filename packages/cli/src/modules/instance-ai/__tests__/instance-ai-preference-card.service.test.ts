@@ -123,6 +123,74 @@ describe('InstanceAiPreferenceCardService', () => {
 		expect(event).toEqual(eventBus.publish.mock.calls[0][1]);
 	});
 
+	// A text-only edit. The card knows only the scope of its own last write, and a move made on
+	// the settings page or over MCP leaves that stale, so it names no scope at all.
+	const textOnlyBody = {
+		runId: 'run-1',
+		toolCallId: 'tc-1',
+		content: 'Keep replies brief.',
+	};
+
+	// The target is left to the write, which reads it off the row it loads. Naming it here
+	// from an earlier read would undo a move that landed between that read and the write.
+	it('edit without a scope names no target, and leaves it to the write', async () => {
+		aiPreferenceService.getById.mockResolvedValue(
+			userDto({ content: 'Keep replies short.', userId: null, projectId: 'p-1' }),
+		);
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: 'p-1' }));
+
+		await service.edit(user, 'thread-1', 'pref-1', textOnlyBody);
+
+		expect(aiPreferenceService.update).toHaveBeenCalledWith(user, 'pref-1', {
+			content: 'Keep replies brief.',
+			scope: undefined,
+			projectId: undefined,
+			userId: undefined,
+		});
+	});
+
+	it('edit without a scope is no move, so it fires no scope event', async () => {
+		aiPreferenceService.getById.mockResolvedValue(
+			userDto({ content: 'Keep replies short.', userId: null, projectId: 'p-1' }),
+		);
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: 'p-1' }));
+
+		await service.edit(user, 'thread-1', 'pref-1', textOnlyBody);
+
+		expect(telemetry.track).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			expect.anything(),
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			scope_type: 'project',
+			text_length: 19,
+			scope_changed: false,
+			project_id: 'p-1',
+			surface: 'aia',
+		});
+	});
+
+	// Another writer can move the row between the read and the write. The edit named no
+	// scope, so it moved nothing, and crediting it with that move would put a write nobody
+	// made into the number this event exists to produce.
+	it('edit without a scope reports no move when another writer moved the row', async () => {
+		aiPreferenceService.getById.mockResolvedValue(
+			userDto({ content: 'Keep replies short.', userId: null, projectId: 'p-1' }),
+		);
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: 'p-2' }));
+
+		await service.edit(user, 'thread-1', 'pref-1', textOnlyBody);
+
+		expect(telemetry.track).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			expect.anything(),
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE,
+			expect.objectContaining({ scope_changed: false }),
+		);
+	});
+
 	it('edit names the scope the row landed in on the fact, from the saved dto', async () => {
 		aiPreferenceService.getById.mockResolvedValue(userDto());
 		// The request and the saved row disagree on purpose: the fact must follow the row.

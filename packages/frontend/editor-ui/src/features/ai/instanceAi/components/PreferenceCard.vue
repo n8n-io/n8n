@@ -14,8 +14,11 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 
+import { aiPreferenceTargetOf } from '@n8n/api-types';
+
 import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useContextStore } from '@/features/settings/context/context.store';
 
 import { resolvePreferenceCard, resolvePreferenceRejection } from '../preferenceCard.utils';
 import { preferenceScopeLabel } from '../preferenceScope.utils';
@@ -38,9 +41,51 @@ const rejection = computed(() => resolvePreferenceRejection(props.toolCall));
 const isUnconfirmed = computed(() => rejection.value?.reason === 'interrupted');
 
 const projectsStore = useProjectsStore();
+const contextStore = useContextStore();
+
+/**
+ * The card's fact says where its own last write put the row. A move made on the settings
+ * page or over MCP never reaches that fact, so the row itself is read here and wins. An
+ * unresolved id leaves the fact in place: it is the newest thing this card knows.
+ */
+watch(
+	() => card.value?.preferenceId,
+	(preferenceId) => {
+		if (preferenceId) void contextStore.resolveRows([preferenceId]);
+	},
+	{ immediate: true },
+);
+
+const liveTarget = computed(() => {
+	const preferenceId = card.value?.preferenceId;
+	if (!preferenceId) return null;
+	const row = contextStore.rowById.get(preferenceId);
+	return row ? aiPreferenceTargetOf(row) : null;
+});
+
+/** Where the row is, and who owns it: the row when it is known, else the card's fact. */
+const target = computed(() => {
+	if (!card.value) return null;
+	const live = liveTarget.value;
+	if (!live) {
+		const { scope, projectId, userId } = card.value;
+		return { scope, projectId, userId };
+	}
+	return {
+		scope: live.scope,
+		projectId: live.scope === 'project' ? live.projectId : null,
+		userId: live.scope === 'user' ? live.userId : null,
+	};
+});
+
 const scopeLabel = computed(() =>
-	card.value
-		? preferenceScopeLabel(i18n, card.value.scope, card.value.projectId, projectsStore.myProjects)
+	target.value
+		? preferenceScopeLabel(
+				i18n,
+				target.value.scope,
+				target.value.projectId,
+				projectsStore.myProjects,
+			)
 		: '',
 );
 const isRemoved = computed(() => card.value?.state === 'undone');
@@ -173,13 +218,13 @@ watch(
 		</N8nAnimatedCollapsibleContent>
 
 		<PreferenceEditModal
-			v-if="card && isEditable"
+			v-if="card && isEditable && target"
 			v-model:open="modalOpen"
 			:preference-id="card.preferenceId"
 			:content="card.content"
-			:scope="card.scope"
-			:project-id="card.projectId"
-			:user-id="card.userId"
+			:scope="target.scope"
+			:project-id="target.projectId"
+			:user-id="target.userId"
 			:run-id="props.runId"
 			:tool-call-id="props.toolCall.toolCallId"
 		/>

@@ -16,11 +16,15 @@ const cardTarget = {
 export class InstanceAiPreferenceCardUndoRequestDto extends Z.class(cardTarget) {}
 
 /** The same target fields as `AiPreferenceRequestDto`: the service checks `projectId`
- *  and `userId` against `scope`, and an edit with scope `user` must name `userId`. */
+ *  and `userId` against `scope`, and an edit with scope `user` must name `userId`.
+ *
+ *  `scope` is absent when the edit changes only the text. The card remembers the scope
+ *  its own last write named, which goes stale as soon as the row moves anywhere else,
+ *  so a card that names no scope leaves the row where it is. */
 export class InstanceAiPreferenceCardEditRequestDto extends Z.class({
 	...cardTarget,
 	content: aiPreferenceContentSchema,
-	scope: aiPreferenceScopeSchema,
+	scope: aiPreferenceScopeSchema.optional(),
 	projectId: z.string().max(36).nullish(),
 	userId: z.string().uuid().nullish(),
 }) {}
