@@ -95,16 +95,19 @@ const server = require('node:http').createServer(async (req, res) => {
   if (fs.existsSync(file('reject-session'))) { res.writeHead(503).end('{}'); return; }
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname === '/session') {
-    // Newest first, like the real server. The extra-session file models a root
-    // conversation created outside the launcher, the child-session file one
-    // created by a subagent. The roots query flag excludes the child.
+    // Newest first, like the real server. Filter on the query, not the header,
+    // so the test fails when the launcher omits either parameter. The
+    // child-session file models a subagent conversation that the roots query
+    // flag must exclude.
+    const directory = url.searchParams.get('directory');
     const roots = url.searchParams.get('roots') === 'true';
-    const list = Object.values(sessions)
+    const stored = Object.values(sessions);
+    if (fs.existsSync(file('child-session')))
+      stored.push({ id: 'ses_child', directory, title: 'child', parentID: 'ses_1' });
+    const list = stored
       .filter(s => s.directory === directory && (!roots || !s.parentID))
       .reverse();
     if (fs.existsSync(file('extra-session'))) list.unshift({ id: 'ses_extra', directory, title: 'TUI session' });
-    if (fs.existsSync(file('child-session')) && !roots)
-      list.unshift({ id: 'ses_child', directory, title: 'child', parentID: 'ses_1' });
     res.end(JSON.stringify(list)); return;
   }
   const session = sessions[req.url.split('/').at(-1)];
