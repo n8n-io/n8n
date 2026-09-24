@@ -96,6 +96,7 @@ import { AddNodeGroupCommand, historyBus } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useCanvasStore } from '@/app/stores/canvas.store';
+import { useCanvasNodeGroupTelemetry } from '@/features/workflows/canvas/composables/useCanvasNodeGroupTelemetry';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
@@ -202,6 +203,8 @@ const workflowExecutionState = computed(() =>
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
+// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+const groupTelemetry = useCanvasNodeGroupTelemetry();
 const credentialsStore = useCredentialsStore();
 const environmentsStore = useEnvironmentsStore();
 const canvasStore = useCanvasStore();
@@ -1051,6 +1054,8 @@ async function onAddEmptyGroup(connectToLastInteractedNode = false) {
 	if (!emptyCanvasGroupsEnabled.value || !checkIfEditingIsAllowed() || isAddingEmptyGroup.value)
 		return;
 	isAddingEmptyGroup.value = true;
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	const nodeCreatorOpenSource = nodeCreatorStore.openSource;
 	// Seed generic placement at the viewport center while retaining collision handling for later groups.
 	if (
 		workflowDocumentStore.value.allNodes.length === 0 &&
@@ -1104,6 +1109,9 @@ async function onAddEmptyGroup(connectToLastInteractedNode = false) {
 		);
 		const group = workflowDocumentStore.value.createGroup([anchor.id], name);
 		historyStore.pushCommandToUndo(new AddNodeGroupCommand(group, Date.now()));
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		groupTelemetry.trackGrouped(group, 'node-creator', nodeCreatorOpenSource);
+		groupTelemetry.trackInitialEmptyGroupConnection(group);
 		selectNodes([anchor.id]);
 	} finally {
 		if (ownsUndoBulk) historyStore.stopRecordingUndo();

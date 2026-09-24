@@ -1951,9 +1951,20 @@ describe('useCanvasOperations', () => {
 			expect(group.nodeIds).toEqual([anchor?.id]);
 			expect(nodesById.has(node.id)).toBe(false);
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalled();
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_DELETED_LAST_NODE_FROM_GROUP,
+				{
+					workflow_id: workflowId,
+					group_id: group.id,
+					push_ref: expect.any(String),
+				},
+			);
 		});
 
 		it('does not restore an anchor when deleting the selected group', () => {
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
 			const historyStore = mockedStore(useHistoryStore);
 			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
 
@@ -1978,6 +1989,11 @@ describe('useCanvasOperations', () => {
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(node.id);
 			expect(nodesById.has(node.id)).toBe(false);
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalled();
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			expect(useTelemetry().track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_DELETED_GROUP,
+				expect.anything(),
+			);
 		});
 
 		it('does not leave an anchor add command when replacement is rejected', () => {
@@ -2067,6 +2083,16 @@ describe('useCanvasOperations', () => {
 					([command]) => command instanceof RemoveNodeGroupCommand,
 				),
 			).toBe(true);
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_DELETED_GROUP,
+				{
+					workflow_id: workflowId,
+					group_id: group.id,
+					push_ref: expect.any(String),
+					was_empty: true,
+				},
+			);
 		});
 
 		it('does not record any group command when the deleted node is ungrouped', () => {
@@ -3052,6 +3078,81 @@ describe('useCanvasOperations', () => {
 				],
 			});
 			expect(uiStore.markStateDirty).toHaveBeenCalled();
+		});
+
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		it('tracks the first connection added to an empty group', () => {
+			const telemetry = useTelemetry();
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'Empty Group Anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const target = createGroupedNode('target', 'Target');
+			const group = { id: 'group', nodeIds: [anchor.id], name: 'Group 1' };
+			setupGroupedCanvas({ nodes: [anchor, target], groups: [group] });
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(anchor, target), { validateNodeGroups: false });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP,
+				{
+					workflow_id: workflowId,
+					group_id: group.id,
+					push_ref: expect.any(String),
+					was_first_connection: true,
+				},
+			);
+		});
+
+		it('marks later connections to an empty group as non-first', () => {
+			const telemetry = useTelemetry();
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'Empty Group Anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const firstTarget = createGroupedNode('first-target', 'First Target');
+			const nextTarget = createGroupedNode('next-target', 'Next Target');
+			const group = { id: 'group', nodeIds: [anchor.id], name: 'Group 1' };
+			setupGroupedCanvas({
+				nodes: [anchor, firstTarget, nextTarget],
+				groups: [group],
+				connections: createConnectionsBySource(workflowConnection(anchor, firstTarget)),
+			});
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(anchor, nextTarget), { validateNodeGroups: false });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP,
+				expect.objectContaining({ was_first_connection: false }),
+			);
+		});
+
+		it('does not track empty-group connections when the feature is disabled', () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			const telemetry = useTelemetry();
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'Empty Group Anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const target = createGroupedNode('target', 'Target');
+			const group = { id: 'group', nodeIds: [anchor.id], name: 'Group 1' };
+			setupGroupedCanvas({ nodes: [anchor, target], groups: [group] });
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(anchor, target), { validateNodeGroups: false });
+
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP,
+				expect.anything(),
+			);
 		});
 
 		it('should not set UI state as dirty if keepPristine is true', () => {
@@ -9105,6 +9206,11 @@ describe('useCanvasOperations', () => {
 			vi.mocked(workflowDocumentStore.getConnectionsBetweenNodes).mockReturnValue([]);
 			vi.mocked(workflowDocumentStore.incomingConnectionsByNodeName).mockReturnValue({});
 			vi.mocked(workflowDocumentStore.outgoingConnectionsByNodeName).mockReturnValue({});
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			workflowDocumentStore.connectionsBySourceNode = createConnectionsBySource([
+				{ node: anchor.name, type: NodeConnectionTypes.Main, index: 0 },
+				{ node: 'After', type: NodeConnectionTypes.Main, index: 0 },
+			]);
 
 			expect(anchor).toMatchObject({
 				type: NO_OP_NODE_TYPE,
@@ -9133,6 +9239,17 @@ describe('useCanvasOperations', () => {
 			const groupCommand = commands[1] as UpdateNodeGroupCommand;
 			expect(groupCommand.before.nodeIds).toEqual([anchor.id]);
 			expect(groupCommand.after.nodeIds).toEqual([addedNode.id]);
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			expect(useTelemetry().track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_FILLED_EMPTY_GROUP,
+				{
+					workflow_id: workflowId,
+					group_id: group.id,
+					push_ref: expect.any(String),
+					node_count_after: 1,
+					connection_count_before_fill: 1,
+				},
+			);
 		});
 
 		it('replaces an empty-group anchor with the selected node and groups its helper', async () => {
