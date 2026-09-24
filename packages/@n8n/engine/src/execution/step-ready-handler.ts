@@ -8,6 +8,7 @@ import {
 	type WorkflowLoop,
 } from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { ExecutionResponseSender } from '../response-channel';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
@@ -49,6 +50,7 @@ export class StepReadyHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly responseSender: ExecutionResponseSender,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},
 	) {}
@@ -179,6 +181,7 @@ export class StepReadyHandler {
 				iteration: step.iteration,
 				callerContext: execution.callerContext,
 			},
+			respond: this.responseSender.emitterFor(execution.id),
 		});
 
 		if (result.wait) validateWaitDeclaration(step.id, result.wait);

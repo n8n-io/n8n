@@ -1052,9 +1052,24 @@ export interface InstanceAiSavedPreference {
 	scope: 'user';
 }
 
+/** A cap refusal always carries the cap and the measured value, so the model can fit under it. */
+export type InstanceAiPreferenceWriteRefusal =
+	| {
+			reason: 'too_long' | 'scope_full';
+			message: string;
+			/** Characters for `too_long`, rows for `scope_full`. */
+			limit: number;
+			/** The text length, or the rows already saved. */
+			actual: number;
+	  }
+	| {
+			reason: Exclude<InstanceAiPreferenceWriteRejection, 'too_long' | 'scope_full'>;
+			message: string;
+	  };
+
 export type InstanceAiPreferenceWriteResult =
 	| { ok: true; preference: InstanceAiSavedPreference }
-	| { ok: false; reason: InstanceAiPreferenceWriteRejection; message: string };
+	| ({ ok: false } & InstanceAiPreferenceWriteRefusal);
 
 export interface InstanceAiPreferenceService {
 	create(input: { content: string; scope: 'user' }): Promise<InstanceAiPreferenceWriteResult>;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { rmSync } from 'node:fs';
+import { rmSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -43,8 +43,12 @@ if (args[0] === 'codespace' && args[1] === 'list') {
   process.stdin.on('end', () => {
     log({ event: 'bootstrap', hasSource: source.includes('prepareOpenCode') });
     if (process.env.TEST_BOOTSTRAP_FAIL) process.exit(1);
-    const name = args.at(-1).split(' ').at(-2);
-    console.log(JSON.stringify({ port: 4242, password: '${secret}', sessionID: 'ses_saved',
+    const parts = args.at(-1).split(' ');
+    const name = parts.at(-3);
+    const fresh = parts.at(-2) === 'true';
+    const web = parts.at(-1) === 'true';
+    console.log(JSON.stringify({ port: 4242, password: '${secret}',
+      ...(fresh && !web ? {} : { sessionID: 'ses_saved' }),
       directory: name === 'agent' ? '/workspaces/n8n' : '/workspaces/wt-' + name }));
   });
 }
@@ -91,6 +95,22 @@ async function waitFor(check) {
 		await delay(50);
 	}
 	throw new Error('Fixture did not become ready.');
+}
+
+// An orphaned fixture process can linger as a zombie where PID 1 does not reap
+// it, and kill(pid, 0) still succeeds for one. Read the process state where the
+// kernel exposes it; without /proc only the signal error can tell.
+function stopped(pid) {
+	try {
+		process.kill(pid, 0);
+	} catch {
+		return true;
+	}
+	try {
+		return readFileSync(`/proc/${pid}/stat`, 'utf8').split(' ')[2] === 'Z';
+	} catch {
+		return false;
+	}
 }
 
 test('parses options before or after the workspace and rejects unsupported flags', () => {
@@ -142,20 +162,21 @@ test(
 		assert.ok(!result.output.includes(secret));
 		assert.ok(calls.some((call) => call.event === 'tunnel-stopped'));
 		const pid = calls.find((call) => call.event === 'ssh-child').pid;
-		await waitFor(() => {
-			try {
-				process.kill(pid, 0);
-				return false;
-			} catch {
-				return true;
-			}
-		});
+		await waitFor(() => stopped(pid));
 	},
 );
 
+test('starts a new conversation for --new instead of continuing', { timeout: 15000 }, async (t) => {
+	const f = fixture(t);
+	const result = await f.start(['fix-flaky', '--new']).done;
+	assert.equal(result.code, 0, result.output);
+	const client = f.calls().find((call) => call.command === 'opencode');
+	assert.deepEqual(client.args.slice(2), ['--dir', '/workspaces/wt-fix-flaky']);
+});
+
 for (const signal of ['SIGINT', 'SIGHUP']) {
 	test(
-		`opens the saved web conversation and cleans up on ${signal}`,
+		`opens the newest web conversation and cleans up on ${signal}`,
 		{ timeout: 15000 },
 		async (t) => {
 			const f = fixture(t, { TEST_NO_CLIENT: '1' });

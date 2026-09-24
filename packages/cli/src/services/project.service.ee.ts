@@ -10,6 +10,7 @@ import {
 	ProjectIdConflictError,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 	type ProjectListOptions,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -21,6 +22,8 @@ import {
 	type GlobalRole,
 	type ProjectRole,
 	AssignableProjectRole,
+	GLOBAL_ADMIN_ROLE_SLUG,
+	GLOBAL_OWNER_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_ADMIN_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
@@ -38,6 +41,11 @@ import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
 import { RoleService } from './role.service';
+
+const INSTANCE_ACCESS_ROLE_ERROR =
+	"This user has access through their instance role. Project roles can't change their access in this project.";
+const INSTANCE_ACCESS_REMOVE_ERROR =
+	"This user has access through their instance role and can't be removed from the project.";
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -94,6 +102,7 @@ export class ProjectService {
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	private get workflowService() {
@@ -661,11 +670,13 @@ export class ProjectService {
 			throw new ForbiddenError("Can't add a personalOwner to a team project.");
 		}
 
+		const memberRelations = await this.withoutInstanceAdmins(relations);
+
 		const existingUserIds = new Set(project.projectRelations.map((pr) => pr.userId));
-		const newSharees = relations.filter((relation) => !existingUserIds.has(relation.userId));
+		const newSharees = memberRelations.filter((relation) => !existingUserIds.has(relation.userId));
 
 		await this.projectRelationRepository.save(
-			relations.map((relation) => ({
+			memberRelations.map((relation) => ({
 				projectId,
 				userId: relation.userId,
 				role: { slug: relation.role },
@@ -704,6 +715,8 @@ export class ProjectService {
 			'project',
 		);
 
+		const memberRelations = await this.withoutInstanceAdmins(relations);
+
 		const existingByUserId = new Map(project.projectRelations.map((r) => [r.userId, r]));
 		const added: Array<{ userId: string; role: AssignableProjectRole }> = [];
 		const conflicts: Array<{
@@ -712,7 +725,7 @@ export class ProjectService {
 			requestedRole: AssignableProjectRole;
 		}> = [];
 
-		for (const rel of relations) {
+		for (const rel of memberRelations) {
 			const existing = existingByUserId.get(rel.userId);
 			if (!existing) continue; // will be inserted below
 			const current = existing.role?.slug;
@@ -722,7 +735,7 @@ export class ProjectService {
 		}
 
 		// Insert only non-existing users
-		const toInsert = relations.filter((rel) => !existingByUserId.has(rel.userId));
+		const toInsert = memberRelations.filter((rel) => !existingByUserId.has(rel.userId));
 		if (toInsert.length > 0) {
 			// Use insert to avoid accidental upsert of different role
 			await this.projectRelationRepository.insert(
@@ -765,6 +778,38 @@ export class ProjectService {
 		}
 	}
 
+	/**
+	 * Ids of enabled instance owners and admins. Their project access comes from
+	 * their global role, so project membership does not apply to them.
+	 */
+	private async findInstanceAdminIds(userIds: string[]): Promise<Set<string>> {
+		if (userIds.length === 0) return new Set();
+		const users = await this.userRepository.findManyByIds(userIds, { includeRole: true });
+		return new Set(
+			users
+				.filter(
+					(u) =>
+						!u.disabled &&
+						(u.role?.slug === GLOBAL_OWNER_ROLE_SLUG || u.role?.slug === GLOBAL_ADMIN_ROLE_SLUG),
+				)
+				.map((u) => u.id),
+		);
+	}
+
+	/**
+	 * Drops instance owners and admins from an add request. They already have
+	 * access, so they are treated like members who already hold the role.
+	 */
+	private async withoutInstanceAdmins<T extends { userId: string }>(relations: T[]): Promise<T[]> {
+		const instanceAdminIds = await this.findInstanceAdminIds(relations.map((r) => r.userId));
+		return relations.filter((r) => !instanceAdminIds.has(r.userId));
+	}
+
+	private async assertNoInstanceAdmins(userIds: string[], message: string) {
+		const instanceAdminIds = await this.findInstanceAdminIds(userIds);
+		if (instanceAdminIds.size > 0) throw new ForbiddenError(message);
+	}
+
 	private isUserProjectOwner(project: Project, userId: string) {
 		return project.projectRelations.some(
 			(pr) => pr.userId === userId && pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
@@ -778,6 +823,8 @@ export class ProjectService {
 		if (this.isUserProjectOwner(project, userId)) {
 			throw new ForbiddenError('Project owner cannot be removed from the project');
 		}
+
+		await this.assertNoInstanceAdmins([userId], INSTANCE_ACCESS_REMOVE_ERROR);
 
 		const proxy = await this.connectionStatusProxy;
 
@@ -805,6 +852,10 @@ export class ProjectService {
 		await this.roleService.checkRolesExist([role], 'project');
 
 		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+
+		// Instance owners and admins are listed as members without a relation, so
+		// check them first to return the reason instead of "not found".
+		await this.assertNoInstanceAdmins([userId], INSTANCE_ACCESS_ROLE_ERROR);
 
 		const projectUserExists = project.projectRelations.some((r) => r.userId === userId);
 		if (!projectUserExists) {
@@ -977,6 +1028,21 @@ export class ProjectService {
 		return await this.projectRelationRepository.find({
 			where: { projectId },
 			relations: { user: true, role: true },
+		});
+	}
+
+	/**
+	 * Users who always reach this project through their global role, whether or
+	 * not a project relation exists for them. Personal projects are never shared
+	 * this way, so they return an empty list.
+	 */
+	async getImplicitProjectMembers(project: Pick<Project, 'id' | 'type'>): Promise<User[]> {
+		if (project.type !== 'team') return [];
+
+		return await this.userRepository.findEligibleByProjectOrGlobalRoles({
+			projectId: project.id,
+			projectRoleSlugs: [],
+			globalRoleSlugs: [GLOBAL_OWNER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG],
 		});
 	}
 

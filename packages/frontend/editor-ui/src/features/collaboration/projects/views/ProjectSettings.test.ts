@@ -73,25 +73,19 @@ vi.mock('../components/ProjectMembersTable.vue', () => ({
 			projectRoles: { type: Array, required: true },
 			actions: { type: Array, required: false },
 			canEditRole: { type: Boolean, required: false },
+			tableOptions: { type: Object, required: false },
 		},
 		emits: ['update:options', 'update:role', 'action', 'show-upgrade-dialog'],
 		setup(_, { emit }) {
 			addEmitter('projectMembersTable', emit as unknown as Emitter);
 			return {};
 		},
-		data() {
-			return {
-				tableOptions: {
-					page: 0,
-					itemsPerPage: 10,
-					sortBy: [] as Array<{ id: string; desc: boolean }>,
-				},
-			};
-		},
 		template:
 			'<div data-test-id="project-members-table" :data-can-edit-role="canEditRole" :data-actions-count="actions?.length">' +
 			'<div data-test-id="members-count">{{ data.items.length }}</div>' +
-			'<div data-test-id="members-page">{{ tableOptions.page }}</div>' +
+			'<div data-test-id="members-total">{{ data.count }}</div>' +
+			'<div data-test-id="members-ids">{{ data.items.map((item) => item.id).join(",") }}</div>' +
+			'<div data-test-id="members-page">{{ tableOptions?.page }}</div>' +
 			'</div>',
 	}),
 }));
@@ -120,7 +114,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				addEmitter('n8nUserSelect', emit as unknown as Emitter);
 				return {};
 			},
-			template: '<div data-test-id="project-members-select" :data-disabled="disabled"></div>',
+			template:
+				'<div data-test-id="project-members-select" :data-disabled="disabled" :data-user-ids="users.map((u) => u.id).join(\',\')"></div>',
 		}),
 		N8nIconPicker: defineComponent({
 			name: 'N8nIconPickerStub',
@@ -702,38 +697,6 @@ describe('ProjectSettings', () => {
 			expect(mockShowMessage).toHaveBeenCalled();
 		});
 
-		it('resets pagination to first page on search', async () => {
-			// Set up project with 10+ members to make search visible
-			const mockProjectWith10Members: Project = {
-				...projectsStore.currentProject!,
-				relations: Array.from({ length: 10 }, (_, i) => ({
-					id: String(i + 1),
-					firstName: `User${i + 1}`,
-					lastName: 'Test',
-					email: `user${i + 1}@example.com`,
-					role: 'project:editor',
-				})),
-			};
-			projectsStore.currentProject = mockProjectWith10Members;
-
-			const wrapper = renderComponent();
-			await nextTick();
-			emitters.projectMembersTable.emit('update:options', {
-				page: 2,
-				itemsPerPage: 10,
-				sortBy: [],
-			});
-			await nextTick();
-			const searchContainer = wrapper.getByTestId('project-members-search');
-			const searchInput = searchContainer.querySelector('input')!;
-			await userEvent.type(searchInput, 'john');
-			await nextTick();
-			// unmount first to avoid duplicate elements
-			wrapper.unmount();
-			const wrapper2 = renderComponent();
-			expect(wrapper2.getByTestId('members-page').textContent).toBe('0');
-		});
-
 		it('clears search when member count drops below threshold', async () => {
 			const removeSpy = vi.spyOn(projectsStore, 'removeMember').mockResolvedValue(undefined);
 
@@ -1049,6 +1012,273 @@ describe('ProjectSettings', () => {
 			await nextTick();
 
 			expect(getByTestId('external-secrets-section')).toBeInTheDocument();
+		});
+	});
+	describe('member order and pagination', () => {
+		const member = (id: string, firstName: string | null, lastName: string | null) => ({
+			id,
+			firstName,
+			lastName,
+			email: `${id}@example.com`,
+			role: 'project:editor',
+		});
+		const currentUserRelation = member('current-user', 'Current', 'User');
+		const others = (count: number) =>
+			Array.from({ length: count }, (_, i) =>
+				member(`user-${String(i).padStart(2, '0')}`, `User${String(i).padStart(2, '0')}`, 'Test'),
+			);
+
+		const setProject = (relations: Project['relations'], creatorId: string | null) => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				relations,
+				creatorId,
+			};
+		};
+
+		it('lists the creator first, then the current user, then the rest by name', async () => {
+			setProject(
+				[
+					member('zoe', 'Zoe', 'Zed'),
+					currentUserRelation,
+					member('pending', null, null),
+					member('creator', 'Yuri', 'Creator'),
+					member('adam', 'Adam', 'Able'),
+				],
+				'creator',
+			);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			// The pending user has no name, so their email sorts them.
+			expect(getByTestId('members-ids').textContent).toBe('creator,current-user,adam,pending,zoe');
+		});
+
+		it('sorts names without regard to case or accents', async () => {
+			setProject(
+				[
+					member('zoe', 'Zoe', 'Zed'),
+					member('emile', 'émile', 'Dupont'),
+					member('bea', 'bea', 'Brown'),
+				],
+				null,
+			);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-ids').textContent).toBe('bea,emile,zoe');
+		});
+
+		it('pins only the current user when the project has no creator', async () => {
+			setProject(
+				[member('zoe', 'Zoe', 'Zed'), member('adam', 'Adam', 'Able'), currentUserRelation],
+				null,
+			);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-ids').textContent).toBe('current-user,adam,zoe');
+		});
+
+		it('shows 10 members for each page', async () => {
+			setProject([currentUserRelation, ...others(11)], null);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('10');
+			expect(getByTestId('members-total').textContent).toBe('12');
+
+			emitters.projectMembersTable.emit('update:options', {
+				page: 1,
+				itemsPerPage: 10,
+				sortBy: [],
+			});
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('2');
+			expect(getByTestId('members-ids').textContent).toBe('user-09,user-10');
+		});
+
+		it('keeps the pinned order while searching and resets to the first page', async () => {
+			setProject(
+				[
+					...others(10),
+					member('creator', 'Zed', 'Creator'),
+					currentUserRelation,
+					member('bob', 'Bob', 'Smith'),
+				],
+				'creator',
+			);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			emitters.projectMembersTable.emit('update:options', {
+				page: 1,
+				itemsPerPage: 10,
+				sortBy: [],
+			});
+			await nextTick();
+			expect(getByTestId('members-page').textContent).toBe('1');
+
+			// Bob is the only member without an "r" in the name or email.
+			await userEvent.type(getInput(getByTestId('project-members-search')), 'r');
+
+			await vi.waitFor(() => expect(getByTestId('members-page').textContent).toBe('0'));
+			expect(getByTestId('members-total').textContent).toBe('12');
+			expect(getByTestId('members-ids').textContent?.split(',').slice(0, 2)).toEqual([
+				'creator',
+				'current-user',
+			]);
+		});
+
+		it('steps back one page when a removal empties the last page', async () => {
+			vi.spyOn(projectsStore, 'removeMember').mockResolvedValue(undefined);
+			setProject([currentUserRelation, ...others(10)], null);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			emitters.projectMembersTable.emit('update:options', {
+				page: 1,
+				itemsPerPage: 10,
+				sortBy: [],
+			});
+			await nextTick();
+			expect(getByTestId('members-ids').textContent).toBe('user-09');
+
+			emitters.projectMembersTable.emit('action', { action: 'remove', userId: 'user-09' });
+			await nextTick();
+
+			expect(getByTestId('members-page').textContent).toBe('0');
+			expect(getByTestId('members-count').textContent).toBe('10');
+		});
+	});
+	describe('members with access from a global role', () => {
+		const ownerImplicitMember = {
+			id: 'owner-1',
+			email: 'olive@example.com',
+			firstName: 'Olive',
+			lastName: 'Owner',
+			globalRole: { slug: 'global:owner', displayName: 'Owner' },
+		};
+
+		it('adds implicit members to the table alongside the real relations', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [ownerImplicitMember],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('2');
+		});
+
+		it('shows one row for a user who is both a relation and an implicit member', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [
+					{
+						id: '1',
+						email: 'john@example.com',
+						firstName: 'John',
+						lastName: 'Doe',
+						globalRole: { slug: 'global:admin', displayName: 'Admin' },
+					},
+				],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('1');
+		});
+
+		it('renders the table for a project whose only members are implicit', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				relations: [],
+				implicitMembers: [ownerImplicitMember],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('1');
+		});
+
+		it('leaves implicit members out of the add-member dropdown', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [
+					{
+						id: '2',
+						email: 'jane@example.com',
+						firstName: 'Jane',
+						lastName: 'Roe',
+						globalRole: { slug: 'global:admin', displayName: 'Admin' },
+					},
+				],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			// Jane already has access, and the merged row offers no way to undo an add.
+			expect(getByTestId('project-members-select').getAttribute('data-user-ids')).toBe(
+				'current-user',
+			);
+		});
+
+		it('ignores a remove action for a member who has no relation', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [ownerImplicitMember],
+			};
+			const removeSpy = vi.spyOn(projectsStore, 'removeMember').mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			emitters.projectMembersTable.emit('action', {
+				action: 'remove',
+				userId: ownerImplicitMember.id,
+			});
+			await nextTick();
+
+			expect(removeSpy).not.toHaveBeenCalled();
+			expect(getByTestId('members-count').textContent).toBe('2');
+		});
+
+		it('counts implicit members towards the search threshold and filters them', async () => {
+			const relations = Array.from({ length: 9 }, (_, i) => ({
+				id: `relation-${i}`,
+				firstName: `Member${i}`,
+				lastName: 'Relation',
+				email: `member${i}@example.com`,
+				role: 'project:editor',
+			}));
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				relations,
+				implicitMembers: [ownerImplicitMember],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('10');
+
+			const search = getByTestId('project-members-search');
+			await userEvent.type(getInput(search), 'Olive');
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('1');
 		});
 	});
 });
