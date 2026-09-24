@@ -172,7 +172,11 @@ function errorText(error: unknown): string {
 	if (isAttachmentValidationError(error)) {
 		return '⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.';
 	}
-	if (isRecord(error) && error.message === 'Output blocked by content filtering policy') {
+	if (
+		isRecord(error) &&
+		typeof error.message === 'string' &&
+		error.message.includes('Output blocked by content filtering policy')
+	) {
 		return `⚠️ ${error.message}`;
 	}
 	if (error instanceof UserError) {

@@ -706,6 +706,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				error: new Error('Output blocked by content filtering policy'),
 				expected: '⚠️ Output blocked by content filtering policy',
 			},
+			{
+				error: new Error('Provider error: Output blocked by content filtering policy.'),
+				expected: '⚠️ Provider error: Output blocked by content filtering policy.',
+			},
 		])('shows the reason when the run throws: $error.message', async ({ error, expected }) => {
 			const { bot, handlers } = makeBot();
 			const agentExecutor = {
