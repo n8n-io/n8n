@@ -1,5 +1,5 @@
 import { WorkflowsConfig } from '@n8n/config';
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowPublicationOutboxCleanupService } from './workflow-publication-outbox-cleanup.service';
@@ -12,10 +12,9 @@ import { WorkflowPublicationOutboxCleanupService } from './workflow-publication-
 export class WorkflowPublicationOutboxCleanupTask implements SystemTask {
 	readonly name = 'publication-outbox-cleanup';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: this.workflowsConfig.publicationOutboxCleanupIntervalSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(
+		this.workflowsConfig.publicationOutboxCleanupIntervalSeconds,
+	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 

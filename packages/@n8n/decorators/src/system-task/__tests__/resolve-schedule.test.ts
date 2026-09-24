@@ -1,4 +1,6 @@
 import {
+	intervalFromMilliseconds,
+	intervalFromSeconds,
 	resolveSystemTaskSchedule,
 	type SystemTask,
 	type SystemTaskSchedule,
@@ -59,3 +61,26 @@ it('should return a cron schedule unchanged', () => {
 
 	expect(resolveSystemTaskSchedule(taskWith(cron))).toBe(cron);
 });
+
+it('should build an interval schedule from seconds', () => {
+	expect(intervalFromSeconds(90)).toEqual({ kind: 'interval', intervalSeconds: 90 });
+});
+
+it.each([0.5, 90.4, 0, -1, Number.NaN])('should reject an interval of %s seconds', (seconds) => {
+	expect(() => intervalFromSeconds(seconds)).toThrow('not a positive integer');
+});
+
+it.each([
+	[500, 0.5],
+	[1000, 1],
+	[300_000, 300],
+	[245_999.99999999997, 245.99999999999997],
+])(
+	'should build an interval schedule of %s milliseconds as %s seconds',
+	(milliseconds, seconds) => {
+		expect(intervalFromMilliseconds(milliseconds)).toEqual({
+			kind: 'interval',
+			intervalSeconds: seconds,
+		});
+	},
+);

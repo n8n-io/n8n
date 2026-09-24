@@ -3,6 +3,7 @@ import {
 	MAX_INTEGER_32BITS_SIGNED,
 	ScheduledJobMisfirePolicy,
 	Time,
+	type IntervalDefinition,
 	type OneOffDefinition,
 	type ScheduleDefinition,
 } from '@n8n/constants';
@@ -151,6 +152,25 @@ export function validateSystemTask(task: SystemTask): void {
 			extra: { name: task.name, retryDelaySeconds },
 		});
 	}
+}
+
+/**
+ * An interval schedule firing every `seconds`.
+ *
+ * @throws {UnexpectedError} when `seconds` is not a positive integer. Use {@link intervalFromMilliseconds} for a fractional interval.
+ */
+export function intervalFromSeconds(seconds: number): IntervalDefinition {
+	if (!Number.isInteger(seconds) || seconds < 1) {
+		throw new UnexpectedError('A system task interval in seconds is not a positive integer', {
+			extra: { seconds },
+		});
+	}
+	return { kind: 'interval', intervalSeconds: seconds };
+}
+
+/** An interval schedule firing every `milliseconds`, which may be under a second or fractional. */
+export function intervalFromMilliseconds(milliseconds: number): IntervalDefinition {
+	return { kind: 'interval', intervalSeconds: milliseconds / Time.seconds.toMilliseconds };
 }
 
 /**

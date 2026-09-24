@@ -1,5 +1,5 @@
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InsightsPruningService } from './insights-pruning.service';
@@ -13,10 +13,9 @@ import { InsightsConfig } from './insights.config';
 export class InsightsPruningTask implements SystemTask {
 	readonly name = 'insights-pruning';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: this.insightsConfig.pruneCheckIntervalHours * Time.hours.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(
+		this.insightsConfig.pruneCheckIntervalHours * Time.hours.toMilliseconds,
+	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 

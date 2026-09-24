@@ -1,6 +1,6 @@
 import { WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowHistoryCompactionService } from './workflow-history-compaction.service';
@@ -15,10 +15,9 @@ export class WorkflowHistoryCompactionOptimizeTask implements SystemTask {
 
 	// Optimization runs twice per optimizing window, so first and last versions
 	// of a window are covered redundantly across restarts and small gaps.
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: (this.config.optimizingTimeWindowHours / 2) * Time.hours.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(
+		(this.config.optimizingTimeWindowHours / 2) * Time.hours.toMilliseconds,
+	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
