@@ -1224,6 +1224,7 @@ describe('invokeWebhook', () => {
 	it('returns webhook data and emits the success event', async () => {
 		const webhookResultData = { workflowData: [[{ json: { ok: true } }]] };
 		webhookService.runWebhook.mockResolvedValue(webhookResultData);
+		const responseCallback = vi.fn();
 
 		const result = await invokeWebhook({
 			workflow,
@@ -1233,14 +1234,23 @@ describe('invokeWebhook', () => {
 			executionMode: 'webhook',
 			runExecutionData: undefined,
 			webhookType: 'Webhook',
-			responseCallback: vi.fn(),
+			responseCallback,
 		});
 
+		expect(webhookService.runWebhook).toHaveBeenCalledWith(
+			workflow,
+			webhookData,
+			workflowStartNode,
+			additionalData,
+			'webhook',
+			null,
+		);
 		expect(result).toEqual({
 			webhookResultData,
 			didSendResponse: false,
 			runExecutionDataChanges: {},
 		});
+		expect(responseCallback).not.toHaveBeenCalled();
 		expect(workflowStatisticsService.emit).toHaveBeenCalledWith('nodeFetchedData', {
 			workflowId: WORKFLOW_ID,
 			node: workflowStartNode,
@@ -1285,6 +1295,10 @@ describe('invokeWebhook', () => {
 		expect(result.runExecutionDataChanges.resultData).toEqual(
 			expect.objectContaining({ lastNodeExecuted: 'Webhook', error: expect.any(Object) }),
 		);
+		expect(workflowStatisticsService.emit).not.toHaveBeenCalledWith(
+			'nodeFetchedData',
+			expect.any(Object),
+		);
 	});
 
 	it('normalizes and reports non-error rejections', async () => {
@@ -1303,6 +1317,10 @@ describe('invokeWebhook', () => {
 
 		expect(Container.get(ErrorReporter).error).toHaveBeenCalledWith(
 			expect.any(Error),
+			expect.any(Object),
+		);
+		expect(workflowStatisticsService.emit).not.toHaveBeenCalledWith(
+			'nodeFetchedData',
 			expect.any(Object),
 		);
 	});
