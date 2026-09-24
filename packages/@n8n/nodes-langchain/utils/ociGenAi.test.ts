@@ -836,6 +836,24 @@ describe('OCI input validation', () => {
 			expect(listModels).toHaveBeenCalledTimes(1);
 		});
 
+		it('does not reuse a catalog response across different egress filters', async () => {
+			listModels.mockResolvedValue({
+				modelCollection: { items: [] },
+				opcNextPage: undefined,
+			});
+			const request = {
+				compartmentId: 'ocid1.compartment.oc1..test',
+				capability: ociModels.ModelCapability.Chat,
+			};
+			const differentEgressFilter: NodeEgressFilter = { ...secureEgressFilter };
+
+			await getCachedOciGenAiModelCatalogPage(ociCredentials, request, secureEgressFilter);
+			await getCachedOciGenAiModelCatalogPage(ociCredentials, request, differentEgressFilter);
+
+			expect(generativeAiClient).toHaveBeenCalledTimes(2);
+			expect(listModels).toHaveBeenCalledTimes(2);
+		});
+
 		it('forwards and caches a valid pagination token as a separate catalog page', async () => {
 			listModels
 				.mockResolvedValueOnce({

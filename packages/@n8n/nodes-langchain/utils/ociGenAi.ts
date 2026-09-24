@@ -904,6 +904,8 @@ export async function getCachedOciGenAiModelCatalogPage(
 		compartmentId,
 		normalizedVendor,
 		capability,
+		// Catalog results are scoped to the same egress policy as the request that fetched them.
+		getEgressFilterCacheIdentity(egressFilter),
 	]);
 	const cachedCatalog = getModelCatalogCache(cacheKey, Date.now());
 	const pageKey = exactModelId === undefined ? (paginationToken ?? '') : `id:${exactModelId}`;
