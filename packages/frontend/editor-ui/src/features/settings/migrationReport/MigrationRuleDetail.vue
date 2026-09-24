@@ -29,6 +29,7 @@ import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import HowToFixPanel from './components/HowToFixPanel.vue';
 import SeverityTag from './components/SeverityTag.vue';
 
 const i18n = useI18n();
@@ -285,6 +286,15 @@ const sortedWorkflows = computed(() => {
 			</template>
 		</header>
 
+		<!-- Resolution guidance sits with the rule info, capped to the header width. -->
+		<div v-if="!isLoading" :class="[$style.pageHeader, $style.howToFix]">
+			<HowToFixPanel
+				:recommendations="state.recommendations"
+				:documentation-url="state.ruleDocumentationUrl"
+				:migratable="state.migratable"
+			/>
+		</div>
+
 		<!-- Search and Filter Controls -->
 		<div :class="$style.filterControls">
 			<N8nInput
@@ -388,6 +398,10 @@ const sortedWorkflows = computed(() => {
 	width: 100%;
 	max-width: var(--settings-content--max-width, 45rem);
 	margin-inline: auto;
+}
+
+.howToFix {
+	margin-block: var(--spacing--md);
 }
 
 .clickableRow {
