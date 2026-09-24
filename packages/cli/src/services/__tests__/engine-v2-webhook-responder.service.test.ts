@@ -65,10 +65,15 @@ describe('EngineV2WebhookResponder', () => {
 	let responder: EngineV2WebhookResponder;
 
 	beforeEach(() => {
+		vi.useFakeTimers();
 		const fake = fakeReceiver();
 		deliver = fake.deliver;
 		responder = newResponder();
 		responder.useReceiver(fake.receiver);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	it('listens under the id the run is started with', async () => {
@@ -251,6 +256,7 @@ describe('EngineV2WebhookResponder', () => {
 		impatient.useReceiver(fakeReceiver().receiver);
 
 		const pending = await impatient.waitForResponse(createExecutionIdV2());
+		await vi.advanceTimersByTimeAsync(1);
 		await expect(pending.settled).resolves.toEqual({
 			status: 'timeout',
 		});
@@ -295,6 +301,10 @@ describe('EngineV2WebhookResponder while the receiver subscribes', () => {
 		};
 	}
 
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
 	afterEach(() => {
 		vi.useRealTimers();
 	});
@@ -314,7 +324,6 @@ describe('EngineV2WebhookResponder while the receiver subscribes', () => {
 	});
 
 	it('frees the slot and the timer when the subscription fails', async () => {
-		vi.useFakeTimers();
 		const { receiver, subscriptions } = slowReceiver();
 		const responder = newResponder();
 		responder.useReceiver(receiver);
@@ -334,7 +343,6 @@ describe('EngineV2WebhookResponder while the receiver subscribes', () => {
 	});
 
 	it('gives up at the response timeout and drops a late subscription', async () => {
-		vi.useFakeTimers();
 		const { receiver, subscriptions } = slowReceiver();
 		const responder = newResponder(1_000);
 		responder.useReceiver(receiver);
