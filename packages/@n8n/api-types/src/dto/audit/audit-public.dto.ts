@@ -13,23 +13,19 @@ export const SECURITY_AUDIT_CATEGORIES = [
 	'instance',
 ] as const;
 
-export class GenerateAuditPublicDto extends Z.class(
-	{
-		additionalOptions: z
-			.object({
-				daysAbandonedWorkflow: z
-					.number()
-					.int()
-					.nonnegative()
-					.optional()
-					.openapi(auditRequestFieldDocs.daysAbandonedWorkflow),
-				categories: z.array(z.enum(SECURITY_AUDIT_CATEGORIES)).optional(),
-			})
-			.strict()
-			.optional(),
-	},
-	{ strict: true },
-) {
+export class GenerateAuditPublicDto extends Z.class({
+	additionalOptions: z
+		.object({
+			daysAbandonedWorkflow: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.openapi(auditRequestFieldDocs.daysAbandonedWorkflow),
+			categories: z.array(z.enum(SECURITY_AUDIT_CATEGORIES)).optional(),
+		})
+		.optional(),
+}) {
 	// Every field is optional, so an omitted body should generate the default audit
 	static override safeParse(data: unknown) {
 		return super.safeParse(data ?? {});

@@ -30,8 +30,6 @@ requestBody:
                     - nodes
                     - filesystem
                     - instance
-            additionalProperties: false
-        additionalProperties: false
 responses:
   '200':
     description: Operation successful.

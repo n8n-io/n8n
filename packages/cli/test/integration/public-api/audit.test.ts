@@ -111,15 +111,20 @@ describe('POST /audit', () => {
 		expect(response.body).toEqual([]);
 	});
 
-	test('rejects an unknown request field', async () => {
+	test('ignores an unknown request field', async () => {
+		simulateUpToDateInstance();
+
 		const response = await testServer
 			.publicApiAgentFor(scopedOwner)
 			.post('/audit')
 			.send({ unknown: true })
-			.expect(400);
+			.expect(200);
 
 		expect(response.body).toEqual({
-			message: "request/body Unrecognized key(s) in object: 'unknown'",
+			'Instance Risk Report': {
+				risk: 'instance',
+				sections: [expect.objectContaining({ title: 'Security settings' })],
+			},
 		});
 	});
 
