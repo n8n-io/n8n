@@ -19,7 +19,7 @@ import {
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
-import type { AiGatewayConfigDto, AiPreferenceDto } from '@n8n/api-types';
+import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
@@ -83,7 +83,6 @@ import type {
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
-	InstanceAiPreferenceWriteResult,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
 	ExecuteNodeResult as InstanceAiExecuteNodeResult,
@@ -147,10 +146,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
@@ -179,6 +175,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
@@ -326,31 +323,6 @@ function toTelemetryReason(
 		default:
 			return reason;
 	}
-}
-
-type PreferenceWriteRejection = Extract<InstanceAiPreferenceWriteResult, { ok: false }>;
-
-/** The tool package cannot import cli error classes, so the boundary speaks in reasons.
- *  A 4xx message is written for a person and passes through; anything else stays internal. */
-function toPreferenceWriteRejection(error: unknown): PreferenceWriteRejection {
-	if (error instanceof AiPreferenceScopeFullError) {
-		return { ok: false, reason: 'scope_full', message: error.message, ...error.meta };
-	}
-	if (error instanceof ConflictError) {
-		return { ok: false, reason: 'duplicate', message: error.message };
-	}
-	if (error instanceof ForbiddenError) {
-		return { ok: false, reason: 'not_permitted', message: error.message };
-	}
-	if (isExpectedPreferenceRefusal(error)) {
-		return { ok: false, reason: 'failed', message: error.message };
-	}
-	return { ok: false, reason: 'failed', message: 'The preference could not be saved.' };
-}
-
-/** A client error the service raised on purpose, not a fault in the code. */
-function isExpectedPreferenceRefusal(error: unknown): error is ResponseError {
-	return error instanceof ResponseError && error.httpStatusCode < 500;
 }
 
 // Credential types are loaded once at boot, so the derived host index is
@@ -732,58 +704,19 @@ export class InstanceAiAdapterService {
 
 		return {
 			create: async ({ content, scope }) => {
-				const textLength = content.length;
-				// Only the write sits in the try: a telemetry fault after a committed row
-				// must not turn into `ok: false`, or the model reports a failed save and
-				// a retry runs into the duplicate check.
-				let dto: AiPreferenceDto;
-				try {
-					dto = await aiPreferenceService.create(user, { content, scope }, 'aia');
-				} catch (error) {
-					const rejection = toPreferenceWriteRejection(error);
-					// An unexpected fault keeps its message internal, so log it here.
-					if (!isExpectedPreferenceRefusal(error)) {
-						this.logger.error('Saving an AI preference from the assistant failed', { error });
-					}
-					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
-						surface: 'aia',
-						reason: rejection.reason,
-						scope_type: scope,
-						text_length: textLength,
-					});
-					return rejection;
-				}
-
-				try {
-					// Write-first: the card is the confirmation, shown after the write, and
-					// doing nothing is agreement, so shown and resolved(accepted) fire together.
-					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN, {
-						surface: 'aia',
-						scope_type: scope,
-						text_length: textLength,
-					});
-					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
-						surface: 'aia',
-						outcome: 'accepted',
-						scope_type: scope,
-						text_length: textLength,
-					});
-					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
-						surface: 'aia',
-						offered_scope: scope,
-						accepted_scope: scope,
-						scope_changed: false,
-					});
-					this.telemetry.track(TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE, {
-						surface: 'aia',
-						scope_type: scope,
-						text_length: textLength,
-						replaced_existing: false,
-					});
-				} catch (error) {
-					this.logger.warn('Preference telemetry failed after the row was saved', { error });
-				}
-				return { ok: true, preference: { id: dto.id, content: dto.content, scope } };
+				// The write, the refusal mapping and the events are shared with the MCP tool.
+				const result = await writeAssistantPreference({
+					aiPreferenceService,
+					telemetry: this.telemetry,
+					logger: this.logger,
+					user,
+					surface: 'aia',
+					content,
+					scope,
+				});
+				if (!result.ok) return result;
+				const { id, content: saved } = result.preference;
+				return { ok: true, preference: { id, content: saved, scope } };
 			},
 			recordRejection: (reason, textLength) => {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {

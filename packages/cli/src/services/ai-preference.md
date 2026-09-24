@@ -35,6 +35,52 @@ every write, so a new write path that forgets to name one fails instead of recor
 silent `ui`. The telemetry and the settings list use this column to tell an assistant
 write from a person's own write.
 
+## Writes without a scope in hand
+
+`updateContent(user, id, content)` replaces the text and keeps the scope where it is. It
+serves callers that hold an id and no scope, such as an MCP client editing a row that
+`get_user_preferences` returned; `update()` needs the full request and would read a missing
+scope as a move. It reaches only the caller's own personal rows. A project row, an instance
+row or another user's row answers like a missing row, whatever the role: those rules apply to
+other people, and the settings area owns them.
+
+`undoWrite(user, id, source)` removes a row only when the named surface created it for the
+caller and it is still the caller's personal row: `source`, `createdById` and `userId` must
+all match. A row the person has since moved to a project or the instance is out of reach,
+whatever their role. It is the undo of an assistant write,
+narrower than `delete()` on purpose, so a client can take back what it saved and nothing the
+person wrote by hand. A row that fails the check answers like one that does not exist.
+
+## The assistant write
+
+Every assistant surface writes through `writeAssistantPreference` in
+[`ai-preference-write.ts`](./ai-preference-write.ts): the n8n Assistant tool with
+`surface: 'aia'` and the MCP tool with `surface: 'mcp'`. It sets `source`, maps a refusal
+to one of six reasons (`too_long`, `scope_full`, `duplicate`, `not_permitted`,
+`blocked_by_admin`, `failed`) and fires the events, so the two surfaces cannot drift.
+A `scope_full` refusal carries `limit` and `actual` from `AiPreferenceScopeFullError`.
+Any other 4xx passes its message through as `failed`. A 5xx or a plain error keeps its
+message internal and is logged.
+
+## The MCP write tools
+
+Three tools in `packages/cli/src/modules/mcp/tools/`, all behind the `aiPreference:write`
+OAuth scope and the `CONTEXT_PREFERENCES_FLAG`:
+
+| Tool | Does |
+| --- | --- |
+| `save_user_preference` | Creates a personal preference with `source` set to `mcp`, at once, with no confirmation gate. The result names the saved text, the id and the settings page. |
+| `update_user_preference` | Replaces the text of a row by id, through `updateContent`. |
+| `undo_user_preference` | Removes a row through `undoWrite`, so only what MCP saved for this user. |
+
+On a client that declares the elicitation capability, the save follows the write with one
+form: the saved text, prefilled and editable. It is the second round of the same
+`tools/call` (multi-round-trip elicitation, revision 2026-07-28); the row id travels in
+`requestState`, and the retry re-authorizes through the service. Accept keeps the text as
+shown, edited or not. Decline removes the row: every client offers that answer, and a press
+after the write means "not this one". A cancelled form keeps the row, because a client with
+no way to show the form answers cancel on its own, and silence must not delete data.
+
 ## Who may read and write
 
 `AiPreferenceService` holds the rules for every surface, and the REST controller adds
@@ -119,6 +165,13 @@ applied here", and the chat and the plus menu read it rather than deriving an an
 `GET /rest/ai-preferences`, which lists every visible row and knows nothing about the
 turn.
 
+The payload names rows by id and scope, not by text. The plus menu reads the latest
+payload from `GET /rest/instance-ai/threads/:threadId/messages`, which carries it as
+`appliedPreferences`, and from the live event after that. It then resolves the display text
+with `GET /rest/ai-preferences?ids=`, which narrows the same visibility rules to the named
+rows and never widens them. The menu keeps a row the lookup does not return and marks it
+as removed, so the list the user sees stays the list the turn carried.
+
 See
 [the streaming protocol](../../../@n8n/instance-ai/docs/streaming-protocol.md#preferences-applied)
 for the frame, and `buildAppliedPreferencesPayload` in
@@ -132,6 +185,14 @@ area. Six more cover the assistant paths: the preferences applied to a turn, an 
 write, the confirmation shown and answered, the scope accepted against the scope offered,
 and a refused write with its reason. The `get_user_preferences` MCP tool reports the count
 and the scopes it returned on the existing tool event.
+
+The MCP write tools fire the same events with `surface` set to `mcp`, through the shared
+write. A removal from the review form, or through the undo tool, is `User deleted
+preferences` with `source` set to `rejected`, as the chat card reports its Undo, and carries
+`seconds_since_saved`; a declined form counts as a removal. An edit from the form is
+`accepted_after_edit`. A cancelled form fires
+no event of its own; the tool event records it, along with whether the client declared
+elicitation at all.
 
 Run `pnpm --filter @n8n/telemetry catalog` to read the registered events and their
 properties. No event carries preference text. The events report lengths, counts and

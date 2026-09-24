@@ -51,6 +51,7 @@ import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
 	createAgent,
+	createAgentTask,
 	deleteAgent,
 	listAgentFiles,
 	uploadAgentFiles,
@@ -98,8 +99,17 @@ import {
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
+import {
+	AGENT_TEMPLATES,
+	AGENT_TEMPLATE_SUGGESTIONS_VERSION,
+	applyAgentTemplate,
+	isAgentConfigBlank,
+	type AgentTemplate,
+} from '../agentTemplates';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
+import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -120,6 +130,8 @@ import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/inst
 import AgentBuildingIndicator from '@/features/ai/instanceAi/components/AgentBuildingIndicator.vue';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useAgentCollaborationStore } from '../stores/agentCollaboration.store';
+import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 import { hasBlockingIssues } from '../utils/validationIssues';
@@ -184,6 +196,8 @@ const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
+const agentCollaborationStore = useAgentCollaborationStore();
+useActivityDetection(agentCollaborationStore);
 const { isCtrlKeyPressed } = useDeviceSupport();
 
 // No design tokens cover these layout widths. Keep the editor usable while the
@@ -264,6 +278,9 @@ const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey,
 // `isRouteAgentPending` to false, which must not close the panel out from
 // under the user — so the default is snapshotted per agent instead of reread live.
 const openedForPendingAgent = ref(isRouteAgentPending.value);
+/** A starter template was applied; latches the intro closed even if a config
+ * refetch momentarily restores a blank config. No chip is shown for this. */
+const templateApplied = ref(false);
 watch([projectId, agentId], () => {
 	taskPreviewPrompt.value = undefined;
 });
@@ -274,6 +291,7 @@ watch(agentId, () => {
 	// `initialize()` watcher) reflects the new agent instead of the mounted one.
 	routePendingAgentId.value = readPendingAgentIdFromHistory();
 	openedForPendingAgent.value = isRouteAgentPending.value;
+	templateApplied.value = false;
 });
 const isAiPanelOpen = computed({
 	get: () => storedAiPanelOpen.value ?? (openedForPendingAgent.value && instanceAiReady.value),
@@ -313,7 +331,6 @@ watch(aiPanelRef, (panel) => {
 	queuedAiHandoff.value = null;
 	panel.handoff(context, initialDraft);
 });
-const isEditingLocked = computed(() => props.artifactEditingLocked || embeddedAiBuilding.value);
 const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
 type SidePanel = 'assistant' | 'preview';
 const preferredSidePanel = ref<SidePanel>('assistant');
@@ -438,12 +455,34 @@ const {
 	canDelete: canDeleteAgent,
 	canExecute: canExecuteAgent,
 } = useAgentPermissions(projectId);
-// Combines permission with the build lock: while the AI (the artifact-mode
-// host or the embedded panel) is actively building/mutating this agent,
-// editing is disabled even for a user who otherwise has permission — mirrors
-// the workflow artifact's read-only lock during a build.
+// True while writes from this tab must not reach the backend: the AI is
+// mutating this agent (artifact build lock or the embedded assistant), or
+// another client holds the collaboration write lock (multi-tab / multi-user).
+// Every write path — the editor, the header actions, and the autosave loops —
+// keys off this.
+const isEditingLocked = computed(
+	() =>
+		props.artifactEditingLocked ||
+		embeddedAiBuilding.value ||
+		agentCollaborationStore.shouldBeReadOnly,
+);
+// Combines permission with the lock: while locked, editing is disabled even
+// for a user who otherwise has permission — mirrors the workflow artifact's
+// read-only lock during a build.
 const effectiveCanEditAgent = computed(() => canEditAgent.value && !isEditingLocked.value);
 const canDeletePreviewSession = computed(() => canEditAgent.value);
+
+// The intro is for a first build only: a new agent, still blank, editable, and
+// no template applied yet. A successful apply makes the config non-blank, so
+// the intro cannot come back after a reload either.
+const showAgentIntro = computed(
+	() =>
+		openedForPendingAgent.value &&
+		effectiveCanEditAgent.value &&
+		!templateApplied.value &&
+		localConfig.value !== null &&
+		isAgentConfigBlank(localConfig.value),
+);
 
 const isVersionHistoryOpen = ref(false);
 
@@ -1244,8 +1283,9 @@ async function handleAutosaveConflict(snapshot: {
 }
 
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveResult> {
-	// The AI may be mutating this agent right now — a save queued just before
-	// the lock engaged must not persist its now-stale full config over it.
+	// The AI or another client may be mutating this agent right now — a save
+	// queued just before the lock engaged must not persist its now-stale full
+	// config over it.
 	if (isEditingLocked.value) return 'skipped';
 	await ensureAgentPersisted();
 	let result;
@@ -1394,6 +1434,8 @@ const mcpAutosave = useAgentConfigAutosave<McpAvailabilitySnapshot>({
 
 function onToggleMcpAccess(enabled: boolean) {
 	if (!agent.value) return;
+	// Acquire the write lock before persisting any change.
+	agentCollaborationStore.requestWriteAccess();
 	mcpAvailabilityOverride.value = enabled;
 	mcpAutosave.scheduleAutosave({
 		type: 'mcp',
@@ -1426,9 +1468,18 @@ async function settleAutosave() {
 	]);
 }
 
+/** Acquire the write lock, then settle pending autosaves before a
+ * revert-to-published. The lock is lazy — acquired on first mutating
+ * action, released on inactivity — matching the workflow pattern. */
+async function beforeRevertToPublished() {
+	agentCollaborationStore.requestWriteAccess();
+	await settleAutosave();
+}
+
 async function flushAutosave() {
-	// Locked means the AI is mutating this agent right now — flushing a
-	// pending edit here would persist a stale full config over its writes.
+	// Locked means the AI or another client is mutating this agent right now —
+	// flushing a pending edit here would persist a stale full config over
+	// their writes.
 	if (isEditingLocked.value) {
 		configAutosave.cancelPendingAutosave();
 		skillAutosave.cancelPendingAutosave();
@@ -1481,19 +1532,14 @@ async function beforePreviewSend() {
 }
 
 // Makes the lock a write boundary rather than only a disabled UI state: drop
-// any autosave queued before the AI started mutating this agent.
-watch(
-	() => isEditingLocked.value,
-	(locked) => {
-		if (!locked) return;
-		configAutosave.cancelPendingAutosave();
-		skillAutosave.cancelPendingAutosave();
-		mcpAutosave.cancelPendingAutosave();
-		// The dropped toggle never persisted — don't leave its optimistic value
-		// showing once the lock releases.
-		mcpAvailabilityOverride.value = null;
-	},
-);
+// any autosave queued before the AI or another client took over this agent.
+watch(isEditingLocked, (locked) => {
+	if (!locked) return;
+	configAutosave.cancelPendingAutosave();
+	skillAutosave.cancelPendingAutosave();
+	mcpAutosave.cancelPendingAutosave();
+	mcpAvailabilityOverride.value = null;
+});
 
 /**
  * Authoritative pre-publish gate for the frontend: flush any pending edit so
@@ -1503,6 +1549,8 @@ watch(
  * re-validates independently, so this is a UX affordance, not the only guard.
  */
 async function refreshValidationBeforePublish(): Promise<boolean> {
+	// Acquire the write lock before publishing — the lock is lazy.
+	agentCollaborationStore.requestWriteAccess();
 	try {
 		await flushAutosave();
 	} catch {
@@ -1525,6 +1573,10 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }) {
 	if (!localConfig.value) return;
+	// Acquire the write lock before persisting any change — the lock is
+	// lazy (acquired on first edit, released on inactivity), matching the
+	// workflow collaboration pattern.
+	agentCollaborationStore.requestWriteAccess();
 	// The persisted validation result no longer reflects the working copy —
 	// Publish must not stay enabled against a result that predates this edit.
 	invalidateConfigValidation();
@@ -1569,6 +1621,8 @@ const caps = useAgentCapabilitiesActions({
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
+		// Acquire the write lock before persisting any change.
+		agentCollaborationStore.requestWriteAccess();
 		// The persisted validation result no longer reflects the working copy —
 		// mirrors `onConfigFieldUpdate`'s invalidation before scheduling a config autosave.
 		invalidateConfigValidation();
@@ -1603,6 +1657,119 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
 		baseConfigHash: configHash.value,
 	});
+}
+
+// Apply a starter template to a blank agent: writes instructions and tools,
+// pre-connects any channel triggers, creates scheduled tasks, and sends the
+// template prompt to the assistant so it starts building right away. Refuses
+// (with a toast) once the agent already has content — the intro is for a first build.
+async function onApplyTemplate(template: AgentTemplate) {
+	if (!localConfig.value) return;
+	const next = applyAgentTemplate(
+		localConfig.value,
+		template,
+		locale.baseText('agents.new.defaultName'),
+	);
+	if (!next) {
+		showMessage({
+			title: locale.baseText('agents.builder.templates.notBlank.title'),
+			message: locale.baseText('agents.builder.templates.notBlank.message'),
+			type: 'warning',
+		});
+		return;
+	}
+	replaceConfigAndScheduleSave(next);
+	// Derive trigger chips from the template's draft integrations so the two
+	// stay in sync — a template can't declare chips without the matching
+	// integration entry.
+	connectedTriggers.value = (template.config.integrations ?? []).map((i) => i.type);
+	templateApplied.value = true;
+	// Persist the agent and flush the config autosave before sending the chat
+	// message. The chat's `beforeSend` hook calls `flushAutosave` too — if we
+	// send first, a failed save (e.g. invalid tool fields in draft mode)
+	// rejects `beforeSend` and the chat message is never sent. Flushing here
+	// drains the queue so `beforeSend` resolves immediately.
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	try {
+		await ensureAgentPersisted();
+		await flushAutosave();
+	} catch {
+		// Invalid tool fields are expected in draft mode; the chat message
+		// should still reach the assistant.
+	}
+	// The user may have opened another agent while the save was in flight.
+	// The panel ref now belongs to that agent, so this prompt must not follow.
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	// Task creation writes the task ref into the server config and changes its
+	// hash. Reload that config before the assistant prompt: the tasks counter
+	// only refreshes task bodies, and the update push skips this tab. A later
+	// edit would otherwise save against the old hash, get a 409, and lose the
+	// change when the conflict reload lands.
+	if (template.tasks?.length) {
+		let tasksCreated = false;
+		try {
+			await ensureAgentPersisted();
+			for (const task of template.tasks) {
+				if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+				await createAgentTask(rootStore.restApiContext, targetProjectId, targetAgentId, {
+					...task,
+					enabled: true,
+				});
+				tasksCreated = true;
+			}
+		} catch (error) {
+			if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+				showError(error, locale.baseText('agents.builder.tasks.saveError'));
+			}
+		}
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		// A created task already changed the hash. Do not prompt the assistant
+		// until this tab has reloaded that config.
+		if (tasksCreated) {
+			const refreshed = await refreshConfigAfterTemplateTasks(targetProjectId, targetAgentId);
+			if (!refreshed || isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		}
+	}
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	const templateIndex = AGENT_TEMPLATES.findIndex((entry) => entry.id === template.id);
+	// Send the template prompt to the assistant right away so it starts
+	// building. The prompt format is "Build {name} agent to {description}".
+	// Catalog positions are one-based, matching the home-screen suggestion list.
+	aiPanelRef.value?.submitSuggestion({
+		prompt: locale.baseText('agents.builder.templates.prompt', {
+			interpolate: {
+				name: locale.baseText(template.labelKey),
+				description: locale.baseText(template.descriptionKey),
+			},
+		}),
+		suggestionId: template.id,
+		suggestionKind: 'prompt',
+		position: templateIndex >= 0 ? templateIndex + 1 : 0,
+		suggestionCatalogVersion: AGENT_TEMPLATE_SUGGESTIONS_VERSION,
+		prefillType: 'template_adjustment',
+	});
+}
+
+/** Reload the config after task creation. One retry, then stop. */
+async function refreshConfigAfterTemplateTasks(
+	targetProjectId: string,
+	targetAgentId: string,
+): Promise<boolean> {
+	let lastError: unknown;
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+		try {
+			await onConfigUpdated();
+			return !isStaleAgentTarget(targetProjectId, targetAgentId);
+		} catch (error) {
+			lastError = error;
+		}
+	}
+	if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+		showError(lastError, locale.baseText('agents.builder.tasks.saveError'));
+	}
+	return false;
 }
 
 function persistMissingPersonalisationGradient() {
@@ -2199,6 +2366,13 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			initialized.value = true;
 			void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
 			warmAgentKnowledgeSandboxForPage();
+			// Acquire the collaboration write lock for the first opener. Only the
+			// standalone builder participates in multi-tab/multi-user locking —
+			// artifact mode is the AI builder, which has its own lock, and the
+			// standalone preview has no editing controls.
+			if (!isArtifactMode.value && !isStandalonePreview.value && !isUnsaved.value) {
+				void agentCollaborationStore.initialize(projectId.value, agentId.value);
+			}
 		}
 	}
 }
@@ -2229,7 +2403,29 @@ watch(
 	{ immediate: true },
 );
 
-onBeforeUnmount(() => {
+// Builder and preview share the same component, so switching between them
+// does not unmount and release the write lock. Release it when entering
+// preview (no editing controls) and reacquire when returning to the builder.
+watch(isStandalonePreview, (isPreview, wasPreview) => {
+	if (isPreview === wasPreview || isArtifactMode.value) return;
+	if (isPreview) {
+		agentCollaborationStore.terminate();
+	} else if (initialized.value && !isUnsaved.value) {
+		void agentCollaborationStore.initialize(projectId.value, agentId.value);
+	}
+});
+
+// Browser tab close does not run Vue's onBeforeUnmount, so the collaboration
+// lock would linger until its TTL expires. Release it during beforeunload
+// while the WebSocket is still alive to deliver the agentClosed message.
+// terminate() is idempotent, so a double call with onBeforeUnmount is safe.
+useEventListener(window, 'beforeunload', () => {
+	if (!isArtifactMode.value && !isStandalonePreview.value) {
+		agentCollaborationStore.terminate();
+	}
+});
+
+onBeforeUnmount(async () => {
 	disposed = true;
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
@@ -2238,7 +2434,21 @@ onBeforeUnmount(() => {
 	clearTimeout(externalRefreshTimer);
 	clearExternalUpdate();
 	sessionsStore.stopAutoRefresh();
-	void flushAutosave().catch(() => {});
+	// Drain pending saves before releasing the write lock so in-flight
+	// writes land while this tab still holds the lock. Without this,
+	// terminate() releases the lock immediately and the backend accepts
+	// the queued saves after release — a new writer or Instance AI mutation
+	// can then be overwritten by stale config or MCP state.
+	if (!isArtifactMode.value) {
+		try {
+			await flushAutosave();
+		} catch {
+			// best-effort flush; the lock is still released below
+		}
+		agentCollaborationStore.terminate();
+	} else {
+		void flushAutosave().catch(() => {});
+	}
 });
 
 // If the user is on Preview before the sessions list finishes loading, latch onto
@@ -2440,7 +2650,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:project-name="projectName"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
-			:before-revert-to-published="settleAutosave"
+			:before-revert-to-published="beforeRevertToPublished"
 			:artifact-mode="isArtifactMode"
 			:editing-locked="isEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
@@ -2455,6 +2665,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
+		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
 			v-if="!isArtifactMode && instanceAiAvailable && !isAiPanelOpen"
 			:class="$style.aiToggleBar"
@@ -2536,7 +2747,11 @@ function onSwitchAgent(nextAgentId: string) {
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
 						@close="isAiPanelOpen = false"
-					/>
+					>
+						<template v-if="showAgentIntro" #empty>
+							<AgentBuilderIntro @select="onApplyTemplate" />
+						</template>
+					</InstanceAiChatPanel>
 				</N8nResizeWrapper>
 			</aside>
 			<AgentBuildingIndicator v-if="embeddedAiBuilding" />
@@ -2622,6 +2837,7 @@ function onSwitchAgent(nextAgentId: string) {
 						Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
 					"
 					:agent-name="agent?.name ?? agentName"
+					:editing-locked="isEditingLocked"
 					@close="onCloseVersionHistory"
 					@reverted="onReverted"
 					@published="onPublished"

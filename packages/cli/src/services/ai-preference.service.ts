@@ -173,11 +173,16 @@ export class AiPreferenceService {
 	}
 
 	/** The instance rows, the caller's rows, the rows of readable projects and, for admins, every user's rows. */
-	async list(user: User, page: { skip: number; take: number }): Promise<AiPreferenceListDto> {
+	async list(
+		user: User,
+		page: { skip: number; take: number; ids?: string[] },
+	): Promise<AiPreferenceListDto> {
 		const access = this.projectAccess(user);
 		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
 			...(await this.visibleTo(user, access)),
-			...page,
+			skip: page.skip,
+			take: page.take,
+			...(page.ids ? { ids: page.ids } : {}),
 		});
 
 		return {
@@ -250,12 +255,55 @@ export class AiPreferenceService {
 		return this.toDto(saved, await this.scopesFor(user, saved, access));
 	}
 
+	/**
+	 * Replaces the text and leaves the scope where it is. For a caller that holds an id but no
+	 * scope, such as an MCP client editing what `get_user_preferences` returned: `update()` needs
+	 * the full request and would read a missing scope as a move.
+	 *
+	 * Only the caller's own personal rows. A project or instance row is a shared rule that applies
+	 * to other people, and the settings area owns it, as in `undoWrite()`. A row that fails the
+	 * check answers like a row that does not exist.
+	 */
+	async updateContent(user: User, id: string, content: string): Promise<AiPreferenceDto> {
+		const access = this.projectAccess(user);
+		const row = await this.requireVisible(user, id, access);
+		if (row.userId !== user.id) {
+			throw new NotFoundError(`Preference with id ${id} is not one of your personal preferences`);
+		}
+		await this.assertCanWrite(user, row, 'update', access);
+		if (row.content !== content) await this.assertNotDuplicate(row, content, row.id);
+
+		row.content = content;
+		const saved = await this.aiPreferenceRepository.save(row);
+		return this.toDto(saved, await this.scopesFor(user, saved, access));
+	}
+
 	async delete(user: User, id: string): Promise<void> {
 		const access = this.projectAccess(user);
 		const row = await this.requireVisible(user, id, access);
 		await this.assertCanWrite(user, row, 'delete', access);
 
 		await this.aiPreferenceRepository.delete({ id: row.id });
+	}
+
+	/**
+	 * The undo of an assistant write: removes a row only when the named surface wrote it for this
+	 * caller. Narrower than `delete()` on purpose, so a client can take back what it saved and
+	 * nothing the person wrote by hand in settings. A row that fails the check answers like a row
+	 * that does not exist.
+	 */
+	async undoWrite(user: User, id: string, source: AiPreferenceSource): Promise<AiPreferenceDto> {
+		const access = this.projectAccess(user);
+		const row = await this.requireVisible(user, id, access);
+		// Only a personal row the surface saved for the caller. A row the person has since moved to
+		// a project or the instance is a shared rule now, and the settings area owns it.
+		if (row.source !== source || row.createdById !== user.id || row.userId !== user.id) {
+			throw new NotFoundError(`Preference with id ${id} was not saved by ${source} for you`);
+		}
+		await this.assertCanWrite(user, row, 'delete', access);
+
+		await this.aiPreferenceRepository.delete({ id: row.id });
+		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 
 	private projectAccess(user: User): ProjectAccess {

@@ -229,8 +229,10 @@ its container.
 A workflow built in the UI does not get the setting, and a workflow without it
 runs on the legacy engine. A tagged spec must therefore create its workflow
 through `api.workflows` and run it through `api.workflows.runManually`, which
-fails the test when the run did not reach engine 2.0. A tag the parity buckets
-do not know also fails the test, and names the three valid tags.
+fails the test when the run did not reach engine 2.0. A spec that starts the
+run from the UI instead calls `api.workflows.assertLatestExecutionRoutedToEngine`
+after the run, which checks the same thing. A tag the parity buckets do not
+know also fails the test, and names the three valid tags.
 
 The project only picks up specs with an `@engine:*` tag for now. Tag a spec
 `@engine:v2` once it passes on both engines; use the other two tags to track

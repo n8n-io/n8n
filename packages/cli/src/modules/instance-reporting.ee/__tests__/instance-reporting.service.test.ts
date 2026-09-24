@@ -103,7 +103,7 @@ interface Harness {
 
 function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	const reportRepository = mock<InstanceMonitoringReportRepository>();
-	reportRepository.findTodaysPending.mockResolvedValue(null);
+	reportRepository.findPending.mockResolvedValue(null);
 	// A report already covers the day before the one under test, so the default
 	// harness reports exactly one day.
 	reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-24');
@@ -424,7 +424,7 @@ describe('InstanceReportingService', () => {
 
 			await expect(service.sendReport()).rejects.toThrow();
 			// The retry picks up the still-undelivered row the first attempt created.
-			reportRepository.findTodaysPending.mockResolvedValue(makeReport({ attempts: 1 }));
+			reportRepository.findPending.mockResolvedValue(makeReport({ attempts: 1 }));
 			await service.sendReport();
 
 			expect(body(http, 1).batchId).toBe(BATCH_ID);
@@ -437,7 +437,7 @@ describe('InstanceReportingService', () => {
 				{ kind: 'cumulative', name: 'billableExecutions', value: 800 },
 				{ kind: 'daily', name: 'billableExecutions', value: 40, date: REPORT_DATE },
 			] as InstanceMonitoringReport['dataPoints'];
-			reportRepository.findTodaysPending.mockResolvedValue(makeReport({ dataPoints: measured }));
+			reportRepository.findPending.mockResolvedValue(makeReport({ dataPoints: measured }));
 
 			await service.sendReport();
 
@@ -463,7 +463,7 @@ describe('InstanceReportingService', () => {
 		test('leaves the report pending while attempts remain', async () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockRejectedValue(new Error('Network error'));
-			reportRepository.findTodaysPending.mockResolvedValue(makeReport({ attempts: 1 }));
+			reportRepository.findPending.mockResolvedValue(makeReport({ attempts: 1 }));
 
 			await expect(service.sendReport()).rejects.toThrow();
 
@@ -474,7 +474,7 @@ describe('InstanceReportingService', () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockRejectedValue(new Error('Network error'));
 			// Two attempts already recorded on the row, so this one is the last.
-			reportRepository.findTodaysPending.mockResolvedValue(makeReport({ attempts: 2 }));
+			reportRepository.findPending.mockResolvedValue(makeReport({ attempts: 2 }));
 
 			await expect(service.sendReport()).rejects.toThrow();
 
@@ -484,7 +484,7 @@ describe('InstanceReportingService', () => {
 		test('skips an exhausted row without attempting again', async () => {
 			const { service, reportRepository, http } = makeHarness();
 			// A crash between the failure record and the skip leaves this row pending.
-			reportRepository.findTodaysPending.mockResolvedValue(makeReport({ attempts: 3 }));
+			reportRepository.findPending.mockResolvedValue(makeReport({ attempts: 3 }));
 
 			await expect(service.sendReport()).resolves.toBeUndefined();
 
@@ -499,21 +499,21 @@ describe('InstanceReportingService', () => {
 
 		test('allows an attempt when no report is pending', async () => {
 			const { service, reportRepository } = makeHarness();
-			reportRepository.findTodaysPending.mockResolvedValue(null);
+			reportRepository.findPending.mockResolvedValue(null);
 
 			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
 		});
 
 		test('allows the first attempt, which has nothing to wait for', async () => {
 			const { service, reportRepository } = makeHarness();
-			reportRepository.findTodaysPending.mockResolvedValue(makeReport({ lastAttemptAt: null }));
+			reportRepository.findPending.mockResolvedValue(makeReport({ lastAttemptAt: null }));
 
 			await expect(service.msUntilRetryAllowed(now)).resolves.toBe(0);
 		});
 
 		test('returns the remaining wait when the last attempt was recent', async () => {
 			const { service, reportRepository } = makeHarness();
-			reportRepository.findTodaysPending.mockResolvedValue(
+			reportRepository.findPending.mockResolvedValue(
 				makeReport({ lastAttemptAt: new Date('2026-03-26T07:40:00.000Z') }),
 			);
 
@@ -523,7 +523,7 @@ describe('InstanceReportingService', () => {
 
 		test('allows an attempt once the wait has passed', async () => {
 			const { service, reportRepository } = makeHarness();
-			reportRepository.findTodaysPending.mockResolvedValue(
+			reportRepository.findPending.mockResolvedValue(
 				makeReport({ lastAttemptAt: new Date('2026-03-26T07:30:00.000Z') }),
 			);
 

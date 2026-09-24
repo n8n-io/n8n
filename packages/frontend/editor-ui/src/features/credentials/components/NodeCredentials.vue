@@ -1859,6 +1859,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .entryPill {
 	padding: var(--spacing--5xs) var(--spacing--3xs);
 	border-radius: var(--radius);
+	// N8nBadge draws a 1px border tinted to its variant; keep it transparent so the
+	// re-skinned pill stays fully neutral (box size unchanged).
+	border-color: transparent;
 	background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
 	color: light-dark(var(--color--neutral-750), var(--color--neutral-150));
 	font-size: var(--font-size--3xs);
