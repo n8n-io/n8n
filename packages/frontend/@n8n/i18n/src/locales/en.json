@@ -4513,6 +4513,8 @@
 	"settings.migrationReport.detail.table.lastExecuted": "Last executed",
 	"settings.migrationReport.detail.table.lastUpdated": "Last updated",
 	"settings.migrationReport.detail.table.never": "Never",
+	"settings.migrationReport.detail.table.probablyUnused": "Probably unused",
+	"settings.migrationReport.detail.table.probablyUnusedTooltip": "This workflow hasn't run in the last {days} days.",
 	"settings.migrationReport.detail.howToFix.title": "How to fix",
 	"settings.migrationReport.detail.howToFix.fallback": "Follow the steps in the documentation to resolve this change.",
 	"settings.migrationReport.detail.howToFix.migratable": "Use the Migrate action in the table to apply this change automatically.",

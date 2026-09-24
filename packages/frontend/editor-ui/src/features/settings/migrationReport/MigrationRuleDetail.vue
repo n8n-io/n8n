@@ -19,6 +19,7 @@ import {
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
@@ -30,6 +31,7 @@ import orderBy from 'lodash/orderBy';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import HowToFixPanel from './components/HowToFixPanel.vue';
+import { UNUSED_WORKFLOW_THRESHOLD_DAYS } from './constants';
 import SeverityTag from './components/SeverityTag.vue';
 
 const i18n = useI18n();
@@ -63,6 +65,20 @@ const { state, isLoading } = useAsyncState(
 
 type AffectedWorkflow = BreakingChangeWorkflowRuleResult['affectedWorkflows'][number];
 
+const UNUSED_WORKFLOW_THRESHOLD_MS = UNUSED_WORKFLOW_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
+
+// Never ran, or last ran before the threshold. The date arrives as a string over REST.
+function isProbablyUnused(workflow: AffectedWorkflow): boolean {
+	if (!workflow.lastExecutedAt) return true;
+	const lastExecutedAt = new Date(workflow.lastExecutedAt).getTime();
+	return Number.isNaN(lastExecutedAt) || Date.now() - lastExecutedAt > UNUSED_WORKFLOW_THRESHOLD_MS;
+}
+
+const probablyUnusedTooltip = i18n.baseText(
+	'settings.migrationReport.detail.table.probablyUnusedTooltip',
+	{ interpolate: { days: String(UNUSED_WORKFLOW_THRESHOLD_DAYS) } },
+);
+
 const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 	const headers: Array<TableHeader<AffectedWorkflow>> = [
 		{
@@ -92,7 +108,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastExecuted'),
 			key: 'lastExecutedAt',
-			width: 120,
+			width: 220,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastUpdated'),
@@ -369,8 +385,15 @@ const sortedWorkflows = computed(() => {
 				</div>
 			</template>
 			<template #[`item.lastExecutedAt`]="{ item }">
-				<TimeAgo v-if="item.lastExecutedAt" :date="item.lastExecutedAt.toString()" />
-				<span v-else>{{ i18n.baseText('settings.migrationReport.detail.table.never') }}</span>
+				<div :class="$style.lastExecuted">
+					<TimeAgo v-if="item.lastExecutedAt" :date="item.lastExecutedAt.toString()" />
+					<span v-else>{{ i18n.baseText('settings.migrationReport.detail.table.never') }}</span>
+					<N8nTooltip v-if="isProbablyUnused(item)" :content="probablyUnusedTooltip">
+						<N8nBadge variant="subtle" data-test-id="workflow-probably-unused-badge">
+							{{ i18n.baseText('settings.migrationReport.detail.table.probablyUnused') }}
+						</N8nBadge>
+					</N8nTooltip>
+				</div>
 			</template>
 			<template #[`item.lastUpdatedAt`]="{ item }">
 				<TimeAgo :date="item.lastUpdatedAt.toString()" />
@@ -419,6 +442,12 @@ const sortedWorkflows = computed(() => {
 .filterControls > :first-child {
 	flex: 1;
 	max-width: 400px;
+}
+
+.lastExecuted {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .NoLineBreak {
