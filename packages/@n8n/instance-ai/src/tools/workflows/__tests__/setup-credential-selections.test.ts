@@ -12,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ThreadPatch, ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext, NodeDescription, SetupItemsEmitter } from '../../../types';
 import { resolveCredentials, type CredentialMap } from '../resolve-credentials';
+import type { ResolvedCredential } from '../resolved-credential.schema';
 import {
 	applyPendingSetupCredentialSelections,
 	markSetupCredentialSelectionsApplied,
@@ -50,11 +51,7 @@ function createContext(metadata: Record<string, unknown>) {
 	const threadMemory = {
 		getThread: vi.fn(async () => thread),
 		patchThread: vi.fn(
-			async ({
-				update,
-			}: {
-				update: (current: ThreadRecord) => ThreadPatch | null | undefined;
-			}) => {
+			async ({ update }: { update: (current: ThreadRecord) => ThreadPatch | null | undefined }) => {
 				Object.assign(thread, update(thread));
 				return thread;
 			},
@@ -86,7 +83,27 @@ function createContext(metadata: Record<string, unknown>) {
 			),
 		}),
 	});
-	return { context, thread, threadMemory };
+	return {
+		context,
+		thread,
+		threadMemory,
+		apply: async (json: WorkflowJSON, candidates = credentialMap) =>
+			await applyPendingSetupCredentialSelections(json, 'workflow-1', context, candidates),
+		resolve: async (
+			json: WorkflowJSON,
+			candidates: CredentialMap,
+			preferNewCredentialTypes?: readonly string[],
+			setupSelections?: Record<string, ResolvedCredential[]>,
+		) =>
+			await resolveCredentials(
+				json,
+				'workflow-1',
+				context,
+				candidates,
+				preferNewCredentialTypes,
+				setupSelections,
+			),
+	};
 }
 
 describe('setup credential selections', () => {
@@ -103,7 +120,7 @@ describe('setup credential selections', () => {
 				[instanceAiSetupCredentialSelectionKey(itemId), selection],
 				[instanceAiSetupCredentialSelectionKey(`${itemId}:First`), specific],
 			];
-			const { context } = createContext(
+			const { apply } = createContext(
 				Object.fromEntries(specificFirst ? entries.reverse() : entries),
 			);
 			const json = workflow([node('First'), node('Second')]);
@@ -116,12 +133,7 @@ describe('setup credential selections', () => {
 					],
 				],
 			]);
-			const result = await applyPendingSetupCredentialSelections(
-				json,
-				'workflow-1',
-				context,
-				candidates,
-			);
+			const result = await apply(json, candidates);
 			expect(json.nodes.map((current) => current.credentials?.slackApi?.id)).toEqual([
 				'specific-account',
 				'selected-credential',
@@ -133,7 +145,7 @@ describe('setup credential selections', () => {
 	);
 
 	it('applies an early choice to compatible nodes with the stored credential name', async () => {
-		const { context } = createContext({
+		const { apply } = createContext({
 			[instanceAiSetupCredentialSelectionKey(itemId)]: selection,
 		});
 		const json = workflow([
@@ -143,12 +155,7 @@ describe('setup credential selections', () => {
 			node('Inactive', 'slackApi', { parameters: { authentication: 'none' } }),
 			node('Disabled', 'slackApi', { disabled: true }),
 		]);
-		const result = await applyPendingSetupCredentialSelections(
-			json,
-			'workflow-1',
-			context,
-			credentialMap,
-		);
+		const result = await apply(json);
 		expect(json.nodes.map(({ credentials }) => credentials)).toEqual([
 			{ slackApi: { id: 'selected-credential', name: 'Selected account' } },
 			{ slackApi: { id: 'selected-credential', name: 'Selected account' } },
@@ -161,7 +168,7 @@ describe('setup credential selections', () => {
 	});
 
 	it('keeps an unavailable choice open and removes its previous binding', async () => {
-		const { context } = createContext({
+		const { context, apply, resolve } = createContext({
 			[instanceAiSetupCredentialSelectionKey(itemId)]: selection,
 		});
 		const json = workflow([
@@ -170,29 +177,18 @@ describe('setup credential selections', () => {
 			}),
 		]);
 		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(structuredClone(json));
-		const result = await applyPendingSetupCredentialSelections(
-			json,
-			'workflow-1',
-			context,
-			new Map(),
-		);
+		const result = await apply(json, new Map());
 		expect(json.nodes[0].credentials).toEqual({});
 		expect(result.unavailableCredentialTypes).toEqual(['slackApi']);
 		expect(result.consumedSelections).toEqual([]);
-		await resolveCredentials(
-			json,
-			'workflow-1',
-			context,
-			new Map(),
-			result.unavailableCredentialTypes,
-		);
+		await resolve(json, new Map(), result.unavailableCredentialTypes);
 		expect(json.nodes[0].credentials).toEqual({});
 	});
 
 	it('keeps an explicit custom-auth choice through automatic resolution', async () => {
 		const customType = TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE;
 		const customSelection = { ...selection, credentialType: customType, nodeNames: ['API'] };
-		const { context } = createContext({
+		const { apply, resolve } = createContext({
 			[instanceAiSetupCredentialSelectionKey(`workflow-1:credential:${customType}:API`)]:
 				customSelection,
 		});
@@ -200,20 +196,8 @@ describe('setup credential selections', () => {
 		const customMap: CredentialMap = new Map([
 			[customType, [{ id: selection.credentialId, name: 'Selected account', type: customType }]],
 		]);
-		const selected = await applyPendingSetupCredentialSelections(
-			json,
-			'workflow-1',
-			context,
-			customMap,
-		);
-		const resolved = await resolveCredentials(
-			json,
-			'workflow-1',
-			context,
-			customMap,
-			undefined,
-			selected.resolvedCredentialsByNode,
-		);
+		const selected = await apply(json, customMap);
+		const resolved = await resolve(json, customMap, undefined, selected.resolvedCredentialsByNode);
 		expect(json.nodes[0].credentials?.[customType]).toEqual({
 			id: selection.credentialId,
 			name: 'Selected account',
@@ -228,11 +212,11 @@ describe('setup credential selections', () => {
 			nodeNames: ['First'],
 		};
 		const genericId = 'workflow-1:credential:httpBasicAuth:First';
-		const { context } = createContext({
+		const { apply } = createContext({
 			[instanceAiSetupCredentialSelectionKey(genericId)]: genericSelection,
 		});
 		const json = workflow([node('First', 'httpBasicAuth'), node('Second', 'httpBasicAuth')]);
-		await applyPendingSetupCredentialSelections(json, 'workflow-1', context, credentialMap);
+		await apply(json);
 		expect(json.nodes[0].credentials).toEqual({
 			httpBasicAuth: { id: 'selected-credential', name: 'Selected account' },
 		});
@@ -240,19 +224,19 @@ describe('setup credential selections', () => {
 	});
 
 	it('does not fan a generic credential out without node names', async () => {
-		const { context } = createContext({
+		const { apply } = createContext({
 			[instanceAiSetupCredentialSelectionKey('workflow-1:credential:httpBasicAuth')]: {
 				...selection,
 				credentialType: 'httpBasicAuth',
 			},
 		});
 		const json = workflow([node('First', 'httpBasicAuth')]);
-		await applyPendingSetupCredentialSelections(json, 'workflow-1', context, credentialMap);
+		await apply(json);
 		expect(json.nodes[0].credentials).toBeUndefined();
 	});
 
 	it('validates Gateway support before applying its marker', async () => {
-		const { context } = createContext({
+		const { context, apply } = createContext({
 			[instanceAiSetupCredentialSelectionKey(itemId)]: {
 				...selection,
 				credentialId: AI_GATEWAY_MANAGED_TAG,
@@ -260,19 +244,16 @@ describe('setup credential selections', () => {
 		});
 		const json = workflow([node('Slack')]);
 		vi.mocked(context.credentialService.isAiGatewayCredentialType!).mockResolvedValue(false);
-		expect(
-			(await applyPendingSetupCredentialSelections(json, 'workflow-1', context, credentialMap))
-				.unavailableCredentialTypes,
-		).toEqual(['slackApi']);
+		expect((await apply(json)).unavailableCredentialTypes).toEqual(['slackApi']);
 		vi.mocked(context.credentialService.isAiGatewayCredentialType!).mockResolvedValue(true);
-		await applyPendingSetupCredentialSelections(json, 'workflow-1', context, credentialMap);
+		await apply(json);
 		expect(json.nodes[0].credentials).toEqual({
 			slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 		});
 	});
 
 	it('keeps selected Gateway credits when a stored alternative exists', async () => {
-		const { context } = createContext({
+		const { context, apply, resolve } = createContext({
 			[instanceAiSetupCredentialSelectionKey(itemId)]: {
 				...selection,
 				credentialId: AI_GATEWAY_MANAGED_TAG,
@@ -284,16 +265,9 @@ describe('setup credential selections', () => {
 				credentials: { slackApi: { id: 'selected-credential', name: 'Stored account' } },
 			}),
 		]);
-		const selected = await applyPendingSetupCredentialSelections(
+		const selected = await apply(json);
+		const resolved = await resolve(
 			json,
-			'workflow-1',
-			context,
-			credentialMap,
-		);
-		const resolved = await resolveCredentials(
-			json,
-			'workflow-1',
-			context,
 			credentialMap,
 			undefined,
 			selected.resolvedCredentialsByNode,
@@ -309,15 +283,10 @@ describe('setup credential selections', () => {
 	});
 
 	it('settles a removed requirement without modifying its credential', async () => {
-		const { context, thread } = createContext({
+		const { context, thread, apply } = createContext({
 			[instanceAiSetupCredentialSelectionKey(itemId)]: selection,
 		});
-		const result = await applyPendingSetupCredentialSelections(
-			workflow([]),
-			'workflow-1',
-			context,
-			credentialMap,
-		);
+		const result = await apply(workflow([]));
 		await markSetupCredentialSelectionsApplied(context, result.consumedSelections);
 		expect(readPendingInstanceAiSetupCredentialSelections(thread.metadata, 'workflow-1')).toEqual(
 			[],
@@ -326,15 +295,10 @@ describe('setup credential selections', () => {
 	});
 
 	it('preserves a newer selection when the earlier workflow save finishes', async () => {
-		const { context, thread } = createContext({
+		const { context, thread, apply } = createContext({
 			[instanceAiSetupCredentialSelectionKey(itemId)]: selection,
 		});
-		const result = await applyPendingSetupCredentialSelections(
-			workflow([node('Slack')]),
-			'workflow-1',
-			context,
-			credentialMap,
-		);
+		const result = await apply(workflow([node('Slack')]));
 		const newerSelection = { ...selection, selectionId: 'choice-2' };
 		thread.metadata = { [instanceAiSetupCredentialSelectionKey(itemId)]: newerSelection };
 		await markSetupCredentialSelectionsApplied(context, result.consumedSelections);
@@ -361,16 +325,11 @@ describe('setup credential selections', () => {
 	});
 
 	it('does not read selections when the setup panel is disabled', async () => {
-		const { context, threadMemory } = createContext({
+		const { context, threadMemory, apply } = createContext({
 			[instanceAiSetupCredentialSelectionKey(itemId)]: selection,
 		});
 		context.setupItemsEmitter = undefined;
-		await applyPendingSetupCredentialSelections(
-			workflow([node('Slack')]),
-			'workflow-1',
-			context,
-			credentialMap,
-		);
+		await apply(workflow([node('Slack')]));
 		expect(threadMemory.getThread).not.toHaveBeenCalled();
 	});
 });

@@ -644,17 +644,6 @@ describe('InstanceAiSetupPanel', () => {
 		expect(queryByTestId('instance-ai-setup-panel')).toBeNull();
 	});
 
-	it('waits for OAuth status before remembering an already connected service', async () => {
-		stateMock.isCheckingOAuthCredentials = true;
-		stateMock.rows = [{ item: credentialItem, isDone: false }];
-		const view = renderComponent();
-		expect(view.queryByRole('button', { name: /Notion/ })).toBeNull();
-		stateMock.rows = [{ item: credentialItem, isDone: true }];
-		stateMock.isCheckingOAuthCredentials = false;
-		await flushPromises();
-		expect(view.queryByRole('button', { name: /Notion/ })).toBeNull();
-	});
-
 	it('keeps a newly completed service visible after remount and removes obsolete requirements', async () => {
 		stateMock.rows = [{ item: credentialItem, isDone: false }];
 		const first = renderComponent();

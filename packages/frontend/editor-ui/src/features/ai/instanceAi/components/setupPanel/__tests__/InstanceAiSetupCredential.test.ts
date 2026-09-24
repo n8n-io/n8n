@@ -222,6 +222,16 @@ describe('InstanceAiSetupCredential', () => {
 		await userEvent.click(await rendered.findByRole('menuitem', { name: label }));
 	}
 
+	function renderRealForm(credentialType: string, types: ICredentialType[]) {
+		mocks.useRealForm = true;
+		const store = mockedStore(useCredentialsStore);
+		store.getCredentialTypeByName = vi.fn((name) => types.find((type) => type.name === name));
+		return renderComponent({
+			props: { item: { ...item, credentialType, nodeBindings: [] }, node: undefined, nodes: [] },
+			global: { stubs: { CredentialInputs: false } },
+		});
+	}
+
 	it('offers per-node accounts only after a shared credential has been selected', async () => {
 		const view = renderComponent({ props: { allowPerNode: true } });
 		await userEvent.click(view.getByRole('button', { name: 'More options' }));
@@ -318,7 +328,6 @@ describe('InstanceAiSetupCredential', () => {
 	});
 
 	it('renders inherited OAuth fields and prefilled endpoint selectors inline', async () => {
-		mocks.useRealForm = true;
 		mocks.isOAuth.mockReturnValue(true);
 		const types: ICredentialType[] = [
 			{
@@ -379,16 +388,8 @@ describe('InstanceAiSetupCredential', () => {
 			},
 		];
 		const store = mockedStore(useCredentialsStore);
-		store.getCredentialTypeByName = vi.fn((name) => types.find((type) => type.name === name));
 		store.getNewCredentialName.mockResolvedValue('Zoho account');
-		const view = renderComponent({
-			props: {
-				item: { ...item, credentialType: 'zohoOAuth2Api', nodeBindings: [] },
-				node: undefined,
-				nodes: [],
-			},
-			global: { stubs: { CredentialInputs: false } },
-		});
+		const view = renderRealForm('zohoOAuth2Api', types);
 		await flushPromises();
 		const selectors = view.getAllByRole('combobox');
 		expect(selectors).toHaveLength(2);
@@ -415,7 +416,6 @@ describe('InstanceAiSetupCredential', () => {
 	});
 
 	it('shows default database fields and updates conditional controls through the shared form', async () => {
-		mocks.useRealForm = true;
 		const postgres: ICredentialType = {
 			name: 'postgres',
 			displayName: 'Postgres',
@@ -441,18 +441,10 @@ describe('InstanceAiSetupCredential', () => {
 			],
 		};
 		const store = mockedStore(useCredentialsStore);
-		store.getCredentialTypeByName = vi.fn().mockReturnValue(postgres);
 		store.getNewCredentialName.mockResolvedValue('Postgres account');
 		store.isCredentialTypeTestable = vi.fn().mockReturnValue(false);
 		store.createNewCredential.mockResolvedValue(savedCredential);
-		const view = renderComponent({
-			props: {
-				item: { ...item, credentialType: 'postgres', nodeBindings: [] },
-				node: undefined,
-				nodes: [],
-			},
-			global: { stubs: { CredentialInputs: false } },
-		});
+		const view = renderRealForm('postgres', [postgres]);
 		await flushPromises();
 		expect(view.getByLabelText('Host')).toHaveValue('localhost');
 		expect(view.getByLabelText('Database')).toHaveValue('postgres');

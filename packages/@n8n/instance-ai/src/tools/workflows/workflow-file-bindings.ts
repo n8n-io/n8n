@@ -148,10 +148,7 @@ export async function saveWorkflowSourceFileBinding(
 					return { metadata: { ...metadata, [METADATA_KEY]: bindings } };
 				},
 			});
-			if (updatedThread) {
-				getFallbackBindings(context).set(normalizedBinding.filePath, normalizedBinding);
-				return normalizedBinding;
-			}
+			if (updatedThread) return normalizedBinding;
 		} catch (error) {
 			context.logger?.warn('Failed to persist workflow source file binding to thread metadata', {
 				filePath: normalizedBinding.filePath,

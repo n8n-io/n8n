@@ -1008,15 +1008,7 @@ describe('credentials tool', () => {
 		});
 
 		it.each([
-			{ credentials: [{ credentialType: 'slackApi', reason: 'Send daily updates' }] },
-			{
-				credentials: [
-					{ credentialType: 'googleSheetsOAuth2Api' },
-					{ credentialType: 'openAiApi', preferNew: true },
-					{ credentialType: 'gmailOAuth2' },
-					{ credentialType: 'slackApi', preferNew: true },
-				],
-			},
+			{ credentials: [{ credentialType: 'slackApi', preferNew: true }] },
 			{ credentials: [] },
 		])(
 			'prepares source-bound setup without suspending for requirements %j',

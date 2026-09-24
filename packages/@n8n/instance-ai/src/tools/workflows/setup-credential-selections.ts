@@ -2,8 +2,6 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	instanceAiSetupCredentialAppliedKey,
-	instanceAiSetupCredentialSelectionKey,
-	instanceAiSetupCredentialSelectionSchema,
 	readPendingInstanceAiSetupCredentialSelections,
 } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -137,12 +135,7 @@ export async function markSetupCredentialSelectionsApplied(
 			update: ({ metadata = {} }) => {
 				const updated = { ...metadata };
 				for (const { itemId, selection } of selections) {
-					const current = instanceAiSetupCredentialSelectionSchema.safeParse(
-						metadata[instanceAiSetupCredentialSelectionKey(itemId)],
-					);
-					if (current.success && current.data.selectionId === selection.selectionId) {
-						updated[instanceAiSetupCredentialAppliedKey(itemId, selection.selectionId)] = true;
-					}
+					updated[instanceAiSetupCredentialAppliedKey(itemId, selection.selectionId)] = true;
 				}
 				return { metadata: updated };
 			},

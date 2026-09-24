@@ -20,7 +20,7 @@ import {
 	type SetupPanelItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { GENERIC_AUTH_CREDENTIAL_TYPES } from '@n8n/api-types';
+import { shouldAutoResolveCredential } from '@n8n/api-types';
 import { NodeHelpers } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import type { INodeUi } from '@/Interface';
@@ -251,13 +251,14 @@ watch(
 				item.kind !== 'credential' ||
 				item.nodeBindings?.length ||
 				item.preferNew ||
-				GENERIC_AUTH_CREDENTIAL_TYPES.has(item.credentialType) ||
 				actions.getPendingCredential(item.id) ||
 				selectingExisting.value.has(item.id)
 			)
 				return [];
 			const credentials = credentialsStore.getUsableCredentialByType(item.credentialType);
-			return credentials.length === 1 ? [{ item, credential: credentials[0] }] : [];
+			return shouldAutoResolveCredential(item.credentialType, credentials.length)
+				? [{ item, credential: credentials[0] }]
+				: [];
 		});
 		if (!selections.length) return;
 		// Hide all automatic selections before any asynchronous save can expose a partial list.

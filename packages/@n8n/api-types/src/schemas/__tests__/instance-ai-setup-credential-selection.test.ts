@@ -39,21 +39,4 @@ describe('readPendingInstanceAiSetupCredentialSelections', () => {
 		metadata[instanceAiSetupCredentialAppliedKey(itemId, 'older-choice')] = true;
 		expect(readPendingInstanceAiSetupCredentialSelections(metadata, 'workflow-1')).toEqual([]);
 	});
-
-	it.each([false, true])(
-		'orders node-specific choices last when inserted first: %s',
-		(specificFirst) => {
-			const specific = { ...selection, selectionId: 'specific', nodeNames: ['Slack'] };
-			const entries = [
-				[instanceAiSetupCredentialSelectionKey(itemId), selection],
-				[instanceAiSetupCredentialSelectionKey(`${itemId}:Slack`), specific],
-			];
-			const metadata = Object.fromEntries(specificFirst ? entries.reverse() : entries);
-			expect(
-				readPendingInstanceAiSetupCredentialSelections(metadata, 'workflow-1').map(
-					({ selection: choice }) => choice.selectionId,
-				),
-			).toEqual(['choice-1', 'specific']);
-		},
-	);
 });

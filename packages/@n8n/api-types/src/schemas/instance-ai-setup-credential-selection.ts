@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const instanceAiSetupCredentialSelectionSchema = z.object({
+const instanceAiSetupCredentialSelectionSchema = z.object({
 	selectionId: z.string().min(1),
 	credentialType: z.string().min(1),
 	credentialId: z.string().min(1),

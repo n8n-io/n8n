@@ -689,7 +689,6 @@ export type {
 } from './schemas/instance-ai.schema';
 
 export {
-	instanceAiSetupCredentialSelectionSchema,
 	instanceAiSetupCredentialSelectionKey,
 	instanceAiSetupCredentialAppliedKey,
 	readPendingInstanceAiSetupCredentialSelections,
