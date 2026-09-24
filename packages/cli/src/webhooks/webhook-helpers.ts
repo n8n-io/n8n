@@ -1,14 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable id-denylist */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
 import merge from 'lodash/merge';
@@ -72,6 +67,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
 import { EventService } from '@/events/event.service';
+import { createExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import {
@@ -81,6 +77,8 @@ import {
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
+import type { PendingWebhookResponse } from '@/services/pending-webhook-response';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
@@ -234,11 +232,16 @@ export function handleHostedChatResponse(
 	responseMode: WebhookResponseMode,
 	didSendResponse: boolean,
 	executionId: string,
+	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
 	resumeToken?: string,
 ): boolean {
 	if (responseMode === 'hostedChat' && !didSendResponse) {
 		res.send({ executionStarted: true, executionId, resumeToken });
 		process.nextTick(() => res.end());
+		// The response is written here, but callers treat the callback as the
+		// "response is done" signal — it is what settles their promise and
+		// releases the expression isolate in their `finally`.
+		responseCallback(null, { noWebhookResponse: true });
 		return true;
 	}
 
@@ -315,7 +318,6 @@ function isEnabledFormPageNode(node: INode): boolean {
 	return node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form';
 }
 
-// eslint-disable-next-line complexity
 export function autoDetectResponseMode(
 	workflowStartNode: INode,
 	workflow: Workflow,
@@ -476,7 +478,8 @@ export function setupResponseNodePromise(
 
 			process.nextTick(() => res.end());
 		})
-		.catch(async (error) => {
+		.catch(async (e: unknown) => {
+			const error = ensureError(e);
 			Container.get(ErrorReporter).error(error);
 			Container.get(Logger).error(
 				`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
@@ -672,7 +675,7 @@ export async function executeWebhook(
 	let project: Project;
 	try {
 		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
-	} catch (error) {
+	} catch {
 		throw new NotFoundError('Cannot find workflow');
 	}
 
@@ -833,8 +836,9 @@ export async function executeWebhook(
 	};
 
 	let didSendResponse = false;
-	/** Whether this run goes to the engine 2.0 data plane instead of the v1 path. */
+	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
+	let pendingEngineV2Response: PendingWebhookResponse | undefined;
 	let runExecutionDataMerge = {};
 	const engineV2Webhooks = Container.get(EngineV2Webhooks);
 	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
@@ -911,14 +915,15 @@ export async function executeWebhook(
 				workflowId: workflow.id,
 				node: workflowStartNode,
 			});
-		} catch (err) {
+		} catch (e: unknown) {
+			const error = ensureError(e);
 			// Send error response to webhook caller
 			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
 				? 'Form'
 				: 'Webhook';
-			const errorMessage = _privateGetWebhookErrorMessage(err, webhookType);
+			const errorMessage = _privateGetWebhookErrorMessage(error, webhookType);
 
-			Container.get(ErrorReporter).error(err, {
+			Container.get(ErrorReporter).error(error, {
 				extra: {
 					nodeName: workflowStartNode.name,
 					nodeType: workflowStartNode.type,
@@ -936,9 +941,9 @@ export async function executeWebhook(
 					runData: {},
 					lastNodeExecuted: workflowStartNode.name,
 					error: {
-						...err,
-						message: err.message,
-						stack: err.stack,
+						...error,
+						message: error.message,
+						stack: error.stack,
 					},
 				},
 			};
@@ -979,7 +984,7 @@ export async function executeWebhook(
 				// Data to respond with is given
 				if (!didSendResponse) {
 					responseCallback(null, {
-						data: webhookResultData.webhookResponse,
+						data: webhookResultData.webhookResponse as IDataObject | IDataObject[],
 						responseCode,
 					});
 					didSendResponse = true;
@@ -1052,7 +1057,7 @@ export async function executeWebhook(
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
 			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
-			// sets, so carrying it here changes nothing for v1. Engine 2.0 has no way to
+			// sets, so carrying it here changes nothing for v1. Engine v2 has no way to
 			// stop at a node, and its dispatcher refuses the run on this field.
 			destinationNode,
 		};
@@ -1102,7 +1107,23 @@ export async function executeWebhook(
 			// TODO: Add check for streaming nodes here
 			runData.httpResponse = res;
 			runData.streamingEnabled = true;
+			// No `responseCallback` here, unlike the formPage and hostedChat
+			// branches: streaming requires the trigger to have taken over the
+			// response itself, so it returns `noWebhookResponse: true` (see
+			// `Webhook.node.ts` and `ChatTrigger.node.ts`) and the handler for
+			// that above has already answered. Calling back here would answer a
+			// second time.
 			didSendResponse = true;
+		}
+
+		// Before the run, because a short workflow answers before `startExecution`
+		// returns and nothing replays a missed response. The id is minted here, so
+		// the run and the listener agree on it.
+		if (routesToEngineV2 && responseMode !== 'onReceived') {
+			const engineExecutionId = createExecutionIdV2();
+			pendingEngineV2Response =
+				Container.get(EngineV2WebhookResponder).waitForResponse(engineExecutionId);
+			runData.engineExecutionId = engineExecutionId;
 		}
 
 		// Extract W3C trace context from webhook headers for OTEL propagation.
@@ -1179,6 +1200,8 @@ export async function executeWebhook(
 			}
 			res.send({ formWaitingUrl: formUrl.toString() });
 			process.nextTick(() => res.end());
+			// See handleHostedChatResponse: the callback is the contract, not the write.
+			responseCallback(null, { noWebhookResponse: true });
 			didSendResponse = true;
 		}
 
@@ -1187,6 +1210,7 @@ export async function executeWebhook(
 			responseMode,
 			didSendResponse,
 			executionId,
+			responseCallback,
 			runExecutionData?.resumeToken,
 		);
 
@@ -1195,14 +1219,60 @@ export async function executeWebhook(
 			{ executionId },
 		);
 
-		// Engine 2.0 serves `onReceived` only, so the response is already out. Nothing
-		// below applies: the run has no control-plane execution to wait on.
-		if (routesToEngineV2) return executionId;
+		if (routesToEngineV2 && responseMode === 'onReceived') return executionId;
 
-		const activeExecutions = Container.get(ActiveExecutions);
+		/**
+		 * A callback to handle the pending execution response from the data plane.
+		 * Returns the run data when it arrives. Otherwise, it sends the response
+		 * channel error or a 504 timeout to the webhook caller.
+		 */
+		const waitForDataPlaneRun = async (waiting: PendingWebhookResponse) => {
+			try {
+				const outcome = await waiting.settled;
+				if (outcome.status === 'completed' || outcome.status === 'failed') {
+					return await engineV2Webhooks.toRun(outcome, executionMode);
+				}
 
-		// Get a promise which resolves when the workflow did execute and send then response
-		const executePromise = activeExecutions.getPostExecutePromise(executionId);
+				const isUndeliverable = outcome.status === 'undeliverable';
+				const errorResponse = isUndeliverable
+					? {
+							logMessage: 'Could not deliver an engine v2 webhook response',
+							responseMessage: outcome.error.message,
+							responseCode: 500,
+						}
+					: {
+							// timeout
+							logMessage: 'No answer arrived for an engine v2 webhook run',
+							responseMessage: 'The workflow did not answer in time',
+							responseCode: 504,
+						};
+				Container.get(Logger).warn(errorResponse.logMessage, {
+					executionId,
+					workflowId: workflowData.id,
+					...(isUndeliverable ? { error: outcome.error } : {}),
+				});
+				// The webhook node can answer before the execution starts. Do not send a
+				// second response when the execution response later settles.
+				if (!didSendResponse) {
+					responseCallback(null, {
+						data: { message: errorResponse.responseMessage },
+						responseCode: errorResponse.responseCode,
+					});
+					didSendResponse = true;
+				}
+
+				return undefined;
+			} finally {
+				waiting.release();
+			}
+		};
+
+		// Get a promise which resolves when the workflow did execute and send then response.
+		// Engine v2 keeps no control-plane execution to wait on, so its answer comes
+		// off the response channel, shaped like the run the handler below reads.
+		const executePromise = pendingEngineV2Response
+			? waitForDataPlaneRun(pendingEngineV2Response)
+			: Container.get(ActiveExecutions).getPostExecutePromise(executionId);
 
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
@@ -1313,38 +1383,45 @@ export async function executeWebhook(
 					didSendResponse = true;
 					return runData;
 				})
-				.catch((e) => {
-					Container.get(ErrorReporter).error(e, { executionId });
+				.catch((e: unknown) => {
+					const error = ensureError(e);
+					Container.get(ErrorReporter).error(error, { executionId });
 
 					if (!didSendResponse) {
 						responseCallback(
 							new OperationalError('There was a problem executing the workflow', {
-								cause: e,
+								cause: error,
 							}),
 							{},
 						);
 					}
 
-					const internalServerError = new InternalServerError(e.message, e);
-					if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
+					const internalServerError = new InternalServerError(error.message, error);
+					if (error instanceof ExecutionCancelledError) internalServerError.level = 'warning';
 					throw internalServerError;
 				});
 		}
 		return executionId;
-	} catch (e) {
-		let error: Error;
-		if (e instanceof ResponseError && e.httpStatusCode < 500) {
-			error = e;
-		} else if (routesToEngineV2 && e instanceof UserError) {
+	} catch (e: unknown) {
+		// Nothing will ever answer this one, so stop waiting for it.
+		pendingEngineV2Response?.release();
+
+		const error = ensureError(e);
+		let responseError: Error;
+		if (error instanceof ResponseError && error.httpStatusCode < 500) {
+			responseError = error;
+		} else if (routesToEngineV2 && error instanceof UserError) {
 			// The v2 path never falls back to v1, so its reason is the answer. The
 			// branch below would replace it with a generic 500 and report it as a bug.
-			error = new BadRequestError(e.message);
+			responseError = new BadRequestError(error.message);
 		} else {
-			Container.get(ErrorReporter).error(e, { executionId });
-			error = new OperationalError('There was a problem executing the workflow', { cause: e });
+			Container.get(ErrorReporter).error(error, { executionId });
+			responseError = new OperationalError('There was a problem executing the workflow', {
+				cause: error,
+			});
 		}
-		if (didSendResponse) throw error;
-		responseCallback(error, {});
+		if (didSendResponse) throw responseError;
+		responseCallback(responseError, {});
 		return;
 	} finally {
 		await cleanupMultipartFiles?.();
@@ -1502,19 +1579,19 @@ function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookRespo
  *
  * ONLY EXPORTED FOR TESTING.
  *
- * @param err the error being handled
+ * @param error the error being handled
  */
 export function _privateGetWebhookErrorMessage(
-	err: unknown,
+	error: unknown,
 	webhookType: 'Form' | 'Webhook',
 ): string {
 	// if workflow started manually, show an actual error message
-	if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
-		return err.message;
+	if (error instanceof NodeOperationError && error.type === 'manual-form-test') {
+		return error.message;
 	}
 	// if the error relates to a configuration error on the workflow, surface it
-	if (err instanceof WorkflowConfigurationError) {
-		return err.message;
+	if (error instanceof WorkflowConfigurationError) {
+		return error.message;
 	}
 	return `Workflow ${webhookType} Error: Workflow could not be started!`;
 }

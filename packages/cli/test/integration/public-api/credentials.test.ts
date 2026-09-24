@@ -878,6 +878,40 @@ describe('POST /credentials/:id/test', () => {
 
 		expect(response.statusCode).toBe(403);
 	});
+
+	test('should not test a non-owned credential for a role that may see but not use it', async () => {
+		// Testing makes a live call with the secret, so it is a use. The route's
+		// `credential:read` scope decorator short-circuits on the global scope and
+		// cannot express the distinction, so the check lives in the finder instead.
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+		const agent = await makeGlobalRoleUserAgent(['credential:read', 'credential:list']);
+
+		const response = await agent.post(`/credentials/${savedCredential.id}/test`);
+
+		// The finder refuses, which surfaces as a 404 on this route rather than a 403.
+		expect(response.statusCode).toBe(404);
+		expect(mockCredentialsTester.testCredentials).not.toHaveBeenCalled();
+	});
+
+	test('should test a non-owned credential once the role carries credential:use', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+		// `credential:use` is not an ApiKeyScope, so the key carries only read/list.
+		// The gate reads the user's role scopes, not the key's.
+		const agent = await makeGlobalRoleUserAgent([
+			'credential:read',
+			'credential:list',
+			'credential:use',
+		]);
+
+		const response = await agent.post(`/credentials/${savedCredential.id}/test`);
+
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials).toHaveBeenCalled();
+	});
 });
 
 // Custom GLOBAL role carrying the given scopes, plus an API key whose scopes are

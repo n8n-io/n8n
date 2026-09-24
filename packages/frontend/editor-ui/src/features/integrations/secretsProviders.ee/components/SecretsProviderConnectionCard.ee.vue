@@ -182,19 +182,12 @@ function onAction(action: string) {
 				<N8nHeading tag="h2" bold data-test-id="secrets-provider-name">{{
 					provider.name
 				}}</N8nHeading>
-				<N8nBadge
-					v-if="isDisabled"
-					theme="tertiary"
-					:bold="false"
-					size="xsmall"
-					data-test-id="disabled-badge"
-				>
+				<N8nBadge v-if="isDisabled" variant="outline" size="xsmall" data-test-id="disabled-badge">
 					{{ i18n.baseText('settings.secretsProviderConnections.state.disabled') }}
 				</N8nBadge>
 				<N8nBadge
 					v-else-if="showDisconnectedBadge"
-					theme="warning"
-					:bold="false"
+					variant="warning"
 					size="xsmall"
 					data-test-id="disconnected-badge"
 				>
@@ -232,7 +225,7 @@ function onAction(action: string) {
 			<N8nTooltip v-if="!isDisabled" :class="$style.cardBadge" placement="top">
 				<N8nBadge
 					:class="$style.badge"
-					theme="tertiary"
+					variant="outline"
 					:data-test-id="
 						isGlobal ? 'secrets-provider-global-badge' : 'secrets-provider-project-badge'
 					"

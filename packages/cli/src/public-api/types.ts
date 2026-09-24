@@ -6,7 +6,6 @@ import type {
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
-	UpdateSecurityPolicyDto,
 	PublicCreateDestination,
 	UpdateOidcConfigurationDto,
 	UpdateOtelSettingsDto,
@@ -34,18 +33,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 export declare namespace TestRunRequest {
 	// `id` is the workflow id (named `id` so `projectScope(..., 'workflow')`
 	// resolves it from `req.params.id`); `runId` is the test run id.
-	type GetOne = AuthenticatedRequest<{ id: string; runId: string }>;
-	type GetCases = AuthenticatedRequest<
-		{ id: string; runId: string },
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			lastId?: string;
-		}
-	>;
 	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
 }
 
@@ -223,15 +210,6 @@ export declare namespace AuditRequest {
 		{},
 		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
 	>;
-}
-
-// ----------------------------------
-//        /settings/security-policy
-// ----------------------------------
-
-export declare namespace SecurityPolicyRequest {
-	type Get = AuthenticatedRequest;
-	type Update = AuthenticatedRequest<{}, {}, UpdateSecurityPolicyDto>;
 }
 
 export declare namespace LogStreamingRequest {

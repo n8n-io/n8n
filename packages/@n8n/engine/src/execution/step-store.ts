@@ -1,11 +1,20 @@
-import type { StepError, StepKey, StepKeyId, StepSlots, StepStatus } from './execution.types';
+import type {
+	StepError,
+	StepKey,
+	StepKeyId,
+	ResumeCause,
+	StepSlots,
+	StepStatus,
+	WaitDeclaration,
+} from './execution.types';
 
 /**
  * A new step to persist. `id` and timestamps are assigned by the store.
  *
- * Creation statuses only: a row becomes `running`, `failed`, or `cancelled`
- * solely through `claimStep`, `failStep`, or `cancelQueuedSteps`, so it
- * cannot bypass the checks and locking those transitions enforce.
+ * Creation statuses only: a row becomes `running`, `waiting`, `failed`, or
+ * `cancelled` solely through `claimStep`, `suspendStep`, `failStep`, or
+ * `cancelPendingSteps`, so it cannot bypass the checks and locking those
+ * transitions enforce.
  *
  * A step created `completed` (the trigger) must carry its slot list, even
  * `[]`: a missing one persists as SQL NULL, which liveness reads as every
@@ -27,6 +36,10 @@ export interface StepRecord {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
+	/** The wait this step declared; `null` unless it has suspended. */
+	waitDeclaration: WaitDeclaration | null;
+	/** What resumed this step's current dispatch; `null` on a first run. */
+	resumeCause: ResumeCause | null;
 	/** Why the step failed; absent unless it did. */
 	error?: StepError | null;
 }
@@ -51,6 +64,12 @@ export class StepNotFoundError extends Error {
 		super(`Step not found: ${stepId}`);
 		this.name = 'StepNotFoundError';
 	}
+}
+
+/** A wait the sweep resumed: what `step:ready` needs, and nothing more. */
+export interface DueStep {
+	id: string;
+	executionId: string;
 }
 
 /** Persistence interface for step records. */
@@ -100,11 +119,73 @@ export interface StepStore {
 	 */
 	completeStep(id: string, outputs: StepSlots): Promise<boolean>;
 
+	/**
+	 * Record a wait: persist `wait_declaration` and move the step to `waiting`. A
+	 * compare-and-set on `running`, as `completeStep` — but `waiting` is no
+	 * outcome, so nothing plans behind the step and nothing counts it settled.
+	 */
+	suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean>;
+
+	/**
+	 * Resume a wait: persist `resume_cause` and return the step to `queued`, from
+	 * where the normal worker path re-dispatches it. A compare-and-set on
+	 * `waiting`, so a doubled resume — a webhook retry, a sweep racing a
+	 * request — resolves the wait once. The declaration stays on the row: a
+	 * deadline resume reads its captured outputs after the claim.
+	 *
+	 * Whether a given resume is allowed against a given wait is checked by
+	 * whoever accepts it, not here.
+	 *
+	 * TODO(CAT-2928): nothing calls this yet. The resolve endpoint that accepts
+	 * a resume request is the caller.
+	 */
+	resumeStep(id: string, resumeCause: ResumeCause): Promise<boolean>;
+
+	/**
+	 * Resume every waiting step whose deadline has passed, up to `limit`, and
+	 * return the rows resumed. The oldest deadlines are taken first. The order
+	 * of the returned rows is not defined.
+	 *
+	 * One statement, unlike `resumeStep`, and that is the point: a second
+	 * sweeper cannot take a step this one already claimed, and a step resolved
+	 * by request and re-suspended with a later deadline cannot be fired early.
+	 * Reading the rows and then transitioning them one by one leaves a window
+	 * for both.
+	 *
+	 * `limit` bounds the batch, so a backlog cannot turn one sweep into a single
+	 * long-running update.
+	 */
+	resumeDueSteps(due: Date, limit: number): Promise<DueStep[]>;
+
+	/**
+	 * The earliest deadline any waiting step still holds, or `null` when no step
+	 * waits on one.
+	 *
+	 * The sweep reads this to decide when to look next, so that a wait fires at
+	 * its deadline rather than at the end of a fixed interval. The answer is a
+	 * hint and never an authority: `resumeDueSteps` still decides what may
+	 * resume, so a stale or lost answer costs precision and nothing else.
+	 */
+	nextWaitDeadline(): Promise<Date | null>;
+
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
 
-	/** Cancel every step of the execution still `queued` (`queued -> cancelled`). */
-	cancelQueuedSteps(executionId: string): Promise<void>;
+	/**
+	 * Cancel every pending step of the execution (`-> cancelled`). A pending step
+	 * is `queued` or `waiting`. No worker runs either one, and nothing starts
+	 * either one again after the execution ends.
+	 *
+	 * A `waiting` step must be included. Nothing resumes a request-only wait
+	 * after the execution ends, so the step would stay `waiting` for ever. The
+	 * sweep would also resume a deadline wait inside an execution that already
+	 * failed. `resumeDueSteps` reads the status, so a cancelled row is invisible
+	 * to it.
+	 *
+	 * A `running` step keeps its status. Its worker still owns the outcome, and
+	 * `completeStep` and `failStep` compare-and-set on `running`.
+	 */
+	cancelPendingSteps(executionId: string): Promise<void>;
 
 	/**
 	 * Step rows of the given keys within an execution, keyed by `stepKeyId`. A

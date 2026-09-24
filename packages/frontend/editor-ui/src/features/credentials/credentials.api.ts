@@ -2,6 +2,7 @@ import type { CreateCredentialPublicDto, CredentialPublicDto } from '@n8n/api-ty
 import { request, type PublicApiContext } from '@n8n/rest-api-client';
 import type {
 	CredentialFetchScope,
+	CredentialPayload,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
 } from './credentials.types';
@@ -9,7 +10,6 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { sleep } from '@n8n/utils/sleep';
 import type {
-	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentialTestRequest,
@@ -110,7 +110,7 @@ export async function disconnectOauthToken(context: IRestApiContext, id: string)
 export async function updateCredential(
 	context: IRestApiContext,
 	id: string,
-	data: ICredentialsDecrypted,
+	data: CredentialPayload,
 ): Promise<ICredentialsResponse> {
 	return await makeRestApiRequest(
 		context,

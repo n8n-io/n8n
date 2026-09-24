@@ -116,6 +116,21 @@ describe('PromotionSelectModal', () => {
 		});
 	});
 
+	it('should show when the changes were last refreshed', async () => {
+		const { findByTestId, findByText } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+		await findByText('Payment Handler');
+
+		expect(await findByTestId('promotion-last-refreshed')).toHaveTextContent(
+			'Last refreshed just now',
+		);
+	});
+
 	it('should disable promote button when nothing selected', async () => {
 		const { findByTestId } = renderComponent({
 			pinia,

@@ -87,8 +87,16 @@ let thread: SetupPanelThreadSource &
 vi.mock('../../../instanceAi.store', () => ({ useThread: () => thread }));
 
 const accounts = [
-	mock<ICredentialsResponse>({ id: 'cred-1', name: 'First account', type: 'slackApi' }),
-	mock<ICredentialsResponse>({ id: 'cred-2', name: 'Second account', type: 'slackApi' }),
+	mock<ICredentialsResponse>({
+		id: 'cred-1',
+		name: 'First account',
+		type: 'slackApi',
+	}),
+	mock<ICredentialsResponse>({
+		id: 'cred-2',
+		name: 'Second account',
+		type: 'slackApi',
+	}),
 ];
 
 const NodeCredentialsStub = defineComponent({
@@ -354,6 +362,26 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await fireEvent.click(await rendered.findByRole('button', { name: /Slack/ }));
 		return rendered;
 	}
+
+	it('hides empty node sections until the shared credential is selected', async () => {
+		saved.nodes.push({
+			...deepCopy(saved.nodes[0]),
+			id: 'second-node',
+			name: 'Second notification',
+		});
+		const view = renderPanel();
+		await fireEvent.click(await view.findByRole('button', { name: /Slack/ }));
+		expect(view.queryByRole('heading', { name: 'Notify' })).toBeNull();
+		expect(view.queryByRole('heading', { name: 'Second notification' })).toBeNull();
+		expect(view.queryByLabelText('Channel')).toBeNull();
+		await fireEvent.update(view.getByLabelText('Account'), 'cred-1');
+		await flushPromises();
+		expect(view.getByRole('heading', { name: 'Notify' })).toBeVisible();
+		expect(view.getByRole('heading', { name: 'Second notification' })).toBeVisible();
+		const channels = view.getAllByLabelText('Channel');
+		expect(channels).toHaveLength(2);
+		for (const channel of channels) expect(channel).toBeVisible();
+	});
 
 	it('preserves drafts when splitting a shared account and saves both nodes with one Confirm', async () => {
 		saved.nodes[0].credentials = { slackApi: { id: 'cred-1', name: 'First account' } };
@@ -668,6 +696,35 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await flushPromises();
 		expect(getByTestId('selected-account')).toHaveTextContent('Shared account');
 		expect(updateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('removes a node heading when its last setup field becomes hidden', async () => {
+		const type = mockedStore(useNodeTypesStore).allNodeTypes[0];
+		type.properties.unshift({
+			name: 'resource',
+			displayName: 'Resource',
+			type: 'string',
+			default: 'message',
+		});
+		type.properties.find((property) => property.name === 'channel')!.displayOptions = {
+			show: { resource: ['message'] },
+		};
+		saved.nodes[0].parameters = { resource: 'message', channel: '' };
+		saved.nodes[0].credentials = { slackApi: { id: 'cred-1', name: 'First account' } };
+		saved.nodes.push({
+			...deepCopy(saved.nodes[0]),
+			id: 'second-node',
+			name: 'Second notification',
+		});
+		const view = await openParameters();
+		expect(view.getByRole('heading', { name: 'Notify' })).toBeVisible();
+		documentStore.updateNodeProperties({
+			name: 'Notify',
+			properties: { parameters: { resource: 'other', channel: '' } },
+		});
+		await flushPromises();
+		expect(view.queryByRole('heading', { name: 'Notify' })).toBeNull();
+		expect(view.getByRole('heading', { name: 'Second notification' })).toBeVisible();
 	});
 
 	it('renders fields gated by defaults omitted from the saved workflow', async () => {

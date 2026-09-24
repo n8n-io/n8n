@@ -595,6 +595,20 @@ export const cancelAgentChatRun = async (
 	);
 };
 
+export const cancelAgentChatExecution = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	executionId: string,
+): Promise<{ cancelRequested: boolean }> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
+	);
+};
+
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,
