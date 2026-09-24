@@ -663,10 +663,7 @@ export class InstanceAiService {
 		if (!this._mcpClientManager) {
 			this._mcpClientManager = new McpClientManager(
 				this._ssrfProtectionConfig.enabled ? this._ssrfProtectionService : undefined,
-				{
-					onToolCallSettled: (event) => this.trackMcpToolCall(event),
-					getDefaultToolPermissions: () => this.settingsService.getMcpToolPermissions(),
-				},
+				{ onToolCallSettled: (event) => this.trackMcpToolCall(event) },
 			);
 		}
 		return this._mcpClientManager;
@@ -5019,12 +5016,7 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext | undefined,
 		messageGroupId?: string,
 	): Promise<McpServerConfig[]> {
-		const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers).map(
-			(server) => ({
-				...server,
-				toolPermissions: this.settingsService.getMcpToolPermissions(),
-			}),
-		);
+		const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
 		const registryMcpServers = this.settingsService.isMcpAccessEnabled()
 			? await this.instanceAiErrorReporter.withBoundary(
 					'instance-ai-mcp-setup',

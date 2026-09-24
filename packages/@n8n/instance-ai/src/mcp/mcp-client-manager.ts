@@ -6,7 +6,11 @@ import {
 	type McpServerConfig as NativeMcpServerConfig,
 } from '@n8n/agents';
 import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
-import { DEFAULT_INSTANCE_AI_PERMISSIONS, type McpToolPermissions } from '@n8n/api-types';
+import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type InstanceAiPermissions,
+	type McpToolPermissions,
+} from '@n8n/api-types';
 import type { Result } from '@n8n/utils/result';
 import { UserError } from 'n8n-workflow';
 
@@ -54,7 +58,6 @@ export interface McpToolCallSettledEvent {
 
 export interface McpClientManagerOptions {
 	onToolCallSettled?: (event: McpToolCallSettledEvent) => void;
-	getDefaultToolPermissions?: () => McpToolPermissions;
 	/**
 	 * Invoked once per MCP server that fails to connect during `getRegularTools`.
 	 * The server's tools are skipped; the run continues with the remaining
@@ -187,15 +190,16 @@ export class McpClientManager {
 	async getRegularTools(
 		configs: McpServerConfig[],
 		logger: Logger,
+		{
+			mcpRead,
+			mcpWrite,
+		}: Pick<InstanceAiPermissions, 'mcpRead' | 'mcpWrite'> = DEFAULT_INSTANCE_AI_PERMISSIONS,
 	): Promise<McpRegularToolsResult> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
 		if (safeConfigs.length === 0) return { tools: createToolRegistry(), connectionFailures: [] };
 
-		const defaultToolPermissions = this.options.getDefaultToolPermissions?.() ?? {
-			categories: {
-				read: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpRead,
-				write: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpWrite,
-			},
+		const defaultToolPermissions: McpToolPermissions = {
+			categories: { read: mcpRead, write: mcpWrite },
 		};
 		const key = mcpConfigCacheKey(safeConfigs, defaultToolPermissions);
 		// FIXME: changing mcp settings leaves the old client connected, we need to disconnect it

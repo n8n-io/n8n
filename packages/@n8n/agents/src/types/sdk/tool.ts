@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
 import type { AgentExecutionCounter } from './agent';
+import type { McpToolAnnotations } from './mcp';
 import type { AgentMessage } from './message';
 import type { RuntimeSkillLoader } from '../../skills/types';
 import type { AgentEventData } from '../runtime/event';
@@ -168,6 +169,8 @@ export interface BuiltTool {
 	readonly mcpServerName?: string;
 	/** Original, unprefixed tool name reported by the MCP server. */
 	readonly mcpToolName?: string;
+	/** Behavior hints reported by the MCP server for this tool. */
+	readonly mcpAnnotations?: McpToolAnnotations;
 	/**
 	 * Provider-specific options forwarded to the AI SDK's `tool()` call.
 	 * Keyed by provider name (e.g. `anthropic`, `openai`).

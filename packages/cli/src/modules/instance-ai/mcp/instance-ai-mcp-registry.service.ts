@@ -77,7 +77,7 @@ function toToolResponse(
 		name,
 		category: classifyMcpTool({
 			name,
-			annotations: registryTool?.annotations,
+			annotations: tool.mcpAnnotations ?? registryTool?.annotations,
 		}),
 	};
 	if (tool.description) response.description = tool.description;

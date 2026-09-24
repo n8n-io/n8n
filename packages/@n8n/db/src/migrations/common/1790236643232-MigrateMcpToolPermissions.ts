@@ -27,6 +27,7 @@ function policy(permission: Permission): ToolPermissions {
 
 function policyForPermission(value: Permission): ToolPermissions {
 	if (value === 'require_approval') {
+		// require_approval is the old default -> read: always_allow, write: require_approval is the new default
 		return { categories: { read: 'always_allow', write: 'require_approval' } };
 	}
 	return policy(value);
