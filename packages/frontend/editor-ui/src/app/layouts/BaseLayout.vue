@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, useTemplateRef } from 'vue';
 
+const { asMain = true } = defineProps<{ asMain?: boolean }>();
+
 const layoutRef = useTemplateRef('layout');
 
 const emit = defineEmits<{
@@ -23,14 +25,14 @@ onMounted(() => {
 		<aside v-if="!!$slots.sidebar" id="sidebar" :class="$style.sidebar">
 			<slot name="sidebar" />
 		</aside>
-		<main id="content" :class="$style.content">
+		<component :is="asMain ? 'main' : 'div'" :id="asMain ? 'content' : undefined" :class="$style.content">
 			<div :class="$style.contentWrapper">
 				<slot />
 			</div>
 			<div v-if="!!$slots.footer" :class="$style.contentFooter">
 				<slot name="footer" />
 			</div>
-		</main>
+		</component>
 		<aside v-if="!!$slots.aside" id="aside" :class="$style.aside">
 			<slot name="aside" />
 		</aside>
