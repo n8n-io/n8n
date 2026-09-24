@@ -87,7 +87,8 @@ export function useCanvasNodeGroupTelemetry() {
 				workflow_id: workflowDocumentStore.value.workflowId,
 				group_id: group.id,
 				push_ref: rootStore.pushRef,
-				was_first_connection: true,
+				// The connection already existed when the group was created around its anchor.
+				was_first_connection: false,
 			});
 		},
 		trackUngrouped(group: IWorkflowGroup, source: CanvasNodeGroupEventSource) {

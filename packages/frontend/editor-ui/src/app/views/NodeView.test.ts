@@ -321,6 +321,8 @@ describe('NodeView', () => {
 
 			expect(workflowDocumentStore.allGroups).toHaveLength(0);
 			expect(workflowDocumentStore.allNodes).toHaveLength(0);
+			expect(mockGroupTelemetry.trackGrouped).not.toHaveBeenCalled();
+			expect(mockGroupTelemetry.trackInitialEmptyGroupConnection).not.toHaveBeenCalled();
 		});
 
 		it('ignores overlapping empty-group creation requests', async () => {

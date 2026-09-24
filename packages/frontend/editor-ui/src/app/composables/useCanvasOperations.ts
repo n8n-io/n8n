@@ -137,6 +137,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	deepCopy,
+	getEmptyGroupAnchor,
 	NodeConnectionTypes,
 	NodeHelpers,
 	TelemetryHelpers,
@@ -664,7 +665,11 @@ export function useCanvasOperations() {
 								index: outgoingConnection.index,
 							}),
 						},
-						{ validateNodeGroups },
+						{
+							validateNodeGroups,
+							// Reconnecting around a deleted node is an internal operation.
+							trackEmptyGroupTelemetry: false,
+						},
 					);
 				}
 			}
@@ -750,9 +755,10 @@ export function useCanvasOperations() {
 
 		// Snapshot the group first so its membership change is reverted with the node.
 		const groupBeforeDelete = group;
-		const groupSnapshot = trackHistory && groupBeforeDelete
-			? { ...groupBeforeDelete, nodeIds: [...groupBeforeDelete.nodeIds] }
-			: undefined;
+		const groupSnapshot =
+			trackHistory && groupBeforeDelete
+				? { ...groupBeforeDelete, nodeIds: [...groupBeforeDelete.nodeIds] }
+				: undefined;
 
 		useWorkflowExecutionStateStore(
 			workflowDocumentStore.value.documentId,
@@ -956,6 +962,8 @@ export function useCanvasOperations() {
 				createConnection(newCanvasConnection, {
 					trackHistory,
 					validateNodeGroups: false,
+					// Replacing a connection is an internal operation.
+					trackEmptyGroupTelemetry: false,
 				});
 				didReplace = true;
 			}
@@ -1040,6 +1048,8 @@ export function useCanvasOperations() {
 			createConnection(connection, {
 				trackHistory,
 				validateNodeGroups: false,
+				// Replacing a grouped node's connections is an internal operation.
+				trackEmptyGroupTelemetry: false,
 			});
 			revalidateNodeInputConnections(connection.target);
 			revalidateNodeOutputConnections(connection.source);
@@ -2659,6 +2669,8 @@ export function useCanvasOperations() {
 		// Undo restores an already-valid state, so don't re-gate it on group validation.
 		createConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection), {
 			validateNodeGroups: false,
+			// Restoring an existing connection during undo is an internal operation.
+			trackEmptyGroupTelemetry: false,
 		});
 	}
 

@@ -247,6 +247,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		if (!nodeType) {
 			return;
 		}
+		// This entry point is not associated with a node-creator action. Clear a
+		// previous source so consumers do not attribute this open to stale context.
+		setOpenSource('');
 		setNodeCreatorState({
 			workflowId,
 			createNodeActive: true,
