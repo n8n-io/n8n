@@ -324,7 +324,7 @@
     "temp": "0.9.4",
     "uuid": "catalog:",
     "vm2": "catalog:",
-    "weaviate-client": "3.13.1",
+    "weaviate-client": "3.14.0",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:"
   },
