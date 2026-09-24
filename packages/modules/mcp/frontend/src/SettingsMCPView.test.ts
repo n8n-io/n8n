@@ -16,10 +16,9 @@ import { useMCPStore } from './mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { FrontendSettings, OAuthClientResponseDto } from '@n8n/api-types';
-import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW } from './mcp.constants';
+import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW, UNKNOWN_COUNT_VALUE } from './mcp.constants';
 import type { McpAgent, McpWorkflow } from './mcp.types';
 
-import { UNKNOWN_COUNT_VALUE } from './mcp.constants';
 import { useToast } from '@n8n/composables/useToast';
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));

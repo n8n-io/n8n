@@ -30,12 +30,11 @@ import {
 	MCP_CLIENTS_VIEW,
 	MCP_DOCS_PAGE_URL,
 	MCP_WORKFLOWS_VIEW,
+	UNKNOWN_COUNT_VALUE,
 } from './mcp.constants';
 import { useMCPStore } from './mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-
-import { UNKNOWN_COUNT_VALUE } from './mcp.constants';
 
 const i18n = useI18n();
 const toast = useToast();

@@ -137,7 +137,7 @@ const onSave = () => emit('save', result.value);
 						v-if="drafts.length > 1 || drafts[index].length > 0"
 						variant="ghost"
 						size="small"
-						iconOnly
+						icon-only
 						icon="x"
 						:aria-label="i18n.baseText('generic.delete')"
 						data-test-id="mcp-callback-url-remove"

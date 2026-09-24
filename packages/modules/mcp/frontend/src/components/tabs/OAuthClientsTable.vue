@@ -12,7 +12,7 @@ import {
 	N8nText,
 	N8nTimeAgo,
 } from '@n8n/design-system';
-import type { IUser, TabOptions } from '@n8n/design-system';
+import type { IUser, TabOptions, TableHeader } from '@n8n/design-system';
 import { computed, ref } from 'vue';
 import debounce from 'lodash/debounce';
 import { useMCPStore } from '../../mcp.store';
@@ -21,7 +21,6 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
-import type { TableHeader } from '@n8n/design-system';
 import {
 	EMPTY_OAUTH_CLIENT_FILTERS,
 	getClientBrand,

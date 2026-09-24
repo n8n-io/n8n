@@ -42,7 +42,7 @@ const handleCopy = async () => {
 				<N8nButton
 					v-if="isSupported && !disabled"
 					variant="ghost"
-					iconOnly
+					icon-only
 					:icon="copied ? 'check' : 'copy'"
 					:class="$style['copy-button']"
 					data-test-id="mcp-config-snippet-copy"
