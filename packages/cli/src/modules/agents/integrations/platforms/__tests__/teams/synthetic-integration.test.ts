@@ -185,6 +185,7 @@ describe('Microsoft Teams integration scenarios', () => {
 					runId: 'run-card-1',
 					toolCallId: 'tool-card-1',
 					integrationType: 'teams',
+					resumeData: { approved: true },
 				}),
 			);
 
@@ -270,7 +271,11 @@ describe('Microsoft Teams integration scenarios', () => {
 			);
 
 			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
-				expect.objectContaining({ runId: 'run-group-1', toolCallId: 'tool-group-1' }),
+				expect.objectContaining({
+					runId: 'run-group-1',
+					toolCallId: 'tool-group-1',
+					resumeData: { approved: true },
+				}),
 			);
 
 			// A targeted card is only mutable through the targeted endpoint, so the

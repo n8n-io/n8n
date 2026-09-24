@@ -92,6 +92,7 @@ export interface TelegramReplayContext extends Omit<ReplayContextSetup, 'nextStr
 	agentExecutor: {
 		executeForChatPublished: Mock;
 		resumeForChat: Mock;
+		isResumable: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
 	apiCalls: TelegramApiCall[];

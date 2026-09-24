@@ -313,4 +313,33 @@ describe('notices that answer one click', () => {
 		expect(resumeForChat).toHaveBeenCalled();
 		expect(thread.postEphemeral).not.toHaveBeenCalled();
 	});
+
+	it('removes an answered card on a platform that deletes them, then resumes', async () => {
+		const thread = createThread(true);
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const deleteMessage = vi.fn().mockResolvedValue(undefined);
+		const settleActionMessage = vi.fn();
+		const handler = createHandler({
+			agentService: { resumeForChat, isResumable: async () => true },
+			deleteActionMessageBeforeResume: true,
+			settleActionMessage,
+		});
+
+		await handler.handleAction({
+			actionId: 'resume:run-1:tool-1:0',
+			value: JSON.stringify({ approved: true }),
+			thread,
+			threadId: THREAD_ID,
+			messageId: 'message-1',
+			user: ALICE,
+			adapter: { deleteMessage },
+			raw: {},
+		} as never);
+
+		expect(deleteMessage).toHaveBeenCalledWith(THREAD_ID, 'message-1');
+		expect(settleActionMessage).not.toHaveBeenCalled();
+		expect(resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({ runId: 'run-1', resumeData: { approved: true } }),
+		);
+	});
 });

@@ -189,6 +189,7 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	agentExecutor: {
 		executeForChatPublished: Mock;
 		resumeForChat: Mock;
+		isResumable: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
@@ -231,8 +232,8 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 			selectedContext = config.messageContext ?? undefined;
 			return toStream(stream);
 		}),
-		// Production wires this through an optional interface member, so leaving
-		// it out here would disable the stale-run gate in every replay test.
+		// Mirrors how production wires the gate. It admits every run by default,
+		// so a test that wants the stale branch resolves it to false.
 		isResumable: vi.fn(async () => true),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
