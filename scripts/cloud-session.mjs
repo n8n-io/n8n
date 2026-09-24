@@ -9,6 +9,7 @@
 //   pnpm session:opencode [name]   connect a local OpenCode client
 //   pnpm session ls                list Codespaces and tmux sessions
 //   pnpm session tunnel [port…]    forward ports to localhost
+//   pnpm session ssh-config        add an `n8n-codespace` host to ~/.ssh/config
 //   pnpm session stop              stop the Codespace
 //   pnpm session rm                delete the Codespace
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -214,6 +215,25 @@ switch (cmd) {
 			...ports.flatMap((p) => ['-L', `${p}:localhost:${p}`]),
 		);
 		process.exitCode = status ?? 1;
+		break;
+	}
+	case 'ssh-config': {
+		const name = ensureCodespace();
+		// A first connection starts a stopped codespace and creates gh's automatic
+		// key pair. The generated config names that key.
+		const { status } = ghTty('codespace', 'ssh', '-c', name, '--', 'true');
+		if (status !== 0) {
+			console.error(`Could not connect to ${name} over ssh.`);
+			process.exit(status ?? 1);
+		}
+		const { writeSshConfig, HOST_ALIAS } = await import('./cloud-session-ssh-config.mjs');
+		const { hostPath, configPath, includeAdded } = writeSshConfig(
+			gh('codespace', 'ssh', '--config', '-c', name),
+		);
+		console.log(`Wrote ${hostPath}${includeAdded ? ` and included it from ${configPath}` : ''}.`);
+		console.log(`Connect with \`ssh ${HOST_ALIAS}\`, or add the SSH host \`${HOST_ALIAS}\` in the`);
+		console.log('Claude Code desktop app and open /workspaces/n8n.');
+		console.log('Run this command again after you recreate the codespace.');
 		break;
 	}
 	case 'stop':
