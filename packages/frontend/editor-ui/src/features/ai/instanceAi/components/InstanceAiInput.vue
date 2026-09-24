@@ -331,11 +331,12 @@ const mentionAvailability = useAssistantMentionAvailability({
 	projectId: () => props.mentionProjectId,
 	artifacts: () => props.mentionArtifacts,
 });
+const isSubmissionInFlight = computed(() => props.isSubmitting || isPreparingSubmission.value);
 const canUseMentions = computed(
 	() =>
 		shouldShowMentions.value &&
 		mentionAvailability.isAvailable.value &&
-		!isBusy.value &&
+		!isSubmissionInFlight.value &&
 		!isGatedBySetup.value,
 );
 const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
