@@ -1,10 +1,8 @@
 import { MOONSHOTAI_KIMI_K3_MODEL_ID, UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
-import { MockLanguageModelV3 } from 'ai/test';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { AiService } from '@/services/ai.service';
 
 const capturedTokenGetters: Array<() => Promise<unknown>> = [];
@@ -41,53 +39,17 @@ describe('InstanceAiModelService', () => {
 	const settingsService = mock<InstanceAiSettingsService>();
 	const aiService = mock<AiService>();
 	const outboundHttp = mock<OutboundHttp>();
-	const transport = mock<ReturnType<OutboundHttp['transport']>>();
 
 	let service: InstanceAiModelService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedTokenGetters.length = 0;
-		vi.stubEnv('HTTP_PROXY', '');
-		vi.stubEnv('HTTPS_PROXY', '');
-		outboundHttp.transport.mockReturnValue(transport);
-		transport.asCustomFetch.mockReturnValue(vi.fn());
 		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
-		vi.unstubAllEnvs();
-	});
-
-	it.each([
-		{ proxy: false, method: 'doGenerate' as const },
-		{ proxy: false, method: 'doStream' as const },
-		{ proxy: true, method: 'doGenerate' as const },
-		{ proxy: true, method: 'doStream' as const },
-	])('checks enablement on cached $method calls (proxy=$proxy)', async ({ proxy, method }) => {
-		const providerError = new Error('Provider called');
-		const doGenerate = vi.fn<MockLanguageModelV3['doGenerate']>().mockRejectedValue(providerError);
-		const doStream = vi.fn<MockLanguageModelV3['doStream']>().mockRejectedValue(providerError);
-		const provider = new MockLanguageModelV3({ doGenerate, doStream });
-		const providerCall = method === 'doGenerate' ? doGenerate : doStream;
-		aiService.isProxyEnabled.mockReturnValue(proxy);
-		aiService.getClient.mockResolvedValue(createClient() as never);
-		settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude');
-		settingsService.resolveModelConfig.mockResolvedValue(provider);
-		createProxyLanguageModel.mockResolvedValue(provider);
-		const { createModel } = await import('@n8n/agents');
-		const cached = createModel(await service.resolveAgentModelConfig(fakeUser));
-		if (typeof cached === 'string') throw new Error('Expected a resolved model');
-
-		await expect(cached[method]({ prompt: [] })).rejects.toBe(providerError);
-		expect(providerCall).toHaveBeenCalledTimes(1);
-		settingsService.assertEnabled.mockImplementationOnce(() => {
-			throw new ForbiddenError('Assistant disabled');
-		});
-
-		await expect(cached[method]({ prompt: [] })).rejects.toThrow(ForbiddenError);
-		expect(providerCall).toHaveBeenCalledTimes(1);
 	});
 
 	describe('isProxyEnabled', () => {
@@ -149,9 +111,7 @@ describe('InstanceAiModelService', () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude' as never);
 
-			await expect(service.resolveAgentModelConfig(fakeUser)).resolves.toMatchObject({
-				id: 'anthropic/claude',
-			});
+			await expect(service.resolveAgentModelConfig(fakeUser)).resolves.toBe('anthropic/claude');
 		});
 
 		it('should mint proxy tokens via the instance-ai endpoint when the proxy is active', async () => {
@@ -177,12 +137,10 @@ describe('InstanceAiModelService', () => {
 
 		it('passes the exact Kimi id to the shared proxy factory', async () => {
 			settingsService.getConfiguredModelId.mockReturnValue(MOONSHOTAI_KIMI_K3_MODEL_ID);
-			createProxyLanguageModel.mockResolvedValue(
-				new MockLanguageModelV3({
-					provider: 'moonshotai',
-					modelId: 'kimi-k3',
-				}),
-			);
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'moonshotai',
+				modelId: 'kimi-k3',
+			});
 
 			await service.resolveProxyModel(fakeUser, 'https://proxy.base/', tokenManager);
 
@@ -201,12 +159,10 @@ describe('InstanceAiModelService', () => {
 
 		it('forwards the caller-provided run and thread ids to the proxy factory', async () => {
 			settingsService.getConfiguredModelId.mockReturnValue(MOONSHOTAI_KIMI_K3_MODEL_ID);
-			createProxyLanguageModel.mockResolvedValue(
-				new MockLanguageModelV3({
-					provider: 'moonshotai',
-					modelId: 'kimi-k3',
-				}),
-			);
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'moonshotai',
+				modelId: 'kimi-k3',
+			});
 
 			await service.resolveProxyModel(fakeUser, 'https://proxy.base/', tokenManager, {
 				runId: 'run-42',
@@ -221,12 +177,10 @@ describe('InstanceAiModelService', () => {
 		it('keeps Anthropic routing for other configured models', async () => {
 			settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude-opus-5');
 			settingsService.resolveModelName.mockReturnValue('claude-opus-5');
-			createProxyLanguageModel.mockResolvedValue(
-				new MockLanguageModelV3({
-					provider: 'anthropic.messages',
-					modelId: 'claude-opus-5',
-				}),
-			);
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'anthropic.messages',
+				modelId: 'claude-opus-5',
+			});
 
 			await service.resolveProxyModel(fakeUser, 'https://proxy.base', tokenManager);
 

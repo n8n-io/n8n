@@ -923,11 +923,6 @@ export class InstanceAiService {
 		// Runtime clients capture provider settings at creation, so rebuild them
 		// after admin settings change. In-flight sandbox users retain their entry.
 		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
-			if (!this.settingsService.isAgentEnabled()) {
-				for (const threadId of this.runState.getThreadIds()) {
-					this.cancelRun(threadId, 'assistant_disabled');
-				}
-			}
 			this.sandboxService.invalidateCachedWorkspaces();
 			if (!mcpSettingsChanged) return;
 			if (!this._mcpClientManager) return;
@@ -1542,13 +1537,6 @@ export class InstanceAiService {
 	}
 
 	cancelRun(threadId: string, reason = 'user_cancelled'): void {
-		if (
-			reason === 'assistant_disabled' &&
-			!this.runState.hasLiveRun(threadId) &&
-			this.backgroundTasks.getRunningTasks(threadId).length === 0
-		) {
-			return;
-		}
 		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {

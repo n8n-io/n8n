@@ -126,9 +126,7 @@ export class InstanceAiVerificationService {
 				? this.settingsService.buildModelConfigForConnection(connection, request.modelName ?? '')
 				: request.modelName
 					? await this.settingsService.resolveModelConfigForVerification(user, request.modelName)
-					: await this.modelService.resolveAgentModelConfig(user, undefined, {
-							forVerification: true,
-						});
+					: await this.modelService.resolveAgentModelConfig(user);
 			// Under the AI service proxy the resolved model is a pre-built LanguageModel
 			// whose `provider` reflects the proxy transport, not the configured model —
 			// attribute from the configured model id instead.

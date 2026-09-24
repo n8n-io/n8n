@@ -499,16 +499,6 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadUsers.get(threadId);
 	}
 
-	getThreadIds(): string[] {
-		return [
-			...new Set([
-				...this.threadUsers.keys(),
-				...this.activeRuns.keys(),
-				...this.suspendedRuns.keys(),
-			]),
-		];
-	}
-
 	setTimeZone(threadId: string, timeZone: string): void {
 		this.threadTimeZones.set(threadId, timeZone);
 	}

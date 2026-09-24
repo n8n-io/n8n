@@ -180,6 +180,7 @@ listed in `N8N_ENABLED_MODULES`. `N8N_AI_ENABLED` controls older global AI
 features and does not gate Instance AI.
 
 Owners and admins can enable or disable the Assistant in **Settings > n8n Assistant**.
+Disabling blocks new and resumed Assistant runs. Work already in progress may finish.
 The AI usage page and its data-sharing controls are no longer available.
 
 On startup, either a saved `ai.allowSendingParameterValues=false` setting or

@@ -159,9 +159,7 @@ describe('InstanceAiVerificationService', () => {
 		it('uses the active agent model when no model override is provided', async () => {
 			await expect(service.verifyModel(user, {})).resolves.toMatchObject({ ok: true });
 
-			expect(modelService.resolveAgentModelConfig).toHaveBeenCalledWith(user, undefined, {
-				forVerification: true,
-			});
+			expect(modelService.resolveAgentModelConfig).toHaveBeenCalledWith(user);
 			expect(createModelMock).toHaveBeenCalledWith('openai/saved-model', expect.any(Function));
 		});
 

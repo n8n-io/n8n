@@ -49,7 +49,6 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 import type { PolicyCleared } from '@n8n/decorators';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { Container } from '@n8n/di';
 import { generateWorkflowCode, parseWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
@@ -2294,7 +2293,6 @@ describe('createDataTableAdapter', () => {
 // ---------------------------------------------------------------------------
 
 function createWorkflowAdapterForTests(overrides?: {
-	settingsService?: InstanceAiSettingsService;
 	setupPanelVariant?: 'control' | 'variant';
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
@@ -2368,7 +2366,6 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 	const mockWorkflowHistoryService = {
 		getVersion: vi.fn(),
-		updateVersionForUser: vi.fn().mockResolvedValue(undefined),
 	};
 	const mockEnterpriseWorkflowService = {
 		preventTampering: vi.fn(async (data: unknown) => data),
@@ -2428,7 +2425,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{
 			isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
 		} as unknown as InstanceWriteAccessService,
-		overrides?.settingsService ?? instanceAiSettings,
+		instanceAiSettings,
 		mockWorkflowHistoryService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[23],
@@ -2516,7 +2513,6 @@ const minimalWorkflowJSON = {
 } as unknown as WorkflowJSON;
 
 describe('Assistant enablement', () => {
-	type Fixture = ReturnType<typeof createWorkflowAdapterForTests>;
 	const user = mock<User>({ id: 'user-1' });
 	const disabled = new ForbiddenError('The n8n Assistant is disabled');
 
@@ -2545,178 +2541,6 @@ describe('Assistant enablement', () => {
 			expect(service.createContext(user).requireFullWorkflowSource).toBe(migrated);
 		},
 	);
-
-	it.each<{
-		name: string;
-		invoke: (fixture: Fixture) => Promise<unknown>;
-		writer: (fixture: Fixture) => Mock;
-	}>([
-		{
-			name: 'publish',
-			invoke: async ({ adapter }) => await adapter.publish('wf-1'),
-			writer: ({ mockWorkflowService }) => mockWorkflowService.activateWorkflow,
-		},
-		{
-			name: 'restoreVersion',
-			invoke: async ({ adapter }) => await adapter.restoreVersion?.('wf-1', 'v-1'),
-			writer: ({ mockWorkflowService }) => mockWorkflowService.update,
-		},
-		{
-			name: 'updateVersion',
-			invoke: async ({ adapter }) =>
-				await adapter.updateVersion?.('wf-1', 'v-1', { name: 'Version' }),
-			writer: ({ mockWorkflowHistoryService }) => mockWorkflowHistoryService.updateVersionForUser,
-		},
-		{
-			name: 'createFromWorkflowJSON',
-			invoke: async ({ adapter }) => await adapter.createFromWorkflowJSON(minimalWorkflowJSON),
-			writer: ({ mockWorkflowRepository }) => mockWorkflowRepository.createContent,
-		},
-		{
-			name: 'updateFromWorkflowJSON',
-			invoke: async ({ adapter }) =>
-				await adapter.updateFromWorkflowJSON('wf-1', minimalWorkflowJSON),
-			writer: ({ mockWorkflowService }) => mockWorkflowService.update,
-		},
-	])('rejects $name through a retained context after disablement', async ({ invoke, writer }) => {
-		const settingsService = mock<InstanceAiSettingsService>();
-		const fixture = createWorkflowAdapterForTests({ settingsService, namedVersionsLicensed: true });
-		settingsService.assertEnabled.mockImplementation(() => {
-			throw disabled;
-		});
-
-		await expect(invoke(fixture)).rejects.toBe(disabled);
-		expect(writer(fixture)).not.toHaveBeenCalled();
-		expect(fixture.mockCollaborationService.ensureWorkflowEditable).not.toHaveBeenCalled();
-		expect(fixture.mockWorkflowHistoryService.getVersion).not.toHaveBeenCalled();
-	});
-
-	it.each(['publish', 'unpublish', 'archive'] as const)(
-		'rechecks enablement after the editor-lock lookup before %s',
-		async (operation) => {
-			const settingsService = mock<InstanceAiSettingsService>();
-			const { adapter, mockCollaborationService, mockWorkflowService } =
-				createWorkflowAdapterForTests({ settingsService });
-			const lock = createDeferredPromise<undefined>();
-			mockCollaborationService.ensureWorkflowEditable.mockReturnValueOnce(lock.promise);
-			const mutation = adapter[operation]('wf-1');
-			expect(mockCollaborationService.ensureWorkflowEditable).toHaveBeenCalledWith('wf-1');
-			settingsService.assertEnabled.mockImplementation(() => {
-				throw disabled;
-			});
-			lock.resolve(undefined);
-
-			await expect(mutation).rejects.toBe(disabled);
-			expect(mockWorkflowService.activateWorkflow).not.toHaveBeenCalled();
-			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
-			expect(mockWorkflowService.archive).not.toHaveBeenCalled();
-		},
-	);
-
-	it('rechecks enablement after reading the version to restore', async () => {
-		const settingsService = mock<InstanceAiSettingsService>();
-		const { adapter, mockWorkflowHistoryService, mockWorkflowService } =
-			createWorkflowAdapterForTests({ settingsService });
-		mockWorkflowHistoryService.getVersion.mockImplementationOnce(async () => {
-			settingsService.assertEnabled.mockImplementation(() => {
-				throw disabled;
-			});
-			return { nodes: [], connections: {}, nodeGroups: [] };
-		});
-
-		await expect(adapter.restoreVersion?.('wf-1', 'v-1')).rejects.toBe(disabled);
-		expect(mockWorkflowService.update).not.toHaveBeenCalled();
-	});
-
-	it('rechecks enablement after draft credential validation', async () => {
-		const settingsService = mock<InstanceAiSettingsService>();
-		const { adapter, mockEnterpriseWorkflowService, mockWorkflowService } =
-			createWorkflowAdapterForTests({ settingsService, sharingEnabled: true });
-		mockEnterpriseWorkflowService.preventTampering.mockImplementationOnce(async (data) => {
-			settingsService.assertEnabled.mockImplementation(() => {
-				throw disabled;
-			});
-			return data;
-		});
-
-		await expect(adapter.updateFromWorkflowJSON('wf-1', minimalWorkflowJSON)).rejects.toBe(
-			disabled,
-		);
-		expect(mockWorkflowService.update).not.toHaveBeenCalled();
-	});
-
-	it('rechecks enablement after policy checks before creating a workflow shell', async () => {
-		const settingsService = mock<InstanceAiSettingsService>();
-		const { adapter, mockPolicyEnforcementService, mockWorkflowRepository } =
-			createWorkflowAdapterForTests({ settingsService });
-		mockPolicyEnforcementService.enforceWorkflowSave.mockImplementationOnce(async () => {
-			settingsService.assertEnabled.mockImplementation(() => {
-				throw disabled;
-			});
-			return mock<PolicyCleared<'workflowSave'>>();
-		});
-
-		await expect(adapter.createFromWorkflowJSON(minimalWorkflowJSON)).rejects.toBe(disabled);
-		expect(mockWorkflowRepository.createContent).not.toHaveBeenCalled();
-	});
-
-	it.each(['clearAiTemporary', 'archiveIfAiTemporary'] as const)(
-		'rechecks enablement after the temporary-workflow lookup before %s',
-		async (operation) => {
-			const settingsService = mock<InstanceAiSettingsService>();
-			const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowService } =
-				createWorkflowAdapterForTests({ settingsService });
-			mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockImplementationOnce(
-				async () => {
-					settingsService.assertEnabled.mockImplementation(() => {
-						throw disabled;
-					});
-					return true;
-				},
-			);
-
-			await expect(adapter[operation]('wf-1')).rejects.toBe(disabled);
-			expect(mockAiBuilderTemporaryWorkflowRepository.unmark).not.toHaveBeenCalled();
-			expect(mockWorkflowService.archive).not.toHaveBeenCalled();
-		},
-	);
-
-	it('rechecks enablement after reading a workflow before moving it', async () => {
-		const settingsService = mock<InstanceAiSettingsService>();
-		const { context, mockWorkflowFinderService, mockWorkflowService, savedWorkflow } =
-			createWorkflowAdapterForTests({ settingsService, foldersLicensed: true });
-		mockWorkflowFinderService.findWorkflowForUser.mockImplementationOnce(async () => {
-			settingsService.assertEnabled.mockImplementation(() => {
-				throw disabled;
-			});
-			return savedWorkflow;
-		});
-
-		await expect(context.workspaceService?.moveWorkflowToFolder?.('wf-1', 'folder-1')).rejects.toBe(
-			disabled,
-		);
-		expect(mockWorkflowService.update).not.toHaveBeenCalled();
-	});
-
-	it('finishes temporary-marker cleanup when disablement follows archiving', async () => {
-		const settingsService = mock<InstanceAiSettingsService>();
-		const {
-			adapter,
-			mockAiBuilderTemporaryWorkflowRepository,
-			mockWorkflowService,
-			savedWorkflow,
-		} = createWorkflowAdapterForTests({ settingsService });
-		mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
-		mockWorkflowService.archive.mockImplementationOnce(async () => {
-			settingsService.assertEnabled.mockImplementation(() => {
-				throw disabled;
-			});
-			return savedWorkflow;
-		});
-
-		await expect(adapter.archiveIfAiTemporary('wf-1')).resolves.toBe(true);
-		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-1');
-	});
 });
 
 describe('createWorkflowAdapter', () => {

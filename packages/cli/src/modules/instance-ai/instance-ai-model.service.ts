@@ -8,9 +8,8 @@ import {
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { withModalSession, type ModelConfig } from '@n8n/instance-ai';
+import type { ModelConfig } from '@n8n/instance-ai';
 import { nanoid } from 'nanoid';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { AiService } from '@/services/ai.service';
@@ -63,12 +62,7 @@ export class InstanceAiModelService {
 	 * `proxyContext` is forwarded as `x-n8n-run-id` / `x-n8n-thread-id` on every
 	 * proxied model call when set (run-less callers like verification omit it).
 	 */
-	async resolveAgentModelConfig(
-		user: User,
-		proxyContext?: ProxyContext,
-		options?: { forVerification: true },
-	): Promise<ModelConfig> {
-		this.settingsService.assertEnabled(options);
+	async resolveAgentModelConfig(user: User, proxyContext?: ProxyContext): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const client = await this.aiService.getClient();
 			const proxyBaseUrl = client.getApiProxyBaseUrl();
@@ -78,14 +72,11 @@ export class InstanceAiModelService {
 					{ userMessageId: nanoid() },
 				);
 			});
-			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext, options);
+			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext);
 		}
 		const httpProxyModel = await this.resolveHttpProxyModel(user);
-		const config = httpProxyModel ?? (await this.settingsService.resolveModelConfig(user));
-		return await this.guardModelCalls(
-			proxyContext?.threadId ? withModalSession(config, proxyContext.threadId) : config,
-			options,
-		);
+		if (httpProxyModel) return httpProxyModel;
+		return await this.settingsService.resolveModelConfig(user);
 	}
 
 	/**
@@ -101,13 +92,11 @@ export class InstanceAiModelService {
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
 		proxyContext?: ProxyContext,
-		options?: { forVerification: true },
 	): Promise<ModelConfig> {
-		this.settingsService.assertEnabled(options);
 		const configuredModelId = this.settingsService.getConfiguredModelId();
 		const isExactKimi = isMoonshotaiKimiK3ModelId(configuredModelId);
 		const modelId = isExactKimi ? configuredModelId : this.settingsService.resolveModelName(user);
-		const model = await createProxyLanguageModel({
+		return await createProxyLanguageModel({
 			proxyBaseUrl,
 			modelId,
 			tokenManager,
@@ -115,36 +104,6 @@ export class InstanceAiModelService {
 			n8nVersion: N8N_VERSION,
 			outboundHttp: this.outboundHttp,
 			...proxyContext,
-		});
-		return await this.guardModelCalls(model, options);
-	}
-
-	private async guardModelCalls(
-		config: ModelConfig,
-		options?: { forVerification: true },
-	): Promise<ModelConfig> {
-		const { createModel } = await import('@n8n/agents');
-		const { wrapLanguageModel } = await import('ai');
-		const model = createModel(config, createAiProxyFetch(this.outboundHttp));
-		if (typeof model === 'string') throw new UnexpectedError('Expected a resolved language model');
-		const guarded = wrapLanguageModel({
-			model,
-			middleware: {
-				wrapGenerate: async ({ doGenerate }) => {
-					this.settingsService.assertEnabled(options);
-					return await doGenerate();
-				},
-				wrapStream: async ({ doStream }) => {
-					this.settingsService.assertEnabled(options);
-					return await doStream();
-				},
-			},
-		});
-		// Keep the endpoint and model identity used by prompt capability checks.
-		return Object.assign(guarded, {
-			...(typeof config === 'string' ? { id: config } : 'id' in config ? { id: config.id } : {}),
-			...(typeof config === 'object' && 'url' in config ? { url: config.url } : {}),
-			...(typeof config === 'object' && 'baseURL' in config ? { baseURL: config.baseURL } : {}),
 		});
 	}
 

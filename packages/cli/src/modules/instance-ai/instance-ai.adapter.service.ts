@@ -946,7 +946,6 @@ export class InstanceAiAdapterService {
 	}
 
 	private assertInstanceNotReadOnly(resourceType: string) {
-		this.settingsService.assertEnabled();
 		if (this.instanceWriteAccess.isReadOnly()) {
 			throw new Error(
 				`Cannot modify ${resourceType} on a protected instance. This instance is in read-only mode.`,
@@ -1031,7 +1030,6 @@ export class InstanceAiAdapterService {
 			workflowDependencyQueryService,
 		} = this;
 		const logger = this.logger;
-		const assertEnabled = () => this.settingsService.assertEnabled();
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		// Resolved once per context, upstream in `createContext`: the tool registers the action from
 		// the method's presence, so nothing downstream has to know a rollout flag exists.
@@ -1432,7 +1430,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async get(workflowId: string) {
-				assertEnabled();
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
@@ -1447,7 +1444,6 @@ export class InstanceAiAdapterService {
 			async archive(workflowId: string) {
 				assertNotReadOnly();
 				await assertNotLockedByEditor(workflowId);
-				assertEnabled();
 				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
 				if (!result) {
 					throw new WorkflowNotFoundError(workflowId);
@@ -1471,7 +1467,6 @@ export class InstanceAiAdapterService {
 				if (!workflow) return;
 				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) return;
 
-				assertEnabled();
 				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
 			},
 
@@ -1484,7 +1479,6 @@ export class InstanceAiAdapterService {
 				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) {
 					return false;
 				}
-				assertEnabled();
 				if (workflow.isArchived) {
 					await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
 					return false;
@@ -1499,9 +1493,7 @@ export class InstanceAiAdapterService {
 				workflowId: string,
 				options?: { versionId?: string; name?: string; description?: string },
 			) {
-				assertEnabled();
 				await assertNotLockedByEditor(workflowId);
-				assertEnabled();
 				const wf = await workflowService.activateWorkflow(user, workflowId, {
 					versionId: options?.versionId,
 					name: options?.name,
@@ -1528,9 +1520,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async unpublish(workflowId: string) {
-				assertEnabled();
 				await assertNotLockedByEditor(workflowId);
-				assertEnabled();
 				await workflowService.deactivateWorkflow(user, workflowId, {
 					source: 'n8n-ai',
 				});
@@ -1538,7 +1528,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async getAsWorkflowJSON(workflowId: string, versionId?: string) {
-				assertEnabled();
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
@@ -1572,7 +1561,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async getWorkflowSnapshot(workflowId: string) {
-				assertEnabled();
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
@@ -1683,7 +1671,6 @@ export class InstanceAiAdapterService {
 				const saved = await workflowRepository.runInTransaction(
 					{ policyCleared: cleared },
 					async (transactionManager, ctx) => {
-						assertEnabled();
 						const workflow = await workflowRepository.createContent(newWorkflow, ctx);
 						await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
 						if (options?.markAsAiTemporary) {
@@ -1726,7 +1713,6 @@ export class InstanceAiAdapterService {
 						);
 					}
 
-					assertEnabled();
 					updated = await workflowService.update(user, updateData, saved.id, {
 						source: 'n8n-ai',
 						...(placement ? { parentFolderId: placement.id } : {}),
@@ -1825,7 +1811,6 @@ export class InstanceAiAdapterService {
 						);
 					}
 
-					assertEnabled();
 					updated = await workflowService.update(user, updateData, workflowId, {
 						source: 'n8n-ai',
 						...(options?.expectedChecksum ? { expectedChecksum: options.expectedChecksum } : {}),
@@ -1921,7 +1906,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async restoreVersion(workflowId, versionId) {
-				assertEnabled();
 				await assertNotLockedByEditor(workflowId);
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 
@@ -1933,7 +1917,6 @@ export class InstanceAiAdapterService {
 					nodeGroups: version.nodeGroups,
 				} as Partial<WorkflowEntity>);
 
-				assertEnabled();
 				const updated = await workflowService.update(user, updateData, workflowId, {
 					source: 'n8n-ai',
 				});
@@ -1949,7 +1932,6 @@ export class InstanceAiAdapterService {
 							versionId: string,
 							data: { name?: string | null; description?: string | null },
 						) {
-							assertEnabled();
 							await workflowHistoryService.updateVersionForUser(user, workflowId, versionId, data);
 						},
 					}
@@ -4025,7 +4007,6 @@ export class InstanceAiAdapterService {
 							if (!workflow) {
 								throw new WorkflowNotFoundError(workflowId);
 							}
-							assertNotReadOnly('workflows');
 							await workflowService.update(user, workflow, workflowId, {
 								parentFolderId: folderId,
 								source: 'n8n-ai',
@@ -4060,13 +4041,11 @@ export class InstanceAiAdapterService {
 							throw new Error('User does not have permission to create tags');
 						}
 						const entity = tagService.toEntity({ name: tagName });
-						assertNotReadOnly('workflows');
 						const saved = await tagService.save(entity, 'create');
 						tagIds.push(saved.id);
 					}
 				}
 
-				assertNotReadOnly('workflows');
 				await workflowService.update(user, workflow, workflowId, { tagIds, source: 'n8n-ai' });
 				return tagNames;
 			},
