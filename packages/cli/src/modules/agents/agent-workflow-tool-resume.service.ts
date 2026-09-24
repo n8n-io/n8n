@@ -1,3 +1,4 @@
+import type { ToolContext } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
@@ -157,39 +158,13 @@ export class AgentWorkflowToolResumeService {
 		if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended') return;
 		const persistence = checkpoint.checkpoint.persistence;
 		if (!persistence) return;
-		let messageContext = readIntegrationMessageContext(persistence);
-		const allowLegacyThreadId = messageContext === undefined;
-		if (messageContext === undefined) {
-			try {
-				messageContext = await this.messageContextService.getLatest(persistence.threadId);
-			} catch (error) {
-				this.logger.warn('Could not read the thread message context for an agent resume', {
-					runId: agentRun.runId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				messageContext = null;
-			}
-		}
-		const [platform, storedCredentialId] = messageContext?.integrationConnectionId.split(':') ?? [];
-		let integrationType = agentRun.integrationType;
-		let credentialId: string | undefined;
-		if (allowLegacyThreadId) {
-			if (messageContext?.platform === integrationType && platform === integrationType) {
-				credentialId = storedCredentialId;
-			} else {
-				messageContext = null;
-			}
-		} else {
-			if (!messageContext || messageContext.platform !== platform || !storedCredentialId) {
-				this.logger.warn('Agent resume has no integration reply context', {
-					agentId: agentRun.agentId,
-					runId: agentRun.runId,
-				});
-				return;
-			}
-			integrationType = messageContext.platform;
-			credentialId = storedCredentialId;
-		}
+		const route = await this.getIntegrationResumeRoute(
+			agentRun,
+			agentRun.integrationType,
+			persistence,
+		);
+		if (!route) return;
+		const { integrationType, credentialId, messageContext, allowLegacyThreadId } = route;
 		const bridge = this.chatIntegrationService.getBridge(
 			agentRun.agentId,
 			integrationType,
@@ -245,6 +220,7 @@ export class AgentWorkflowToolResumeService {
 			resumeData,
 			user,
 			previewChat: agentRun.previewChat,
+			automaticPreviewContinuation: true,
 			response: '',
 		});
 
@@ -264,5 +240,54 @@ export class AgentWorkflowToolResumeService {
 			threadId: agentRun.threadId,
 			executionId: result.executionId ?? '',
 		});
+	}
+
+	private async getIntegrationResumeRoute(
+		agentRun: RelatedAgentRun,
+		integrationType: string,
+		persistence: NonNullable<ToolContext['persistence']>,
+	) {
+		let messageContext = readIntegrationMessageContext(persistence);
+		const allowLegacyThreadId = messageContext === undefined;
+		if (messageContext === undefined) {
+			messageContext = await this.loadLegacyMessageContext(persistence.threadId, agentRun.runId);
+		}
+		const [platform, credentialId] = messageContext?.integrationConnectionId.split(':') ?? [];
+		if (allowLegacyThreadId) {
+			if (messageContext?.platform === integrationType && platform === integrationType) {
+				return { integrationType, credentialId, messageContext, allowLegacyThreadId };
+			}
+			return {
+				integrationType,
+				credentialId: undefined,
+				messageContext: null,
+				allowLegacyThreadId,
+			};
+		}
+		if (!messageContext || messageContext.platform !== platform || !credentialId) {
+			this.logger.warn('Agent resume has no integration reply context', {
+				agentId: agentRun.agentId,
+				runId: agentRun.runId,
+			});
+			return undefined;
+		}
+		return {
+			integrationType: messageContext.platform,
+			credentialId,
+			messageContext,
+			allowLegacyThreadId,
+		};
+	}
+
+	private async loadLegacyMessageContext(threadId: string, runId: string) {
+		try {
+			return await this.messageContextService.getLatest(threadId);
+		} catch (error) {
+			this.logger.warn('Could not read the thread message context for an agent resume', {
+				runId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
 	}
 }

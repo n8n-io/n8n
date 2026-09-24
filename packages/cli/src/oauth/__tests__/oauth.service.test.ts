@@ -451,9 +451,6 @@ describe('OauthService', () => {
 			await service.encryptAndSaveData(credential, toUpdate, toDelete);
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith('1', {
-				id: '1',
-				name: expect.anything(),
-				type: 'test',
 				data: expect.any(String),
 				updatedAt: expect.any(Date),
 			});
@@ -472,9 +469,6 @@ describe('OauthService', () => {
 			await service.encryptAndSaveData(credential, toUpdate);
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith('1', {
-				id: '1',
-				name: expect.anything(),
-				type: 'test',
 				data: expect.any(String),
 				updatedAt: expect.any(Date),
 			});

@@ -6,6 +6,8 @@ export type Preference = AiPreferenceDto;
 export interface PreferenceListQuery {
 	skip?: number;
 	take?: number;
+	/** Only these rows. The API reads them as one comma-separated parameter. */
+	ids?: string[];
 }
 
 /** What the current user may do to one row. */

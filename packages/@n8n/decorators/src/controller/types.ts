@@ -67,6 +67,8 @@ export interface RouteMetadata {
 	/** Whether to apply keyed rate limiting to the route */
 	keyedRateLimit?: KeyedRateLimiterConfig;
 	licenseFeature?: BooleanLicenseFeature;
+	/** Public API only: gate the route on the instance being within its licensed users quota. */
+	requiresUserQuota?: boolean;
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;

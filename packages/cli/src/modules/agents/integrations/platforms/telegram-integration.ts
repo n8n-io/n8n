@@ -59,6 +59,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 	readonly builderGuidance = {
 		capabilities: [
 			'Receive Telegram messages as agent triggers.',
+			'Receive Telegram photos and expose their chat and file identifiers to the agent.',
 			'Respond in Telegram conversations and send direct Telegram messages.',
 			'Edit existing messages in the current Telegram conversation.',
 			'Render Telegram-compatible cards with buttons.',
@@ -88,6 +89,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 		'send_dm',
 		'edit_message',
 	]);
+
+	readonly contextToolGuidance = [
+		'For an inbound Telegram message, get_current_message_context returns context.platformMessage. It contains chat_id, message_id, optional message_thread_id, and attachment file_id values.',
+	];
 
 	readonly actionToolGuidance = [
 		'For scheduled tasks without an inbound conversation, use send_dm with the known Telegram user ID. The integration action does not require current message context.',

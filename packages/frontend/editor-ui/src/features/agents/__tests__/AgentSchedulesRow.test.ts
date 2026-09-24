@@ -156,7 +156,15 @@ describe('AgentSchedulesRow', () => {
 
 	it('opens the task modal and forwards its callbacks', async () => {
 		getAgentTasksSpy.mockResolvedValue([makeTask()]);
-		const wrapper = mountRow([taskRef()]);
+		const validationIssues = [
+			{
+				code: 'missing_required',
+				message: 'Missing model',
+				capability: { kind: 'llm' },
+				path: ['llm'],
+			},
+		];
+		const wrapper = mountRow([taskRef()], { isRunnable: true, validationIssues });
 		await flushPromises();
 
 		await wrapper.find('[data-testid="agent-capabilities-task-row"]').trigger('click');
@@ -166,12 +174,16 @@ describe('AgentSchedulesRow', () => {
 				data: expect.objectContaining({
 					task: expect.objectContaining({ id: 'task-1' }),
 					taskState: { enabled: true },
+					isRunnable: true,
+					validationIssues,
 				}),
 			}),
 		);
 
 		const modalData = openModalWithDataSpy.mock.calls[0][0].data;
 		modalData.onToggle({ id: 'task-1', enabled: false });
+		modalData.onPreview('Test these instructions');
 		expect(wrapper.emitted('toggle-task')).toEqual([[{ id: 'task-1', enabled: false }]]);
+		expect(wrapper.emitted('preview-task')).toEqual([['Test these instructions']]);
 	});
 });

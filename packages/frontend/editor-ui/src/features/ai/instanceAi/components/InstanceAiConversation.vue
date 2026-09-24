@@ -17,7 +17,9 @@ import type {
 	InstanceAiAgentAttachment,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
+	InstanceAiPrefillPayload,
 } from '@n8n/api-types';
+import type { SuggestionSelectionPayload } from './InstanceAiInput.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 // Experiment cleanup: remove with openWorkflowInAssistant.
@@ -94,6 +96,8 @@ const emit = defineEmits<{
 defineSlots<{
 	'above-input'?: () => unknown;
 	'inline-offers'?: () => unknown;
+	/** A host's welcome state, rendered until the thread has its first message. */
+	empty?: () => unknown;
 }>();
 
 const store = useInstanceAiStore();
@@ -718,6 +722,24 @@ function isDirty(): boolean {
 	return chatInputRef.value?.isDirty() ?? false;
 }
 
+/**
+ * Puts n8n-authored text into the composer without sending it. The host owns
+ * the wording and the pre-fill tag; this just forwards to the input so the
+ * submit can attribute the message correctly.
+ */
+function setPrefill(prefill: InstanceAiPrefillPayload) {
+	chatInputRef.value?.setPrefill(prefill);
+}
+
+/**
+ * Sends a prompt to the assistant right away, without staging it in the
+ * composer first. The host (e.g. the agent builder template picker) owns the
+ * wording and the pre-fill tag.
+ */
+function submitSuggestion(payload: SuggestionSelectionPayload) {
+	chatInputRef.value?.submitSuggestion(payload);
+}
+
 /** So a host-triggered send (e.g. the "fix with AI" offer) re-follows new messages. */
 function resetScroll() {
 	userScrolledUp.value = false;
@@ -728,6 +750,8 @@ defineExpose({
 	applyHandoff,
 	dismissPendingComposerContext,
 	resetScroll,
+	setPrefill,
+	submitSuggestion,
 	// Read by the host for panels that sit beside (not inside) the conversation.
 	pendingComposerContext,
 });
@@ -742,6 +766,9 @@ defineExpose({
 				:style="{ overflowAnchor: aboveInputOverlapHeight !== undefined ? 'none' : undefined }"
 			>
 				<div ref="messageList" :class="$style.messageList">
+					<!-- A host's welcome state (e.g. the agent builder's intro), shown
+						 until the conversation has its first message. -->
+					<slot v-if="!thread.hasMessages" name="empty" />
 					<!-- Mirrors the old empty opener: a user bubble with only the
 					     workflow chip, then the static assistant greeting. -->
 					<N8nChatMessage
@@ -920,7 +947,7 @@ defineExpose({
 
 .messageList {
 	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: 800px;
+	max-width: min(800px, 100%);
 	margin: 0 auto;
 	padding: var(--spacing--sm) var(--spacing--lg);
 	display: flex;

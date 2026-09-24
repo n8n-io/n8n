@@ -4,6 +4,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useActions } from './useActions';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import {
 	AGENT_NODE_TYPE,
 	AI_CATEGORY_LANGUAGE_MODELS,
@@ -87,6 +88,16 @@ describe('useActions', () => {
 	});
 
 	describe('getAddedNodesAndConnections', () => {
+		it('adds nothing when any requested type is restricted', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.gmail': 'instance' });
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(getAddedNodesAndConnections([{ type: 'n8n-nodes-base.gmail' }])).toEqual({
+				nodes: [],
+				connections: [],
+			});
+		});
+
 		test('should insert a manual trigger node when there are no triggers', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
 

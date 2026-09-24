@@ -125,6 +125,12 @@ function resolveLaunchSource(): InstanceAiThreadSource {
 }
 
 const selectedProject = ref(resolveInitialProjectId());
+// An instance that loses its team-project license keeps its projects, but the
+// user cannot work in them. Hide the picker then, the same way the sidebar
+// project list hides itself.
+const canSelectProject = computed(
+	() => projectsStore.isTeamProjectFeatureEnabled && projectsStore.myProjects.length > 1,
+);
 const settingsStore = useInstanceAiSettingsStore();
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
@@ -643,10 +649,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 
 <template>
 	<div :class="$style.chatArea">
-		<InstanceAiViewHeader
-			v-if="!isSplitLayoutActive"
-			:show-thread-history-label="!isStartingThread"
-		/>
+		<InstanceAiViewHeader v-if="!isSplitLayoutActive" />
 
 		<div :class="$style.contentArea">
 			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
@@ -670,7 +673,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						@submit="handleSubmit"
 						@content-change="composerHasContent = $event"
 					>
-						<template v-if="projectsStore.myProjects.length > 1" #footer>
+						<template v-if="canSelectProject" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
@@ -688,7 +691,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				@example-change="(_i, key) => (splitPreviewPromptKey = key)"
 			>
 				<template #header>
-					<InstanceAiViewHeader :show-thread-history-label="!isStartingThread" />
+					<InstanceAiViewHeader />
 				</template>
 				<template #input>
 					<div :class="$style.centeredInput">
@@ -714,7 +717,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							@submit="handleSubmit"
 							@content-change="composerHasContent = $event"
 						>
-							<template v-if="projectsStore.myProjects.length > 1" #footer>
+							<template v-if="canSelectProject" #footer>
 								<div :class="$style.inputFooter" data-test-id="instance-ai-split-project-select">
 									<ProjectSelect v-model="selectedProject" />
 								</div>
@@ -751,7 +754,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						@workflow-preview="handleWorkflowPreview"
 						@content-change="composerHasContent = $event"
 					>
-						<template v-if="projectsStore.myProjects.length > 1" #footer>
+						<template v-if="canSelectProject" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>

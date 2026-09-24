@@ -23,7 +23,7 @@ export type { SerializedMessageList };
  * never added to the list, persisted, or serialized.
  */
 export const OBSERVATION_CONTINUATION_REMINDER =
-	'<system-reminder>Earlier conversation was compacted into the observation log in your system prompt. Continue the task naturally from where the log leaves off. Do not repeat work the log records as completed, and do not mention this compaction or your memory to the user.</system-reminder>';
+	'<system-reminder>Earlier conversation was reviewed for memory. Use the observation log in your system prompt if one is present. Continue the task from the available context. Do not repeat completed work. Do not mention this memory processing to the user.</system-reminder>';
 
 export type LlmContext = {
 	system: SystemModelMessage | SystemModelMessage[];
@@ -295,6 +295,24 @@ export class AgentMessageList {
 		block.suspension = suspension;
 	}
 
+	/**
+	 * Record that a tool programmatically activated a skill on its own result, so
+	 * `ActiveSkills` can re-anchor the skill body there on a later turn instead
+	 * of falling back to the `<active_skills>` system prompt. The stamp rides on
+	 * the persisted message; it is metadata only and never reaches the model
+	 * (`toAiMessages` ignores it). No-op when the tool call is unknown.
+	 */
+	stampActivatedSkill(toolCallId: string, skillId: string): void {
+		const host = this.findToolCallHost(toolCallId);
+		if (!host) return;
+		const block = this.findToolCallBlock(host, toolCallId);
+		if (!block) return;
+		const current = block.activatedSkillIds ?? [];
+		if (current.includes(skillId)) return;
+		block.activatedSkillIds = [...current, skillId];
+		this.responseSet.add(host);
+	}
+
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
 		// Start from the last message and go backwards to find the host message
 		for (let i = this.all.length - 1; i >= 0; i--) {
@@ -406,6 +424,11 @@ export class AgentMessageList {
 	 */
 	inputDelta(): AgentDbMessage[] {
 		return this.all.filter((m) => this.inputSet.has(m));
+	}
+
+	removeInput(): void {
+		this.all = this.all.filter((message) => !this.inputSet.has(message));
+		this.inputSet.clear();
 	}
 
 	/** All messages currently in the list, as live references. */

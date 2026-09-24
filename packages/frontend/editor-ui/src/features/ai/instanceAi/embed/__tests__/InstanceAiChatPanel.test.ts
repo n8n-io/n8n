@@ -72,6 +72,8 @@ const InstanceAiViewHeaderStub = defineComponent({
 // — these two stand in for the real `defineExpose`d `isDirty`/`applyHandoff`.
 const isDirtyMock = vi.hoisted(() => vi.fn(() => false));
 const applyHandoffMock = vi.hoisted(() => vi.fn());
+const setPrefillMock = vi.hoisted(() => vi.fn());
+const submitSuggestionMock = vi.hoisted(() => vi.fn());
 
 const InstanceAiConversationStub = defineComponent({
 	name: 'InstanceAiConversation',
@@ -80,9 +82,12 @@ const InstanceAiConversationStub = defineComponent({
 	methods: {
 		isDirty: isDirtyMock,
 		applyHandoff: applyHandoffMock,
+		setPrefill: setPrefillMock,
+		submitSuggestion: submitSuggestionMock,
 	},
 	template: `<div data-test-id="conversation-stub" :data-has-before-send="String(typeof beforeSend === 'function')">
 		<button data-test-id="conversation-thread-missing" type="button" @click="$emit('thread-missing')" />
+		<slot name="empty" />
 	</div>`,
 });
 
@@ -135,6 +140,8 @@ describe('InstanceAiChatPanel', () => {
 		showMessage.mockClear();
 		isDirtyMock.mockReset().mockReturnValue(false);
 		applyHandoffMock.mockClear();
+		setPrefillMock.mockClear();
+		submitSuggestionMock.mockClear();
 		clearPendingHandoffContext('thread-2');
 		clearPendingComposerDraft('thread-2');
 	});
@@ -210,6 +217,54 @@ describe('InstanceAiChatPanel', () => {
 		expect(emitted('update:threadId')?.[0]).toEqual(['thread-2']);
 
 		pending.resolve(true);
+	});
+
+	it('renders the host empty slot inside the conversation', async () => {
+		const { getByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+			slots: { empty: '<div data-test-id="host-empty" />' },
+		});
+		await vi.waitFor(() => expect(getByTestId('conversation-stub')).toBeInTheDocument());
+
+		expect(getByTestId('host-empty')).toBeInTheDocument();
+	});
+
+	it('forwards setPrefill to the mounted conversation', async () => {
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+		await flushPromises();
+
+		wrapper.vm.setPrefill({
+			text: 'I started from the Research Assistant template.',
+			prefillType: 'template_adjustment',
+			prefillId: 'research-assistant',
+		});
+
+		expect(setPrefillMock).toHaveBeenCalledWith({
+			text: 'I started from the Research Assistant template.',
+			prefillType: 'template_adjustment',
+			prefillId: 'research-assistant',
+		});
+	});
+
+	it('forwards submitSuggestion to the mounted conversation', async () => {
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+		await flushPromises();
+
+		wrapper.vm.submitSuggestion({
+			prompt: 'Build Morning news brief agent to send a daily summary.',
+			suggestionId: 'morning-news-brief',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'template_adjustment',
+		});
+
+		expect(submitSuggestionMock).toHaveBeenCalledWith({
+			prompt: 'Build Morning news brief agent to send a daily summary.',
+			suggestionId: 'morning-news-brief',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'template_adjustment',
+		});
 	});
 
 	it('resumes the most recent thread for the subject instead of minting one', async () => {
@@ -433,7 +488,14 @@ describe('InstanceAiChatPanel', () => {
 		expect(emitted('update:threadId')).toBeFalsy();
 	});
 
-	it('mints a new thread when the list emits new', async () => {
+	it('uses the message-circle-plus icon for the new chat button', function () {
+		const { getByRole } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		const button = getByRole('button', { name: 'New chat' });
+
+		expect(button.querySelector('[data-icon="message-circle-plus"]')).toBeInTheDocument();
+	});
+
+	it('mints a new thread when the new chat button is clicked', async function () {
 		const { getByTestId, emitted } = renderPanel({
 			props: { subject, launch, threadId: 't-match' },
 		});

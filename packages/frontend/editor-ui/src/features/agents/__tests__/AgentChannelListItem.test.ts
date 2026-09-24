@@ -33,7 +33,7 @@ function mountItem(
 				N8nDropdownMenu: {
 					template: '<div data-testid="channel-actions"><slot name="trigger" /></div>',
 				},
-				N8nIcon: { template: '<i />' },
+				N8nIcon: { props: ['icon'], template: '<i :data-icon="icon" />' },
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: {
 					props: ['content', 'disabled'],
@@ -54,8 +54,11 @@ describe('AgentChannelListItem', () => {
 
 		expect(wrapper.text()).toContain(label);
 		expect(wrapper.find('[data-testid="agent-channel-connected-indicator"]').exists()).toBe(
-			connected,
+			configured,
 		);
+		if (configured) {
+			expect(wrapper.find('[data-icon="check"]').exists()).toBe(true);
+		}
 	});
 
 	describe('a channel that failed to start', () => {

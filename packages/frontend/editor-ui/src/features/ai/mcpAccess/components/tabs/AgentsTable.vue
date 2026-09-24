@@ -10,9 +10,9 @@ import {
 	N8nDataTableServer,
 	N8nLink,
 	N8nLoading,
+	N8nSelectedItemsInfo,
 	N8nText,
 } from '@n8n/design-system';
-import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import { AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
 import router from '@/app/router';
 
@@ -230,7 +230,7 @@ const projectLink = (agent: Agent) =>
 					/>
 				</template>
 			</N8nDataTableServer>
-			<SelectedItemsInfo
+			<N8nSelectedItemsInfo
 				:class="$style['selection-bar']"
 				:selected-count="selectedAgentIds.length"
 				@clear-selection="clearSelection"
@@ -243,7 +243,7 @@ const projectLink = (agent: Agent) =>
 						@click="onBulkRemoveMcpAccess"
 					/>
 				</template>
-			</SelectedItemsInfo>
+			</N8nSelectedItemsInfo>
 		</div>
 	</div>
 </template>

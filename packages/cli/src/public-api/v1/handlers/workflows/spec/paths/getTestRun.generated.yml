@@ -1,0 +1,96 @@
+operationId: getTestRun
+tags:
+  - Evaluation
+summary: Retrieve a test run
+description: Retrieve a single evaluation test run of a workflow, including its aggregated metrics and final result.
+x-required-scope: testRun:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the workflow.
+    name: workflowId
+    in: path
+  - schema:
+      type: string
+    required: true
+    description: The ID of the test run.
+    name: runId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              example: 9f8e7d6c5b4a3210
+            status:
+              type: string
+              enum:
+                - new
+                - running
+                - completed
+                - error
+                - cancelled
+            runAt:
+              type: string
+              nullable: true
+              format: date-time
+            completedAt:
+              type: string
+              nullable: true
+              format: date-time
+            metrics:
+              type: object
+              description: Aggregated metrics collected across the run's test cases.
+              additionalProperties: true
+              nullable: true
+            errorCode:
+              type: string
+              nullable: true
+            errorDetails:
+              type: object
+              additionalProperties: true
+              nullable: true
+            finalResult:
+              type: string
+              nullable: true
+              enum:
+                - success
+                - error
+                - warning
+              description: Overall result of the run, derived from its test cases once completed.
+            testCaseCount:
+              type: integer
+              example: 42
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+          required:
+            - id
+            - status
+            - runAt
+            - completedAt
+            - metrics
+            - errorCode
+            - errorDetails
+            - finalResult
+            - testCaseCount
+            - createdAt
+            - updatedAt
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
