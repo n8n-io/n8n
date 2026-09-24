@@ -265,11 +265,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    container:
-      image: ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ github.token }}
+    container: ${{ vars.CI_TOOLCHAIN_PILOT == 'true' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     steps:
       - name: Mark first step for setup timing
         run: echo "CI_FIRST_STEP=$(date +%s)" >> "$GITHUB_ENV"
@@ -281,7 +277,7 @@ jobs:
       - name: Install format tools
         uses: ./.github/actions/setup-nodejs
         with:
-          preinstalled-toolchain: 'true'
+          preinstalled-toolchain: ${{ vars.CI_TOOLCHAIN_PILOT == 'true' }}
           install-command: pnpm install --frozen-lockfile --filter n8n-monorepo --ignore-scripts
           build-command: ''
           # Keep the partial pnpm store separate from the full install cache.
@@ -395,7 +391,7 @@ jobs:
       pre-generated-matrix: ${{ needs.install-and-build.outputs.matrix }}
       artifact-prefix: e2e
       currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
-      use-toolchain-pilot: true
+      use-toolchain-pilot: ${{ vars.CI_TOOLCHAIN_PILOT == 'true' }}
     secrets: inherit
 
   # Engine 2.0 parity: runs the `@engine:*` specs against a main that routes

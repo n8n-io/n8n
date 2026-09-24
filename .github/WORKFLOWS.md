@@ -695,10 +695,12 @@ workflow, `ci-pull-requests.yml` and `test-e2e-reusable.yml` together when a
 pin changes. A manual dispatch runs a container smoke and Format check without
 republishing the image, so repeated runs can measure image-cache behavior.
 
-The PR Format check and E2E shard 1 use this image. Other E2E shards use their
-current setup. The jobs still install dependencies from the lockfile, build,
-and load commit-specific n8n Docker images. The pilot checks SafeChain, browser
-lookup, Turbo cache setup and Docker access before tests.
+After a warm image initialization is confirmed, set the repository variable
+`CI_TOOLCHAIN_PILOT` to `true`. PR Format check and E2E shard 1 then use this
+image. Clear the variable to return to the current setup. Other E2E shards
+keep their current setup. The jobs still install dependencies from the
+lockfile, build, and load commit-specific n8n Docker images. The pilot checks
+SafeChain, browser lookup, Turbo cache setup and Docker access before tests.
 
 Build and check the image on the local host architecture:
 
