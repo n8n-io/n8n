@@ -97,7 +97,10 @@ describe('Cohere v2 chat client', () => {
 
 		expect(requestBody).toMatchObject({
 			messages: [
-				{ role: 'assistant' },
+				{
+					role: 'assistant',
+					tool_calls: [{ id: 'tool_call_0_0' }, { id: 'tool_call_0_1' }],
+				},
 				{ role: 'tool', tool_call_id: 'tool_call_0_0', content: '[{"output":"4"}]' },
 				{ role: 'tool', tool_call_id: 'tool_call_0_1', content: '[{"output":"4"}]' },
 			],
