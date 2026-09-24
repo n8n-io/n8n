@@ -1,4 +1,5 @@
 import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from '@langchain/openai';
+import { getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -184,7 +185,30 @@ describe('AzureOpenAIEmbeddings', () => {
 
 				const config = MockedOpenAIEmbeddings.mock.calls[0][0];
 				expect(typeof config?.apiKey).toBe('function');
+				expect(config?.model).toBe('text-embedding-3-large');
+				expect(config?.configuration).toEqual(
+					expect.objectContaining({ baseURL: 'https://test.services.ai.azure.com/openai/v1' }),
+				);
 				expect(MockedAzureOpenAIEmbeddings).not.toHaveBeenCalled();
+			});
+
+			// With no endpoint the host has to come from the resource name.
+			it('should resolve the proxy against the resource host when no endpoint is set', async () => {
+				const mockContext = setupMockContext();
+				mockContext.getCredentials.mockResolvedValue({
+					...entraCredential,
+					resourceName: 'my-resource',
+					apiVersion: 'v1',
+				});
+				selectEntra(mockContext);
+
+				await embeddingsAzureOpenAi.supplyData.call(mockContext, 0);
+
+				expect(vi.mocked(getProxyAgent)).toHaveBeenCalledWith(
+					'https://my-resource.openai.azure.com',
+					expect.any(Object),
+					expect.any(Object),
+				);
 			});
 
 			it('should read the Entra credential, not the API key one', async () => {

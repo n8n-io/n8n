@@ -67,6 +67,9 @@ export interface AzureOpenAIOAuth2ModelConfig extends AzureOpenAIBaseModelConfig
 /** Audience for the node's inference requests. */
 export const AZURE_OPENAI_INFERENCE_AUDIENCE = 'https://cognitiveservices.azure.com';
 
+/** The same audience in the form `getBearerTokenProvider` expects. */
+export const AZURE_OPENAI_INFERENCE_SCOPE = `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`;
+
 /**
  * Audience for the Foundry deployments-list call. Each tenant's Entra ID app
  * registration grants access per audience, so this is requested only for the
