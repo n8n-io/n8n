@@ -19,6 +19,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 
+import AssistantMentionBreadcrumbs from './AssistantMentionBreadcrumbs.vue';
 import type {
 	AssistantMentionItem,
 	AssistantMentionSelection,
@@ -440,26 +441,10 @@ defineExpose({ handleExternalKeydown });
 				size="medium"
 				:color="item.disabled ? 'text-xlight' : 'text-dark'"
 			>
-				<template v-if="query.trim() && item.data?.item">
-					<template
-						v-for="(breadcrumb, index) in item.data.item.breadcrumbs"
-						:key="`${item.id}:${index}`"
-					>
-						<span
-							:class="{
-								[$style.breadcrumbAncestor]: index < item.data.item.breadcrumbs.length - 1,
-							}"
-						>
-							{{ breadcrumb }}
-						</span>
-						<span
-							v-if="index < item.data.item.breadcrumbs.length - 1"
-							:class="$style.breadcrumbAncestor"
-						>
-							&gt;
-						</span>
-					</template>
-				</template>
+				<AssistantMentionBreadcrumbs
+					v-if="query.trim() && item.data?.item"
+					:segments="item.data.item.breadcrumbs"
+				/>
 				<template v-else>{{ item.label }}</template>
 			</N8nText>
 		</template>
@@ -490,10 +475,6 @@ defineExpose({ handleExternalKeydown });
 <style module lang="scss">
 .menuContent {
 	width: var(--n8n--dropdown-menu-width);
-}
-
-.breadcrumbAncestor {
-	color: var(--color--text--tint-1);
 }
 
 .errorState {
