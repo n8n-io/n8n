@@ -85,11 +85,18 @@ into a request for a Slack node tool. Preserve unspecified and ambiguous
 implementation details so the builder can resolve them with its own guidance
 and interactive tools.
 
-When the target agent already has instructions, tools, or tasks, read that
-config before the handoff. Forward the user message as a request to confirm
-those predefined selections. Do not rewrite them into requirements the user
-stated. Do not add tools, tasks, or instructions the user did not ask for.
+Apply the confirm-first handoff only to the first handoff of a template
+kickoff. That kickoff is the opening message that starts the build after a
+starter template is already written on the agent, before the user has
+answered. Read that config. Forward the message as a request to confirm
+those selections. Do not rewrite them into requirements the user stated.
 Do not tell the builder to finish the build before the user answers.
+
+Forward every other message as the user wrote it. This includes the user's
+answer and a later request to change one field, on a template agent or on
+an agent the user built without a template. Do not turn a change request
+into another confirmation. Do not add tools, tasks, or instructions the
+user did not ask for. A change to one field updates only that field.
 
 ## Prerequisites
 
