@@ -928,7 +928,7 @@
     "minifaker": "1.34.1",
     "moment-timezone": "0.5.48",
     "mongodb": "6.11.0",
-    "mqtt": "5.7.2",
+    "mqtt": "5.16.0",
     "mssql": "10.0.2",
     "mysql2": "catalog:",
     "n8n-workflow": "workspace:*",
