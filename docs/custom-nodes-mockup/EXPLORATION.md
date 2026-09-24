@@ -323,9 +323,9 @@ The editor moved to `src/app/` and `src/features/`. There is no
 
 1. **Backend module `custom-nodes`** with its own `NodeLoader`, entity,
    repository, service, controller and config, mirroring `mcp-registry`.
-   The module is a default module, but `init()` returns early unless
-   `N8N_CUSTOM_NODES_MOCKUP=true`, so no routes or node types exist when the
-   flag is off.
+   The module is a default module. The first iteration gated `init()` on
+   `N8N_CUSTOM_NODES_MOCKUP`; the flag was removed later so the branch is
+   testable without extra setup.
 2. **Generated declarative descriptions** executed by `RoutingNode`. One
    virtual node type per Custom Operation and per Custom Node, in a synthetic
    package `n8n-custom`. Custom Operations are `hidden` so they do not show

@@ -2,11 +2,11 @@
 
 ## Setup (before the demo)
 
-1. Build once and start with the flag on:
+1. Build once and start (the mockup is always on for this branch):
 
    ```bash
    pnpm build > build.log 2>&1
-   N8N_CUSTOM_NODES_MOCKUP=true pnpm start
+   pnpm start
    ```
 
    The first boot creates the `custom_node_definition` table and seeds the
@@ -114,15 +114,16 @@ Settings → Custom nodes to hit the mock).
 
 - Definitions are JSON rows, node types are generated at runtime, execution
   reuses `RoutingNode`. No restart, no package build, no `execute()` code.
-- Everything is behind `N8N_CUSTOM_NODES_MOCKUP`. Turn it off and the
-  instance behaves exactly as before.
+- The mockup is always on for this branch. Everything lives in one backend
+  module plus one frontend feature folder, so a production flag is a
+  one-line change in the module entrypoint.
 - Open `DESIGN.md` for the trade-offs and the production checklist.
 
 ## Troubleshooting
 
-- **Custom nodes menu missing**: the flag is read at boot. Check that
-  `N8N_CUSTOM_NODES_MOCKUP=true` is set and `GET /rest/module-settings`
-  returns `"custom-nodes": { "enabled": true }`.
+- **Custom nodes menu missing**: check that `GET /rest/module-settings`
+  returns `"custom-nodes": { "enabled": true }` and that the build is fresh
+  (`pnpm build`).
 - **Operation not in the Stripe actions list**: reload the page once; the
   panel rebuilds from `types/nodes.json`, which the backend regenerates on
   every save and announces through the `nodeDescriptionUpdated` push event.

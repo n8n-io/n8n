@@ -1,7 +1,7 @@
 # Design: Custom Nodes & Custom Operations
 
-Status: presentation mockup on branch `feat/custom-nodes-mockup`, behind
-`N8N_CUSTOM_NODES_MOCKUP=true`. Not production code.
+Status: presentation mockup on branch `feat/custom-nodes-mockup`, always on
+when the branch is checked out. Not production code.
 
 ## Problem
 
@@ -145,8 +145,10 @@ their operations as options of one `operation` parameter.
 
 ## What is mocked or hacked
 
-- **Feature flag** is a module config read at boot; the module is a default
-  module whose `init()`/`nodeLoaders()` return early when off.
+- **No feature flag**: the module is a default module and always active on
+  this branch (removed on request so colleagues can test without extra
+  setup). A production version would gate `init()`/`nodeLoaders()` on a
+  config value, as the first iteration did.
 - **No RBAC**: every authenticated user can create, edit and delete
   definitions. No project scoping; definitions are instance-wide.
 - **Icons** are served from `GET /rest/custom-nodes/:id/icon` and
@@ -212,8 +214,7 @@ their operations as options of one `operation` parameter.
   pre-existing errors in `modules/agents` and `modules/instance-ai` remain)
   and in `packages/frontend/editor-ui` (clean), eslint and biome on every
   touched file, and the generator unit tests.
-- A throwaway instance (`N8N_USER_FOLDER` in a temp dir,
-  `N8N_CUSTOM_NODES_MOCKUP=true`) booted, ran the new migration, seeded the
+- A throwaway instance (`N8N_USER_FOLDER` in a temp dir) booted, ran the new migration, seeded the
   two examples and served two `n8n-custom.*` types with the expected marker,
   icon and credentials. Through REST: preview, create operation, new version
   (both versions served, `defaultVersion` follows the active one), set active

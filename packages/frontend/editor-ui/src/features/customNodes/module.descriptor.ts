@@ -9,8 +9,8 @@ import {
 const SettingsCustomNodesView = async () => await import('./views/SettingsCustomNodesView.vue');
 
 /**
- * Custom Nodes & Custom Operations mockup. Active only when the backend
- * module `custom-nodes` reports `enabled: true` (`N8N_CUSTOM_NODES_MOCKUP`).
+ * Custom Nodes & Custom Operations mockup. Active whenever the backend module
+ * `custom-nodes` is running (always, on this branch).
  * The sidebar entry is added in `useSettingsItems` so it sits next to
  * Community Nodes.
  */

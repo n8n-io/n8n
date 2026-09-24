@@ -1,6 +1,7 @@
 # Implementation plan: Custom Nodes & Custom Operations mockup
 
-Branch: `feat/custom-nodes-mockup`. Feature flag: `N8N_CUSTOM_NODES_MOCKUP=true`.
+Branch: `feat/custom-nodes-mockup`. The mockup is always on for this branch (the
+`N8N_CUSTOM_NODES_MOCKUP` flag was removed on 2026-09-24).
 Checklist items are ticked as they land. See `EXPLORATION.md` for the
 codebase facts behind each decision and `DESIGN.md` for the write-up.
 
@@ -42,7 +43,7 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
 
 ## 3. Backend module `custom-nodes` (`packages/cli/src/modules/custom-nodes/`)
 
-- [x] `custom-nodes.config.ts` — `@Env('N8N_CUSTOM_NODES_MOCKUP') enabled`
+- [x] ~~`custom-nodes.config.ts` — `@Env('N8N_CUSTOM_NODES_MOCKUP') enabled`~~ removed, always on
 - [x] `custom-nodes.module.ts` — `@BackendModule({ name: 'custom-nodes' })`;
       `init()` returns early when disabled; `entities()`, `settings()`,
       `nodeLoaders()` (empty when disabled)
@@ -124,7 +125,7 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
 - [x] `docs/custom-nodes-mockup/DESIGN.md` — problem, concepts,
       architecture (Mermaid), mocked vs production, deviations, open questions
 - [x] `pnpm build` (full), `pnpm typecheck` for `cli` and `editor-ui`, eslint + biome on touched files
-- [x] Boot with `N8N_CUSTOM_NODES_MOCKUP=true pnpm start` on a throwaway user
+- [x] Boot with `pnpm start` on a throwaway user
       folder; verified via REST: migration + seed, module settings, generated
       types in `types/nodes.json`, icon route, preview, create/version/set-active,
       and a workflow run of a custom Stripe operation against the mock webhook
@@ -143,3 +144,4 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
 - [x] Rename user-facing "operations" to "actions"; new seed set (3 actions: Stripe, GitHub,
       Slack; 3 nodes: Acme Billing, Open-Meteo Weather, Feature Flags) with automatic
       re-seed on an outdated set and a "Reset demo data" button in Settings
+- [x] Remove the feature flag; the module is always active on this branch
