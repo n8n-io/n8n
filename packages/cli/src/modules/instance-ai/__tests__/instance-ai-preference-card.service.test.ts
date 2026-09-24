@@ -170,6 +170,27 @@ describe('InstanceAiPreferenceCardService', () => {
 		});
 	});
 
+	// Another writer can move the row between the read and the write. The edit named no
+	// scope, so it moved nothing, and crediting it with that move would put a write nobody
+	// made into the number this event exists to produce.
+	it('edit without a scope reports no move when another writer moved the row', async () => {
+		aiPreferenceService.getById.mockResolvedValue(
+			userDto({ content: 'Keep replies short.', userId: null, projectId: 'p-1' }),
+		);
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: 'p-2' }));
+
+		await service.edit(user, 'thread-1', 'pref-1', textOnlyBody);
+
+		expect(telemetry.track).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			expect.anything(),
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE,
+			expect.objectContaining({ scope_changed: false }),
+		);
+	});
+
 	it('edit names the scope the row landed in on the fact, from the saved dto', async () => {
 		aiPreferenceService.getById.mockResolvedValue(userDto());
 		// The request and the saved row disagree on purpose: the fact must follow the row.
