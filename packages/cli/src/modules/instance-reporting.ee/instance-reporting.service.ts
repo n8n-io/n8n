@@ -140,7 +140,7 @@ export class InstanceReportingService {
 		// exhausted row pending, so the budget is re-checked before sending rather
 		// than only after. Settling it here also ends the day for the scheduler.
 		if (report && report.attempts >= MAX_ATTEMPTS) {
-			await this.skip(report.id, report.attempts, 'max-retries');
+			await this.skip(report.id, report.attempts, 'max-retries', report.lastError);
 			return;
 		}
 
@@ -221,7 +221,12 @@ export class InstanceReportingService {
 	}
 
 	/** Stop trying to deliver this report; the next one covers its days again. */
-	async skip(id: string, attempts: number, reason: SkipReason, lastError?: string): Promise<void> {
+	async skip(
+		id: string,
+		attempts: number,
+		reason: SkipReason,
+		lastError: string | null,
+	): Promise<void> {
 		await this.reportRepository.markSkipped(id);
 
 		this.logger.error(SKIP_MESSAGES[reason], { batchId: id, attempts, lastError });

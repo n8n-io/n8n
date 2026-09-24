@@ -96,9 +96,10 @@ flowchart TD
     subgraph T1["Type 1: delivery retry (max 3 attempts, 5 min apart, crosses midnight)"]
         A["Newest row is pending\n+ measured data points"] --> B["POST attempt"]
         B -->|"201 / 409"| C["delivered"]
-        B -->|"400 / 413"| G
-        B -->|"other failure"| D["attempts++\nlastAttemptAt, lastError"]
-        D --> E{"attempts >= 3?"}
+        B -->|"failure"| D["attempts++\nlastAttemptAt, lastError"]
+        D --> R{"400 / 413?"}
+        R -- yes --> G
+        R -- no --> E{"attempts >= 3?"}
         E -- no --> F["wait 5 min"] --> B
         E -- yes --> G["skipped_after_max_retries"]
     end
