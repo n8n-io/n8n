@@ -11,7 +11,7 @@ import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import { jsonParse } from 'n8n-workflow';
 
-const MIGRATION_NAME = 'MigrateMcpToolPermissions1790236643232';
+const MIGRATION_NAME = 'MigrateMcpToolPermissions1790259245974';
 const CONNECTION_TABLE = 'instance_ai_mcp_registry_connections';
 const SETTINGS_KEY = 'instanceAi.settings';
 
