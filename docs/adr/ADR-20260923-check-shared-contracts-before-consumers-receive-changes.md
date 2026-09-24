@@ -20,25 +20,24 @@ cannot show whether every guarantee still holds.
 
 ## Decision
 
-We require a blocking compatibility test before consumers receive a changed shared contract. The
-owner records the guarantee in a versioned definition or test and names the supported consumers.
-The test compares the proposed output with a protected prior contract or a supported consumer. A
-change in the same pull request cannot replace its own baseline.
+We require a blocking compatibility check before consumers receive a changed shared contract. The
+owner identifies the supported consumers and the guarantee the check protects. The check verifies
+that the proposed change preserves that guarantee for those consumers.
 
-We run the test where its required output exists. A test of built output runs after the build. A
-test of independently published data runs before publication.
+We run the check where its required output exists. A check of built output runs after the build. A
+check of independently published data runs before publication.
 
 ## Alternatives Considered
 
 - **Use one schema check for every contract.** A schema check cannot detect every change in meaning
   or behaviour.
-- **Compare only with the proposed contract.** A change could remove a guarantee and its baseline
-  in the same pull request.
+- **Treat a passing build as proof of compatibility.** A build cannot show whether existing
+  consumers still work.
 - **Check only at release time.** An incompatible change could merge before the check runs.
 
 ## Consequences
 
-- Contract owners must name the consumers and prior contract that each check protects.
+- Each check identifies the consumers and guarantee it protects.
 - Checks run at different stages. Each check must block the change before consumers receive it.
 - Some checks need a build or a supported client version.
 - An intentional incompatible change needs a migration or a reviewed exception.
