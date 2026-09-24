@@ -5,7 +5,8 @@ import { useI18n } from '@n8n/i18n';
 import { N8nSettingsLayout, N8nSettingsPageHeader } from '@n8n/design-system';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useToast } from '@n8n/composables/useToast';
 import type { OAuthClientFilters } from '@/features/ai/mcpAccess/clients.utils';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
@@ -23,7 +24,9 @@ const i18n = useI18n();
 const toast = useToast();
 const mcp = useMcp();
 const router = useRouter();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({
+	releaseChannel: useSettingsStore().settings.releaseChannel,
+});
 const mcpStore = useMCPStore();
 const usersStore = useUsersStore();
 

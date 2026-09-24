@@ -1,5 +1,5 @@
 import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { ProjectSharingData } from 'n8n-workflow';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 
 export const createHomeProject = (

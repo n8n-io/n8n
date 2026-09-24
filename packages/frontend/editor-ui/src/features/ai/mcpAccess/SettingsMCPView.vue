@@ -18,7 +18,7 @@ import {
 	N8nSettingsSection,
 } from '@n8n/design-system';
 
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from '@/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue';
@@ -33,18 +33,21 @@ import {
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
 
 const i18n = useI18n();
 const toast = useToast();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({
+	releaseChannel: useSettingsStore().settings.releaseChannel,
+});
 const mcp = useMcp();
 const router = useRouter();
 
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
+const rbacStore = useRBACStore();
 const exposeAllOffer = capabilityRegistry.tryUse(capabilities.mcpExposeAllOffer);
 const isExposeAllOfferEnabled = computed(() => exposeAllOffer?.isEnabled() ?? false);
 
@@ -54,9 +57,7 @@ const mcpStatusLoading = ref(false);
 const showDisableDialog = ref(false);
 const isLoadingClients = ref(true);
 
-const canManageMcpInstance = computed(() =>
-	hasPermission(['rbac'], { rbac: { scope: 'mcp:manage' } }),
-);
+const canManageMcpInstance = computed(() => rbacStore.hasScope('mcp:manage'));
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
 
 const exposedWorkflowsCount = ref<number | null>(null);

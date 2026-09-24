@@ -1,8 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useRootStore } from '@n8n/stores/useRootStore';

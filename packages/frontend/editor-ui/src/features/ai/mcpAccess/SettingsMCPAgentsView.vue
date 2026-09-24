@@ -10,7 +10,7 @@ import {
 } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system';
 
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -29,7 +29,9 @@ const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 const router = useRouter();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({
+	releaseChannel: useSettingsStore().settings.releaseChannel,
+});
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 

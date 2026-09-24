@@ -2,15 +2,15 @@ import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 
-vi.mock('@/app/router', () => ({
-	default: {
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRouter: () => ({
 		resolve: vi.fn(({ name, params }) => {
 			if (name === 'NodeViewExisting') {
 				return { fullPath: `/workflows/${params.workflowId}` };
@@ -20,7 +20,7 @@ vi.mock('@/app/router', () => ({
 			}
 			return { fullPath: '/' };
 		}),
-	},
+	}),
 }));
 
 let pinia: ReturnType<typeof createTestingPinia>;
