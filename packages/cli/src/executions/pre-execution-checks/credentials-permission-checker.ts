@@ -159,10 +159,11 @@ export class CredentialsPermissionChecker {
 			return [...unavailableIds, ...deletedIds];
 		}
 
-		const accessibleCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
-			'credential:read',
-		]);
-		const accessibleSet = new Set(accessibleCredentials.map((cred) => cred.id));
+		const accessibleSet = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+			remainingIds,
+			user,
+			['credential:read'],
+		);
 		const stillInaccessible = remainingIds.filter((id) => !accessibleSet.has(id));
 
 		return [...unavailableIds, ...stillInaccessible];
