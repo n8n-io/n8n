@@ -12,12 +12,37 @@ import { TestError } from '../Types';
 export class AgentApiHelper {
 	constructor(private readonly api: ApiHelpers) {}
 
-	async create(projectId: string, schema: AgentJsonConfig): Promise<{ id: string }> {
+	/**
+	 * Create an agent. Pass a full schema for a runnable agent, or only a
+	 * name for an empty agent that has no config yet.
+	 */
+	async create(projectId: string, schema: AgentJsonConfig | string): Promise<{ id: string }> {
+		const data = typeof schema === 'string' ? { name: schema } : { name: schema.name, schema };
 		const response = await this.api.request.post(`/rest/projects/${projectId}/agents/v2`, {
-			data: { name: schema.name, schema },
+			data,
 		});
 		if (!response.ok()) throw new TestError(`Failed to create agent: ${await response.text()}`);
 		return (await response.json()).data;
+	}
+
+	/**
+	 * Fetch the current write lock for an agent. Returns null when no
+	 * lock is held.
+	 */
+	async getWriteLock(
+		projectId: string,
+		agentId: string,
+	): Promise<{ userId: string; clientId: string } | null> {
+		const response = await this.api.request.get(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/collaboration/write-lock`,
+		);
+		if (!response.ok()) {
+			throw new TestError(`Failed to fetch agent write lock: ${await response.text()}`);
+		}
+		// The REST layer wraps the body as { data: ... }, including
+		// { data: null } when no lock is held.
+		const result = await response.json();
+		return result && 'data' in result ? result.data : result;
 	}
 
 	async delete(projectId: string, agentId: string): Promise<void> {

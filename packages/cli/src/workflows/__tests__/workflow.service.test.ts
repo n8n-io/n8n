@@ -1289,12 +1289,14 @@ describe('WorkflowService', () => {
 				_detectWebhookConflicts: () => Promise<void>;
 				_validateNodes: () => void;
 				_validateDynamicCredentials: () => Promise<void>;
+				_validatePublisherCredentialAccess: () => Promise<void>;
 				_validateSubWorkflowReferences: () => Promise<void>;
 				_validateTriggerNodeIds: () => void;
 			};
 			vi.spyOn(internals, '_detectWebhookConflicts').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateNodes').mockReturnValue(undefined);
 			vi.spyOn(internals, '_validateDynamicCredentials').mockResolvedValue(undefined);
+			vi.spyOn(internals, '_validatePublisherCredentialAccess').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateSubWorkflowReferences').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateTriggerNodeIds').mockReturnValue(undefined);
 		});
@@ -1394,6 +1396,50 @@ describe('WorkflowService', () => {
 			});
 
 			expect(workflowPublishGuardMock.assertCanPublish).not.toHaveBeenCalled();
+		});
+
+		test('does not check publisher credential access when re-applying the published version', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeActiveVersion());
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			externalHooksMock.run.mockResolvedValue(undefined);
+			vi.spyOn(
+				workflowService as unknown as { _addToActiveWorkflowManager: () => Promise<void> },
+				'_addToActiveWorkflowManager',
+			).mockResolvedValue(undefined);
+			const internals = workflowService as unknown as {
+				_validatePublisherCredentialAccess: () => Promise<void>;
+			};
+
+			await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+				versionId: PREVIOUS_VERSION_ID,
+			});
+
+			// A settings-only save re-applies the already-active version to re-register triggers.
+			// It must not re-check credential access for whoever is just editing a setting.
+			expect(internals._validatePublisherCredentialAccess).not.toHaveBeenCalled();
+		});
+
+		test('checks publisher credential access when activating a new version', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			externalHooksMock.run.mockResolvedValue(undefined);
+			vi.spyOn(
+				workflowService as unknown as { _addToActiveWorkflowManager: () => Promise<void> },
+				'_addToActiveWorkflowManager',
+			).mockResolvedValue(undefined);
+			const internals = workflowService as unknown as {
+				_validatePublisherCredentialAccess: () => Promise<void>;
+			};
+
+			await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+				versionId: TARGET_VERSION_ID,
+			});
+
+			expect(internals._validatePublisherCredentialAccess).toHaveBeenCalled();
 		});
 
 		test('does not check workflow reviews while unpublishing', async () => {

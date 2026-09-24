@@ -363,6 +363,25 @@ describe('AgentChatBridge — consumeStream', () => {
 		vi.clearAllMocks();
 	});
 
+	it.each([bufferedIntegration, streamingIntegration])(
+		'shows the content-filter reason for $type',
+		async (integration) => {
+			const thread = await runMention(integration, [
+				{
+					type: 'error',
+					error: {
+						type: 'invalid_request_error',
+						message: 'Output blocked by content filtering policy',
+					},
+				},
+				{ type: 'finish', finishReason: 'error' },
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith('⚠️ Output blocked by content filtering policy');
+		},
+	);
+
 	describe('silent outcome from the integration action tool', () => {
 		const silentToolResult: StreamChunk = {
 			type: 'tool-result',
@@ -727,27 +746,40 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
-		it.each(['fetch failed', 'Unknown error', 'Request payload size exceeds the limit'])(
-			'keeps the generic message for unrelated errors: %s',
-			async (message) => {
-				const thread = await runMention(bufferedIntegration, [
-					{ type: 'error', error: new Error(message) },
-					finishChunk,
-				]);
+		it.each([
+			new Error('fetch failed'),
+			new Error('Unknown error'),
+			new Error('Request payload size exceeds the limit'),
+			{ type: 'invalid_request_error', message: 'Invalid request format' },
+		])('keeps the generic message for unrelated errors: $message', async (error) => {
+			const thread = await runMention(bufferedIntegration, [{ type: 'error', error }, finishChunk]);
 
-				expect(thread.post).toHaveBeenCalledOnce();
-				expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it.each([
+			{
+				error: new UserError('Credential "OpenAI" not found.'),
+				expected:
+					'⚠️ This agent is misconfigured: Credential "OpenAI" not found. An agent owner has to fix this in n8n.',
 			},
-		);
-
-		it('names the misconfiguration when the run fails with a UserError', async () => {
+			{
+				error: new Error('Output blocked by content filtering policy'),
+				expected: '⚠️ Output blocked by content filtering policy',
+			},
+			{
+				error: new Error('Provider error: Output blocked by content filtering policy.'),
+				expected: '⚠️ Provider error: Output blocked by content filtering policy.',
+			},
+		])('shows the reason when the run throws: $error.message', async ({ error, expected }) => {
 			const { bot, handlers } = makeBot();
 			const agentExecutor = {
-				// The real method is an async generator: the build error surfaces on
+				// The real method is an async generator: the error surfaces on
 				// the first `next()`, inside the stream consumer.
 				// eslint-disable-next-line require-yield
 				executeForChatPublished: vi.fn(async function* () {
-					throw new UserError('Credential "OpenAI" not found.');
+					throw error;
 				}),
 			};
 			makeQueuedBridge(
@@ -764,9 +796,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledOnce();
-			expect(thread.post).toHaveBeenCalledWith(
-				'⚠️ This agent is misconfigured: Credential "OpenAI" not found. An agent owner has to fix this in n8n.',
-			);
+			expect(thread.post).toHaveBeenCalledWith(expected);
 		});
 
 		it('does not add a generic error when text follows an errored tool result', async () => {

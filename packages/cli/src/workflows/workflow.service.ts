@@ -986,6 +986,9 @@ export class WorkflowService {
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
+		if (versionIdToActivate !== previousActiveVersionId) {
+			await this._validatePublisherCredentialAccess(workflowId, user, versionToActivate.nodes);
+		}
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			this._validateTriggerNodeIds(workflowId, versionToActivate);
@@ -1821,6 +1824,24 @@ export class WorkflowService {
 			});
 			throw new WorkflowValidationError(
 				validation.error ?? 'Dynamic credentials validation failed',
+			);
+		}
+	}
+
+	private async _validatePublisherCredentialAccess(workflowId: string, user: User, nodes: INode[]) {
+		const validation = await this.workflowValidationService.validatePublisherCredentialAccess(
+			user,
+			nodes,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed publisher credential access validation', {
+				workflowId,
+				userId: user.id,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(
+				validation.error ?? 'Publisher credential access validation failed',
 			);
 		}
 	}

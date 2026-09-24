@@ -19,6 +19,12 @@ export const executionResponseSchema = z.discriminatedUnion('type', [
 		}),
 	}),
 	z.object({
+		type: z.literal('response'),
+		executionId: z.string().min(1),
+		// A missing or undefined payload means an empty response.
+		payload: jsonValueSchema.optional(),
+	}),
+	z.object({
 		type: z.literal('ended'),
 		executionId: z.string().min(1),
 		workflowId: z.string().min(1),
