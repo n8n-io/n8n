@@ -25,8 +25,9 @@ export class InMemoryExecutionResponseReceiver implements ExecutionResponseRecei
 		if (this.stopped) return () => {};
 
 		const unsubscribeFromChannel = this.channel.subscribe(executionId, (frame) => {
-			const response = deserializeExecutionResponse(frame, this.logger);
-			if (response === undefined) return;
+			const responseResult = deserializeExecutionResponse(frame, this.logger);
+			if (!responseResult.ok) return;
+			const response = responseResult.result;
 
 			try {
 				handler(response);

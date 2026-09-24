@@ -4,21 +4,19 @@ import {
 	type ExecutionResponse,
 	type UndeliverableMessage,
 } from '@n8n/engine';
-import { toResult } from '@n8n/utils/result';
+import { createResultError, createResultOk, toResult, type Result } from '@n8n/utils/result';
 import { UnexpectedError } from 'n8n-workflow';
 
 /** A response channel must be able to carry every frame this module produces. */
 const MAX_FRAME_BYTES = 5 * 1024 * 1024;
 
-export type ExecutionResponseFrame =
-	| { ok: true; frame: string }
-	| { ok: false; frame: string; error: Error };
+export type FrameResult = { ok: true; frame: string } | { ok: false; frame: string; error: Error };
 
 export function serializeExecutionResponse(
 	response: ExecutionResponse,
 	logger: Logger,
 	maxFrameBytes: number = MAX_FRAME_BYTES,
-): ExecutionResponseFrame {
+): FrameResult {
 	const serialized = toResult(() => JSON.stringify(response));
 	if (!serialized.ok) {
 		logger.warn('Could not serialize an execution response', {
@@ -49,27 +47,28 @@ export function serializeExecutionResponse(
 export function deserializeExecutionResponse(
 	frame: string,
 	logger: Logger,
-): ExecutionResponse | undefined {
-	try {
-		const parsed = executionResponseSchema.safeParse(JSON.parse(frame));
-		if (!parsed.success) {
-			logger.error('Discarding a malformed execution response', {
-				details: parsed.error.flatten(),
-			});
-			return undefined;
-		}
-
-		return parsed.data;
-	} catch (error) {
-		logger.error('Discarding an unreadable execution response', { error });
-		return undefined;
+): Result<ExecutionResponse, Error> {
+	const deserialized = toResult<unknown>(() => JSON.parse(frame));
+	if (!deserialized.ok) {
+		logger.error('Discarding an unreadable execution response', { error: deserialized.error });
+		return deserialized;
 	}
+
+	const parsed = executionResponseSchema.safeParse(deserialized.result);
+	if (!parsed.success) {
+		logger.error('Discarding a malformed execution response', {
+			details: parsed.error.flatten(),
+		});
+		return createResultError(parsed.error);
+	}
+
+	return createResultOk(parsed.data);
 }
 
 function undeliverableFrame(
 	executionId: string,
 	error: UndeliverableMessage['error'],
-): ExecutionResponseFrame {
+): FrameResult {
 	const frame = JSON.stringify({
 		type: 'undeliverable',
 		executionId,

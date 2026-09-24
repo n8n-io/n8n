@@ -117,8 +117,9 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 		const subscription = this.subscriptionsByChannel.get(channel);
 		if (subscription === undefined) return;
 
-		const response = deserializeExecutionResponse(frame, this.logger);
-		if (response === undefined) return;
+		const responseResult = deserializeExecutionResponse(frame, this.logger);
+		if (!responseResult.ok) return;
+		const response = responseResult.result;
 
 		try {
 			subscription.handler(response);
