@@ -193,7 +193,7 @@ onMounted(async () => {
 				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
 					<N8nButton
 						variant="subtle"
-						iconOnly
+						icon-only
 						data-test-id="mcp-workflows-refresh-button"
 						size="small"
 						icon="refresh-cw"

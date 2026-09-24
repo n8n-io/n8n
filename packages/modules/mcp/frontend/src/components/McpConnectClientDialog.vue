@@ -226,8 +226,8 @@ const serverUrlDescription = computed(() =>
 					>
 						<template #action>
 							<ConnectionParameter
-								:class="$style['copy-field']"
 								id="mcp-install-command"
+								:class="$style['copy-field']"
 								:label="''"
 								:value="activeClient.installCommand ?? ''"
 								@copy="trackCopy('install-command')"
@@ -257,8 +257,8 @@ const serverUrlDescription = computed(() =>
 					>
 						<template #action>
 							<ConnectionParameter
-								:class="$style['copy-field']"
 								id="mcp-auth-command"
+								:class="$style['copy-field']"
 								:label="''"
 								:value="activeClient.authCommand ?? '/mcp'"
 								@copy="trackCopy('auth-command')"
@@ -300,8 +300,8 @@ const serverUrlDescription = computed(() =>
 					>
 						<template #action>
 							<ConnectionParameter
-								:class="$style['copy-field']"
 								id="mcp-web-server-url"
+								:class="$style['copy-field']"
 								:label="''"
 								:value="serverUrl"
 								@copy="trackCopy('server-url')"
@@ -342,8 +342,8 @@ const serverUrlDescription = computed(() =>
 					>
 						<template #action>
 							<ConnectionParameter
-								:class="$style['copy-field']"
 								id="mcp-server-url"
+								:class="$style['copy-field']"
 								:label="''"
 								:value="serverUrl"
 								@copy="trackCopy('server-url')"

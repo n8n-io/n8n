@@ -131,7 +131,7 @@ onMounted(async () => {
 					>
 						<N8nButton
 							variant="subtle"
-							iconOnly
+							icon-only
 							icon="refresh-cw"
 							:disabled="keyRotating"
 							@click="rotateKey"
