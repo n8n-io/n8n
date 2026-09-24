@@ -234,6 +234,7 @@ defineExpose({ highlightFirstItem, focusTrigger });
 					:class="$style.actionDropdown"
 					placement="bottom-start"
 					:disabled="props.actionsDisabled || item.disabled"
+					suppress-close-auto-focus
 					@select="emit('action', $event, item.id)"
 				>
 					<template #activator>

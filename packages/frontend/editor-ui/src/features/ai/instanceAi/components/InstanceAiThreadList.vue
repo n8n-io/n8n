@@ -227,7 +227,8 @@ function handleThreadAction(action: string, threadId: string) {
 	if (action === 'delete') {
 		void handleDeleteThread(threadId);
 	} else if (action === 'rename') {
-		startRename(threadId);
+		// Wait for the action menu to unmount before the rename input takes focus.
+		requestAnimationFrame(() => startRename(threadId));
 	}
 }
 </script>

@@ -97,6 +97,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	checked?: boolean;
 	/** Keep the menu open after this item is selected (e.g. toggle rows). */
 	keepOpen?: boolean;
+	/** Prevent the menu from returning focus to its trigger after this item closes it. */
+	suppressCloseAutoFocus?: boolean;
 	/** Render as a non-interactive section header label instead of a selectable item. */
 	header?: boolean;
 	/** Whether to expose the item as a menu item checkbox */
@@ -136,6 +138,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	reference?: DropdownMenuContentProps['reference'];
 	/** When true (default), blocks interaction with the rest of the page while open (reka-ui sets pointer-events:none on body and locks scroll). */
 	modal?: boolean;
+	/** Prevents the menu from returning focus to its trigger when it closes. */
+	suppressCloseAutoFocus?: boolean;
 	/** Array of menu items to display */
 	items: Array<DropdownMenuItemProps<T, D>>;
 	/** The controlled open state of the dropdown. Can be bind as `v-model` */

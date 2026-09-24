@@ -32,6 +32,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T, D>>(), {
 	trigger: 'click',
 	activatorIcon: () => ({ type: 'icon', value: 'ellipsis' }),
 	modal: true,
+	suppressCloseAutoFocus: false,
 	disabled: false,
 	teleported: true,
 	loading: false,
@@ -86,6 +87,7 @@ const generatedContentId = `n8n-dropdown-menu-${useId()}`;
 const contentId = computed(() => props.id ?? generatedContentId);
 const externalNavigationControllers: DropdownMenuExternalNavigationController[] = [];
 let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
+let suppressNextCloseAutoFocus = false;
 
 const isExternalSearchMode = computed(() => props.searchable && props.searchMode === 'external');
 const effectiveModal = computed(() => (isExternalSearchMode.value ? false : props.modal));
@@ -186,17 +188,16 @@ const handleContentOpenAutoFocus = (event: Event) => {
 };
 
 const handleContentCloseAutoFocus = (event: Event) => {
-	if (isExternalSearchMode.value) event.preventDefault();
+	if (isExternalSearchMode.value || props.suppressCloseAutoFocus || suppressNextCloseAutoFocus) {
+		event.preventDefault();
+	}
+	suppressNextCloseAutoFocus = false;
 };
 
-const externalContentEventHandlers = computed(() =>
-	isExternalSearchMode.value
-		? {
-				onOpenAutoFocus: handleContentOpenAutoFocus,
-				onCloseAutoFocus: handleContentCloseAutoFocus,
-			}
-		: {},
-);
+const contentFocusEventHandlers = computed(() => ({
+	...(isExternalSearchMode.value ? { onOpenAutoFocus: handleContentOpenAutoFocus } : {}),
+	onCloseAutoFocus: handleContentCloseAutoFocus,
+}));
 
 const handleContentInteractOutside = (event: FocusOutsideEvent | PointerDownOutsideEvent) => {
 	if (
@@ -253,9 +254,13 @@ function findItemById(
 }
 
 const handleItemSelect = (value: T) => {
+	const item = findItemById(props.items, value);
 	emit('select', value);
 	// Toggle-style rows (e.g. credential selection) keep the menu open.
-	if (!findItemById(props.items, value)?.keepOpen) close();
+	if (!item?.keepOpen) {
+		suppressNextCloseAutoFocus = item?.suppressCloseAutoFocus ?? false;
+		close();
+	}
 };
 
 const handleItemSearch = (term: string, itemId: T) => {
@@ -467,7 +472,7 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 				v-bind="{
 					...fixedContentProps,
 					id: contentId,
-					...externalContentEventHandlers,
+					...contentFocusEventHandlers,
 				}"
 				data-menu-content
 				:data-test-id="contentTestId"
