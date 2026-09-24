@@ -1,0 +1,32 @@
+packages/@n8n/agents/src/types/runtime/delegation.ts
+  s_c5954c3047b5ed::t_6d856bdc8dbf0b 52
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_c5954c3047b5ed::t_6d856bdc8dbf0b 263,413,443-453,464-466,482
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_c5954c3047b5ed::t_acda79d5841bcf 1017,1032,1037
+  s_c5954c3047b5ed::t_28fdbeeb769562 1013-1016,1082,1085-1087,1090
+  s_c5954c3047b5ed::t_e65b7361d5bfc7 1020
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_c5954c3047b5ed::t_6c2b619dffdbf9 8502,8505-8530,8533-8537,8543,8546,8553,8564,8568,8570,8587,8589,8612,8629,8644,8661
+  s_c5954c3047b5ed::t_e87921e3a97a34 2607-2636,8592-8594,8649-8651
+  s_c5954c3047b5ed::t_00ea2db36650d2 8584,8609
+  s_c5954c3047b5ed::t_e1ea113788a34f 8977,8979,8985-8999,9256-9257,9264-9278
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-runner.ts
+  s_c5954c3047b5ed::t_6d856bdc8dbf0b 421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c4242702d49cfac5da5be142308aeb23ce322da9",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
