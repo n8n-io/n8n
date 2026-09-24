@@ -25,13 +25,16 @@ vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: (...args: unknown[]) => apiCreateSpy(...args),
 }));
 
-const { showMessage } = vi.hoisted(() => ({ showMessage: vi.fn() }));
+const { showMessage, trackImportedSkill } = vi.hoisted(() => ({
+	showMessage: vi.fn(),
+	trackImportedSkill: vi.fn(),
+}));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage }),
 }));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
-	useAgentTelemetry: () => ({ trackImportedSkill: vi.fn() }),
+	useAgentTelemetry: () => ({ trackImportedSkill }),
 }));
 
 const MODAL_NAME = 'AgentSkillModal';
@@ -271,6 +274,12 @@ describe('AgentSkillModal', () => {
 		});
 		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
 
+		expect(trackImportedSkill).toHaveBeenCalledWith({
+			agentId: 'a1',
+			source: 'skill_file',
+			status: 'success',
+			referenceCount: 0,
+		});
 		expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
 		expect(queryByTestId('agent-modal-back')).not.toBeInTheDocument();
 		expect(onConfirm).not.toHaveBeenCalled();

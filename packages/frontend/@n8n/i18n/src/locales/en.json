@@ -8378,7 +8378,7 @@
 	"agents.builder.skills.import.tooManyReferences": "The skill folder has too many reference files.",
 	"agents.builder.skills.import.referenceTooLarge": "Each reference file must be 65,536 characters or fewer.",
 	"agents.builder.skills.import.referencesTooLarge": "Reference files must be 262,144 characters or fewer in total.",
-	"agents.builder.skills.import.invalidFolder": "Could not import the skill folder.",
+	"agents.builder.skills.import.invalidFolder": "Could not import the skill. Check the selected files and try again.",
 	"agents.builder.skills.references.title": "References",
 	"agents.builder.skills.references.add": "Add reference",
 	"agents.builder.skills.references.remove": "Remove reference",
