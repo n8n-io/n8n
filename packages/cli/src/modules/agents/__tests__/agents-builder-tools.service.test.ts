@@ -2463,6 +2463,10 @@ describe('AgentsBuilderToolsService', () => {
 				sessionId: 'session-1',
 				executionId: 'execution-1',
 			});
+			// The guidance is the fix: without it the builder retries the same test.
+			const { message } = result as { message: string };
+			expect(message).toContain('A repeat of the same test gives the same result.');
+			expect(message).toContain('ask before you change the agent');
 		});
 
 		it('cancels approval-shaped custom suspensions and directs the user to Preview', async () => {
