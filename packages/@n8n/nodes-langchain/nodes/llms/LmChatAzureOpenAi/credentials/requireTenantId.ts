@@ -5,9 +5,12 @@ import { NodeOperationError, type INode } from 'n8n-workflow';
 const MULTI_TENANT_ALIASES = new Set(['common', 'organizations', 'consumers']);
 
 // A tenant is a GUID or a verified domain. The value becomes a path segment of the token URL,
-// so anything else is refused rather than allowed to reshape it.
+// so anything else is refused rather than allowed to reshape it. The domain form is spelled out
+// label by label because a looser character class accepts `.` and `..`, which URL parsing
+// collapses, leaving a token request with no tenant in the path at all.
 const TENANT_ID_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
-const TENANT_ID_DOMAIN = /^[A-Za-z0-9.-]+$/;
+const TENANT_ID_DOMAIN =
+	/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
 
 /**
  * The node signs in as the application, which Entra allows for a named tenant only. Saved

@@ -40,11 +40,24 @@ describe('requireTenantId', () => {
 		expect(() => requireTenantId(node, value)).toThrow('Tenant ID is missing');
 	});
 
-	// The value becomes a path segment of the token URL.
-	it.each(['a/b', 'a?b', 'a#b', 'a b', 'a\\b', 'a@b'])(
-		'should reject a value that could reshape the URL: %s',
-		(value) => {
-			expect(() => requireTenantId(node, value)).toThrow(NodeOperationError);
-		},
-	);
+	// The value becomes a path segment of the token URL. `.` and `..` matter most: URL parsing
+	// collapses them, so the token request would carry no tenant at all.
+	it.each([
+		'.',
+		'..',
+		'...',
+		'a..b',
+		'.a',
+		'a.',
+		'-a',
+		'a-',
+		'a/b',
+		'a?b',
+		'a#b',
+		'a b',
+		'a\\b',
+		'a@b',
+	])('should reject a value that could reshape the URL: %s', (value) => {
+		expect(() => requireTenantId(node, value)).toThrow(NodeOperationError);
+	});
 });
