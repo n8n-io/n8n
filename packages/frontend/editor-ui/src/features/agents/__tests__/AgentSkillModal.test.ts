@@ -3,8 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
-import { fireEvent } from '@testing-library/vue';
-import { defineComponent, h, onMounted, watch } from 'vue';
+import { configure, fireEvent, waitFor } from '@testing-library/vue';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -13,6 +12,8 @@ import {
 import AgentSkillModal from '../components/AgentSkillModal.vue';
 import type { AgentSkill } from '../types';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
+
+configure({ testIdAttribute: 'data-testid' });
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = { baseText: (key: string) => key };
@@ -29,37 +30,9 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage }),
 }));
 
-const SkillViewerStub = defineComponent({
-	emits: ['import:skill', 'update:skill', 'update:valid'],
-	props: ['skill', 'selectedPath', 'showValidationWarnings', 'errors', 'scrollable'],
-	setup(props, { emit }) {
-		// Mirrors the real viewer's required-fields check closely enough for
-		// modal-level tests: a skill without a name/description/instructions
-		// can't be valid, so Save must stay blocked for it.
-		function computeValid() {
-			return Boolean(
-				props.skill?.name?.trim() &&
-					props.skill?.description?.trim() &&
-					props.skill?.instructions?.trim() &&
-					props.skill.instructions.length <= AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
-			);
-		}
-		onMounted(() => emit('update:valid', computeValid()));
-		watch(
-			() => props.skill,
-			() => emit('update:valid', computeValid()),
-		);
-		return () =>
-			h('div', { 'data-testid': 'agent-skill-viewer-stub' }, [
-				h('span', props.selectedPath),
-				h(
-					'span',
-					{ 'data-testid': 'agent-skill-instructions-error' },
-					props.errors?.instructions ?? '',
-				),
-			]);
-	},
-});
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({ trackImportedSkill: vi.fn() }),
+}));
 
 const MODAL_NAME = 'AgentSkillModal';
 
@@ -80,7 +53,11 @@ function renderModal({
 		global: {
 			stubs: {
 				AgentModal: AgentModalTestStub,
-				AgentSkillViewer: SkillViewerStub,
+				MarkdownEditor: {
+					props: ['modelValue'],
+					emits: ['update:modelValue'],
+					template: `<textarea :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />`,
+				},
 				N8nButton: {
 					template: '<button v-bind="$attrs" :disabled="disabled"><slot /></button>',
 					props: ['variant', 'disabled'],
@@ -156,6 +133,9 @@ describe('AgentSkillModal', () => {
 		expect(
 			container.querySelector('[data-testid="agent-skill-missing-content-callout"]'),
 		).toBeInTheDocument();
+		expect(container.querySelector('h2')).toHaveTextContent('agents.builder.skills.edit');
+		expect(container.querySelector('[data-testid="agent-modal-back"]')).not.toBeInTheDocument();
+		expect(container.querySelector('[data-testid="agent-skill-upload"]')).not.toBeInTheDocument();
 
 		await fireEvent.click(
 			container.querySelector('[data-testid="agent-skill-create-save"]') as Element,
@@ -166,17 +146,27 @@ describe('AgentSkillModal', () => {
 		expect(showMessage).not.toHaveBeenCalled();
 	});
 
-	it('uses the next available default name for a new skill', () => {
-		const { container } = renderModal({
-			existingSkillNames: [
-				'agents.builder.skills.defaultName',
-				'agents.builder.skills.defaultName 2',
-			],
-		});
+	it('starts with upload and discards manual changes on Back', async () => {
+		const { getByTestId, queryByTestId } = renderModal();
 
-		expect(container.querySelector('[data-testid="agent-modal-title-input"]')).toHaveValue(
-			'agents.builder.skills.defaultName 3',
-		);
+		expect(getByTestId('agent-skill-upload')).toBeInTheDocument();
+		expect(queryByTestId('agent-skill-viewer')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		const nameInput = getByTestId('agent-skill-name-input').querySelector('input')!;
+		expect(nameInput).toHaveValue('');
+		await fireEvent.update(nameInput, 'Draft skill');
+		await fireEvent.click(getByTestId('agent-skill-add-reference'));
+		await fireEvent.update(getByTestId('agent-skill-reference-editor'), 'Draft reference');
+		await fireEvent.click(getByTestId('agent-modal-back'));
+
+		expect(getByTestId('agent-skill-upload')).toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		expect(getByTestId('agent-skill-name-input').querySelector('input')).toHaveValue('');
+		expect(
+			queryByTestId('agent-skill-reference-nav-item-references-reference-md'),
+		).not.toBeInTheDocument();
 	});
 
 	it('explains why overlong instructions cannot be saved', async () => {
@@ -197,9 +187,9 @@ describe('AgentSkillModal', () => {
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
 		expect(showMessage).not.toHaveBeenCalled();
-		expect(
-			container.querySelector('[data-testid="agent-skill-instructions-error"]'),
-		).toHaveTextContent('agents.builder.skills.validation.instructionsMaxLength');
+		expect(container.querySelector('[data-testid="agent-skill-viewer"]')).toHaveTextContent(
+			'agents.builder.skills.validation.instructionsMaxLength',
+		);
 	});
 
 	it('adds and removes references from the file navigation', async () => {
@@ -221,9 +211,9 @@ describe('AgentSkillModal', () => {
 				'[data-testid="agent-skill-reference-nav-item-references-reference-md"]',
 			),
 		).toHaveTextContent('references/reference.md');
-		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
-			'references/reference.md',
-		);
+		expect(
+			container.querySelector('[data-testid="agent-skill-reference-name-input"] input'),
+		).toHaveValue('reference');
 
 		await fireEvent.click(
 			container.querySelector(
@@ -236,9 +226,9 @@ describe('AgentSkillModal', () => {
 				'[data-testid="agent-skill-reference-nav-item-references-reference-md"]',
 			),
 		).not.toBeInTheDocument();
-		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
-			'SKILL.md',
-		);
+		expect(
+			container.querySelector('[data-testid="agent-skill-instructions-editor"]'),
+		).toBeInTheDocument();
 	});
 
 	it('does not add more than the maximum number of references', async () => {
@@ -263,9 +253,77 @@ describe('AgentSkillModal', () => {
 				'[data-testid="agent-skill-reference-nav-item-references-reference-21-md"]',
 			),
 		).not.toBeInTheDocument();
-		expect(container.querySelector('[data-testid="agent-skill-viewer-stub"]')).toHaveTextContent(
+		expect(
+			container.querySelector('[data-testid="agent-skill-instructions-editor"]'),
+		).toBeInTheDocument();
+	});
+
+	it('opens the editor after import and saves only when confirmed', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId, queryByTestId } = renderModal({ onConfirm });
+		const file = new File(
+			['---\nname: Research\ndescription: Use for research\n---\nMain instructions'],
 			'SKILL.md',
 		);
+
+		await fireEvent.change(getByTestId('agent-skill-skill-md-file-input'), {
+			target: { files: [file] },
+		});
+		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
+
+		expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-modal-back')).not.toBeInTheDocument();
+		expect(onConfirm).not.toHaveBeenCalled();
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			id: undefined,
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main instructions',
+			},
+		});
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('validates a manual skill and saves its edited reference', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderModal({ onConfirm });
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+		expect(onConfirm).not.toHaveBeenCalled();
+
+		await fireEvent.update(
+			getByTestId('agent-skill-name-input').querySelector('input')!,
+			' Research ',
+		);
+		await fireEvent.update(
+			getByTestId('agent-skill-description-input').querySelector('input')!,
+			'Use for research',
+		);
+		await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
+		await fireEvent.click(getByTestId('agent-skill-add-reference'));
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+		expect(onConfirm).not.toHaveBeenCalled();
+
+		await fireEvent.update(
+			getByTestId('agent-skill-reference-name-input').querySelector('input')!,
+			'guide',
+		);
+		await fireEvent.update(getByTestId('agent-skill-reference-editor'), '# Guide');
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			id: undefined,
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Read the guide',
+				references: [{ path: 'references/guide.md', content: '# Guide' }],
+			},
+		});
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 });
 

@@ -60,12 +60,15 @@ block parent dismissal. The nested dialog owns Escape until it closes.
 
 ### Title contract
 
-Use the configured local name for schedules, skills, node tools, MCP servers,
+Use the configured local name for schedules, node tools, MCP servers,
 workflow tools, and vector stores. Give new items a valid default name. Show the
 pencil on hover. Keep the title clickable.
 
 Do not show a second Name field in the body. Show title validation next to the
 title after the user selects Save.
+
+Skills use fixed `Add skill` and `Edit skill` titles. Put the Name field in the
+`SKILL.md` editor. A new manual skill starts with an empty name.
 
 Keep the title read-only for external entities. Channels use the integration
 label. Sub-agents use the selected Agent name. Custom tools stay read-only
@@ -128,11 +131,18 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                             |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                              |
 
+New skills start with an upload screen. Make `Upload folder` the primary
+action. Support a single `SKILL.md` file and folder drops. Put `Add manually`
+below the drop zone. Hide the footer until the editor opens. Show Back for
+manual creation. Back discards the draft and returns to the upload screen.
+Existing skills open in the editor. Keep the field order: Name, When to use
+this skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
+
 ### Review checklist
 
 - Confirm the modal uses `AgentModal` or `AgentModalMultiStep`.
 - Confirm the title has no asset icon.
-- Confirm an editable title replaces a duplicate Name field.
+- Confirm an editable title replaces a duplicate Name field, except for Skills.
 - Confirm Back appears only when a previous step exists.
 - Confirm Close is top-right and disabled during a request.
 - Confirm Cancel appears before the primary action.
