@@ -1,8 +1,7 @@
 import { computed } from 'vue';
+import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 
 import { usePostHog } from '@/app/stores/posthog.store';
-
-const EMPTY_CANVAS_GROUPS_FLAG = '121_empty_canvas_groups';
 
 export function useEmptyCanvasGroupsFlag() {
 	const posthog = usePostHog();
