@@ -108,7 +108,9 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Characters in the rendered block. Reviews the caps: a 95th percentile above 8,000 means the caps need new numbers',
 				),
-			surface: assistantSurfaceSchema,
+			surface: assistantSurfaceSchema.describe(
+				'Always `aia`. An MCP client reads through a tool and never reports a turn, so it fires `Preferences read over MCP` instead',
+			),
 			injected_this_turn: z
 				.boolean()
 				.describe(
