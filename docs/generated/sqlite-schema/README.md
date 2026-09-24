@@ -135,6 +135,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [webhook_entity](webhook_entity.md) | 6 |  | table |
 | [workflow_builder_session](workflow_builder_session.md) | 9 |  | table |
 | [workflow_dependency](workflow_dependency.md) | 9 |  | table |
+| [workflow_draft](workflow_draft.md) | 14 |  | table |
+| [workflow_draft_activity](workflow_draft_activity.md) | 7 |  | table |
 | [workflow_entity](workflow_entity.md) | 20 |  | table |
 | [workflow_history](workflow_history.md) | 11 |  | table |
 | [workflow_publication_outbox](workflow_publication_outbox.md) | 8 |  | table |
@@ -334,6 +336,7 @@ erDiagram
 "workflow_builder_session" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_builder_session" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_dependency" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_draft_activity" }o--|| "workflow_draft" : "FOREIGN KEY (draftId) REFERENCES workflow_draft (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_entity" }o--o| "workflow_history" : "FOREIGN KEY (activeVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_entity" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1639,6 +1642,31 @@ erDiagram
   varchar_36_ publishedVersionId
   varchar_36_ workflowId FK
   INTEGER workflowVersionId
+}
+"workflow_draft" {
+  varchar backgroundUserId
+  datetime_3_ closedAt
+  varchar_16_ closedReason
+  datetime_3_ createdAt
+  TEXT expectedBaseline
+  varchar id PK
+  TEXT payload
+  varchar_36_ projectId
+  INTEGER revision
+  varchar_255_ sourceKey
+  varchar_16_ state
+  INTEGER submittedRevision
+  datetime_3_ updatedAt
+  varchar_36_ workflowId
+}
+"workflow_draft_activity" {
+  varchar_16_ action
+  varchar_16_ author
+  datetime_3_ createdAt
+  varchar draftId FK
+  varchar id PK
+  INTEGER revision
+  datetime_3_ updatedAt
 }
 "workflow_entity" {
   boolean active

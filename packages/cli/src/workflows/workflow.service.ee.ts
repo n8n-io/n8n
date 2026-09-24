@@ -190,9 +190,9 @@ export class EnterpriseWorkflowService {
 		}
 	}
 
-	validateWorkflowCredentialUsage<T extends IWorkflowBase>(
+	validateWorkflowCredentialUsage<T extends Pick<IWorkflowBase, 'nodes'>>(
 		newWorkflowVersion: T,
-		previousWorkflowVersion: IWorkflowBase,
+		previousWorkflowVersion: Pick<IWorkflowBase, 'nodes'>,
 		credentialsUserHasAccessTo: Array<{ id: string }>,
 	) {
 		/**
@@ -273,7 +273,10 @@ export class EnterpriseWorkflowService {
 	 * non-managed reference (id null/empty) that could resolve by name to a
 	 * credential the user does not own. Inline sub-workflow credentials are included.
 	 */
-	getNodesWithInaccessibleCreds(workflow: IWorkflowBase, userCredIds: Iterable<string>) {
+	getNodesWithInaccessibleCreds(
+		workflow: Pick<IWorkflowBase, 'nodes'>,
+		userCredIds: Iterable<string>,
+	) {
 		if (!workflow.nodes) {
 			return [];
 		}

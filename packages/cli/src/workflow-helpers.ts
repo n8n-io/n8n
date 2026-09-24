@@ -118,7 +118,7 @@ export function getLastExecutedNodeData(inputData: IRun): ITaskData | undefined 
 /**
  * Set node ids if not already set
  */
-export function addNodeIds(workflow: IWorkflowBase) {
+export function addNodeIds(workflow: Pick<IWorkflowBase, 'nodes'>) {
 	const { nodes } = workflow;
 	if (!nodes) return;
 
@@ -134,7 +134,10 @@ export function addNodeIds(workflow: IWorkflowBase) {
  * The UI does this on the frontend when adding nodes to the canvas,
  * but workflows created via the API skip that step.
  */
-export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeTypes) {
+export function resolveNodeWebhookIds(
+	workflow: Pick<IWorkflowBase, 'nodes'>,
+	nodeTypes: INodeTypes,
+) {
 	const { nodes } = workflow;
 	if (!nodes) return;
 
@@ -304,7 +307,7 @@ function credentialCacheKey(parts: readonly string[]): string {
 }
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
-export async function replaceInvalidCredentials<T extends IWorkflowBase>(
+export async function replaceInvalidCredentials<T extends Pick<IWorkflowBase, 'nodes'>>(
 	workflow: T,
 	projectId: string,
 	cache: ReplaceInvalidCredentialsCache = new Map(),

@@ -135,6 +135,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.webhook_entity](public.webhook_entity.md) | 6 |  | BASE TABLE |
 | [public.workflow_builder_session](public.workflow_builder_session.md) | 9 |  | BASE TABLE |
 | [public.workflow_dependency](public.workflow_dependency.md) | 9 |  | BASE TABLE |
+| [public.workflow_draft](public.workflow_draft.md) | 14 |  | BASE TABLE |
+| [public.workflow_draft_activity](public.workflow_draft_activity.md) | 7 |  | BASE TABLE |
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
 | [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 8 |  | BASE TABLE |
@@ -351,6 +353,7 @@ erDiagram
 "public.workflow_builder_session" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.workflow_builder_session" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_dependency" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_draft_activity" }o--|| "public.workflow_draft" : "FOREIGN KEY (#quot;draftId#quot;) REFERENCES workflow_draft(id) ON DELETE CASCADE"
 "public.workflow_entity" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflow_entity" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
 "public.workflow_history" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -1651,6 +1654,31 @@ erDiagram
   varchar_36_ publishedVersionId
   varchar_36_ workflowId FK
   integer workflowVersionId
+}
+"public.workflow_draft" {
+  uuid backgroundUserId
+  timestamp_3__with_time_zone closedAt
+  varchar_16_ closedReason
+  timestamp_3__with_time_zone createdAt
+  json expectedBaseline
+  varchar id
+  json payload
+  varchar_36_ projectId
+  integer revision
+  varchar_255_ sourceKey
+  varchar_16_ state
+  integer submittedRevision
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId
+}
+"public.workflow_draft_activity" {
+  varchar_16_ action
+  varchar_16_ author
+  timestamp_3__with_time_zone createdAt
+  varchar draftId FK
+  varchar id
+  integer revision
+  timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_entity" {
   boolean active
