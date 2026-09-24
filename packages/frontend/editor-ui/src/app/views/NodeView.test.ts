@@ -17,7 +17,6 @@ import { useWorkflowsStore } from '../stores/workflows.store';
 import { useWorkflowsListStore } from '../stores/workflowsList.store';
 import { useWorkflowExecutionStateStore } from '../stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
-import { useUIStore } from '../stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
@@ -197,7 +196,7 @@ describe('NodeView', () => {
 		});
 	}
 
-	describe('Node group creation and extension', () => {
+	describe('Node group creation and output-plus behavior', () => {
 		function addReplacementNodeTypes() {
 			useNodeTypesStore().setNodeTypes([
 				mockNodeTypeDescription({
@@ -390,7 +389,7 @@ describe('NodeView', () => {
 			]);
 		});
 
-		it('adds a node to a regular group through the output plus', async () => {
+		it("keeps a node added through a regular group's output plus outside the group", async () => {
 			routeMock.meta = { nodeView: true };
 			useWorkflowsListStore().addWorkflow(
 				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
@@ -422,51 +421,20 @@ describe('NodeView', () => {
 			});
 			await userEvent.click(await findByTestId('node-creation-stub-add-node'));
 
-			await waitFor(() =>
-				expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toHaveLength(2),
-			);
+			await waitFor(() => expect(workflowDocumentStore.allNodes).toHaveLength(2));
 			const addedNode = workflowDocumentStore.allNodes.find(({ id }) => id !== source.id);
 			expect(addedNode).toBeDefined();
-			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toContain(addedNode?.id);
-		});
-
-		it('does not extend a group from stale selection state when the general creator is used', async () => {
-			routeMock.meta = { nodeView: true };
-			useWorkflowsListStore().addWorkflow(
-				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
-			);
-			useNodeTypesStore().setNodeTypes([
-				mockNodeTypeDescription({
-					name: SET_NODE_TYPE,
-					inputs: [NodeConnectionTypes.Main],
-					outputs: [NodeConnectionTypes.Main],
-				}),
-			]);
-			const { findByTestId } = renderNodeView();
-			const source = createTestNode({
-				id: 'source',
-				name: 'Source',
-				type: SET_NODE_TYPE,
-				position: [0, 0],
-			});
-			workflowDocumentStore.addNode(source);
-			const group = workflowDocumentStore.createGroup([source.id], 'Group 1');
-			const uiStore = useUIStore();
-			uiStore.lastInteractedWithNodeId = source.id;
-			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.Main}/0`;
-			useNodeCreatorStore().setNodeCreatorState({
-				workflowId: workflowDocumentStore.workflowId,
-				createNodeActive: true,
-				source: NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
-			});
-
-			await userEvent.click(await findByTestId('node-creation-stub-add-node'));
-
-			await waitFor(() => expect(workflowDocumentStore.allNodes).toHaveLength(2));
 			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([source.id]);
+			expect(workflowDocumentStore.connectionsBySourceNode).toMatchObject({
+				[source.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: addedNode?.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			});
 		});
 
-		it('adds a node to a loaded group through its outgoing edge action', async () => {
+		it("keeps a node inserted from a regular group's outgoing edge outside the group", async () => {
 			routeMock.meta = { nodeView: true };
 			useWorkflowsListStore().addWorkflow(
 				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
@@ -515,12 +483,10 @@ describe('NodeView', () => {
 			});
 			await userEvent.click(await findByTestId('node-creation-stub-add-node'));
 
-			await waitFor(() =>
-				expect(workflowDocumentStore.getGroupById('loaded-group')?.nodeIds).toHaveLength(2),
-			);
+			await waitFor(() => expect(workflowDocumentStore.getNodeByName('Added')).toBeDefined());
 			const addedNode = workflowDocumentStore.getNodeByName('Added');
 			expect(addedNode).toBeDefined();
-			expect(workflowDocumentStore.getGroupById('loaded-group')?.nodeIds).toContain(addedNode?.id);
+			expect(workflowDocumentStore.getGroupById('loaded-group')?.nodeIds).toEqual([source.id]);
 			expect(workflowDocumentStore.connectionsBySourceNode).toMatchObject({
 				[source.name]: {
 					[NodeConnectionTypes.Main]: [
