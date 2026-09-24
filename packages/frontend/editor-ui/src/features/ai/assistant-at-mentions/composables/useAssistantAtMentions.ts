@@ -164,9 +164,41 @@ export function useAssistantAtMentions(options: {
 		savedSelection.value = { start: caret, end: caret };
 	}
 
+	/**
+	 * Dismissing the menu right after typing `@` would leave a stray trigger in the
+	 * draft. Remove it, along with any whitespace typed after it, and put the caret
+	 * back where it was. Returns false when there is nothing to remove: a button
+	 * range, a query after the trigger, or a trigger the text no longer holds.
+	 */
+	function removeEmptyTypedTrigger(): boolean {
+		const range = activeRange.value;
+		const text = options.text.value;
+		if (
+			!range ||
+			range.origin !== 'typed' ||
+			text[range.start] !== '@' ||
+			text.slice(range.queryStart, range.end).trim() !== ''
+		) {
+			return false;
+		}
+
+		updateText(text.slice(0, range.start) + text.slice(range.end));
+		close();
+		void nextTick(() => {
+			const input = options.getInputElement();
+			// The re-rendered value moves the caret to the end. Restore it only while
+			// the input is focused: a dismissal by outside click has moved focus away.
+			if (input && document.activeElement === input) {
+				input.setSelectionRange(range.start, range.start);
+			}
+			savedSelection.value = { start: range.start, end: range.start };
+		});
+		return true;
+	}
+
 	function handleMenuOpenChange(open: boolean): void {
 		if (!open) {
-			close(true);
+			if (!removeEmptyTypedTrigger()) close(true);
 			return;
 		}
 		if (!activeRange.value) openFromButton();
