@@ -117,14 +117,21 @@ export class AgentIntegrationsController {
 
 	// WhatsApp's Meta app verifies a webhook URL with a GET handshake
 	// (hub.mode/hub.challenge/hub.verify_token) before it will deliver any
-	// POST events to it. Every other platform here only ever sends POST, so
-	// this is purely additive — it reuses the same handler, which already
-	// branches on request method when building the forwarded Web Request.
+	// POST events to it. Every other platform here only ever sends POST, so a
+	// GET for them is never meaningful — short-circuit to the same 404 the
+	// POST path would give an unconnected integration, rather than falling
+	// through to `handleWebhook`, which builds a Web Request assuming whatever
+	// handler it finds can make sense of a GET.
 	@Get('/:agentId/webhooks/:platform', { skipAuth: true, allowBots: true })
 	async handleWebhookVerification(
 		req: Request<{ projectId: string; agentId: string; platform: string }>,
 		res: Response,
 	) {
+		const { agentId, platform } = req.params;
+		if (platform !== 'whatsapp') {
+			res.status(404).json({ error: `No active ${platform} integration for agent "${agentId}"` });
+			return;
+		}
 		return await this.handleWebhook(req, res);
 	}
 

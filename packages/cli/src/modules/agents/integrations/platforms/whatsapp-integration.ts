@@ -81,6 +81,13 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'whatsapp';
 
+	/**
+	 * Hidden from the public catalog and the add-trigger UI until the
+	 * follow-on work (rate limiting, media handling, setup UX) lands —
+	 * without it this channel would go live with only the bare MVP.
+	 */
+	readonly internal = true;
+
 	readonly builderGuidance = {
 		capabilities: [
 			'Receive WhatsApp messages as agent triggers.',
@@ -323,12 +330,19 @@ async function assertCustomerServiceWindowOpen(
 }
 
 /**
- * Reads the same persistent per-thread history cache the SDK backfills
- * `thread.allMessages` from for adapters that set `persistThreadHistory`
- * (WhatsApp has no server-side history API of its own). `ChatInstance` — the
- * adapter-facing interface, not the consumer-facing `Chat` class — exposes no
- * thread/message accessors, so this reads the cache directly off its state
- * adapter instead.
+ * Reads the same per-thread history cache the SDK backfills `thread.allMessages`
+ * from for adapters that set `persistThreadHistory` (WhatsApp has no
+ * server-side history API of its own). `ChatInstance` — the adapter-facing
+ * interface, not the consumer-facing `Chat` class — exposes no thread/message
+ * accessors, so this reads the cache directly off its state adapter instead.
+ *
+ * That state is the in-memory adapter `chat-integration.service.ts` builds
+ * each connection on (`createMemoryState()`) — it does not survive a process
+ * restart or move between mains. A cold cache after a restart means this
+ * returns `undefined`, and {@link assertCustomerServiceWindowOpen} already
+ * treats that the same as a genuinely fresh conversation: it lets the Cloud
+ * API be the authority on whether the 24-hour window is actually open,
+ * instead of blocking on an absence this can't verify.
  */
 async function lastInboundMessageAt(
 	chat: ChatInstance | null,

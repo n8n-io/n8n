@@ -285,7 +285,7 @@ describe('AgentIntegrationsController integration management', () => {
 		expect(res.status).toHaveBeenCalledWith(200);
 	});
 
-	it('delegates GET webhook verification to the same handling as POST', async () => {
+	it('delegates GET webhook verification to the same handling as POST for whatsapp', async () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		const handler = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
 		chatIntegrationService.getWebhookHandler.mockReturnValue(handler);
@@ -303,11 +303,11 @@ describe('AgentIntegrationsController integration management', () => {
 
 		await controller.handleWebhookVerification(
 			{
-				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'whatsapp' },
 				headers: { host: 'localhost', 'content-type': 'application/json' },
 				method: 'GET',
 				protocol: 'https',
-				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/discord',
+				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/whatsapp',
 				body: { application_id: 'app-b', type: 1 },
 			} as never,
 			res as never,
@@ -315,11 +315,40 @@ describe('AgentIntegrationsController integration management', () => {
 
 		expect(chatIntegrationService.getWebhookHandler).toHaveBeenCalledWith(
 			'agent-1',
-			'discord',
+			'whatsapp',
 			'app-b',
 		);
 		expect(handler).toHaveBeenCalledTimes(1);
 		expect(res.status).toHaveBeenCalledWith(200);
+	});
+
+	it('rejects GET webhook verification for a platform other than whatsapp without looking up a handler', async () => {
+		// Every platform but WhatsApp only ever sends POST — a GET here is never
+		// meaningful, so it should 404 immediately rather than reach a handler
+		// built for a POST-shaped request.
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhookVerification(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: { host: 'localhost' },
+				method: 'GET',
+				protocol: 'https',
+				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/discord',
+				body: {},
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationRegistry.get).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(404);
 	});
 
 	it('does not look up a handler when the platform reports no match', async () => {
