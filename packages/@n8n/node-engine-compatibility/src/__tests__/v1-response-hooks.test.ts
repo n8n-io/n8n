@@ -100,7 +100,7 @@ describe('attachResponseHooks', () => {
 
 	it.each([
 		['a stream body', { body: { pipe: () => {} } }],
-		['a binary reference', { body: { binaryData: { id: 'file-1' } } }],
+		['a binary reference without an id', { body: { binaryData: { data: 'aGk=' } } }],
 		['a bare Buffer in place of a response', Buffer.from('hi')],
 	])('refuses %s, which has no JSON form', async (_name, response) => {
 		const { request } = newRequest();
