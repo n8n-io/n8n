@@ -23,6 +23,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution_threads](agent_execution_threads.md) | 19 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
+| [agent_plan](agent_plan.md) | 8 |  | table |
+| [agent_plan_history](agent_plan_history.md) | 6 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
@@ -180,6 +182,8 @@ erDiagram
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_plan" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_plan_history" |o--|| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -569,6 +573,24 @@ erDiagram
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId PK
+}
+"agent_plan" {
+  datetime_3_ closedAt
+  datetime_3_ createdAt
+  TEXT data
+  INTEGER formatVersion
+  varchar id PK
+  INTEGER revision
+  varchar_128_ threadId FK
+  datetime_3_ updatedAt
+}
+"agent_plan_history" {
+  datetime_3_ closedAt
+  datetime_3_ createdAt
+  TEXT data
+  INTEGER formatVersion
+  varchar planId PK
+  INTEGER revision PK
 }
 "agent_task_definition" {
   varchar_36_ agentId FK
