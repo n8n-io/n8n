@@ -132,6 +132,10 @@ function prepareWorkspace({ name, directory, mainDirectory, stateDir }) {
 				'--quiet',
 				`refs/heads/${branch}`,
 			]).status === 0;
+		if (!exists)
+			spawnSync('git', ['-C', mainDirectory, 'fetch', 'origin', 'master'], {
+				stdio: ['ignore', 2, 2],
+			});
 		run(
 			'git',
 			[
@@ -139,9 +143,9 @@ function prepareWorkspace({ name, directory, mainDirectory, stateDir }) {
 				mainDirectory,
 				'worktree',
 				'add',
-				...(exists ? [] : ['-b', branch]),
+				...(exists ? [] : ['--no-track', '-b', branch]),
 				directory,
-				...(exists ? [branch] : []),
+				exists ? branch : 'origin/master',
 			],
 			{ stdio: ['ignore', 2, 2] },
 		);
