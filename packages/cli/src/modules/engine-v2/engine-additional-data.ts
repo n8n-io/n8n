@@ -37,7 +37,7 @@ const unimplementedVariables: IWorkflowExecuteAdditionalData['variables'] = new 
 
 class UnimplementedExternalSecretsProxy extends ExternalSecretsProxy {
 	private unavailable(): never {
-		throw new UnimplementedError('External secrets ($secrets) are not supported on Engine 2.0 yet');
+		throw new UnimplementedError('External secrets ($secrets) are not supported on Engine v2 yet');
 	}
 
 	override getSecret(): never {
