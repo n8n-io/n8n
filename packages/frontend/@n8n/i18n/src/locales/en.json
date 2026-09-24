@@ -4499,7 +4499,7 @@
 	"settings.migrationReport.workflowTooltip.executionsFail": "Affected workflows will fail after the update. Update or replace the affected nodes.",
 	"settings.migrationReport.workflowTooltip.behaviorChanges": "Affected workflows keep running, but their behavior changes. Review and test them before you update.",
 	"settings.migrationReport.workflowTooltip.capabilityRemoved": "Executions are not affected. A capability these workflows use is no longer available after the update.",
-	"settings.migrationReport.instanceTooltip.upgradeBlocked": "The instance will not start after the update. Fix this before you proceed.",
+	"settings.migrationReport.instanceTooltip.upgradeBlocked": "The update may be blocked, or the instance may not start after the update. Fix this before you proceed.",
 	"settings.migrationReport.instanceTooltip.executionsFail": "Executions on this instance will fail after the update. Fix this before you proceed.",
 	"settings.migrationReport.instanceTooltip.behaviorChanges": "The instance keeps running, but its behavior changes after the update. Review the change and adjust your setup if needed.",
 	"settings.migrationReport.instanceTooltip.capabilityRemoved": "Executions are not affected. A capability of this instance is no longer available after the update.",
