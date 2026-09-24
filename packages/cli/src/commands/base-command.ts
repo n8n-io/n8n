@@ -254,7 +254,9 @@ export abstract class BaseCommand<F = never> {
 		Container.get(MessageEventBus);
 
 		await Container.get(PostHogClient).init();
-		await Container.get(TelemetryEventRelay).init();
+		// The telemetry pulse counts workflows, users and projects, so a command
+		// without the database must not start it.
+		if (this.needsDb) await Container.get(TelemetryEventRelay).init();
 		Container.get(ActivityEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
