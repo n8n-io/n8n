@@ -17,12 +17,14 @@ import type { executionResponseSchema } from './execution-response.schema';
  */
 export type ExecutionResponse = z.infer<typeof executionResponseSchema>;
 
+/** The intended response could not be produced or carried. */
+export type UndeliverableMessage = Extract<ExecutionResponse, { type: 'undeliverable' }>;
+
 /**
  * The run is over. Always the last response an execution sends.
  *
  * `lastStep` is the step whose settling ended the run. Its `outputs` are `null`
  * when that step was skipped or failed, so a consumer that needs the data has
- * to look further. The engine reports what ended the run, not what a caller
- * would like to answer with.
+ * to look further.
  */
 export type EndedMessage = Extract<ExecutionResponse, { type: 'ended' }>;

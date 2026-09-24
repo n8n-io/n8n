@@ -1,7 +1,6 @@
 import type { CredentialProvider, ResolvedCredential, CredentialListItem } from '@n8n/agents';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -10,6 +9,7 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AiGatewayModelCredentialResolver } from '../json-config/model-config';
 import type { AiGatewaySearchCredentialResolver } from '../json-config/web-search-credential';
+import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 
 function toResolvedCredential(data: unknown): ResolvedCredential {
 	const resolved = data !== null && typeof data === 'object' && !Array.isArray(data) ? data : {};
@@ -86,42 +86,11 @@ export class AgentsCredentialProvider
 			throw new Error(`Credential "${credentialId}" not found or not accessible`);
 		}
 
-		const data = await this.decryptWithExpressions(credential);
-		return toResolvedCredential(data);
-	}
-
-	/**
-	 * Decrypt through `CredentialsHelper.getDecrypted` — the path node execution
-	 * takes — so expressions in credential fields are evaluated instead of
-	 * reaching the caller as raw `={{ ... }}` strings. An external-secret-backed
-	 * field would otherwise be sent verbatim and fail auth.
-	 *
-	 * Agents have no workflow or execution, so `additionalData` comes from
-	 * `getBase()`, which supplies the secrets proxy and the project's variables.
-	 *
-	 * `internal` mode skips dynamic-credential resolution, which needs an
-	 * execution context agents don't have. A per-user resolvable credential
-	 * therefore falls back to its static stored data rather than failing — the
-	 * same behaviour as before this path existed.
-	 */
-	private async decryptWithExpressions(
-		credential: CredentialsEntity,
-	): Promise<ICredentialDataDecryptedObject> {
-		// Imported lazily: `workflow-execute-additional-data` reaches back into
-		// this module to run agents from workflows.
-		// eslint-disable-next-line import-x/no-cycle
-		const { getBase } = await import('@/workflow-execute-additional-data.js');
-		const additionalData = await getBase({
+		const data = await decryptAgentCredential(Container.get(CredentialsHelper), credential, {
 			userId: this.user?.id,
 			projectId: this.projectId,
 		});
-
-		return await Container.get(CredentialsHelper).getDecrypted(
-			additionalData,
-			{ id: credential.id, name: credential.name },
-			credential.type,
-			'internal',
-		);
+		return toResolvedCredential(data);
 	}
 
 	/**

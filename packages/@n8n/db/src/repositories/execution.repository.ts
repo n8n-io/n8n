@@ -32,6 +32,7 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 	IRunExecutionDataAll,
+	IWorkflowSettings,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
@@ -78,6 +79,13 @@ export type CrashedExecution = {
 	workflowId: string;
 	workflowName?: string;
 	mode: WorkflowExecuteMode;
+	startedAt: Date | null;
+	stoppedAt: Date;
+	tracingContext?: { traceparent: string; tracestate?: string };
+	workflowVersionId?: string;
+	retryOf?: string;
+	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
+	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 };
 
 export interface UpdateExecutionConditions {
@@ -400,7 +408,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const crashed: CrashedExecution[] = [];
 
 		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
-			const transitioned = await this.transitionToCrashed({ id: In(batch) });
+			const transitioned = await this.withOwnerProjects(
+				await this.transitionToCrashed({ id: In(batch) }),
+			);
 
 			crashed.push(...transitioned);
 			// Report each batch as it commits, so a later batch that throws keeps the earlier reports.
@@ -413,7 +423,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 	/** Set the workflow's in-progress executions to `crashed`. */
 	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
-		const transitioned = await this.transitionToCrashed({ workflowId });
+		const transitioned = await this.withOwnerProjects(
+			await this.transitionToCrashed({ workflowId }),
+		);
 
 		if (transitioned.length > 0) {
 			this.logger.info('Marked executions as `crashed`', {
@@ -450,20 +462,74 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			if (updateResult?.affected === 0) return [];
 
 			const rows = await tx.find(ExecutionEntity, {
-				select: { id: true, workflowId: true, mode: true, workflow: { id: true, name: true } },
+				select: {
+					id: true,
+					workflowId: true,
+					workflowVersionId: true,
+					mode: true,
+					retryOf: true,
+					startedAt: true,
+					// TypeORM types a JSON column's select as a nested select, but any truthy
+					// value here selects the whole column.
+					tracingContext: { traceparent: true, tracestate: true },
+					workflow: { id: true, name: true, settings: { customTelemetryTags: true } },
+				},
 				relations: { workflow: true },
 				where: { ...where, status: 'crashed', stoppedAt },
 				// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
 				withDeleted: true,
 			});
 
-			return rows.map(({ id, workflowId, mode, workflow }) => ({
-				id,
-				workflowId,
-				workflowName: workflow?.name,
-				mode,
-			}));
+			return rows.map(
+				({
+					id,
+					workflowId,
+					workflowVersionId,
+					mode,
+					retryOf,
+					startedAt,
+					tracingContext,
+					workflow,
+				}) => ({
+					id,
+					workflowId,
+					workflowName: workflow?.name,
+					workflowVersionId: workflowVersionId ?? undefined,
+					mode,
+					retryOf: retryOf ?? undefined,
+					startedAt,
+					stoppedAt,
+					tracingContext: tracingContext ?? undefined,
+					workflowCustomTelemetryTags: workflow?.settings?.customTelemetryTags,
+				}),
+			);
 		});
+	}
+
+	/** Add the owner project of each execution's workflow. */
+	private async withOwnerProjects(executions: CrashedExecution[]): Promise<CrashedExecution[]> {
+		if (executions.length === 0) return executions;
+
+		try {
+			const projects = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds([
+				...new Set(executions.map(({ workflowId }) => workflowId)),
+			]);
+
+			return executions.map((execution) => {
+				const project = projects.get(execution.workflowId);
+				if (!project) return execution;
+
+				return {
+					...execution,
+					project: { id: project.id, customTelemetryTags: project.customTelemetryTags },
+				};
+			});
+		} catch (error) {
+			// The project only decorates the report, so a failed lookup must still let the
+			// crash be counted and announced.
+			this.logger.warn('Failed to load owner projects for crashed executions', { error });
+			return executions;
+		}
 	}
 
 	async setRunning(executionId: string) {

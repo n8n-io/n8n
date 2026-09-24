@@ -61,6 +61,7 @@ import IconLucideBlocks from '~icons/lucide/blocks';
 import IconLucideBold from '~icons/lucide/bold';
 import IconLucideBook from '~icons/lucide/book';
 import IconLucideBookOpen from '~icons/lucide/book-open';
+import IconLucideBookmark from '~icons/lucide/bookmark';
 import IconLucideBot from '~icons/lucide/bot';
 import IconLucideBox from '~icons/lucide/box';
 import IconLucideBraces from '~icons/lucide/braces';
@@ -571,6 +572,7 @@ export const updatedIconSet = {
 	bold: IconLucideBold,
 	book: IconLucideBook,
 	'book-open': IconLucideBookOpen,
+	bookmark: IconLucideBookmark,
 	bot: IconLucideBot,
 	box: IconLucideBox,
 	brain: IconLucideBrain,

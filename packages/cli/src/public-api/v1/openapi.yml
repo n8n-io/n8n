@@ -29,6 +29,8 @@ tags:
     description: Operations about community packages
   - name: Credential
     description: Operations about credentials
+  - name: CredentialTypePolicy
+    description: Operations about credential type availability policies
   - name: DataTable
     description: Operations about data tables and their rows
   - name: Discover
@@ -83,8 +85,6 @@ paths:
     $ref: './handlers/ldap/spec/paths/settings.ldap.yml'
   /settings/ldap/sync:
     $ref: './handlers/ldap/spec/paths/settings.ldap.sync.yml'
-  /settings/security-policy:
-    $ref: './handlers/security-policy/spec/paths/security-policy.yml'
   /settings/otel:
     $ref: './handlers/otel/spec/paths/settings.otel.yml'
   /settings/otel/test-trace:
@@ -95,20 +95,8 @@ paths:
     $ref: './handlers/sso-saml/spec/paths/settings.sso.saml.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
-  /workflows/{id}/test-runs:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
-  /workflows/{id}/test-runs/{runId}:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.yml'
   /workflows/{id}/test-runs/{runId}/cancel:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.cancel.yml'
-  /workflows/{id}/test-runs/{runId}/test-cases:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.test-cases.yml'
-  /users:
-    $ref: './handlers/users/spec/paths/users.yml'
-  /users/{id}:
-    $ref: './handlers/users/spec/paths/users.id.yml'
-  /users/{id}/role:
-    $ref: './handlers/users/spec/paths/users.id.role.yml'
   /data-tables:
     $ref: './handlers/data-tables/spec/paths/data-tables.yml'
   /data-tables/{dataTableId}:
@@ -131,12 +119,6 @@ paths:
     $ref: './handlers/community-packages/spec/paths/community-packages.yml'
   /community-packages/{name}:
     $ref: './handlers/community-packages/spec/paths/community-packages.packageName.yml'
-  /discover:
-    $ref: './handlers/discover/spec/paths/discover.yml'
-  /projects/{projectId}/folders:
-    $ref: './handlers/folders/spec/paths/folders.yml'
-  /projects/{projectId}/folders/{folderId}:
-    $ref: './handlers/folders/spec/paths/folders.folderId.yml'
   /n8n-packages/export:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
   /n8n-packages/import:

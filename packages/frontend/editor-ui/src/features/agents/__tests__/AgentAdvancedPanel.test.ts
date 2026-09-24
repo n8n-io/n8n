@@ -564,7 +564,7 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 		const input = wrapper.find('[data-testid="agent-max-iterations-input"]');
-		expect(Number(input.element.getAttribute('value'))).toBe(30);
+		expect(Number(input.element.getAttribute('value'))).toBe(100);
 	});
 
 	it('initialises max-iterations input from config', () => {

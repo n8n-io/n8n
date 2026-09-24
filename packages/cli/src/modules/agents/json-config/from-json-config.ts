@@ -23,15 +23,17 @@ import {
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
 } from '@n8n/ai-utilities/agent-config';
-import type {
-	AgentSkill,
-	AgentJsonConfig,
-	AgentJsonMcpServerConfig,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-	AgentJsonSkillConfig,
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	MANAGED_CREDENTIAL_TOKEN,
+	type AgentModelCredentialConfig,
+	type AgentSkill,
+	type AgentJsonConfig,
+	type AgentJsonMcpServerConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
+	type AgentJsonSkillConfig,
 } from '@n8n/api-types';
-import { AI_GATEWAY_MANAGED_TAG, MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import { z } from 'zod';
@@ -98,11 +100,6 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
  * `buildFromJson`.
  */
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
-
-type MemoryWorkerModelConfig = {
-	model: string;
-	credential: string;
-};
 
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
@@ -640,7 +637,7 @@ async function resolveModelConfig(
 }
 
 async function resolveMemoryWorkerModelConfig(
-	config: MemoryWorkerModelConfig,
+	config: AgentModelCredentialConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
 	// Mirrors `resolveModelConfig`: an empty credential means "not configured",

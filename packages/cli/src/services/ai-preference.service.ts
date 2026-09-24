@@ -21,6 +21,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -171,11 +172,16 @@ export class AiPreferenceService {
 	}
 
 	/** The instance rows, the caller's rows, the rows of readable projects and, for admins, every user's rows. */
-	async list(user: User, page: { skip: number; take: number }): Promise<AiPreferenceListDto> {
+	async list(
+		user: User,
+		page: { skip: number; take: number; ids?: string[] },
+	): Promise<AiPreferenceListDto> {
 		const access = this.projectAccess(user);
 		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
 			...(await this.visibleTo(user, access)),
-			...page,
+			skip: page.skip,
+			take: page.take,
+			...(page.ids ? { ids: page.ids } : {}),
 		});
 
 		return {
@@ -205,6 +211,7 @@ export class AiPreferenceService {
 		const access = this.projectAccess(user);
 		const target = await this.resolveTarget(user, request, 'create', access);
 		await this.assertScopeHasRoom(target);
+		await this.assertNotDuplicate(target, request.content);
 
 		const row = await this.aiPreferenceRepository.save(
 			this.aiPreferenceRepository.create({
@@ -231,6 +238,9 @@ export class AiPreferenceService {
 		const target = await this.resolveTarget(user, request, moved ? 'create' : 'update', access);
 		// A move adds a row to the scope it lands in. An edit in place adds nothing.
 		if (moved) await this.assertScopeHasRoom(target);
+		if (moved || row.content !== request.content) {
+			await this.assertNotDuplicate(target, request.content, row.id);
+		}
 
 		// `source` is not touched: it records the surface that created the row. An assistant
 		// edit of a row a person wrote does not make that row the assistant's.
@@ -402,6 +412,20 @@ export class AiPreferenceService {
 			throw new BadRequestError(
 				`A ${scope.scope} cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`,
 			);
+		}
+	}
+
+	/** Every surface refuses a restatement at this one point. A duplicate is a
+	 *  409, not a 400: the request is well formed, the state conflicts. */
+	private async assertNotDuplicate(target: PreferenceTarget, content: string, excludeId?: string) {
+		const scope = aiPreferenceTargetOf(target);
+		const exists = await this.aiPreferenceRepository.existsForTargetWithContent(
+			scope,
+			content,
+			excludeId,
+		);
+		if (exists) {
+			throw new ConflictError(`This ${scope.scope} already has a preference with the same text`);
 		}
 	}
 
@@ -648,8 +672,25 @@ function singleLine(text: string): string {
 }
 
 /**
+ * A turn sends the block again whenever its text changed, so the conversation can hold an
+ * older copy the model already read. Worded without the literal tags: user text cannot carry
+ * them either (they are escaped out), so the first close tag in a stored message is always
+ * the real one.
+ */
+export const AI_PREFERENCES_REPLACES_EARLIER =
+	'This block lists the saved preferences that apply now. It replaces every earlier ai-preferences block and earlier chat or tool claims about saved preferences. Do not treat a preference missing from this block as a standing rule, even if the user previously asked to save it. Follow the current user request.';
+
+/**
+ * Sent when every preference is gone but the conversation carries an earlier block or
+ * successful save. Silence would leave the model applying deleted preferences. Constant text, so
+ * the change rule treats it like any other block and a thread that stays empty carries it
+ * once.
+ */
+export const AI_PREFERENCES_CLEARED_BLOCK = `<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\nThe user has no saved preferences now. Do not continue applying a previously saved preference from this conversation.\n</ai-preferences>`;
+
+/**
  * The same text as `renderAiPreferences`, wrapped in one tagged block, or `undefined` when there
- * is nothing to say. Used by the Instance AI opening turn, which needs a block it can strip out
+ * is nothing to say. Used by the Instance AI turn, which needs a block it can strip out
  * of the stored message; the tags are escaped out of the user text first so it cannot close the
  * block. A tool result has no wrapper, so the MCP tool uses the unwrapped renderer directly.
  */
@@ -664,7 +705,7 @@ export function renderAiPreferencesBlock(preferences: ApplicableAiPreferences): 
 		})),
 	});
 	if (body === '') return undefined;
-	return `<ai-preferences>\n${body}\n</ai-preferences>`;
+	return `<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\n${body}\n</ai-preferences>`;
 }
 
 /** Escapes the text of one item and keeps its id, so the block cannot be closed from inside. */

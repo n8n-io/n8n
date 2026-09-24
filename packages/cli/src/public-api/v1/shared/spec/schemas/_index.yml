@@ -1,7 +1,5 @@
 Error:
   $ref: './error.yml'
-Role:
-  $ref: './../../../handlers/users/spec/schemas/role.yml'
 Node:
   $ref: './../../../handlers/workflows/spec/schemas/node.yml'
 WorkflowNodeGroup:
@@ -16,7 +14,3 @@ WorkflowList:
   $ref: './../../../handlers/workflows/spec/schemas/workflowList.yml'
 Audit:
   $ref: './../../../handlers/audit/spec/schemas/audit.yml'
-UserList:
-  $ref: './../../../handlers/users/spec/schemas/userList.yml'
-User:
-  $ref: './../../../handlers/users/spec/schemas/user.yml'

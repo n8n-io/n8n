@@ -117,6 +117,23 @@ describe('agent-sse-stream — connection setup', () => {
 		expect(res.end).toHaveBeenCalledOnce();
 		expect(res.write).not.toHaveBeenCalled();
 	});
+
+	it('closes delivery when an event cannot be serialized', () => {
+		const { res } = createResponse();
+		const { onChunk, abortSignal } = initSseStream(res);
+		const circular: Record<string, unknown> = {};
+		circular.self = circular;
+
+		onChunk({
+			type: 'tool-result',
+			toolCallId: 'tc-1',
+			toolName: 'lookup',
+			output: circular,
+		});
+
+		expect(abortSignal.aborted).toBe(true);
+		expect(res.end).toHaveBeenCalledOnce();
+	});
 });
 
 // ---------------------------------------------------------------------------
