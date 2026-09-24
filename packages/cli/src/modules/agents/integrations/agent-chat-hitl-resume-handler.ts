@@ -17,6 +17,7 @@ import type {
 	ResumeForChatConfig,
 	AgentExecutionOrchestratorService,
 } from '../agent-execution-orchestrator.service';
+import { parseBackgroundApprovalAction } from '../background/sub-agent-background-state';
 
 type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'>;
 
@@ -76,11 +77,20 @@ export class AgentChatHitlResumeHandler {
 			replyExpectation: 'required',
 		});
 
-		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
-		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData, {
-			messageContext,
-			contextConversation: { threadId: threadId.id, resourceId: event.user.userId },
-		});
+		const backgroundApproval = parseBackgroundApprovalAction(callbackData.actionId);
+		if (!backgroundApproval) await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
+		const resumed = await this.executeResume(
+			thread,
+			parsed.runId,
+			parsed.toolCallId,
+			parsed.resumeData,
+			{
+				messageContext,
+				contextConversation: { threadId: threadId.id, resourceId: event.user.userId },
+			},
+		);
+		if (backgroundApproval && resumed)
+			await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
 	}
 
 	/** Parsed result from an action ID. */
@@ -88,6 +98,8 @@ export class AgentChatHitlResumeHandler {
 		actionId: string,
 		value: string | undefined,
 	): { runId: string; toolCallId: string; resumeData: unknown } | null {
+		const backgroundApproval = parseBackgroundApprovalAction(actionId);
+		if (backgroundApproval) return backgroundApproval;
 		if (actionId.startsWith('ri-sel:')) {
 			const parts = actionId.split(':');
 			if (parts.length < 4) {
@@ -133,6 +145,7 @@ export class AgentChatHitlResumeHandler {
 		kind?: 'approval';
 		label?: string;
 	} | null> {
+		if (parseBackgroundApprovalAction(actionId)) return { actionId, value, kind: 'approval' };
 		if (!this.options.callbackStore) return { actionId, value };
 
 		const resolved = await this.options.callbackStore.resolve(actionId);
@@ -225,12 +238,12 @@ export class AgentChatHitlResumeHandler {
 		options: Pick<ResumeForChatConfig, 'messageContext' | 'contextConversation'> & {
 			notifyOnDuplicate?: boolean;
 		} = {},
-	): Promise<void> {
+	): Promise<boolean> {
 		const { notifyOnDuplicate = true, ...context } = options;
 		if (this.activeResumedRuns.has(runId)) {
 			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
 			if (notifyOnDuplicate) await thread.post('This action has already been handled');
-			return;
+			return false;
 		}
 
 		this.activeResumedRuns.add(runId);
@@ -257,6 +270,7 @@ export class AgentChatHitlResumeHandler {
 				// once-wrapped handle makes it a no-op await when that already ran.
 				await statusHandle?.clearBeforeResponse();
 			}
+			return true;
 		} finally {
 			this.activeResumedRuns.delete(runId);
 		}

@@ -3,6 +3,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
+import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
+import type { AgentWorkspaceService } from '../../agent-workspace.service';
 import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import type { SubAgentRunner, SubAgentRunResult } from '../../sub-agents/sub-agent-runner';
 import type { AgentBackgroundJobService } from '../agent-background-job.service';
@@ -49,14 +52,28 @@ function setup() {
 	jobService.settle.mockResolvedValue(true);
 	runner.run.mockResolvedValue(completedRunResult());
 
-	const backgroundRunner = new SubAgentBackgroundRunner(runner, jobService, logger);
+	const jobRepository = mock<AgentBackgroundJobRepository>();
+	jobRepository.findById.mockResolvedValue(
+		mock<AgentBackgroundJob>({
+			status: 'running',
+			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
+		}),
+	);
+	const workspaceService = mock<AgentWorkspaceService>();
+	const backgroundRunner = new SubAgentBackgroundRunner(
+		runner,
+		jobService,
+		logger,
+		jobRepository,
+		workspaceService,
+	);
 	const context = {
 		projectId: 'project-1',
 		parentAgentId: 'agent-1',
 		credentialProvider: mock<CredentialProvider>(),
 		runType: 'production' as const,
 	};
-	return { backgroundRunner, runner, jobService, context };
+	return { backgroundRunner, runner, jobService, context, jobRepository, workspaceService };
 }
 
 async function flushDetachedRun() {
@@ -81,10 +98,14 @@ describe('spawn', () => {
 
 		resolveRun(completedRunResult());
 		await flushDetachedRun();
-		expect(jobService.settle).toHaveBeenCalledWith(jobId, {
-			status: 'completed',
-			result: 'the answer',
-		});
+		expect(jobService.settle).toHaveBeenCalledWith(
+			jobId,
+			{
+				status: 'completed',
+				result: 'the answer',
+			},
+			{ status: 'running', timeoutAt: expect.any(Date) },
+		);
 		expect(jobService.unregisterAbortController).toHaveBeenCalledWith(jobId, abortController);
 	});
 
@@ -171,13 +192,17 @@ describe('spawn', () => {
 		// The settle-write failure is contained; the outcome is never rewritten
 		// as failed over it — the row stays for the sweeper.
 		expect(jobService.settle).toHaveBeenCalledTimes(1);
-		expect(jobService.settle).toHaveBeenCalledWith(expect.any(String), {
-			status: 'completed',
-			result: 'the answer',
-		});
+		expect(jobService.settle).toHaveBeenCalledWith(
+			expect.any(String),
+			{
+				status: 'completed',
+				result: 'the answer',
+			},
+			{ status: 'running', timeoutAt: expect.any(Date) },
+		);
 	});
 
-	it('settles a suspended child as failed — background runs cannot answer HITL', async () => {
+	it('ends a child that requests an unsupported interaction', async () => {
 		const { backgroundRunner, runner, jobService, context } = setup();
 		runner.run.mockResolvedValue(
 			completedRunResult({
@@ -196,7 +221,11 @@ describe('spawn', () => {
 
 		expect(jobService.settle).toHaveBeenCalledWith(
 			expect.any(String),
-			expect.objectContaining({ status: 'failed', error: expect.stringContaining('human input') }),
+			expect.objectContaining({
+				status: 'failed',
+				error: expect.stringContaining('unsupported interaction'),
+			}),
+			{ status: 'running', timeoutAt: expect.any(Date) },
 		);
 	});
 
@@ -207,10 +236,27 @@ describe('spawn', () => {
 		await backgroundRunner.spawn(request, context);
 		await flushDetachedRun();
 
-		expect(jobService.settle).toHaveBeenCalledWith(expect.any(String), {
-			status: 'failed',
-			error: 'model exploded',
-		});
+		expect(jobService.settle).toHaveBeenCalledWith(
+			expect.any(String),
+			{ status: 'failed', error: 'model exploded' },
+			{ status: 'running', timeoutAt: expect.any(Date) },
+		);
+	});
+
+	it('stops the execution timer while the child waits for approval', async () => {
+		vi.useFakeTimers();
+		try {
+			const { backgroundRunner, runner, jobService, context } = setup();
+			runner.run.mockResolvedValue(completedRunResult({ status: 'suspended' }));
+			jobService.suspend.mockResolvedValue(true);
+			await backgroundRunner.spawn(request, context);
+			await vi.advanceTimersByTimeAsync(SUB_AGENT_BACKGROUND_TIMEOUT_MS * 2);
+			expect(jobService.suspend).toHaveBeenCalledOnce();
+			expect(jobService.settle).not.toHaveBeenCalled();
+			expect(runner.run.mock.calls[0][1].abortSignal?.aborted).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('settles as timed out and aborts the run when the timeout fires', async () => {
@@ -225,6 +271,7 @@ describe('spawn', () => {
 			expect(jobService.settle).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ status: 'failed', error: expect.stringContaining('Timed out') }),
+				{ status: 'running', timeoutAt: expect.any(Date) },
 			);
 			const runContext = runner.run.mock.calls[0][1];
 			expect(runContext.abortSignal?.aborted).toBe(true);

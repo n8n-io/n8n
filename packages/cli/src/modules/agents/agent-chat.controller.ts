@@ -22,6 +22,7 @@ import {
 	RestController,
 } from '@n8n/decorators';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { redactDeep } from '@n8n/utils/redaction/redact-text';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
@@ -403,17 +404,49 @@ export class AgentChatController {
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
 		return {
 			pendingTaskIds: jobs
-				.filter((job) => job.status !== 'running' && !job.notifiedAt)
+				.filter((job) => job.status !== 'running' && job.status !== 'suspended' && !job.notifiedAt)
 				.map((job) => job.id),
 			tasks: jobs.map((job) => ({
 				id: job.id,
 				title: scrubSecretsInText(job.title),
 				kind: job.kind,
 				status: job.status,
+				...(job.approval
+					? {
+							approval: {
+								...job.approval,
+								suspendPayload: redactDeep(job.approval.suspendPayload, {
+									redactSensitiveKeys: true,
+								}).value,
+							},
+						}
+					: {}),
 				startedAt: job.createdAt.toISOString(),
 				...(job.settledAt ? { settledAt: job.settledAt.toISOString() } : {}),
 			})),
 		};
+	}
+
+	@Post('/:agentId/chat/:threadId/background-tasks/resume')
+	@ProjectScope('agent:execute')
+	async resumeBackgroundJob(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Body payload: AgentChatResumeDto,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		const resumed = await this.agentExecutionOrchestratorService.resumeBackgroundForChat({
+			...payload,
+			resumeData: payload.resumeData,
+			projectId,
+			agentId,
+			user: req.user,
+			usePublishedVersion: false,
+			previewChat: true,
+			expectedMemory: { threadId, resourceId: draftChatMemoryResourceId(req.user.id) },
+		});
+		if (!resumed) throw new BadRequestError('This background approval is no longer available');
+		return { resumed };
 	}
 
 	@Get('/:agentId/chat/:threadId/messages')
