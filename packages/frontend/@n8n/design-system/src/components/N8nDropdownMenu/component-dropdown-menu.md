@@ -496,7 +496,7 @@ const items = ref([
 - External search mode does not render a search input or emit search text. The consumer updates `items` from its text control.
 - External search mode uses non-modal menu content so the external text control can keep focus.
 - Set `reference` when the menu must be positioned against a different element than its trigger.
-- A selectable sub-menu parent uses Enter or a label click for selection. Use ArrowRight or the chevron to open its children.
+- A selectable sub-menu parent uses Enter or a label click for selection. Use ArrowRight or the chevron to open its children. A keyboard open highlights the first child; a pointer open leaves the highlight where it is.
 - The `icon` prop now accepts `IconOrEmoji` type: `{ type: 'icon', value: 'pen' }` or `{ type: 'emoji', value: '🎉' }`
 - Keyboard navigation in searchable menus uses virtual highlighting (focus stays in search input)
 - Non-searchable menus use Reka UI's built-in roving focus for keyboard navigation

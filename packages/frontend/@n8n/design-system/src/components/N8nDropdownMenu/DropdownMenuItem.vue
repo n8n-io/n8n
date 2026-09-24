@@ -60,6 +60,10 @@ const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
 const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
 const internalSubMenuOpen = ref(false);
+// True when the parent menu opened this sub-menu (keyboard: ArrowRight or Enter).
+// Pointer and chevron opens start inside this item and set internalSubMenuOpen first,
+// so the parent's prop never finds it closed.
+const subMenuOpenedByParent = ref(false);
 const childrenContainerRef = ref<HTMLElement | null>(null);
 const subContentMaxHeight = ref<string>();
 
@@ -223,9 +227,9 @@ const handleResize = () => {
 watch(
 	() => props.subMenuOpen,
 	(newValue) => {
-		if (newValue !== undefined) {
-			internalSubMenuOpen.value = newValue;
-		}
+		if (newValue === undefined) return;
+		subMenuOpenedByParent.value = newValue && !internalSubMenuOpen.value;
+		internalSubMenuOpen.value = newValue;
 	},
 	{ immediate: true },
 );
@@ -371,6 +375,7 @@ onBeforeUnmount(() => {
 						:search-placeholder="searchPlaceholder"
 						:search-mode="searchMode"
 						:is-sub-menu="true"
+						:highlight-first-item-on-open="searchMode === 'external' && subMenuOpenedByParent"
 						@select="handleSelect"
 						@search="(term: string, itemId?: T) => emit('search', term, itemId ?? props.id)"
 						@close="closeSubMenu"
