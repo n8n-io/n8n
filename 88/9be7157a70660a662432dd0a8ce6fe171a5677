@@ -1,0 +1,44 @@
+packages/@n8n/ai-utilities/src/model-discovery/providers/azure.ts
+  s_34985ccb3740e2::t_0cf9e4ac82aefc 1-87
+  s_34985ccb3740e2::t_f95ed9d2d198b6 88-90
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/azure.test.ts
+  s_34985ccb3740e2::t_7bb64460564625 1-165
+  s_34985ccb3740e2::t_db069a8b044c28 166-168
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential.ts
+  s_34985ccb3740e2::t_f4360eaf6d27e6 7
+  s_34985ccb3740e2::t_62bca3033faade 33
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.ts
+  s_34985ccb3740e2::t_e0117eb2a3ac5d 1-81
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_34985ccb3740e2::t_1bd87b7b692305 14
+  s_34985ccb3740e2::t_aa9f1c72da54d2 24-29
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.test.ts
+  s_34985ccb3740e2::t_a2b0fcb7d58380 1-26,28-64,66-101,104-112,114-125
+  s_34985ccb3740e2::t_3bbd7fa2172409 27,65,102-103,113
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/types.ts
+  s_34985ccb3740e2::t_377fb096416d2f 68-73
+  s_34985ccb3740e2::t_f5be666cc7353e 67
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/oauth2.ts
+  s_34985ccb3740e2::t_6c7ba3d05d86f6 9,11
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_34985ccb3740e2::t_95c18c061c0cbf 66-70
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/properties.ts
+  s_34985ccb3740e2::t_442454ad5a8961 48-54
+  s_34985ccb3740e2::t_5d2d4abe2663c3 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "889be7157a70660a662432dd0a8ce6fe171a5677",
+  "prompts": {},
+  "sessions": {
+    "s_34985ccb3740e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f9b98b0-92c2-4b52-b807-1f44b42c1cf2",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
