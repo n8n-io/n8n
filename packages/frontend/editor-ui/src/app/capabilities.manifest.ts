@@ -7,6 +7,7 @@ import {
 	useExistingWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 
 /**
  * Shell actions that a module calls but cannot import — the counterpart to
@@ -42,7 +43,19 @@ const syncWorkflowMcpAccess = (workflowIds: string[], availableInMCP: boolean) =
 	}
 };
 
+// The offer loads lazily: it reaches the MCP store, which the boot chunk does not need.
+const mcpExposeAllOffer = {
+	isEnabled: () => useExposeAllWorkflowsToMcpStore().isEnabled,
+	offer: async (onExposed: () => Promise<void> | void) => {
+		const { useExposeAllWorkflowsToMcpOffer } = await import(
+			'@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer'
+		);
+		return await useExposeAllWorkflowsToMcpOffer().offerToExposeAllWorkflows(onExposed);
+	},
+};
+
 export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
+	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);
 };
