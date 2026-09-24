@@ -22,7 +22,10 @@ const DEVCONTAINER = '.devcontainer/codespaces/devcontainer.json';
 const MACHINE = 'premiumLinux';
 
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8' }).trim();
-const ghTty = (...args) => spawnSync('gh', args, { stdio: 'inherit' });
+// On a TTY, gh queries the terminal background colour. The reply can reach the
+// shell (or the remote session) as text. A fixed GLAMOUR_STYLE skips the query.
+const ghTty = (...args) =>
+	spawnSync('gh', args, { stdio: 'inherit', env: { ...process.env, GLAMOUR_STYLE: 'dark' } });
 
 // Check the remote terminal database before tmux starts. Older images can lack
 // terminal definitions such as xterm-ghostty.

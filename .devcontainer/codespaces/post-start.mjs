@@ -53,14 +53,14 @@ function addMarketplace() {
 // Claude Code reads the Flaky token when it connects. An env reference such as
 // ${FLAKY_MCP_TOKEN} fails in processes that did not load the secrets file, for
 // example the desktop app's SSH server. The helper reads the file on each connect,
-// so it also gets a rotated token. The token is not written to disk.
+// so it also gets a rotated token. The token is not copied into ~/.claude.json.
 const FLAKY_HEADERS_HELPER =
 	'. /usr/local/lib/codespaces-env.sh; printf %s "{\\"Authorization\\":\\"Bearer $FLAKY_MCP_TOKEN\\"}"';
 
 function registerFlakyMcp() {
 	// Forks have no repository secrets.
 	const url = codespaceSecret('FLAKY_MCP_URL');
-	if (!url) return;
+	if (!url || !codespaceSecret('FLAKY_MCP_TOKEN')) return;
 
 	let current;
 	try {

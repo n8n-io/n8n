@@ -382,7 +382,8 @@ the tools assume.
 
 `post-start.mjs` registers the server for Claude Code on each container start.
 Its `headersHelper` reads the token from the secrets file on each connect, so
-the server works in every client. The token is not written to disk.
+the server works in every client. The token is not copied into the Claude Code
+MCP configuration.
 
 ## Quality and security skills (Claude plugins)
 
