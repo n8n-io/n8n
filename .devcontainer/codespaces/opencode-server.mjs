@@ -162,35 +162,35 @@ function prepareWorkspace({ name, directory, mainDirectory, stateDir }) {
 	}
 }
 
-async function ensureSession({ name, fresh, directory, stateDir, server }) {
-	const sessionFile = join(stateDir, `${name}.session.json`);
-	const saved = fresh ? undefined : readJson(sessionFile);
-	let session;
-	if (saved) {
-		const response = await request(server, `/session/${encodeURIComponent(saved.id)}`, directory);
-		if (response.ok) session = await response.json();
-		else if (response.status !== 404)
-			throw new Error(`Cannot resume OpenCode session (${response.status}).`);
-		if (session && session.directory !== directory)
-			throw new Error('The saved OpenCode session belongs to another directory. Use --new.');
+// OpenCode's own resume is scoped to the repository project, so all worktrees
+// share one pool. Scope the selection to the workspace directory instead, so
+// each worktree resumes its own most recently updated root conversation.
+async function resolveSession({ name, fresh, directory, server }) {
+	if (!fresh) {
+		const query = new URLSearchParams({ directory, roots: 'true' });
+		const response = await request(server, `/session?${query}`, directory);
+		if (!response.ok) throw new Error(`Cannot list OpenCode sessions (${response.status}).`);
+		const sessions = await response.json();
+		const latest = Array.isArray(sessions)
+			? sessions.find((entry) => typeof entry?.id === 'string' && entry.id.length > 0)
+			: undefined;
+		if (latest) return latest.id;
 	}
-	if (!session) {
-		const response = await request(server, '/session', directory, {
-			method: 'POST',
-			body: JSON.stringify({ title: `n8n: ${name}` }),
-		});
-		if (!response.ok) throw new Error(`Cannot create OpenCode session (${response.status}).`);
-		session = await response.json();
-		if (typeof session.id !== 'string' || session.directory !== directory)
-			throw new Error('OpenCode returned an invalid session.');
-		saveJson(sessionFile, { id: session.id });
-	}
+	const response = await request(server, '/session', directory, {
+		method: 'POST',
+		body: JSON.stringify({ title: `n8n: ${name}` }),
+	});
+	if (!response.ok) throw new Error(`Cannot create OpenCode session (${response.status}).`);
+	const session = await response.json();
+	if (typeof session.id !== 'string' || session.directory !== directory)
+		throw new Error('OpenCode returned an invalid session.');
 	return session.id;
 }
 
 export async function prepareOpenCode({
 	name = 'agent',
 	fresh = false,
+	web = false,
 	workspaces = '/workspaces',
 } = {}) {
 	const stateDir = join(workspaces, '.n8n-opencode');
@@ -203,15 +203,19 @@ export async function prepareOpenCode({
 	if (!server) execFileSync('opencode', ['--version'], { stdio: ['ignore', 'pipe', 'inherit'] });
 	prepareWorkspace({ name, directory, mainDirectory, stateDir });
 	server ??= await startServer({ stateDir, mainDirectory, workspaces });
-	const sessionID = await ensureSession({ name, fresh, directory, stateDir, server });
+	const state = { ...server, directory };
+	// A fresh TUI conversation needs no record. The TUI creates it on the first message.
+	if (fresh && !web) return state;
 	// Only the parent process reads stdout. Never send this record to terminal output.
-	return { ...server, directory, sessionID };
+	return { ...state, sessionID: await resolveSession({ name, fresh, directory, server }) };
 }
 
 if (process.argv[1] === '-') {
 	try {
-		const [name, fresh] = process.argv.slice(2);
-		console.log(JSON.stringify(await prepareOpenCode({ name, fresh: fresh === 'true' })));
+		const [name, fresh, web] = process.argv.slice(2);
+		console.log(
+			JSON.stringify(await prepareOpenCode({ name, fresh: fresh === 'true', web: web === 'true' })),
+		);
 	} catch (error) {
 		console.error(error.message);
 		process.exitCode = 1;
