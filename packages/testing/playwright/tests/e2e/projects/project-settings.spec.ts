@@ -268,7 +268,7 @@ test.describe(
 
 			// Their own row is a real relation, so it keeps the project role.
 			const ownRow = adminN8n.projectSettings.getMemberRowByEmail(projectAdmin.email);
-			await expect(ownRow.getByTestId('project-member-access-label')).toHaveCount(0);
+			await expect(adminN8n.projectSettings.getAccessLabelForRow(ownRow)).toHaveCount(0);
 
 			// They cannot be offered as members, because the list gives no way to
 			// undo the add.

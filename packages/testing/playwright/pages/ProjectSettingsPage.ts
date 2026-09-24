@@ -84,8 +84,12 @@ export class ProjectSettingsPage extends BasePage {
 		});
 	}
 
+	getAccessLabelForRow(row: Locator): Locator {
+		return row.getByTestId('project-member-access-label');
+	}
+
 	async expectRowAlwaysHasAccess(row: Locator) {
-		await expect(row.getByTestId('project-member-access-label')).toHaveText('Full access');
+		await expect(this.getAccessLabelForRow(row)).toHaveText('Full access');
 		await expect(this.getMemberRoleDropdownForRow(row)).toHaveCount(0);
 		await expect(row.getByTestId('action-toggle')).toHaveCount(0);
 	}
