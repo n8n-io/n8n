@@ -1,6 +1,13 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { TelemetryOptions, ToolCallRepairFunction, ToolSet } from 'ai';
 
+import {
+	buildCheckpointOptions,
+	markSuspendedToolCalls,
+	mergeResumeExecutionOptions,
+	mergeResumePersistence,
+	parseResumeData,
+} from './checkpoint-data';
 import { incrementMessageCount, incrementTokenCountFromUsage } from './execution-counter';
 import { GenerateSink } from './generate-sink';
 import { hydrateFileParts } from './hydrate-file-parts';
@@ -21,7 +28,6 @@ import {
 	normalizeInput,
 } from './runtime-helpers';
 import { StreamSink } from './stream-sink';
-import { isCancellation } from '../../sdk/cancellation';
 import { computeCost, getModelCost, type ModelCost } from '../../sdk/catalog';
 import type {
 	BuiltTelemetry,
@@ -40,12 +46,10 @@ import { AgentEvent } from '../../types/runtime/event';
 import type {
 	AgentPersistenceOptions,
 	ExecutionOptions,
-	PersistedExecutionOptions,
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getModelIdString } from '../../utils/model';
-import { parseWithSchema } from '../../utils/parse';
 import { removeToolResultRun } from '../../workspace';
 import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
@@ -349,7 +353,7 @@ export class AgentRuntime {
 				hostMetadata,
 				...callerExecOptions
 			} = options;
-			const mergedExecOptions = this.mergeResumeExecutionOptions(state, callerExecOptions);
+			const mergedExecOptions = mergeResumeExecutionOptions(state, callerExecOptions);
 
 			const claimed = await this.runState.claimResume(this.runId, state);
 			if (!claimed) {
@@ -357,7 +361,7 @@ export class AgentRuntime {
 			}
 			resumeClaimed = true;
 			const resumeOptions: RuntimeExecutionOptions = {
-				persistence: this.mergeResumePersistence(state.persistence, hostMetadata),
+				persistence: mergeResumePersistence(state.persistence, hostMetadata),
 				...mergedExecOptions,
 			};
 			this.updateState({ persistence: resumeOptions.persistence });
@@ -410,7 +414,7 @@ export class AgentRuntime {
 			const { runId: _rid, contextNotes, ...callerExecOptions } = options;
 			const resumeOptions: RuntimeExecutionOptions = {
 				persistence: state.persistence,
-				...this.mergeResumeExecutionOptions(state, callerExecOptions),
+				...mergeResumeExecutionOptions(state, callerExecOptions),
 			};
 
 			for (const note of contextNotes ?? []) {
@@ -462,7 +466,7 @@ export class AgentRuntime {
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
-		const resumeData = await this.parseResumeData(data, resumeSchema);
+		const resumeData = await parseResumeData(data, resumeSchema);
 		return { state, list, resumeData };
 	}
 
@@ -502,53 +506,6 @@ export class AgentRuntime {
 			threadId: state.persistence?.threadId,
 		});
 		return list;
-	}
-
-	private async parseResumeData(
-		data: unknown,
-		resumeSchema: BuiltTool['resumeSchema'],
-	): Promise<unknown> {
-		if (isCancellation(data) || !resumeSchema) return data;
-		const result = await parseWithSchema(resumeSchema, data, { stripUnknown: true });
-		if (!result.success) throw new Error(`Invalid resume payload: ${result.error}`);
-		return result.data;
-	}
-
-	private mergeResumeExecutionOptions(
-		state: SerializableAgentState,
-		callerExecOptions: ExecutionOptions,
-	): ExecutionOptions & { iterationCount?: number } {
-		const persisted = state.executionOptions ?? {};
-		const persistedMaxIterations = persisted.maxIterations;
-		const callerMaxIterations = callerExecOptions.maxIterations;
-		if (
-			callerMaxIterations !== undefined &&
-			persistedMaxIterations !== undefined &&
-			callerMaxIterations < persistedMaxIterations
-		) {
-			throw new Error(
-				`Cannot decrease maxIterations when resuming a run. Expected >= ${persistedMaxIterations}, received ${callerMaxIterations}.`,
-			);
-		}
-
-		const mergedMaxIterations = callerMaxIterations ?? persistedMaxIterations;
-		return {
-			...callerExecOptions,
-			...(mergedMaxIterations !== undefined ? { maxIterations: mergedMaxIterations } : {}),
-			...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
-		};
-	}
-
-	private mergeResumePersistence(
-		persistence: AgentPersistenceOptions | undefined,
-		hostMetadata: ResumeOptions['hostMetadata'],
-	): AgentPersistenceOptions | undefined {
-		if (!persistence) return undefined;
-		const merged = { ...persistence };
-		if (persistence.hostMetadata || hostMetadata) {
-			merged.hostMetadata = { ...persistence.hostMetadata, ...hostMetadata };
-		}
-		return merged;
 	}
 
 	private async prepareResumeMemory(
@@ -1211,9 +1168,9 @@ export class AgentRuntime {
 		maxIterations?: number,
 		iterationCount?: number,
 	): Promise<void> {
-		const checkpointOptions = this.buildCheckpointOptions(options, maxIterations, iterationCount);
+		const checkpointOptions = buildCheckpointOptions(options, maxIterations, iterationCount);
 
-		this.markSuspendedToolCalls(list, pendingToolCalls);
+		markSuspendedToolCalls(list, pendingToolCalls);
 
 		const state: SerializableAgentState = {
 			persistence: options?.persistence,
@@ -1226,26 +1183,6 @@ export class AgentRuntime {
 		await this.runState.suspend(this.runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
 		await this.memory.persistTurnDelta(list, options);
-	}
-
-	private markSuspendedToolCalls(
-		list: AgentMessageList,
-		pendingToolCalls: Record<string, PendingToolCall>,
-	): void {
-		// Record what confirmation each suspended call showed the user, so an
-		// abandoned suspension can be settled with that context on a later
-		// history load instead of vanishing from the transcript.
-		for (const pending of Object.values(pendingToolCalls)) {
-			if (!pending.suspended) continue;
-			const payload =
-				typeof pending.suspendPayload === 'object' && pending.suspendPayload !== null
-					? (pending.suspendPayload as { message?: unknown; requestId?: unknown })
-					: undefined;
-			list.markToolCallSuspended(pending.toolCallId, {
-				...(typeof payload?.message === 'string' ? { message: payload.message } : {}),
-				...(typeof payload?.requestId === 'string' ? { requestId: payload.requestId } : {}),
-			});
-		}
 	}
 
 	/**
@@ -1263,7 +1200,7 @@ export class AgentRuntime {
 		maxIterations?: number,
 		iterationCount?: number,
 	): Promise<void> {
-		const checkpointOptions = this.buildCheckpointOptions(options, maxIterations, iterationCount);
+		const checkpointOptions = buildCheckpointOptions(options, maxIterations, iterationCount);
 
 		const state: SerializableAgentState = {
 			persistence: options?.persistence,
@@ -1274,23 +1211,6 @@ export class AgentRuntime {
 			...checkpointOptions,
 		};
 		await this.runState.checkpointStep(this.runId, state);
-	}
-
-	private buildCheckpointOptions(
-		options: RuntimeExecutionOptions | undefined,
-		maxIterations?: number,
-		iterationCount?: number,
-	): Pick<SerializableAgentState, 'executionOptions' | 'iterationCount'> {
-		// Persist loop controls only. providerOptions are intentionally excluded
-		// because they may contain sensitive data (API keys, auth headers).
-		const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
-		const resolvedIterationCount = iterationCount ?? options?.iterationCount;
-		const executionOptions: PersistedExecutionOptions | undefined =
-			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
-		return {
-			executionOptions,
-			...(resolvedIterationCount !== undefined ? { iterationCount: resolvedIterationCount } : {}),
-		};
 	}
 
 	/** Clean up stored state for a run when it finishes without re-suspending. */
