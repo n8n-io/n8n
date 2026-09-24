@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { makeAzureFoundryFailedAttemptHandler } from '../error-handling';
 
@@ -6,7 +6,7 @@ describe('makeAzureFoundryFailedAttemptHandler', () => {
 	it('should name the deployment and Chat Completions when the toggle is off', () => {
 		const handler = makeAzureFoundryFailedAttemptHandler('gpt-4o', false);
 
-		expect(() => handler({ status: 404 })).toThrow(OperationalError);
+		expect(() => handler({ status: 404 })).toThrow(UserError);
 		expect(() => handler({ status: 404 })).toThrow(
 			'Azure did not accept the deployment "gpt-4o" on Chat Completions',
 		);
@@ -30,7 +30,7 @@ describe('makeAzureFoundryFailedAttemptHandler', () => {
 			handler(original);
 			throw new Error('expected the handler to throw');
 		} catch (error) {
-			expect((error as OperationalError).cause).toBe(original);
+			expect((error as UserError).cause).toBe(original);
 		}
 	});
 

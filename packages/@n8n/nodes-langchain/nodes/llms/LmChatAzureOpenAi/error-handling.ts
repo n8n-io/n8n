@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 function statusOf(error: unknown): number | undefined {
 	if (typeof error !== 'object' || error === null || !('status' in error)) return undefined;
@@ -42,7 +42,9 @@ export function makeAzureFoundryFailedAttemptHandler(
 	return (error: unknown) => {
 		if (!isRouteMismatch(error)) return;
 
-		throw new OperationalError(
+		// A UserError, not operational: the deployment name or the API toggle is wrong, and
+		// retrying the same request cannot change that.
+		throw new UserError(
 			`Azure did not accept the deployment "${modelName}" on ${apiInUse}. Check the deployment name. ${remedy}`,
 			{ cause: error },
 		);
