@@ -1,5 +1,6 @@
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
+import { defineComponent } from 'vue';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { McpServerConnectionItem } from '../types';
@@ -64,13 +65,25 @@ describe('McpToolSettingsContent', () => {
 	});
 
 	it('shows Custom in the category selector without adding a dropdown option', async () => {
-		const { getByTestId, getByText, queryByRole } = renderComponent({ props: { item: item() } });
-		const select = getByTestId('tools-connection-permission-read');
-		const input = select.querySelector('input');
+		const { getByTestId, queryByRole } = renderComponent({
+			props: { item: item() },
+			global: {
+				stubs: {
+					Select: defineComponent({
+						props: ['modelValue'],
+						template: '<div><span data-test-id="select-value">{{ modelValue }}</span><slot /></div>',
+					}),
+					Option: defineComponent({
+						props: ['label'],
+						template: '<div role="option">{{ label }}</div>',
+					}),
+				},
+			},
+		});
 
-		expect(getByText('Custom')).toBeVisible();
-
-		await fireEvent.click(input!);
+		expect(
+			within(getByTestId('tools-connection-permission-read')).getByTestId('select-value'),
+		).toHaveTextContent('Custom');
 
 		expect(queryByRole('option', { name: 'Custom' })).not.toBeInTheDocument();
 	});
