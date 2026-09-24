@@ -204,7 +204,7 @@ for (const [label, env, message] of [
 	[
 		'a version mismatch',
 		{ TEST_SERVER_VERSION: '1.14.22' },
-		/versions differ.*pnpm add --global opencode-ai@1\.14\.22/,
+		/versions differ.*npm install -g opencode-ai@1\.14\.22/,
 	],
 	['an authentication failure', { TEST_UNAUTHORIZED: '1' }, /health check failed \(401\)/],
 	['a tunnel startup failure', { TEST_TUNNEL_FAIL: '1' }, /SSH tunnel closed/],

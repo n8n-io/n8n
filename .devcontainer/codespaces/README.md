@@ -85,8 +85,11 @@ For the TUI, install the same OpenCode version as the remote server. The
 for new images:
 
 ```bash
-pnpm add --global opencode-ai@<version>
+npm install -g opencode-ai@<version>
 ```
+
+Use npm, not pnpm. The package gets its binary from a `postinstall` script.
+pnpm does not run that script by default.
 
 The launcher checks both versions. It reports a mismatch with both version
 numbers before it opens the TUI. An existing Codespace can have a different
