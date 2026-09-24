@@ -254,6 +254,13 @@ describe('MigrationRules', () => {
 							ruleImpact: 'upgradeBlocked' as const,
 							nbAffectedWorkflows: 1,
 						},
+						{
+							...mockWorkflowIssue,
+							ruleId: 'rule-4',
+							ruleTitle: 'Test Rule 4',
+							ruleImpact: 'capabilityRemoved' as const,
+							nbAffectedWorkflows: 2,
+						},
 					],
 					instanceResults: [],
 				},
@@ -270,13 +277,15 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Executions fail')).toBeInTheDocument();
 				expect(screen.getByText('Behavior changes')).toBeInTheDocument();
 				expect(screen.getByText('Upgrade blocked')).toBeInTheDocument();
+				expect(screen.getByText('Capability removed')).toBeInTheDocument();
 			});
 
-			// Rules that block the update come first, whatever the response order.
+			// Rules that block the update come first and capability removals last,
+			// whatever the response order.
 			const titles = screen
 				.getAllByRole('heading', { level: 3 })
 				.map((heading) => heading.textContent?.trim());
-			expect(titles).toEqual(['Test Rule 3', 'Test Rule 1', 'Test Rule 2']);
+			expect(titles).toEqual(['Test Rule 3', 'Test Rule 1', 'Test Rule 2', 'Test Rule 4']);
 		});
 	});
 
@@ -326,7 +335,7 @@ describe('MigrationRules', () => {
 			});
 		});
 
-		it('should display multiple instance issues', async () => {
+		it('should display multiple instance issues sorted by impact', async () => {
 			const multipleIssues = createMockReport({
 				report: {
 					generatedAt: new Date('2024-01-01'),
@@ -341,6 +350,18 @@ describe('MigrationRules', () => {
 							ruleTitle: 'Instance Rule 2',
 							ruleImpact: 'executionsFail' as const,
 						},
+						{
+							...mockInstanceIssue,
+							ruleId: 'rule-4',
+							ruleTitle: 'Instance Rule 3',
+							ruleImpact: 'capabilityRemoved' as const,
+						},
+						{
+							...mockInstanceIssue,
+							ruleId: 'rule-5',
+							ruleTitle: 'Instance Rule 4',
+							ruleImpact: 'upgradeBlocked' as const,
+						},
 					],
 				},
 			});
@@ -354,7 +375,21 @@ describe('MigrationRules', () => {
 			await waitFor(() => {
 				expect(screen.getByText('Instance Rule 1')).toBeInTheDocument();
 				expect(screen.getByText('Instance Rule 2')).toBeInTheDocument();
+				expect(screen.getByText('Instance Rule 3')).toBeInTheDocument();
+				expect(screen.getByText('Instance Rule 4')).toBeInTheDocument();
 			});
+
+			// Same order as the workflow tab: upgradeBlocked, executionsFail,
+			// behaviorChanges, capabilityRemoved.
+			const titles = screen
+				.getAllByRole('heading', { level: 3 })
+				.map((heading) => heading.textContent?.trim());
+			expect(titles).toEqual([
+				'Instance Rule 4',
+				'Instance Rule 2',
+				'Instance Rule 1',
+				'Instance Rule 3',
+			]);
 		});
 	});
 
