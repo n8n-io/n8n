@@ -1,6 +1,5 @@
 import '../../openapi-extend';
 
-import type { INode } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { auditReportFieldDocs, auditRequestFieldDocs } from './audit-public.openapi';
@@ -67,12 +66,7 @@ const riskLocationSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 
-// Node shape varies across n8n versions and workflow history, so — matching how
-// `nodesPublicSchema` (workflow-public.dto.ts) treats saved workflow nodes — this only checks
-// "is an array" rather than validating individual node fields.
-const versionNodeArraySchema = z.custom<INode[]>((value) => Array.isArray(value), {
-	message: 'Nodes must be an array',
-});
+const versionNodeArraySchema = z.array(z.unknown());
 
 // Registered under a refId so the generator emits it once as a shared component instead of
 // inlining it under each of the five named risk reports below.

@@ -2,7 +2,10 @@ type: object
 properties:
   name:
     type: string
-  nodes: {}
+  nodes:
+    type: array
+    items:
+      nullable: true
   createdAt:
     type: string
   description:
