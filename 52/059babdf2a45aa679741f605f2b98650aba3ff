@@ -1,0 +1,159 @@
+packages/cli/test/integration/agents/agent-checkpoint-pruning.task.integration.test.ts
+  s_c5954c3047b5ed::t_78bf1c5e52ea46 6,18-20,44,54-55,62,163,190-192,198
+  s_c5954c3047b5ed::t_d20eba6f232a50 45-53,157-162,194-197
+  s_c5954c3047b5ed::t_93533f79716bff 175,180,182
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_c5954c3047b5ed::t_ff1a39afd0a8fc 1-13,20,24-33,38-39,46-57,62
+  s_c5954c3047b5ed::t_e2bb743d4b423e 14-19,21-23,34-37,40-45
+  s_c5954c3047b5ed::t_3e8a812440e9e1 58-61
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_c5954c3047b5ed::t_2de86ca3df93ae 1
+  s_c5954c3047b5ed::t_a9321c49724831 29
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_c5954c3047b5ed::t_f23a67cb1ddb4b 437-440,444-451
+  s_c5954c3047b5ed::t_601cda6162ba98 50-51,849,857-858,862,1016-1017,1040-1047,1052-1054,1057-1068,1077-1084,1089,1093,1100-1104,1108-1126,1136-1139,1143-1145,1149-1157,1161,1165-1175,1179-1187,1196-1198,1270-1277,1288-1289,1293-1295,1299-1306,1315,1319-1320,1325-1336
+  s_c5954c3047b5ed::t_69313e31bff9b3 1337-1338
+  s_c5954c3047b5ed::t_c5042f84cba5aa 462,464
+  s_c5954c3047b5ed::t_aca920a93b6a5d 49,118,145-146,153,169,175,185-187,195,364
+  s_c5954c3047b5ed::t_d20eba6f232a50 45-48,141-144,147-152,171-174,176-180,455-457,1018-1039,1048-1051,1055-1056,1069-1076,1085-1088,1090-1092,1094-1099,1105-1107,1127-1135,1140-1142,1146-1148,1158-1160,1162-1164,1176-1178,1188-1195,1199-1269,1278-1287,1290-1292,1296-1298,1307-1314,1316-1318,1321-1324
+  s_c5954c3047b5ed::t_cde671ba091194 441-443,452,458-459,484-489,491-493
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_c5954c3047b5ed::t_bea982dc8bb0a4 18-19,46,111,131,151-156,281,298,366-367,369-370,385,398-399,419-428,433
+  s_c5954c3047b5ed::t_c228808546dd98 444
+  s_c5954c3047b5ed::t_e2bb743d4b423e 121-125,348-356,381-383,429-432
+  s_c5954c3047b5ed::t_26cbe321d408de 47,443
+  s_c5954c3047b5ed::t_06c86683fac197 16,310
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_c5954c3047b5ed::t_fcb5de2355c8ed 23,67,133-141
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_c5954c3047b5ed::t_e2bb743d4b423e 54-65,85,87-88,112,118-122,138-140,143-146
+  s_c5954c3047b5ed::t_4befac50a14471 1-53,66-76,82-84,86,89,91-111,113-117,123-126,130-131,133-137,141-142,147-161
+  s_c5954c3047b5ed::t_a7253237331e8f 128-129,132
+  s_c5954c3047b5ed::t_919938a5cdf1a1 90
+  s_c5954c3047b5ed::t_d20eba6f232a50 77-81
+  s_c5954c3047b5ed::t_2b0c1c717a64a9 127
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_c5954c3047b5ed::t_4befac50a14471 332,334,382
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_c5954c3047b5ed::t_2aba0c0c6f8505 2-5,19,32,42,57
+  s_c5954c3047b5ed::t_9ed06063a37fd1 65,71-72
+packages/cli/test/integration/agents/agent-conversation-state.test.ts
+  s_c5954c3047b5ed::t_d20eba6f232a50 119-121
+  s_c5954c3047b5ed::t_78bf1c5e52ea46 6-7,53,56-59,113
+docs/generated/sqlite-schema/README.md
+  s_c5954c3047b5ed::t_4b09f59b156e8b 26,184-185,576-584
+packages/cli/src/modules/agents/agent-turn-already-running.error.ts
+  s_c5954c3047b5ed::t_ff1a39afd0a8fc 1-7
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_c5954c3047b5ed::t_26cbe321d408de 65,86-87,208,475,486-487,489-490,717-718,776,778,795,857,1067,1098
+  s_c5954c3047b5ed::t_e2bb743d4b423e 491-499,784-790,1099-1104
+  s_c5954c3047b5ed::t_fdc0f0f03b1169 1096,1128,1131-1132
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_c5954c3047b5ed::t_e2bb743d4b423e 42-47
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweeper.test.ts
+  s_c5954c3047b5ed::t_cde671ba091194 32-33,35-36,52
+  s_c5954c3047b5ed::t_d20eba6f232a50 50-51,53
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_c5954c3047b5ed::t_e1094190fe121f 5954,5983,9587
+  s_c5954c3047b5ed::t_d20eba6f232a50 6132-6139
+packages/@n8n/db/src/migrations/common/1790193898938-CreateAgentMessageQueue.ts
+  s_c5954c3047b5ed::t_6f5379daf5841e 15
+  s_c5954c3047b5ed::t_05f9c87d8c94c6 1-3,42-43,46-47
+  s_c5954c3047b5ed::t_ff1a39afd0a8fc 13-14,16-17,21-41,44-45
+  s_c5954c3047b5ed::t_d20eba6f232a50 4-8,10-12
+  s_c5954c3047b5ed::t_2c9d2ede9a6b95 9
+  s_c5954c3047b5ed::t_e2bb743d4b423e 18-20
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_c5954c3047b5ed::t_55f95cff31a13c 12,67,133-141
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_c5954c3047b5ed::t_23aecdc1369706 888,1237
+  s_c5954c3047b5ed::t_143ce330345645 476
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_c5954c3047b5ed::t_ff1a39afd0a8fc 1-2,4,9-27,29-47
+  s_c5954c3047b5ed::t_c0f7a77d2c67b8 3,28
+  s_c5954c3047b5ed::t_e2bb743d4b423e 5-8
+docs/generated/sqlite-schema/agent_execution.md
+  s_c5954c3047b5ed::t_60861f8b6d1678 27,65,92-100
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_c5954c3047b5ed::t_e2bb743d4b423e 49-50
+  s_c5954c3047b5ed::t_a9321c49724831 45-48,51-53
+docs/generated/postgres-schema/public.agent_execution.md
+  s_c5954c3047b5ed::t_571a1601d8fe51 16,60,87-95
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_c5954c3047b5ed::t_52c9184c610c3c 17,125,151
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_c5954c3047b5ed::t_2000fc910ca3dc 1-108
+packages/@n8n/agents/src/runtime/state/run-state.ts
+  s_c5954c3047b5ed::t_23aecdc1369706 112-113,117-118
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_c5954c3047b5ed::t_52c9184c610c3c 24,82,88-92,96,121,204,496,588,1054
+  s_c5954c3047b5ed::t_d20eba6f232a50 1060-1069
+  s_c5954c3047b5ed::t_ffc97ab5bcb12b 186,218-219,234,242,245-246,1096-1097
+  s_c5954c3047b5ed::t_0a788a2fe48b41 275-289
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_c5954c3047b5ed::t_2aba0c0c6f8505 4-7,43-46,73,121,151
+  s_c5954c3047b5ed::t_ffc97ab5bcb12b 182
+  s_c5954c3047b5ed::t_d20eba6f232a50 93-104,338-343
+  s_c5954c3047b5ed::t_ea3b3444f9101f 38
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_c5954c3047b5ed::t_e2bb743d4b423e 2-11,47-52
+  s_c5954c3047b5ed::t_ff1a39afd0a8fc 1,12-21,27-46,53-54
+  s_c5954c3047b5ed::t_143ce330345645 22-26
+docs/generated/postgres-schema/README.md
+  s_c5954c3047b5ed::t_e513c9216bd6df 26,202-203,590-598
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_c5954c3047b5ed::t_6c3584d51b6b74 1-104
+packages/cli/src/modules/agents/agents.module.ts
+  s_c5954c3047b5ed::t_a9321c49724831 232,274
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_c5954c3047b5ed::t_d20eba6f232a50 136
+  s_c5954c3047b5ed::t_52c9184c610c3c 22,147
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_c5954c3047b5ed::t_23aecdc1369706 384-385
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_c5954c3047b5ed::t_e2bb743d4b423e 56-59,68-71,94-98
+  s_c5954c3047b5ed::t_1198981a9c9daf 90,92-93
+  s_c5954c3047b5ed::t_a9321c49724831 4,48-55,60,67,72,89
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_c5954c3047b5ed::t_bbdde0cd933efe 196,203-207,214
+  s_c5954c3047b5ed::t_d20eba6f232a50 197-202,208-213
+  s_c5954c3047b5ed::t_e2bb743d4b423e 137-141,149-151,159-163,228-233,276-285,289-290
+  s_c5954c3047b5ed::t_d1eb66cbbfd63c 9,11,18-21,55-58,69-74,107-109,113,120-136,142-148,186,226
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_c5954c3047b5ed::t_e2bb743d4b423e 162-164,178-197,200-208,220-224,229-232,237-241,250-253,328-331,339-359,388-398,406-408
+  s_c5954c3047b5ed::t_1198981a9c9daf 23-25,90-98,134,158,165-177,199,209-219,225-228,233-236,242-249,254-256,261,263-266,338,405,409-411,416,442
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_c5954c3047b5ed::t_ffc97ab5bcb12b 400,469,476,1150,1929,2331
+  s_c5954c3047b5ed::t_d20eba6f232a50 238-243,392-396,441-443,639-643,1575
+  s_c5954c3047b5ed::t_52c9184c610c3c 38,180
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_c5954c3047b5ed::t_52c9184c610c3c 11
+packages/cli/test/migration/1790193898938-create-agent-message-queue.test.ts
+  s_c5954c3047b5ed::t_e1094190fe121f 42
+  s_c5954c3047b5ed::t_525f8a57da70a1 28,31,34-41,43,45-46
+  s_c5954c3047b5ed::t_bbdde0cd933efe 1-27,29-30,32-33,44,47-48
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_c5954c3047b5ed::t_d20eba6f232a50 221
+  s_c5954c3047b5ed::t_52c9184c610c3c 37,286
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_c5954c3047b5ed::t_bbdde0cd933efe 74-75
+  s_c5954c3047b5ed::t_d20eba6f232a50 68-73
+  s_c5954c3047b5ed::t_663029e2a4124c 1,3,8-10,13-14,22,31-32,37-40,58,61
+  s_c5954c3047b5ed::t_e2bb743d4b423e 17-21,25-30,83-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "52059babdf2a45aa679741f605f2b98650aba3ff",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
