@@ -1,4 +1,4 @@
-import { defineComponent, reactive } from 'vue';
+import { defineComponent } from 'vue';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
@@ -13,6 +13,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -32,16 +33,6 @@ const trackSpy = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackSpy }),
-}));
-
-const mockRoute = reactive<{ name: string; params: Record<string, string> }>({
-	name: VIEWS.WORKFLOW,
-	params: { workflowId: 'w1' },
-});
-
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal<typeof import('vue-router')>()),
-	useRoute: () => mockRoute,
 }));
 
 const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
@@ -88,8 +79,7 @@ describe('usePolicyViolationToast', () => {
 		showMessageSpy.mockClear();
 		closeSpy.mockClear();
 		trackSpy.mockClear();
-		mockRoute.name = VIEWS.WORKFLOW;
-		mockRoute.params = { workflowId: 'w1' };
+		useUIStore().currentView = VIEWS.WORKFLOW;
 	});
 
 	afterEach(() => {
@@ -140,7 +130,6 @@ describe('usePolicyViolationToast', () => {
 		});
 		useWorkflowsStore().setWorkflowId(workflow.id);
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
-		mockRoute.params = { workflowId: workflow.id };
 		mockedStore(useCredentialsStore).getCredentialTypeByName = vi
 			.fn()
 			.mockReturnValue({ name: 'githubApi', displayName: 'GitHub API', properties: [] });
@@ -219,39 +208,13 @@ describe('usePolicyViolationToast', () => {
 		expect(queryByTestId('policy-violation-jump')).not.toBeInTheDocument();
 	});
 
-	it('jumps within the workflow it was given, not the globally selected one', async () => {
-		prepareWorkflowWithTwoSlackNodes();
-		useWorkflowsStore().setWorkflowId('w-other');
-		const emitSpy = vi.spyOn(canvasEventBus, 'emit');
-
-		const { showPolicyViolationToast } = usePolicyViolationToast();
-		showPolicyViolationToast(
-			refusedWith([slackViolation]),
-			'Problem publishing',
-			'publish',
-			createWorkflowDocumentId('w1'),
-		);
-
-		const { getByTestId } = render(
-			defineComponent({ render: () => showMessageSpy.mock.calls[0][0].message }),
-		);
-		await userEvent.click(getByTestId('policy-violation-jump'));
-
-		expect(emitSpy).toHaveBeenCalledWith('nodes:select', {
-			ids: ['slack-1', 'slack-2'],
-			panIntoView: true,
-		});
-
-		emitSpy.mockRestore();
-	});
-
 	it.each([
 		['another workflow is on the canvas', VIEWS.WORKFLOW, 'w2'],
 		['the version history is open', VIEWS.WORKFLOW_HISTORY, 'w1'],
-	])('offers no jump when %s', (_label, routeName, routeWorkflowId) => {
+	])('offers no jump when %s', (_label, currentView, canvasWorkflowId) => {
 		prepareWorkflowWithTwoSlackNodes();
-		mockRoute.name = routeName;
-		mockRoute.params = { workflowId: routeWorkflowId };
+		useUIStore().currentView = currentView;
+		useWorkflowsStore().setWorkflowId(canvasWorkflowId);
 
 		const { showPolicyViolationToast } = usePolicyViolationToast();
 		showPolicyViolationToast(
@@ -269,6 +232,7 @@ describe('usePolicyViolationToast', () => {
 	});
 
 	it('reports the backend messages to error telemetry instead of the rendered list', () => {
+		useWorkflowsStore().setWorkflowId('w1');
 		const { showPolicyViolationToast } = usePolicyViolationToast();
 		showPolicyViolationToast(refusedWith([slackViolation]), 'Problem saving', 'save');
 
