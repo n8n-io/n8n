@@ -412,27 +412,78 @@ describe('node grouping validation', () => {
 
 			expect(result).toEqual({ valid: false, reason: 'trigger-selected', triggers: ['A'] });
 		});
+
+		// The rule lifts the count of entry and exit nodes. A group still has to be
+		// a whole slice of the graph, so an edge into or out of the middle stays out.
+		it('still rejects an outside edge into a member that is not a root', () => {
+			const nodes = [
+				makeNode({ id: 'a', name: 'A' }),
+				makeNode({ id: 'b', name: 'B' }),
+				makeNode({ id: 'c', name: 'C' }),
+			];
+			const connections: IConnections = {
+				Outside: { main: [[...mainTo('A'), ...mainTo('B')]] },
+				A: { main: [mainTo('B')] },
+				B: { main: [mainTo('C')] },
+			};
+
+			const result = validateGrouping({
+				nodes,
+				connectionsBySourceNode: connections,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+
+		it('still rejects an outside edge from a member that is not a leaf', () => {
+			const nodes = [
+				makeNode({ id: 'a', name: 'A' }),
+				makeNode({ id: 'b', name: 'B' }),
+				makeNode({ id: 'c', name: 'C' }),
+			];
+			const connections: IConnections = {
+				A: { main: [mainTo('B')] },
+				B: { main: [[...mainTo('C'), ...mainTo('Outside')]] },
+			};
+
+			const result = validateGrouping({
+				nodes,
+				connectionsBySourceNode: connections,
+				allowMultipleBoundaryNodes: true,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
 	});
 
 	describe('with both rules on', () => {
-		it('accepts a trigger together with a second entry node', () => {
-			const graph = makeTwoEntryGraph();
-			const trigger = makeNode({
-				id: 'trigger',
-				name: 'Trigger',
-				type: 'n8n-nodes-base.manualTrigger',
-			});
+		it('accepts a trigger together with two entry nodes', () => {
+			// Trigger, B and C all feed X. B and C each take input from outside, so
+			// the group holds a trigger and two entry nodes at once.
+			const nodes = [
+				makeNode({ id: 'trigger', name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+				makeNode({ id: 'b', name: 'B' }),
+				makeNode({ id: 'c', name: 'C' }),
+				makeNode({ id: 'x', name: 'X' }),
+			];
+			const connections: IConnections = {
+				Trigger: { main: [mainTo('X')] },
+				OutsideOne: { main: [mainTo('B')] },
+				OutsideTwo: { main: [mainTo('C')] },
+				B: { main: [mainTo('X')] },
+				C: { main: [mainTo('X')] },
+			};
 
 			const result = validateGrouping({
-				nodes: [...graph.nodes, trigger],
-				connectionsBySourceNode: {
-					...graph.connections,
-					Trigger: {
-						[NodeConnectionTypes.Main]: [
-							[{ node: graph.nodes[0].name, type: NodeConnectionTypes.Main, index: 0 }],
-						],
-					},
-				},
+				nodes,
+				connectionsBySourceNode: connections,
 				nodeTypes: triggerNodeTypes,
 				allowTriggerInGroup: true,
 				allowMultipleBoundaryNodes: true,

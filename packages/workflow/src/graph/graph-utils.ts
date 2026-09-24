@@ -192,42 +192,32 @@ export function buildAdjacencyList(
 	return result;
 }
 
-/** Reports the members that take main input from outside, beyond the one a strict group allows. */
-function collectInputBoundaryErrors(
+/**
+ * Reports the members that take main input from outside without being a root.
+ * The edge lands inside the graph, so the selection is not a whole slice of it.
+ */
+function collectNonRootInputErrors(
 	inputNodes: Set<string>,
 	rootNodes: Set<string>,
-	rootInputNodes: Set<string>,
 ): ExtractableErrorResult[] {
-	const errors: ExtractableErrorResult[] = [];
-
-	for (const inputNode of difference(inputNodes, rootNodes).values()) {
-		errors.push({ errorCode: 'Input Edge To Non-Root Node', node: inputNode });
-	}
-
-	if (rootInputNodes.size > 1) {
-		errors.push({ errorCode: 'Multiple Input Nodes', nodes: rootInputNodes });
-	}
-
-	return errors;
+	return [...difference(inputNodes, rootNodes).values()].map((node) => ({
+		errorCode: 'Input Edge To Non-Root Node',
+		node,
+	}));
 }
 
-/** Reports the members that send main output outside, beyond the one a strict group allows. */
-function collectOutputBoundaryErrors(
+/**
+ * Reports the members that send main output outside without being a leaf.
+ * The edge leaves from inside the graph, so the selection is not a whole slice.
+ */
+function collectNonLeafOutputErrors(
 	outputNodes: Set<string>,
 	leafNodes: Set<string>,
-	leafOutputNodes: Set<string>,
 ): ExtractableErrorResult[] {
-	const errors: ExtractableErrorResult[] = [];
-
-	for (const outputNode of difference(outputNodes, leafNodes).values()) {
-		errors.push({ errorCode: 'Output Edge From Non-Leaf Node', node: outputNode });
-	}
-
-	if (leafOutputNodes.size > 1) {
-		errors.push({ errorCode: 'Multiple Output Nodes', nodes: leafOutputNodes });
-	}
-
-	return errors;
+	return [...difference(outputNodes, leafNodes).values()].map((node) => ({
+		errorCode: 'Output Edge From Non-Leaf Node',
+		node,
+	}));
 }
 
 /**
@@ -240,7 +230,8 @@ function collectOutputBoundaryErrors(
  * and the output node are selected, since this would otherwise create extra
  * input or output nodes.
  *
- * @param [options={}] `relaxBoundaryRules` When TRUE, accepts several entry or exit nodes.
+ * @param [options={}] `relaxBoundaryRules` When TRUE, accepts several entry or exit
+ *          nodes. An edge into or out of the middle stays an error either way.
  * @returns An object containing optional start and end nodeIds
  *            indicating which nodes have outside connections, OR
  *          An array of errors if the selection is not valid.
@@ -262,8 +253,10 @@ export function parseExtractableSubgraphSelection(
 	if (rootNodes.size === 0 && inputNodes.size === 1) rootNodes = inputNodes;
 	const rootInputNodes = intersection(rootNodes, inputNodes);
 
-	if (!options.relaxBoundaryRules) {
-		errors.push(...collectInputBoundaryErrors(inputNodes, rootNodes, rootInputNodes));
+	errors.push(...collectNonRootInputErrors(inputNodes, rootNodes));
+
+	if (!options.relaxBoundaryRules && rootInputNodes.size > 1) {
+		errors.push({ errorCode: 'Multiple Input Nodes', nodes: rootInputNodes });
 	}
 
 	// 0-1 Output nodes
@@ -277,8 +270,10 @@ export function parseExtractableSubgraphSelection(
 
 	const leafOutputNodes = intersection(leafNodes, outputNodes);
 
-	if (!options.relaxBoundaryRules) {
-		errors.push(...collectOutputBoundaryErrors(outputNodes, leafNodes, leafOutputNodes));
+	errors.push(...collectNonLeafOutputErrors(outputNodes, leafNodes));
+
+	if (!options.relaxBoundaryRules && leafOutputNodes.size > 1) {
+		errors.push({ errorCode: 'Multiple Output Nodes', nodes: leafOutputNodes });
 	}
 
 	const start = rootInputNodes.values().next().value;
