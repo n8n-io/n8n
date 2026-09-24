@@ -51,6 +51,7 @@ import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
 	createAgent,
+	createAgentTask,
 	deleteAgent,
 	listAgentFiles,
 	uploadAgentFiles,
@@ -98,9 +99,17 @@ import {
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
+import {
+	AGENT_TEMPLATES,
+	AGENT_TEMPLATE_SUGGESTIONS_VERSION,
+	applyAgentTemplate,
+	isAgentConfigBlank,
+	type AgentTemplate,
+} from '../agentTemplates';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -269,6 +278,9 @@ const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey,
 // `isRouteAgentPending` to false, which must not close the panel out from
 // under the user — so the default is snapshotted per agent instead of reread live.
 const openedForPendingAgent = ref(isRouteAgentPending.value);
+/** A starter template was applied; latches the intro closed even if a config
+ * refetch momentarily restores a blank config. No chip is shown for this. */
+const templateApplied = ref(false);
 watch([projectId, agentId], () => {
 	taskPreviewPrompt.value = undefined;
 });
@@ -279,6 +291,7 @@ watch(agentId, () => {
 	// `initialize()` watcher) reflects the new agent instead of the mounted one.
 	routePendingAgentId.value = readPendingAgentIdFromHistory();
 	openedForPendingAgent.value = isRouteAgentPending.value;
+	templateApplied.value = false;
 });
 const isAiPanelOpen = computed({
 	get: () => storedAiPanelOpen.value ?? (openedForPendingAgent.value && instanceAiReady.value),
@@ -458,6 +471,18 @@ const isEditingLocked = computed(
 // read-only lock during a build.
 const effectiveCanEditAgent = computed(() => canEditAgent.value && !isEditingLocked.value);
 const canDeletePreviewSession = computed(() => canEditAgent.value);
+
+// The intro is for a first build only: a new agent, still blank, editable, and
+// no template applied yet. A successful apply makes the config non-blank, so
+// the intro cannot come back after a reload either.
+const showAgentIntro = computed(
+	() =>
+		openedForPendingAgent.value &&
+		effectiveCanEditAgent.value &&
+		!templateApplied.value &&
+		localConfig.value !== null &&
+		isAgentConfigBlank(localConfig.value),
+);
 
 const isVersionHistoryOpen = ref(false);
 
@@ -1634,6 +1659,119 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	});
 }
 
+// Apply a starter template to a blank agent: writes instructions and tools,
+// pre-connects any channel triggers, creates scheduled tasks, and sends the
+// template prompt to the assistant so it starts building right away. Refuses
+// (with a toast) once the agent already has content — the intro is for a first build.
+async function onApplyTemplate(template: AgentTemplate) {
+	if (!localConfig.value) return;
+	const next = applyAgentTemplate(
+		localConfig.value,
+		template,
+		locale.baseText('agents.new.defaultName'),
+	);
+	if (!next) {
+		showMessage({
+			title: locale.baseText('agents.builder.templates.notBlank.title'),
+			message: locale.baseText('agents.builder.templates.notBlank.message'),
+			type: 'warning',
+		});
+		return;
+	}
+	replaceConfigAndScheduleSave(next);
+	// Derive trigger chips from the template's draft integrations so the two
+	// stay in sync — a template can't declare chips without the matching
+	// integration entry.
+	connectedTriggers.value = (template.config.integrations ?? []).map((i) => i.type);
+	templateApplied.value = true;
+	// Persist the agent and flush the config autosave before sending the chat
+	// message. The chat's `beforeSend` hook calls `flushAutosave` too — if we
+	// send first, a failed save (e.g. invalid tool fields in draft mode)
+	// rejects `beforeSend` and the chat message is never sent. Flushing here
+	// drains the queue so `beforeSend` resolves immediately.
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	try {
+		await ensureAgentPersisted();
+		await flushAutosave();
+	} catch {
+		// Invalid tool fields are expected in draft mode; the chat message
+		// should still reach the assistant.
+	}
+	// The user may have opened another agent while the save was in flight.
+	// The panel ref now belongs to that agent, so this prompt must not follow.
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	// Task creation writes the task ref into the server config and changes its
+	// hash. Reload that config before the assistant prompt: the tasks counter
+	// only refreshes task bodies, and the update push skips this tab. A later
+	// edit would otherwise save against the old hash, get a 409, and lose the
+	// change when the conflict reload lands.
+	if (template.tasks?.length) {
+		let tasksCreated = false;
+		try {
+			await ensureAgentPersisted();
+			for (const task of template.tasks) {
+				if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+				await createAgentTask(rootStore.restApiContext, targetProjectId, targetAgentId, {
+					...task,
+					enabled: true,
+				});
+				tasksCreated = true;
+			}
+		} catch (error) {
+			if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+				showError(error, locale.baseText('agents.builder.tasks.saveError'));
+			}
+		}
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		// A created task already changed the hash. Do not prompt the assistant
+		// until this tab has reloaded that config.
+		if (tasksCreated) {
+			const refreshed = await refreshConfigAfterTemplateTasks(targetProjectId, targetAgentId);
+			if (!refreshed || isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		}
+	}
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	const templateIndex = AGENT_TEMPLATES.findIndex((entry) => entry.id === template.id);
+	// Send the template prompt to the assistant right away so it starts
+	// building. The prompt format is "Build {name} agent to {description}".
+	// Catalog positions are one-based, matching the home-screen suggestion list.
+	aiPanelRef.value?.submitSuggestion({
+		prompt: locale.baseText('agents.builder.templates.prompt', {
+			interpolate: {
+				name: locale.baseText(template.labelKey),
+				description: locale.baseText(template.descriptionKey),
+			},
+		}),
+		suggestionId: template.id,
+		suggestionKind: 'prompt',
+		position: templateIndex >= 0 ? templateIndex + 1 : 0,
+		suggestionCatalogVersion: AGENT_TEMPLATE_SUGGESTIONS_VERSION,
+		prefillType: 'template_adjustment',
+	});
+}
+
+/** Reload the config after task creation. One retry, then stop. */
+async function refreshConfigAfterTemplateTasks(
+	targetProjectId: string,
+	targetAgentId: string,
+): Promise<boolean> {
+	let lastError: unknown;
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+		try {
+			await onConfigUpdated();
+			return !isStaleAgentTarget(targetProjectId, targetAgentId);
+		} catch (error) {
+			lastError = error;
+		}
+	}
+	if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+		showError(lastError, locale.baseText('agents.builder.tasks.saveError'));
+	}
+	return false;
+}
+
 function persistMissingPersonalisationGradient() {
 	if (!effectiveCanEditAgent.value) return;
 	if (!localConfig.value) return;
@@ -2609,7 +2747,11 @@ function onSwitchAgent(nextAgentId: string) {
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
 						@close="isAiPanelOpen = false"
-					/>
+					>
+						<template v-if="showAgentIntro" #empty>
+							<AgentBuilderIntro @select="onApplyTemplate" />
+						</template>
+					</InstanceAiChatPanel>
 				</N8nResizeWrapper>
 			</aside>
 			<AgentBuildingIndicator v-if="embeddedAiBuilding" />

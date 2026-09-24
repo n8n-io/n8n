@@ -530,6 +530,26 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		// A later fact about a preference the `save_user_preference` tool saved: the user
+		// edited it or undid it from the card. It folds onto the tool call so the card
+		// renders the current state after a reload, without asking the database.
+		case 'preference-card': {
+			// The id comes from a request body, so an inherited name like `toString`
+			// must not resolve to a function on the prototype.
+			if (!Object.hasOwn(state.toolCallsById, event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				tc.preferenceCard = {
+					state: event.payload.state,
+					// An undo fact carries no content, so keep the last one a fact named. An
+					// edit then an undo must strike out the edited text, not the text the
+					// tool result still holds.
+					content: event.payload.content ?? tc.preferenceCard?.content,
+				};
+			}
+			break;
+		}
+
 		case 'status': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {

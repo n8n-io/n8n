@@ -1,10 +1,16 @@
 import type { Project } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	ProjectRelationRepository,
+	SharedCredentialsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getActiveCredentialTypes, UserError } from 'n8n-workflow';
 
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
@@ -51,6 +57,7 @@ export class CredentialsPermissionChecker {
 		private readonly nodeTypes: NodeTypes,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	/**
@@ -165,10 +172,66 @@ export class CredentialsPermissionChecker {
 		const global = await this.credentialsRepository.findGlobalProjectCredentialIds(credentialIds);
 		const accessibleSet = new Set([...accessible, ...global]);
 
+		if (isCredSharingEnabled()) {
+			const stillInaccessible = credentialIds.filter((id) => !accessibleSet.has(id));
+			if (stillInaccessible.length > 0) {
+				const viaPersonalRoute = await this.findAccessibleViaPersonalRoute(
+					stillInaccessible,
+					projectIds,
+				);
+				for (const id of viaPersonalRoute) accessibleSet.add(id);
+			}
+		}
+
 		return {
 			homeProject,
 			inaccessibleIds: credentialIds.filter((id) => !accessibleSet.has(id)),
 		};
+	}
+
+	/**
+	 * Personal route: a credential owned by a user's personal project is
+	 * usable in any other project that user belongs to, without a
+	 * SharedCredentials row into that project. Additive to the project route
+	 * above.
+	 */
+	private async findAccessibleViaPersonalRoute(
+		credentialIds: string[],
+		projectIds: string[],
+	): Promise<string[]> {
+		const ownerProjects =
+			await this.sharedCredentialsRepository.findOwnerProjectsByCredentialIds(credentialIds);
+
+		const personalOwnerProjectIds = [
+			...new Set(
+				[...ownerProjects.values()]
+					.filter((project) => project.type === 'personal')
+					.map((project) => project.id),
+			),
+		];
+		if (personalOwnerProjectIds.length === 0) return [];
+
+		const owners =
+			await this.ownershipService.getPersonalProjectOwnersCached(personalOwnerProjectIds);
+		const ownerUserIdByProjectId = new Map<string, string>();
+		personalOwnerProjectIds.forEach((projectId) => {
+			const owner = owners.get(projectId);
+			if (owner) ownerUserIdByProjectId.set(projectId, owner.id);
+		});
+
+		const memberProjectIdsByUserId = await this.projectRelationRepository.findProjectIdsByUserIds([
+			...new Set(ownerUserIdByProjectId.values()),
+		]);
+
+		const projectIdSet = new Set(projectIds);
+		return [...ownerProjects]
+			.filter(([, ownerProject]) => {
+				const ownerUserId = ownerUserIdByProjectId.get(ownerProject.id);
+				if (!ownerUserId) return false;
+				const memberProjectIds = memberProjectIdsByUserId.get(ownerUserId);
+				return memberProjectIds?.some((id) => projectIdSet.has(id)) ?? false;
+			})
+			.map(([credentialId]) => credentialId);
 	}
 
 	private mapCredIdsToNodes(nodes: INode[]) {

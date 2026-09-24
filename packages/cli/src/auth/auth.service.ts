@@ -4,6 +4,7 @@ import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
@@ -33,6 +34,29 @@ interface AuthJwtPayload {
 
 interface IssuedJWT extends AuthJwtPayload {
 	exp: number;
+}
+
+/**
+ * A valid signature proves only that this instance signed the token, not that
+ * it signed it as a session token. Narrowing to `IssuedJWT` promises the type
+ * of every field, and the callers act on those types rather than re-check them:
+ * `exp` bounds the session (`jwt.verify` treats a token without one as
+ * unbounded), `usedMfa` decides the MFA gate, `isEmbed` relaxes the cookie to
+ * `SameSite=None`, and `browserId` binds the session to one browser. So check
+ * each one, and require a present optional claim to hold its declared type.
+ */
+function isIssuedJWT(payload: unknown): payload is IssuedJWT {
+	if (!isRecord(payload)) return false;
+	const { id, hash, exp, browserId, usedMfa, isEmbed } = payload;
+	return (
+		typeof id === 'string' &&
+		id.length > 0 &&
+		typeof hash === 'string' &&
+		Number.isFinite(exp) &&
+		(browserId === undefined || typeof browserId === 'string') &&
+		(usedMfa === undefined || typeof usedMfa === 'boolean') &&
+		(isEmbed === undefined || typeof isEmbed === 'boolean')
+	);
 }
 
 interface PasswordResetToken {
@@ -367,9 +391,11 @@ export class AuthService {
 		user: User;
 		jwtPayload: IssuedJWT;
 	}> {
-		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
+		const jwtPayload = this.jwtService.verify<unknown>(token, {
 			algorithms: ['HS256'],
 		});
+
+		if (!isIssuedJWT(jwtPayload)) throw new AuthError('Unauthorized');
 
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
 		const user = await this.userRepository.findOne({
