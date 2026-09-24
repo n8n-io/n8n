@@ -11,6 +11,7 @@ import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
+import { PromotionsWorkflowsMovedCrossProjectError } from '@/modules/promotions.ee/promotions-selective-push.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 describe('http-error-serializers', () => {
@@ -49,6 +50,23 @@ describe('http-error-serializers', () => {
 				code: 400,
 				message: 'License activation requires EULA acceptance',
 				meta: { eulaUrl: 'https://n8n.io/legal/eula/' },
+			},
+		});
+	});
+
+	it('serializePublicApiError: exposes cross-project moved workflow ids for selective promote', () => {
+		const descriptor = classifyHttpError(
+			new PromotionsWorkflowsMovedCrossProjectError(['wf-moved']),
+		);
+
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 400,
+			body: {
+				message: 'Workflows moved to another project',
+				meta: {
+					code: 'promotions-workflows-moved-cross-project',
+					workflowIds: ['wf-moved'],
+				},
 			},
 		});
 	});

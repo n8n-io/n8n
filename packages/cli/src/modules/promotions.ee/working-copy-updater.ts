@@ -15,6 +15,7 @@ import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec
 import { containerPlacement, isUnder, pinPath, staleWorkflowTargets } from './branch-placement';
 import type { BranchLayout, Placement } from './branch-placement';
 import { writeImportManifest } from './import-manifest-bridge';
+import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -311,9 +312,7 @@ export class WorkingCopyUpdater {
 			(w) => selected.has(w.id) && (!projectTarget || !isUnder(w.target, projectTarget)),
 		);
 		if (moved.length > 0) {
-			throw new BadRequestError(
-				`These workflows moved to another project: ${moved.map((w) => w.id).join(', ')}. A selective push cannot move them. Push all projects instead.`,
-			);
+			throw new PromotionsWorkflowsMovedCrossProjectError(moved.map((workflow) => workflow.id));
 		}
 	}
 
