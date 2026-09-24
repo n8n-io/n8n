@@ -8,10 +8,7 @@ import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
-import {
-	evaluateSimpleExpression,
-	isSimpleExpressionPathEnabled,
-} from './expressions/simple-expression';
+import { evaluateNatively } from './expressions/native-evaluation';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -230,6 +227,8 @@ export class Expression {
 
 	private static useSharedCaller = false;
 
+	private static nativeEvaluation = false;
+
 	constructor(private readonly timezone: string) {}
 
 	/**
@@ -275,7 +274,10 @@ export class Expression {
 		sharedCaller?: boolean;
 		lazyAcquire?: boolean;
 		compileCache?: boolean;
+		/** Experimental: interpret expressions that fit the native subset in-process. Applies to every engine. */
+		nativeEvaluation?: boolean;
 	}): Promise<void> {
+		this.nativeEvaluation = options.nativeEvaluation ?? false;
 		if (options.engine === 'legacy') return;
 		if (options.engine === 'vm' && IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
@@ -402,6 +404,11 @@ export class Expression {
 	 */
 	static setExpressionEngine(engine: 'legacy' | 'vm' | 'quickjs'): void {
 		this.expressionEngine = engine;
+	}
+
+	/** Toggle native evaluation without restarting the engine. For tests and benchmarks; production sets `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION`. */
+	static setNativeEvaluation(enabled: boolean): void {
+		this.nativeEvaluation = enabled;
 	}
 
 	static initializeGlobalContext(data: IDataObject) {
@@ -627,13 +634,12 @@ export class Expression {
 		// Remove the equal sign
 		parameterValue = parameterValue.substr(1);
 
-		// POC fast path: expressions that only traverse data and use basic
-		// operators are interpreted natively, skipping the global-context
-		// setup, extendSyntax, and the engine (isolate) entirely. Anything not
-		// provably simple falls through to the regular pipeline below.
-		if (isSimpleExpressionPathEnabled()) {
-			const fast = evaluateSimpleExpression(parameterValue, data);
-			if (fast.handled) return this.finalizeResolvedValue(fast.value, returnObjectAsString);
+		// An expression that fits the native subset grammar is interpreted
+		// in-process, skipping the global-context setup, extendSyntax, and the
+		// engine (isolate). Everything else takes the regular pipeline below.
+		if (Expression.nativeEvaluation) {
+			const native = evaluateNatively(parameterValue, data);
+			if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
 		}
 
 		// Support only a subset of process properties

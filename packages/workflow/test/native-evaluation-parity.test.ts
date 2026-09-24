@@ -3,22 +3,26 @@
 import * as Helpers from './helpers';
 import { createRunExecutionData } from '../src';
 import { ExpressionExtensions } from '../src/extensions';
-import { isSimpleExpression, CALLABLE_METHODS } from '../src/expressions/simple-expression';
+import {
+	isNativelyEvaluable,
+	CALLABLE_METHODS,
+	MAX_RESULT_LENGTH,
+} from '../src/expressions/native-evaluation';
+import { Expression } from '../src/expression';
 import { Workflow } from '../src/workflow';
 
-// Parity corpus for the simple-expression fast path (POC).
+// Parity corpus for fast native expression evaluation.
 //
-// Every expression in HANDLED_CORPUS must (a) be claimed by the classifier
-// and (b) produce exactly the same value through the fast path as through
-// the regular pipeline. The file runs once per engine project (legacy, vm,
-// quickjs — see vitest.config.ts), so the fast path is pinned against all
-// three engines.
+// Every expression in HANDLED_CORPUS must (a) fit the native subset and (b)
+// produce exactly the same value natively as through the regular pipeline.
+// The file runs once per engine project (legacy, vm, quickjs - see
+// vitest.config.ts), so native evaluation is pinned against all three
+// engines.
 //
-// Every expression in DECLINED_CORPUS must be declined by the classifier so
-// it falls through to the engine untouched.
-//
-// TODO(POC): extend with error-parity cases (expressions where both paths
-// must throw, and throw the same error type).
+// Every expression in DECLINED_CORPUS must be outside the subset so it takes
+// the engine untouched. Every expression in RUNTIME_BAILOUT_CORPUS fits the
+// subset but meets a runtime value the parse could not see, and must bail to
+// the engine with the engine's result coming back unchanged.
 
 const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.name }}',
@@ -32,28 +36,34 @@ const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.active && $json.item.name }}',
 	'={{ $json.item.disabled || $json.item.count }}',
 	'={{ !$json.item.active }}',
+	'={{ !$json.item.my_object }}',
 	'={{ -$json.item.count }}',
 	"={{ 'a' + 'b' }}",
 	'={{ 5 }}',
 	'={{ null }}',
 	'={{ undefined }}',
 	'={{ $json.item.nothing }}',
+	'={{ $json.item.my_object }}',
+	'={{ $json.item.names }}',
 	'={{ $json.item.my_object?.addresses?.primary }}',
 	'={{ $json.item.missing?.deep }}',
 	'={{ $json.item.name.length }}',
 	'={{ $parameter["value1"] }}',
 	"={{ $parameter['missing'] || 'GET' }}",
 	// value2 is itself an expression: the $parameter proxy resolves it by
-	// re-entering resolveSimpleParameterValue (fast path again when enabled).
+	// re-entering resolveSimpleParameterValue (natively again when enabled).
 	'={{ $parameter.value2 }}',
+	// value3 is an expression outside the subset: the nested resolution takes
+	// the engine while the outer expression stays native.
+	'={{ $parameter.value3 }}',
 	'=Name: {{ $json.item.name }}!',
 	'=({{ $json.item.nothing }})',
 	'=count: {{ $json.item.count }} / {{ $json.item.count + 1 }}',
 	"=zero: {{ 0 }} false: {{ false }} empty: {{ '' }}",
 	'=plain text',
 	'=',
-	// Native string-method calls (tier 2): allowlisted String.prototype
-	// methods on a runtime-verified string receiver.
+	// Allowlisted String.prototype methods on a runtime-verified string
+	// receiver.
 	"={{ $json.item.name.toUpperCase() === 'FOO' }}",
 	'={{ $json.item.name.toLowerCase() }}',
 	"={{ $json.item.name.includes('oo') }}",
@@ -81,12 +91,20 @@ const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.names.flat(2) }}',
 ];
 
-// Claimed by the classifier, but the runtime receiver is not a string, so
+// Fits the subset, but a runtime value falls outside what the parse proved:
 // evaluation bails and the engine result must come back unchanged.
 const RUNTIME_BAILOUT_CORPUS: string[] = [
+	// Allowlisted method on a receiver of another type.
 	'={{ $json.item.count.toUpperCase() }}',
 	'={{ $json.item.name.toFixed(1) }}',
 	"={{ $json.item.my_object.includes('x') }}",
+	// Operators on object operands: the engine compares and coerces copies.
+	"={{ $json.item.my_object + '' }}",
+	'={{ $json.item.names === $json.item.names }}',
+	'={{ -$json.item.names }}',
+	'=Name: {{ $json.item.my_object }}',
+	// A result above MAX_RESULT_LENGTH goes to the engine's limits.
+	"={{ $json.item.name.replaceAll('', $json.item.filler).replaceAll('', $json.item.filler).replaceAll('', $json.item.filler) }}",
 ];
 
 const DECLINED_CORPUS: string[] = [
@@ -118,9 +136,18 @@ const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.names.keys() }}',
 	"={{ $json.item.name['toUpperCase']() }}",
 	'={{ $json.item.name.toUpperCase($json.item[$json.item.name]) }}',
+	// Syntax errors go to the engine for its error reporting.
+	'={{ $json.item. }}',
 ];
 
-describe('Expression — simple-expression fast path parity', () => {
+// Both paths must throw the same error.
+const ERROR_CORPUS: string[] = [
+	'={{ $json.item.name }}',
+	'=Name: {{ $json.item.name }}',
+	'={{ $parameter.value2 }}',
+];
+
+describe('Expression - fast native evaluation parity', () => {
 	const workflow = new Workflow({
 		id: '1',
 		nodes: [
@@ -138,7 +165,11 @@ describe('Expression — simple-expression fast path parity', () => {
 				type: 'test.set',
 				id: 'current-1',
 				position: [100, 0],
-				parameters: { value1: 'hello', value2: '={{ $json.item.name }}' },
+				parameters: {
+					value1: 'hello',
+					value2: '={{ $json.item.name }}',
+					value3: '={{ $json.item.names.first() }}',
+				},
 			},
 		],
 		connections: {
@@ -151,7 +182,7 @@ describe('Expression — simple-expression fast path parity', () => {
 	});
 	const expression = workflow.expression;
 
-	const item = {
+	const makeItem = () => ({
 		json: {
 			item: {
 				name: 'foo',
@@ -161,25 +192,29 @@ describe('Expression — simple-expression fast path parity', () => {
 				nothing: null,
 				my_object: { addresses: { primary: '123 Main St' } },
 				names: ['bar', 'baz'],
-			},
-		},
-	};
-
-	const runExecutionData = createRunExecutionData({
-		resultData: {
-			runData: {
-				Source: [
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-						data: { main: [[item]] },
-					},
-				],
+				filler: 'x'.repeat(Math.ceil(Math.cbrt(MAX_RESULT_LENGTH))),
 			},
 		},
 	});
+	const item = makeItem();
+
+	const runDataFor = (items: Array<ReturnType<typeof makeItem>>) =>
+		createRunExecutionData({
+			resultData: {
+				runData: {
+					Source: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: { main: [items] },
+						},
+					],
+				},
+			},
+		});
+	const runExecutionData = runDataFor([item]);
 
 	beforeAll(async () => {
 		await expression.acquireIsolate();
@@ -187,56 +222,87 @@ describe('Expression — simple-expression fast path parity', () => {
 	afterAll(async () => {
 		await expression.releaseIsolate();
 	});
+	afterEach(() => {
+		Expression.setNativeEvaluation(false);
+	});
 
-	const evaluate = (expr: string, fastPath: boolean) => {
-		process.env.N8N_EXPRESSION_SIMPLE_PATH = fastPath ? 'true' : 'false';
+	const evaluate = (
+		expr: string,
+		native: boolean,
+		data = runExecutionData,
+		items: Array<ReturnType<typeof makeItem>> = [item],
+	) => {
+		Expression.setNativeEvaluation(native);
 		try {
-			return expression.getParameterValue(
-				expr,
-				runExecutionData,
-				0,
-				0,
-				'Current',
-				[item],
-				'manual',
-				{},
-			);
+			return expression.getParameterValue(expr, data, 0, 0, 'Current', items, 'manual', {});
 		} finally {
-			delete process.env.N8N_EXPRESSION_SIMPLE_PATH;
+			Expression.setNativeEvaluation(false);
 		}
 	};
 
 	describe('handled expressions match the engine result', () => {
 		test.each(HANDLED_CORPUS)('%s', (expr) => {
-			// Guard against the parity check passing vacuously: the classifier
-			// must actually claim the expression.
-			expect(isSimpleExpression(expr.slice(1))).toBe(true);
+			// Guard against the parity check passing vacuously: the expression
+			// must actually fit the subset.
+			expect(isNativelyEvaluable(expr.slice(1))).toBe(true);
 
 			const engineResult = evaluate(expr, false);
-			const fastResult = evaluate(expr, true);
-			expect(fastResult).toStrictEqual(engineResult);
+			const nativeResult = evaluate(expr, true);
+			expect(nativeResult).toStrictEqual(engineResult);
 		});
 	});
 
 	describe('non-simple expressions are declined', () => {
 		test.each(DECLINED_CORPUS)('%s', (expr) => {
-			expect(isSimpleExpression(expr.slice(1))).toBe(false);
+			expect(isNativelyEvaluable(expr.slice(1))).toBe(false);
 		});
 	});
 
-	describe('claimed expressions that bail at runtime match the engine result', () => {
+	describe('expressions that bail at runtime match the engine result', () => {
 		test.each(RUNTIME_BAILOUT_CORPUS)('%s', (expr) => {
-			expect(isSimpleExpression(expr.slice(1))).toBe(true);
+			expect(isNativelyEvaluable(expr.slice(1))).toBe(true);
 
 			const engineResult = evaluate(expr, false);
-			const fastResult = evaluate(expr, true);
-			expect(fastResult).toStrictEqual(engineResult);
+			const nativeResult = evaluate(expr, true);
+			expect(nativeResult).toStrictEqual(engineResult);
 		});
+	});
+
+	describe('errors match the engine', () => {
+		// No execution data for the source node: every `$json` read throws.
+		const emptyRunData = runDataFor([]);
+
+		test.each(ERROR_CORPUS)('%s', (expr) => {
+			expect(isNativelyEvaluable(expr.slice(1))).toBe(true);
+
+			const capture = (native: boolean): Error => {
+				try {
+					evaluate(expr, native, emptyRunData, []);
+				} catch (error) {
+					return error as Error;
+				}
+				throw new Error('expected an error');
+			};
+			const engineError = capture(false);
+			const nativeError = capture(true);
+			expect(nativeError).toBeInstanceOf(engineError.constructor);
+			expect(nativeError.message).toBe(engineError.message);
+		});
+	});
+
+	test('object results are copies, never the live execution data', () => {
+		const fresh = makeItem();
+		const result = evaluate('={{ $json.item.my_object }}', true, runDataFor([fresh]), [fresh]);
+		expect(result).toStrictEqual(fresh.json.item.my_object);
+		expect(result).not.toBe(fresh.json.item.my_object);
+
+		(result as { addresses: { primary: string } }).addresses.primary = 'changed';
+		expect(fresh.json.item.my_object.addresses.primary).toBe('123 Main St');
 	});
 
 	// extendSyntax rewrites calls to extension-named methods into extend()
-	// dispatch; the fast path calls natives directly, so its allowlist must
-	// never contain an extension name.
+	// dispatch; native evaluation calls natives directly, so its allowlist
+	// must never contain an extension name.
 	test('method allowlist is disjoint from expression extensions', () => {
 		const extensionNames = new Set(
 			ExpressionExtensions.flatMap((extension) => Object.keys(extension.functions)),

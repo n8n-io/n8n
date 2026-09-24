@@ -88,6 +88,8 @@ export class ExpressionEngineConfig {
 	 * Whether a production webhook request may skip acquiring an isolate when its
 	 * trigger provably evaluates no expression during the webhook phase. Off
 	 * acquires one for every request.
+	 *
+	 * TODO(native-evaluation rollout, CAT-4699): remove through a deprecation entry.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_ALLOW_WEBHOOK_ISOLATE_SKIP')
 	allowWebhookIsolateSkip: boolean = true;
@@ -111,4 +113,15 @@ export class ExpressionEngineConfig {
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_COMPILE_CACHE')
 	compileCache: boolean = false;
+
+	/**
+	 * Experimental: fast native evaluation. An expression that fits a closed
+	 * subset of the expression grammar (data path access on `$json` and
+	 * `$parameter`, literals, basic operators, a fixed set of native methods)
+	 * is interpreted in-process instead of going through the engine, so it
+	 * never needs an isolate. Every other expression takes the engine unchanged.
+	 * Applies to every engine.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION')
+	nativeEvaluation: boolean = false;
 }

@@ -14,12 +14,13 @@
  * {@link resolveWebhookDescriptionField} first and only fall back to the engine
  * when the user's parameters actually contain expressions.
  *
- * TODO(simple-path rollout): this whole module is transitional. Once lazy
- * isolate acquisition and the simple-expression fast path are the defaults,
- * a plain inline template in the simple grammar costs a cached parse plus a
- * host-side interpretation — no isolate, no prediction. Delete this module
- * (with the `webhookPhaseNeedsIsolate` gate and its flag) and revert the
- * descriptions to plain inline template strings.
+ * TODO(native-evaluation rollout, CAT-4699): this whole module is
+ * transitional. Once lazy isolate acquisition and native evaluation are the
+ * defaults, a plain inline template in the native subset costs a cached parse
+ * plus an in-process interpretation - no isolate, no prediction. Delete this
+ * module (with the `webhookPhaseNeedsIsolate` gate and its flag) and revert
+ * the descriptions to plain inline template strings. CAT-4699 lists every
+ * site.
  */
 
 import type {
@@ -41,8 +42,8 @@ export type WebhookDescriptionField = NativeParameterResolvers[string];
  * missing parent yields `undefined`, matching what the engine returns for the
  * same reference.
  *
- * TODO(simple-path rollout): remove — the template alone suffices (see module
- * doc).
+ * TODO(native-evaluation rollout, CAT-4699): remove - the template alone
+ * suffices (see module doc).
  */
 export function fromParameter(path: string | string[], fallback?: string): WebhookDescriptionField {
 	const segments = Array.isArray(path) ? path : [path];
@@ -74,9 +75,9 @@ export function fromParameter(path: string | string[], fallback?: string): Webho
  * evaluate. The parity test in the Webhook node's description.test.ts catches
  * this; add one for any node that declares `fromFunction` fields.
  *
- * TODO(simple-path rollout): remove — its inlined-function templates are never
- * simple, so rewrite any remaining use as a plain simple-grammar template (see
- * module doc).
+ * TODO(native-evaluation rollout, CAT-4699): remove - its inlined-function
+ * templates never fit the native subset, so rewrite any remaining use as a
+ * plain subset template (see module doc).
  */
 export function fromFunction<P extends INodeParameters>(
 	fn: (parameters: P) => NodeParameterValueType | undefined,
@@ -88,19 +89,19 @@ export function fromFunction<P extends INodeParameters>(
 }
 
 /**
- * A field whose template is hand-written in the simple-expression grammar
- * (path traversal, `?.`, ternary, `||`) instead of inlining a function like
- * {@link fromFunction}. Such a template stays evaluatable by the host-side
- * fast path, so it never forces the engine (an isolate) even when the node's
- * parameters hold expressions and the native resolver declines.
+ * A field whose template is hand-written in the native subset grammar (path
+ * access, `?.`, ternary, `||`) instead of inlining a function like
+ * {@link fromFunction}. Such a template stays natively evaluable, so it never
+ * forces the engine (an isolate) even when the node's parameters hold
+ * expressions and the native resolver declines.
  *
  * Template and resolver are two representations of the same logic. Drift is
  * caught by executing both: the node's description parity tests must cover
  * every branch (see the Webhook node's description.test.ts), and a test must
- * assert the template classifies as simple (`isSimpleExpression`).
+ * assert the template fits the subset (`isNativelyEvaluable`).
  *
- * TODO(simple-path rollout): remove — drop the resolver and inline the
- * template string directly in the description (see module doc).
+ * TODO(native-evaluation rollout, CAT-4699): remove - drop the resolver and
+ * inline the template string directly in the description (see module doc).
  */
 export function fromExpression<P extends INodeParameters>(
 	template: string,

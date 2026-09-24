@@ -23,21 +23,21 @@ const n8nOAuth2AuthOption: INodePropertyOptions = {
 // the editor evaluates the generated template strings, while the backend reads
 // parameters directly (no expression engine) whenever they are static.
 //
-// TODO(simple-path rollout): once lazy isolate acquisition and the
-// simple-expression fast path are the defaults, replace every fromParameter/
+// TODO(native-evaluation rollout, CAT-4699): once lazy isolate acquisition and
+// native evaluation are the defaults, replace every fromParameter/
 // fromExpression declaration below with its plain inline template string and
-// drop the webhookDescriptionFields wrapper — the resolvers only exist to
-// predict engine use, which the fast path makes unnecessary.
+// drop the webhookDescriptionFields wrapper - the resolvers only exist to
+// predict engine use, which native evaluation makes unnecessary.
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
 	isFullPath: true,
 	...webhookDescriptionFields({
 		httpMethod: fromParameter('httpMethod', 'GET'),
 		// The templates for responseCode/responseData are hand-written in the
-		// simple-expression grammar so the host-side fast path can evaluate
-		// them without an engine. They mirror getResponseCode/getResponseData
-		// branch for branch; description.test.ts executes both across every
-		// branch to pin the parity.
+		// native subset grammar so they evaluate in-process without an engine.
+		// They mirror getResponseCode/getResponseData branch for branch;
+		// description.test.ts executes both across every branch to pin the
+		// parity.
 		responseCode: fromExpression(
 			'={{ $parameter.responseCode || ($parameter.options?.responseCode?.values ? ($parameter.options.responseCode.values.customCode || $parameter.options.responseCode.values.responseCode) : 200) }}',
 			getResponseCode,

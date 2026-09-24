@@ -3209,6 +3209,9 @@ export type WebhookType = 'default' | 'setup';
  * resolvers for its expression-template fields, keyed by field name. Populated
  * by `webhookDescriptionFields()` and read via `resolveWebhookDescriptionField()`.
  * Backend-only: not serialized with the description.
+ *
+ * TODO(native-evaluation rollout, CAT-4699): remove with `NativeParameterResolvers` and the
+ * `[WEBHOOK_RESOLVERS]` index below.
  */
 export const WEBHOOK_RESOLVERS: unique symbol = Symbol.for('n8n.webhookDescriptionResolvers');
 

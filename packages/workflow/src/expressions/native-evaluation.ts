@@ -1,31 +1,28 @@
 import { getParsedExpression } from '@n8n/tournament';
+import { LruCache } from '@n8n/utils/lru-cache';
 
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
 import type { IWorkflowDataProxyData } from '../interfaces';
 import { isSafeObjectProperty } from '../utils';
 
-// POC: a native fast path for provably-simple expressions.
+// Fast native evaluation: an in-process interpreter for a closed subset of
+// the expression grammar.
 //
-// An expression is "simple" when every code chunk is built only from data
-// path traversal, literals, a fixed set of operators, and calls to a closed
-// allowlist of native string/number/array methods. Such expressions cannot
-// loop, reach prototypes, or touch anything outside the data proxy, so they
-// are interpreted host-side without the sandbox
-// AST hooks, the global-context setup, or an engine (isolate) evaluation.
-// Anything not positively proven simple is declined and falls through to
-// the regular pipeline.
+// The subset is data path access on `$json` and `$parameter`, literals, a
+// fixed set of operators, and calls to a closed allowlist of native
+// string/number/array methods. Such expressions cannot loop, reach
+// prototypes, or touch anything outside the data proxy, so they are
+// interpreted here without the sandbox AST hooks, the global-context setup,
+// or an engine (isolate) evaluation. Anything that does not fit the subset
+// is declined and takes the regular pipeline.
 //
-// Structure follows "parse, don't validate": the esprima AST is not
-// classified in place, it is re-parsed into the closed {@link SimpleNode}
-// grammar below. Construction either yields a node of that grammar or null;
-// the interpreter only ever sees objects this module built, so it cannot
-// read a field the parser did not put there, and unsupported constructs are
-// unrepresentable rather than rejected.
-//
-// TODO(POC): promote the enable flag to ExpressionEngineConfig in @n8n/config.
-export const isSimpleExpressionPathEnabled = () =>
-	typeof process !== 'undefined' && process.env.N8N_EXPRESSION_SIMPLE_PATH === 'true';
+// Structure follows "parse, don't validate": the esprima AST is not checked
+// in place, it is re-parsed into the closed {@link SimpleNode} grammar below.
+// Construction either yields a node of that grammar or null; the interpreter
+// only ever sees objects this module built, so it cannot read a field the
+// parser did not put there, and unsupported constructs are unrepresentable
+// rather than rejected. No user code is ever executed.
 
 const BINARY_OPS = [
 	'===',
@@ -49,7 +46,7 @@ type BinaryOp = (typeof BINARY_OPS)[number];
 type LogicalOp = (typeof LOGICAL_OPS)[number];
 type UnaryOp = (typeof UNARY_OPS)[number];
 
-// The safe grammar. Closed: nothing outside it is representable, so nothing
+// The subset grammar. Closed: nothing outside it is representable, so nothing
 // outside it can reach the interpreter. `kind` (not esprima's `type`) is the
 // discriminant, so a raw AST node can never be mistaken for a SimpleNode.
 type SimpleNode =
@@ -63,25 +60,25 @@ type SimpleNode =
 	| { kind: 'conditional'; test: SimpleNode; consequent: SimpleNode; alternate: SimpleNode }
 	| { kind: 'call'; receiver: SimpleNode; method: string; args: SimpleNode[]; optional: boolean };
 
-// TODO(POC): extend to $binary, $itemIndex, $runIndex, $vars — each needs a
-// semantics check against the data proxy first. $now/$today are excluded on
+// Roots are `$json` and `$parameter` only (the literal comparisons in
+// parseIdentifier). More roots are CAT-4697. `$now`/`$today` are excluded on
 // purpose: they are Luxon DateTimes whose methods would make every useful
 // expression on them a CallExpression anyway.
 //
 // Note on $parameter: the proxy resolves nested `=` parameter values by
-// re-entering resolveSimpleParameterValue — a nested non-simple value simply
+// re-entering resolveSimpleParameterValue - a nested non-simple value simply
 // takes the engine path there (under lazy acquisition, creating the bridge on
 // demand).
-// (Supported roots are the literal comparisons in parseIdentifier.)
 
 // Native prototype methods callable on a receiver of the matching type.
 // Every name here must stay disjoint from the expression-extension method
 // names (extendSyntax rewrites extension calls into `extend()` dispatch;
-// natives pass through untouched) — pinned by a test in the parity corpus.
+// natives pass through untouched) - pinned by a test in the parity corpus.
 // The receiver's type is only known at runtime: a receiver whose type has no
 // allowlist entry for the method makes the evaluation bail to the engine
 // (EngineFallbackError below). Callback-taking forms (regex/function args,
 // array callbacks) are unrepresentable: those argument nodes decline parsing.
+// Accepting callbacks is CAT-4698.
 const STRING_METHODS = new Set([
 	'toUpperCase',
 	'toLowerCase',
@@ -98,12 +95,12 @@ const STRING_METHODS = new Set([
 	'replaceAll',
 ]);
 const NUMBER_METHODS = new Set(['toFixed', 'toPrecision', 'toString']);
-// Non-mutating methods only: the fast path's receiver is the live workflow
-// data (the vm engine evaluates a copy inside the isolate), so an in-place
-// mutator like sort()/reverse()/fill() would corrupt execution data as a
-// side effect. Use the toSorted()/toReversed() immutable variants instead.
-// Iterator-returning methods (entries/values/keys) are also excluded: a live
-// iterator has no equivalent representation across the engine boundary.
+// Non-mutating methods only: the receiver is the live workflow data (the vm
+// engine evaluates a copy inside the isolate), so an in-place mutator like
+// sort()/reverse()/fill() would corrupt execution data as a side effect. Use
+// the toSorted()/toReversed() immutable variants instead. Iterator-returning
+// methods (entries/values/keys) are also excluded: a live iterator has no
+// equivalent representation across the engine boundary.
 const ARRAY_METHODS = new Set([
 	'includes',
 	'indexOf',
@@ -119,13 +116,19 @@ const ARRAY_METHODS = new Set([
 
 export const CALLABLE_METHODS = new Set([...STRING_METHODS, ...NUMBER_METHODS, ...ARRAY_METHODS]);
 
+// The engine evaluates under a timeout and a memory limit; this interpreter
+// has neither. A string or array result above this length is handed to the
+// engine so those limits apply (nested replaceAll('', ...) or concat chains
+// can otherwise expand without bound on the main thread).
+export const MAX_RESULT_LENGTH = 1_000_000;
+
 const isObj = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null;
 
 const isOneOf = <T extends string>(ops: readonly T[], op: unknown): op is T =>
 	typeof op === 'string' && (ops as readonly string[]).includes(op);
 
-// ── Parsing: untrusted esprima output → the safe grammar, or null. ─────────
+// ── Parsing: untrusted esprima output → the subset grammar, or null. ───────
 //
 // Total (never throws), constructive (returns new objects; the esprima node
 // is read and dropped, so no unvetted field survives), and recursive (one
@@ -157,9 +160,9 @@ function parseIdentifier(node: Record<string, unknown>): SimpleNode | null {
 // Only static keys are representable. Dynamic keys ($json[$json.key]) need
 // the sandbox's PrototypeSanitizer, so they stay on the engine. String keys
 // are vetted at parse time (isSafeObjectProperty), which keeps prototype
-// names unrepresentable. (Danny's own-property-only lookup would make that
-// vetting unnecessary, but $json/$parameter are get-trap proxies for which
-// Object.hasOwn misreports every key, so the parse-time vet is the boundary.)
+// names unrepresentable. An own-property-only lookup would make that vetting
+// unnecessary, but $json/$parameter are get-trap proxies for which
+// Object.hasOwn misreports every key, so the parse-time vet is the boundary.
 function parseMember(node: Record<string, unknown>): SimpleNode | null {
 	const object = parseSimple(node.object);
 	if (object === null) return null;
@@ -262,9 +265,8 @@ function parseSimple(node: unknown): SimpleNode | null {
 		case 'CallExpression':
 			return parseCall(node);
 		default:
-			// TODO(POC): tier 2 — CallExpression on a closed list of array
-			// methods (filter/sort/map) whose callbacks are parsed by this
-			// same restricted grammar under a step budget. Declined for now.
+			// Everything else (functions, templates, object/array literals,
+			// regex, dynamic keys, ...) is outside the subset.
 			return null;
 	}
 }
@@ -276,17 +278,34 @@ function parseSimple(node: unknown): SimpleNode | null {
 // the grammar stops compilation until it is handled here.
 
 // Thrown when a runtime value falls outside what parsing proved statically
-// (e.g. a whitelisted string method called on a non-string receiver, where
-// extensions could apply). The whole evaluation is abandoned and the caller
-// re-runs the expression through the regular engine pipeline.
+// (a whitelisted string method on a non-string receiver, an operator on an
+// object operand, a result above MAX_RESULT_LENGTH). The whole evaluation is
+// abandoned and the caller re-runs the expression through the regular engine
+// pipeline. A nested `$parameter` expression evaluated before the bail is
+// then evaluated again by the engine; expressions are pure, so the only cost
+// is the repeated work.
 class EngineFallbackError extends Error {}
 
-// ponytail: predicate lies for primitives, but JS property lookup on a
-// non-nullish primitive is well-defined and side-effect free.
+// Property lookup on a non-nullish primitive is well-defined and side-effect
+// free, so primitives are indexable here even though the predicate's type
+// only names objects.
 const isIndexable = (value: unknown): value is Record<string | number, unknown> =>
 	value !== null && value !== undefined;
 
-// Operand casts are intentional: the fast path must reproduce JS coercion
+// Operators only ever see primitives. An object operand would coerce through
+// its valueOf/toString on the host, where the engine sees a structured-clone
+// copy; a reference comparison would differ from the engine's copy semantics.
+const isPrimitive = (value: unknown): boolean =>
+	value === null || (typeof value !== 'object' && typeof value !== 'function');
+
+function bounded<T>(value: T): T {
+	if ((typeof value === 'string' || Array.isArray(value)) && value.length > MAX_RESULT_LENGTH) {
+		throw new EngineFallbackError();
+	}
+	return value;
+}
+
+// Operand casts are intentional: the interpreter must reproduce JS coercion
 // semantics exactly (parity with the engines), not re-implement them.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = {
@@ -301,7 +320,7 @@ const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = {
 	'>': (l, r) => l > r,
 	'>=': (l, r) => l >= r,
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-	'+': (l, r) => l + r,
+	'+': (l, r) => bounded(l + r),
 	'-': (l, r) => l - r,
 	'*': (l, r) => l * r,
 	'/': (l, r) => l / r,
@@ -314,8 +333,8 @@ function evalMember(
 	data: IWorkflowDataProxyData,
 ): unknown {
 	const object = evalNode(node.object, data);
-	// ponytail: per-node optional check instead of full chain short-circuiting.
-	// Behaviour-equivalent here because keys are static (no side effects to
+	// Optionality is checked per node instead of short-circuiting the whole
+	// chain. Equivalent here because keys are static (no side effects to
 	// skip) and the chunk-level catch maps the resulting TypeError to the same
 	// observable value the engine produces.
 	if (node.optional && (object === null || object === undefined)) return undefined;
@@ -325,7 +344,7 @@ function evalMember(
 	const value = object[node.key];
 	// Never surface functions: matches the VM bridge, whose getValueAtPath
 	// returns undefined for function-typed values. (The legacy engine returns
-	// the function and the caller throws "this is a function" — a pre-existing
+	// the function and the caller throws "this is a function" - a pre-existing
 	// engine divergence; we side with the default engine.)
 	return typeof value === 'function' ? undefined : value;
 }
@@ -352,7 +371,7 @@ function evalCall(
 	const method: unknown = Reflect.get(proto, node.method);
 	if (typeof method !== 'function') throw new EngineFallbackError();
 	const args = node.args.map((argument) => evalNode(argument, data));
-	return method.apply(receiver, args) as unknown;
+	return bounded(method.apply(receiver, args) as unknown);
 }
 
 function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
@@ -368,11 +387,16 @@ function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
 		case 'unary': {
 			const argument = evalNode(node.argument, data);
 			if (node.op === '!') return !argument;
+			if (!isPrimitive(argument)) throw new EngineFallbackError();
 			if (node.op === '-') return -Number(argument);
 			return Number(argument);
 		}
-		case 'binary':
-			return binaryOps[node.op](evalNode(node.left, data), evalNode(node.right, data));
+		case 'binary': {
+			const left = evalNode(node.left, data);
+			const right = evalNode(node.right, data);
+			if (!isPrimitive(left) || !isPrimitive(right)) throw new EngineFallbackError();
+			return binaryOps[node.op](left, right);
+		}
 		case 'logical': {
 			const left = evalNode(node.left, data);
 			if (node.op === '&&') return left ? evalNode(node.right, data) : left;
@@ -408,20 +432,18 @@ function evalChunk(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
 
 type CompiledChunk = { type: 'text'; text: string } | { type: 'code'; node: SimpleNode };
 
-interface CompiledSimpleExpression {
+interface CompiledExpression {
 	chunks: CompiledChunk[];
 	// Exactly [empty text, code]: return the code chunk's raw value instead of
 	// string-concatenating (tmpl compatibility, see ExpressionBuilder).
 	isWholeValue: boolean;
 }
 
-// null = classified as not simple. TODO(POC): naive clear-on-overflow map;
-// unify with the expression-runtime evaluator's LRU so verdict and
-// transformed code share one cache entry.
-const cache = new Map<string, CompiledSimpleExpression | null>();
-const CACHE_MAX = 500;
+// null = outside the subset. Declined expressions are cached too, so an
+// expression the engine owns costs one parse here, not one per evaluation.
+const cache = new LruCache<string, CompiledExpression | null>(1024);
 
-function compile(expression: string): CompiledSimpleExpression | null {
+function compile(expression: string): CompiledExpression | null {
 	let parsed;
 	try {
 		parsed = getParsedExpression(expression);
@@ -456,15 +478,14 @@ function compile(expression: string): CompiledSimpleExpression | null {
 	return { chunks, isWholeValue };
 }
 
-/** Exposed for tests: does the fast path claim this expression? */
-export function isSimpleExpression(expression: string): boolean {
+/** Does the expression (leading `=` stripped) fit the native subset? */
+export function isNativelyEvaluable(expression: string): boolean {
 	return getCompiled(expression) !== null;
 }
 
-function getCompiled(expression: string): CompiledSimpleExpression | null {
+function getCompiled(expression: string): CompiledExpression | null {
 	let compiled = cache.get(expression);
 	if (compiled === undefined) {
-		if (cache.size >= CACHE_MAX) cache.clear();
 		compiled = compile(expression);
 		cache.set(expression, compiled);
 	}
@@ -472,11 +493,12 @@ function getCompiled(expression: string): CompiledSimpleExpression | null {
 }
 
 /**
- * Try to evaluate an expression (with the leading `=` already stripped)
- * natively. Returns `{ handled: false }` when the expression is not provably
- * simple; the caller must then run the regular pipeline.
+ * Evaluate an expression (with the leading `=` already stripped) in-process.
+ * Returns `{ handled: false }` when the expression is outside the subset or a
+ * runtime value fell outside what parsing proved; the caller must then run
+ * the regular pipeline.
  */
-export function evaluateSimpleExpression(
+export function evaluateNatively(
 	expression: string,
 	data: IWorkflowDataProxyData,
 ): { handled: true; value: unknown } | { handled: false } {
@@ -484,16 +506,27 @@ export function evaluateSimpleExpression(
 	if (compiled === null) return { handled: false };
 
 	try {
-		return { handled: true, value: evalCompiled(compiled, data) };
+		return { handled: true, value: copyResult(evalCompiled(compiled, data)) };
 	} catch (error) {
-		// A runtime value the static parse could not see (a string method on a
-		// non-string receiver): let the engine evaluate instead.
 		if (error instanceof EngineFallbackError) return { handled: false };
 		throw error;
 	}
 }
 
-function evalCompiled(compiled: CompiledSimpleExpression, data: IWorkflowDataProxyData): unknown {
+// The engines hand back a copy of any object they return; a whole-value read
+// like `{{ $json.body }}` here would hand back the live execution data, which
+// callers then mutate in place (cleanupParameterData). Match the engines.
+// The `$parameter` root is a Proxy and cannot be cloned: the engine owns it.
+function copyResult(value: unknown): unknown {
+	if (!isObj(value)) return value;
+	try {
+		return structuredClone(value);
+	} catch {
+		throw new EngineFallbackError();
+	}
+}
+
+function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData): unknown {
 	if (compiled.isWholeValue) {
 		const code = compiled.chunks[1];
 		// isWholeValue guarantees chunks = [text '', code]
@@ -508,6 +541,8 @@ function evalCompiled(compiled: CompiledSimpleExpression, data: IWorkflowDataPro
 			if (chunk.text !== '') parts.push(chunk.text);
 		} else {
 			const value = evalChunk(chunk.node, data);
+			// An object here would coerce through its toString on the host.
+			if (isObj(value)) throw new EngineFallbackError();
 			parts.push(value || value === 0 || value === false ? value : '');
 		}
 	}
