@@ -1115,7 +1115,7 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: template
 	// ----------------------------------
 	{
-		displayName: 'Template',
+		displayName: 'Template Name or ID',
 		name: 'template',
 		default: '',
 		type: 'options',
@@ -1126,40 +1126,11 @@ export const messageTypeFields: INodeProperties[] = [
 			},
 		},
 		typeOptions: {
-			loadOptions: {
-				routing: {
-					request: {
-						url: '={{$credentials.businessAccountId}}/message_templates',
-						method: 'GET',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'data',
-								},
-							},
-							{
-								type: 'setKeyValue',
-								properties: {
-									name: '={{$responseItem.name}} - {{$responseItem.language}}',
-									value: '={{$responseItem.name}}|{{$responseItem.language}}',
-								},
-							},
-							{
-								type: 'sort',
-								properties: {
-									key: 'name',
-								},
-							},
-						],
-					},
-				},
-			},
+			loadOptionsMethod: 'getTemplates',
 		},
 		required: true,
-		description: 'Name of the template',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		routing: {
 			send: {
 				type: 'body',

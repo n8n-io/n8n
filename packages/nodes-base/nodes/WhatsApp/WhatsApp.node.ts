@@ -1,10 +1,17 @@
-import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { createMessage, WHATSAPP_BASE_URL } from './GenericFunctions';
 import { mediaFields, mediaTypeFields } from './MediaDescription';
 import { sanitizePhoneNumber } from './MessageFunctions';
 import { messageFields, messageTypeFields } from './MessagesDescription';
+import type { WhatsAppTemplate, WhatsAppTemplateListResponse } from './types';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descriptions';
 import {
@@ -74,6 +81,45 @@ export class WhatsApp implements INodeType {
 	};
 
 	webhook = sendAndWaitWebhook;
+
+	methods = {
+		loadOptions: {
+			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const credentials = await this.getCredentials(WHATSAPP_CREDENTIALS_TYPE);
+				if (typeof credentials.businessAccountId !== 'string') return [];
+
+				const templates: WhatsAppTemplate[] = [];
+				let after: string | undefined;
+
+				do {
+					const response = (await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						WHATSAPP_CREDENTIALS_TYPE,
+						{
+							baseURL: WHATSAPP_BASE_URL,
+							url: `${credentials.businessAccountId}/message_templates`,
+							method: 'GET',
+							qs: after ? { after } : {},
+						},
+					)) as WhatsAppTemplateListResponse;
+
+					templates.push(...response.data);
+					after = response.paging?.next ? response.paging.cursors?.after : undefined;
+				} while (after);
+
+				return templates
+					.map(({ name, language }) => ({
+						name: `${name} - ${language}`,
+						value: `${name}|${language}`,
+					}))
+					.sort((a, b) => {
+						const aName = a.name.toLowerCase();
+						const bName = b.name.toLowerCase();
+						return aName < bName ? -1 : aName > bName ? 1 : 0;
+					});
+			},
+		},
+	};
 
 	customOperations = {
 		message: {
