@@ -45,7 +45,7 @@ export class AgentCustomToolsService {
 		code: string,
 		descriptor: ToolDescriptor,
 		context: AgentMutationTelemetryContext,
-	options: { recordTelemetry?: boolean } = {},
+		options: { recordTelemetry?: boolean } = {},
 	): Promise<{ ok: boolean; id: string; descriptor: ToolDescriptor; changed: boolean }> {
 		const entity = await getAgentOrThrow(
 			this.agentRepository,
