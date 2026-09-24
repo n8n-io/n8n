@@ -1,5 +1,6 @@
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { IWorkflowDb } from '@/Interface';
 import { onScopeDispose, ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import type {
@@ -55,10 +56,16 @@ export function createWorkflowMentionSourceProvider(options: {
 			if (!projectId) return [];
 
 			const artifactWorkflowIds = toValue(options.artifactWorkflowIds);
-			const recentWorkflows = await recentWorkflowsStore.resolveRecentWorkflows(
-				projectId,
-				artifactWorkflowIds,
-			);
+			let recentWorkflows: IWorkflowDb[] = [];
+			try {
+				recentWorkflows = await recentWorkflowsStore.resolveRecentWorkflows(
+					projectId,
+					artifactWorkflowIds,
+				);
+			} catch {
+				// A failed recent lookup must not hide the section. The project backfill
+				// below can still fill it. The section reports an error only when both fail.
+			}
 			if (recentWorkflows.length >= MAX_MENTION_RESULTS) {
 				return recentWorkflows.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
 			}

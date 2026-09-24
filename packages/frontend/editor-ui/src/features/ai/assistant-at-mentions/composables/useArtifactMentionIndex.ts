@@ -158,7 +158,12 @@ export function useArtifactMentionIndex(options: UseArtifactMentionIndexOptions)
 				return activeProjection;
 			}
 
-			const index = projectWorkflowArtifact(workflow);
+			// The thread artifact owns the display name. A rename that lands while this
+			// fetch is in flight must not be undone by the older server response.
+			const artifact = artifactById.value.get(task.workflowId);
+			const index = projectWorkflowArtifact(
+				artifact ? { ...workflow, name: artifact.name } : workflow,
+			);
 			setEntry(task.workflowId, { status: 'ready', source: 'fetched', index });
 			return index;
 		} catch (error) {

@@ -186,12 +186,32 @@ describe('useArtifactMentionIndex', () => {
 		scope.stop();
 	});
 
+	it('keeps an artifact rename that happens while its fetch is in flight', async () => {
+		const response = deferred<IWorkflowDb>();
+		const artifacts = ref([{ id: '1', name: 'Original workflow' }]);
+		const { index, scope } = setupIndex({
+			artifacts,
+			fetchWorkflow: async () => await response.promise,
+			getActiveWorkflow: () => undefined,
+		});
+
+		const pending = index.load('1');
+		artifacts.value = [{ id: '1', name: 'Renamed workflow' }];
+		await nextTick();
+		response.resolve(makeWorkflow('1', { name: 'Original workflow' }));
+		await pending;
+
+		expect(index.getEntry('1')).toMatchObject({ status: 'ready', source: 'fetched' });
+		expect(index.getIndex('1')?.workflowName).toBe('Renamed workflow');
+		scope.stop();
+	});
+
 	it('ignores an invalidated response and allows a fresh retry', async () => {
 		const stale = deferred<IWorkflowDb>();
 		const fetchWorkflow = vi
 			.fn<(workflowId: string) => Promise<IWorkflowDb>>()
 			.mockReturnValueOnce(stale.promise)
-			.mockResolvedValueOnce(makeWorkflow('1', { name: 'Fresh workflow' }));
+			.mockResolvedValueOnce(makeWorkflow('1', { versionId: 'fresh-version' }));
 		const { index, scope } = setupIndex({
 			artifacts: [{ id: '1', name: 'Workflow 1' }],
 			fetchWorkflow,
@@ -200,13 +220,13 @@ describe('useArtifactMentionIndex', () => {
 
 		const pending = index.load('1');
 		index.invalidate('1');
-		stale.resolve(makeWorkflow('1', { name: 'Stale workflow' }));
+		stale.resolve(makeWorkflow('1', { versionId: 'stale-version' }));
 		await pending;
 
 		expect(index.getEntry('1')?.status).toBe('idle');
 		expect(index.getIndex('1')).toBeUndefined();
 		await index.load('1');
-		expect(index.getIndex('1')?.workflowName).toBe('Fresh workflow');
+		expect(index.getIndex('1')?.versionId).toBe('fresh-version');
 		scope.stop();
 	});
 
@@ -214,7 +234,7 @@ describe('useArtifactMentionIndex', () => {
 		const refreshed = deferred<IWorkflowDb>();
 		const fetchWorkflow = vi
 			.fn<(workflowId: string) => Promise<IWorkflowDb>>()
-			.mockResolvedValueOnce(makeWorkflow('1', { name: 'Current workflow' }))
+			.mockResolvedValueOnce(makeWorkflow('1', { versionId: 'current-version' }))
 			.mockReturnValueOnce(refreshed.promise);
 		const { index, scope } = setupIndex({
 			artifacts: [{ id: '1', name: 'Workflow 1' }],
@@ -227,12 +247,12 @@ describe('useArtifactMentionIndex', () => {
 
 		expect(index.getEntry('1')).toMatchObject({
 			status: 'loading',
-			index: { workflowName: 'Current workflow' },
+			index: { versionId: 'current-version' },
 		});
 
-		refreshed.resolve(makeWorkflow('1', { name: 'Refreshed workflow' }));
+		refreshed.resolve(makeWorkflow('1', { versionId: 'refreshed-version' }));
 		await reloading;
-		expect(index.getIndex('1')?.workflowName).toBe('Refreshed workflow');
+		expect(index.getIndex('1')?.versionId).toBe('refreshed-version');
 		scope.stop();
 	});
 

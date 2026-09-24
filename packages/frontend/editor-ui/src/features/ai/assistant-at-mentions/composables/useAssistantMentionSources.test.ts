@@ -127,6 +127,41 @@ describe('createWorkflowMentionSourceProvider', () => {
 		expect((await source.browse()).map(({ workflowId }) => workflowId)).toEqual(['recent']);
 	});
 
+	it('backfills project workflows when the recent lookup fails', async () => {
+		const recentWorkflowsStore = useRecentWorkflowsStore();
+		const workflowsListStore = useWorkflowsListStore();
+		vi.spyOn(recentWorkflowsStore, 'resolveRecentWorkflows').mockRejectedValue(
+			new Error('Unavailable'),
+		);
+		vi.spyOn(workflowsListStore, 'searchWorkflows').mockResolvedValue([
+			makeWorkflow('artifact', 'Artifact workflow'),
+			makeWorkflow('backfill', 'Backfill workflow'),
+		]);
+		const source = createWorkflowMentionSourceProvider({
+			projectId: 'project-1',
+			artifactWorkflowIds: ['artifact'],
+		});
+
+		expect((await source.browse()).map(({ workflowId }) => workflowId)).toEqual(['backfill']);
+	});
+
+	it('reports an error only when both the recent lookup and the backfill fail', async () => {
+		const recentWorkflowsStore = useRecentWorkflowsStore();
+		const workflowsListStore = useWorkflowsListStore();
+		vi.spyOn(recentWorkflowsStore, 'resolveRecentWorkflows').mockRejectedValue(
+			new Error('Recent unavailable'),
+		);
+		vi.spyOn(workflowsListStore, 'searchWorkflows').mockRejectedValue(
+			new Error('Backfill unavailable'),
+		);
+		const source = createWorkflowMentionSourceProvider({
+			projectId: 'project-1',
+			artifactWorkflowIds: [],
+		});
+
+		await expect(source.browse()).rejects.toThrow('Backfill unavailable');
+	});
+
 	it('searches bounded workflow metadata without scope enrichment', async () => {
 		const workflowsListStore = useWorkflowsListStore();
 		vi.spyOn(workflowsListStore, 'searchWorkflows').mockResolvedValue([
@@ -329,7 +364,7 @@ describe('useAssistantMentionSources', () => {
 	});
 
 	it('shows workflow results while artifact indexes load, then adds matching nodes', async () => {
-		const artifacts = [{ id: '1', name: 'Workflow 1' }];
+		const artifacts = [{ id: '1', name: 'Qualify B2B leads' }];
 		const fetchResponse = deferred<IWorkflowDb>();
 		const indexScope = effectScope();
 		let artifactIndex!: ReturnType<typeof useArtifactMentionIndex>;
