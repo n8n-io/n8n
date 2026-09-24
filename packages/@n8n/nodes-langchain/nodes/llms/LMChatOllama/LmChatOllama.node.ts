@@ -1,5 +1,6 @@
 import type { ChatOllamaInput } from '@langchain/ollama';
 import { ChatOllama } from '@langchain/ollama';
+import { AIMessage } from '@langchain/core/messages';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
@@ -18,6 +19,41 @@ import {
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
+
+class NonStreamingChatOllama extends ChatOllama {
+	async _generate(messages: any, options: any, runManager?: any): Promise<any> {
+		const params = this.invocationParams(options);
+		const ollamaMessages = (this as any).convertToOllamaMessages
+			? (this as any).convertToOllamaMessages(messages)
+			: messages;
+		const response = await this.client.chat({
+			...params,
+			messages: ollamaMessages,
+			stream: false,
+		});
+		const aiMessage = new AIMessage({
+			content: response.message?.content ?? '',
+			additional_kwargs: response.message?.thinking
+				? { reasoning_content: response.message.thinking }
+				: {},
+			response_metadata: {
+				model: response.model,
+				done: response.done,
+				done_reason: response.done_reason,
+				created_at: response.created_at,
+				model_provider: 'ollama',
+			},
+		});
+		return {
+			generations: [
+				{
+					text: aiMessage.content as string,
+					message: aiMessage,
+				},
+			],
+		};
+	}
+}
 
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -94,7 +130,8 @@ export class LmChatOllama implements INodeType {
 		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
 			await proxyFetch({ input, init, egressFilter });
 
-		const model = new ChatOllama({
+		const ModelClass = options.streaming === false ? NonStreamingChatOllama : ChatOllama;
+		const model = new ModelClass({
 			...options,
 			baseUrl,
 			model: modelName,

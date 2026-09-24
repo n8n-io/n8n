@@ -131,7 +131,7 @@ describe('LmChatOllama', () => {
 		expect(MockedChatOllama).not.toHaveBeenCalled();
 	});
 
-	it('passes streaming: false through to the model', async () => {
+	it('sends stream: false when streaming option is off', async () => {
 		const egressFilter: NodeEgressFilter = {
 			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
 			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
@@ -148,7 +148,7 @@ describe('LmChatOllama', () => {
 		expect(modelOptions?.streaming).toBe(false);
 	});
 
-	it('passes streaming: true through to the model', async () => {
+	it('sends stream: true when streaming option is on', async () => {
 		const egressFilter: NodeEgressFilter = {
 			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
 			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
@@ -165,7 +165,7 @@ describe('LmChatOllama', () => {
 		expect(modelOptions?.streaming).toBe(true);
 	});
 
-	it('leaves streaming unset when the option is untouched', async () => {
+	it('leaves streaming unset when option is untouched', async () => {
 		const egressFilter: NodeEgressFilter = {
 			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
 			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
