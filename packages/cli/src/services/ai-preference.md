@@ -58,6 +58,9 @@ Every assistant surface writes through `writeAssistantPreference` in
 `surface: 'aia'` and the MCP tool with `surface: 'mcp'`. It sets `source`, maps a refusal
 to one of six reasons (`too_long`, `scope_full`, `duplicate`, `not_permitted`,
 `blocked_by_admin`, `failed`) and fires the events, so the two surfaces cannot drift.
+A `scope_full` refusal carries `limit` and `actual` from `AiPreferenceScopeFullError`.
+Any other 4xx passes its message through as `failed`. A 5xx or a plain error keeps its
+message internal and is logged.
 
 ## The MCP write tools
 
@@ -102,7 +105,9 @@ so one value serves every reader:
   same constant.
 - `AI_PREFERENCE_MAX_PER_SCOPE` is 50 preferences for one scope. The service is its only
   reader: `create()` counts the target scope, and `update()` counts it again when the write
-  moves a row to another scope.
+  moves a row to another scope. A full scope refuses with `AiPreferenceScopeFullError`,
+  whose `meta` carries the limit and the count, so the `save_user_preference` tool can
+  return both numbers to the model instead of the message alone.
 
 The `describe()` text on `aiPreferenceContentSchema` states both limits for a model, and
 the `save_user_preference` tool reuses that schema for its content field.

@@ -6,6 +6,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { CLIENT_CAPABILITIES_META_KEY } from '@modelcontextprotocol/server';
 import type { InputRequiredResult } from '@modelcontextprotocol/server';
 
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -246,7 +247,13 @@ describe('save_user_preference MCP tool', () => {
 	describe('refusals', () => {
 		test.each([
 			[new ConflictError('dup'), 'duplicate', 'dup'],
-			[new BadRequestError('cap'), 'scope_full', 'cap'],
+			[
+				new AiPreferenceScopeFullError('user', { limit: 50, actual: 50 }),
+				'scope_full',
+				'A user cannot hold more than 50 preferences',
+			],
+			// Any other 4xx passes its message through as a failure.
+			[new BadRequestError('no project'), 'failed', 'no project'],
 			[new ForbiddenError('no'), 'not_permitted', 'no'],
 			[new Error('db down'), 'failed', 'The preference could not be saved.'],
 		])(

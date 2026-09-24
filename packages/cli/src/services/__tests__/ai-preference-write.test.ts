@@ -4,9 +4,11 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	toAiPreferenceWriteRejection,
@@ -81,29 +83,61 @@ describe('writeAssistantPreference', () => {
 	});
 
 	it.each([
-		[new ConflictError('dup'), 'duplicate', 'dup'],
-		[new BadRequestError('cap'), 'scope_full', 'cap'],
-		[new ForbiddenError('no'), 'not_permitted', 'no'],
-		[new Error('boom'), 'failed', 'The preference could not be saved.'],
-	])('maps %s to reason %s and fires write_rejected only', async (error, reason, message) => {
-		const { aiPreferenceService, telemetry, logger, write } = build();
-		aiPreferenceService.create.mockRejectedValue(error);
-
-		const result = await write('mcp');
-
-		expect(result).toEqual({ ok: false, reason, message });
-		expect(telemetry.track).toHaveBeenCalledTimes(1);
-		expect(telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+		[new ConflictError('dup'), { reason: 'duplicate', message: 'dup' }],
+		[
+			new AiPreferenceScopeFullError('user', { limit: 50, actual: 50 }),
 			{
-				surface: 'mcp',
-				reason,
-				scope_type: 'user',
-				text_length: 19,
+				reason: 'scope_full',
+				message: 'A user cannot hold more than 50 preferences',
+				limit: 50,
+				actual: 50,
 			},
-		);
-		expect(logger.error).toHaveBeenCalledTimes(reason === 'failed' ? 1 : 0);
-	});
+		],
+		[new ForbiddenError('no'), { reason: 'not_permitted', message: 'no' }],
+		// Any other 4xx is a refusal written for a person, so its text passes through.
+		[new BadRequestError('no project'), { reason: 'failed', message: 'no project' }],
+	])(
+		'maps %s to a refusal and fires write_rejected only, without logging',
+		async (error, expected) => {
+			const { aiPreferenceService, telemetry, logger, write } = build();
+			aiPreferenceService.create.mockRejectedValue(error);
+
+			const result = await write('mcp');
+
+			expect(result).toEqual({ ok: false, ...expected });
+			expect(telemetry.track).toHaveBeenCalledTimes(1);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+				{
+					surface: 'mcp',
+					reason: expected.reason,
+					scope_type: 'user',
+					text_length: 19,
+				},
+			);
+			expect(logger.error).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([new Error('boom'), new InternalServerError('db down')])(
+		'keeps the message of an unexpected fault internal and logs it: %s',
+		async (error) => {
+			const { aiPreferenceService, logger, write } = build();
+			aiPreferenceService.create.mockRejectedValue(error);
+
+			const result = await write('mcp');
+
+			expect(result).toEqual({
+				ok: false,
+				reason: 'failed',
+				message: 'The preference could not be saved.',
+			});
+			expect(logger.error).toHaveBeenCalledWith(
+				'Saving an AI preference from the assistant failed',
+				{ error },
+			);
+		},
+	);
 
 	// The row is committed before any event fires, so a telemetry fault must not turn a saved
 	// preference into a failed one that the model retries into a duplicate.
@@ -122,10 +156,10 @@ describe('writeAssistantPreference', () => {
 });
 
 describe('toAiPreferenceWriteRejection', () => {
-	it('reads a not-found as a generic failure: the shared write never addresses a row', () => {
+	it('passes a not-found message through as a failure: a 4xx is written for a person', () => {
 		expect(toAiPreferenceWriteRejection(new NotFoundError('gone'))).toEqual({
 			reason: 'failed',
-			message: 'The preference could not be saved.',
+			message: 'gone',
 		});
 	});
 });

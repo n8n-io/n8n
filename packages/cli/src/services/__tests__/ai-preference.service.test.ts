@@ -12,6 +12,8 @@ import { AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	AI_PREFERENCES_CLEARED_BLOCK,
@@ -442,6 +444,21 @@ describe('AiPreferenceService', () => {
 				service.create(member, { content: 'Rule.', scope: 'user' }, 'ui'),
 			).rejects.toThrow(`A user cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`);
 			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('names the limit and the saved count on the cap error, so a caller can relay the numbers', async () => {
+			aiPreferenceRepository.countForTarget.mockResolvedValue(AI_PREFERENCE_MAX_PER_SCOPE + 2);
+
+			const error = await service
+				.create(member, { content: 'Rule.', scope: 'user' }, 'ui')
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(AiPreferenceScopeFullError);
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).toMatchObject({
+				httpStatusCode: 400,
+				meta: { limit: AI_PREFERENCE_MAX_PER_SCOPE, actual: AI_PREFERENCE_MAX_PER_SCOPE + 2 },
+			});
 		});
 
 		it("counts the target user's scope when an admin writes for somebody else", async () => {
