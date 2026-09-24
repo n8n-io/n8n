@@ -260,7 +260,7 @@ export class ToolCallRunner {
 			this.getResultStorage(params),
 		);
 		params.list.setToolCallError(params.toolCallId, guardedError);
-		return { outcome: 'error', error };
+		return { outcome: 'error', error: guardedError };
 	}
 
 	/** Find an already-settled (resolved/rejected) tool-call block for this id, if any. */
@@ -410,7 +410,7 @@ export class ToolCallRunner {
 		};
 	}
 
-	/** Apply toModelOutput, emit ToolExecutionEnd, build the success outcome. */
+	/** Convert the tool output before recording success. */
 	private async buildSuccessOutcome(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
@@ -440,6 +440,17 @@ export class ToolCallRunner {
 			this.deps.tokenCounter,
 			storage,
 		);
+		let guardedCustomMessage: AgentMessage | undefined;
+		try {
+			guardedCustomMessage = await this.prepareCustomToolMessage(
+				params,
+				builtTool,
+				toolResult,
+				storage,
+			);
+		} catch (error) {
+			return await this.toolError(params, error, builtTool);
+		}
 
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
@@ -450,13 +461,9 @@ export class ToolCallRunner {
 		});
 
 		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
-
-		const guardedCustomMessage = await this.appendCustomToolMessage(
-			params,
-			builtTool,
-			toolResult,
-			storage,
-		);
+		if (guardedCustomMessage) {
+			list.addResponse([guardedCustomMessage]);
+		}
 
 		return {
 			outcome: 'success',
@@ -472,7 +479,7 @@ export class ToolCallRunner {
 		};
 	}
 
-	private async appendCustomToolMessage(
+	private async prepareCustomToolMessage(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
 		toolResult: unknown,
@@ -492,9 +499,6 @@ export class ToolCallRunner {
 				...guardedCustomMessage,
 				origin: { kind: 'tool', toolName: params.toolName },
 			};
-		}
-		if (guardedCustomMessage) {
-			params.list.addResponse([guardedCustomMessage]);
 		}
 		return guardedCustomMessage;
 	}
