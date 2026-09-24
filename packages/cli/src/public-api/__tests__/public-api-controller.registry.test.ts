@@ -293,6 +293,15 @@ describe('PublicApiControllerRegistry', () => {
 			await request(activate()).get('/api/v1/widgets/12').expect(403);
 		});
 
+		it('hands the parsed value to the handler when the scope check passes', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			registerScopedRoute();
+
+			const response = await request(activate()).get('/api/v1/widgets/12').expect(200);
+
+			expect(response.body).toEqual({ widgetId: '12' });
+		});
+
 		it('keeps 401 ahead of parameter validation for an unauthenticated caller', async () => {
 			authStrategyRegistry.authenticate.mockResolvedValue(false);
 			registerScopedRoute();
