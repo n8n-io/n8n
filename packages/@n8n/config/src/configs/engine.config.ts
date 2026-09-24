@@ -9,6 +9,9 @@ import { positiveIntSchema } from '../schemas';
  */
 const AUTH_SECRET_MIN_LENGTH = 32;
 
+const responseTransportSchema = z.enum(['memory', 'redis']);
+type ResponseTransport = z.infer<typeof responseTransportSchema>;
+
 @Config
 export class EngineConfig {
 	/** Port the engine HTTP server listens on. */
@@ -71,8 +74,8 @@ export class EngineConfig {
 	 * `memory` works only while both planes share a process, which is the case
 	 * today. Set `redis` once they do not.
 	 */
-	@Env('N8N_ENGINE_RESPONSE_TRANSPORT')
-	responseTransport: 'memory' | 'redis' = 'memory';
+	@Env('N8N_ENGINE_RESPONSE_TRANSPORT', responseTransportSchema)
+	responseTransport: ResponseTransport = 'memory';
 
 	/**
 	 * How long (in ms) the control plane waits for a run to answer before it
