@@ -312,18 +312,25 @@ describe('settle', () => {
 		]);
 	});
 
-	it('drops the abort handle even when the row was already settled', async () => {
+	it('keeps the active abort handle when a stale settlement loses', async () => {
 		const { service, jobRepository } = setup();
-		jobRepository.settleIfActive.mockResolvedValue(false);
+		const job = makeJob();
+		jobRepository.findById.mockResolvedValue(job);
+		jobRepository.findByParentThread.mockResolvedValue([job]);
+		jobRepository.settleIfActive.mockResolvedValueOnce(false);
 		const controller = new AbortController();
 		service.registerAbortController('job-1', controller);
 
-		const settled = await service.settle('job-1', { status: 'completed', result: 'done' });
+		const settled = await service.settle(
+			'job-1',
+			{ status: 'failed' },
+			{ status: 'suspended', timeoutAt: new Date(0) },
+		);
 
 		expect(settled).toBe(false);
-		// A later cancel finds no handle to abort — the map does not leak.
-		await service.cancel('thread-1', 'job-1');
 		expect(controller.signal.aborted).toBe(false);
+		expect(await service.cancel('thread-1', 'job-1')).toBe('cancelled');
+		expect(controller.signal.aborted).toBe(true);
 	});
 });
 

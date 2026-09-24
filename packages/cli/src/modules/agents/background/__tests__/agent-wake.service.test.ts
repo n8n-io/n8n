@@ -241,9 +241,12 @@ describe('AgentWakeService', () => {
 	});
 
 	describe('getBackgroundUpdates', () => {
-		it('returns no hint when the thread has no pending results', async () => {
+		it.each([
+			{ state: 'empty', jobs: [] },
+			{ state: 'suspended', jobs: [makeJob({ status: 'suspended', settledAt: null })] },
+		])('returns no hint when the thread has no pending results ($state)', async ({ jobs }) => {
 			const { service, jobRepository } = setup();
-			jobRepository.findWakeableUnconsumed.mockResolvedValue([]);
+			jobRepository.findWakeableUnconsumed.mockResolvedValue(jobs);
 
 			await expect(
 				service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`),

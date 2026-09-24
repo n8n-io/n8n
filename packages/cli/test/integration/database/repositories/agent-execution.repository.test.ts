@@ -496,6 +496,40 @@ describe('AgentExecutionRepository', () => {
 		}
 	}
 
+	it('clears retained delegated state when a nested checkpoint is missing', async () => {
+		const { threadId, suspension, checkpointRepo, storage } = await startSuspendedApprovalRun();
+		const state = (await checkpointRepo.findByRunId(suspension.runId))!.state;
+		if (!state) throw new Error('Expected checkpoint state');
+		const child = { runId: uuid(), agentId, threadId: uuid() };
+		const nested = { runId: uuid(), agentId, threadId: uuid() };
+		const missing = { runId: uuid(), agentId, threadId: uuid() };
+		await checkpointRepo.update(
+			{ runId: suspension.runId },
+			{ state: checkpointStateWithChildren(state, threadId, [child]) },
+		);
+		await checkpointRepo.insert([
+			{
+				...child,
+				expired: true,
+				state: checkpointStateWithChildren(state, child.threadId, [missing, nested]),
+			},
+			{
+				...nested,
+				expired: false,
+				state: checkpointStateWithChildren(state, nested.threadId, []),
+			},
+		]);
+
+		await storage.deleteDelegatedForThread(agentId, threadId);
+
+		for (const runId of [suspension.runId, child.runId, nested.runId]) {
+			expect(await checkpointRepo.findByRunId(runId)).toMatchObject({
+				expired: true,
+				state: null,
+			});
+		}
+	});
+
 	it('removes retained and delegated checkpoints without deleting child history', async () => {
 		const { threadId, suspension, checkpointRepo, storage } = await startSuspendedApprovalRun();
 		const { executionService } = recordingServices();
