@@ -119,10 +119,10 @@ describe('promotion-connection promote-selection command', () => {
 
 		// `-w` values travel as the `workflowIds` array, with no message flag set.
 		expect(promoteProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2'], undefined);
-		// The count, branch, and commit live under `counts`/`git`. Reading them
-		// flat prints "undefined" while succeed() still exits 0.
+		// A selection can be deletions only, so the summary names the branch and
+		// commit instead of a workflow count that would read "0" for that case.
 		expect(succeed).toHaveBeenCalledWith(
-			'Promoted 3 workflow(s) to main as commit abc1234.',
+			'Promoted selection to main as commit abc1234.',
 			expect.anything(),
 			PROMOTE_RESULT,
 		);

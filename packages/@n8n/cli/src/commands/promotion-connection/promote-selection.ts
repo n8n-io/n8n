@@ -37,7 +37,7 @@ export default class PromotionConnectionPromoteSelection extends BaseCommand {
 				flags.message,
 			);
 			this.succeed(
-				`Promoted ${result.counts.workflows} workflow(s) to ${result.git.branchName} as commit ${result.git.commitSha}.`,
+				`Promoted selection to ${result.git.branchName} as commit ${result.git.commitSha}.`,
 				flags,
 				result,
 			);
