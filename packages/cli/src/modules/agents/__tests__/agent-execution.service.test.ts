@@ -310,48 +310,70 @@ describe('AgentExecutionService', () => {
 		}
 	});
 
-	it('serializes timeline snapshot updates', async () => {
-		const params = await startSnapshotExecution();
-		let releaseFirstWrite!: () => void;
-		agentExecutionRepository.updateTimelineIfRunning
-			.mockImplementationOnce(
-				async () =>
-					await new Promise<boolean>((resolve) => {
-						releaseFirstWrite = () => resolve(true);
-					}),
-			)
-			.mockResolvedValue(true);
-		const first: TimelineEvent[] = [{ type: 'text', content: 'First', timestamp: 1 }];
-		const second: TimelineEvent[] = [{ type: 'text', content: 'Second', timestamp: 1 }];
+	it.each([false, true])(
+		'drains paused snapshots after an input check (consumed: %s)',
+		async (consumed) => {
+			const params = await startSnapshotExecution();
+			let releaseFirstWrite!: () => void;
+			agentExecutionRepository.updateTimelineIfRunning
+				.mockImplementationOnce(
+					async () =>
+						await new Promise<boolean>((resolve) => {
+							releaseFirstWrite = () => resolve(true);
+						}),
+				)
+				.mockResolvedValue(true);
+			const first: TimelineEvent[] = [{ type: 'text', content: 'First', timestamp: 1 }];
+			const second: TimelineEvent[] = [{ type: 'text', content: 'Second', timestamp: 1 }];
+			const withInput: TimelineEvent[] = [
+				...second,
+				{
+					type: 'input',
+					queueId: 'queue-1',
+					timestamp: 2,
+					message: { id: 'input-1', role: 'user', content: [{ type: 'text', text: 'Continue' }] },
+				},
+			];
 
-		service.recordTimelineSnapshot({
-			executionId: 'execution-1',
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			threadId: 'thread-1',
-			timeline: first,
-		});
-		service.recordTimelineSnapshot({
-			executionId: 'execution-1',
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			threadId: 'thread-1',
-			timeline: second,
-		});
-		await vi.waitFor(() =>
-			expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledTimes(1),
-		);
-		releaseFirstWrite();
-		await vi.waitFor(() =>
-			expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledTimes(2),
-		);
+			service.recordTimelineSnapshot({
+				executionId: 'execution-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				timeline: first,
+			});
+			service.recordTimelineSnapshot({
+				executionId: 'execution-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				timeline: second,
+			});
+			await vi.waitFor(() =>
+				expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledTimes(1),
+			);
+			const check = service.withTimelineWritesPaused('execution-1', async () => {
+				if (consumed) {
+					service.recordTimelineSnapshot({
+						...params,
+						executionId: 'execution-1',
+						timeline: withInput,
+					});
+				}
+			});
+			releaseFirstWrite();
+			await check;
+			await vi.waitFor(() =>
+				expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledTimes(2),
+			);
 
-		expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenLastCalledWith(
-			'execution-1',
-			second,
-		);
-		await service.finalizeExecution('execution-1', { ...params, record: makeMessageRecord() });
-	});
+			expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenLastCalledWith(
+				'execution-1',
+				consumed ? withInput : second,
+			);
+			await service.finalizeExecution('execution-1', { ...params, record: makeMessageRecord() });
+		},
+	);
 
 	it('notifies only after a timeline snapshot retry persists', async () => {
 		vi.useFakeTimers();

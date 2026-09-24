@@ -288,10 +288,10 @@ export class MemoryOrchestrator {
 
 	async discardRejectedInput(
 		list: AgentMessageList,
+		messageIds: string[],
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
-		const messageIds = list.inputDelta().map((message) => message.id);
-		list.removeInput();
+		list.removeInput(messageIds);
 		if (!this.config.memory || !options?.persistence || messageIds.length === 0) return;
 		try {
 			await this.config.memory.deleteMessages(messageIds);

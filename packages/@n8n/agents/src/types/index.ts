@@ -46,6 +46,7 @@ export type {
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
+	AgentInputBoundary,
 	SmoothStreamOptions,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,

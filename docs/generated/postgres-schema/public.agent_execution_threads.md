@@ -107,6 +107,7 @@ erDiagram
   varchar_36_ versionId
 }
 "public.agent_execution" {
+  boolean acceptsSteering
   json attachments
   json author
   integer completionTokens
@@ -136,6 +137,8 @@ erDiagram
   bigint id
   json payload
   varchar_32_ source
+  varchar_36_ steeringExecutionId FK
+  integer steeringOrder
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }

@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| acceptsSteering | boolean | false | false |  |  | Accept input until the runtime closes admission |
 | attachments | json |  | true |  |  | Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService |
 | author | json |  | true |  |  | Chat platform user who wrote the turn as {id, name}; null for runs outside chat integrations |
 | completionTokens | integer |  | true |  |  |  |
@@ -36,6 +37,7 @@
 | CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
+| agent_execution_acceptsSteering_not_null | n | NOT NULL "acceptsSteering" |
 | agent_execution_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_execution_duration_not_null | n | NOT NULL duration |
 | agent_execution_id_not_null | n | NOT NULL id |
@@ -58,9 +60,11 @@
 erDiagram
 
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
+"public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
 "public.agent_execution" {
+  boolean acceptsSteering
   json attachments
   json author
   integer completionTokens
@@ -90,6 +94,8 @@ erDiagram
   bigint id
   json payload
   varchar_32_ source
+  varchar_36_ steeringExecutionId FK
+  integer steeringOrder
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }

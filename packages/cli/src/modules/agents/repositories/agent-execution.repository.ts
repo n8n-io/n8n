@@ -75,12 +75,38 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	async updateTimelineIfRunning(
 		executionId: string,
 		timeline: AgentExecution['timeline'],
+		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const result = await this.update({ id: executionId, status: 'running' }, {
-			timeline,
-			updatedAt: new Date(),
-		} as QueryDeepPartialEntity<AgentExecution>);
+		const result = await this.managerFor(ctx).update(
+			AgentExecution,
+			{ id: executionId, status: 'running' },
+			{
+				timeline,
+				updatedAt: new Date(),
+			} as QueryDeepPartialEntity<AgentExecution>,
+		);
 		return result.affected === 1;
+	}
+
+	async findSteerable(threadId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOne(AgentExecution, {
+			select: ['id'],
+			where: {
+				threadId,
+				status: 'running',
+				acceptsSteering: true,
+			},
+		});
+	}
+
+	async closeSteering(threadId: string, executionId: string, ctx: OperationContext) {
+		await this.managerFor(ctx).update(
+			AgentExecution,
+			{ id: executionId, threadId, acceptsSteering: true },
+			{
+				acceptsSteering: false,
+			},
+		);
 	}
 
 	async updateIfRunning(
@@ -89,6 +115,18 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		staleBefore?: Date,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
+		const current = await this.managerFor(ctx).findOne(AgentExecution, {
+			select: ['timeline'],
+			where: { id: executionId, status: 'running' },
+		});
+		const inputIds = new Set(
+			values.timeline?.filter((event) => event.type === 'input').map((event) => event.message.id),
+		);
+		// A failed commit acknowledgement must not let terminal recording erase durable input.
+		if (
+			current?.timeline?.some((event) => event.type === 'input' && !inputIds.has(event.message.id))
+		)
+			return false;
 		const result = await this.managerFor(ctx).update(
 			AgentExecution,
 			{
@@ -96,7 +134,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 				status: 'running',
 				...(staleBefore ? { updatedAt: LessThanOrEqual(staleBefore) } : {}),
 			},
-			values as QueryDeepPartialEntity<AgentExecution>,
+			{ ...values, acceptsSteering: false } as QueryDeepPartialEntity<AgentExecution>,
 		);
 		return result.affected === 1;
 	}

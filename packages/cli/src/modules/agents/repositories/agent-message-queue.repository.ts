@@ -1,6 +1,6 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import { isDraftIntegration } from '@n8n/api-types';
 
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
@@ -21,7 +21,14 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 	) {
 		const repository = this.managerFor(ctx).getRepository(AgentMessageQueue);
 		return await repository.save(
-			repository.create({ threadId, source, payload, executionId: null }),
+			repository.create({
+				threadId,
+				source,
+				payload,
+				executionId: null,
+				steeringExecutionId: null,
+				steeringOrder: null,
+			}),
 		);
 	}
 
@@ -38,6 +45,7 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 			threadId,
 			id,
 			executionId: IsNull(),
+			steeringExecutionId: IsNull(),
 		});
 		return result.affected === 1;
 	}
@@ -50,7 +58,7 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 	) {
 		const result = await this.managerFor(ctx).update(
 			AgentMessageQueue,
-			{ threadId, id, executionId: IsNull() },
+			{ threadId, id, executionId: IsNull(), steeringExecutionId: IsNull() },
 			{ payload },
 		);
 		return result.affected === 1;
@@ -60,6 +68,62 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		return await this.managerFor(ctx).findOne(AgentMessageQueue, {
 			where: { threadId },
 			order: { id: 'ASC' },
+		});
+	}
+
+	async reserveSteering(threadId: string, id: string, executionId: string, ctx: OperationContext) {
+		const last = await this.managerFor(ctx).findOne(AgentMessageQueue, {
+			where: { threadId, steeringExecutionId: executionId },
+			order: { steeringOrder: 'DESC' },
+		});
+		const result = await this.managerFor(ctx).update(
+			AgentMessageQueue,
+			{ threadId, id, executionId: IsNull(), steeringExecutionId: IsNull() },
+			{ steeringExecutionId: executionId, steeringOrder: (last?.steeringOrder ?? 0) + 1 },
+		);
+		return result.affected === 1;
+	}
+
+	async findSteering(threadId: string, executionId: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).find(AgentMessageQueue, {
+			where: { threadId, executionId: IsNull(), steeringExecutionId: executionId },
+			order: { steeringOrder: 'ASC' },
+		});
+	}
+
+	async findSteeringExecutionIds(threadId: string, ctx: OperationContext): Promise<string[]> {
+		const items = await this.managerFor(ctx).find(AgentMessageQueue, {
+			select: ['steeringExecutionId'],
+			where: { threadId, steeringExecutionId: Not(IsNull()) },
+		});
+		return [
+			...new Set(
+				items.flatMap((item) => (item.steeringExecutionId ? [item.steeringExecutionId] : [])),
+			),
+		];
+	}
+
+	async releaseSteering(threadId: string, executionId: string, ctx: OperationContext) {
+		const result = await this.managerFor(ctx).update(
+			AgentMessageQueue,
+			{ threadId, steeringExecutionId: executionId },
+			{ steeringExecutionId: null, steeringOrder: null },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	async consumeSteering(
+		threadId: string,
+		executionId: string,
+		ids: string[],
+		ctx: OperationContext,
+	) {
+		if (ids.length === 0) return;
+		await this.managerFor(ctx).delete(AgentMessageQueue, {
+			threadId,
+			steeringExecutionId: executionId,
+			executionId: IsNull(),
+			id: In(ids),
 		});
 	}
 

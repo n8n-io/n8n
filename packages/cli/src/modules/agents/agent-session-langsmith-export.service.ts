@@ -317,6 +317,18 @@ function buildExecutionRun(
 
 function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: string): DraftRun {
 	switch (event.type) {
+		case 'input':
+			return {
+				path,
+				name: 'Additional user input',
+				runType: 'chain',
+				startTime: event.timestamp,
+				endTime: event.timestamp,
+				inputs: { message: event.message },
+				outputs: {},
+				metadata: {},
+				children: [],
+			};
 		case 'background-task-signal':
 			return buildBackgroundTaskSignalRun(event, path);
 		case 'text':
