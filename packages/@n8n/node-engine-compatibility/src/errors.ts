@@ -93,8 +93,12 @@ export class EngineRequestNotSupportedError extends UserError {
  * wait had ended.
  */
 export class UnsupportedWaitError extends UserError {
-	constructor(waitsFor: 'a resume request' | 'a sub-execution') {
-		super(`Engine 2.0 cannot wait for ${waitsFor} yet`);
+	constructor(nodeName: string, waitsFor: 'a resume request' | 'a sub-execution') {
+		super(
+			waitsFor === 'a resume request'
+				? `Node "${nodeName}" waits with no time limit, and engine 2.0 cannot end that wait yet. Set a time limit on the node.`
+				: `Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine 2.0 cannot end that wait yet.`,
+		);
 	}
 }
 

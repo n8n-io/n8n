@@ -20,7 +20,6 @@ import {
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
 	UnsupportedStepTypeError,
-	UnsupportedWaitError,
 	VmExpressionEngineRequiredError,
 } from '../errors';
 import { V1StepExecutor } from '../v1-step-executor';
@@ -421,13 +420,20 @@ describe('V1StepExecutor', () => {
 		// Nothing can deliver a resume request yet and sub-workflow steps do not
 		// exist, so completing the step would report a wait that never happened.
 		it.each([
-			['WAIT_INDEFINITELY', WAIT_INDEFINITELY, 'a resume request'],
-			['WAIT_FOR_SUB_EXECUTION', WAIT_FOR_SUB_EXECUTION, 'a sub-execution'],
-		])('fails the step for the %s sentinel', async (_, sentinel, waitsFor) => {
+			[
+				'WAIT_INDEFINITELY',
+				WAIT_INDEFINITELY,
+				'Node "Subject" waits with no time limit, and engine 2.0 cannot end that wait yet. Set a time limit on the node.',
+			],
+			[
+				'WAIT_FOR_SUB_EXECUTION',
+				WAIT_FOR_SUB_EXECUTION,
+				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine 2.0 cannot end that wait yet.',
+			],
+		])('fails the step for the %s sentinel', async (_, sentinel, message) => {
 			const graph = graphWith('test.waitsUntil', { waitTill: sentinel.toISOString() });
 			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
-			await expect(execution).rejects.toThrow(UnsupportedWaitError);
-			await expect(execution).rejects.toThrow(`Engine 2.0 cannot wait for ${waitsFor} yet`);
+			await expect(execution).rejects.toThrow(message);
 		});
 	});
 

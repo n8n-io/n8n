@@ -46,6 +46,7 @@ import {
 /**
  * A v1 node asks to pause through `putExecutionToWait`, and the context records
  * the date and whether a request may end the wait. A finite date becomes a
+// AGENT: disabling the node and running it again seems contradicting
  * deadline declaration. v1 resumes a timed wait by disabling the node and
  * running it again, and a disabled node passes its first input through, so that
  * input, not the value the node returned before pausing, is what the step emits
@@ -62,10 +63,10 @@ function toStepResult(context: DurableWaitExecuteContext, outputs: StepSlots): S
 	const { waitTill } = context.runExecutionData;
 	if (waitTill === undefined) return { outputs };
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
-		throw new UnsupportedWaitError('a resume request');
+		throw new UnsupportedWaitError(context.getNode().name, 'a resume request');
 	}
 	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
-		throw new UnsupportedWaitError('a sub-execution');
+		throw new UnsupportedWaitError(context.getNode().name, 'a sub-execution');
 	}
 	// `toISOString` throws a bare RangeError on an invalid date.
 	if (Number.isNaN(waitTill.getTime())) {
