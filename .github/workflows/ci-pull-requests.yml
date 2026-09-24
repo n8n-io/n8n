@@ -264,7 +264,14 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     permissions:
       contents: read
+      packages: read
+    # This pilot runs only on its own PR. Other PRs keep the current runner setup.
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     steps:
+      - name: Mark first pilot step
+        if: github.head_ref == 'ci/pilot-toolchain-pr'
+        run: echo "CI_FIRST_STEP=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
@@ -272,6 +279,7 @@ jobs:
       - name: Install format tools
         uses: ./.github/actions/setup-nodejs
         with:
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' }}
           install-command: pnpm install --frozen-lockfile --filter n8n-monorepo --ignore-scripts
           build-command: ''
           # Keep the partial pnpm store separate from the full install cache.
@@ -280,7 +288,11 @@ jobs:
             package.json
 
       - name: Run format check
-        run: pnpm format:check
+        run: |
+          if [ -n "${CI_FIRST_STEP:-}" ]; then
+            echo "Time from first step to format check: $(($(date +%s) - CI_FIRST_STEP))s" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          pnpm format:check
 
   unit-test:
     name: Unit tests
@@ -383,6 +395,7 @@ jobs:
       pre-generated-matrix: ${{ needs.install-and-build.outputs.matrix }}
       artifact-prefix: e2e
       currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
+      use-toolchain-pilot: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' }}
     secrets: inherit
 
   # Engine 2.0 parity: runs the `@engine:*` specs against a main that routes

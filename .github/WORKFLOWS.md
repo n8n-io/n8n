@@ -663,6 +663,7 @@ Composite actions in `.github/actions/`:
 ```yaml
 inputs:
   node-version:        # default: '26.5.1'
+  preinstalled-toolchain: # default: 'false'; use with the CI toolchain image
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
@@ -692,7 +693,15 @@ Blacksmith job pulls the image to seed the shared container cache. A job in
 the image then checks its tools, browser, Docker access, SafeChain and a
 lockfile-driven root install. Manual dispatch runs the smoke job without
 republishing the image, so it can check a warm pull. Update the image tag in
-the publish workflow when a tool pin changes. No PR test job uses this image.
+the publish workflow when a tool pin changes.
+
+The `ci/pilot-toolchain-pr` branch tests the image in PR Format check and E2E
+shard 1. Other PRs use their current setup. The image jobs keep checkout,
+lockfile installation and build steps. Shard 1 uses the Chromium in the image
+and checks browser lookup, Turbo cache setup and Docker access before tests.
+Compare `Initialize containers` in the job timeline and time to Format check
+or E2E tests in the job summary. Remove the branch condition before a wider
+rollout.
 
 Build and check the image locally with:
 
