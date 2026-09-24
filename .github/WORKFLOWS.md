@@ -663,6 +663,7 @@ Composite actions in `.github/actions/`:
 ```yaml
 inputs:
   node-version:        # default: '26.5.1'
+  preinstalled-toolchain: # default: 'false'; use with the CI toolchain image
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
@@ -683,6 +684,32 @@ that start after the save use the cached executable. Windows keeps the standard
 `pnpm/setup` path because its runner cannot activate the cached POSIX home path.
 The existing `actions/setup-node` cache continues to store the pnpm package
 store.
+
+### CI toolchain image pilot
+
+`build-ci-toolchain-image.yml` builds one image with Node, pnpm, SafeChain,
+Chromium, its system libraries and Docker CLI. It publishes the image to GHCR
+and seeds Blacksmith's image cache on `master` and the pilot branch. It does not
+include repository dependencies or build outputs. Update its tag in the build
+workflow, `ci-pull-requests.yml` and `test-e2e-reusable.yml` together when a
+pin changes.
+
+The PR Format check and E2E shard 1 use this image. Other E2E shards use their
+current setup. The jobs still install dependencies from the lockfile, build,
+and load commit-specific n8n Docker images. The pilot checks SafeChain, browser
+lookup, Turbo cache setup and Docker access before tests.
+
+Build and check the image on the local host architecture:
+
+```bash
+docker buildx build --load -t n8n-ci-toolchain:local -f .github/ci-toolchain/Dockerfile .
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock n8n-ci-toolchain:local \
+  bash -lc 'node --version && pnpm --version && /opt/ci-toolchain/safe-chain -v && docker info && docker buildx version && node /opt/ci-playwright/node_modules/playwright/cli.js install --dry-run chromium'
+```
+
+Compare cold and warm runs with each job's `Initialize containers` duration and
+the job summary's time from first step to Format check or E2E tests. Use runs
+with similar lockfile and Turbo cache states. Measure both before expanding.
 
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per

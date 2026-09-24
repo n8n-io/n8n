@@ -10,6 +10,10 @@ inputs:
     description: 'Node.js version to use. Pinned to 26.5.1 by default for reproducible builds.'
     required: false
     default: '26.5.1'
+  preinstalled-toolchain:
+    description: 'Use Node, pnpm and SafeChain already installed in the CI toolchain image.'
+    required: false
+    default: 'false'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -51,7 +55,7 @@ runs:
 
     # Windows cannot activate a POSIX home path from the restored cache.
     - name: Restore pnpm executable
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' && inputs.preinstalled-toolchain != 'true'
       id: cache-pnpm-exe
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -60,7 +64,7 @@ runs:
 
     - name: Setup pnpm
       id: setup-pnpm
-      if: steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      if: inputs.preinstalled-toolchain != 'true' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
       continue-on-error: true
       uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
       with:
@@ -68,7 +72,7 @@ runs:
         version: ${{ steps.pnpm-version.outputs.version }}
 
     - name: Retry pnpm setup
-      if: steps.setup-pnpm.outcome == 'failure'
+      if: inputs.preinstalled-toolchain != 'true' && steps.setup-pnpm.outcome == 'failure'
       uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
       with:
         install: false
@@ -76,7 +80,7 @@ runs:
 
     # Cache hits restore files but not the per-job environment.
     - name: Activate cached pnpm executable
-      if: steps.cache-pnpm-exe.outputs.cache-hit == 'true'
+      if: inputs.preinstalled-toolchain != 'true' && steps.cache-pnpm-exe.outputs.cache-hit == 'true'
       shell: bash
       run: | # zizmor: ignore[github-env] Fixed paths contain no external input.
         PNPM_DEST="$HOME/setup-pnpm"
@@ -98,7 +102,7 @@ runs:
 
     # Save before later job failures can prevent cache creation.
     - name: Save pnpm executable
-      if: runner.os != 'Windows' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      if: runner.os != 'Windows' && inputs.preinstalled-toolchain != 'true' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/setup-pnpm
@@ -117,13 +121,14 @@ runs:
     # quietly takes over. Caching the parent version dir captures the marker
     # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
     - name: Restore Node.js Toolcache
-      if: runner.os == 'Linux' && runner.arch == 'X64'
+      if: runner.os == 'Linux' && runner.arch == 'X64' && inputs.preinstalled-toolchain != 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
         key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
 
     - name: Setup Node.js
+      if: inputs.preinstalled-toolchain != 'true'
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
@@ -147,6 +152,14 @@ runs:
           echo "::error::setup-node did not activate Node ${EXPECTED_NODE_VERSION} (got ${ACTUAL_NODE_VERSION})"
           exit 1
         fi
+
+    # setup-node owns the store cache in standard jobs. Keep it in image jobs.
+    - name: Restore pnpm store in toolchain image
+      if: inputs.preinstalled-toolchain == 'true' && inputs.install-command != ''
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.local/share/pnpm/store
+        key: pnpm-image-store-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}-${{ hashFiles(inputs.cache-dependency-path) }}
 
     # To avoid setup-node cache failure.
     # see: https://github.com/actions/setup-node/issues/1137
@@ -190,6 +203,7 @@ runs:
     # radius across jobs, retry covers the first-job-per-key case where the
     # CDN must be hit. Keep the version in sync with the download step below.
     - name: Restore Aikido SafeChain Binary
+      if: inputs.preinstalled-toolchain != 'true'
       id: cache-safe-chain
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -201,7 +215,7 @@ runs:
     # script also runs `setup-ci`, so on a cache miss this both downloads AND
     # activates; the Activate step below then re-runs `setup-ci` idempotently.
     - name: Download Aikido SafeChain
-      if: steps.cache-safe-chain.outputs.cache-hit != 'true'
+      if: inputs.preinstalled-toolchain != 'true' && steps.cache-safe-chain.outputs.cache-hit != 'true'
       run: |
         VERSION="1.5.20"
         EXPECTED_SHA256="0ad25efe15d1fa56105157a454d647223e78eb0c53d1f85e3d10afcd722e7bfd"
@@ -215,6 +229,14 @@ runs:
           sh install-safe-chain.sh --ci
         rm install-safe-chain.sh
       shell: bash
+
+    - name: Install prebuilt SafeChain binary
+      if: inputs.preinstalled-toolchain == 'true'
+      shell: bash
+      run: |
+        mkdir -p "$HOME/.safe-chain/bin"
+        cp /opt/ci-toolchain/safe-chain "$HOME/.safe-chain/bin/safe-chain"
+        "$HOME/.safe-chain/bin/safe-chain" -v
 
     # ALWAYS runs, even on a cache hit. `setup-ci` installs SafeChain's
     # executable shims and exposes them to subsequent steps via $GITHUB_PATH.
