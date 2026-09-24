@@ -147,6 +147,13 @@ export class LmChatAzureOpenAi implements INodeType {
 				return { response: model };
 			}
 
+			// One resolved host for both the client and the proxy. Passing it explicitly also stops
+			// LangChain falling back to AZURE_OPENAI_ENDPOINT, which the proxy would not know about.
+			// `||` not `??`: a cleared Endpoint field stores '' rather than undefined.
+			const azureOpenAIEndpoint =
+				modelConfig.azureOpenAIEndpoint ||
+				`https://${modelConfig.azureOpenAIApiInstanceName}.openai.azure.com`;
+
 			const model = new AzureChatOpenAI({
 				// Force completions API — Azure's SDK doesn't rewrite the /responses path,
 				// so the Responses API hits an invalid endpoint and causes a connection error.
@@ -158,15 +165,15 @@ export class LmChatAzureOpenAi implements INodeType {
 				azureOpenAIApiDeploymentName: modelName,
 				...modelConfig,
 				...options,
+				azureOpenAIEndpoint,
 				timeout,
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
 					fetchOptions: {
-						// Resolve the proxy against the host LangChain dials so NO_PROXY applies to it.
+						// Same host the client dials, so NO_PROXY and the egress filter apply to it.
 						dispatcher: getProxyAgent(
-							modelConfig.azureOpenAIEndpoint ||
-								`https://${modelConfig.azureOpenAIApiInstanceName}.openai.azure.com`,
+							azureOpenAIEndpoint,
 							{
 								headersTimeout: timeout,
 								bodyTimeout: timeout,

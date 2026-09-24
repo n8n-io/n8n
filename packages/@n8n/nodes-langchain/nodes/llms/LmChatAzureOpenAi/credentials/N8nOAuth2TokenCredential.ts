@@ -1,7 +1,7 @@
 import type { TokenCredential, AccessToken } from '@azure/identity';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import type { INode } from 'n8n-workflow';
+import type { INode, NodeEgressFilter } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import {
@@ -9,8 +9,14 @@ import {
 	type AzureEntraCognitiveServicesOAuth2ApiCredential,
 } from '../types';
 
-/** Entra reports seconds; `AccessToken.expiresOnTimestamp` is epoch milliseconds. An unreadable expiry reads as already expired. */
-function expiresOnTimestamp(data: ClientOAuth2TokenData): number {
+/**
+ * Entra reports seconds; `AccessToken.expiresOnTimestamp` is epoch milliseconds. An unreadable
+ * expiry reads as already expired.
+ *
+ * `expires_on` is named here because `ClientOAuth2TokenData` does not declare it. It is an extra
+ * the v1.0 endpoint sends, and it would otherwise only compile through the index signature.
+ */
+function expiresOnTimestamp(data: ClientOAuth2TokenData & { expires_on?: string }): number {
 	const expiresIn = Number(data.expires_in);
 	if (Number.isFinite(expiresIn) && expiresIn > 0) return Date.now() + expiresIn * 1000;
 
@@ -28,8 +34,13 @@ export class N8nOAuth2TokenCredential implements TokenCredential {
 		private node: INode,
 		private credential: AzureEntraCognitiveServicesOAuth2ApiCredential,
 		private audience: string = AZURE_OPENAI_INFERENCE_AUDIENCE,
+		private egressFilter?: NodeEgressFilter,
 	) {}
 
+	/**
+	 * The `scopes` argument of `TokenCredential` is deliberately not taken. The v1.0 endpoint
+	 * selects the audience from the `resource` body parameter, which comes from the constructor.
+	 */
 	async getToken(): Promise<AccessToken | null> {
 		try {
 			const oAuthClient = new ClientOAuth2({
@@ -42,6 +53,9 @@ export class N8nOAuth2TokenCredential implements TokenCredential {
 				additionalBodyProperties: {
 					resource: `${this.audience}/`,
 				},
+				// Applies the egress policy inside the client, so a stored accessTokenUrl cannot
+				// send the client secret somewhere the node is not allowed to reach.
+				ssrfBridge: this.egressFilter,
 			});
 
 			const token = await oAuthClient.credentials.getToken();

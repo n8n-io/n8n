@@ -120,6 +120,24 @@ describe('N8nOAuth2TokenCredential', () => {
 			);
 		});
 
+		// The mint posts the client secret to a stored URL, so it has to run inside the egress
+		// policy, as the Databricks token provider does.
+		it('should hand the egress filter to the token client', async () => {
+			const egressFilter = vi.fn();
+			credential = new N8nOAuth2TokenCredential(
+				mockNode,
+				mockCredential,
+				undefined,
+				egressFilter as never,
+			);
+
+			await credential.getToken();
+
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
+				expect.objectContaining({ ssrfBridge: egressFilter }),
+			);
+		});
+
 		it('should report the expiry in epoch milliseconds, from expires_in', async () => {
 			const before = Date.now();
 
