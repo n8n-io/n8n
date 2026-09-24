@@ -1,4 +1,4 @@
-import type { INode, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INode, INodeExecutionData } from 'n8n-workflow';
 
 import { applyDataTableReadParameters } from '../data-table-pin-filter';
 
@@ -13,7 +13,7 @@ function readNode(parameters: Record<string, unknown>): INode {
 	};
 }
 
-function rows(...values: Array<Record<string, unknown>>): INodeExecutionData[] {
+function rows(...values: IDataObject[]): INodeExecutionData[] {
 	return values.map((json) => ({ json }));
 }
 
