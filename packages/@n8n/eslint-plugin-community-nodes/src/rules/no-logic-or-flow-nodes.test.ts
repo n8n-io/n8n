@@ -1,25 +1,8 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 
-import { createRule } from '../utils/index.js';
-import { rules } from './index.js';
+import { NoLogicOrFlowNodesRule } from './no-logic-or-flow-nodes.js';
 
 const ruleTester = new RuleTester();
-
-const missingRule = createRule({
-	name: 'no-logic-or-flow-nodes',
-	meta: {
-		type: 'problem',
-		docs: { description: 'Reject Logic and Flow community nodes' },
-		messages: { logicOrFlowNode: 'Logic and Flow nodes are not allowed' },
-		schema: [],
-	},
-	defaultOptions: [],
-	create: () => ({}),
-});
-
-const noLogicOrFlowNodesRule: AnyRuleModule =
-	Object.entries(rules).find(([name]) => name === 'no-logic-or-flow-nodes')?.[1] ?? missingRule;
 
 function createNodeMetadata(category: string): string {
 	return `{
@@ -30,12 +13,22 @@ function createNodeMetadata(category: string): string {
 	}`;
 }
 
-ruleTester.run('no-logic-or-flow-nodes', noLogicOrFlowNodesRule, {
+ruleTester.run('no-logic-or-flow-nodes', NoLogicOrFlowNodesRule, {
 	valid: [
 		{
 			name: 'integration node',
 			filename: 'Example.node.json',
 			code: createNodeMetadata('Productivity'),
+		},
+		{
+			name: 'integration node with other subcategories',
+			filename: 'Example.node.json',
+			code: '{ "categories": ["Core Nodes"], "subcategories": { "Core Nodes": ["Other"] } }',
+		},
+		{
+			name: 'other JSON file',
+			filename: 'Example.json',
+			code: createNodeMetadata('Flow'),
 		},
 	],
 	invalid: [
@@ -49,6 +42,18 @@ ruleTester.run('no-logic-or-flow-nodes', noLogicOrFlowNodesRule, {
 			name: 'Flow node',
 			filename: 'Example.node.json',
 			code: createNodeMetadata('Flow'),
+			errors: [{ messageId: 'logicOrFlowNode' }],
+		},
+		{
+			name: 'Flow subcategory in core nodes',
+			filename: 'Example.node.json',
+			code: '{ "categories": ["Core Nodes"], "subcategories": { "Core Nodes": ["Flow"] } }',
+			errors: [{ messageId: 'logicOrFlowNode' }],
+		},
+		{
+			name: 'Logic subcategory without categories',
+			filename: 'Example.node.json',
+			code: '{ "subcategories": { "Core Nodes": ["Logic"] } }',
 			errors: [{ messageId: 'logicOrFlowNode' }],
 		},
 	],

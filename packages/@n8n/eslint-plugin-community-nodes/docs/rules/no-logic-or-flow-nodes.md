@@ -4,4 +4,4 @@
 
 <!-- end auto-generated rule header -->
 
-Node metadata must not include `Logic` or `Flow` in the `categories` array.
+Node metadata must not include `Logic` or `Flow` in `categories` or `subcategories`.

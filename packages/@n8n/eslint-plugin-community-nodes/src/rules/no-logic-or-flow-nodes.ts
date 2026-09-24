@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 
 import { createRule, findJsonProperty, getTopLevelObjectInJson } from '../utils/index.js';
 
@@ -22,21 +22,37 @@ export const NoLogicOrFlowNodesRule = createRule({
 			return {};
 		}
 
+		const reportForbiddenCategories = (categories: TSESTree.ArrayExpression) => {
+			for (const category of categories.elements) {
+				if (
+					category?.type === AST_NODE_TYPES.Literal &&
+					typeof category.value === 'string' &&
+					FORBIDDEN_CATEGORIES.has(category.value)
+				) {
+					context.report({ node: category, messageId: 'logicOrFlowNode' });
+				}
+			}
+		};
+
 		return {
 			ObjectExpression(node) {
 				const root = getTopLevelObjectInJson(node);
 				if (!root) return;
 
 				const categories = findJsonProperty(root, 'categories');
-				if (categories?.value.type !== AST_NODE_TYPES.ArrayExpression) return;
+				if (categories?.value.type === AST_NODE_TYPES.ArrayExpression) {
+					reportForbiddenCategories(categories.value);
+				}
 
-				for (const category of categories.value.elements) {
+				const subcategories = findJsonProperty(root, 'subcategories');
+				if (subcategories?.value.type !== AST_NODE_TYPES.ObjectExpression) return;
+
+				for (const property of subcategories.value.properties) {
 					if (
-						category?.type === AST_NODE_TYPES.Literal &&
-						typeof category.value === 'string' &&
-						FORBIDDEN_CATEGORIES.has(category.value)
+						property.type === AST_NODE_TYPES.Property &&
+						property.value.type === AST_NODE_TYPES.ArrayExpression
 					) {
-						context.report({ node: category, messageId: 'logicOrFlowNode' });
+						reportForbiddenCategories(property.value);
 					}
 				}
 			},

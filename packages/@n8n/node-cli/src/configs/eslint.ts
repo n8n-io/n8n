@@ -52,6 +52,16 @@ function createConfig(supportCloud = true): ConfigArray {
 			},
 		},
 		{
+			files: ['**/*.node.json'],
+			extends: [communityNodesRecommended],
+			languageOptions: {
+				parser: tseslint.parser,
+				parserOptions: {
+					extraFileExtensions: ['.json'],
+				},
+			},
+		},
+		{
 			files: ['./credentials/**/*.ts'],
 			rules: {
 				...n8nNodesPlugin.configs.credentials.rules,

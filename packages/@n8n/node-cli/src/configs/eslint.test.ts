@@ -13,7 +13,7 @@ import { tmpdirTest } from '../test-utils/temp-fs';
  * they are wrapped inside a `**\/*.ts`-scoped `extends:` block. See CE-1023
  * for the analogous bug in `@n8n/scan-community-package`.
  */
-async function lintFile(filePath: string, eslintConfig: typeof config) {
+async function lintFile(filePath: string, eslintConfig: typeof config, target = filePath) {
 	const eslint = new ESLint({
 		cwd: path.dirname(filePath),
 		overrideConfigFile: true,
@@ -22,7 +22,7 @@ async function lintFile(filePath: string, eslintConfig: typeof config) {
 		// to duplicated `Parser` definitions across packages.
 		overrideConfig: eslintConfig as unknown as ESLint.Options['overrideConfig'],
 	});
-	const [result] = await eslint.lintFiles([filePath]);
+	const [result] = await eslint.lintFiles([target]);
 	return result;
 }
 
@@ -75,4 +75,23 @@ describe('@n8n/node-cli eslint config', () => {
 		const ruleIds = result.messages.map((m) => m.ruleId);
 		expect(ruleIds).toContain('@n8n/community-nodes/no-overrides-field');
 	});
+
+	for (const [name, eslintConfig] of [
+		['recommended', config],
+		['recommendedWithoutN8nCloudSupport', configWithoutCloudSupport],
+	] as const) {
+		tmpdirTest(`${name} flags Flow subcategories in .node.json`, async ({ tmpdir }) => {
+			const nodePath = path.join(tmpdir, 'Example.node.json');
+			await fs.writeFile(
+				nodePath,
+				'{ "categories": ["Core Nodes"], "subcategories": { "Core Nodes": ["Flow"] } }',
+			);
+
+			const result = await lintFile(nodePath, eslintConfig, tmpdir);
+
+			expect(result.messages.map((m) => m.ruleId)).toEqual([
+				'@n8n/community-nodes/no-logic-or-flow-nodes',
+			]);
+		});
+	}
 });
