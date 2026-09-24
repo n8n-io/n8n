@@ -564,6 +564,7 @@ onBeforeUnmount(() => {
 
 	&.collapsed {
 		border-bottom: var(--border);
+		padding-inline: var(--spacing--3xs);
 	}
 }
 
