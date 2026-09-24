@@ -378,6 +378,7 @@ describe('GlobalConfig', () => {
 			runDebugEnabled: false,
 			thinkingEnabled: true,
 			canvasNodeContextEnabled: false,
+			promptVersion: '',
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			activationCapped: false,

@@ -50,6 +50,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	MAX_STEPS,
+	assertInstanceAiPromptVersion,
 	createInstanceAgent,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
@@ -653,6 +654,25 @@ type InstanceContextGates = Pick<
 
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
 type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
+
+/**
+ * Normalises `N8N_INSTANCE_AI_PROMPT_VERSION`. Blank and absent both mean "no
+ * pin" and must become `undefined`: passing `''` on to `resolvePromptProfile`
+ * would report a fallback from an empty version instead of a clean default
+ * selection.
+ *
+ * An unknown version throws, so a typo fails the run loudly rather than
+ * silently serving the default profile. Resolved at the point of use, not
+ * cached at construction: a module `init()` that throws takes the whole n8n
+ * process down with it, and an optional Instance AI pin must not cost the
+ * instance its webhooks and executions.
+ */
+export function resolveOperatorPromptVersion(configured: string | undefined): string | undefined {
+	const version = configured?.trim();
+	if (!version) return undefined;
+	assertInstanceAiPromptVersion(version);
+	return version;
+}
 
 @Service()
 export class InstanceAiService {
@@ -2517,8 +2537,12 @@ export class InstanceAiService {
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
 		// Follow-ups and resumed runs retain the selected mode if flags change.
+		// The operator pin sits below the request pin and the thread's own selection,
+		// so evals and in-flight conversations keep the profile they started on.
 		const selectedPrompt = resolvePromptProfile({
-			version: this.runState.getPromptVersion(threadId),
+			version:
+				this.runState.getPromptVersion(threadId) ??
+				resolveOperatorPromptVersion(this.instanceAiConfig.promptVersion),
 			mode:
 				this.runState.getBuildMode(threadId) ??
 				(progressiveBuildingEnabled ? 'progressive' : 'default'),
