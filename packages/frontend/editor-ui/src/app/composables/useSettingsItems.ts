@@ -6,6 +6,7 @@ import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
@@ -206,8 +207,24 @@ export function useSettingsItems() {
 
 		// Append module-registered settings sidebar items.
 		const moduleItems = uiStore.settingsSidebarItems;
+		const items = menuItems.concat(
+			moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)),
+		);
 
-		return menuItems.concat(moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)));
+		// After Instance-level MCP, which the MCP module appends late. The flag is read here
+		// because the middleware check does not run route guards.
+		const mcpIndex = items.findIndex((item) => item.id === 'settings-mcp');
+		items.splice(mcpIndex === -1 ? items.length : mcpIndex + 1, 0, {
+			id: 'settings-context',
+			icon: 'brain',
+			label: i18n.baseText('settings.context.title'),
+			position: 'top',
+			available: isContextPreferencesEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
+			route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
+			preview: true,
+		});
+
+		return items;
 	});
 
 	const visibleSettingsItems = computed(() => settingsItems.value.filter((item) => item.available));

@@ -232,6 +232,9 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	domainContext.threadMemory = undefined;
 	domainContext.threadId = undefined;
 	domainContext.agentBuilderTarget = undefined;
+	domainContext.agentPreviewSession = undefined;
+	domainContext.currentUserAttachments = undefined;
+	domainContext.resolvedUserDecisions = undefined;
 
 	const eventBus = mock<InstanceAiEventBus>();
 	eventBus.publish.mockImplementation((_threadId: string, event: InstanceAiEvent) => {
@@ -266,6 +269,8 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	context.claimSubAgentUsage = undefined;
 	// Telemetry-off is the default; product-telemetry tests set their own spy.
 	context.trackTelemetry = undefined;
+	// Deep mocks make currentUserMessage truthy; an empty handoff must stay empty.
+	context.currentUserMessage = undefined;
 
 	return { context, delegate, publishedEvents };
 }
@@ -307,6 +312,31 @@ describe('build-agent tool', () => {
 			modelConfig: context.modelId,
 			abortSignal: context.abortSignal,
 		});
+	});
+
+	it('appends a host-injected aia-handoff envelope on the first-leg streamBuild', async () => {
+		const { context, delegate } = makeContext();
+		context.currentUserMessage = 'automatic';
+		context.domainContext!.resolvedUserDecisions = [
+			{ question: 'How should we set up the OpenAI credential?', answer: 'automatic' },
+		];
+		context.domainContext!.currentUserAttachments = [
+			{ type: 'file', fileName: 'brief.pdf', mimeType: 'application/pdf', data: 'QUJD' },
+		];
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+		await runTool(context, { message: 'Build a sarcastic chatbot', name: 'Chatbot' });
+
+		const outbound = vi.mocked(delegate.streamBuild).mock.calls[0]?.[1];
+		expect(outbound).toContain('Build a sarcastic chatbot');
+		expect(outbound).toContain('<aia-handoff>');
+		expect(outbound).toContain('automatic');
+		expect(outbound).toContain('How should we set up the OpenAI credential?');
+		expect(outbound).toContain('brief.pdf');
+		expect(outbound).toContain('application/pdf');
+		expect(outbound).not.toContain('QUJD');
+		expect(context.domainContext!.resolvedUserDecisions).toEqual([]);
 	});
 
 	it('forwards the parent MCP tools to the initial builder turn', async () => {
@@ -393,6 +423,7 @@ describe('build-agent tool', () => {
 		// stream is consumed. A call-time rejection (as this test used to simulate) cannot
 		// happen in production; see build-agent.tool.ts's `runBuilderConsumeLoop` catch.
 		const { context, delegate, publishedEvents } = makeContext();
+		context.domainContext!.resolvedUserDecisions = [{ question: 'Which model?', answer: 'Claude' }];
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockResolvedValue(
 			throwingStream(
@@ -421,10 +452,14 @@ describe('build-agent tool', () => {
 			role: 'agent-builder',
 			error: friendlyMessage,
 		});
+		expect(context.domainContext!.resolvedUserDecisions).toEqual([
+			{ question: 'Which model?', answer: 'Claude' },
+		]);
 	});
 
 	it('publishes agent-completed and rethrows when streamBuild throws an unknown error', async () => {
 		const { context, delegate, publishedEvents } = makeContext();
+		context.domainContext!.resolvedUserDecisions = [{ question: 'Which model?', answer: 'Claude' }];
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockRejectedValue(new Error('boom'));
 
@@ -441,6 +476,9 @@ describe('build-agent tool', () => {
 			role: 'agent-builder',
 			error: 'boom',
 		});
+		expect(context.domainContext!.resolvedUserDecisions).toEqual([
+			{ question: 'Which model?', answer: 'Claude' },
+		]);
 	});
 
 	it('publishes agent-completed and rethrows when consumeStreamCascading itself throws mid-loop', async () => {
@@ -1668,6 +1706,36 @@ describe('build-agent tool', () => {
 			});
 		});
 
+		it('does not append an aia-handoff envelope on resume', async () => {
+			const { context, delegate } = makeContext();
+			context.currentUserMessage = 'automatic';
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			context.domainContext!.resolvedUserDecisions = [
+				{ question: 'How should we set up the OpenAI credential?', answer: 'automatic' },
+			];
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Using Slack.'));
+			const resumeData = {
+				approved: true,
+				answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
+			};
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{ resumeData, suspendPayload: suspendPayloadWithCheckpoint() },
+			);
+
+			expect(delegate.streamBuild).not.toHaveBeenCalled();
+			expect(delegate.resumeBuild).toHaveBeenCalledWith(
+				'agent-1',
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData },
+				expect.any(Object),
+			);
+		});
+
 		it('forwards the parent MCP tools to the resumed builder turn', async () => {
 			const { context, delegate } = makeContext();
 			const mcpTools = fakeMcpTools();
@@ -2306,7 +2374,11 @@ describe('build-agent tool', () => {
 				agentRole: 'agent-builder',
 				functionId: 'instance-ai.subagent.agent-builder',
 				executionMode: 'foreground',
-				metadata: { agent_id: 'agent-builder:agent-1', target_agent_id: 'agent-1' },
+				metadata: {
+					agent_id: 'agent-builder:agent-1',
+					target_agent_id: 'agent-1',
+					model_id: 'anthropic/claude-sonnet-host-resolved',
+				},
 			});
 			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
 			expect(sessionArg).toEqual(expect.objectContaining({ telemetry: sentinelTelemetry }));

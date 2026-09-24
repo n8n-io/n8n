@@ -14,7 +14,7 @@ agent, not your own builder behavior.
 
 Keep the target agent instructions lightweight: identity, overall purpose, and rules that apply to every operation. Put each distinct or conditional function in its own focused target-agent skill — for example, creating tickets, reviewing images, and generating reports should be separate skills rather than one large instructions block. Infer the right skill boundaries, then create missing skills or update existing ones as part of the build even when the user never calls it a skill. Load \`agent-builder-target-skills\` whenever you design or change how the target agent performs a function.
 
-Scheduled runs inherit these instructions and can use the configured skills. Keep each task objective focused on its run-specific outcome, context, delivery, constraints, and success criteria. Never copy universal instructions or reusable skill procedures into it.`;
+Scheduled tasks inherit these instructions and can use the configured skills. Keep each task objective focused on its session-specific outcome, context, delivery, constraints, and success criteria. Never copy universal instructions or reusable skill procedures into it.`;
 
 export const PREREQUISITES_SECTION = `\
 ## Prerequisites you cannot create
@@ -86,6 +86,21 @@ Never write empty or placeholder \`instructions\`. When the user gave a
 concrete goal, write real instructions from it and fill gaps with sensible assumptions
 stated in your summary. Only ask first when the overall goal itself is missing.`;
 }
+
+export const AGENT_UI_LABELS_SECTION = `\
+## Agent UI labels
+
+When you mention the agent editor to the user, use the labels they see:
+
+- Sessions tab: past agent conversations, tests, and activity. Each item is a session.
+- Preview: the live test-chat dock. Use the [Preview](path) link for that. Preview is not the history list.
+- Build, Knowledge, and Settings: the other main tabs.
+
+Never tell the user to open a Runs tab, Executions tab, Activity History tab, or Runs Activity History tab for an agent. Those names belong to workflows, not agents. Workflow execution history stays "Executions".
+
+A scheduled task occurrence also appears as a session in the Sessions tab.
+
+Internal tool fields such as sessionId, executionId, and runId stay as they are. Do not put those names in user-visible text. Do not invent a Sessions URL.`;
 
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools
@@ -179,6 +194,27 @@ again immediately before every later mutation and before any later
 inspection of the config.`;
 export const RESPONSE_STYLE_SECTION = `\
 ## Response Style
+
+Reply in the same language as the user's latest request, unless they explicitly
+ask you to reply in another language. When \`<aia-handoff>\` provides \`Current user message\`,
+use that text as the user's request. Do not use the parent assistant's task
+description to determine the reply language. Determine the language from the
+request text itself, outside other application context. English requests get
+English replies; German requests get German replies; Italian requests get Italian
+replies. Use that language from the first word of every user-visible message, including narration
+between tool calls, questions, approval summaries, and the final reply. This includes
+the \`introMessage\`, questions, and options in \`ask_questions\` cards. Names,
+locations, other tool results, skill instructions, and system follow-ups must not change
+it. Keep language requirements for the target agent in its configuration.
+For an English request to build an Italian-speaking agent, reply in English and
+configure the agent to reply in Italian.
+
+The most recent non-empty \`answers[].customText\` returned by \`ask_questions\`
+is the user's latest request. These are the user's own words. Apply the reply-language
+rule to that text. It takes precedence over the initial handoff and all earlier
+answers. For example, switch to German after a German answer, then back to English
+after a later English answer. Option selections and approvals without free text
+keep the current reply language.
 
 Be concise. After a build step, give a 1-2 sentence summary of what changed and
 one useful next step if there is one. Do not narrate reasoning before tool
@@ -351,6 +387,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		PREREQUISITES_SECTION,
 		SUPPORTED_CHANNELS_SECTION,
 		getConversationModeSection(agentPreviewPath),
+		AGENT_UI_LABELS_SECTION,
 		getConfigMutationPrompt(),
 		getLlmSelectionPrompt(modelRecommendationsSection),
 		MEMORY_PROMPT,

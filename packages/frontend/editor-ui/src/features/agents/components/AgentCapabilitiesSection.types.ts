@@ -5,6 +5,8 @@ import type { AgentJsonToolRef } from '../types';
 
 export type ToolRowNodeType = SimplifiedNodeType | null;
 
+export type ToolPickerMode = 'tools' | 'workflows';
+
 export type ToolOpenTarget =
 	| {
 			kind: 'tool';

@@ -482,6 +482,24 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'instance-context': {
+			// Store the row on the root so history replay restores it.
+			const root = ensureAgent(state, state.rootAgentId);
+			// Match by run ID. A message group can contain several turns.
+			const alreadyShown = root?.timeline.some(
+				(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
+			);
+			if (root && !alreadyShown) {
+				root.timeline.push({
+					type: 'instance-context',
+					runId: event.runId,
+					injection: event.payload.injection,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
 		case 'tasks-update': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
@@ -499,9 +517,34 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// semantics: last event wins per workflowId.
 			const root = ensureAgent(state, state.rootAgentId);
 			if (root && isSafeObjectKey(event.payload.workflowId)) {
+				root.latestSetupAnnouncement = {
+					workflowId: event.payload.workflowId,
+					agentId: ensureAgent(state, event.agentId)?.agentId ?? event.agentId,
+					timestamp: eventTimestamp(event),
+				};
 				root.setupItemsByWorkflowId = {
 					...root.setupItemsByWorkflowId,
 					[event.payload.workflowId]: event.payload.items,
+				};
+			}
+			break;
+		}
+
+		// A later fact about a preference the `save_user_preference` tool saved: the user
+		// edited it or undid it from the card. It folds onto the tool call so the card
+		// renders the current state after a reload, without asking the database.
+		case 'preference-card': {
+			// The id comes from a request body, so an inherited name like `toString`
+			// must not resolve to a function on the prototype.
+			if (!Object.hasOwn(state.toolCallsById, event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				tc.preferenceCard = {
+					state: event.payload.state,
+					// An undo fact carries no content, so keep the last one a fact named. An
+					// edit then an undo must strike out the edited text, not the text the
+					// tool result still holds.
+					content: event.payload.content ?? tc.preferenceCard?.content,
 				};
 			}
 			break;
@@ -545,6 +588,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				if (state.status === 'cancelled') {
 					root.cancellationReason = categorizeCancellation(event.payload.reason);
 				}
+				// The terminal event contains reads from all segments. Match it to this run's row.
+				const { contextReach } = event.payload;
+				const contextEntry = root.timeline.find(
+					(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
+				);
+				if (contextReach && contextEntry?.type === 'instance-context') {
+					contextEntry.reach = contextReach;
+				}
 			}
 			// A terminated run can't have tool calls still in-flight.
 			// Clear isLoading so folded history trees don't show stale confirmations.
@@ -558,8 +609,11 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		// `preferences-applied` names the saved preferences the turn carried. The chat and
+		// the plus menu read it from the durable log, so the run tree holds no copy.
 		case 'filesystem-request':
-		case 'thread-title-updated': {
+		case 'thread-title-updated':
+		case 'preferences-applied': {
 			// Handled externally — no state change
 			break;
 		}

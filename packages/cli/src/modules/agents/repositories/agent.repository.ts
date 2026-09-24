@@ -12,6 +12,11 @@ import {
 
 import { Agent } from '../entities/agent.entity';
 
+export interface AgentListResult {
+	count: number;
+	data: Agent[];
+}
+
 export type AgentSummary = Pick<
 	Agent,
 	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
@@ -86,7 +91,7 @@ export class AgentRepository extends Repository<Agent> {
 		projectIds: string[] | null,
 		options: ListAgentsQueryDto,
 		{ withProject = false }: { withProject?: boolean } = {},
-	): Promise<{ count: number; data: Agent[] }> {
+	): Promise<AgentListResult> {
 		if (projectIds?.length === 0) return { count: 0, data: [] };
 
 		const query = this.createQueryBuilder('agent').leftJoinAndSelect(
@@ -208,6 +213,15 @@ export class AgentRepository extends Repository<Agent> {
 	/** Ownership check only — skips `findByIdAndProjectId`'s `activeVersion` load. */
 	async existsByIdAndProjectId(id: string, projectId: string): Promise<boolean> {
 		return await this.exists({ where: { id, projectId } });
+	}
+
+	/** Lightweight project-id lookup — avoids loading the full agent config. */
+	async getProjectIdById(id: string): Promise<string | null> {
+		const result = await this.findOne({
+			select: ['projectId'],
+			where: { id },
+		});
+		return result?.projectId ?? null;
 	}
 
 	async findByIdsAndProjectId(

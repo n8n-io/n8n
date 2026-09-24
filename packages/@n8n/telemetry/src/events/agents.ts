@@ -451,8 +451,9 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			manual: z
 				.boolean()
 				.optional()
+				.meta({ deprecated: true })
 				.describe(
-					'True when the click came from a "Create agent manually" entry point that skips the Instance AI flow',
+					'Deprecated: the "Create agent manually" entry point was removed. No longer emitted.',
 				),
 			session_id: sessionId,
 		}),

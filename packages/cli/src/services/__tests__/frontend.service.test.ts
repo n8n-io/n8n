@@ -38,6 +38,7 @@ describe('FrontendService', () => {
 		tags: { disabled: false },
 		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
+		expressionEngine: { frontendEngine: 'legacy' },
 		hiringBanner: { enabled: false },
 		versionNotifications: {
 			enabled: false,
@@ -777,6 +778,27 @@ describe('FrontendService', () => {
 					N8N_ENV_FEAT_NEW_FLAG: 'true',
 				});
 			});
+		});
+	});
+
+	describe('expressionEngine setting', () => {
+		afterEach(() => {
+			globalConfig.expressionEngine.frontendEngine = 'legacy';
+		});
+
+		it('should surface the frontend expression engine from config', async () => {
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.expressionEngine).toBe('legacy');
+		});
+
+		// The default alone would still pass if the value were hard-coded.
+		it('should surface quickjs when the config selects it', async () => {
+			globalConfig.expressionEngine.frontendEngine = 'quickjs';
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+			expect(settings.expressionEngine).toBe('quickjs');
 		});
 	});
 

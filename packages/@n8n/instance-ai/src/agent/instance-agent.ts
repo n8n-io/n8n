@@ -27,6 +27,8 @@ import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
 	mergeTraceRunInputs,
+	modelIdTraceMetadata,
+	setTraceModelId,
 	setTracePromptVersion,
 } from '../tracing/langsmith-tracing';
 import type {
@@ -105,6 +107,9 @@ export async function createInstanceAgent(
 			context.runtimeSkillCatalog ??
 			orchestrationContext?.runtimeSkills,
 	};
+	if (orchestrationContext) {
+		orchestrationContext.domainContext = domainContext;
+	}
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change). The manager
 	// returns per-server connection failures alongside the tools so they travel
@@ -134,10 +139,6 @@ export async function createInstanceAgent(
 					: undefined,
 			})
 		: createToolRegistry();
-
-	const browserToolNames = new Set(
-		context.localMcpServer?.getToolsByCategory('browser').map((tool) => tool.name) ?? [],
-	);
 
 	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
 		context.logger.warn('Skipped MCP tool with unsafe name', {
@@ -176,10 +177,8 @@ export async function createInstanceAgent(
 		if (builderMcpTools.size > 0) orchestrationContext.mcpTools = builderMcpTools;
 	}
 
-	const orchestratorDomainTools = createOrchestratorDomainTools({
-		...domainContext,
-		connectedMcpServices: listConnectedMcpServices(mcpServers, safeMcpTools),
-	});
+	domainContext.connectedMcpServices = listConnectedMcpServices(mcpServers, safeMcpTools);
+	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
 
 	const allOrchestratorTools = mergeToolRegistries(
 		orchestratorDomainTools,
@@ -207,16 +206,16 @@ export async function createInstanceAgent(
 		{
 			webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 			formBaseUrl: orchestrationContext?.formBaseUrl,
-			localGateway: context.localGatewayStatus,
+			computerUseState: context.computerUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,
-			browserAvailable: browserToolNames.size > 0,
 			branchReadOnly: context.branchReadOnly,
 			projectId: context.projectId,
 			// Presence of the service IS the experiment gate — the host only wires it
 			// for flagged-in users on project-bound runs.
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
+			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
@@ -229,10 +228,12 @@ export async function createInstanceAgent(
 		orchestrationContext?.tracing,
 		orchestrationContext?.promptConfiguration?.version,
 	);
+	setTraceModelId(orchestrationContext?.tracing, modelId);
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
 		functionId: 'instance-ai.orchestrator',
 		executionMode: 'foreground',
+		metadata: modelIdTraceMetadata(modelId),
 	});
 	const agent = new Agent('n8n-instance-agent')
 		.model(modelId)
@@ -268,11 +269,12 @@ export async function createInstanceAgent(
 		const mem = new Memory().storage(options.memory);
 
 		if (memoryConfig.observationalMemory) {
-			const { observerThresholdTokens, reflectorThresholdTokens, onTaskUsage } =
+			const { observerThresholdTokens, reflectorThresholdTokens, midRunObservation, onTaskUsage } =
 				memoryConfig.observationalMemory;
 			mem.observationalMemory({
 				observerThresholdTokens,
 				reflectorThresholdTokens,
+				...(midRunObservation !== undefined ? { midRunObservation } : {}),
 				...(onTaskUsage
 					? {
 							observe: createObservationLogObserveFn(modelId, { onUsage: onTaskUsage }),

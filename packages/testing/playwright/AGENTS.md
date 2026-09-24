@@ -1,5 +1,27 @@
 # AGENTS.md
 
+## Purpose
+
+Playwright is n8n's general-purpose test orchestrator. Do not assume that every
+Playwright test drives the editor UI. This package also owns API tests, container
+topologies, process lifecycle tests, infrastructure validation, performance
+benchmarks, evaluation suites, and browser-backed harness contracts.
+
+Choose the suite by the behavior under test:
+
+| Behavior | Location | Runner |
+|----------|----------|--------|
+| Product UI or API journey | `tests/e2e/` | `test:local` or a container project |
+| Database, queue, multi-main, encryption, or process lifecycle | `tests/infrastructure/` | `test:infrastructure` or the named project |
+| Infrastructure throughput and resource use | `tests/infrastructure/benchmarks/` | `test:benchmark` |
+| Browser and canvas performance | `tests/performance/` | `test:performance` |
+| Fixture or harness contract | `tests/framework/` | `test:unit` or `test:harness` |
+| Evaluation scenario | Existing evaluation directory | Its named evaluation project |
+
+Use Playwright when the test needs its worker lifecycle, fixtures, retries,
+artifacts, project matrix, browser context, or managed container stack. Use
+Vitest for browser-free unit and integration tests that need none of these.
+
 ## Commands
 
 ```bash
@@ -9,6 +31,9 @@ pnpm --filter=n8n-playwright test:local tests/e2e/credentials/crud.spec.ts
 
 # Run with container capabilities (requires pnpm build:docker first)
 pnpm --filter=n8n-playwright test:container:sqlite tests/e2e/auth/password-reset.spec.ts
+
+# Run one infrastructure benchmark
+pnpm --filter=n8n-playwright test:benchmark tests/infrastructure/benchmarks/kafka/single-instance-ceiling.spec.ts
 
 # Lint and typecheck
 pnpm --filter=n8n-playwright lint
@@ -177,9 +202,11 @@ pnpm janitor --file=tests/my-new-test.spec.ts --verbose
 
 See `packages/testing/janitor/README.md` for full documentation.
 
-## Entry Points
+## UI Entry Points
 
-All tests should start with `n8n.start.*` methods. See `composables/TestEntryComposer.ts`.
+UI journey tests should start with `n8n.start.*` methods. API, infrastructure,
+benchmark, lifecycle, and framework tests use their own fixtures and harnesses.
+See `composables/TestEntryComposer.ts` for UI entry points.
 
 | Method | Use Case |
 |--------|----------|

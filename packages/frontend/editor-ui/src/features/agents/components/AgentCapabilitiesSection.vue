@@ -7,22 +7,33 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
 import { N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
+import { useCreateAgent } from '../composables/useCreateAgent';
+import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { isWarningIssue } from '../utils/validationIssues';
-import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
-import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
+import type {
+	ToolMenuItem,
+	ToolOpenTarget,
+	ToolPickerMode,
+	ToolRow,
+	SingleToolRow,
+} from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentSkillsSection from './AgentSkillsSection.vue';
+import AgentWebSearchSection from './AgentWebSearchSection.vue';
 
 export type AgentCapabilitySection = 'tools' | 'tasks' | 'skills' | 'subAgents';
+type CapabilityRow = Exclude<AgentCapabilitySection, 'tasks'> | 'workflows';
 
 const props = withDefaults(
 	defineProps<{
@@ -63,7 +74,7 @@ function showSection(section: AgentCapabilitySection): boolean {
 const emit = defineEmits<{
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
-	'add-tool': [];
+	'add-tool': [mode: ToolPickerMode];
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
@@ -76,8 +87,10 @@ const i18n = useI18n();
 const toast = useToast();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const { createAgent } = useCreateAgent();
 
 const projectIdRef = computed(() => props.projectId);
+const { canCreate: canCreateAgent } = useAgentPermissions(projectIdRef);
 const {
 	list: projectAgents,
 	ensureLoaded: ensureProjectAgentsLoaded,
@@ -91,9 +104,7 @@ const selectedSubAgentIds = computed(() =>
 );
 const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
 const availableSubAgents = computed(() =>
-	(projectAgents.value ?? []).filter(
-		(agent) => agent.id !== props.agentId && !selectedSubAgentIdSet.value.has(agent.id),
-	),
+	(projectAgents.value ?? []).filter((agent) => agent.id !== props.agentId),
 );
 const selectedSubAgents = computed(() =>
 	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
@@ -112,93 +123,7 @@ const selectedSubAgents = computed(() =>
 		};
 	}),
 );
-// `as BaseTextKey`: these keys are new (see en.json) and not yet reflected in
-// @n8n/i18n's built type declarations — matches the same workaround already
-// used for `agents.builder.preview.disabledTooltip` in AgentBuilderHeader.vue.
-const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
-};
-
-/** Kind-specific overrides, keyed `<kind>.<code>` or `tool.<toolType>.<code>`. */
-const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
-	'subAgent.missing_reference':
-		'agents.builder.validation.issue.subAgent.missingReference' as BaseTextKey,
-	'subAgent.incompatible_reference':
-		'agents.builder.validation.issue.subAgent.incompatibleReference' as BaseTextKey,
-	'skill.missing_reference':
-		'agents.builder.validation.issue.skill.missingReference' as BaseTextKey,
-	'tool.workflow.missing_reference':
-		'agents.builder.validation.issue.tool.workflow.missingReference' as BaseTextKey,
-	'tool.workflow.incompatible_reference':
-		'agents.builder.validation.issue.tool.workflow.incompatibleReference' as BaseTextKey,
-	'tool.custom.missing_reference':
-		'agents.builder.validation.issue.tool.custom.missingReference' as BaseTextKey,
-	'tool.node.missing_reference':
-		'agents.builder.validation.issue.tool.node.missingReference' as BaseTextKey,
-	'mcpServer.incompatible_credential':
-		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
-};
-
-/**
- * Reason-specific overrides for `incompatible_reference` issues that carry a
- * `reason` discriminator (currently workflow tools). Keyed by the `reason`
- * string emitted by the backend. Takes precedence over the kind/code key so
- * the message names the actual problem (e.g. "contains a Wait node") instead
- * of the generic "can't be used as an agent tool".
- */
-const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
-	incompatible_nodes:
-		'agents.builder.validation.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
-	no_supported_trigger:
-		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
-	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
-};
-
-function issueMessage(issue: AgentConfigValidationIssue): string {
-	const { kind, toolType, id } = issue.capability;
-	const key =
-		(issue.reason ? REASON_SPECIFIC_KEYS[issue.reason] : undefined) ??
-		(kind === 'tool' && toolType
-			? SPECIFIC_ISSUE_KEYS[`tool.${toolType}.${issue.code}`]
-			: undefined) ??
-		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
-		GENERIC_ISSUE_KEYS[issue.code];
-	return i18n.baseText(key, {
-		interpolate: { id: id ?? '', trigger: workflowToolTriggerLabel() },
-	});
-}
-
-function issueMessages(issues: AgentConfigValidationIssue[]): string[] {
-	return [...new Set(issues.map(issueMessage))];
-}
-
-function issuesFor(kind: AgentConfigValidationIssue['capability']['kind']) {
-	return props.validationIssues.filter((issue) => issue.capability.kind === kind);
-}
-
-/** Group a capability kind's issues into per-key message lists, keyed by `keyOf`. */
-function groupIssueMessages<TKey>(
-	kind: AgentConfigValidationIssue['capability']['kind'],
-	keyOf: (issue: AgentConfigValidationIssue) => TKey | undefined,
-	include: (issue: AgentConfigValidationIssue) => boolean = () => true,
-): Map<TKey, string[]> {
-	const byKey = new Map<TKey, AgentConfigValidationIssue[]>();
-	for (const issue of issuesFor(kind)) {
-		if (!include(issue)) continue;
-		const key = keyOf(issue);
-		if (key === undefined) continue;
-		const existing = byKey.get(key);
-		if (existing) existing.push(issue);
-		else byKey.set(key, [issue]);
-	}
-	return new Map([...byKey].map(([key, issues]) => [key, issueMessages(issues)]));
-}
+const { groupIssueMessages } = useAgentCapabilityIssueMessages(() => props.validationIssues);
 
 // Warnings (an unpublished workflow) render orange and leave the preview usable;
 // everything else is a red error.
@@ -214,9 +139,6 @@ const toolWarningMessages = computed(() =>
 );
 const mcpServerIssueMessages = computed(() =>
 	groupIssueMessages('mcpServer', (issue) => issue.capability.id),
-);
-const skillIssueMessages = computed(() =>
-	groupIssueMessages('skill', (issue) => issue.capability.id),
 );
 const subAgentIssueMessages = computed(() =>
 	groupIssueMessages('subAgent', (issue) => issue.capability.id),
@@ -344,9 +266,9 @@ function toolEntryReasons(entry: CapabilityToolEntry): string[] {
 	return toolIssueMessages.value.get(entry.index) ?? [];
 }
 
-const toolRows = computed<ToolRow[]>(() => {
+function buildCapabilityToolRows(entries: CapabilityToolEntry[]): ToolRow[] {
 	return buildToolRows(
-		capabilityTools.value.map((entry) => {
+		entries.map((entry) => {
 			const nodeType = toolNodeType(entry);
 			const reasons = toolEntryReasons(entry);
 			const warningReasons =
@@ -366,30 +288,41 @@ const toolRows = computed<ToolRow[]>(() => {
 			};
 		}),
 	);
-});
+}
 
-const capabilitySectionItemCounts = computed<
-	Record<Exclude<AgentCapabilitySection, 'tasks'>, number>
->(() => ({
+const toolRows = computed<ToolRow[]>(() =>
+	buildCapabilityToolRows(
+		capabilityTools.value.filter(
+			(entry) => entry.kind === 'mcpServer' || entry.tool.type !== 'workflow',
+		),
+	),
+);
+
+const workflowRows = computed<SingleToolRow[]>(() =>
+	buildCapabilityToolRows(
+		capabilityTools.value.filter(
+			(entry) => entry.kind === 'tool' && entry.tool.type === 'workflow',
+		),
+	).filter((row): row is SingleToolRow => !row.isGrouped),
+);
+
+const capabilityRowItemCounts = computed<Record<CapabilityRow, number>>(() => ({
 	tools: toolRows.value.length,
+	workflows: workflowRows.value.length,
 	skills: props.skills.length,
 	subAgents: selectedSubAgents.value.length,
 }));
 
-const orderedCapabilitySections = computed(() => {
-	const sections = props.sections.filter(
-		(section): section is Exclude<AgentCapabilitySection, 'tasks'> => section !== 'tasks',
-	);
-	const sectionsWithItems = sections.filter(
-		(section) => capabilitySectionItemCounts.value[section] > 0,
-	);
-
-	if (sectionsWithItems.length === 0 || sectionsWithItems.length === sections.length)
-		return sections;
+const orderedCapabilityRows = computed(() => {
+	const rows = props.sections.flatMap<CapabilityRow>((section) => {
+		if (section === 'tasks') return [];
+		if (section === 'tools') return ['tools', 'workflows'];
+		return [section];
+	});
 
 	return [
-		...sectionsWithItems,
-		...sections.filter((section) => capabilitySectionItemCounts.value[section] === 0),
+		...rows.filter((row) => capabilityRowItemCounts.value[row] > 0),
+		...rows.filter((row) => capabilityRowItemCounts.value[row] === 0),
 	];
 });
 
@@ -465,14 +398,33 @@ async function openSubAgentsModal() {
 	uiStore.openModalWithData({
 		name: AGENT_SUB_AGENTS_MODAL_KEY,
 		data: {
-			agents: availableSubAgents.value.map(({ id, name }) => ({
-				id,
-				name,
-			})),
+			agents: availableSubAgents.value.map(({ id, name }) => {
+				const selectedRef = selectedSubAgentRefs.value.find((ref) => ref.agentId === id);
+				return {
+					id,
+					name,
+					added: Boolean(selectedRef),
+					useWhen: selectedRef?.useWhen,
+					invalidReasons: subAgentIssueMessages.value.get(id) ?? [],
+					agentHref: `/projects/${encodeURIComponent(props.projectId)}/agents/${encodeURIComponent(id)}`,
+				};
+			}),
+			onCreateAgent: canCreateAgent.value
+				? () => createAgent('button', props.projectId)
+				: undefined,
 			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
-				if (selectedSubAgentIdSet.value.has(agentId)) return;
+				const nextRef = toSubAgentRef(agentId, useWhen);
+				if (selectedSubAgentIdSet.value.has(agentId)) {
+					emitSubAgentRefs(
+						selectedSubAgentRefs.value.map((ref) => (ref.agentId === agentId ? nextRef : ref)),
+					);
+					return;
+				}
 
-				emitSubAgentRefs([...selectedSubAgentRefs.value, toSubAgentRef(agentId, useWhen)]);
+				emitSubAgentRefs([...selectedSubAgentRefs.value, nextRef]);
+			},
+			onRemove: (agentId: string) => {
+				emitSubAgentRefs(selectedSubAgentRefs.value.filter((ref) => ref.agentId !== agentId));
 			},
 		},
 	});
@@ -512,7 +464,7 @@ function openExistingSubAgentModal(subAgent: {
 <template>
 	<div>
 		<div :class="$style.section" data-testid="agent-capabilities-section">
-			<template v-for="section in orderedCapabilitySections" :key="section">
+			<template v-for="section in orderedCapabilityRows" :key="section">
 				<AgentChipRow
 					v-if="section === 'tools'"
 					:label="i18n.baseText('agents.builder.tools.title')"
@@ -520,7 +472,7 @@ function openExistingSubAgentModal(subAgent: {
 					:add-label="i18n.baseText('agents.builder.tools.add')"
 					add-button-test-id="agent-capabilities-add-tool"
 					:disabled="props.disabled"
-					@add="emit('add-tool')"
+					@add="emit('add-tool', 'tools')"
 				>
 					<div v-for="tool in toolRows" :key="`tool-${tool.index}`" :class="$style.chipGroup">
 						<N8nDropdownMenu
@@ -611,28 +563,43 @@ function openExistingSubAgentModal(subAgent: {
 				</AgentChipRow>
 
 				<AgentChipRow
-					v-else-if="section === 'skills'"
-					:label="i18n.baseText('agents.builder.skills.title')"
-					:item-count="skills.length"
-					:add-label="i18n.baseText('agents.builder.skills.add')"
-					add-button-test-id="agent-capabilities-add-skill"
+					v-else-if="section === 'workflows'"
+					:label="i18n.baseText('generic.workflows')"
+					:item-count="workflowRows.length"
+					:add-label="i18n.baseText('workflows.add')"
+					add-button-test-id="agent-capabilities-add-workflow"
 					:disabled="props.disabled"
-					@add="emit('add-skill')"
+					@add="emit('add-tool', 'workflows')"
 				>
-					<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
+					<div
+						v-for="workflow in workflowRows"
+						:key="`workflow-${workflow.index}`"
+						:class="$style.chipGroup"
+					>
 						<AgentChipButton
-							icon="sparkles"
-							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
-							:invalid-reasons="skillIssueMessages.get(id) ?? []"
+							:icon="workflow.fallbackIcon"
+							:invalid="workflow.invalid"
+							:invalid-reasons="workflow.invalidReasons"
+							:warning="workflow.warning"
+							:warning-reasons="workflow.warningReasons"
 							:disabled="props.disabled"
 							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-skill-row"
-							@click="emit('open-skill', id)"
+							data-testid="agent-capabilities-workflow-row"
+							@click="emit('open-tool', workflow.tool.openTarget)"
 						>
-							{{ skill.name || id }}
+							{{ workflow.label }}
 						</AgentChipButton>
 					</div>
 				</AgentChipRow>
+
+				<AgentSkillsSection
+					v-else-if="section === 'skills'"
+					:skills="skills"
+					:disabled="props.disabled"
+					:validation-issues="props.validationIssues"
+					@open-skill="emit('open-skill', $event)"
+					@add-skill="emit('add-skill')"
+				/>
 
 				<AgentChipRow
 					v-else
@@ -658,6 +625,13 @@ function openExistingSubAgentModal(subAgent: {
 					</div>
 				</AgentChipRow>
 			</template>
+			<div :class="$style.divider" aria-hidden="true" />
+			<AgentWebSearchSection
+				:config="props.config"
+				:disabled="props.disabled"
+				:project-id="props.projectId"
+				@update:config="emit('update:config', $event)"
+			/>
 		</div>
 	</div>
 </template>
@@ -688,5 +662,12 @@ function openExistingSubAgentModal(subAgent: {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.divider {
+	flex: initial;
+	height: 1px;
+	background-color: var(--border-color--subtle);
+	margin-inline: calc(var(--spacing--sm) * -1);
 }
 </style>

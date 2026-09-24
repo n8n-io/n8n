@@ -19,6 +19,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import {
+	toPathSegment,
 	NodeApiError,
 	NodeOperationError,
 	safeInternalRegex,
@@ -138,7 +139,7 @@ export async function notionApiRequestGetBlockChildrens(
 				this,
 				'results',
 				'GET',
-				`/blocks/${block.id}/children`,
+				`/blocks/${toPathSegment(block.id)}/children`,
 			);
 
 			childrens = (childrens || []).map((entry: IDataObject) => ({

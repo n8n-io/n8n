@@ -15,6 +15,8 @@ export { chunkIds } from './utils/chunk-ids';
 export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
 export { escapeLike, LIKE_ESCAPE_CLAUSE } from './utils/escape-like';
 export { generateHostInstanceId } from './utils/generators';
+export { isEntityNotFoundError } from './utils/is-entity-not-found-error';
+export { isForeignKeyConstraintError } from './utils/is-foreign-key-constraint-error';
 export { isStringArray } from './utils/is-string-array';
 export { isUniqueConstraintError } from './utils/is-unique-constraint-error';
 export { isValidEmail } from './utils/is-valid-email';

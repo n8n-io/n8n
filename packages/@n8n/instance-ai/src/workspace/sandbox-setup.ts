@@ -46,9 +46,17 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
+import {
+	loadWorkflowDiagnosticsWorker,
+	SANDBOX_TYPESCRIPT_VERSION,
+	TSCONFIG_JSON,
+	WORKFLOW_DIAGNOSTICS_FILENAME,
+} from './sandbox-typescript';
 import { joinWorkspacePath } from './workspace-paths';
 import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
 import { traceSandboxOperation, sandboxFileBytes } from '../tracing/sandbox-tracing';
+
+export { TSCONFIG_JSON } from './sandbox-typescript';
 
 const hostRequire = createRequire(__filename);
 
@@ -189,6 +197,7 @@ const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
 function buildPackageJson(sdkSpecifier: string | null): string {
 	const dependencies: Record<string, string> = {
 		tsx: SANDBOX_TSX_VERSION,
+		typescript: SANDBOX_TYPESCRIPT_VERSION,
 	};
 	if (sdkSpecifier) {
 		dependencies['@n8n/workflow-sdk'] = sdkSpecifier;
@@ -308,27 +317,6 @@ try {
   process.exit(1);
 }
 `;
-
-export const TSCONFIG_JSON = JSON.stringify(
-	{
-		compilerOptions: {
-			strict: true,
-			// Disable strictNullChecks because the SDK's ifElse() returns NodeInstance
-			// where onTrue?/onFalse? are optional in the type (they're always present at runtime).
-			// Without this, tsc rejects `.onTrue()` / `.onFalse()` calls.
-			strictNullChecks: false,
-			noEmit: true,
-			target: 'ES2022',
-			module: 'ES2022',
-			moduleResolution: 'bundler',
-			esModuleInterop: true,
-			skipLibCheck: true,
-		},
-		include: ['src/**/*.ts', 'chunks/**/*.ts'],
-	},
-	null,
-	2,
-);
 
 /**
  * Build a searchable catalog line for a node type.
@@ -522,6 +510,7 @@ export async function setupSandboxWorkspace(
 			files.set('package.json', PACKAGE_JSON);
 			files.set('tsconfig.json', TSCONFIG_JSON);
 			files.set('build.mjs', BUILD_MJS);
+			files.set(WORKFLOW_DIAGNOSTICS_FILENAME, await loadWorkflowDiagnosticsWorker());
 
 			// Node types catalog
 			const nodeTypes = await setupStep(

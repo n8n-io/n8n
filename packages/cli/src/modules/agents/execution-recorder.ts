@@ -4,13 +4,14 @@ import {
 	emptyChildTrace,
 	settleChildTrace,
 	type PersistedChildTrace,
+	type AgentBackgroundJobSignal,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
-import type { ToolRegistry } from './tool-registry';
+import type { ToolRegistry, ToolRegistryEntry } from './tool-registry';
 
 /** Cap on child trace characters persisted per delegation. Tighter than the
  *  live forwarding budget because this is written into every parent execution row. */
@@ -202,7 +203,7 @@ function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | u
 export interface ToolCallDetails {
 	toolName: string;
 	displayName?: string;
-	kind: 'tool' | 'workflow' | 'node';
+	kind: ToolRegistryEntry['kind'];
 	input: unknown;
 	node?: {
 		type: string;
@@ -261,11 +262,12 @@ export interface RecordedUsage {
 }
 
 export type TimelineEvent =
+	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
 	| {
 			type: 'tool-call';
-			kind: 'tool' | 'workflow' | 'node';
+			kind: ToolRegistryEntry['kind'];
 			name: string;
 			toolCallId: string;
 			input: unknown;
@@ -326,8 +328,23 @@ export class ExecutionRecorder {
 	constructor(
 		registry?: ToolRegistry,
 		private readonly onTimelineSnapshot?: (timeline: TimelineEvent[]) => void,
+		backgroundJobSignal?: AgentBackgroundJobSignal,
 	) {
 		this.registry = registry ?? new Map();
+		if (backgroundJobSignal) {
+			this.timeline.push({
+				type: 'background-task-signal',
+				timestamp: this.startTime,
+				signal: {
+					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status }) => ({
+						id,
+						title: scrubSecretsInText(title),
+						kind,
+						status,
+					})),
+				},
+			});
+		}
 	}
 
 	private textParts: string[] = [];
@@ -430,6 +447,7 @@ export class ExecutionRecorder {
 				}
 				entry.childTrace ??= emptyChildTrace();
 				applyForwardedChildChunk(entry.childTrace, inner);
+				this.scheduleTimelineSnapshot();
 				break;
 			}
 			case 'tool-result':
@@ -491,6 +509,8 @@ export class ExecutionRecorder {
 
 	/** Build the final message record after the stream has ended. */
 	getMessageRecord(): MessageRecord {
+		clearTimeout(this.timelineSnapshotTimer);
+		this.timelineSnapshotTimer = undefined;
 		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 		return {
@@ -572,6 +592,8 @@ export class ExecutionRecorder {
 					timestamp: this.reasoningStartTime,
 					endTime: now,
 				});
+			} else {
+				this.emitTimelineSnapshot();
 			}
 		}, TIMELINE_BLOCK_MAX_DURATION_MS);
 		this.timelineSnapshotTimer.unref();

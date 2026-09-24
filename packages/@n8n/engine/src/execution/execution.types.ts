@@ -25,30 +25,38 @@ export interface CallerContext {
 	 * The host's own execution mode, which is finer than `ExecutionMode`. Opaque
 	 * to the engine; a v1 host stores its `WorkflowExecuteMode` here.
 	 */
-	hostMode?: string;
+	hostMode: string;
 }
 
 /**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
- * never runs.
+ * never runs. `waiting` is the other extreme: the step ran, but it produced no
+ * outcome. It still owes the execution one.
  */
-export type StepStatus = 'queued' | 'running' | 'completed' | 'failed' | 'skipped' | 'cancelled';
+export const STEP_STATUSES = [
+	'queued',
+	'running',
+	'waiting',
+	'completed',
+	'failed',
+	'skipped',
+	'cancelled',
+] as const;
+
+export type StepStatus = (typeof STEP_STATUSES)[number];
 
 /**
  * A settled step has reached a terminal state: its status and outputs are
  * immutable, and it will never produce more data. Planning decisions are made
  * over settled predecessors only, so they hold no matter when they're computed.
  */
-export const SETTLED_STEP_STATUSES: readonly StepStatus[] = [
-	'completed',
-	'failed',
-	'skipped',
-	'cancelled',
-];
+export const SETTLED_STEP_STATUSES = ['completed', 'failed', 'skipped', 'cancelled'] as const;
 
-export function isSettledStatus(status: StepStatus): boolean {
-	return SETTLED_STEP_STATUSES.includes(status);
+export type SettledStepStatus = (typeof SETTLED_STEP_STATUSES)[number];
+
+export function isSettledStatus(status: StepStatus): status is SettledStepStatus {
+	return (SETTLED_STEP_STATUSES as readonly StepStatus[]).includes(status);
 }
 
 /**
@@ -80,6 +88,50 @@ export type WorkflowDocument = JsonObject;
 
 /** Slots recorded for a trigger that fired without a payload: no slots at all. */
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
+
+/**
+ * A step's declaration that it is not done: instead of outputs, it says when
+ * to resume. The executor produces it, the engine persists it on the step row,
+ * and whatever resumes the step reads it back — the engine never interprets
+ * what a resume means to the node.
+ *
+ * A deadline can end the wait. A resume request can end it. A declaration can
+ * name both, and then the first of the two ends it. A deadline comes paired
+ * with the slots it emits, because the step is never re-run.
+ */
+export type WaitDeclaration =
+	| {
+			/** Deadline, ISO-8601. */
+			resumeAt: string;
+			/** The slots the step emits when the deadline fires. */
+			outputsAtDeadline: StepSlots;
+			/** Whether a resume request may end the wait early. */
+			acceptsResumeRequest: boolean;
+	  }
+	| {
+			/** No deadline, so only a resume request ends this wait. */
+			resumeAt?: never;
+			outputsAtDeadline?: never;
+			acceptsResumeRequest: true;
+	  };
+
+/**
+ * What ended a step's wait, recorded on the row when it resumed. No node code
+ * runs on a resume. A deadline carries nothing: the declaration already holds
+ * the outputs to emit. A request carries the outputs the node's resume path
+ * produced where the request arrived, and the engine emits them unread.
+ */
+export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: StepSlots };
+
+/**
+ * A wait with no deadline and no resume request would never end, and would
+ * strand the execution. The union above makes that unrepresentable. This
+ * function catches only a declaration that an executor built outside the type
+ * system, as `assertCreatableRecord` does for step creation.
+ */
+export function hasResumeCondition(wait: WaitDeclaration): boolean {
+	return wait.acceptsResumeRequest || wait.resumeAt !== undefined;
+}
 
 /**
  * The error that failed a step, as persisted on its row. Shared: the execution

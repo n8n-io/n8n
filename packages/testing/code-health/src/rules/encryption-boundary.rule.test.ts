@@ -120,8 +120,7 @@ describe('EncryptionBoundaryRule', () => {
 			const downgraded = `${BOUNDARY_CONFIG.trimEnd()}
 export const extra = {
 	rules: {
-		'n8n-local-rules/no-deployment-key-delete': 'off',
-		'n8n-local-rules/no-legacy-cipher-methods': ['warn'],
+		'n8n-local-rules/no-encryption-guardrail-disable': ['warn'],
 		'n8n-local-rules/no-uncaught-json-parse': 'off',
 	},
 };
@@ -130,11 +129,8 @@ export const extra = {
 
 			const violations = await analyze();
 
-			expect(violations).toHaveLength(2);
-			expect(violations[0]).toContain('eslint.config.mjs:7');
-			expect(violations[0]).toContain('no-deployment-key-delete');
-			expect(violations[1]).toContain('eslint.config.mjs:8');
-			expect(violations[1]).toContain('no-legacy-cipher-methods');
+			expect(violations).toHaveLength(1);
+			expect(violations[0]).toContain('no-encryption-guardrail-disable');
 		});
 	});
 
@@ -181,13 +177,45 @@ export const extra = {
 			expect(violations[2]).toContain('`eslint-disable` directive silences every lint rule');
 		});
 
+		it('flags oxlint-spelled directives the same way', async () => {
+			write(
+				'packages/a/src/index.ts',
+				[
+					'// oxlint-disable-next-line n8n-local-rules/no-encryption-guardrail-disable',
+					'export const a = 1; // oxlint-disable-line no-console',
+					'/* oxlint-disable */',
+					'/* oxlint n8n-local-rules/no-encryption-guardrail-disable: "off" */',
+					'',
+				].join('\n'),
+			);
+
+			const violations = await analyze();
+
+			expect(violations).toHaveLength(3);
+			expect(violations[0]).toContain('no-encryption-guardrail-disable');
+			expect(violations[1]).toContain('`oxlint-disable` directive silences every lint rule');
+			expect(violations[2]).toContain('inline `oxlint` configuration comment');
+		});
+
+		it('accepts oxlint directives that name unrelated rules', async () => {
+			write(
+				'packages/a/src/index.ts',
+				[
+					'// oxlint-disable-next-line typescript/no-explicit-any',
+					'/* oxlint-disable unicorn/filename-case */',
+					'',
+				].join('\n'),
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
+
 		it('flags directives that name a guarded rule, with or without the plugin prefix', async () => {
 			write(
 				'packages/a/src/index.ts',
 				[
-					'// eslint-disable-next-line n8n-local-rules/no-legacy-cipher-methods',
-					'export const a = 1; // eslint-disable-line no-console, no-deployment-key-delete',
-					'/* eslint-disable n8n-local-rules/no-misplaced-cipher-primitives */',
+					'// eslint-disable-next-line n8n-local-rules/no-encryption-guardrail-disable',
+					'export const a = 1; // eslint-disable-line no-console',
 					'/* eslint n8n-local-rules/no-encryption-guardrail-disable: "off" */',
 					'',
 				].join('\n'),
@@ -195,11 +223,9 @@ export const extra = {
 
 			const violations = await analyze();
 
-			expect(violations).toHaveLength(4);
-			expect(violations[0]).toContain('no-legacy-cipher-methods');
-			expect(violations[1]).toContain('no-deployment-key-delete');
-			expect(violations[2]).toContain('no-misplaced-cipher-primitives');
-			expect(violations[3]).toContain('inline ESLint configuration comment');
+			expect(violations).toHaveLength(2);
+			expect(violations[0]).toContain('no-encryption-guardrail-disable');
+			expect(violations[1]).toContain('inline `eslint` configuration comment');
 		});
 
 		it('ignores directive text inside string literals', async () => {
@@ -219,7 +245,7 @@ export const extra = {
 		it('does not read the explanation after -- as a rule list', async () => {
 			write(
 				'packages/a/src/index.ts',
-				'// eslint-disable-next-line no-console -- unrelated to no-deployment-key-delete\nexport const a = 1;\n',
+				'// eslint-disable-next-line no-console -- unrelated to encryption guardrails\nexport const a = 1;\n',
 			);
 
 			expect(await analyze()).toEqual([]);

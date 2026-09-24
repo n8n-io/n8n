@@ -1,14 +1,9 @@
 import { isRecord } from '@n8n/utils/is-record';
 
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
+import type { IntegrationActionResult } from './integration-tool-types';
 
-export interface IntegrationErrorResponse {
-	ok: false;
-	error: {
-		code: IntegrationErrorCode;
-		message: string;
-	};
-}
+export type IntegrationErrorResponse = Extract<IntegrationActionResult, { ok: false }>;
 
 export function integrationError(
 	code: IntegrationErrorCode,

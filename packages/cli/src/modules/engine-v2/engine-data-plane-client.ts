@@ -9,6 +9,8 @@ import type {
 	ExecutionSnapshot,
 	StartExecutionRequest,
 	StartExecutionResult,
+	SearchExecutionsRequest,
+	SearchExecutionsResponse,
 } from '@n8n/engine';
 import { mintIdentityToken } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
@@ -103,6 +105,21 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
 
 		return response.body as ExecutionSnapshot;
+	}
+
+	/** Lists executions stored in the engine's data plane, matching `request`. */
+	async searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse> {
+		const response = await this.http.request<SearchExecutionsResponse | EngineErrorResponse>({
+			url: '/api/workflow-executions/search',
+			method: 'POST',
+			body: request,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			disableFollowRedirect: true,
+		});
+		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
+		return response.body as SearchExecutionsResponse;
 	}
 
 	private toError(statusCode: number, body: unknown): Error {

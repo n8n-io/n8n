@@ -18,7 +18,7 @@ describe('ExecutionPruningSoftDeleteTask', () => {
 		expect(task.name).toBe('execution-pruning-soft-delete');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
 		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(false);
+		expect(task.placement).toEqual({ scope: 'cluster', durable: false });
 	});
 
 	it('should soft-delete prunable executions on run', async () => {

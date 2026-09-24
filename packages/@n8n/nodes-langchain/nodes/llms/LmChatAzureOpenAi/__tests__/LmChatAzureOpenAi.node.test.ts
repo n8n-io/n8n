@@ -74,7 +74,11 @@ describe('LmChatAzureOpenAi', () => {
 
 			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
 
-			expect(vi.mocked(getProxyAgent)).toHaveBeenCalledWith(expectedUrl, expect.any(Object));
+			expect(vi.mocked(getProxyAgent)).toHaveBeenCalledWith(
+				expectedUrl,
+				expect.any(Object),
+				expect.any(Object),
+			);
 		},
 	);
 });

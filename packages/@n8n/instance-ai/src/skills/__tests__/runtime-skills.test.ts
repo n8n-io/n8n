@@ -63,6 +63,24 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
 	});
 
+	// Code nodes were 19% of all nodes in production builds versus 10% in public
+	// templates, and half of a sample were plain field shaping. The old rule ended
+	// with an escape hatch ("if it makes it simpler, go ahead and use code node").
+	it('prefers native nodes over Code nodes with no escape hatch', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(skill).not.toMatch(/if it makes it simpler, go ahead and use code node/i);
+		expect(skill).toContain('Native node first');
+		expect(skill).toContain('Edit Fields (Set)');
+		expect(skill).toContain('Native node mappings');
+		// The Python bullet that follows the rule stays as it was.
+		expect(skill).toContain(
+			'Write Code nodes in JavaScript unless the user explicitly asks for Python.',
+		);
+	});
+
 	// The builder agent has been observed recalling a pre-ADO-5627 `.group()` signature
 	// with no description argument, so the call is spelled out in the skill itself
 	// rather than only linked — a wrong prior is not corrected by a pointer.
@@ -248,6 +266,18 @@ describe('Instance AI runtime skills', () => {
 			const loadResult = await loadTool.handler?.({ skillId }, {});
 			expect(skillLoadText(loadResult)).toContain(`[Skill: "${skillId}"]`);
 		}
+	});
+
+	it('loads the bundled agent-builder skill', async () => {
+		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai, agents');
+		const skill = source.registry.skills.find((entry) => entry.name === 'agent-builder');
+
+		expect(skill).toBeDefined();
+
+		const loaded = await source.loadSkill('agent-builder');
+		expect(loaded?.instructions).toContain('## Agent UI labels');
+		expect(loaded?.instructions).toContain('Sessions tab');
+		expect(loaded?.instructions).toContain('Never say Runs tab');
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {

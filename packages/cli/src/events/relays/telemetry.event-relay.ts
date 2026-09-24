@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { POLICY_KINDS, TELEMETRY_EVENT, type PolicyKind } from '@n8n/telemetry';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type {
@@ -39,7 +39,17 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
-import { partitionTypesByAction } from '@/modules/type-availability-policies/policy-evaluator';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
+import {
+	packageResolverFor,
+	policedTypeFor,
+} from '@/modules/type-availability-policies/package-resolver';
+import {
+	partitionTypesByAction,
+	type PackageResolver,
+	type PolicedType,
+} from '@/modules/type-availability-policies/policy-evaluator';
 import type {
 	PolicyAction,
 	PolicyRule,
@@ -81,6 +91,18 @@ function policyScope(projectId: string | null): {
 	return projectId === null ? { scope: 'instance' } : { scope: 'project', project_id: projectId };
 }
 
+/**
+ * The domain event keeps `kind` as a plain string, so a later ticket can add controllers for a
+ * new kind (e.g. credential types) without changing the service or event map. Telemetry still
+ * wants a closed set, so this narrows against the same `POLICY_KINDS` the schema validates
+ * against — an unrecognized kind is a bug in the caller (a new kind landed without registering
+ * it in the telemetry package), not something to crash telemetry over, so it is dropped rather
+ * than reported.
+ */
+function isPolicyKind(kind: string): kind is PolicyKind {
+	return (POLICY_KINDS as readonly string[]).includes(kind);
+}
+
 function countRuleActions(rules: readonly PolicyRule[]) {
 	return {
 		rule_count: rules.length,
@@ -97,18 +119,20 @@ function countRuleActions(rules: readonly PolicyRule[]) {
 const MAX_LISTED_POLICY_TYPES = 100;
 
 /**
- * What a saved policy makes of every node type this instance knows. Runs the same evaluation
- * the node panel runs, once per save rather than once per workflow open.
+ * What a saved policy makes of every type this instance knows, within the policy's own kind
+ * (node types or credential types). Runs the same evaluation the node panel runs, once per
+ * save rather than once per workflow open.
  */
 function summarizeTypeAvailability(
 	rules: readonly PolicyRule[],
 	defaultAction: PolicyAction,
-	typeNames: readonly string[],
+	types: readonly PolicedType[],
+	resolvePackage: PackageResolver,
 ) {
-	const partition = partitionTypesByAction(rules, defaultAction, typeNames);
+	const partition = partitionTypesByAction(rules, defaultAction, types, resolvePackage);
 
 	return {
-		evaluated_type_count: typeNames.length,
+		evaluated_type_count: types.length,
 		blocked_type_count: partition.deny.length,
 		allowed_type_count: partition.allow.length,
 		delegated_type_count: partition.delegate.length,
@@ -163,6 +187,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly dbConnection: DbConnection,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {
 		super(eventService);
 	}
@@ -528,6 +553,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private nodeTypePolicySaved({
 		updatedBy,
+		kind,
 		projectId,
 		before,
 		after,
@@ -535,23 +561,32 @@ export class TelemetryEventRelay extends EventRelay {
 		rulesAfter,
 		warningCount,
 	}: RelayEventMap['node-type-policy-saved']) {
-		this.telemetry.track(TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY, {
-			...policyActor(updatedBy),
-			...policyScope(projectId),
-			default_action: after.defaultAction,
-			previous_default_action: before?.defaultAction ?? null,
-			is_first_write: before === null,
-			...countRuleActions(rulesAfter),
-			...countSelectorKinds(rulesAfter),
-			...summarizeTypeAvailability(
-				rulesAfter,
-				after.defaultAction,
-				Object.keys(this.nodeTypes.getKnownTypes()),
-			),
-			previous_rule_count: rulesBefore?.length ?? null,
-			shadow_warning_count: warningCount,
-			version: after.version,
-		});
+		if (!isPolicyKind(kind)) return;
+
+		const typeNames =
+			kind === CREDENTIAL_TYPES_KIND
+				? Object.keys(this.loadNodesAndCredentials.knownCredentials)
+				: Object.keys(this.nodeTypes.getKnownTypes());
+		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes));
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+
+		this.telemetry.track(
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
+			{
+				...policyActor(updatedBy),
+				kind,
+				...policyScope(projectId),
+				default_action: after.defaultAction,
+				previous_default_action: before?.defaultAction ?? null,
+				is_first_write: before === null,
+				...countRuleActions(rulesAfter),
+				...countSelectorKinds(rulesAfter),
+				...summarizeTypeAvailability(rulesAfter, after.defaultAction, types, resolvePackage),
+				previous_rule_count: rulesBefore?.length ?? null,
+				shadow_warning_count: warningCount,
+				version: after.version,
+			},
+		);
 	}
 
 	/**
@@ -560,17 +595,19 @@ export class TelemetryEventRelay extends EventRelay {
 	 */
 	private nodeTypePolicyDocumentCreated({
 		updatedBy,
+		kind,
 		policyId,
 		origin,
 		after,
 	}: RelayEventMap['node-type-policy-document-created']) {
 		if (origin === 'composed-save') return;
 
-		this.trackPolicyDocument(updatedBy, policyId, 'created', after.rules, null);
+		this.trackPolicyDocument(updatedBy, kind, policyId, 'created', after.rules, null);
 	}
 
 	private nodeTypePolicyDocumentUpdated({
 		updatedBy,
+		kind,
 		policyId,
 		origin,
 		before,
@@ -578,28 +615,33 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['node-type-policy-document-updated']) {
 		if (origin === 'composed-save') return;
 
-		this.trackPolicyDocument(updatedBy, policyId, 'updated', after.rules, before.rules);
+		this.trackPolicyDocument(updatedBy, kind, policyId, 'updated', after.rules, before.rules);
 	}
 
 	private nodeTypePolicyDocumentDeleted({
 		updatedBy,
+		kind,
 		policyId,
 		before,
 	}: RelayEventMap['node-type-policy-document-deleted']) {
-		this.trackPolicyDocument(updatedBy, policyId, 'deleted', [], before.rules);
+		this.trackPolicyDocument(updatedBy, kind, policyId, 'deleted', [], before.rules);
 	}
 
 	private trackPolicyDocument(
 		updatedBy: string,
+		kind: string,
 		policyId: string,
 		operation: 'created' | 'updated' | 'deleted',
 		rulesAfter: readonly PolicyRule[],
 		rulesBefore: readonly PolicyRule[] | null,
 	) {
+		if (!isPolicyKind(kind)) return;
+
 		this.telemetry.track(
-			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT,
 			{
 				...policyActor(updatedBy),
+				kind,
 				operation,
 				policy_id: policyId,
 				...countRuleActions(rulesAfter),
@@ -610,15 +652,19 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private nodeTypePolicyAttachmentsUpdated({
 		updatedBy,
+		kind,
 		projectId,
 		scopeId,
 		before,
 		after,
 	}: RelayEventMap['node-type-policy-attachments-updated']) {
+		if (!isPolicyKind(kind)) return;
+
 		this.telemetry.track(
-			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_UPDATED_TYPE_AVAILABILITY_POLICY_ATTACHMENTS,
 			{
 				...policyActor(updatedBy),
+				kind,
 				...policyScope(projectId),
 				scope_id: scopeId,
 				attachment_count: after.attachments.length,
@@ -833,6 +879,8 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialType,
 		credentialId,
+		credentialDescriptionLength,
+		publicApi,
 		projectId,
 		projectType,
 		uiContext,
@@ -842,11 +890,19 @@ export class TelemetryEventRelay extends EventRelay {
 		supportsManagedAuth,
 		usesManagedAuth,
 	}: RelayEventMap['credentials-created']) {
-		this.telemetry.track('User created credentials', {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
+			...(credentialDescriptionLength !== undefined && {
+				source: 'backend',
+				public_api: publicApi,
+			}),
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			...(credentialDescriptionLength !== undefined && {
+				has_description: credentialDescriptionLength > 0,
+				description_length: credentialDescriptionLength,
+			}),
 			project_id: projectId,
 			project_type: projectType,
 			uiContext,
@@ -881,17 +937,23 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialId,
 		credentialType,
+		credentialDescriptionLength,
 		isDynamic,
 		usesExternalSecrets,
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
 	}: RelayEventMap['credentials-updated']) {
-		this.telemetry.track('User updated credentials', {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS, {
+			...(credentialDescriptionLength !== undefined && { source: 'backend' }),
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			...(credentialDescriptionLength !== undefined && {
+				has_description: credentialDescriptionLength > 0,
+				description_length: credentialDescriptionLength,
+			}),
 			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,
@@ -2408,11 +2470,17 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #region Custom Roles
 
-	private customRoleCreated({ userId, roleSlug, scopes }: RelayEventMap['custom-role-created']) {
+	private customRoleCreated({
+		userId,
+		roleSlug,
+		scopes,
+		source,
+	}: RelayEventMap['custom-role-created']) {
 		this.telemetry.track('User created custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
 			scopes,
+			source,
 		});
 	}
 

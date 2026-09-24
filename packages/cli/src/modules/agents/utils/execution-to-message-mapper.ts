@@ -6,7 +6,7 @@ import type { TimelineEvent } from '../execution-recorder';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,
-	'id' | 'userMessage' | 'author' | 'timeline' | 'attachments' | 'status' | 'error'
+	'id' | 'userMessage' | 'author' | 'timeline' | 'attachments' | 'status' | 'error' | 'createdAt'
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -147,6 +147,9 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 	// make consumers parse it back out of `id`.
 	const userContent: AgentPersistedMessageContentPart[] = [];
 	const userText = execution.userMessage === null ? null : textPart(execution.userMessage);
+	// One execution row is one turn, so both of its messages share its timestamp.
+	const createdAt = execution.createdAt.toISOString();
+
 	if (userText) userContent.push(userText);
 	for (const attachment of execution.attachments ?? []) {
 		userContent.push({
@@ -164,9 +167,13 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 			content: userContent,
 			...(execution.author ? { author: execution.author } : {}),
 			executionId: execution.id,
+			createdAt,
 		});
 	}
 
+	const backgroundJobSignal = execution.timeline?.find(
+		(event) => event.type === 'background-task-signal',
+	)?.signal;
 	const assistantContent = assistantContentFromExecution(execution);
 	// The recorded run error travels with the transcript so history renders the
 	// same error bubble the live stream showed — also when the turn failed
@@ -177,14 +184,16 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 		(execution.status === 'error' || execution.status === 'interrupted') && execution.error
 			? execution.error
 			: undefined;
-	if (assistantContent.length > 0 || executionError !== undefined) {
+	if (backgroundJobSignal || assistantContent.length > 0 || executionError !== undefined) {
 		messages.push({
 			id: `${execution.id}:assistant`,
 			role: 'assistant',
 			content: assistantContent,
+			...(backgroundJobSignal ? { backgroundTaskSignal: backgroundJobSignal } : {}),
 			executionId: execution.id,
 			...(execution.status ? { executionStatus: execution.status } : {}),
 			...(executionError !== undefined ? { executionError } : {}),
+			createdAt,
 		});
 	}
 
@@ -231,6 +240,9 @@ export function executionsToMessagesDto(
 	}
 
 	return messages.filter(
-		(message) => message.content.length > 0 || message.executionError !== undefined,
+		(message) =>
+			message.backgroundTaskSignal ||
+			message.content.length > 0 ||
+			message.executionError !== undefined,
 	);
 }

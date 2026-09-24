@@ -70,6 +70,16 @@ describe('useAgentCapabilitiesActions', () => {
 		vi.clearAllMocks();
 	});
 
+	it('forwards the selected picker mode to the tools modal', () => {
+		const { actions } = makeActions();
+
+		actions.onOpenAddToolModal('workflows');
+
+		expect(openModalWithData).toHaveBeenCalledWith(
+			expect.objectContaining({ data: expect.objectContaining({ mode: 'workflows' }) }),
+		);
+	});
+
 	it('schedules array-shaped tools + mcpServers from the add-tools modal confirm payload', () => {
 		// Regression guard: the tools modal confirms with a single object payload
 		// (`{ tools, mcpServers }`); the modal-data plumbing is untyped, so a

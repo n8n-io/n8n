@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
 import {
+	cancelAgentChatExecution,
+	getAgentBackgroundJobs,
 	getChatMessages,
 	listAgents,
 	listAgentsPage,
@@ -80,6 +82,16 @@ describe('useAgentApi', () => {
 		});
 	});
 
+	it('encodes the background task route identifiers', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ tasks: [] });
+		await getAgentBackgroundJobs(restApiContext, 'project/1', 'agent/1', 'agent:chat#1');
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks',
+		);
+	});
+
 	describe('getChatMessages', () => {
 		it('percent-encodes the thread id so a rotated session id survives as a URL, not a fragment', async () => {
 			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ messages: [] });
@@ -92,6 +104,24 @@ describe('useAgentApi', () => {
 				'/projects/project-1/agents/v2/agent-1/chat/agent-1%3Achat%3Abot-1-2%231/messages',
 			);
 		});
+	});
+
+	it('encodes the Stop route identifiers', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ cancelRequested: true });
+
+		await cancelAgentChatExecution(
+			restApiContext,
+			'project/1',
+			'agent/1',
+			'agent:chat#1',
+			'execution/1',
+		);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'DELETE',
+			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/executions/execution%2F1',
+		);
 	});
 
 	describe('duplicateAgent', () => {
