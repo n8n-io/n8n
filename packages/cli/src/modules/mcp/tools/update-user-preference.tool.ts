@@ -15,6 +15,7 @@ import {
 	USER_CALLED_MCP_TOOL_EVENT,
 } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import type { PreferenceWriteReason } from './user-preference-tool.utils';
 import {
 	classifyPreferenceWriteError,
 	PREFERENCE_WRITE_REASONS,
@@ -27,14 +28,28 @@ import {
 
 /** Pinned verbatim by a test, like the other preference tools. */
 const DESCRIPTION = [
-	'Replaces the text of a saved preference. Use it when the user changes or refines a preference that is already saved, instead of saving a second one next to it.',
-	`Take the id from ${MCP_GET_USER_PREFERENCES_TOOL_NAME} or from the result of the save. The scope stays where it is; only the text changes.`,
-	'Tell the user the new text in the same turn, so they see what changed.',
+	'Changes a saved preference: its text, who it applies to, or both. Use it when the user changes or refines a preference that is already saved, instead of saving a second one next to it.',
+	`Take the id from ${MCP_GET_USER_PREFERENCES_TOOL_NAME} or from the result of the save. Leave \`scope\` out to keep the preference where it is; only the user decides to move one, so pass \`scope\` when they ask for it and never on your own.`,
+	'A move to `project` needs `projectId` from `search_projects`. A move the user may not make is refused with `not_permitted`.',
+	'Tell the user what the preference says now and who it applies to, in the same turn.',
 ].join('\n\n');
 
 const inputSchema = {
 	id: z.string().min(1).describe('Id of the preference to change.'),
-	content: aiPreferenceContentSchema,
+	content: aiPreferenceContentSchema
+		.optional()
+		.describe('The new text. Leave it out to keep the text and move the preference only.'),
+	scope: z
+		.enum(['user', 'project', 'instance'])
+		.optional()
+		.describe(
+			'Who the preference applies to after the change: `user` the caller in every project, `project` everyone in one project, `instance` everyone on this n8n instance. Leave it out to keep the current scope.',
+		),
+	projectId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('The project to move the preference to. Required with `scope` `project`.'),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -69,16 +84,76 @@ export const createUpdateUserPreferenceTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ id, content }) => {
+	handler: async ({ id, content, scope: requestedScope, projectId }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
-			parameters: { text_length: content.length },
+			parameters: {
+				...(content !== undefined ? { text_length: content.length } : {}),
+				...(requestedScope !== undefined ? { scope: requestedScope } : {}),
+			},
 		};
+
+		const refuse = (reason: PreferenceWriteReason, message: string, textLength?: number) => {
+			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+				surface: 'mcp',
+				reason: toRejectedReason(reason),
+				...(textLength !== undefined ? { text_length: textLength } : {}),
+			});
+			telemetryPayload.results = { success: false, error: message, data: { reason } };
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			return {
+				content: [
+					{
+						type: 'text' as const,
+						text: `The preference was not changed: ${message}. Do not call this tool again with the same input.`,
+					},
+				],
+				structuredContent: { saved: false, error: message, reason },
+				isError: true,
+			};
+		};
+
+		// A call that changes nothing is a model mistake, not a refusal the user caused.
+		if (content === undefined && requestedScope === undefined) {
+			return refuse('failed', 'Name the new text, the new scope, or both');
+		}
+		if (requestedScope === 'project' && !projectId) {
+			return refuse('failed', 'A move to a project needs a projectId');
+		}
+
+		// The row before the change: the move reports the scope it left, and a text-only move
+		// keeps the text the row already has.
+		let before: AiPreferenceDto;
+		try {
+			before = await aiPreferenceService.getById(user, id);
+		} catch (error) {
+			const { reason, message } = classifyPreferenceWriteError(error);
+			if (reason === 'failed') {
+				logger.error('Reading an AI preference over MCP failed', { error });
+			}
+			return refuse(reason, message, content?.length);
+		}
+
+		const beforeScope = preferenceScopeOf(before);
+		const text = content ?? before.content;
+		const moved =
+			requestedScope !== undefined &&
+			(requestedScope !== beforeScope ||
+				(requestedScope === 'project' && projectId !== before.projectId));
 
 		let preference: AiPreferenceDto;
 		try {
-			preference = await aiPreferenceService.updateContent(user, id, content);
+			preference = requestedScope
+				? await aiPreferenceService.update(user, id, {
+						content: text,
+						scope: requestedScope,
+						// A user-scope row keeps its owner. A row moving into user scope has none to
+						// keep, so it goes to the caller, who is the only owner MCP can name.
+						userId: requestedScope === 'user' ? (before.userId ?? user.id) : null,
+						projectId: requestedScope === 'project' ? (projectId ?? null) : null,
+					})
+				: await aiPreferenceService.updateContent(user, id, text);
 		} catch (error) {
 			const { reason, message } = classifyPreferenceWriteError(error);
 			// The mapped refusals carry their own text. Anything else is a fault whose message stays
@@ -86,14 +161,11 @@ export const createUpdateUserPreferenceTool = (
 			if (reason === 'failed') {
 				logger.error('Updating an AI preference over MCP failed', { error });
 			}
-			// Best effort: the refusal knows the id, not the scope. A row the caller cannot read
-			// reports no scope at all, which is the honest answer for a refusal on a hidden row.
-			const refusedScope = await scopeOfOrUndefined(aiPreferenceService, user, id);
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
 				surface: 'mcp',
 				reason: toRejectedReason(reason),
-				...(refusedScope ? { scope_type: refusedScope } : {}),
-				text_length: content.length,
+				scope_type: requestedScope ?? beforeScope,
+				text_length: text.length,
 			});
 			telemetryPayload.results = { success: false, error: message, data: { reason } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -125,7 +197,24 @@ export const createUpdateUserPreferenceTool = (
 			scope_type: scope,
 			text_length: preference.content.length,
 		});
-		telemetryPayload.results = { success: true, data: { scope } };
+		// The same pair the chat card fires on a move, so one number covers every surface that
+		// can take a preference off the scope the tool wrote it with.
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			scope_type: scope,
+			text_length: preference.content.length,
+			scope_changed: beforeScope !== scope,
+			...(preference.projectId ? { project_id: preference.projectId } : {}),
+			surface: 'mcp',
+		});
+		if (moved) {
+			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
+				surface: 'mcp',
+				offered_scope: beforeScope,
+				accepted_scope: scope,
+				scope_changed: true,
+			});
+		}
+		telemetryPayload.results = { success: true, data: { scope, moved } };
 		telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 		const url = preferencesSettingsUrl(urlService);
@@ -133,7 +222,7 @@ export const createUpdateUserPreferenceTool = (
 			content: [
 				{
 					type: 'text',
-					text: `Preference updated. New text: "${preference.content}". Tell the user this is what is saved now and that they can review it at ${url}.`,
+					text: `Preference updated. It now reads "${preference.content}" and applies to ${scopeInWords(scope)}. Tell the user both, and that they can review it at ${url}.`,
 				},
 			],
 			structuredContent: { saved: true, preference: toSavedPreferenceOutput(preference, url) },
@@ -141,18 +230,9 @@ export const createUpdateUserPreferenceTool = (
 	},
 });
 
-/**
- * The scope of a row for a refusal that only holds an id. A read that fails too reports nothing:
- * the refusal is already recorded, and a second failure must not replace it.
- */
-async function scopeOfOrUndefined(
-	aiPreferenceService: AiPreferenceService,
-	user: User,
-	id: string,
-): Promise<AiPreferenceScope | undefined> {
-	try {
-		return preferenceScopeOf(await aiPreferenceService.getById(user, id));
-	} catch {
-		return undefined;
-	}
+/** Who a preference applies to, in the words the client relays to the user. */
+function scopeInWords(scope: AiPreferenceScope): string {
+	if (scope === 'instance') return 'everyone on this n8n instance';
+	if (scope === 'project') return 'everyone in the project';
+	return 'the user only, in every project';
 }

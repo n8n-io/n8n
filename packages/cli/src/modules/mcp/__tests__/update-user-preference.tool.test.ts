@@ -14,9 +14,10 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createUpdateUserPreferenceTool } from '../tools/update-user-preference.tool';
 
 const DESCRIPTION = [
-	'Replaces the text of a saved preference. Use it when the user changes or refines a preference that is already saved, instead of saving a second one next to it.',
-	'Take the id from get_user_preferences or from the result of the save. The scope stays where it is; only the text changes.',
-	'Tell the user the new text in the same turn, so they see what changed.',
+	'Changes a saved preference: its text, who it applies to, or both. Use it when the user changes or refines a preference that is already saved, instead of saving a second one next to it.',
+	'Take the id from get_user_preferences or from the result of the save. Leave `scope` out to keep the preference where it is; only the user decides to move one, so pass `scope` when they ask for it and never on your own.',
+	'A move to `project` needs `projectId` from `search_projects`. A move the user may not make is refused with `not_permitted`.',
+	'Tell the user what the preference says now and who it applies to, in the same turn.',
 ].join('\n\n');
 
 const URL = 'https://n8n.example.com/settings/context/preferences';
@@ -41,7 +42,11 @@ const dto = (overrides: Partial<AiPreferenceDto> = {}): AiPreferenceDto => ({
 
 const createMocks = () => {
 	const aiPreferenceService = mockInstance(AiPreferenceService, {
+		// The tool reads the row first: a move reports the scope it left, and a scope-only change
+		// keeps the text the row already has.
+		getById: vi.fn().mockResolvedValue(dto({ content: 'Old text.' })),
 		updateContent: vi.fn().mockResolvedValue(dto()),
+		update: vi.fn().mockResolvedValue(dto()),
 	});
 	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 	const urlService = mockInstance(UrlService, {
@@ -73,7 +78,7 @@ describe('update_user_preference MCP tool', () => {
 	test('takes an id and the shared content schema, so the caps travel with it', () => {
 		const { tool } = createMocks();
 
-		expect(Object.keys(tool.config.inputSchema!)).toEqual(['id', 'content']);
+		expect(Object.keys(tool.config.inputSchema!)).toEqual(['id', 'content', 'scope', 'projectId']);
 		expect(tool.config.inputSchema!.id.safeParse('').success).toBe(false);
 		expect(
 			tool.config.inputSchema!.content.safeParse('x'.repeat(AI_PREFERENCE_CONTENT_MAX_LENGTH + 1))
@@ -114,7 +119,7 @@ describe('update_user_preference MCP tool', () => {
 			user_id: 'user-1',
 			tool_name: 'update_user_preference',
 			parameters: { text_length: 10 },
-			results: { success: true, data: { scope: 'user' } },
+			results: { success: true, data: { scope: 'user', moved: false } },
 		});
 	});
 
@@ -156,6 +161,75 @@ describe('update_user_preference MCP tool', () => {
 		);
 	});
 
+	test('moves the row through the same update the settings page uses, and reports the move', async () => {
+		const { aiPreferenceService, telemetry, tool } = createMocks();
+		aiPreferenceService.update.mockResolvedValue(dto({ userId: null, projectId: 'p-1' }));
+
+		const result = await tool.handler({ id: 'pref-1', scope: 'project', projectId: 'p-1' });
+
+		// The text is the one the row already had: a move alone does not rewrite it.
+		expect(aiPreferenceService.update).toHaveBeenCalledWith(user, 'pref-1', {
+			content: 'Old text.',
+			scope: 'project',
+			userId: null,
+			projectId: 'p-1',
+		});
+		expect(aiPreferenceService.updateContent).not.toHaveBeenCalled();
+		expect(result.structuredContent).toMatchObject({ preference: { scope: 'project' } });
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			{
+				surface: 'mcp',
+				offered_scope: 'user',
+				accepted_scope: 'project',
+				scope_changed: true,
+			},
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			scope_type: 'project',
+			text_length: 'New text.'.length,
+			scope_changed: true,
+			project_id: 'p-1',
+			surface: 'mcp',
+		});
+	});
+
+	// A user-scope row keeps the owner it has, so a move of the text alone cannot re-own it.
+	test('keeps the owner of a row that stays in the user scope', async () => {
+		const { aiPreferenceService, tool } = createMocks();
+		aiPreferenceService.getById.mockResolvedValue(dto({ content: 'Old text.', userId: 'user-2' }));
+		aiPreferenceService.update.mockResolvedValue(dto({ userId: 'user-2' }));
+
+		await tool.handler({ id: 'pref-1', content: 'New text.', scope: 'user' });
+
+		expect(aiPreferenceService.update).toHaveBeenCalledWith(user, 'pref-1', {
+			content: 'New text.',
+			scope: 'user',
+			userId: 'user-2',
+			projectId: null,
+		});
+	});
+
+	test('refuses a call that changes neither the text nor the scope', async () => {
+		const { aiPreferenceService, tool } = createMocks();
+
+		const result = await tool.handler({ id: 'pref-1' });
+
+		expect(result.isError).toBe(true);
+		expect(aiPreferenceService.getById).not.toHaveBeenCalled();
+		expect(result.structuredContent).toMatchObject({ saved: false, reason: 'failed' });
+	});
+
+	test('refuses a move to a project that names no project', async () => {
+		const { aiPreferenceService, tool } = createMocks();
+
+		const result = await tool.handler({ id: 'pref-1', scope: 'project' });
+
+		expect(result.isError).toBe(true);
+		expect(aiPreferenceService.update).not.toHaveBeenCalled();
+		expect(result.structuredContent).toMatchObject({ saved: false, reason: 'failed' });
+	});
+
 	test.each([
 		[new NotFoundError('gone'), 'not_found', 'not_permitted', 'gone'],
 		[new ConflictError('dup'), 'duplicate', 'duplicate', 'dup'],
@@ -172,7 +246,7 @@ describe('update_user_preference MCP tool', () => {
 		expect(logger.error).toHaveBeenCalledTimes(reason === 'failed' ? 1 : 0);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
-			{ surface: 'mcp', reason: rejectedReason, text_length: 9 },
+			{ surface: 'mcp', reason: rejectedReason, scope_type: 'user', text_length: 9 },
 		);
 	});
 });

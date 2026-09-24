@@ -2,6 +2,7 @@ import type { AiPreferenceDto } from '@n8n/api-types';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, aiPreferenceContentSchema } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
+import { hasGlobalScope } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
@@ -86,7 +87,14 @@ type HandlerContext = {
 /** What the form asks: the saved text, editable. The three answers carry the rest. */
 const reviewFormSchema = z.object({
 	text: z.string().optional(),
+	scope: z.enum(['user', 'instance']).optional(),
 });
+
+/** What the form calls each scope. A project move needs an id, so it stays on the update tool. */
+const SCOPE_LABELS = {
+	user: 'Just you, in every project',
+	instance: 'Everyone on this n8n instance',
+} as const;
 
 /**
  * Whether the client can show a form. On this revision a client names its modes, and one that
@@ -191,6 +199,9 @@ export const createSaveUserPreferenceTool = (
 			const form = reviewFormSchema.safeParse(answer.content ?? {});
 			const wantsRemoval = answer.action === 'decline';
 			const editedText = form.success ? form.data.text?.trim() : undefined;
+			// The tool writes `user`, so anything else the form returns is the user moving the row.
+			const chosenScope = form.success ? form.data.scope : undefined;
+			const movedScope = chosenScope && chosenScope !== 'user' ? chosenScope : undefined;
 
 			if (wantsRemoval) {
 				try {
@@ -224,17 +235,20 @@ export const createSaveUserPreferenceTool = (
 				}
 			}
 
-			if (editedText && editedText !== content) {
+			const changedText = editedText && editedText !== content ? editedText : undefined;
+
+			if (changedText ?? movedScope) {
+				const text = changedText ?? content;
 				// The form's maxLength is advice to the client. The cap is applied here as the tool
 				// input applies it, so an edit cannot save what a fresh save would refuse.
-				const parsed = aiPreferenceContentSchema.safeParse(editedText);
+				const parsed = aiPreferenceContentSchema.safeParse(text);
 				if (!parsed.success) {
 					const message = `The edited text is longer than ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters.`;
 					telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
 						surface: 'mcp',
 						reason: 'too_long',
 						scope_type: 'user',
-						text_length: editedText.length,
+						text_length: text.length,
 					});
 					return done(
 						{
@@ -248,14 +262,44 @@ export const createSaveUserPreferenceTool = (
 					);
 				}
 				try {
-					const updated = await aiPreferenceService.updateContent(user, id, parsed.data);
+					// A move goes through the same update the settings page and the chat card use, so
+					// the right to write the new scope is checked in one place for every surface.
+					const updated = movedScope
+						? await aiPreferenceService.update(user, id, {
+								content: parsed.data,
+								scope: movedScope,
+								userId: null,
+								projectId: null,
+							})
+						: await aiPreferenceService.updateContent(user, id, parsed.data);
 					telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
 						surface: 'mcp',
 						outcome: 'accepted_after_edit',
-						scope_type: 'user',
+						scope_type: movedScope ?? 'user',
 						text_length: updated.content.length,
 					});
-					return savedResult(updated, 'The user edited the preference in the review.');
+					telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+						scope_type: movedScope ?? 'user',
+						text_length: updated.content.length,
+						scope_changed: movedScope !== undefined,
+						surface: 'mcp',
+					});
+					if (movedScope) {
+						// The write offered `user`. This is the only place an MCP user can take a
+						// preference off that default without a second tool call.
+						telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
+							surface: 'mcp',
+							offered_scope: 'user',
+							accepted_scope: movedScope,
+							scope_changed: true,
+						});
+					}
+					return savedResult(
+						updated,
+						movedScope
+							? `The user moved the preference to: ${SCOPE_LABELS[movedScope]}.`
+							: 'The user edited the preference in the review.',
+					);
 				} catch (error) {
 					const { reason, message } = classifyPreferenceWriteError(error);
 					return done(
@@ -265,7 +309,7 @@ export const createSaveUserPreferenceTool = (
 							error: message,
 							reason,
 						},
-						`The user edited the preference but the edit was refused: ${message}. The original text is still saved: "${content}". ${keep}`,
+						`The user changed the preference but the change was refused: ${message}. It is still saved as "${content}", for the user only. ${keep}`,
 						true,
 					);
 				}
@@ -316,13 +360,19 @@ export const createSaveUserPreferenceTool = (
 
 		if (!canElicit) return savedResult(preference, 'Preference saved.');
 
+		// Only the scopes this user may write. A project needs an id, which no form can supply,
+		// so a project move stays on the update tool.
+		const scopeChoices = hasGlobalScope(user, 'aiPreference:create')
+			? (['user', 'instance'] as const)
+			: (['user'] as const);
+
 		return inputRequired({
 			inputRequests: {
 				[REVIEW_KEY]: inputRequired.elicit({
 					// Clients may show only the first lines of the message, so the state comes first:
 					// the row is already saved, and closing the form keeps it. The last lines name where
 					// the person manages it, and the consent permission that stops this tool saving more.
-					message: `Saved to your n8n preferences. Accept to keep it, or Decline to delete it.\n\n"${preference.content}"\n\nFrom now on, the n8n assistant and your connected AI tools follow this preference. To change it, edit the text, then accept. If you close this, the preference stays saved.\n\nYou can change or delete it anytime in n8n under Settings > Context > Preferences. To stop this tool from saving preferences, connect it again without the "Save, update and undo AI preferences" permission.`,
+					message: `Saved to your n8n preferences. Accept to keep it, or Decline to delete it.\n\n"${preference.content}"\n\nFrom now on, the n8n assistant and your connected AI tools follow this preference. To change it, edit the text${scopeChoices.length > 1 ? ' or who it applies to' : ''}, then accept. If you close this, the preference stays saved.\n\nYou can change or delete it anytime in n8n under Settings > Context > Preferences. To stop this tool from saving preferences, connect it again without the "Save, update and undo AI preferences" permission.`,
 					requestedSchema: {
 						type: 'object',
 						properties: {
@@ -333,6 +383,19 @@ export const createSaveUserPreferenceTool = (
 								default: preference.content,
 								maxLength: AI_PREFERENCE_CONTENT_MAX_LENGTH,
 							},
+							...(scopeChoices.length > 1
+								? {
+										scope: {
+											type: 'string',
+											title: 'Apply this to',
+											description:
+												'Who follows this preference. It is saved for you; change this to share it.',
+											enum: [...scopeChoices],
+											enumNames: scopeChoices.map((choice) => SCOPE_LABELS[choice]),
+											default: 'user',
+										},
+									}
+								: {}),
 						},
 					},
 				}),

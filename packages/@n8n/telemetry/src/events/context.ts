@@ -213,7 +213,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	PREFERENCE_SCOPE_ACCEPTED: {
 		name: 'Preference scope accepted',
 		description:
-			'The scope the user accepted against the scope offered. An accepted write from the assistant reports `user` for both, because the tool writes only `user`. A move from the chat card reports the scope the row left as `offered_scope`, so `user` appears there only on the first move off the default. Fires on an accepted assistant write and on every move from the card.',
+			'The scope the user accepted against the scope offered. An accepted write from the assistant reports `user` for both, because the tool writes only `user`. A later move reports the scope the row left as `offered_scope`, so `user` appears there only on the first move off the default. Fires on an accepted assistant write, on every move from the chat card, and on a move from MCP: the review form, or `update_user_preference` with a scope.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			offered_scope: scopeType,

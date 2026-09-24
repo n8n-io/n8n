@@ -70,7 +70,7 @@ OAuth scope and the `CONTEXT_PREFERENCES_FLAG`:
 | Tool | Does |
 | --- | --- |
 | `save_user_preference` | Creates a personal preference with `source` set to `mcp`, at once, with no confirmation gate. The result names the saved text, the id and the settings page. |
-| `update_user_preference` | Replaces the text of a row by id, through `updateContent`. |
+| `update_user_preference` | Changes a row by id: the text through `updateContent`, or the text and the scope together through `update`. |
 | `undo_user_preference` | Removes a row through `undoWrite`, so only what MCP saved for this user. |
 
 On a client that declares the elicitation capability, the save follows the write with one
@@ -80,6 +80,13 @@ form: the saved text, prefilled and editable. It is the second round of the same
 shown, edited or not. Decline removes the row: every client offers that answer, and a press
 after the write means "not this one". A cancelled form keeps the row, because a client with
 no way to show the form answers cancel on its own, and silence must not delete data.
+
+The form also carries the scope, for a user who holds the global `aiPreference:create`
+right: `Just you` or `Everyone on this n8n instance`. The tool always writes `user`, as the
+chat card does, and the form is where the person moves the row. A project needs an id that
+no form can supply, so a move to a project goes through `update_user_preference` with a
+`projectId` from `search_projects`. Every move runs through `update()`, so the right to
+write the new scope is checked in one place for every surface.
 
 ## Who may read and write
 
