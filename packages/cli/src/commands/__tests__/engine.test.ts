@@ -49,7 +49,10 @@ describe('Engine', () => {
 		// from an env with no control plane database and no encryption key.
 		process.env = Object.fromEntries(
 			Object.entries(originalEnv).filter(
-				([key]) => !key.startsWith('DB_') && key !== 'N8N_ENCRYPTION_KEY',
+				([key]) =>
+					!key.startsWith('DB_') &&
+					key !== 'N8N_ENCRYPTION_KEY' &&
+					key !== 'N8N_ENCRYPTION_KEY_FILE',
 			),
 		);
 		engineConfig = mockInstance(EngineConfig, {
@@ -99,6 +102,13 @@ describe('Engine', () => {
 			process.env.N8N_ENCRYPTION_KEY = 'secret';
 
 			await expect(createEngine().init()).rejects.toThrow('N8N_ENCRYPTION_KEY');
+			expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
+		});
+
+		it('refuses to boot with a control plane encryption key file', async () => {
+			process.env.N8N_ENCRYPTION_KEY_FILE = '/tmp/key';
+
+			await expect(createEngine().init()).rejects.toThrow('N8N_ENCRYPTION_KEY_FILE');
 			expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
 		});
 

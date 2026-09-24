@@ -211,7 +211,6 @@ describe('InstanceSettings', () => {
 
 		it('should detect the engine command as its own instance type', () => {
 			process.argv[2] = 'engine';
-			process.env.N8N_ENCRYPTION_KEY = 'test_key';
 			mockFs.existsSync.mockReturnValue(true);
 			mockFs.readFileSync.mockReturnValue(JSON.stringify({ encryptionKey: 'test_key' }));
 
