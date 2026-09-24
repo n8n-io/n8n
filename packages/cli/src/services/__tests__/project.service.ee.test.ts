@@ -707,6 +707,19 @@ describe('ProjectService', () => {
 			expect(manager.update).not.toHaveBeenCalled();
 		});
 
+		it('throws a forbidden error for an instance admin with no relation to the project', async () => {
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({ id: projectId, type: 'team', projectRelations: mockRelations }),
+			);
+			roleService.isRoleLicensed.mockReturnValue(true);
+			userRepository.findManyByIds.mockResolvedValueOnce([instanceUser('admin', 'global:admin')]);
+
+			await expect(
+				projectService.changeUserRoleInProject(user, projectId, 'admin', 'project:viewer'),
+			).rejects.toThrow(ForbiddenError);
+			expect(manager.update).not.toHaveBeenCalled();
+		});
+
 		it('should successfully change the user role in the project', async () => {
 			projectRepository.findOne.mockResolvedValueOnce(
 				mock<Project>({

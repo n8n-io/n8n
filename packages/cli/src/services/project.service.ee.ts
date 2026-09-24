@@ -853,12 +853,14 @@ export class ProjectService {
 
 		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
 
+		// Instance owners and admins are listed as members without a relation, so
+		// check them first to return the reason instead of "not found".
+		await this.assertNoInstanceAdmins([userId], INSTANCE_ACCESS_ROLE_ERROR);
+
 		const projectUserExists = project.projectRelations.some((r) => r.userId === userId);
 		if (!projectUserExists) {
 			throw new ProjectNotFoundError(projectId);
 		}
-
-		await this.assertNoInstanceAdmins([userId], INSTANCE_ACCESS_ROLE_ERROR);
 
 		// License check: only allow change to roles that are licensed
 		const currentRelation = project.projectRelations.find((r) => r.userId === userId);
