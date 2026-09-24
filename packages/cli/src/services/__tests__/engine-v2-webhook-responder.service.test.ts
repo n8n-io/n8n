@@ -265,4 +265,13 @@ describe('EngineV2WebhookResponder', () => {
 			'still waiting',
 		);
 	});
+
+	it('refuses a second wait for the same execution', async () => {
+		const executionId = createExecutionIdV2();
+		await responder.waitForResponse(executionId);
+
+		await expect(responder.waitForResponse(executionId)).rejects.toThrow(
+			'already waits for a response for this execution',
+		);
+	});
 });
