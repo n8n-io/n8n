@@ -1115,7 +1115,9 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: template
 	// ----------------------------------
 	{
-		displayName: 'Template Name or ID',
+		// WhatsApp identifies templates by name and language, not by ID.
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Template',
 		name: 'template',
 		default: '',
 		type: 'options',
@@ -1129,8 +1131,9 @@ export const messageTypeFields: INodeProperties[] = [
 			loadOptionsMethod: 'getTemplates',
 		},
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+			'Select a template from the list, or use an expression in the format <code>name|language</code>',
 		routing: {
 			send: {
 				type: 'body',
