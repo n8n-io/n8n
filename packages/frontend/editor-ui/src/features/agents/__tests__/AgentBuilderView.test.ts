@@ -2286,7 +2286,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			updatedIds: string[];
 			unchangedIds: string[];
 		}>();
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		const toggleAgentMcpAccess = vi
 			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
 			.mockReturnValueOnce(mcpSave.promise);
@@ -3547,7 +3547,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactEditingLocked: false,
 			},
 		});
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		const toggleAgentMcpAccess = vi
 			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
 			.mockResolvedValue({ updatedCount: 1, updatedIds: ['a2'], unchangedIds: [] });
@@ -3580,7 +3580,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactEditingLocked: false,
 			},
 		});
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockResolvedValue({
 			updatedCount: 1,
 			updatedIds: ['a2'],
@@ -3624,7 +3624,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactAgentId: 'a1',
 			},
 		});
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		const toggleAgentMcpAccess = vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockResolvedValue({
 			updatedCount: 1,
 			updatedIds: ['a1'],
@@ -3699,7 +3699,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			},
 		});
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockRejectedValue(new Error('mcp save failed'));
 
 		vi.useFakeTimers();

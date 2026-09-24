@@ -55,7 +55,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useMcp } from '@n8n/frontend-module-mcp';
 import RedactionMembersModal from '@/features/workflows/components/WorkflowSettings/RedactionMembersModal.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
