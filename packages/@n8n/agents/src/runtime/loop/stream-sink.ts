@@ -1,12 +1,13 @@
 import type { StreamTextTransform, TextStreamPart, ToolSet } from 'ai';
 
-import type {
-	CompleteEmission,
-	ModelCallContext,
-	ModelTurnResult,
-	RunOutputSink,
-	RunServices,
-	SuspendEmission,
+import {
+	finalizeRun,
+	type CompleteEmission,
+	type ModelCallContext,
+	type ModelTurnResult,
+	type RunOutputSink,
+	type RunServices,
+	type SuspendEmission,
 } from './run-output-sink';
 import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
@@ -438,13 +439,10 @@ export class StreamSink implements RunOutputSink<void> {
 	}
 
 	async finishComplete(emission: CompleteEmission): Promise<void> {
-		const { list, options, finishReason, usage, structuredOutput } = emission;
+		const { list, finishReason, usage, structuredOutput } = emission;
 		const costUsage = this.services.applyCost(usage);
 
-		await this.services.saveToMemory(list, options);
-		await this.services.maybeGenerateTitle(list, options);
-		await this.services.cleanupRun();
-		await this.services.flushTelemetry(options);
+		await finalizeRun(this.services, emission);
 
 		await this.guard.write({
 			type: 'finish',

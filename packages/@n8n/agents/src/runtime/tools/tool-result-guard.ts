@@ -120,14 +120,7 @@ async function guardContentToolResultForModel(
 	}
 
 	const replacement = JSON.stringify(guardedText.historyOutput);
-	let replacedText = false;
-	const value = output.value.flatMap((part): ContentToolResultOutput['value'] => {
-		if (part.type !== 'text') return [part];
-		if (replacedText) return [];
-
-		replacedText = true;
-		return [{ ...part, text: replacement }];
-	});
+	const value = replaceTextParts(output.value, replacement);
 	const wireOutput: ContentToolResultOutput = { ...output, value };
 
 	return {
@@ -161,16 +154,19 @@ export async function guardToolMessageForModel(
 	if (!guarded.truncated && !guarded.offloaded) return message;
 
 	const replacement = JSON.stringify(guarded.historyOutput);
-	let replacedText = false;
-	const content = message.content.flatMap((block): MessageContent[] => {
-		if (block.type !== 'text') return [block];
-		if (replacedText) return [];
-
-		replacedText = true;
-		return [{ ...block, text: replacement }];
-	});
+	const content = replaceTextParts(message.content, replacement);
 
 	return { ...message, content };
+}
+
+function replaceTextParts<T extends { type: string }>(parts: T[], replacement: string): T[] {
+	let replacedText = false;
+	return parts.flatMap((part) => {
+		if (part.type !== 'text') return [part];
+		if (replacedText) return [];
+		replacedText = true;
+		return [{ ...part, text: replacement }];
+	});
 }
 
 function isOffloadedToolResult(value: unknown): boolean {

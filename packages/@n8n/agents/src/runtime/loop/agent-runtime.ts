@@ -1290,12 +1290,7 @@ export class AgentRuntime {
 		maxIterations?: number,
 		iterationCount?: number,
 	): Promise<void> {
-		// Persist loop controls only. providerOptions are intentionally excluded
-		// because they may contain sensitive data (API keys, auth headers).
-		const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
-		const resolvedIterationCount = iterationCount ?? options?.iterationCount;
-		const executionOptions: PersistedExecutionOptions | undefined =
-			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
+		const checkpointOptions = this.buildCheckpointOptions(options, maxIterations, iterationCount);
 
 		this.markSuspendedToolCalls(list, pendingToolCalls);
 
@@ -1305,8 +1300,7 @@ export class AgentRuntime {
 			messageList: list.serialize(),
 			pendingToolCalls,
 			usage: totalUsage,
-			executionOptions,
-			...(resolvedIterationCount !== undefined ? { iterationCount: resolvedIterationCount } : {}),
+			...checkpointOptions,
 		};
 		await this.runState.suspend(this.runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
@@ -1348,10 +1342,7 @@ export class AgentRuntime {
 		maxIterations?: number,
 		iterationCount?: number,
 	): Promise<void> {
-		const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
-		const resolvedIterationCount = iterationCount ?? options?.iterationCount;
-		const executionOptions: PersistedExecutionOptions | undefined =
-			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
+		const checkpointOptions = this.buildCheckpointOptions(options, maxIterations, iterationCount);
 
 		const state: SerializableAgentState = {
 			persistence: options?.persistence,
@@ -1359,10 +1350,26 @@ export class AgentRuntime {
 			messageList: list.serialize(),
 			pendingToolCalls: {},
 			usage: totalUsage,
+			...checkpointOptions,
+		};
+		await this.runState.checkpointStep(this.runId, state);
+	}
+
+	private buildCheckpointOptions(
+		options: RuntimeExecutionOptions | undefined,
+		maxIterations?: number,
+		iterationCount?: number,
+	): Pick<SerializableAgentState, 'executionOptions' | 'iterationCount'> {
+		// Persist loop controls only. providerOptions are intentionally excluded
+		// because they may contain sensitive data (API keys, auth headers).
+		const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
+		const resolvedIterationCount = iterationCount ?? options?.iterationCount;
+		const executionOptions: PersistedExecutionOptions | undefined =
+			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
+		return {
 			executionOptions,
 			...(resolvedIterationCount !== undefined ? { iterationCount: resolvedIterationCount } : {}),
 		};
-		await this.runState.checkpointStep(this.runId, state);
 	}
 
 	/** Clean up stored state for a run when it finishes without re-suspending. */
