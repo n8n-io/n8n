@@ -1,10 +1,11 @@
-import type {
-	CompleteEmission,
-	ModelCallContext,
-	ModelTurnResult,
-	RunOutputSink,
-	RunServices,
-	SuspendEmission,
+import {
+	finalizeRun,
+	type CompleteEmission,
+	type ModelCallContext,
+	type ModelTurnResult,
+	type RunOutputSink,
+	type RunServices,
+	type SuspendEmission,
 } from './run-output-sink';
 import { classifyModelTurnError } from './runtime-helpers';
 import type { GenerateResult } from '../../types';
@@ -90,11 +91,8 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 	}
 
 	async finishComplete(emission: CompleteEmission): Promise<GenerateResult> {
-		const { list, options, finishReason, usage, structuredOutput } = emission;
-		await this.services.saveToMemory(list, options);
-		await this.services.maybeGenerateTitle(list, options);
-		await this.services.cleanupRun();
-		await this.services.flushTelemetry(options);
+		const { list, finishReason, usage, structuredOutput } = emission;
+		await finalizeRun(this.services, emission);
 
 		return {
 			runId: this.services.runId,

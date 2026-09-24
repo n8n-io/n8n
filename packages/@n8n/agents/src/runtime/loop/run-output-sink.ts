@@ -140,3 +140,14 @@ export interface RunOutputSink<TResult> {
 	/** Produce the terminal result when the run completes normally. */
 	finishComplete(emission: CompleteEmission): Promise<TResult>;
 }
+
+/** Persist the turn before checkpoint cleanup and telemetry flush. */
+export async function finalizeRun(
+	services: RunServices,
+	{ list, options }: Pick<CompleteEmission, 'list' | 'options'>,
+): Promise<void> {
+	await services.saveToMemory(list, options);
+	await services.maybeGenerateTitle(list, options);
+	await services.cleanupRun();
+	await services.flushTelemetry(options);
+}
