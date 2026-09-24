@@ -5,6 +5,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
 import type { AgentChatQueueItem, AgentBackgroundJobDto } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -31,8 +32,13 @@ const removeQueuedMessageMock = vi.fn();
 const updateQueuedMessageMock = vi.fn();
 const isCancellingMock = ref(false);
 const backgroundJobsMock = ref<AgentBackgroundJobDto[]>([]);
+const respondToApprovalMock = vi.fn();
+const showErrorMock = vi.fn();
 vi.mock('../composables/useAgentBackgroundJobs', () => ({
-	useAgentBackgroundJobs: () => ({ jobs: backgroundJobsMock }),
+	useAgentBackgroundJobs: () => ({
+		jobs: backgroundJobsMock,
+		respondToApproval: respondToApprovalMock,
+	}),
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
 
@@ -63,6 +69,8 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.backgroundTasks.workflow': `Workflow — ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.viewTrace': 'View trace',
 			'agents.chat.backgroundTasks.status.waiting': 'Waiting',
+			'agents.chat.backgroundTasks.status.suspended': 'Waiting for approval',
+			'agents.chat.backgroundTasks.approvalFor': `Approval for ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.status.running': 'Running',
 			'agents.chat.backgroundTasks.status.completed': 'Completed',
 			'agents.chat.backgroundTasks.status.failed': 'Failed',
@@ -91,6 +99,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	N8nInput: (await importOriginal<typeof import('@n8n/design-system')>()).N8nInput,
 	N8nButton: { template: '<button><slot name="icon" /><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
+	N8nCard: { template: '<div><slot /></div>' },
 	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
 	N8nHeading: { template: '<div><slot /></div>' },
 	N8nIcon: { name: 'N8nIcon', props: ['icon', 'spin'], template: '<i />' },
@@ -141,7 +150,7 @@ vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 
 // Reads a Pinia store for notifications — irrelevant to panel behavior.
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage: vi.fn() }),
+	useToast: () => ({ showMessage: vi.fn(), showError: showErrorMock }),
 }));
 
 vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
@@ -243,6 +252,7 @@ describe('AgentChatPanel', () => {
 		queuedMessagesMock.value = [];
 		isCancellingMock.value = false;
 		backgroundJobsMock.value = [];
+		respondToApprovalMock.mockReset().mockResolvedValue(undefined);
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
 	});
@@ -441,6 +451,82 @@ describe('AgentChatPanel', () => {
 			status: 'running',
 			startedAt: '2026-09-09T10:00:00.000Z',
 		};
+		const approval = {
+			runId: 'background-job-job-1',
+			toolCallId: 'gate-1',
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'send_email',
+				args: { to: 'team@example.com' },
+			},
+		};
+
+		it.each([true, false])(
+			'sends approved=%s to the selected child while the parent streams',
+			async (approved) => {
+				backgroundJobsMock.value = [
+					{ ...job, status: 'suspended', approval },
+					{ ...job, id: 'job-2', title: 'Other child' },
+				];
+				isStreamingMock.value = true;
+				let finishResponse!: () => void;
+				respondToApprovalMock.mockReturnValueOnce(
+					new Promise<void>((resolve) => {
+						finishResponse = resolve;
+					}),
+				);
+				const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+				expect(wrapper.text()).toContain('Approval for Check escalations');
+				expect(wrapper.text()).toContain('Other child');
+				const button = wrapper.get(
+					`[data-testid="agent-approval-${approved ? 'approve' : 'reject'}"]`,
+				);
+				await button.trigger('click');
+				expect(button.attributes('disabled')).toBeDefined();
+				expect(respondToApprovalMock).toHaveBeenCalledExactlyOnceWith({
+					runId: approval.runId,
+					toolCallId: approval.toolCallId,
+					resumeData: { approved },
+				});
+				finishResponse();
+				await flushPromises();
+				expect(isStreamingMock.value).toBe(true);
+				expect(stopGeneratingMock).not.toHaveBeenCalled();
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('disabled')).toBe(false);
+				wrapper.unmount();
+			},
+		);
+
+		it.each(['active', 'hidden', 'switched', 'unmounted'] as const)(
+			'shows approval errors only in the submitted chat: %s',
+			async (state) => {
+				backgroundJobsMock.value = [{ ...job, status: 'suspended', approval }];
+				const response = createDeferredPromise<void>();
+				respondToApprovalMock.mockReturnValueOnce(response.promise);
+				const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+				const button = wrapper.get('[data-testid="agent-approval-approve"]');
+				await button.trigger('click');
+				if (state === 'hidden') await wrapper.setProps({ visible: false });
+				if (state === 'switched') await wrapper.setProps({ continueSessionId: 't2' });
+				if (state === 'unmounted') wrapper.unmount();
+				const error = new Error('Approval expired');
+				response.reject(error);
+				await flushPromises();
+				if (state === 'active') {
+					expect(showErrorMock).toHaveBeenCalledWith(
+						error,
+						'agents.chat.backgroundTasks.approvalError',
+					);
+					expect(button.attributes('disabled')).toBeUndefined();
+				} else {
+					expect(showErrorMock).not.toHaveBeenCalled();
+				}
+				if (state !== 'unmounted') wrapper.unmount();
+			},
+		);
 
 		it.each(['trigger', 'trace'])(
 			'moves focus from the %s to the composer on completion',

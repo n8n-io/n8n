@@ -29,6 +29,7 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+import { parseBackgroundApprovalAction } from '../../background/sub-agent-background-state';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
@@ -1554,6 +1555,41 @@ describe('AgentChatBridge — consumeStream', () => {
 			{ type: 'text-delta', id: 'text-1', delta: 'is done.' },
 			finishChunk,
 		];
+
+		it('posts child approval buttons that can be resolved without callback storage', async () => {
+			const { bridge, thread } = makeWakeBridge();
+			const jobId = 'b6c2ef4a-3e69-4c38-a205-a0c8c0a5f115';
+			const token = 'a'.repeat(22);
+			componentMapper.toCard.mockImplementationOnce(
+				async (payload, _runId, _toolCallId, _schema, shorten) => {
+					expect(payload.title).toBe('Research: Approval required');
+					if (!shorten) throw new Error('Expected callback encoder');
+					for (const approved of [true, false]) {
+						const callback = await shorten('unused', JSON.stringify({ approved }));
+						expect(Buffer.byteLength(callback.id)).toBeLessThanOrEqual(64);
+						expect(parseBackgroundApprovalAction(callback.id)).toEqual({
+							runId: `background-job-${jobId}`,
+							toolCallId: token,
+							resumeData: { approved },
+						});
+					}
+					return { type: 'card', children: [] };
+				},
+			);
+			await bridge.deliverBackgroundApproval(thread.id, {
+				jobId,
+				title: 'Research',
+				token,
+				toolCall: {
+					type: 'tool-call-suspended',
+					runId: 'child-run',
+					toolCallId: 'child-tool',
+					toolName: 'send_email',
+					suspendPayload: { type: 'approval', toolName: 'send_email' },
+				},
+			});
+			expect(thread.post).toHaveBeenCalledExactlyOnceWith({ card: { type: 'card', children: [] } });
+		});
 
 		it('posts wake text to the stored Slack thread before returning', async () => {
 			const { bridge, bot, thread } = makeWakeBridge();

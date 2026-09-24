@@ -10,6 +10,7 @@ import {
 	type DelegateSubAgentCancelRequest,
 	type DelegateSubAgentResumeRequest,
 	type GenerateResult,
+	type JSONObject,
 	type JSONValue,
 	type SerializableAgentState,
 	type StreamChunk,
@@ -28,12 +29,14 @@ import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
+import { BACKGROUND_SUB_AGENT_METADATA_KEY } from '../background/sub-agent-background-state';
+import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import {
@@ -94,6 +97,11 @@ export interface SubAgentRunContext {
 	onChunk?: (chunk: StreamChunk) => void;
 	/** Difficulty-selected model override for parent self-delegation only. */
 	selfDelegationDifficulty?: SubAgentTaskDifficulty;
+	/** Persist reconstruction data before a background child can suspend. */
+	backgroundJobId?: string;
+	parentMessageContext?: IntegrationMessageContext | null;
+	onResumeClaimed?: () => Promise<void>;
+	beforeResume?: () => Promise<void>;
 }
 
 export interface SubAgentRunResult {
@@ -106,13 +114,25 @@ export interface SubAgentRunResult {
 	resumeContext?: JSONValue;
 }
 
+type SubAgentResumeRequest = Pick<
+	DelegateSubAgentResumeRequest,
+	| 'subAgentId'
+	| 'childThreadId'
+	| 'parentThreadId'
+	| 'childRunId'
+	| 'childToolCallId'
+	| 'resumeData'
+	| 'taskPath'
+	| 'resumeContext'
+>;
+
 type ForegroundOperation = {
 	taskPath: SubAgentTaskPath;
 } & (
 	| { type: 'run'; request: SubAgentSpawnRequest }
 	| {
 			type: 'resume';
-			request: DelegateSubAgentResumeRequest;
+			request: SubAgentResumeRequest;
 			source: SubAgentSource;
 			threadId: string;
 	  }
@@ -141,7 +161,7 @@ export class SubAgentRunner {
 	}
 
 	async resumeForeground(
-		request: DelegateSubAgentResumeRequest,
+		request: SubAgentResumeRequest,
 		context: SubAgentRunContext,
 		expectedSourceAgentId = request.subAgentId,
 	): Promise<SubAgentRunResult> {
@@ -245,6 +265,7 @@ export class SubAgentRunner {
 		let agent: BuiltAgent | undefined;
 		try {
 			context.abortSignal?.throwIfAborted();
+			if (operation.type === 'resume') await context.beforeResume?.();
 			const reconstructed = await reconstructionService.reconstructFromResolvedSource({
 				config: childConfig,
 				memoryOwnerAgentId: runtimeSource.source.sourceId,
@@ -287,26 +308,25 @@ export class SubAgentRunner {
 								resourceId,
 								threadId,
 								delegated: true,
-								...(sandboxPrincipalHash !== undefined
-									? {
-											hostMetadata: encodeAgentSandboxHostMetadata({
-												projectId: context.projectId,
-												principalHash: sandboxPrincipalHash,
-											}),
-										}
-									: {}),
+								hostMetadata: createHostMetadata(
+									context,
+									operation.taskPath,
+									runtimeSource.source,
+									sandboxPrincipalHash,
+								),
 							},
 						})
 					: await agent.resume('stream', operation.request.resumeData, {
 							...executionOptions,
 							runId: operation.request.childRunId,
 							toolCallId: operation.request.childToolCallId,
-							onResumeClaimed: () => {
+							onResumeClaimed: async () => {
 								executionStarted = true;
 								recorder.recordHitlResponse(
 									operation.request.childToolCallId,
 									operation.request.resumeData,
 								);
+								await context.onResumeClaimed?.();
 							},
 						});
 			const consumed = await consumeAgentStream(
@@ -451,6 +471,33 @@ async function consumeAgentStream(
 			pendingSuspend,
 		),
 	};
+}
+
+function createHostMetadata(
+	context: SubAgentRunContext,
+	taskPath: SubAgentTaskPath,
+	source: ResolvedSubAgentSource,
+	principalHash?: AgentSandboxPrincipalHash,
+): JSONObject | undefined {
+	let metadata = principalHash
+		? encodeAgentSandboxHostMetadata({ projectId: context.projectId, principalHash })
+		: undefined;
+	if (context.backgroundJobId) {
+		metadata = {
+			...metadata,
+			[BACKGROUND_SUB_AGENT_METADATA_KEY]: jsonParse<JSONValue>(
+				JSON.stringify({
+					jobId: context.backgroundJobId,
+					taskPath,
+					resumeContext: createResumeContext(source),
+					difficulty: context.selfDelegationDifficulty,
+					sharedWorkspace: context.parentWorkspaceHandle !== undefined,
+					messageContext: context.parentMessageContext ?? null,
+				}),
+			),
+		};
+	}
+	return metadata;
 }
 
 function createResumeContext(runtimeSource: ResolvedSubAgentSource): JSONValue {

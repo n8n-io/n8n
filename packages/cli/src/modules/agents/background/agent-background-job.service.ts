@@ -417,9 +417,9 @@ export class AgentBackgroundJobService {
 	/**
 	 * Cancel a job. A sub-agent row is claimed as cancelled first and its live
 	 * run aborted second, so the aborted run's own settle write loses to the
-	 * claim. When this process holds the handle the abort is direct; otherwise
-	 * the spawning main is reached via pubsub. A workflow job stops its
-	 * execution first instead; see `cancelWorkflowJob`.
+	 * claim. Abort the local handle and relay to other mains, which may hold
+	 * a resumed run. A workflow job stops its execution first instead; see
+	 * `cancelWorkflowJob`.
 	 */
 	async cancel(
 		parentThreadId: string,
@@ -439,19 +439,16 @@ export class AgentBackgroundJobService {
 		if (controller) {
 			controller.abort();
 			this.abortControllers.delete(jobId);
-		} else {
-			// publishCommand is a no-op outside queue mode, where a foreign live
-			// handle cannot exist anyway — reconciliation covers crashed spawners.
-			// The row is already claimed, so a failed relay must not surface as a
-			// tool error; the run then ends at its timeout instead of the abort.
-			try {
-				await this.publisher.publishCommand({
-					command: 'cancel-agent-background-job',
-					payload: { jobId },
-				});
-			} catch (error) {
-				this.logger.warn('Failed to relay background job cancellation', { jobId, error });
-			}
+		}
+		// publishCommand is a no-op outside queue mode.
+		// The row is already claimed, so a relay failure must not become a tool error.
+		try {
+			await this.publisher.publishCommand({
+				command: 'cancel-agent-background-job',
+				payload: { jobId },
+			});
+		} catch (error) {
+			this.logger.warn('Failed to relay background job cancellation', { jobId, error });
 		}
 
 		await this.clearChildCheckpoint(job);

@@ -399,6 +399,78 @@ describe('AgentWakeService', () => {
 		expect(suspended.jobRepository.markMailConsumed).not.toHaveBeenCalled();
 	});
 
+	it.each(['running', 'suspended'])(
+		'delivers a child approval while the parent is %s',
+		async (parentStatus) => {
+			const {
+				service,
+				backgroundJobService,
+				jobRepository,
+				executionRepository,
+				checkpointStorage,
+				orchestrator,
+			} = setup();
+			const job = makeJob({ status: 'suspended', settledAt: null });
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([job]);
+			executionRepository.existsRunningByThread.mockResolvedValue(parentStatus === 'running');
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(
+				parentStatus === 'suspended' ? mock() : null,
+			);
+			const approval = mock<
+				NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>
+			>({ runId: 'child-run', serializedState: 'checkpoint' });
+			backgroundJobService.getApproval.mockResolvedValue(approval);
+			await service.attemptWake('thread-1');
+			expect(orchestrator.deliverBackgroundApproval).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				}),
+				'Research',
+				approval,
+			);
+			expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+			expect(jobRepository.markApprovalDelivered).toHaveBeenCalledWith(
+				job.id,
+				'child-run',
+				'checkpoint',
+			);
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		},
+	);
+
+	it('delivers other approvals and completed results when an approval card fails', async () => {
+		const { service, jobRepository, backgroundJobService, orchestrator } = setup();
+		const failed = makeJob({ id: 'failed-card', status: 'suspended', settledAt: null });
+		const waiting = makeJob({ id: 'waiting', status: 'suspended', settledAt: null });
+		const completed = makeJob({ id: 'completed' });
+		jobRepository.findWakeableUnconsumed.mockResolvedValue([failed, waiting, completed]);
+		backgroundJobService.getApproval.mockResolvedValue(
+			mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>({
+				runId: 'child-run',
+				serializedState: 'checkpoint',
+			}),
+		);
+		orchestrator.deliverBackgroundApproval.mockRejectedValueOnce(new Error('Card post failed'));
+		await service.attemptWake('thread-1');
+		expect(jobRepository.markApprovalDelivered).toHaveBeenCalledExactlyOnceWith(
+			waiting.id,
+			'child-run',
+			'checkpoint',
+		);
+		expect(orchestrator.executeForWake).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				backgroundJobSignal: {
+					tasks: [
+						{ id: completed.id, title: completed.title, kind: 'subagent', status: 'completed' },
+					],
+				},
+			}),
+		);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith('thread-1', [
+			completed.id,
+		]);
+	});
+
 	it('allows a wake after the suspension ends', async () => {
 		const resumed = setup();
 		resumed.checkpointStorage.findSuspendedForThread.mockResolvedValueOnce({} as never);
@@ -613,6 +685,37 @@ describe('AgentWakeService', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it('retries capped results only after an approval is delivered', async () => {
+		const { service, orchestrator, jobRepository, backgroundJobService } = setup();
+		const completed = makeJob();
+		jobRepository.findWakeableUnconsumed.mockResolvedValue([completed]);
+		orchestrator.executeForWake.mockRejectedValue(new Error('model unavailable'));
+		for (let attempt = 0; attempt < MAX_CONSECUTIVE_FAILED_WAKES; attempt++) {
+			await service.attemptWake('thread-1');
+		}
+
+		jobRepository.findWakeableUnconsumed.mockResolvedValue([
+			completed,
+			makeJob({ id: 'waiting', status: 'suspended', settledAt: null }),
+		]);
+		backgroundJobService.getApproval.mockResolvedValue(
+			mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>({
+				runId: 'child-run',
+				serializedState: 'checkpoint',
+			}),
+		);
+		orchestrator.executeForWake.mockResolvedValue(undefined);
+		orchestrator.deliverBackgroundApproval.mockRejectedValueOnce(new Error('Card post failed'));
+
+		await service.attemptWake('thread-1');
+		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+
+		await service.attemptWake('thread-1');
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith('thread-1', [
+			completed.id,
+		]);
 	});
 });
 

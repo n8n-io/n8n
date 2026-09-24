@@ -3,6 +3,7 @@ import { AgentChatHitlResumeHandler } from '../agent-chat-hitl-resume-handler';
 it.each([
 	{
 		name: 'approval',
+		background: false,
 		callback: {
 			actionId: 'resume:run-1:tool-1:0',
 			value: JSON.stringify({ approved: true }),
@@ -12,6 +13,7 @@ it.each([
 	},
 	{
 		name: 'non-approval selection',
+		background: false,
 		callback: {
 			actionId: 'resume:run-1:tool-1:0',
 			value: JSON.stringify({ type: 'button', value: 'continue' }),
@@ -19,10 +21,21 @@ it.each([
 		},
 		content: '✅ Continue selected by Alice',
 	},
-])('settles a $name card in place before resuming the agent', async ({ callback, content }) => {
+	{
+		name: 'background approval after a restart',
+		background: true,
+		callback: {
+			actionId: 'bg:96fa13fa-75db-4439-b7c8-cd04a2c2f9b7:abcdefghijklmnopqrstuv:1',
+			value: '',
+			kind: 'approval' as const,
+		},
+		content: '✅ Approved by Alice',
+	},
+])('settles a $name card in place', async ({ callback, content, background }) => {
 	const settleActionMessage = vi.fn().mockResolvedValue(undefined);
 	const deleteMessage = vi.fn().mockResolvedValue(undefined);
 	const resumeForChat = vi.fn(() => (async function* () {})());
+	const resolve = vi.fn().mockResolvedValue(background ? undefined : callback);
 	const handler = new AgentChatHitlResumeHandler({
 		agentId: 'agent-1',
 		projectId: 'project-1',
@@ -30,7 +43,7 @@ it.each([
 		agentService: { resumeForChat },
 		logger: { warn: vi.fn() } as never,
 		callbackStore: {
-			resolve: vi.fn().mockResolvedValue(callback),
+			resolve,
 		} as never,
 		deleteActionMessageBeforeResume: false,
 		formatActionDecisionMessage: ({ approved, selectedLabel, user }) =>
@@ -48,7 +61,7 @@ it.each([
 	});
 
 	await handler.handleAction({
-		actionId: 'callback-key',
+		actionId: background ? callback.actionId : 'callback-key',
 		thread: { post: vi.fn() },
 		threadId: 'discord:800000000000000001:700000000000000001:600000000000000001',
 		messageId: 'message-1',
@@ -65,7 +78,21 @@ it.each([
 		messageId: 'message-1',
 		content,
 	});
-	expect(settleActionMessage.mock.invocationCallOrder[0]).toBeLessThan(
-		resumeForChat.mock.invocationCallOrder[0],
-	);
+	if (background) {
+		expect(resolve).not.toHaveBeenCalled();
+		expect(resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({
+				runId: 'background-job-96fa13fa-75db-4439-b7c8-cd04a2c2f9b7',
+				toolCallId: 'abcdefghijklmnopqrstuv',
+				resumeData: { approved: true },
+			}),
+		);
+		expect(settleActionMessage.mock.invocationCallOrder[0]).toBeGreaterThan(
+			resumeForChat.mock.invocationCallOrder[0],
+		);
+	} else {
+		expect(settleActionMessage.mock.invocationCallOrder[0]).toBeLessThan(
+			resumeForChat.mock.invocationCallOrder[0],
+		);
+	}
 });

@@ -26,7 +26,10 @@ import { mock } from 'vitest-mock-extended';
 import type { ExternalHooks } from '@/external-hooks';
 import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 
+import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import {
 	AgentChatExecutionService,
@@ -43,6 +46,7 @@ import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import {
@@ -51,6 +55,7 @@ import {
 } from '../agent-sandbox-principal';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentWakeService } from '../background/agent-wake.service';
+import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -179,6 +184,8 @@ function makeService(sandboxEnabled = false) {
 	const executionService = mock<AgentExecutionService>();
 	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 	const executionRepository = mock<AgentExecutionRepository>();
+	const backgroundJobs = mock<AgentBackgroundJobService>();
+	const backgroundJobRepository = mock<AgentBackgroundJobRepository>();
 	const chatExecutionService = new AgentChatExecutionService(
 		Container.get(LockService),
 		executionRepository,
@@ -187,6 +194,7 @@ function makeService(sandboxEnabled = false) {
 		mock<Publisher>(),
 		mock<InstanceSettings>(),
 		mock<AgentExecutionUpdateBroadcaster>(),
+		backgroundJobs,
 	);
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
@@ -250,10 +258,14 @@ function makeService(sandboxEnabled = false) {
 		agentRepository,
 		aiConfigMock,
 		chatExecutionService,
+		backgroundJobRepository,
+		backgroundJobs,
 	);
 
 	return {
 		service,
+		backgroundJobRepository,
+		backgroundJobs,
 		chatExecutionService,
 		executionRepository,
 		checkpointStorage,
@@ -276,6 +288,231 @@ async function collect(generator: AsyncGenerator<StreamChunk>) {
 	for await (const chunk of generator) chunks.push(chunk);
 	return chunks;
 }
+
+describe('background approvals', () => {
+	afterEach(() => Container.reset());
+
+	it('delivers a published approval through its stored connection and reply thread', async () => {
+		const { service, chatIntegrationService, bridge } = makeService();
+		const approval: NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>> = {
+			...mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			runId: 'child-run-1',
+			token: 'gate-1',
+			metadata: {
+				jobId: 'job-1',
+				taskPath: '/root/research_0',
+				resumeContext: { agentId: 'child-1' },
+				sharedWorkspace: false,
+				messageContext: {
+					...selectedContext,
+					integrationConnectionId: 'slack:approval-credential',
+					replyTarget: { type: 'thread', threadId: 'slack:approval-reply:1' },
+				},
+			},
+			pending: {
+				suspended: true,
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-1',
+				toolName: 'check_ledger',
+				input: { id: 'entry-1' },
+				suspendPayload: { type: 'approval', toolName: 'check_ledger', args: { id: 'entry-1' } },
+				resumeSchema: { type: 'object', properties: { approved: { type: 'boolean' } } },
+			},
+		};
+
+		await service.deliverBackgroundApproval(
+			{
+				agentId,
+				projectId,
+				memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+				identity: {
+					type: 'published',
+					integrationType: 'slack',
+					principalHash: integrationPrincipalHash,
+				},
+			},
+			'Research',
+			approval,
+		);
+
+		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(
+			agentId,
+			'slack',
+			'approval-credential',
+		);
+		expect(bridge.deliverBackgroundApproval).toHaveBeenCalledExactlyOnceWith(
+			'slack:approval-reply:1',
+			{
+				jobId: 'job-1',
+				title: 'Research',
+				token: 'gate-1',
+				toolCall: {
+					type: 'tool-call-suspended',
+					runId: 'child-run-1',
+					toolCallId: 'child-tool-1',
+					toolName: 'check_ledger',
+					input: { id: 'entry-1' },
+					suspendPayload: { type: 'approval', toolName: 'check_ledger', args: { id: 'entry-1' } },
+					resumeSchema: { type: 'object', properties: { approved: { type: 'boolean' } } },
+				},
+			},
+		);
+	});
+
+	it.each([
+		{ expectedMemory: { threadId: 'other-thread' } },
+		{ expectedMemory: { resourceId: 'draft-chat:other-user' } },
+		{ agentId: 'other-agent' },
+		{ projectId: 'other-project' },
+		{ toolCallId: 'old-gate' },
+		{ user: mock<User>({ id: 'other-user' }) },
+		{ usePublishedVersion: true, messageContext: structuredClone(selectedContext) },
+	])('rejects a background approval from another Preview scope: %j', async (other) => {
+		const { service, backgroundJobRepository, backgroundJobs, runtimeCacheService } =
+			makeService(false);
+		backgroundJobRepository.findById.mockResolvedValue(
+			mock<AgentBackgroundJob>({
+				id: 'job-1',
+				parentAgentId: agentId,
+				parentThreadId: 'thread-1',
+				parentResourceId: 'draft-chat:user-1',
+				parentPrincipalHash: userPrincipalHash,
+				status: 'suspended',
+			}),
+		);
+		backgroundJobs.getApproval.mockResolvedValue(
+			mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>({
+				token: 'gate-1',
+				scope: { projectId, principalHash: userPrincipalHash },
+			}),
+		);
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'background-job-job-1',
+					toolCallId: 'gate-1',
+					resumeData: { approved: true },
+					usePublishedVersion: false,
+					user,
+					...other,
+				}),
+			),
+		).rejects.toBeInstanceOf(UserError);
+		expect(backgroundJobs.resume).not.toHaveBeenCalled();
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ ...selectedContext, platform: 'telegram' },
+		{ ...selectedContext, integrationConnectionId: 'slack:other-credential' },
+		{ ...selectedContext, target: { type: 'thread' as const, threadId: 'slack:other-channel:1' } },
+		null,
+	])('rejects a background approval from another channel: %j', async (messageContext) => {
+		const { service, backgroundJobRepository, backgroundJobs } = makeService(false);
+		backgroundJobRepository.findById.mockResolvedValue(
+			mock<AgentBackgroundJob>({
+				id: 'job-1',
+				parentAgentId: agentId,
+				parentThreadId: 'thread-1',
+				parentResourceId: 'slack:user-1',
+				parentPrincipalHash: integrationPrincipalHash,
+				status: 'suspended',
+			}),
+		);
+		backgroundJobs.getApproval.mockResolvedValue({
+			...mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			token: 'gate-1',
+			scope: { projectId, principalHash: integrationPrincipalHash },
+			metadata: {
+				jobId: 'job-1',
+				taskPath: '/root/research_0',
+				resumeContext: { agentId: 'child-1' },
+				sharedWorkspace: false,
+				messageContext: structuredClone(selectedContext),
+			},
+		});
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'background-job-job-1',
+					toolCallId: 'gate-1',
+					resumeData: { approved: true },
+					messageContext,
+				}),
+			),
+		).rejects.toThrow('does not belong to this chat');
+		expect(backgroundJobs.resume).not.toHaveBeenCalled();
+	});
+
+	it.each([false, true])('resumes only the waiting child with published=%s', async (published) => {
+		const { service, backgroundJobRepository, backgroundJobs, runtimeCacheService } =
+			makeService(true);
+		const runner = mock<SubAgentBackgroundRunner>();
+		Container.set(SubAgentBackgroundRunner, runner);
+		Container.set(CredentialsService, mock<CredentialsService>());
+		const principalHash = published ? integrationPrincipalHash : userPrincipalHash;
+		const job = mock<AgentBackgroundJob>({
+			id: 'job-1',
+			parentAgentId: agentId,
+			parentThreadId: 'thread-1',
+			subAgentId: 'child-1',
+			childThreadId: 'child-thread-1',
+			parentResourceId: published ? 'slack:user-1' : 'draft-chat:user-1',
+			parentPrincipalHash: principalHash,
+			status: 'suspended',
+		});
+		backgroundJobRepository.findById.mockResolvedValue(job);
+		const messageContext: IntegrationMessageContext = {
+			...selectedContext,
+			replyTarget: { type: 'thread', threadId: 'slack:reply-thread:1' },
+		};
+		backgroundJobs.getApproval.mockResolvedValue({
+			...mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			token: 'gate-1',
+			scope: { projectId, principalHash },
+			metadata: {
+				jobId: job.id,
+				taskPath: '/root/research_0',
+				resumeContext: { agentId: 'child-1' },
+				sharedWorkspace: false,
+				messageContext,
+			},
+		});
+		const response = { approved: true };
+		expect(
+			await collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					user,
+					runId: 'background-job-job-1',
+					toolCallId: 'gate-1',
+					resumeData: response,
+					usePublishedVersion: published,
+					messageContext: {
+						...selectedContext,
+						target: { type: 'thread', threadId: 'slack:reply-thread:1' },
+					},
+				}),
+			),
+		).toEqual([]);
+		expect(runner.resume).toHaveBeenCalledExactlyOnceWith(
+			job,
+			{ token: 'gate-1', resumeData: response },
+			expect.objectContaining({
+				projectId,
+				parentAgentId: agentId,
+				runType: published ? 'production' : 'test',
+				workflowToolExecutionMode: published ? 'integrated' : 'manual',
+			}),
+		);
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+});
 
 function makeCheckpoint(
 	pendingToolCalls: SerializableAgentState['pendingToolCalls'] = {},
@@ -1278,31 +1515,44 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it.each(['chat', 'wake'] as const)(
+	it.each(['chat', 'wake', 'approval'] as const)(
 		'rejects an inaccessible draft %s before runtime acquisition',
 		async (operation) => {
 			const { service, executionService, runtimeCacheService } = makeService();
 			executionService.canUseDraftThread.mockResolvedValue(false);
-			const result =
-				operation === 'chat'
-					? collect(
-							service.executeForChat({
-								agentId,
-								projectId,
-								message: 'hello',
-								user,
-								memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-							}),
-						)
-					: service.executeForWake({
-							backgroundJobSignal,
-							agentId,
-							projectId,
-							message: 'Wake',
-							memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-							identity: { type: 'draft', user, principalHash: userPrincipalHash },
-							abortSignal: new AbortController().signal,
-						});
+			let result: Promise<unknown>;
+			if (operation === 'chat') {
+				result = collect(
+					service.executeForChat({
+						agentId,
+						projectId,
+						message: 'hello',
+						user,
+						memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					}),
+				);
+			} else if (operation === 'wake') {
+				result = service.executeForWake({
+					backgroundJobSignal,
+					agentId,
+					projectId,
+					message: 'Wake',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					identity: { type: 'draft', user, principalHash: userPrincipalHash },
+					abortSignal: new AbortController().signal,
+				});
+			} else {
+				result = service.deliverBackgroundApproval(
+					{
+						agentId,
+						projectId,
+						memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+						identity: { type: 'draft', user, principalHash: userPrincipalHash },
+					},
+					'Research',
+					mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+				);
+			}
 
 			await expect(result).rejects.toThrow('Session not found');
 			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();

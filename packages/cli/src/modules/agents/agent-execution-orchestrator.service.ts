@@ -41,6 +41,7 @@ import {
 	decodeAgentSandboxHostMetadata,
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
+	isAgentSandboxPrincipalHash,
 	type AgentSandboxPrincipalHash,
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
@@ -60,6 +61,9 @@ import { IntegrationMessageContextService } from './integrations/integration-mes
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
+import { AgentBackgroundJobRepository } from './repositories/agent-background-job.repository';
+import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import { BACKGROUND_APPROVAL_RUN_PREFIX } from './background/sub-agent-background-state';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from './types/agent-queued-message';
@@ -268,6 +272,8 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentRepository: AgentRepository,
 		private readonly aiConfig: AiConfig,
 		private readonly chatExecutionService: AgentChatExecutionService,
+		private readonly backgroundJobRepository: AgentBackgroundJobRepository,
+		private readonly backgroundJobService: AgentBackgroundJobService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -404,12 +410,123 @@ export class AgentExecutionOrchestratorService {
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
+		if (await this.resumeBackgroundForChat(config)) return;
 		const resume = { ...config, usePublishedVersion: config.usePublishedVersion ?? true };
 		const checkpoint = await this.loadResumeCheckpoint(resume);
 		yield* this.withRuntimeLease(
 			async () => await this.getResumeRuntime(resume, checkpoint),
 			(runtime) => this.resumeRuntimeTurn(resume, checkpoint, runtime),
 		);
+	}
+
+	async resumeBackgroundForChat(config: ResumeForChatConfig): Promise<boolean> {
+		if (!config.runId.startsWith(BACKGROUND_APPROVAL_RUN_PREFIX)) return false;
+		const job = await this.backgroundJobRepository.findById(
+			config.runId.slice(BACKGROUND_APPROVAL_RUN_PREFIX.length),
+		);
+		if (!job || job.parentAgentId !== config.agentId || job.status !== 'suspended') {
+			throw new UserError('This background approval is no longer available');
+		}
+		const resume = { ...config, usePublishedVersion: config.usePublishedVersion ?? true };
+		const approval = await this.backgroundJobService.getApproval(job);
+		if (
+			!approval ||
+			approval.token !== config.toolCallId ||
+			!isAgentSandboxPrincipalHash(job.parentPrincipalHash) ||
+			approval.scope.projectId !== config.projectId
+		) {
+			throw new UserError('This background approval is no longer available');
+		}
+		const memoryScope = {
+			threadId: job.parentThreadId,
+			resourceId: job.parentResourceId,
+			hostMetadata: encodeAgentSandboxHostMetadata({
+				projectId: config.projectId,
+				principalHash: job.parentPrincipalHash,
+			}),
+		};
+		if (
+			(config.expectedMemory?.threadId !== undefined &&
+				config.expectedMemory.threadId !== memoryScope.threadId) ||
+			(config.expectedMemory?.resourceId !== undefined &&
+				config.expectedMemory.resourceId !== memoryScope.resourceId)
+		) {
+			throw new UserError('This background approval does not belong to this chat');
+		}
+		await this.resolveResumeAccess(resume, memoryScope);
+		this.validateResumeSandbox(resume, memoryScope);
+		if (resume.usePublishedVersion) {
+			const expected = approval.metadata.messageContext;
+			const actual = config.messageContext;
+			const destination = expected?.replyTarget ?? expected?.target;
+			if (
+				!expected ||
+				!actual ||
+				actual.platform !== expected.platform ||
+				actual.integrationConnectionId !== expected.integrationConnectionId ||
+				!destination?.threadId ||
+				actual.target.threadId !== destination.threadId
+			) {
+				throw new UserError('This background approval does not belong to this chat');
+			}
+		}
+		const { SubAgentBackgroundRunner } = await import(
+			'./background/sub-agent-background-runner.js'
+		);
+		const { AgentsCredentialProvider } = await import('./adapters/agents-credential-provider.js');
+		const { CredentialsService } = await import('@/credentials/credentials.service.js');
+		await Container.get(SubAgentBackgroundRunner).resume(
+			job,
+			{ token: config.toolCallId, resumeData: config.resumeData },
+			{
+				projectId: config.projectId,
+				parentAgentId: job.parentAgentId,
+				credentialProvider: new AgentsCredentialProvider(
+					Container.get(CredentialsService),
+					config.projectId,
+					config.user,
+					job.subAgentId ?? undefined,
+				),
+				runType: resume.usePublishedVersion ? 'production' : 'test',
+				workflowToolExecutionMode: resume.usePublishedVersion ? 'integrated' : 'manual',
+				user: config.user,
+			},
+		);
+		return true;
+	}
+
+	async deliverBackgroundApproval(
+		config: Pick<ExecuteForWakeConfig, 'agentId' | 'projectId' | 'memory' | 'identity'>,
+		title: string,
+		approval: NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>,
+	): Promise<void> {
+		if (config.identity.type === 'draft') {
+			await this.assertDraftChatAccess({
+				...config,
+				user: config.identity.user,
+				sessionMode: 'existing',
+			});
+			return;
+		}
+		const delivery = await this.getWakeDelivery(
+			config.agentId,
+			config.identity.integrationType,
+			approval.metadata.messageContext,
+		);
+		await delivery.bridge.deliverBackgroundApproval(delivery.threadId, {
+			jobId: approval.metadata.jobId,
+			title,
+			token: approval.token,
+			toolCall: {
+				type: 'tool-call-suspended',
+				runId: approval.runId,
+				toolCallId: approval.pending.toolCallId,
+				toolName: approval.pending.toolName,
+				input: approval.pending.input,
+				suspendPayload: approval.pending.suspendPayload,
+				resumeSchema: approval.pending.resumeSchema,
+			},
+		});
 	}
 
 	/**

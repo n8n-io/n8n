@@ -476,11 +476,19 @@ describe('result consumption updates', () => {
 });
 
 describe('cancel', () => {
-	it('claims the row and aborts the live handle without a pubsub round-trip', async () => {
+	it('aborts a resumed run on another main when a local handle still exists', async () => {
 		const { service, jobRepository, publisher } = setup();
+		const { service: resumedService } = setup();
 		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
 		const controller = new AbortController();
+		const resumedController = new AbortController();
 		service.registerAbortController('job-1', controller);
+		resumedService.registerAbortController('job-1', resumedController);
+		publisher.publishCommand.mockImplementation(async (command) => {
+			if (command.command === 'cancel-agent-background-job') {
+				resumedService.handleCancelRelay(command.payload);
+			}
+		});
 
 		const outcome = await service.cancel('thread-1', 'job-1');
 
@@ -488,7 +496,11 @@ describe('cancel', () => {
 		expect(jobRepository.settleIfActive).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
 		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(controller.signal.aborted).toBe(true);
-		expect(publisher.publishCommand).not.toHaveBeenCalled();
+		expect(resumedController.signal.aborted).toBe(true);
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'cancel-agent-background-job',
+			payload: { jobId: 'job-1' },
+		});
 	});
 
 	it('stops the child and reports cancellation when marking the result as delivered fails', async () => {
@@ -532,11 +544,16 @@ describe('cancel', () => {
 	});
 
 	it('returns already-settled when the claim loses', async () => {
-		const { service, jobRepository } = setup();
-		jobRepository.findByParentThread.mockResolvedValue([makeJob({ status: 'completed' })]);
+		const { service, jobRepository, publisher } = setup();
+		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
 		jobRepository.settleIfActive.mockResolvedValue(false);
+		const controller = new AbortController();
+		service.registerAbortController('job-1', controller);
 
 		expect(await service.cancel('thread-1', 'job-1')).toBe('already-settled');
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
+		expect(controller.signal.aborted).toBe(false);
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 });
 
