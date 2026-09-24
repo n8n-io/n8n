@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
 import type { ExecutionResponse } from '@n8n/engine';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ENCODED_BUFFER_KEY } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -273,5 +274,85 @@ describe('EngineV2WebhookResponder', () => {
 		await expect(responder.waitForResponse(executionId)).rejects.toThrow(
 			'already waits for a response for this execution',
 		);
+	});
+});
+
+describe('EngineV2WebhookResponder while the receiver subscribes', () => {
+	/** A receiver whose subscriptions complete only when the test says so. */
+	function slowReceiver() {
+		const subscriptions: Array<IDeferredPromise<() => void>> = [];
+
+		return {
+			receiver: {
+				receive: async () => {
+					const subscription = createDeferredPromise<() => void>();
+					subscriptions.push(subscription);
+					return await subscription.promise;
+				},
+				stop: async () => {},
+			} satisfies ExecutionResponseReceiver,
+			subscriptions,
+		};
+	}
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('counts runs that are still subscribing against the limit', async () => {
+		const { receiver } = slowReceiver();
+		const responder = newResponder();
+		responder.useReceiver(receiver);
+
+		for (let i = 0; i < MAX_PENDING_WEBHOOKS; i++) {
+			void responder.waitForResponse(createExecutionIdV2());
+		}
+
+		await expect(responder.waitForResponse(createExecutionIdV2())).rejects.toThrow(
+			'Try again later',
+		);
+	});
+
+	it('frees the slot and the timer when the subscription fails', async () => {
+		vi.useFakeTimers();
+		const { receiver, subscriptions } = slowReceiver();
+		const responder = newResponder();
+		responder.useReceiver(receiver);
+		const executionId = createExecutionIdV2();
+
+		const failed = responder.waitForResponse(executionId);
+		await vi.waitFor(() => expect(subscriptions).toHaveLength(1));
+		subscriptions[0].reject(new Error('Redis is unavailable'));
+
+		await expect(failed).rejects.toThrow('Redis is unavailable');
+		expect(vi.getTimerCount()).toBe(0);
+
+		const retried = responder.waitForResponse(executionId);
+		await vi.waitFor(() => expect(subscriptions).toHaveLength(2));
+		subscriptions[1].resolve(() => {});
+		await expect(retried).resolves.toBeDefined();
+	});
+
+	it('gives up at the response timeout and drops a late subscription', async () => {
+		vi.useFakeTimers();
+		const { receiver, subscriptions } = slowReceiver();
+		const responder = newResponder(1_000);
+		responder.useReceiver(receiver);
+		const executionId = createExecutionIdV2();
+
+		const waiting = responder.waitForResponse(executionId);
+		const rejection = expect(waiting).rejects.toThrow('before the timeout');
+		await vi.advanceTimersByTimeAsync(1_000);
+		await rejection;
+
+		const unsubscribe = vi.fn();
+		subscriptions[0].resolve(unsubscribe);
+		await vi.waitFor(() => expect(unsubscribe).toHaveBeenCalledTimes(1));
+
+		// The slot is free again.
+		const retried = responder.waitForResponse(executionId);
+		await vi.waitFor(() => expect(subscriptions).toHaveLength(2));
+		subscriptions[1].resolve(() => {});
+		await expect(retried).resolves.toBeDefined();
 	});
 });

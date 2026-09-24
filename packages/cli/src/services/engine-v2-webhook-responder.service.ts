@@ -60,7 +60,8 @@ export class EngineV2WebhookResponder {
 	 * `StartExecution`.
 	 * @throws {UnexpectedError} If the execution response receiver is not set, or
 	 * if the service already waits for this execution.
-	 * @throws {OperationalError} If the service is at capacity.
+	 * @throws {OperationalError} If the service is at capacity, or if it cannot
+	 * listen for the response before the response timeout.
 	 */
 	async waitForResponse(
 		executionId: ExecutionIdV2,
@@ -90,12 +91,52 @@ export class EngineV2WebhookResponder {
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});
-		const unsubscribe = await receiver.receive(executionId, (received) =>
-			this.handle(received, response),
-		);
-		this.pendingWebhooks.set(executionId, { response, unsubscribe });
+		// Hold the slot before the subscription is ready, so requests that arrive
+		// meanwhile still count against the limit.
+		const pending: PendingWebhook = { response, unsubscribe: () => {} };
+		this.pendingWebhooks.set(executionId, pending);
+
+		try {
+			pending.unsubscribe = await this.subscribe(receiver, response);
+		} catch (error) {
+			response.release();
+			throw error;
+		}
 
 		return response;
+	}
+
+	/**
+	 * A transport can wait for its broker, for example Redis while it reconnects.
+	 * The response timeout also bounds that wait, so the request cannot stay open
+	 * past it. The run is not started when the wait runs out.
+	 */
+	private async subscribe(
+		receiver: ExecutionResponseReceiver,
+		response: PendingWebhookResponse,
+	): Promise<UnsubscribeExecutionResponse> {
+		const { executionId } = response;
+		const subscription = receiver.receive(executionId, (received) =>
+			this.handle(received, response),
+		);
+		const timedOut = new Promise<'timed-out'>((resolve) => {
+			void response.settled.then((outcome) => {
+				if (outcome.status === 'timeout') resolve('timed-out');
+			});
+		});
+
+		const result = await Promise.race([subscription, timedOut]);
+		if (result !== 'timed-out') return result;
+
+		// The subscription can still complete. It must not outlive the request.
+		void subscription.then(
+			(unsubscribe) => unsubscribe(),
+			() => {},
+		);
+		throw new OperationalError(
+			'Engine 2.0 could not listen for the execution response before the timeout.',
+			{ extra: { executionId } },
+		);
 	}
 
 	private handle(received: ExecutionResponse, response: PendingWebhookResponse): void {
