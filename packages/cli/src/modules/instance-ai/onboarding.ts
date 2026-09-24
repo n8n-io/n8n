@@ -184,6 +184,7 @@ export class InstanceAiOnboardingService {
 			threadId,
 			projectId,
 			launchMetadata,
+			opening.title,
 		);
 		if (!response.created) return response;
 

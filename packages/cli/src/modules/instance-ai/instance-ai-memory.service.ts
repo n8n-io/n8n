@@ -341,11 +341,13 @@ export class InstanceAiMemoryService {
 		};
 	}
 
+	/** `title` names a host-opened thread from the start: the header never shows the first user message. */
 	async ensureThread(
 		userId: string,
 		threadId: string,
 		projectId: string,
 		launchMetadata: InstanceAiThreadLaunchMetadata,
+		title = '',
 	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
@@ -363,7 +365,7 @@ export class InstanceAiMemoryService {
 			{
 				id: threadId,
 				resourceId: userId,
-				title: '',
+				title,
 				metadata: {
 					source: launchMetadata.source,
 					origin: launchMetadata.origin,

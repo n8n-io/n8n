@@ -3959,12 +3959,12 @@ export class InstanceAiService {
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
 			// The heuristic title lands on the opening turn, so "no title yet" marks it.
-			const isOpeningTurn = Boolean(thread && !thread.title);
-			// An onboarding thread opens with a seeded greeting; its first user turn answers it.
-			const onboarding =
-				isOpeningTurn && thread?.metadata?.source === 'onboarding'
-					? await loadOnboarding()
-					: undefined;
+			// An onboarding thread is titled at creation and opens with a seeded greeting. Its first
+			// user turn answers it, and is the turn that marks the title final below.
+			const unopenedOnboarding =
+				thread?.metadata?.source === 'onboarding' && !thread.metadata.titleRefined;
+			const isOpeningTurn = Boolean(thread && (!thread.title || unopenedOnboarding));
+			const onboarding = unopenedOnboarding ? await loadOnboarding() : undefined;
 
 			if (isOpeningTurn) {
 				const handoffTitle =
