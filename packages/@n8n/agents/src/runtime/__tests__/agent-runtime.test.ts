@@ -16,7 +16,12 @@ import type { RuntimeSkillSource } from '../../skills/types';
 import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
-import type { StreamChunk } from '../../types/sdk/agent';
+import type { GenerateResult, StreamChunk } from '../../types/sdk/agent';
+import type {
+	GuardrailDecision,
+	GuardrailsOptions,
+	ModelGuardrail,
+} from '../../types/sdk/guardrail';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
@@ -1127,6 +1132,254 @@ describe('AgentRuntime — empty stop turn retry', () => {
 		await runtime.generate('hi');
 
 		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// guardrails
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — guardrails', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	const stopDecision = (code: string): GuardrailDecision => ({ action: 'stop', code });
+
+	type GuardrailSpies = {
+		[K in keyof Required<ModelGuardrail>]: MockedFunction<NonNullable<ModelGuardrail[K]>>;
+	};
+
+	/** A hook whose every method is a spy. `before`/`beforeTool` allow unless overridden. */
+	function makeGuardrail(overrides: Partial<GuardrailSpies> = {}): GuardrailSpies {
+		return {
+			before: vi.fn<NonNullable<ModelGuardrail['before']>>().mockResolvedValue({ action: 'allow' }),
+			after: vi.fn<NonNullable<ModelGuardrail['after']>>().mockResolvedValue(undefined),
+			beforeTool: vi
+				.fn<NonNullable<ModelGuardrail['beforeTool']>>()
+				.mockResolvedValue({ action: 'allow' }),
+			afterTool: vi.fn<NonNullable<ModelGuardrail['afterTool']>>().mockResolvedValue(undefined),
+			...overrides,
+		};
+	}
+
+	function guardrailsOption(hook: ModelGuardrail): GuardrailsOptions {
+		return { hooks: [hook], agentId: 'agent-1', threadId: 'thread-1' };
+	}
+
+	/** A `stop` turn with no output; the loop retries it. */
+	function makeGenerateEmpty() {
+		return {
+			finishReason: 'stop',
+			usage: { inputTokens: 10, outputTokens: 0, totalTokens: 10 },
+			response: { messages: [] },
+			toolCalls: [],
+		};
+	}
+
+	function createRuntimeWithEchoTool(handler: (input: { v: string }) => Promise<unknown>) {
+		const echoTool = new ToolBuilder('echo')
+			.description('Echo the input')
+			.input(z.object({ v: z.string() }))
+			.handler(handler)
+			.build();
+		return new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [echoTool],
+			checkpointStorage: 'memory',
+		});
+	}
+
+	function findToolCallBlock(messages: GenerateResult['messages']): ContentToolCall {
+		const assistantMsg = messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		return assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+	}
+
+	it('ends a generate run with finishReason guardrail when before() stops', async () => {
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(generateText).not.toHaveBeenCalled();
+		expect(result.finishReason).toBe('guardrail');
+		expect(result.guardrail).toEqual({ code: 'test.stop' });
+		expect(result.error).toBeUndefined();
+		expect(hook.after).not.toHaveBeenCalled();
+	});
+
+	it('ends a stream run with a finish chunk that carries the guardrail stop', async () => {
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		const { runtime } = createRuntime();
+
+		const { stream } = await runtime.stream('hi', { guardrails: guardrailsOption(hook) });
+		const chunks = await collectChunks(stream);
+
+		expect(streamText).not.toHaveBeenCalled();
+		const finish = chunks[chunks.length - 1];
+		expect(finish).toMatchObject({
+			type: 'finish',
+			finishReason: 'guardrail',
+			guardrail: { code: 'test.stop' },
+		});
+		expect(chunks.some((c) => c.type === 'text-delta')).toBe(false);
+	});
+
+	it('calls before() and after() once with the same context when the call is allowed', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const hook = makeGuardrail();
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(result.finishReason).toBe('stop');
+		expect(result.guardrail).toBeUndefined();
+		expect(hook.before).toHaveBeenCalledTimes(1);
+		expect(hook.after).toHaveBeenCalledTimes(1);
+
+		const [beforeCtx] = hook.before.mock.calls[0];
+		const [afterCtx, usage] = hook.after.mock.calls[0];
+		expect(afterCtx).toBe(beforeCtx);
+		expect(beforeCtx).toMatchObject({
+			callId: expect.any(String),
+			source: 'turn',
+			model: 'openai/gpt-4o-mini',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+		});
+		expect(usage).toMatchObject({ promptTokens: 10, completionTokens: 5, totalTokens: 15 });
+	});
+
+	it('checks each empty-turn retry as a new call', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateEmpty())
+			.mockResolvedValueOnce(makeGenerateSuccess('Recovered'));
+		const hook = makeGuardrail();
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+		expect(hook.before).toHaveBeenCalledTimes(2);
+		expect(hook.after).toHaveBeenCalledTimes(2);
+		const [first] = hook.before.mock.calls[0];
+		const [second] = hook.before.mock.calls[1];
+		expect(first.callId).not.toBe(second.callId);
+	});
+
+	it('ends the run when a guardrail stops the empty-turn retry', async () => {
+		generateText.mockResolvedValue(makeGenerateEmpty());
+		const before = vi
+			.fn<NonNullable<ModelGuardrail['before']>>()
+			.mockResolvedValueOnce({ action: 'allow' })
+			.mockResolvedValueOnce(stopDecision('test.retry'));
+		const hook = makeGuardrail({ before });
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(result.finishReason).toBe('guardrail');
+		expect(result.guardrail).toEqual({ code: 'test.retry' });
+		expect(hook.after).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses a tool call when beforeTool() stops and lets the model continue', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'echo', { v: 'x' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Understood'));
+		const handler = vi.fn(async ({ v }: { v: string }) => await Promise.resolve({ echoed: v }));
+		const hook = makeGuardrail({
+			beforeTool: vi.fn().mockResolvedValue(stopDecision('tool.stop')),
+		});
+		const runtime = createRuntimeWithEchoTool(handler);
+
+		const result = await runtime.generate('go', { guardrails: guardrailsOption(hook) });
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(hook.afterTool).not.toHaveBeenCalled();
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+		expect(result.guardrail).toBeUndefined();
+
+		const call = findToolCallBlock(result.messages);
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain('tool.stop');
+	});
+
+	it('passes the handler result to afterTool() when the tool call is allowed', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'echo', { v: 'x' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const hook = makeGuardrail();
+		const runtime = createRuntimeWithEchoTool(
+			async ({ v }) => await Promise.resolve({ echoed: v }),
+		);
+
+		const result = await runtime.generate('go', { guardrails: guardrailsOption(hook) });
+
+		expect(result.finishReason).toBe('stop');
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
+		expect(hook.afterTool).toHaveBeenCalledTimes(1);
+
+		const [beforeCtx] = hook.beforeTool.mock.calls[0];
+		const [afterCtx, toolResult] = hook.afterTool.mock.calls[0];
+		expect(beforeCtx).toMatchObject({
+			toolCallId: 'tc-1',
+			toolName: 'echo',
+			input: { v: 'x' },
+			runId: expect.any(String),
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+		});
+		expect(afterCtx).toBe(beforeCtx);
+		expect(toolResult).toEqual({ echoed: 'x' });
+	});
+
+	it('does not run beforeTool() again when a suspended tool resumes', async () => {
+		const approvalTool = new ToolBuilder('delete')
+			.description('Delete a record')
+			.input(z.object({ id: z.string() }))
+			.requireApproval()
+			.handler(async ({ id }: { id: string }) => await Promise.resolve({ deleted: id }))
+			.build();
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'delete', { id: 'rec-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const hook = makeGuardrail();
+		const guardrails = guardrailsOption(hook);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [approvalTool],
+			checkpointStorage: 'memory',
+		});
+
+		const firstResult = await runtime.generate('Delete record rec-1', { guardrails });
+		expect(firstResult.finishReason).toBe('tool-calls');
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
+		expect(hook.afterTool).not.toHaveBeenCalled();
+
+		const { runId, toolCallId } = firstResult.pendingSuspend![0];
+		const resumeResult = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId, toolCallId, guardrails },
+		);
+
+		expect(resumeResult.finishReason).toBe('stop');
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
+		expect(hook.afterTool).toHaveBeenCalledTimes(1);
+		const [, toolResult] = hook.afterTool.mock.calls[0];
+		expect(toolResult).toEqual({ deleted: 'rec-1' });
 	});
 });
 

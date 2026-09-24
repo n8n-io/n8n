@@ -15,6 +15,7 @@ import type { AgentMessage } from '../../types/sdk/message';
 import type { JSONObject } from '../../types/utils/json';
 import type { AgentMessageList } from '../model/message-list';
 import type { ToolCallBatchResult, ToolCallSuspension } from '../tools/tool-call-executor';
+import type { GuardrailStop } from '../../types/sdk/guardrail';
 
 type RunCallOptions = (RunOptions & ExecutionOptions) | undefined;
 
@@ -92,6 +93,7 @@ export interface CompleteEmission {
 	finishReason: FinishReason;
 	usage: TokenUsage | undefined;
 	structuredOutput: unknown;
+	guardrail?: GuardrailStop;
 }
 
 /**

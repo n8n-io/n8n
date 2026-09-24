@@ -440,6 +440,7 @@ export class StreamSink implements RunOutputSink<void> {
 			...(costUsage && { usage: costUsage }),
 			model: this.services.modelId,
 			...(structuredOutput !== undefined && { structuredOutput }),
+			...(emission.guardrail && { guardrail: emission.guardrail }),
 		});
 		this.services.updateState({ status: 'success', messageList: list.serialize() });
 		this.services.emitAgentEnd(list.responseDelta());

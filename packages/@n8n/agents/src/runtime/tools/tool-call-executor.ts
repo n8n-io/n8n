@@ -26,6 +26,7 @@ import type {
 	AgentExecutionCounter,
 	BuiltTelemetry,
 	BuiltTool,
+	GuardrailsOptions,
 	PendingToolCall,
 	ToolSuspendOptions,
 } from '../../types';
@@ -36,6 +37,7 @@ import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
 import type { WorkspaceFilesystem } from '../../workspace/types';
+import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import { stringifyError } from '../loop/runtime-helpers';
 import type { AgentMessageList } from '../model/message-list';
@@ -137,6 +139,7 @@ export interface ToolBatchContext {
 	persistence?: AgentPersistenceOptions;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	guardrails?: GuardrailsOptions;
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
 }
@@ -156,6 +159,7 @@ interface ProcessToolCallParams {
 	resumeData?: unknown;
 	resolvedTelemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	guardrails?: GuardrailsOptions;
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
@@ -378,6 +382,7 @@ export class ToolCallExecutor {
 							persistence: ctx.persistence,
 							resolvedTelemetry,
 							executionCounter,
+							guardrails: ctx.guardrails,
 							abortSignal,
 							countToolCall: true,
 						}),
@@ -719,6 +724,25 @@ export class ToolCallExecutor {
 		if (!validation.ok) return validation.outcome;
 		const input = validation.input;
 
+		const guardrails = GuardrailRunner.from(params.guardrails);
+		const guardCtx = guardrails?.toolCallContext({
+			toolCallId,
+			toolName,
+			input,
+			runId: params.runId,
+		});
+		// First execution only: a resumed call carries resumeData and was
+		// checked before it suspended.
+		if (guardrails && guardCtx && resumeData === undefined) {
+			const stop = await guardrails.beforeTool(guardCtx);
+			if (stop) {
+				return await this.toolError(
+					params,
+					new Error(`Tool call stopped by guardrail: ${stop.code}`),
+				);
+			}
+		}
+
 		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
 			this.eventBus.emit({
 				type: AgentEvent.ToolExecutionStart,
@@ -779,6 +803,9 @@ export class ToolCallExecutor {
 		if (isSuspendedToolResult(toolResult)) {
 			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
 		}
+
+		// Final result only: a call that suspended reports once, after resume.
+		if (guardrails && guardCtx) await guardrails.afterTool(guardCtx, toolResult);
 
 		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
 	}
@@ -847,6 +874,7 @@ export class ToolCallExecutor {
 			resumeData,
 			resolvedTelemetry: ctx.telemetry,
 			executionCounter: ctx.executionCounter,
+			guardrails: ctx.guardrails,
 			abortSignal: ctx.abortSignal,
 			countToolCall: false,
 			...(entry.suspended

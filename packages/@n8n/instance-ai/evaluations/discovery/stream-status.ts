@@ -25,6 +25,7 @@ function statusForFinishReason(finishReason: FinishReason): DiscoveryStreamStatu
 		case 'length':
 		case 'content-filter':
 		case 'error':
+		case 'guardrail':
 		case 'other':
 			return 'errored';
 		default: {

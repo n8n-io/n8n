@@ -19,12 +19,13 @@ import type {
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
-
+import type { GuardrailsOptions, GuardrailStop } from './guardrail';
 export type SmoothStreamOptions = NonNullable<Parameters<typeof smoothStream>[0]>;
 
 export const FINISH_REASONS = [
 	'stop',
 	'max-iterations',
+	'guardrail',
 	'length',
 	'content-filter',
 	'tool-calls',
@@ -159,6 +160,7 @@ export type StreamChunk = ContentMetadata &
 				usage?: TokenUsage;
 				model?: string;
 				structuredOutput?: unknown;
+				guardrail?: GuardrailStop;
 		  }
 		| { type: 'error'; error: unknown }
 		| {
@@ -235,6 +237,7 @@ export interface ExecutionOptions {
 	 * persistence-backed CheckpointStore; recover via `crashResume()`.
 	 */
 	stepCheckpoints?: boolean;
+	guardrails?: GuardrailsOptions;
 }
 
 export interface PersistedExecutionOptions {
@@ -295,6 +298,7 @@ export interface GenerateResult {
 	/** The model ID used for this generation (e.g. 'anthropic/claude-haiku-4-5'). */
 	model?: string;
 	finishReason?: FinishReason;
+	guardrail?: GuardrailStop;
 	providerMetadata?: Record<string, unknown>;
 	/** Tool calls made during the run (with merged results when available). */
 	toolCalls?: ToolResultEntry[];
