@@ -2,7 +2,7 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { unrefElement, useElementHover, type MaybeElement } from '@vueuse/core';
+import { unrefElement, useElementHover, useFocusWithin, type MaybeElement } from '@vueuse/core';
 import { computed, ref } from 'vue';
 
 import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
@@ -30,9 +30,19 @@ const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
 const contentRef = ref<HTMLElement | null>(null);
 const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
-const open = computed(() => anchorHovered.value || contentHovered.value || props.active);
-
 const isContactAdminOpen = ref(false);
+// Tabbing from the trigger into the (teleported) content moves focus out of the
+// caller's own focus-within, so `active` alone would close this before it's reached.
+// Once the contact-admin action opens its own dialog, its lingering focus on the
+// button no longer needs to keep this open.
+const { focused: contentFocused } = useFocusWithin(contentRef);
+const open = computed(
+	() =>
+		anchorHovered.value ||
+		contentHovered.value ||
+		(contentFocused.value && !isContactAdminOpen.value) ||
+		props.active,
+);
 
 const scopeKey = computed<BaseTextKey>(
 	() =>

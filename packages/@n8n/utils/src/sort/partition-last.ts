@@ -4,8 +4,12 @@
  * rely on reference equality to detect "no change".
  */
 export function partitionLast<T>(items: T[], predicate: (item: T) => boolean): T[] {
-	const last = items.filter(predicate);
+	const rest: T[] = [];
+	const last: T[] = [];
+	for (const item of items) {
+		(predicate(item) ? last : rest).push(item);
+	}
 	if (last.length === 0) return items;
 
-	return [...items.filter((item) => !predicate(item)), ...last];
+	return [...rest, ...last];
 }

@@ -293,11 +293,16 @@ onMounted(() => {
 		void aiGatewayStore.fetchConfig();
 		void aiGatewayStore.fetchWallet();
 	}
-	// The policy store is passive and per project; the agent's tools run in this project.
-	if (props.data.projectId) {
-		void typeAvailabilityPoliciesStore.fetchForProject(props.data.projectId);
-	}
 });
+
+// The policy store is passive and per project; the agent's tools run in this project.
+watch(
+	() => props.data.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
 
 function makeUniqueName(
 	baseName: string,
@@ -337,6 +342,10 @@ function commit() {
 }
 
 function addToolRef(savedRef: AgentJsonToolRef) {
+	// The policy can finish loading while the config form is open, so re-check here
+	// rather than trusting the picker-time check that opened it.
+	if (savedRef.type === 'node' && getNodeItemRestriction(savedRef.node.nodeType)) return;
+
 	workingToolEntries.value = [...workingToolEntries.value, { localId: uuidv4(), ref: savedRef }];
 	commit();
 }
