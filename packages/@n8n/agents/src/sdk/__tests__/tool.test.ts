@@ -219,7 +219,7 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 	);
 
 	it.each(['session', 'invalid'])(
-		'rejects unsupported scope %s without executing',
+		'rejects invalid scope or session scope without host approval context: %s',
 		async (scope) => {
 			const handler = vi.fn();
 			const wrapped = wrapToolForApproval(makeBuiltTool({ handler }), { requireApproval: true });
