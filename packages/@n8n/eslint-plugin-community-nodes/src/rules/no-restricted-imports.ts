@@ -27,6 +27,7 @@ const isModuleAllowed = (modulePath: string, devDependencies: Set<string>): bool
 		? modulePath.split('/').slice(0, 2).join('/')
 		: modulePath.split('/')[0];
 	if (!moduleName) return true;
+	if (moduleName === '@modelcontextprotocol/sdk') return false;
 	// Dev dependencies (e.g. `vitest`) are never installed at runtime on n8n
 	// Cloud, so they are not subject to this rule — it targets runtime
 	// dependencies only. `no-runtime-dependencies` already enforces that the
