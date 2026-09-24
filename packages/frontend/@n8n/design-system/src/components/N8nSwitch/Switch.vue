@@ -26,22 +26,7 @@ const ariaLabel = computed(() => {
 const getRootAttrs = () => {
 	const rootAttrs = { ...attrs };
 	delete rootAttrs.class;
-	// Applied through `ariaLabel` instead, so the explicit binding below cannot
-	// overwrite a label the caller forwarded.
-	delete rootAttrs['aria-label'];
 	return rootAttrs;
-};
-
-/**
- * A caller's own label wins; "Toggle" is only the last resort.
- *
- * A function rather than a computed, matching `getRootAttrs` above, so that
- * reading `attrs` here does not depend on how Vue tracks it.
- */
-const getAriaLabel = () => {
-	if (props.label) return undefined;
-	const forwarded = attrs['aria-label'];
-	return typeof forwarded === 'string' && forwarded.length > 0 ? forwarded : 'Toggle';
 };
 </script>
 
@@ -59,7 +44,7 @@ const getAriaLabel = () => {
 			:disabled="disabled"
 			:class="$style.switchRoot"
 			:aria-labelledby="label ? uuid : undefined"
-			:aria-label="getAriaLabel()"
+			:aria-label="ariaLabel"
 		>
 			<SwitchThumb :class="$style.switchThumb" />
 		</SwitchRoot>
