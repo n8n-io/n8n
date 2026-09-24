@@ -93,12 +93,12 @@ describe('InstanceAiPreferenceCardService', () => {
 
 	it('edit names the scope the row landed in on the fact, from the saved dto', async () => {
 		aiPreferenceService.getById.mockResolvedValue(userDto());
+		// The request and the saved row disagree on purpose: the fact must follow the row.
 		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: 'p-1' }));
 
 		const { event } = await service.edit(user, 'thread-1', 'pref-1', {
 			...editBody,
-			scope: 'project',
-			projectId: 'p-1',
+			scope: 'instance',
 			userId: null,
 		});
 
