@@ -76,9 +76,9 @@ function handleKeydown(event: KeyboardEvent) {
 		@remove="emit('remove')"
 	>
 		<template #icon>
-			<N8nIcon v-if="icon" :icon="icon" size="medium" />
-			<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="14" />
-			<N8nIcon v-else icon="crosshair" size="medium" />
+			<N8nIcon v-if="icon" :icon="icon" size="small" />
+			<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
+			<N8nIcon v-else icon="crosshair" size="small" />
 		</template>
 	</InstanceAiResourceChip>
 </template>
