@@ -9,6 +9,7 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { AgentExecutionUpdateBroadcaster } from '../../agent-execution-update-broadcaster';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
@@ -64,6 +65,7 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 
 function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const jobRepository = mock<AgentBackgroundJobRepository>();
+	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const executionRepository = mock<AgentExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const publisher = mock<Publisher>();
@@ -74,14 +76,15 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	});
 	(logger.scoped as Mock).mockReturnValue(logger);
 
-	jobRepository.countRunningSubAgentsByParentThread.mockResolvedValue(0);
+	jobRepository.countActiveSubAgentsByParentThread.mockResolvedValue(0);
 	jobRepository.insertJob.mockResolvedValue(undefined);
 	jobRepository.insertWorkflowJobOrGetExisting.mockResolvedValue({ inserted: true });
-	jobRepository.settleIfRunning.mockResolvedValue(true);
+	jobRepository.settleIfActive.mockResolvedValue(true);
 	jobRepository.findByParentThread.mockResolvedValue([]);
 	jobRepository.findGroupCandidates.mockResolvedValue([]);
 	jobRepository.findRunningJobs.mockResolvedValue([]);
-	jobRepository.findRunningPastTimeout.mockResolvedValue([]);
+	jobRepository.findActivePastTimeout.mockResolvedValue([]);
+	jobRepository.findSettledSubAgentsWithCheckpoints.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
 
 	const service = new AgentBackgroundJobService(
@@ -92,9 +95,11 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		logger,
 		agentsConfig,
 		updateBroadcaster,
+		checkpointStorage,
 	);
 	return {
 		service,
+		checkpointStorage,
 		jobRepository,
 		executionRepository,
 		executionPersistence,
@@ -148,7 +153,7 @@ describe('background task notifications', () => {
 		expect(jobRepository.insertJob.mock.invocationCallOrder[0]).toBeLessThan(
 			updateBroadcaster.notifyBackgroundJobsUpdated.mock.invocationCallOrder[0],
 		);
-		jobRepository.countRunningSubAgentsByParentThread.mockResolvedValueOnce(
+		jobRepository.countActiveSubAgentsByParentThread.mockResolvedValueOnce(
 			MAX_RUNNING_JOBS_PER_THREAD,
 		);
 		await service.registerSubAgentJob(registerParams);
@@ -167,7 +172,7 @@ describe('background task notifications', () => {
 				'agent-1',
 				'thread-1',
 			);
-			jobRepository.settleIfRunning.mockResolvedValueOnce(false);
+			jobRepository.settleIfActive.mockResolvedValueOnce(false);
 			await service.settle('job-1', { status });
 			expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledOnce();
 		},
@@ -189,7 +194,7 @@ describe('background task notifications', () => {
 	it('notifies when the timeout sweep ends a task', async () => {
 		const { service, jobRepository, updateBroadcaster } = setup();
 		const job = makeJob();
-		jobRepository.findRunningPastTimeout.mockResolvedValue([job]);
+		jobRepository.findActivePastTimeout.mockResolvedValue([job]);
 		jobRepository.findById.mockResolvedValue(job);
 		await service.reconcile();
 		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
@@ -230,9 +235,7 @@ describe('registerSubAgentJob', () => {
 
 	it('returns limit-reached when the thread is at the running-job cap', async () => {
 		const { service, jobRepository } = setup();
-		jobRepository.countRunningSubAgentsByParentThread.mockResolvedValue(
-			MAX_RUNNING_JOBS_PER_THREAD,
-		);
+		jobRepository.countActiveSubAgentsByParentThread.mockResolvedValue(MAX_RUNNING_JOBS_PER_THREAD);
 
 		const receipt = await service.registerSubAgentJob(registerParams);
 
@@ -246,7 +249,7 @@ describe('registerSubAgentJob', () => {
 		const receipt = await service.registerSubAgentJob(registerParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'job-1' });
-		expect(jobRepository.countRunningSubAgentsByParentThread).toHaveBeenCalledWith('thread-1');
+		expect(jobRepository.countActiveSubAgentsByParentThread).toHaveBeenCalledWith('thread-1');
 	});
 });
 
@@ -293,7 +296,7 @@ describe('settle', () => {
 
 	it('drops the abort handle even when the settle write throws', async () => {
 		const { service, jobRepository, executionRepository } = setup();
-		jobRepository.settleIfRunning.mockRejectedValueOnce(new Error('db down'));
+		jobRepository.settleIfActive.mockRejectedValueOnce(new Error('db down'));
 		service.registerAbortController('job-1', new AbortController());
 
 		await expect(service.settle('job-1', { status: 'completed', result: 'done' })).rejects.toThrow(
@@ -311,7 +314,7 @@ describe('settle', () => {
 
 	it('drops the abort handle even when the row was already settled', async () => {
 		const { service, jobRepository } = setup();
-		jobRepository.settleIfRunning.mockResolvedValue(false);
+		jobRepository.settleIfActive.mockResolvedValue(false);
 		const controller = new AbortController();
 		service.registerAbortController('job-1', controller);
 
@@ -338,9 +341,10 @@ describe('listForThread', () => {
 
 		const jobs = await service.listForThread('thread-1');
 
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 			'job-1',
 			expect.objectContaining({ status: 'failed' }),
+			expect.objectContaining({ status: 'running', timeoutAt: expect.any(Date) }),
 		);
 		expect(jobs[0].status).toBe('failed');
 	});
@@ -474,7 +478,7 @@ describe('cancel', () => {
 		const outcome = await service.cancel('thread-1', 'job-1');
 
 		expect(outcome).toBe('cancelled');
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
 		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(controller.signal.aborted).toBe(true);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
@@ -517,13 +521,13 @@ describe('cancel', () => {
 		jobRepository.findByParentThread.mockResolvedValue([]);
 
 		expect(await service.cancel('thread-other', 'job-1')).toBe('not-found');
-		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
 	});
 
 	it('returns already-settled when the claim loses', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.findByParentThread.mockResolvedValue([makeJob({ status: 'completed' })]);
-		jobRepository.settleIfRunning.mockResolvedValue(false);
+		jobRepository.settleIfActive.mockResolvedValue(false);
 
 		expect(await service.cancel('thread-1', 'job-1')).toBe('already-settled');
 	});
@@ -564,16 +568,17 @@ describe('reconcile', () => {
 
 	it('fails jobs past their timeout and aborts their live handles', async () => {
 		const { service, jobRepository } = setup();
-		jobRepository.findRunningPastTimeout.mockResolvedValue([makeJob()]);
+		jobRepository.findActivePastTimeout.mockResolvedValue([makeJob()]);
 		const controller = new AbortController();
 		service.registerAbortController('job-1', controller);
 
 		await service.reconcile();
 
 		expect(controller.signal.aborted).toBe(true);
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 			'job-1',
 			expect.objectContaining({ status: 'failed', error: expect.stringContaining('Timed out') }),
+			expect.objectContaining({ status: 'running', timeoutAt: expect.any(Date) }),
 		);
 	});
 
@@ -581,8 +586,8 @@ describe('reconcile', () => {
 		const { service, jobRepository } = setup();
 		const failing = makeJob({ id: 'job-1' });
 		const next = makeJob({ id: 'job-2', childThreadId: 'child-thread-2' });
-		jobRepository.findRunningPastTimeout.mockResolvedValue([failing, next]);
-		jobRepository.settleIfRunning.mockRejectedValueOnce(new Error('db blip'));
+		jobRepository.findActivePastTimeout.mockResolvedValue([failing, next]);
+		jobRepository.settleIfActive.mockRejectedValueOnce(new Error('db blip'));
 		const failingController = new AbortController();
 		const nextController = new AbortController();
 		service.registerAbortController('job-1', failingController);
@@ -592,9 +597,10 @@ describe('reconcile', () => {
 
 		expect(failingController.signal.aborted).toBe(true);
 		expect(nextController.signal.aborted).toBe(true);
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 			'job-2',
 			expect.objectContaining({ status: 'failed' }),
+			expect.objectContaining({ status: 'running', timeoutAt: expect.any(Date) }),
 		);
 	});
 
@@ -607,9 +613,10 @@ describe('reconcile', () => {
 
 		await service.reconcile();
 
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 			'job-1',
 			expect.objectContaining({ status: 'failed' }),
+			expect.objectContaining({ status: 'running', timeoutAt: expect.any(Date) }),
 		);
 	});
 
@@ -622,7 +629,7 @@ describe('reconcile', () => {
 
 		await service.reconcile();
 
-		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
 	});
 });
 
@@ -659,7 +666,7 @@ describe('registerWorkflowJob', () => {
 		expect(jobRepository.insertWorkflowJobOrGetExisting.mock.calls[0][0]).not.toHaveProperty(
 			'timeoutAt',
 		);
-		expect(jobRepository.countRunningSubAgentsByParentThread).not.toHaveBeenCalled();
+		expect(jobRepository.countActiveSubAgentsByParentThread).not.toHaveBeenCalled();
 	});
 
 	it('converges a replayed registration on the job already tracking the execution', async () => {
@@ -699,10 +706,14 @@ describe('settleWorkflowJobByExecutionId', () => {
 		});
 
 		expect(settled).toBe(true);
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith('wf-job-1', {
-			status: 'completed',
-			result: '{"Set":[{"ok":true}]}',
-		});
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'wf-job-1',
+			{
+				status: 'completed',
+				result: '{"Set":[{"ok":true}]}',
+			},
+			undefined,
+		);
 	});
 
 	it('is a no-op when no running job tracks the execution', async () => {
@@ -712,7 +723,7 @@ describe('settleWorkflowJobByExecutionId', () => {
 		const settled = await service.settleWorkflowJobByExecutionId('exec-1', { status: 'failed' });
 
 		expect(settled).toBe(false);
-		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
 	});
 });
 
@@ -731,11 +742,11 @@ describe('cancel — workflow jobs', () => {
 
 		expect(outcome).toBe('cancelled');
 		expect(executionService.stop).toHaveBeenCalledWith('exec-1', ['workflow-1']);
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith('wf-job-1', {
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith('wf-job-1', {
 			status: 'cancelled',
 		});
 		expect(executionService.stop.mock.invocationCallOrder[0]).toBeLessThan(
-			jobRepository.settleIfRunning.mock.invocationCallOrder[0],
+			jobRepository.settleIfActive.mock.invocationCallOrder[0],
 		);
 	});
 
@@ -747,7 +758,7 @@ describe('cancel — workflow jobs', () => {
 		Container.set(ExecutionService, executionService);
 
 		expect(await service.cancel('thread-1', 'wf-job-1')).toBe('already-settled');
-		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
 	});
 
 	it('logs and rethrows an unexpected stop failure with the row still running', async () => {
@@ -758,7 +769,7 @@ describe('cancel — workflow jobs', () => {
 		Container.set(ExecutionService, executionService);
 
 		await expect(service.cancel('thread-1', 'wf-job-1')).rejects.toThrow('db down');
-		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
 		expect(logger.error).toHaveBeenCalledWith(
 			expect.stringContaining('may still be running'),
 			expect.objectContaining({ jobId: 'wf-job-1', executionId: 'exec-1', error: 'db down' }),
@@ -808,9 +819,10 @@ describe('reconcile — workflow jobs', () => {
 
 		expect(executionPersistence.findStatusesByIds).toHaveBeenCalledTimes(1);
 		expect(executionPersistence.findStatusesByIds).toHaveBeenCalledWith(['exec-1']);
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 			'wf-job-1',
 			expect.objectContaining({ status: 'completed', result: '{"Set":[{"ok":true}]}' }),
+			undefined,
 		);
 	});
 
@@ -823,12 +835,13 @@ describe('reconcile — workflow jobs', () => {
 
 		await service.reconcile();
 
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 			'wf-job-1',
 			expect.objectContaining({
 				status: 'failed',
 				error: expect.stringContaining('outcome is unknown'),
 			}),
+			undefined,
 		);
 	});
 
@@ -842,9 +855,10 @@ describe('reconcile — workflow jobs', () => {
 
 		await service.reconcile();
 
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 			'wf-job-1',
 			expect.objectContaining({ status: 'completed', result: null }),
+			undefined,
 		);
 	});
 
@@ -859,7 +873,7 @@ describe('reconcile — workflow jobs', () => {
 			{ id: 'exec-1', status: 'error' },
 			{ id: 'exec-2', status: 'error' },
 		]);
-		jobRepository.settleIfRunning.mockImplementation(async (id) => {
+		jobRepository.settleIfActive.mockImplementation(async (id) => {
 			if (id === 'wf-job-1') throw new Error('db down');
 			return true;
 		});
@@ -867,10 +881,11 @@ describe('reconcile — workflow jobs', () => {
 		await service.reconcile();
 
 		expect(executionPersistence.findStatusesByIds).toHaveBeenCalledWith(['exec-1', 'exec-2']);
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledTimes(2);
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+		expect(jobRepository.settleIfActive).toHaveBeenCalledTimes(2);
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 			'wf-job-2',
 			expect.objectContaining({ status: 'failed' }),
+			undefined,
 		);
 	});
 
@@ -883,7 +898,7 @@ describe('reconcile — workflow jobs', () => {
 
 		await service.reconcile();
 
-		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
 	});
 
 	it('leaves a still-waiting execution alone — workflow jobs have no timeout', async () => {
@@ -895,7 +910,7 @@ describe('reconcile — workflow jobs', () => {
 
 		await service.reconcile();
 
-		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
 	});
 });
 
@@ -911,9 +926,10 @@ describe('listForThread — workflow jobs', () => {
 
 		const jobs = await service.listForThread('thread-1');
 
-		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 			'wf-job-1',
 			expect.objectContaining({ status: 'cancelled' }),
+			undefined,
 		);
 		expect(jobs[0].status).toBe('cancelled');
 		expect(jobs[0].childExecutionId).toBe('exec-1');
@@ -971,7 +987,7 @@ describe('background task update failures', () => {
 		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toHaveLength(2);
 		expect(executionRepository.findLatestStatusesByThreadIds).not.toHaveBeenCalled();
 		expect(executionPersistence.findStatusesByIds).not.toHaveBeenCalled();
-		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
 		expect(updateBroadcaster.notifyBackgroundJobsUpdated).not.toHaveBeenCalled();
 		expect(wake.requestWake).not.toHaveBeenCalled();
 	});

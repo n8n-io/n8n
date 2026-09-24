@@ -108,8 +108,8 @@ export class AgentWakeService {
 		if (!this.agentsConfig.backgroundTasksEnabled) return undefined;
 		if (this.activeWakes.has(threadId)) return undefined;
 
-		const jobs = (await this.jobRepository.findWakeableUnconsumedSettled(threadId)).filter(
-			(job) => job.parentResourceId === resourceId,
+		const jobs = (await this.jobRepository.findWakeableUnconsumed(threadId)).filter(
+			(job) => job.parentResourceId === resourceId && job.status !== 'suspended',
 		);
 		if (jobs.length === 0) return undefined;
 
@@ -150,7 +150,9 @@ export class AgentWakeService {
 	}
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
-		const pending = await this.jobRepository.findWakeableUnconsumedSettled(threadId);
+		const pending = (await this.jobRepository.findWakeableUnconsumed(threadId)).filter(
+			(job) => job.status !== 'suspended',
+		);
 		const first = pending[0];
 		if (!first || signal.aborted) return;
 
@@ -290,7 +292,7 @@ export class AgentWakeService {
 				message: formatWakeMessage(jobs),
 				backgroundJobSignal: {
 					tasks: jobs.flatMap(({ id, title, kind, status }) =>
-						status === 'running' ? [] : [{ id, title, kind, status }],
+						status === 'running' || status === 'suspended' ? [] : [{ id, title, kind, status }],
 					),
 				},
 				memory: { threadId, resourceId },

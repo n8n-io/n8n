@@ -123,7 +123,7 @@ describe('AgentBackgroundJobRepository', () => {
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', status: 'running', settledAt: null });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-2' });
 
-		const pending = await repository.findWakeableUnconsumedSettled('thread-1');
+		const pending = await repository.findWakeableUnconsumed('thread-1');
 
 		expect(pending.map((job) => job.id)).toEqual([olderId, newerId]);
 	});
@@ -189,7 +189,7 @@ describe('AgentBackgroundJobRepository', () => {
 
 		const threadIds = await repository.findThreadsWithUnconsumedMail();
 		expect(threadIds.sort()).toEqual(['thread-1', 'thread-2']);
-		const [job] = await repository.findWakeableUnconsumedSettled('thread-1');
+		const [job] = await repository.findWakeableUnconsumed('thread-1');
 		expect(job?.parentResourceId).toHaveLength(255);
 	});
 
@@ -243,6 +243,7 @@ describe('AgentBackgroundJobRepository', () => {
 				logger,
 				agentsConfig,
 				mock<AgentExecutionUpdateBroadcaster>(),
+				checkpointStorage,
 			);
 			const wakeService = new AgentWakeService(
 				repository,

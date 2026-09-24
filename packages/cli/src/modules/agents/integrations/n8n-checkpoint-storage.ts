@@ -19,6 +19,7 @@ import { AgentExecutionRepository } from '../repositories/agent-execution.reposi
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import { checkpointExecutionId } from '../types/agent-queued-message';
+import { getDelegatedChildCheckpoints } from '../utils/delegated-child-checkpoints';
 
 /** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
 function stripStateFileData(state: SerializableAgentState): SerializableAgentState {
@@ -255,6 +256,51 @@ export class N8NCheckpointStorage {
 			}
 		}
 		return true;
+	}
+
+	async findDelegatedSuspensionForThread(agentId: string, threadId: string) {
+		const rows = await this.agentCheckpointRepository.findActiveForThread(
+			agentId,
+			threadId,
+			this.expiryCutoff(),
+		);
+		for (const row of rows) {
+			if (!row.state) continue;
+			const checkpoint = jsonParse<SerializableAgentState>(row.state);
+			if (
+				checkpoint.status !== 'suspended' ||
+				!checkpoint.persistence?.delegated ||
+				checkpoint.persistence.threadId !== threadId
+			)
+				continue;
+			return {
+				runId: row.runId,
+				checkpoint,
+				serializedState: row.state,
+				updatedAt: row.updatedAt,
+				expiresAt: new Date(
+					row.updatedAt.getTime() +
+						this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds,
+				),
+			};
+		}
+		return undefined;
+	}
+
+	async deleteDelegatedForThread(agentId: string, threadId: string): Promise<void> {
+		const rows = await this.agentCheckpointRepository.findRetainedByThreadId(threadId);
+		for (const row of rows) {
+			if (row.agentId === agentId) await this.deleteDelegation(row.runId, agentId);
+		}
+	}
+
+	private async deleteDelegation(runId: string, agentId: string): Promise<void> {
+		const status = await this.getStatus(runId, agentId);
+		const checkpoint = status.status === 'not-found' ? undefined : status.checkpoint;
+		const children = checkpoint ? getDelegatedChildCheckpoints(checkpoint, agentId) : [];
+		// Keep the parent until all children are cleared so reconciliation can retry.
+		for (const child of children) await this.deleteDelegation(child.runId, child.agentId);
+		await this.delete(runId, agentId);
 	}
 
 	private parseSuspendedState(
