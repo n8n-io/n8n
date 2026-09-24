@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { AgentPlanService } from '@/modules/agents/agent-plan.service';
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { Agent } from '@/modules/agents/entities/agent.entity';
+import { createAgentPlanTools } from '@/modules/agents/plans/agent-plan-tools';
 import {
 	type AgentPlanDocument,
 	type AgentPlanTask,
@@ -249,6 +250,117 @@ describe('AgentPlanService', () => {
 		const next = await create();
 		expect(next.id).not.toBe(initial.id);
 		expect(await service.findActivePlan(threadId, {})).toEqual(next);
+	});
+
+	it('supports plan tools across turns and reconstructed tool instances', async () => {
+		const call = async (name: string, input: unknown) => {
+			const tool = createAgentPlanTools(new AgentPlanService(repository)).find(
+				(entry) => entry.name === name,
+			);
+			if (!tool?.handler) throw new Error(`Missing tool: ${name}`);
+			return await tool.handler(input, { persistence: { threadId, resourceId: agentId } });
+		};
+		const proposed = {
+			title: 'Plan',
+			description: 'Goal',
+			items: [
+				{
+					id: 'new:research',
+					kind: 'task',
+					title: 'Research',
+					description: 'Find facts',
+					status: 'pending',
+					dependsOn: [],
+				},
+			],
+		};
+		expect(await call('read_plan', {})).toBeNull();
+		const created = await call('create_plan', { document: proposed });
+		const current = await service.findActivePlan(threadId, {});
+		if (!current) throw new Error('Expected active plan');
+		expect(await call('read_plan', {})).toEqual(created);
+		expect(await call('create_plan', { document: proposed })).toMatchObject({ error: 'conflict' });
+		const write = { planId: current.id, expectedRevision: 1 };
+		const running = {
+			...proposed,
+			items: [{ ...proposed.items[0], id: current.data.items[0].id, status: 'in_progress' }],
+		};
+		expect(await call('update_plan', { ...write, document: running })).toMatchObject({
+			revision: 2,
+		});
+		const started = await service.findActivePlan(threadId, {});
+		expect(started?.data.items[0].startedAt).not.toBeNull();
+		expect(await call('update_plan', { ...write, document: running })).toMatchObject({
+			error: 'conflict',
+		});
+		expect(
+			await call('update_plan', {
+				...write,
+				expectedRevision: 2,
+				document: { ...running, items: [{ ...running.items[0], description: 'Different work' }] },
+			}),
+		).toMatchObject({ error: 'invalid_plan' });
+		expect((await service.listHistory(threadId, current.id, {}, {})).items).toHaveLength(2);
+		const finished = { ...running, items: [{ ...running.items[0], status: 'done' }] };
+		expect(
+			await call('update_plan', { ...write, expectedRevision: 2, document: finished }),
+		).toMatchObject({ revision: 3 });
+		const done = await service.findActivePlan(threadId, {});
+		expect(done?.data.items[0].startedAt).toEqual(started?.data.items[0].startedAt);
+		expect(done?.data.items[0].endedAt).not.toBeNull();
+		expect(await call('close_plan', { ...write, expectedRevision: 3 })).toMatchObject({
+			revision: 4,
+			closed: true,
+			document: finished,
+		});
+		expect(await call('close_plan', { ...write, expectedRevision: 3 })).toMatchObject({
+			error: 'conflict',
+		});
+		expect(await call('read_plan', {})).toBeNull();
+		expect(await call('create_plan', { document: proposed })).toMatchObject({
+			revision: 1,
+			closed: false,
+		});
+		expect((await service.findActivePlan(threadId, {}))?.id).not.toBe(current.id);
+		expect((await service.listHistory(threadId, current.id, {}, {})).items).toHaveLength(4);
+	});
+
+	it('scopes shared plan tools to each thread on every call', async () => {
+		const current = await create();
+		const otherThreadId = `test-${agentId}:${randomUUID()}`;
+		await dataSource.getRepository(AgentExecutionThread).save({
+			id: otherThreadId,
+			agentId,
+			agentName: 'Plan model agent',
+			projectId,
+			sessionNumber: 2,
+		});
+		const tools = createAgentPlanTools(service);
+		const call = async (name: string, input: unknown, scope: string) => {
+			const tool = tools.find((entry) => entry.name === name);
+			if (!tool?.handler) throw new Error(`Missing tool: ${name}`);
+			return await tool.handler(input, { persistence: { threadId: scope, resourceId: agentId } });
+		};
+		const write = { planId: current.id, expectedRevision: 1 };
+		expect(await call('read_plan', {}, threadId)).toMatchObject({ planId: current.id });
+		expect(await call('read_plan', {}, otherThreadId)).toBeNull();
+		expect(await call('close_plan', write, otherThreadId)).toMatchObject({ error: 'conflict' });
+		expect(
+			await call(
+				'update_plan',
+				{ ...write, document: { title: 'Other', description: '', items: [] } },
+				otherThreadId,
+			),
+		).toMatchObject({ error: 'conflict' });
+		expect(
+			await call(
+				'create_plan',
+				{ document: { title: 'Other', description: '', items: [] } },
+				otherThreadId,
+			),
+		).toMatchObject({ revision: 1 });
+		expect(await service.findActivePlan(threadId, {})).toEqual(current);
+		expect((await service.listHistory(threadId, current.id, {}, {})).items).toHaveLength(1);
 	});
 
 	it('rejects unsupported stored formats without changing the storage contract', async () => {
