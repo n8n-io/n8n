@@ -137,6 +137,7 @@ const MAX_RETRY_DELAY_SECONDS = Math.floor(MAX_INTEGER_32BITS_SIGNED / Time.seco
  * Rejects a task that declares an option the schedulers cannot honor.
  *
  * @throws {UnexpectedError} when `retryDelaySeconds`, `maxAttempts` or `misfireGraceSeconds` is out of range
+ * @throws {UnexpectedError} when an instance task declares an interval that is not positive
  */
 export function validateSystemTask(task: SystemTask): void {
 	resolveSystemTaskRunOptions(task);
@@ -150,6 +151,19 @@ export function validateSystemTask(task: SystemTask): void {
 	) {
 		throw new UnexpectedError('A system task declares an out-of-range retry delay', {
 			extra: { name: task.name, retryDelaySeconds },
+		});
+	}
+
+	// A cluster task's interval is rounded up to one second, but an instance
+	// task's is kept to the millisecond, so a non-positive one would fire every millisecond.
+	const { schedule, placement } = task;
+	if (
+		placement.scope === 'instance' &&
+		schedule.kind === 'interval' &&
+		!(schedule.intervalSeconds > 0)
+	) {
+		throw new UnexpectedError('A system task declares an interval that is not positive', {
+			extra: { name: task.name, intervalSeconds: schedule.intervalSeconds },
 		});
 	}
 }
