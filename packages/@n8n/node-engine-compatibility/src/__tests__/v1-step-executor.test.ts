@@ -405,9 +405,8 @@ describe('V1StepExecutor', () => {
 			);
 		});
 
-		// The v1 hook marks the execution waiting in the host's registry, where a
-		// data-plane run is never registered, so it would throw. The engine owns
-		// the wait, so the host hook is never called.
+		// The v1 hook sets the status in the host's `ActiveExecutions`. A data-plane
+		// run is not registered there, so the call throws.
 		it('does not call the host execution status hook', async () => {
 			const graph = graphWith('test.waitsUntil', { waitTill: '2026-10-01T12:00:00.000Z' });
 			const setExecutionStatus = vi.fn();
@@ -426,9 +425,8 @@ describe('V1StepExecutor', () => {
 			expect(setExecutionStatus).not.toHaveBeenCalled();
 		});
 
-		// The Wait node's time modes used to sleep in the process below 65 seconds,
-		// so the engine never saw them. The wait now suspends like any other: a
-		// sleep would return without a declaration, so `result.wait` proves it.
+		// Core sleeps in the process for a deadline-only wait under 65 s. A sleep
+		// returns no declaration, so `result.wait` proves that the step suspended.
 		it('suspends a short time wait of the Wait node instead of sleeping', async () => {
 			const graph = graphWith('n8n-nodes-base.wait', {
 				resume: 'timeInterval',

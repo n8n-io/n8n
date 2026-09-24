@@ -44,20 +44,15 @@ import {
 } from './v1-adapters';
 
 /**
- * A v1 node asks to pause through `putExecutionToWait`, and the context records
- * the date and whether a request may end the wait. A finite date becomes a
-// AGENT: disabling the node and running it again seems contradicting
- * deadline declaration. v1 resumes a timed wait by disabling the node and
- * running it again, and a disabled node passes its first input through, so that
- * input, not the value the node returned before pausing, is what the step emits
- * at the deadline.
+ * Turns what the node recorded in `putExecutionToWait` into a wait declaration.
+ * v1 resumes a timed wait by marking the node disabled before it re-enters it,
+ * and a disabled node does not run: it passes its first input through. So the
+ * step emits that input at the deadline, not what the node returned before it
+ * paused.
  *
- * A sentinel means no deadline ends the wait. `WAIT_INDEFINITELY` waits for a
- * resume request, which nothing can deliver yet: the data plane has no resolve
- * endpoint and the control plane no resume route. `WAIT_FOR_SUB_EXECUTION`
- * waits for a child execution, and sub-workflow steps do not exist yet. Either
- * step fails rather than complete as if the wait had ended; each turns into a
- * declaration when its path lands.
+ * A sentinel wait fails the step. Engine 2.0 has no resume route and no
+ * sub-workflow steps yet. A declaration replaces each failure when its path
+ * exists.
  */
 function toStepResult(context: DurableWaitExecuteContext, outputs: StepSlots): StepExecutionResult {
 	const { waitTill } = context.runExecutionData;

@@ -263,13 +263,15 @@ function tolerantNodeTypes(nodeTypes: INodeTypes): INodeTypes {
 }
 
 /**
- * The v1 context of a step. `putExecutionToWait` only records what the node
- * asked for and returns at once. The engine owns the wait, so nothing sleeps in
- * the worker and the v1 status hook never runs; the executor turns the record
- * into a wait declaration.
+ * The v1 context of a step. `putExecutionToWait` records the wait the node asks
+ * for, and the executor turns the record into a wait declaration.
+ *
+ * Do not call super. Core sleeps in the process for a short deadline-only wait
+ * and calls the host status hook. The engine owns the wait, and the host does
+ * not know this run.
  */
 export class DurableWaitExecuteContext extends ExecuteContext {
-	/** Whether a resume request may end the wait the node asked for. */
+	/** Only an explicit `false` makes a wait deadline-only. This matches core. */
 	acceptsResumeRequest = true;
 
 	async putExecutionToWait(

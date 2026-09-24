@@ -15,7 +15,7 @@ test.describe(
 		test('should resume a webhook wait at its time limit without a request @engine:v2', async ({
 			api,
 		}) => {
-			// The legacy wait tracker polls once a minute, so a resume can take that long.
+			// On engine 1.0 the wait tracker polls once a minute, so the resume can take that long.
 			test.setTimeout(120_000);
 
 			const { workflowId } = await api.workflows.importWorkflowFromFile(WORKFLOW_FILE);

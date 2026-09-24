@@ -2,6 +2,7 @@ import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from 
 import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
+// The Wait node's source pulls in Webhook utils that fail this package's tsconfig, so it comes from dist.
 import { Wait } from 'n8n-nodes-base/dist/nodes/Wait/Wait.node';
 import type {
 	CloseFunction,
@@ -187,11 +188,10 @@ class ReturnsEngineRequest extends Node {
 }
 
 /**
- * Drives the executor's wait tests. The real Wait node needs its webhook-mode
- * parameters and evaluates `$execution.resumeUrl` before it pauses; this one
- * only does what the executor reacts to: `putExecutionToWait` with the date in
- * `waitTill`, then a return value. The return value is marked so a test can
- * tell it from the input.
+ * Calls `putExecutionToWait` with any date, including invalid dates and
+ * sentinels, and with or without the resume flag. The real Wait node cannot do
+ * this without a resume URL. The return value is marked, so a test can tell it
+ * from the input.
  */
 class WaitsUntil implements INodeType {
 	description = {
