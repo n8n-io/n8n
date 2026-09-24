@@ -1,6 +1,25 @@
-import { AgentIntegrationSchema } from '../agent-integration.schema';
+import { AgentIntegrationConfigSchema, AgentIntegrationSchema } from '../agent-integration.schema';
+import { AgentJsonConfigSchema } from '../agent-json-config.schema';
 
 describe('AgentIntegrationSchema', () => {
+	it('accepts n8n Chat without a credential in agent configuration', () => {
+		expect(AgentIntegrationConfigSchema.parse({ type: 'n8n_chat' })).toEqual({
+			type: 'n8n_chat',
+			credentialId: '',
+		});
+		expect(AgentIntegrationSchema.safeParse({ type: 'n8n_chat' }).success).toBe(false);
+	});
+
+	it('rejects duplicate n8n Chat channel entries', () => {
+		expect(
+			AgentJsonConfigSchema.safeParse({
+				name: 'Agent',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Help',
+				integrations: [{ type: 'n8n_chat' }, { type: 'n8n_chat' }],
+			}).success,
+		).toBe(false);
+	});
 	it('accepts a telegram integration with credential id', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'telegram',

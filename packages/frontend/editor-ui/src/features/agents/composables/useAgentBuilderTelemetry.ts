@@ -52,7 +52,9 @@ function integrationStatusEntriesFromConfig(
 			type: integration.type,
 			credentialId: integration.credentialId,
 			...('settings' in integration ? { settings: integration.settings } : {}),
-			...(integration.approval ? { approval: integration.approval } : {}),
+			...('approval' in integration && integration.approval
+				? { approval: integration.approval }
+				: {}),
 			status: isPublished ? 'starting' : 'configured',
 		});
 	}

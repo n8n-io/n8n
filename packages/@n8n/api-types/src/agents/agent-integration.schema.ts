@@ -154,12 +154,30 @@ const draftCredentialIntegrations = [
 	}),
 ] as const;
 
+const n8nChatIntegration = z
+	.object({
+		type: z.literal('n8n_chat'),
+		credentialId: z.literal('').default(''),
+	})
+	.strict();
+
 export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);
 
 /** Draft config variant that allows cleared stale credential IDs. */
-export const AgentIntegrationConfigSchema = z.discriminatedUnion(
-	'type',
-	draftCredentialIntegrations,
-);
+export const AgentIntegrationConfigSchema = z.discriminatedUnion('type', [
+	...draftCredentialIntegrations,
+	n8nChatIntegration,
+]);
 
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationConfigSchema>;
+
+export type CredentialAgentIntegrationConfig = Exclude<
+	AgentIntegrationConfig,
+	{ type: 'n8n_chat' }
+>;
+
+export function isCredentialAgentIntegration(
+	integration: AgentIntegrationConfig,
+): integration is CredentialAgentIntegrationConfig {
+	return integration.type !== 'n8n_chat';
+}

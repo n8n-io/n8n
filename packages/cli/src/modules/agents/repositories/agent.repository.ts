@@ -1,3 +1,4 @@
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import {
@@ -161,6 +162,15 @@ export class AgentRepository extends Repository<Agent> {
 			where: { id, projectId },
 			relations: { activeVersion: true },
 		});
+	}
+
+	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {
+		const agent = await this.findByIdAndProjectId(id, projectId);
+		return (
+			agent?.activeVersion?.schema?.integrations?.some(
+				(integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE,
+			) ?? false
+		);
 	}
 
 	/**

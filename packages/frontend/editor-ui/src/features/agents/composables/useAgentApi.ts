@@ -144,10 +144,9 @@ export const duplicateAgent = async (
 	// time (and break the source's channel). Blank to drafts so the builder
 	// opens the copy with a "connect a channel" chip instead.
 	const { tasks: _tasks, integrations: sourceIntegrations, ...rest } = configResponse.config;
-	const draftIntegrations = (sourceIntegrations ?? []).map((integration) => ({
-		...integration,
-		credentialId: '',
-	}));
+	const draftIntegrations = (sourceIntegrations ?? []).map((integration) =>
+		integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
+	);
 	return await createAgent(context, projectId, name, {
 		schema: { ...rest, name, integrations: draftIntegrations },
 		tools: agent.tools,

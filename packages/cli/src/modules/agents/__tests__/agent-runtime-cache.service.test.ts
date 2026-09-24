@@ -624,6 +624,51 @@ describe('AgentRuntimeCacheService', () => {
 		);
 	});
 
+	it('keeps production n8n Chat on published instructions with project-scoped tools', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent({
+			schema: {
+				name: 'Draft',
+				model: 'openai:gpt-4o',
+				instructions: 'Draft instructions',
+			},
+			activeVersion: {
+				schema: {
+					name: 'Published',
+					model: 'openai:gpt-4o',
+					instructions: 'Published instructions',
+				},
+				tools: {},
+				skills: {},
+			} as Agent['activeVersion'],
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+		await service.getRuntime({
+			agentId,
+			projectId,
+			usePublishedVersion: true,
+			integrationType: 'n8n_chat',
+			attributionUserId: 'user-1',
+			allowBackgroundTasks: false,
+		});
+
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
+			expect.objectContaining({
+				schema: expect.objectContaining({ instructions: 'Published instructions' }),
+			}),
+			expect.anything(),
+			'production',
+			'n8n_chat',
+			undefined,
+			undefined,
+			'integrated',
+			undefined,
+			{ previewChat: undefined, allowBackgroundTasks: false, attributionUserId: 'user-1' },
+		);
+	});
+
 	it('rejects missing agents and unpublished runtime requests', async () => {
 		const { service, agentRepository } = makeService();
 

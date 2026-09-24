@@ -1,4 +1,6 @@
 import {
+	N8N_CHAT_INTEGRATION_TYPE,
+	isCredentialAgentIntegration,
 	isDraftIntegration,
 	type AgentConfigValidationResponse,
 	type AgentJsonConfig,
@@ -77,6 +79,13 @@ function requireValidValidation(
 		}
 		throw new UserError('Agent configuration has errors that must be resolved before publishing');
 	}
+}
+
+function draftSchemaFromVersion(schema: AgentJsonConfig | null): AgentJsonConfig | null {
+	if (!schema) return null;
+	const draft = deepCopy(schema);
+	delete draft.integrations;
+	return draft;
 }
 
 export interface PublishAgentResult {
@@ -173,8 +182,8 @@ export class AgentPublishService {
 	 * about to become live, independent of any frontend check. Validating the
 	 * current draft is not enough when a specific historical `versionId` is
 	 * being republished — that snapshot's schema/tool/skill bodies must be
-	 * checked instead. Integrations are never versioned, so the agent's
-	 * *current* integrations are always part of the check.
+	 * checked instead. Credential-backed integrations use the current draft.
+	 * The n8n Chat entry is saved in the published schema.
 	 */
 	private async assertPublishable(
 		agent: Agent,
@@ -227,6 +236,7 @@ export class AgentPublishService {
 	private async assertChannelsStartable(agent: Agent, projectId: string): Promise<void> {
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
+			if (!isCredentialAgentIntegration(integration)) continue;
 			if (isDraftIntegration(integration)) continue;
 			await chatIntegrationService.assertStartupPreconditions(agent.id, integration, projectId);
 		}
@@ -366,7 +376,7 @@ export class AgentPublishService {
 
 		let tasksChanged = false;
 		await this.agentRepository.manager.transaction(async (trx) => {
-			agent.schema = activeVersion.schema ? deepCopy(activeVersion.schema) : null;
+			agent.schema = draftSchemaFromVersion(activeVersion.schema);
 			agent.tools = deepCopy(activeVersion.tools ?? {});
 			agent.skills = deepCopy(activeVersion.skills ?? {});
 			agent.versionId = activeVersion.versionId;
@@ -417,7 +427,7 @@ export class AgentPublishService {
 				throw new NotFoundError(`Version "${versionId}" not found`);
 			}
 
-			agent.schema = target.schema ? deepCopy(target.schema) : null;
+			agent.schema = draftSchemaFromVersion(target.schema);
 			agent.tools = deepCopy(target.tools ?? {});
 			agent.skills = deepCopy(target.skills ?? {});
 			agent.versionId = uuid();
@@ -448,9 +458,8 @@ export class AgentPublishService {
 	}
 
 	/**
-	 * A revert restores a stored schema wholesale, so it is a modification like
-	 * any other config write. Integrations live outside the schema and survive
-	 * the revert untouched, hence the same list on both sides of the diff.
+	 * A revert restores the schema but leaves draft integrations unchanged.
+	 * The published n8n Chat entry is removed from the restored draft schema.
 	 * Sidecar body flags cover tool/skill/task bodies restored outside the schema.
 	 */
 	private async recordRevert(
@@ -633,7 +642,7 @@ export class AgentPublishService {
 
 	private async startPublishedServices(agent: Agent): Promise<void> {
 		const agentId = agent.id;
-		const credentialIntegrations = agent.integrations ?? [];
+		const credentialIntegrations = (agent.integrations ?? []).filter(isCredentialAgentIntegration);
 		if (credentialIntegrations.length > 0) {
 			await Container.get(ChatIntegrationService)
 				.syncToConfig(agent, [], credentialIntegrations)
@@ -738,7 +747,14 @@ export class AgentPublishService {
 				{
 					versionId,
 					agentId: agent.id,
-					schema: agent.schema,
+					schema: agent.schema
+						? {
+								...agent.schema,
+								integrations: (agent.integrations ?? []).filter(
+									(integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE,
+								),
+							}
+						: null,
 					tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
 					skills: this.pickConfiguredSkillBodies(agent.schema, agent.skills ?? {}),
 					publishedBy: user,

@@ -138,6 +138,7 @@ export type PubSubCommandMap = {
 		threadId: string;
 		executionId: string;
 		userId: string;
+		productionN8nChat?: boolean;
 	};
 
 	'relay-agent-background-tasks-update': {

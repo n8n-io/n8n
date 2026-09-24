@@ -14,9 +14,15 @@ import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import {
 	draftChatMemoryResourceId,
+	productionChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
 } from './utils/agent-memory-scope';
-import { canContinueThreadInPreview, threadBelongsTo } from './utils/agent-thread-access';
+import {
+	canContinueThreadInPreview,
+	N8N_CHAT_PRODUCTION_SOURCE,
+	threadBelongsTo,
+} from './utils/agent-thread-access';
 import { getDelegatedChildCheckpoints } from './utils/delegated-child-checkpoints';
 
 type ExecutionContext = PubSubCommandMap['cancel-agent-chat-execution'];
@@ -124,7 +130,9 @@ export class AgentChatExecutionService {
 					await this.cancelSuspended({
 						agentId: context.agentId,
 						runId: suspendedRunId,
-						resourceId: draftChatMemoryResourceId(context.userId),
+						resourceId: context.productionN8nChat
+							? productionChatMemoryResourceId(context.userId)
+							: draftChatMemoryResourceId(context.userId),
 					});
 				},
 			);
@@ -184,7 +192,17 @@ export class AgentChatExecutionService {
 		const thread = await this.executionService.findThreadById(threadId);
 		if (!thread || !threadBelongsTo(thread, projectId, agentId, userId)) return null;
 		const execution = await this.executionRepository.findOneBy({ id: executionId, threadId });
-		if (!execution || !canContinueThreadInPreview(thread, userId, execution.source)) return null;
+		if (
+			!execution ||
+			(context.productionN8nChat
+				? !(
+						thread.accessScope === 'user' &&
+						thread.ownerId === userId &&
+						execution.source === N8N_CHAT_PRODUCTION_SOURCE
+					)
+				: !canContinueThreadInPreview(thread, userId, execution.source))
+		)
+			return null;
 		return execution;
 	}
 
@@ -202,7 +220,9 @@ export class AgentChatExecutionService {
 		return await this.cancelSuspended({
 			agentId: context.agentId,
 			runId: pending.runId,
-			resourceId: draftChatMemoryResourceId(context.userId),
+			resourceId: context.productionN8nChat
+				? productionChatMemoryResourceId(context.userId)
+				: draftChatMemoryResourceId(context.userId),
 		});
 	}
 
@@ -218,7 +238,20 @@ export class AgentChatExecutionService {
 		)
 			return false;
 		const thread = await this.executionService.findThreadById(checkpoint.persistence.threadId);
-		const userId = userIdFromDraftChatMemoryResourceId(params.resourceId);
+		const productionUserId = userIdFromProductionChatMemoryResourceId(params.resourceId);
+		const userId = userIdFromDraftChatMemoryResourceId(params.resourceId) ?? productionUserId;
+		if (
+			productionUserId &&
+			(!thread ||
+				!(await this.executionService.canUseProductionChatThread(
+					thread.id,
+					thread.projectId,
+					params.agentId,
+					productionUserId,
+					'existing',
+				)))
+		)
+			return false;
 		if (thread && (!userId || !threadBelongsTo(thread, thread.projectId, params.agentId, userId)))
 			return false;
 		const childCheckpoints = getDelegatedChildCheckpoints(checkpoint, params.agentId);

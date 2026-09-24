@@ -1,4 +1,8 @@
-import { isDraftIntegration, type AgentIntegrationConfig } from '@n8n/api-types';
+import {
+	isCredentialAgentIntegration,
+	isDraftIntegration,
+	type AgentIntegrationConfig,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -349,7 +353,10 @@ export class AgentChannelReconciler {
 		const wanted: WantedChannels = new Map();
 		for (const agent of agents) {
 			const integrations = (agent.integrations ?? []).filter(
-				(integration) => !isDraftIntegration(integration) && this.runsHere(integration),
+				(integration) =>
+					isCredentialAgentIntegration(integration) &&
+					!isDraftIntegration(integration) &&
+					this.runsHere(integration),
 			);
 			for (const integration of integrations) {
 				wanted.set(agentChannelKey(agentChannelRef(agent.id, integration)), { agent, integration });

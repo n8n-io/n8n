@@ -3,6 +3,7 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 export type AgentSessionMode = 'new' | 'existing';
 
 export const PREVIEW_THREAD_SOURCES = ['', 'chat', 'n8n_chat'] as const;
+export const N8N_CHAT_PRODUCTION_SOURCE = 'n8n_chat_production';
 
 export function threadBelongsTo(
 	thread: AgentExecutionThread,

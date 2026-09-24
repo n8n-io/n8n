@@ -82,9 +82,8 @@ export interface IntegrationSubjectPerson {
 }
 
 /**
- * Source of a tool connection: a persisted credential integration, or the
- * implicit credential-less in-app chat channel (injected per-run, never
- * stored on the agent).
+ * Source of a tool connection: a configured integration, or the implicit
+ * preview chat channel injected per run.
  */
 export type IntegrationToolConnectionSource =
 	| AgentIntegrationConfig

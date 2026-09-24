@@ -1184,6 +1184,53 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('canUseProductionChatThread', () => {
+		it.each([
+			{ source: 'n8n_chat_production', allowed: true },
+			{ source: 'n8n_chat', allowed: false },
+			{ source: 'chat', allowed: false },
+		])('checks the first source: $source', async ({ source, allowed }) => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
+			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(
+				new Map([['thread-1', source]]),
+			);
+			expect(
+				await service.canUseProductionChatThread(
+					'thread-1',
+					'project-1',
+					'agent-1',
+					'user-1',
+					'existing',
+				),
+			).toBe(allowed);
+		});
+
+		it('rejects another owner and an unknown existing session', async () => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
+				makeThread({ ownerId: 'other-user' }),
+			);
+			expect(
+				await service.canUseProductionChatThread(
+					'thread-1',
+					'project-1',
+					'agent-1',
+					'user-1',
+					'existing',
+				),
+			).toBe(false);
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(null);
+			expect(
+				await service.canUseProductionChatThread(
+					'thread-1',
+					'project-1',
+					'agent-1',
+					'user-1',
+					'existing',
+				),
+			).toBe(false);
+		});
+	});
+
 	describe('getThreadDetail', () => {
 		it.each(['user', 'project'] as const)(
 			'returns readable %s thread executions',

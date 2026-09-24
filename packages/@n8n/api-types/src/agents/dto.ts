@@ -40,6 +40,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'sub-agent',
 	'schedule',
 	'workflow',
+	'n8n_chat_production',
 	'slack',
 	'telegram',
 	'linear',
