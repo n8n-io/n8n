@@ -133,9 +133,9 @@ export class EngineV2Webhooks {
 				`Engine 2.0 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
 			);
 		}
-		if (responseMode === 'lastNode' && this.engineConfig.mode === 'remote') {
+		if (this.engineConfig.mode === 'remote' && responseMode !== 'onReceived') {
 			throw new UserError(
-				'Engine 2.0 does not support the last-node response mode with a remote data plane yet. Respond immediately instead.',
+				`Engine 2.0 does not support the '${responseMode}' response mode with a remote data plane yet. Respond immediately instead.`,
 			);
 		}
 	}

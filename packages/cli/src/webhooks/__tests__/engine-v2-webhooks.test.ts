@@ -17,30 +17,33 @@ const engineV2Webhooks = new EngineV2Webhooks(
 );
 
 describe('EngineV2Webhooks.assertSupported', () => {
-	it('rejects last-node responses with a remote data plane', () => {
-		const proxy = mock<EngineDataPlaneProxyService>();
-		proxy.isAvailable.mockReturnValue(true);
-		const webhooks = new EngineV2Webhooks(
-			mock<EngineV2Dispatcher>(),
-			mock<EngineV2PayloadGuard>(),
-			proxy,
-			mock<EngineConfig>({ mode: 'remote' }),
-		);
+	it.each(['lastNode', 'responseNode'] as const)(
+		'rejects %s responses with a remote data plane',
+		(responseMode) => {
+			const proxy = mock<EngineDataPlaneProxyService>();
+			proxy.isAvailable.mockReturnValue(true);
+			const webhooks = new EngineV2Webhooks(
+				mock<EngineV2Dispatcher>(),
+				mock<EngineV2PayloadGuard>(),
+				proxy,
+				mock<EngineConfig>({ mode: 'remote' }),
+			);
 
-		const assertSupported = () =>
-			webhooks.assertSupported({
-				workflowStartNode: mock<INode>({
-					name: 'Webhook',
-					type: 'n8n-nodes-base.webhook',
-					parameters: {},
-				}),
-				responseMode: 'lastNode',
-				executionId: undefined,
-			});
+			const assertSupported = () =>
+				webhooks.assertSupported({
+					workflowStartNode: mock<INode>({
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						parameters: {},
+					}),
+					responseMode,
+					executionId: undefined,
+				});
 
-		expect(assertSupported).toThrow(UserError);
-		expect(assertSupported).toThrow('remote data plane');
-	});
+			expect(assertSupported).toThrow(UserError);
+			expect(assertSupported).toThrow('remote data plane');
+		},
+	);
 });
 
 describe('EngineV2Webhooks.toRun', () => {
