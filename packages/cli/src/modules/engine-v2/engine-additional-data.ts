@@ -64,7 +64,7 @@ class UnimplementedExternalSecretsProxy extends ExternalSecretsProxy {
 const unimplementedExternalSecretsProxy = new UnimplementedExternalSecretsProxy();
 
 /**
- * Builds the v1 `additionalData` for a step that runs on the engine 2.0 data
+ * Builds the v1 `additionalData` for a step that runs on the engine v2 data
  * plane. Reads config only: the data plane has no control plane database, so
  * nothing here may query one. Both engine modes use it, so in-process mode
  * cannot hide a control plane dependency that the container would lack.
