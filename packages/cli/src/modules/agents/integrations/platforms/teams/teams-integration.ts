@@ -113,7 +113,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	readonly disableStreaming = false;
 
-	readonly streamingPostTimeoutMs = TEAMS_STREAMING_POST_TIMEOUT_MS;
+	readonly streamingPostTimeoutMs: number = TEAMS_STREAMING_POST_TIMEOUT_MS;
 
 	/**
 	 * Teams keeps one open stream per inbound activity and the adapter never
@@ -188,7 +188,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 		const streamable =
 			params.thread.isDM && !this.bufferedOnly.has(params.integration.credentialId);
 		return {
-			platformAgentContext: this.getPlatformAgentContext?.(params.chat) ?? {},
+			platformAgentContext: {},
 			forceBuffered: !streamable,
 			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
 		};

@@ -1,4 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -92,6 +93,8 @@ function buildBotFrameworkSigner() {
 	};
 }
 
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+
 export interface TeamsStreamingFailure {
 	status: number;
 	message: string;
@@ -99,13 +102,18 @@ export interface TeamsStreamingFailure {
 	afterChunks?: number;
 }
 
+/** The `streaminfo` entity that ties an activity to an open Teams stream. */
+export function streamInfo(body: Record<string, unknown>): Record<string, unknown> | undefined {
+	const entities = body.entities;
+	if (!Array.isArray(entities)) return undefined;
+	return entities.find((entity) => isRecord(entity) && entity.type === 'streaminfo') as
+		| Record<string, unknown>
+		| undefined;
+}
+
 /** True for the `typing` activities that carry a stream, not a plain indicator. */
 function isStreamingActivity(body: Record<string, unknown>): boolean {
-	const entities = body.entities;
-	return (
-		Array.isArray(entities) &&
-		entities.some((entity) => (entity as { type?: string })?.type === 'streaminfo')
-	);
+	return streamInfo(body) !== undefined;
 }
 
 function installTeamsApiStub(
@@ -199,7 +207,9 @@ export async function createTeamsReplayContext(
 
 	const integrationImpl = new TeamsIntegration(mock<BackendLogger>(), mock<AgentRepository>());
 	if (options.streamingPostTimeoutMs !== undefined) {
-		Object.assign(integrationImpl, { streamingPostTimeoutMs: options.streamingPostTimeoutMs });
+		// Checked, unlike Object.assign: renaming the field breaks this line.
+		(integrationImpl as Mutable<TeamsIntegration>).streamingPostTimeoutMs =
+			options.streamingPostTimeoutMs;
 	}
 
 	const setup = createReplayContextSetup({

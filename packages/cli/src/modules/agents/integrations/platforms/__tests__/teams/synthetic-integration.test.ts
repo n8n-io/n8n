@@ -1,7 +1,10 @@
 import type { StreamChunk } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
 
-import { createTeamsReplayContext } from '../../../__tests__/helpers/teams/replay-test-context';
+import {
+	createTeamsReplayContext,
+	streamInfo,
+} from '../../../__tests__/helpers/teams/replay-test-context';
 import {
 	cardAction,
 	channelMention,
@@ -190,14 +193,16 @@ describe('Microsoft Teams integration scenarios', () => {
 	});
 });
 
-/** The `streaminfo` entity Teams uses to tie an activity to an open stream. */
-function streamInfo(body: Record<string, unknown>): Record<string, unknown> | undefined {
-	const entities = body.entities;
-	if (!Array.isArray(entities)) return undefined;
-	return entities.find((entity) => isRecord(entity) && entity.type === 'streaminfo') as
-		| Record<string, unknown>
-		| undefined;
-}
+/**
+ * One delta, for the refusal test only. The Teams SDK drops the reschedule that
+ * drains its flush queue when a chunk is rejected, so any queued delta leaves
+ * `close()` polling for its full 30s budget. A single delta leaves the queue
+ * empty and closes at once, for the same stall.
+ */
+const oneDelta: StreamChunk[] = [
+	{ type: 'text-delta', id: 't-1', delta: 'Looking into it now' },
+	{ type: 'finish', finishReason: 'stop' },
+];
 
 const threeDeltas: StreamChunk[] = [
 	{ type: 'text-delta', id: 't-1', delta: 'Looking ' },
@@ -274,7 +279,7 @@ describe('Microsoft Teams streaming', () => {
 	 */
 	it('falls back to an ordinary message when Teams refuses the stream, then stops streaming that connection', async () => {
 		const ctx = await createTeamsReplayContext({
-			stream: threeDeltas,
+			stream: oneDelta,
 			failStreamingWith: { status: 403, message: 'Content stream is not allowed' },
 			streamingPostTimeoutMs: 50,
 		});
@@ -288,7 +293,7 @@ describe('Microsoft Teams streaming', () => {
 			expect(fallback).toHaveLength(1);
 			expect(fallback[0].body.text).toContain('Looking into it now');
 
-			ctx.nextStream(threeDeltas);
+			ctx.nextStream(oneDelta);
 			await ctx.sendWebhook(dmFollowUp);
 
 			// The connection is marked buffered-only, so the second turn never
@@ -301,7 +306,7 @@ describe('Microsoft Teams streaming', () => {
 		} finally {
 			await ctx.shutdown();
 		}
-	}, 60_000);
+	});
 
 	it('still delivers the whole reply when the stream outlives the Teams time limit', async () => {
 		const ctx = await createTeamsReplayContext({

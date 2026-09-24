@@ -116,11 +116,17 @@ export class AgentChatStreamConsumer {
 			end: null,
 		};
 		let streamingPost: Promise<unknown> | null = null;
-		/** Text yielded into the current streaming post, for the stalled fallback. */
-		let streamedText = '';
-		/** Text that arrived after streaming stopped for this turn. */
-		let bufferedTail = '';
-		let streamedOnce = false;
+		/** Text the platform is not yet known to have rendered. */
+		let pendingText = '';
+		/** Set once this turn must finish without streaming. */
+		let streamingStopped = false;
+		/**
+		 * Only a platform that can stop streaming mid-turn ever re-reads the text,
+		 * so nothing else pays for a second copy of every delta.
+		 */
+		const retainText =
+			this.options.streamingPostTimeoutMs !== undefined ||
+			(this.options.singleStreamedRunPerTurn ?? false);
 
 		const createTextIterable = (): AsyncIterable<string> => {
 			const queue: string[] = [];
@@ -167,7 +173,6 @@ export class AgentChatStreamConsumer {
 
 		const startStreamingPost = () => {
 			const iterable = createTextIterable();
-			streamedText = '';
 			streamingPost = thread.post(iterable).catch(async (postError: unknown) => {
 				await this.options.postErrorToThread(thread, postError);
 				this.options.logger.error('[AgentChatBridge] Streaming post failed', {
@@ -185,32 +190,35 @@ export class AgentChatStreamConsumer {
 			if (streamingPost) {
 				const post = streamingPost;
 				streamingPost = null;
-				streamedOnce = true;
-				await this.awaitStreamingPost(post, thread, streamedText);
+				// A platform that renders one streamed run per turn cannot open a
+				// second one: Teams reuses a single open stream per inbound activity,
+				// so a second run refills the first bubble, which sits above anything
+				// posted in between.
+				if (this.options.singleStreamedRunPerTurn) streamingStopped = true;
+				if (await this.streamingPostStalled(post, thread)) {
+					// Re-opening a stream the platform never acknowledged would stall
+					// again, so the rest of the turn is buffered whatever the platform
+					// asked for.
+					streamingStopped = true;
+					this.options.onStreamingPostStalled?.();
+				} else {
+					pendingText = '';
+				}
 			}
-		};
-
-		const flushBufferedTail = async () => {
-			const text = bufferedTail;
-			bufferedTail = '';
-			if (!text.trim()) return;
-			await this.postBufferedText(thread, text);
+			const text = pendingText;
+			pendingText = '';
+			if (text.trim()) await this.postBufferedText(thread, text);
 		};
 
 		// Don't start streaming post eagerly — wait for first text delta
 		const ensureStreamingPost = () => {
-			// A platform that renders one streamed run per turn cannot open a
-			// second one: Teams reuses a single open stream per inbound activity,
-			// so a second run refills the first bubble, which sits above anything
-			// posted in between. Buffer the rest of the turn instead.
-			if (streamedOnce && this.options.singleStreamedRunPerTurn) return;
+			if (streamingStopped) return;
 			if (!streamingPost) startStreamingPost();
 		};
 		const responseLifecycle = this.createResponseLifecycle({
 			statusHandle: options.statusHandle,
 			ensureStreamingPost,
 			endStreamingPost,
-			flushBufferedText: flushBufferedTail,
 		});
 		const responseState = createResponseState();
 
@@ -221,12 +229,8 @@ export class AgentChatStreamConsumer {
 						if (responseState.suppressText) break;
 						const { delta } = chunk;
 						await responseLifecycle.startStreamingResponse();
-						if (textStream.yield) {
-							streamedText += delta;
-							textStream.yield(delta);
-						} else {
-							bufferedTail += delta;
-						}
+						if (retainText) pendingText += delta;
+						textStream.yield?.(delta);
 						if (delta.trim()) responseState.hasVisibleResponse = true;
 						break;
 					}
@@ -254,9 +258,9 @@ export class AgentChatStreamConsumer {
 						this.noteToolResult(chunk, responseState);
 						if (this.isSilentOutcome(chunk)) {
 							responseState.suppressText = true;
-							// Streamed text is already on the platform, but the tail is
-							// not, so the silence can still be honored for it.
-							bufferedTail = '';
+							// Streamed text is already on the platform, but text still
+							// pending is not, so the silence can be honored for it.
+							pendingText = '';
 						}
 						break;
 					default:
@@ -272,33 +276,35 @@ export class AgentChatStreamConsumer {
 	}
 
 	/**
-	 * Await a streaming post, degrading to a buffered message when the platform
-	 * never settles it.
+	 * Wait for a streaming post to settle, and report whether it never did.
 	 *
-	 * A platform adapter can wait on its own acknowledgement without a deadline
-	 * and swallow the rejection that would end that wait, which leaves the turn
-	 * hung and the user with no reply at all. Opting into a timeout trades the
-	 * streamed rendering for a message that actually arrives.
+	 * A platform adapter can wait on its own acknowledgement with no deadline and
+	 * swallow the rejection that would end that wait, which leaves the turn hung
+	 * and the user with no reply at all. The deadline is anchored to the end of
+	 * the text stream rather than its start because the post promise is the only
+	 * signal this layer gets, and it does not settle until the stream ends even
+	 * on a healthy run.
 	 */
-	private async awaitStreamingPost(
+	private async streamingPostStalled(
 		post: Promise<unknown>,
 		thread: Thread<unknown, unknown>,
-		streamedText: string,
-	): Promise<void> {
+	): Promise<boolean> {
 		const timeoutMs = this.options.streamingPostTimeoutMs;
 		if (timeoutMs === undefined) {
 			await post;
-			return;
+			return false;
 		}
 
-		const stalled = Symbol('stalled');
 		let timer: NodeJS.Timeout | undefined;
-		const deadline = new Promise<typeof stalled>((resolve) => {
-			timer = setTimeout(() => resolve(stalled), timeoutMs);
-			timer.unref();
-		});
 		try {
-			if ((await Promise.race([post, deadline])) !== stalled) return;
+			const stalled = await Promise.race([
+				post.then(() => false),
+				new Promise<boolean>((resolve) => {
+					timer = setTimeout(() => resolve(true), timeoutMs);
+					timer.unref();
+				}),
+			]);
+			if (!stalled) return false;
 		} finally {
 			clearTimeout(timer);
 		}
@@ -307,8 +313,7 @@ export class AgentChatStreamConsumer {
 			'[AgentChatBridge] Streaming post did not settle, posting buffered instead',
 			{ threadId: thread.id, timeoutMs },
 		);
-		this.options.onStreamingPostStalled?.();
-		if (streamedText.trim()) await this.postBufferedText(thread, streamedText);
+		return true;
 	}
 
 	/**
@@ -316,13 +321,18 @@ export class AgentChatStreamConsumer {
 	 * adapter applies its markdown parse mode. A raw string bypasses that and
 	 * renders as plain text, so buffered text is posted in the same shape.
 	 */
-	private async postBufferedText(thread: Thread<unknown, unknown>, text: string): Promise<void> {
+	private async postBufferedText(
+		thread: Thread<unknown, unknown>,
+		text: string,
+		throwOnDeliveryError = false,
+	): Promise<void> {
 		try {
 			await thread.post({ markdown: text });
 		} catch (postError: unknown) {
 			this.options.logger.error('[AgentChatBridge] Buffered post failed', {
 				error: postError instanceof Error ? postError.message : String(postError),
 			});
+			if (throwOnDeliveryError) throw postError;
 			await this.options.postErrorToThread(thread, postError);
 		}
 	}
@@ -372,7 +382,6 @@ export class AgentChatStreamConsumer {
 		statusHandle?: BridgeStatusHandle;
 		ensureStreamingPost?: () => void;
 		endStreamingPost?: () => Promise<void>;
-		flushBufferedText?: () => Promise<void>;
 	}): ResponseLifecycle {
 		let responseStarted = false;
 
@@ -389,12 +398,10 @@ export class AgentChatStreamConsumer {
 			},
 			startDiscreteResponse: async () => {
 				await options.endStreamingPost?.();
-				await options.flushBufferedText?.();
 				await clearStatusBeforeFirstResponse();
 			},
 			finish: async () => {
 				await options.endStreamingPost?.();
-				await options.flushBufferedText?.();
 				await clearStatusBeforeFirstResponse();
 			},
 		};
@@ -432,21 +439,8 @@ export class AgentChatStreamConsumer {
 			const text = buffer;
 			buffer = '';
 			if (!text.trim()) return;
-			try {
-				await responseLifecycle.startDiscreteResponse();
-				// Chat SDK's streaming path wraps accumulated deltas as `{ markdown }`
-				// so the platform adapter applies its markdown parse-mode (Telegram:
-				// sendMessage with parse_mode=Markdown). A raw string bypasses that
-				// and renders as plain text, so we post the buffered message the same
-				// shape the streaming path uses under the hood.
-				await thread.post({ markdown: text });
-			} catch (postError: unknown) {
-				this.options.logger.error('[AgentChatBridge] Buffered post failed', {
-					error: postError instanceof Error ? postError.message : String(postError),
-				});
-				if (options.throwOnDeliveryError) throw postError;
-				await this.options.postErrorToThread(thread, postError);
-			}
+			await responseLifecycle.startDiscreteResponse();
+			await this.postBufferedText(thread, text, options.throwOnDeliveryError);
 			responseState.hasVisibleResponse = true;
 		};
 
