@@ -175,6 +175,7 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 					expect(emit).toHaveBeenCalledWith('system-task-run-skipped', {
 						name: SYSTEM_TASK_NAME,
 						reason: 'overlap',
+						count: 1,
 					});
 				},
 				{ intervalMs: 100, timeoutMs: 20_000 },
