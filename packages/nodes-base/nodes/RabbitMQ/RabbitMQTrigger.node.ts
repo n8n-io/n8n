@@ -97,6 +97,14 @@ export class RabbitMQTrigger implements INodeType {
 						default: 'immediately',
 						description: 'When to acknowledge the message',
 					},
+
+					{
+						displayName: 'Requeue when acknowledge fail',
+						name: 'nackRequeue',
+						type: 'boolean',
+						default: true,
+						description: 'Whether the message will be requeue or not when handling failed (Do not requeue if you use dead letter exchange)',
+					},
 					{
 						displayName: 'JSON Parse Body',
 						name: 'jsonParseBody',
