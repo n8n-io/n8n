@@ -1,3 +1,7 @@
+import type { RoleMappingRule } from '@n8n/inbound-auth';
+
+export type { RoleMappingRule };
+
 export interface RoleResolverContext {
 	/** Protocol-agnostic merged claims */
 	$claims: Record<string, unknown>;
@@ -19,16 +23,6 @@ export interface RoleResolverContext {
 
 	/** Populated per-rule during project role evaluation */
 	$project?: ProjectInfo;
-}
-
-export interface RoleMappingRule {
-	id: string;
-	expression: string;
-	role: string;
-	/** undefined = instance role rule; set = project role rule */
-	projectId?: string;
-	enabled: boolean;
-	description?: string;
 }
 
 export interface RoleMappingConfig {
