@@ -122,11 +122,26 @@ export interface ToolCallBatchResult {
 	pending: Record<string, PendingToolCall>;
 }
 
-interface RuntimeToolCall {
+interface ToolCallInput {
 	toolCallId: string;
 	toolName: string;
-	input: JSONObject;
+	input: unknown;
 	providerExecuted?: boolean;
+}
+
+interface RuntimeToolCall extends ToolCallInput {
+	input: JSONObject;
+}
+
+type ToolCallIdentity = Pick<PendingToolCall, 'toolCallId' | 'toolName' | 'input'>;
+type SuspendedToolOutcome = Extract<ToolCallOutcome, { outcome: 'suspended' }>;
+
+interface InterruptedToolSuspension {
+	didSuspend: boolean;
+	abortObserved: boolean;
+	payload: unknown;
+	options?: ToolSuspendOptions;
+	cleanup?: Promise<void>;
 }
 
 /** Shared input for the tool-call batch iterators. */
@@ -288,33 +303,54 @@ export class ToolCallExecutor {
 	 * even if one throws, then re-throws the first error.
 	 */
 	async iterateToolCallsConcurrent(
-		ctx: ToolBatchContext & {
-			toolCalls: Array<{
-				toolCallId: string;
-				toolName: string;
-				input: unknown;
-				providerExecuted?: boolean;
-			}>;
-		},
+		ctx: ToolBatchContext & { toolCalls: ToolCallInput[] },
 	): Promise<ToolCallBatchResult> {
-		const {
-			toolCalls,
-			toolMap,
-			list,
-			runId,
-			telemetry: resolvedTelemetry,
-			executionCounter,
-			abortSignal,
-		} = ctx;
 		const errors: ToolCallError[] = [];
-		const runtimeToolCalls: RuntimeToolCall[] = [];
+		const runtimeToolCalls = this.normalizeToolCalls(ctx.toolCalls, ctx, errors);
+		const executableCalls = runtimeToolCalls.filter((tc) => !tc.providerExecuted);
+		const providerExecutedCount = runtimeToolCalls.length - executableCalls.length;
+		for (let i = 0; i < providerExecutedCount; i++) {
+			incrementToolCallCount(ctx.executionCounter);
+		}
+		const executableCallsById = new Map(executableCalls.map((tc) => [tc.toolCallId, tc]));
+		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
+		const result: ToolCallBatchResult = { results: [], suspensions: [], errors, pending: {} };
 
+		for (let batchStart = 0; batchStart < executableCalls.length; ) {
+			if (ctx.isAborted()) {
+				this.skipAbortedToolCalls(unexecutedIds, executableCallsById, ctx.list, result.results);
+				return await this.finalizeBatch(result, ctx);
+			}
+			const batch = this.takeNextToolCallBatch(executableCalls, batchStart, ctx.toolMap);
+			batchStart += batch.length;
+			const settled = await this.executeToolCallBatch(batch, ctx);
+			for (const tc of batch) unexecutedIds.delete(tc.toolCallId);
+			const hasSuspension = this.collectBatchResults(batch, settled, result, ctx);
+
+			if (ctx.isAborted()) {
+				this.skipAbortedToolCalls(unexecutedIds, executableCallsById, ctx.list, result.results);
+				return await this.finalizeBatch(result, ctx);
+			}
+			if (hasSuspension) {
+				this.retainUnexecutedToolCalls(unexecutedIds, executableCallsById, result.pending);
+				break;
+			}
+		}
+		return await this.finalizeBatch(result, ctx);
+	}
+
+	private normalizeToolCalls(
+		toolCalls: ToolCallInput[],
+		ctx: ToolBatchContext,
+		errors: ToolCallError[],
+	): RuntimeToolCall[] {
+		const calls: RuntimeToolCall[] = [];
 		for (const toolCall of toolCalls) {
 			const normalizedInput = normalizeToolInputForModel(toolCall.input);
 			if (!normalizedInput.ok) {
 				const error = new Error(normalizedInput.error);
-				incrementToolCallCount(executionCounter);
-				list.setToolCallError(toolCall.toolCallId, error);
+				incrementToolCallCount(ctx.executionCounter);
+				ctx.list.setToolCallError(toolCall.toolCallId, error);
 				errors.push({
 					toolCallId: toolCall.toolCallId,
 					toolName: toolCall.toolName,
@@ -323,177 +359,180 @@ export class ToolCallExecutor {
 				});
 				continue;
 			}
-
-			runtimeToolCalls.push({ ...toolCall, input: normalizedInput.input });
+			calls.push({ ...toolCall, input: normalizedInput.input });
 		}
+		return calls;
+	}
 
-		const executableCalls = runtimeToolCalls.filter((tc) => !tc.providerExecuted);
-		const providerExecutedCount = runtimeToolCalls.length - executableCalls.length;
-		for (let i = 0; i < providerExecutedCount; i++) {
-			incrementToolCallCount(executionCounter);
+	private async executeToolCallBatch(
+		batch: RuntimeToolCall[],
+		ctx: ToolBatchContext,
+	): Promise<Array<PromiseSettledResult<ToolCallOutcome>>> {
+		return await Promise.allSettled(
+			batch.map(
+				async (tc) =>
+					await this.processToolCall({
+						toolCallId: tc.toolCallId,
+						toolName: tc.toolName,
+						input: tc.input,
+						toolMap: ctx.toolMap,
+						list: ctx.list,
+						runId: ctx.runId,
+						persistence: ctx.persistence,
+						resolvedTelemetry: ctx.telemetry,
+						executionCounter: ctx.executionCounter,
+						abortSignal: ctx.abortSignal,
+						countToolCall: true,
+					}),
+			),
+		);
+	}
+
+	private collectBatchResults(
+		calls: RuntimeToolCall[],
+		settled: Array<PromiseSettledResult<ToolCallOutcome>>,
+		batch: ToolCallBatchResult,
+		ctx: ToolBatchContext,
+	): boolean {
+		let hasSuspension = false;
+		for (let i = 0; i < settled.length; i++) {
+			if (this.collectSettledToolCall(calls[i], settled[i], batch, ctx)) hasSuspension = true;
 		}
-		const executableCallsById = new Map(executableCalls.map((tc) => [tc.toolCallId, tc]));
-		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
-		const results: ToolCallSuccess[] = [];
-		const suspensions: ToolCallSuspension[] = [];
-		const pending: Record<string, PendingToolCall> = {};
+		return hasSuspension;
+	}
 
-		for (let batchStart = 0; batchStart < executableCalls.length; ) {
-			if (ctx.isAborted()) {
-				this.deps.onCancelled();
-				for (const id of unexecutedIds) {
-					const tc = executableCallsById.get(id)!;
-					const modelOutput = '[Skipped: run was aborted]';
-					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
-					results.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: tc.input,
-						toolEntry: {
-							tool: tc.toolName,
-							input: tc.input,
-							output: modelOutput,
-							transformed: false,
-							canceled: true,
-						},
-						modelOutput,
-					});
-				}
-				return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
-			}
-
-			const batch = this.takeNextToolCallBatch(executableCalls, batchStart, toolMap);
-			batchStart += batch.length;
-
-			const settledResults = await Promise.allSettled(
-				batch.map(
-					async (tc) =>
-						await this.processToolCall({
-							toolCallId: tc.toolCallId,
-							toolName: tc.toolName,
-							input: tc.input,
-							toolMap,
-							list,
-							runId,
-							persistence: ctx.persistence,
-							resolvedTelemetry,
-							executionCounter,
-							abortSignal,
-							countToolCall: true,
-						}),
-				),
-			);
-
-			for (const tc of batch) {
-				unexecutedIds.delete(tc.toolCallId);
-			}
-
-			let hasSuspension = false;
-
-			for (let i = 0; i < settledResults.length; i++) {
-				const result = settledResults[i];
-				const tc = batch[i];
-				const toolInput = tc.input;
-
-				if (result.status === 'rejected') {
-					list.setToolCallError(tc.toolCallId, result.reason);
-					errors.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						error: result.reason,
-					});
-				} else if (result.value.outcome === 'suspended') {
-					hasSuspension = true;
-					suspensions.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						payload: result.value.payload,
-						resumeSchema: result.value.resumeSchema,
-					});
-					pending[tc.toolCallId] = {
-						suspended: true,
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						suspendPayload: result.value.payload,
-						resumeSchema: result.value.resumeSchema,
-						...(result.value.continuation !== undefined
-							? { continuation: result.value.continuation }
-							: {}),
-						runId,
-					};
-				} else if (result.value.outcome === 'success') {
-					results.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						toolEntry: result.value.toolEntry,
-						modelOutput: result.value.modelOutput,
-						customMessage: result.value.customMessage,
-						...(result.value.mcpServerName !== undefined
-							? { mcpServerName: result.value.mcpServerName }
-							: {}),
-					});
-				} else if (result.value.outcome === 'cancelled') {
-					results.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						toolEntry: result.value.toolEntry,
-						modelOutput: result.value.modelOutput,
-					});
-				} else if (result.value.outcome === 'error') {
-					errors.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: toolInput,
-						error: result.value.error,
-					});
-				} else if (result.value.outcome === 'noop') {
-					// noop
-				}
-			}
-
-			if (ctx.isAborted()) {
-				this.deps.onCancelled();
-				for (const id of unexecutedIds) {
-					const tc = executableCallsById.get(id)!;
-					const modelOutput = '[Skipped: run was aborted]';
-					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
-					results.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: tc.input,
-						toolEntry: {
-							tool: tc.toolName,
-							input: tc.input,
-							output: modelOutput,
-							transformed: false,
-							canceled: true,
-						},
-						modelOutput,
-					});
-				}
-				return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
-			}
-
-			if (hasSuspension) {
-				for (const id of unexecutedIds) {
-					const tc = executableCallsById.get(id)!;
-					pending[tc.toolCallId] = {
-						suspended: false,
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: tc.input,
-					};
-				}
+	private collectSettledToolCall(
+		call: RuntimeToolCall,
+		result: PromiseSettledResult<ToolCallOutcome>,
+		batch: ToolCallBatchResult,
+		ctx: ToolBatchContext,
+	): boolean {
+		if (result.status === 'rejected') {
+			ctx.list.setToolCallError(call.toolCallId, result.reason);
+			batch.errors.push({
+				toolCallId: call.toolCallId,
+				toolName: call.toolName,
+				input: call.input,
+				error: result.reason,
+			});
+			return false;
+		}
+		const outcome = result.value;
+		switch (outcome.outcome) {
+			case 'suspended':
+				batch.suspensions.push(this.buildToolCallSuspension(call, outcome));
+				batch.pending[call.toolCallId] = this.buildPendingToolCall(call, outcome, ctx.runId);
+				return true;
+			case 'success':
+			case 'cancelled':
+				this.appendCompletedToolCall(call, outcome, batch.results);
 				break;
-			}
+			case 'error':
+				batch.errors.push({
+					toolCallId: call.toolCallId,
+					toolName: call.toolName,
+					input: call.input,
+					error: outcome.error,
+				});
+				break;
 		}
+		return false;
+	}
 
-		return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
+	private buildToolCallSuspension(
+		call: ToolCallIdentity,
+		outcome: SuspendedToolOutcome,
+	): ToolCallSuspension {
+		return {
+			toolCallId: call.toolCallId,
+			toolName: call.toolName,
+			input: call.input,
+			payload: outcome.payload,
+			resumeSchema: outcome.resumeSchema,
+		};
+	}
+
+	private buildPendingToolCall(
+		call: ToolCallIdentity,
+		outcome: SuspendedToolOutcome,
+		runId: string,
+	): PendingToolCall {
+		return {
+			suspended: true,
+			toolCallId: call.toolCallId,
+			toolName: call.toolName,
+			input: call.input,
+			suspendPayload: outcome.payload,
+			resumeSchema: outcome.resumeSchema,
+			...(outcome.continuation !== undefined ? { continuation: outcome.continuation } : {}),
+			runId,
+		};
+	}
+
+	private appendCompletedToolCall(
+		call: ToolCallIdentity,
+		outcome: Extract<ToolCallOutcome, { outcome: 'success' | 'cancelled' }>,
+		results: ToolCallSuccess[],
+	): void {
+		const result: ToolCallSuccess = {
+			toolCallId: call.toolCallId,
+			toolName: call.toolName,
+			input: call.input,
+			toolEntry: outcome.toolEntry,
+			modelOutput: outcome.modelOutput,
+		};
+		if (outcome.outcome === 'success') {
+			result.customMessage = outcome.customMessage;
+			if (outcome.mcpServerName !== undefined) result.mcpServerName = outcome.mcpServerName;
+		}
+		results.push(result);
+	}
+
+	private skipAbortedToolCalls(
+		ids: Set<string>,
+		calls: Map<string, RuntimeToolCall>,
+		list: AgentMessageList,
+		results: ToolCallSuccess[],
+	): void {
+		this.deps.onCancelled();
+		for (const id of ids) {
+			const call = calls.get(id)!;
+			const modelOutput = '[Skipped: run was aborted]';
+			list.setToolCallResult(call.toolCallId, modelOutput, { canceled: true });
+			results.push(this.buildSkippedToolResult(call, modelOutput));
+		}
+	}
+
+	private buildSkippedToolResult(call: ToolCallIdentity, modelOutput: string): ToolCallSuccess {
+		return {
+			toolCallId: call.toolCallId,
+			toolName: call.toolName,
+			input: call.input,
+			toolEntry: {
+				tool: call.toolName,
+				input: call.input,
+				output: modelOutput,
+				transformed: false,
+				canceled: true,
+			},
+			modelOutput,
+		};
+	}
+
+	private retainUnexecutedToolCalls(
+		ids: Set<string>,
+		calls: Map<string, RuntimeToolCall>,
+		pending: Record<string, PendingToolCall>,
+	): void {
+		for (const id of ids) {
+			const call = calls.get(id)!;
+			pending[call.toolCallId] = {
+				suspended: false,
+				toolCallId: call.toolCallId,
+				toolName: call.toolName,
+				input: call.input,
+			};
+		}
 	}
 
 	/**
@@ -509,172 +548,112 @@ export class ToolCallExecutor {
 	async iteratePendingToolCallsConcurrent(
 		ctx: ToolBatchContext & { pendingResume: PendingResume },
 	): Promise<ToolCallBatchResult> {
-		const {
-			pendingResume,
-			toolMap,
-			list,
-			runId,
-			persistence,
-			telemetry: resolvedTelemetry,
-			executionCounter,
-			abortSignal,
-		} = ctx;
+		const { pendingResume } = ctx;
 		const resumedId = pendingResume.resumeToolCallId;
 		const resumedEntry = pendingResume.pendingToolCalls[resumedId];
-		if (!resumedEntry) {
-			throw new Error(`No pending tool call found for toolCallId: ${resumedId}`);
-		}
-
-		const resumedToolName = resumedEntry.toolName;
-		const results: ToolCallSuccess[] = [];
-		const suspensions: ToolCallSuspension[] = [];
-		const errors: ToolCallError[] = [];
-		const pending: Record<string, PendingToolCall> = {};
-
-		// 1. Execute the resumed tool
-		const processResult = await this.processToolCall(
+		if (!resumedEntry) throw new Error(`No pending tool call found for toolCallId: ${resumedId}`);
+		const batch: ToolCallBatchResult = { results: [], suspensions: [], errors: [], pending: {} };
+		const outcome = await this.processToolCall(
 			this.pendingToolCallParams(resumedEntry, ctx, pendingResume.resumeData),
 		);
 
-		if (processResult.outcome === 'suspended') {
-			pending[resumedId] = {
-				suspended: true,
-				toolCallId: resumedEntry.toolCallId,
-				toolName: resumedToolName,
-				input: resumedEntry.input,
-				suspendPayload: processResult.payload,
-				resumeSchema: processResult.resumeSchema,
-				...(processResult.continuation !== undefined
-					? { continuation: processResult.continuation }
-					: {}),
-				runId,
-			};
-			suspensions.push({
-				toolCallId: resumedId,
-				toolName: resumedToolName,
-				input: resumedEntry.input,
-				payload: processResult.payload,
-				resumeSchema: processResult.resumeSchema,
-			});
-		} else if (processResult.outcome === 'success') {
-			results.push({
-				toolCallId: resumedEntry.toolCallId,
-				toolName: resumedToolName,
-				input: resumedEntry.input,
-				toolEntry: processResult.toolEntry,
-				modelOutput: processResult.modelOutput,
-				customMessage: processResult.customMessage,
-				...(processResult.mcpServerName !== undefined
-					? { mcpServerName: processResult.mcpServerName }
-					: {}),
-			});
-		} else if (processResult.outcome === 'cancelled') {
-			results.push({
-				toolCallId: resumedEntry.toolCallId,
-				toolName: resumedToolName,
-				input: resumedEntry.input,
-				toolEntry: processResult.toolEntry,
-				modelOutput: processResult.modelOutput,
-			});
-			list.addInput([
-				{ role: 'user', content: [{ type: 'text', text: processResult.userMessage }] },
-			]);
-
-			for (const id of Object.keys(pendingResume.pendingToolCalls)) {
-				if (id !== resumedId) {
-					const siblingEntry = pendingResume.pendingToolCalls[id];
-					const siblingTool = toolMap.get(siblingEntry.toolName);
-					const siblingParams = this.pendingToolCallParams(
-						siblingEntry,
-						ctx,
-						pendingResume.resumeData,
-					);
-					if (siblingEntry.suspended && siblingTool?.onCancellation) {
-						try {
-							await this.runCancellationCleanup(
-								siblingParams,
-								siblingTool,
-								processResult.userMessage,
-							);
-						} catch {
-							this.retainPendingToolCall(id, siblingEntry, pending, suspensions);
-							continue;
-						}
-					}
-					const modelOutput = '[Skipped: a sibling tool call was cancelled]';
-					list.setToolCallResult(id, modelOutput, {
-						canceled: true,
-					});
-					results.push({
-						toolCallId: siblingEntry.toolCallId,
-						toolName: siblingEntry.toolName,
-						input: siblingEntry.input,
-						toolEntry: {
-							tool: siblingEntry.toolName,
-							input: siblingEntry.input,
-							output: modelOutput,
-							transformed: false,
-							canceled: true,
-						},
-						modelOutput,
-					});
-				}
-			}
-
-			return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
-		} else if (processResult.outcome === 'retryable-error') {
+		if (outcome.outcome === 'cancelled') {
+			this.appendCompletedToolCall(resumedEntry, outcome, batch.results);
+			ctx.list.addInput([{ role: 'user', content: [{ type: 'text', text: outcome.userMessage }] }]);
+			await this.cancelSiblingToolCalls(ctx, batch, outcome.userMessage);
+			return await this.finalizeBatch(batch, ctx);
+		}
+		if (outcome.outcome === 'retryable-error') {
 			for (const [id, entry] of Object.entries(pendingResume.pendingToolCalls)) {
-				this.retainPendingToolCall(id, entry, pending, suspensions);
+				this.retainPendingToolCall(id, entry, batch.pending, batch.suspensions);
 			}
-			return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
-		} else if (processResult.outcome === 'error') {
-			errors.push({
-				toolCallId: resumedEntry.toolCallId,
-				toolName: resumedToolName,
-				input: resumedEntry.input,
-				error: processResult.error,
-			});
-		} else if (processResult.outcome === 'noop') {
-			// noop
+			return await this.finalizeBatch(batch, ctx);
 		}
 
-		// 2. Process remaining items
-		const unexecuted: Array<{ toolCallId: string; toolName: string; input: unknown }> = [];
+		this.collectResumedToolCall(resumedId, resumedEntry, outcome, batch, ctx.runId);
+		await this.executeRemainingToolCalls(ctx, batch);
+		return await this.finalizeBatch(batch, ctx);
+	}
 
-		for (const [id, entry] of Object.entries(pendingResume.pendingToolCalls)) {
-			if (id === resumedId) continue;
-
-			if (entry.suspended) {
-				this.retainPendingToolCall(id, entry, pending, suspensions);
-			} else {
-				// Unexecuted — collect for batch execution
-				unexecuted.push({
-					toolCallId: id,
+	private collectResumedToolCall(
+		id: string,
+		entry: PendingToolCall,
+		outcome: ToolCallOutcome,
+		batch: ToolCallBatchResult,
+		runId: string,
+	): void {
+		switch (outcome.outcome) {
+			case 'suspended':
+				batch.pending[id] = this.buildPendingToolCall(entry, outcome, runId);
+				batch.suspensions.push(this.buildToolCallSuspension({ ...entry, toolCallId: id }, outcome));
+				break;
+			case 'success':
+				this.appendCompletedToolCall(entry, outcome, batch.results);
+				break;
+			case 'error':
+				batch.errors.push({
+					toolCallId: entry.toolCallId,
 					toolName: entry.toolName,
 					input: entry.input,
+					error: outcome.error,
 				});
+				break;
+		}
+	}
+
+	private async cancelSiblingToolCalls(
+		ctx: ToolBatchContext & { pendingResume: PendingResume },
+		batch: ToolCallBatchResult,
+		userMessage: string,
+	): Promise<void> {
+		for (const id of Object.keys(ctx.pendingResume.pendingToolCalls)) {
+			if (id === ctx.pendingResume.resumeToolCallId) continue;
+			const entry = ctx.pendingResume.pendingToolCalls[id];
+			const tool = ctx.toolMap.get(entry.toolName);
+			const params = this.pendingToolCallParams(entry, ctx, ctx.pendingResume.resumeData);
+			if (entry.suspended && tool?.onCancellation) {
+				try {
+					await this.runCancellationCleanup(params, tool, userMessage);
+				} catch {
+					this.retainPendingToolCall(id, entry, batch.pending, batch.suspensions);
+					continue;
+				}
+			}
+			const modelOutput = '[Skipped: a sibling tool call was cancelled]';
+			ctx.list.setToolCallResult(id, modelOutput, { canceled: true });
+			batch.results.push(this.buildSkippedToolResult(entry, modelOutput));
+		}
+	}
+
+	private async executeRemainingToolCalls(
+		ctx: ToolBatchContext & { pendingResume: PendingResume },
+		result: ToolCallBatchResult,
+	): Promise<void> {
+		const unexecuted: ToolCallInput[] = [];
+		for (const [id, entry] of Object.entries(ctx.pendingResume.pendingToolCalls)) {
+			if (id === ctx.pendingResume.resumeToolCallId) continue;
+			if (entry.suspended) {
+				this.retainPendingToolCall(id, entry, result.pending, result.suspensions);
+			} else {
+				unexecuted.push({ toolCallId: id, toolName: entry.toolName, input: entry.input });
 			}
 		}
-
-		// Execute unexecuted tools via iterateToolCallsConcurrent
-		if (unexecuted.length > 0) {
-			const batch = await this.iterateToolCallsConcurrent({
-				toolCalls: unexecuted,
-				toolMap,
-				list,
-				runId,
-				persistence,
-				telemetry: resolvedTelemetry,
-				executionCounter,
-				abortSignal,
-				isAborted: ctx.isAborted,
-			});
-			results.push(...batch.results);
-			suspensions.push(...batch.suspensions);
-			errors.push(...batch.errors);
-			Object.assign(pending, batch.pending);
-		}
-		return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
+		if (unexecuted.length === 0) return;
+		const batch = await this.iterateToolCallsConcurrent({
+			toolCalls: unexecuted,
+			toolMap: ctx.toolMap,
+			list: ctx.list,
+			runId: ctx.runId,
+			persistence: ctx.persistence,
+			telemetry: ctx.telemetry,
+			executionCounter: ctx.executionCounter,
+			abortSignal: ctx.abortSignal,
+			isAborted: ctx.isAborted,
+		});
+		result.results.push(...batch.results);
+		result.suspensions.push(...batch.suspensions);
+		result.errors.push(...batch.errors);
+		Object.assign(result.pending, batch.pending);
 	}
 
 	/**
@@ -728,59 +707,81 @@ export class ToolCallExecutor {
 			});
 		}
 
+		return await this.executeValidatedToolCall(params, builtTool, input);
+	}
+
+	private async executeValidatedToolCall(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+		input: JSONValue,
+	): Promise<ToolCallOutcome> {
 		let toolResult: unknown;
-		let interruptedSuspendPayload: unknown;
-		let interruptedSuspendOptions: ToolSuspendOptions | undefined;
-		let didSuspend = false;
-		let abortObserved = false;
-		let suspensionCleanup: Promise<void> | undefined;
-		const cleanupInterruptedSuspension = async () => {
-			suspensionCleanup ??= this.runCancellationCleanup(
-				{
-					...params,
-					input,
-					suspendPayload: interruptedSuspendPayload,
-					continuation: interruptedSuspendOptions?.continuation,
-					resumeSchema: getToolResumeJsonSchema(builtTool, interruptedSuspendOptions?.resumeSchema),
-				},
-				builtTool,
-				'Run aborted',
-			).catch(() => undefined);
-			await suspensionCleanup;
+		const suspension: InterruptedToolSuspension = {
+			didSuspend: false,
+			abortObserved: false,
+			payload: undefined,
 		};
 		try {
 			toolResult = await this.runToolHandler(params, builtTool, input, async (payload, options) => {
-				didSuspend = true;
-				interruptedSuspendPayload = payload;
-				interruptedSuspendOptions = options;
-				if (abortObserved || params.abortSignal?.aborted) {
-					await cleanupInterruptedSuspension();
+				suspension.didSuspend = true;
+				suspension.payload = payload;
+				suspension.options = options;
+				if (suspension.abortObserved || params.abortSignal?.aborted) {
+					await this.cleanupInterruptedSuspension(params, builtTool, input, suspension);
 				}
 			});
 		} catch (error) {
 			if (isAbortError(error) || params.abortSignal?.aborted) {
-				abortObserved = true;
-				if (didSuspend) {
-					await cleanupInterruptedSuspension();
-				} else if (params.suspendPayload !== undefined || params.continuation !== undefined) {
-					try {
-						await this.runCancellationCleanup({ ...params, input }, builtTool, 'Run aborted');
-					} catch {
-						// Parent shutdown must continue; persistent stores will prune stale checkpoints.
-					}
-				}
+				suspension.abortObserved = true;
+				await this.cleanupAbortedTool(params, builtTool, input, suspension);
 				this.deps.onCancelled();
 				return this.buildCancelledOutcome(params, 'Run aborted');
 			}
-
 			return await this.toolError(params, error, builtTool);
 		}
 
 		if (isSuspendedToolResult(toolResult)) {
 			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
 		}
-
 		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
+	}
+
+	private async cleanupInterruptedSuspension(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+		input: JSONValue,
+		suspension: InterruptedToolSuspension,
+	): Promise<void> {
+		// Both abort and late suspension can reach this path. Run cleanup only once.
+		suspension.cleanup ??= this.runCancellationCleanup(
+			{
+				...params,
+				input,
+				suspendPayload: suspension.payload,
+				continuation: suspension.options?.continuation,
+				resumeSchema: getToolResumeJsonSchema(builtTool, suspension.options?.resumeSchema),
+			},
+			builtTool,
+			'Run aborted',
+		).catch(() => undefined);
+		await suspension.cleanup;
+	}
+
+	private async cleanupAbortedTool(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+		input: JSONValue,
+		suspension: InterruptedToolSuspension,
+	): Promise<void> {
+		if (suspension.didSuspend) {
+			await this.cleanupInterruptedSuspension(params, builtTool, input, suspension);
+		} else if (params.suspendPayload !== undefined || params.continuation !== undefined) {
+			try {
+				await this.runCancellationCleanup({ ...params, input }, builtTool, 'Run aborted');
+			} catch {
+				// Parent shutdown must continue; persistent stores will prune stale checkpoints.
+			}
+		}
 	}
 
 	private async runCancellationCleanup(
@@ -1095,24 +1096,12 @@ export class ToolCallExecutor {
 
 		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
 
-		let customMessage = await builtTool.toMessage?.(toolResult);
-		if (customMessage && builtTool.outputTrust === 'untrusted') {
-			customMessage = protectUntrustedToolMessage(customMessage, builtTool);
-		}
-		let guardedCustomMessage = customMessage
-			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter, storage)
-			: undefined;
-		// Stamp tool provenance so derived transcripts (e.g. the observation
-		// log observer) can keep this content inside untrusted-data boundaries.
-		if (guardedCustomMessage && 'role' in guardedCustomMessage) {
-			guardedCustomMessage = {
-				...guardedCustomMessage,
-				origin: { kind: 'tool', toolName },
-			};
-		}
-		if (guardedCustomMessage) {
-			list.addResponse([guardedCustomMessage]);
-		}
+		const guardedCustomMessage = await this.appendCustomToolMessage(
+			params,
+			builtTool,
+			toolResult,
+			storage,
+		);
 
 		return {
 			outcome: 'success',
@@ -1126,6 +1115,33 @@ export class ToolCallExecutor {
 			customMessage: guardedCustomMessage,
 			...(builtTool.mcpServerName !== undefined ? { mcpServerName: builtTool.mcpServerName } : {}),
 		};
+	}
+
+	private async appendCustomToolMessage(
+		params: ProcessToolCallParams,
+		builtTool: BuiltTool,
+		toolResult: unknown,
+		storage: ToolResultGuardStorage | undefined,
+	): Promise<AgentMessage | undefined> {
+		let customMessage = await builtTool.toMessage?.(toolResult);
+		if (customMessage && builtTool.outputTrust === 'untrusted') {
+			customMessage = protectUntrustedToolMessage(customMessage, builtTool);
+		}
+		let guardedCustomMessage = customMessage
+			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter, storage)
+			: undefined;
+		// Stamp tool provenance so derived transcripts (e.g. the observation
+		// log observer) can keep this content inside untrusted-data boundaries.
+		if (guardedCustomMessage && 'role' in guardedCustomMessage) {
+			guardedCustomMessage = {
+				...guardedCustomMessage,
+				origin: { kind: 'tool', toolName: params.toolName },
+			};
+		}
+		if (guardedCustomMessage) {
+			params.list.addResponse([guardedCustomMessage]);
+		}
+		return guardedCustomMessage;
 	}
 
 	private getResultStorage(params: ProcessToolCallParams): ToolResultGuardStorage | undefined {
