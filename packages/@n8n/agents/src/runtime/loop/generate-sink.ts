@@ -1,12 +1,12 @@
-import {
-	finalizeRun,
-	type CompleteEmission,
-	type ModelCallContext,
-	type ModelTurnResult,
-	type RunOutputSink,
-	type RunServices,
-	type SuspendEmission,
-} from './run-output-sink';
+import { finalizeRun } from './run-output-sink';
+import type {
+	CompleteEmission,
+	ModelCallContext,
+	ModelTurnResult,
+	RunOutputSink,
+	RunServices,
+	SuspendEmission,
+} from '../../types/runtime/agent-loop';
 import { classifyModelTurnError } from './runtime-helpers';
 import type { GenerateResult } from '../../types';
 import type { ToolResultEntry } from '../../types/sdk/agent';
@@ -14,7 +14,7 @@ import { isAttachmentValidationError } from '../model/attachment-validation-erro
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { toTokenUsage } from '../streaming/stream';
-import type { ToolCallBatchResult } from '../tools/tool-call-executor';
+import type { ToolCallBatchResult } from '../../types/runtime/tool-execution';
 
 /**
  * Non-streaming output sink: drives the loop with `generateText`, accumulates a

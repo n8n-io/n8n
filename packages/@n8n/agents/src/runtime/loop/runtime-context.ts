@@ -2,7 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
-import type { AgentRuntimeConfig } from './agent-runtime';
+import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
