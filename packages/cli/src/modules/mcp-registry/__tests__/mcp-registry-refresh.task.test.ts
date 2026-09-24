@@ -12,11 +12,11 @@ describe('McpRegistryRefreshTask', () => {
 		mcpRegistryService.refreshFromApi.mockReset();
 	});
 
-	it('should refresh every 8 hours on the leader and once on takeover, without an early retry', () => {
+	it('should refresh every 8 hours on the durable scheduler, and once on takeover in memory, without an early retry', () => {
 		expect(task.name).toBe('mcp-registry-refresh');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 8 * 3600 });
 		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: false, runOnTakeover: true });
+		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
 		expect(task.retryDelaySeconds).toBeUndefined();
 	});
 
