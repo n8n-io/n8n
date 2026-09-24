@@ -22,7 +22,7 @@ function unimplemented(feature: string) {
  * inside a request or a parameter.
  */
 const unimplementedVariablesAccess = (): never => {
-	throw new UnimplementedError('Variables ($vars) are not supported on Engine 2.0 yet');
+	throw new UnimplementedError('Variables ($vars) are not supported on Engine v2 yet');
 };
 
 const unimplementedVariables: IWorkflowExecuteAdditionalData['variables'] = new Proxy(
