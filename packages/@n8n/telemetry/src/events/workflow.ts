@@ -4,6 +4,115 @@ import { defineTelemetryEvents } from '../define';
 import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
+	USER_GROUPED_NODES: {
+		name: 'User grouped nodes',
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		description:
+			'The user created a node group on the workflow canvas. Empty groups report no node ids because their internal anchor is excluded.',
+		properties: z.object({
+			workflow_id: z.string(),
+			group_id: z.string(),
+			node_ids: z.array(z.string()),
+			node_count: z.number(),
+			group_title: z.string(),
+			source: z.enum([
+				'group-toolbar',
+				'group-header',
+				'keyboard-shortcut',
+				'context-menu',
+				'update-blocked-toast',
+				'sub-workflow-extraction',
+				// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+				'node-creator',
+			]),
+			push_ref: z.string(),
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			is_empty: z.boolean().optional(),
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			node_creator_open_source: z
+				.enum([
+					'context_menu',
+					'no_trigger_execution_tooltip',
+					'plus_endpoint',
+					'add_input_endpoint',
+					'trigger_placeholder_button',
+					'node_shortcut',
+					'replace_node_action',
+					'node_connection_action',
+					'node_connection_drop',
+					'notice_error_message',
+					'add_node_button',
+					'add_evaluation_node_button',
+					'templates_callout',
+					'instance_ai',
+				])
+				.optional(),
+		}),
+	},
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	USER_FILLED_EMPTY_GROUP: {
+		name: 'User filled empty group',
+		description:
+			'The user added the first real node or node batch to a group that contained only its internal empty-group anchor.',
+		properties: z.object({
+			workflow_id: z.string(),
+			group_id: z.string(),
+			push_ref: z.string(),
+			node_count_after: z.number(),
+			connection_count_before_fill: z.number(),
+		}),
+	},
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	USER_DELETED_LAST_NODE_FROM_GROUP: {
+		name: 'User deleted last node from group',
+		description:
+			'The user deleted the last real node from a group and the editor replaced it with an internal empty-group anchor.',
+		properties: z.object({
+			workflow_id: z.string(),
+			group_id: z.string(),
+			push_ref: z.string(),
+		}),
+	},
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	USER_DELETED_GROUP: {
+		name: 'User deleted group',
+		description:
+			'The user deleted the final member of a group, which removed the group from the workflow.',
+		properties: z.object({
+			workflow_id: z.string(),
+			group_id: z.string(),
+			push_ref: z.string(),
+			was_empty: z.boolean(),
+		}),
+	},
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	USER_CONNECTED_EMPTY_GROUP: {
+		name: 'User connected empty group',
+		description:
+			'The user added a connection whose source or target was a group that still contained only its internal empty-group anchor.',
+		properties: z.object({
+			workflow_id: z.string(),
+			group_id: z.string(),
+			push_ref: z.string(),
+			was_first_connection: z.boolean(),
+		}),
+	},
+	USER_ACTIVATED_WORKFLOW: {
+		name: 'User activated workflow',
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		description:
+			'A workflow version became active. The empty-group count is calculated from that published version, not from the current draft.',
+		properties: z.object({
+			user_id: z.string(),
+			workflow_id: z.string(),
+			public_api: z.boolean(),
+			source: z.enum(['ui', 'api', 'n8n-mcp', 'n8n-ai', 'import', 'review-approval']),
+			private_credentials_count: z.number(),
+			private_credential_types: z.array(z.string()),
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			empty_group_count: z.number().optional(),
+		}),
+	},
 	USER_REQUESTED_WORKFLOW_TEST: {
 		name: 'User requested workflow test',
 		description:

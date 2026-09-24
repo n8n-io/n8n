@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -23,6 +24,7 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 import {
+	getEmptyGroupAnchor,
 	hasCredentialChanges,
 	hasNonPositionalChanges,
 	TelemetryHelpers,
@@ -55,6 +57,7 @@ import type {
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
@@ -72,6 +75,16 @@ function countNodesWithCustomTelemetryTags(nodes: INode[]): number {
 
 function countNodeCustomTelemetryTags(nodes: INode[]): number {
 	return nodes.reduce((total, node) => total + (node.customTelemetryTags?.tag?.length ?? 0), 0);
+}
+
+// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+function countPublishedEmptyGroups(workflow: IWorkflowDb): number {
+	const publishedVersion = workflow.activeVersion;
+	if (!publishedVersion?.nodeGroups || !publishedVersion.nodes) return 0;
+
+	return publishedVersion.nodeGroups.filter(
+		(group) => getEmptyGroupAnchor(group, publishedVersion.nodes) !== undefined,
+	).length;
 }
 
 /**
@@ -188,6 +201,8 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly dbConnection: DbConnection,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		private readonly postHogClient: PostHogClient,
 	) {
 		super(eventService);
 	}
@@ -1273,14 +1288,28 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['workflow-activated']) {
 		const { privateCredentialsCount, privateCredentialTypes } =
 			await this.getPrivateCredentialUsage(workflow);
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		const featureFlagUser =
+			'createdAt' in user && user.createdAt instanceof Date
+				? { id: user.id, createdAt: user.createdAt }
+				: undefined;
+		const featureFlags = featureFlagUser
+			? await this.postHogClient.getFeatureFlags(featureFlagUser)
+			: {};
+		const emptyGroupCount =
+			featureFlags[EMPTY_CANVAS_GROUPS_FLAG] === true
+				? countPublishedEmptyGroups(workflow)
+				: undefined;
 
-		this.telemetry.track('User activated workflow', {
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_ACTIVATED_WORKFLOW, {
 			user_id: user.id,
 			workflow_id: workflowId,
 			public_api: publicApi,
 			source,
 			private_credentials_count: privateCredentialsCount,
 			private_credential_types: privateCredentialTypes,
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			...(emptyGroupCount !== undefined ? { empty_group_count: emptyGroupCount } : {}),
 		});
 	}
 

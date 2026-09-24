@@ -1,5 +1,6 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	type CredentialsEntity,
@@ -8,7 +9,9 @@ import {
 	type IWorkflowDb,
 	type ProjectRelationRepository,
 	type SharedWorkflowRepository,
+	type User,
 	type WorkflowEntity,
+	type WorkflowHistory,
 	type WorkflowRepository,
 	GLOBAL_OWNER_ROLE,
 	In,
@@ -37,6 +40,7 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { OtelConfig } from '@/modules/otel/otel.config';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import type { NodeTypes } from '@/node-types';
+import type { PostHogClient } from '@/posthog';
 import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -161,6 +165,8 @@ describe('TelemetryEventRelay', () => {
 	const dynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
 	const dbConnection = mock<DbConnection>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	const postHogClient = mock<PostHogClient>();
 	const eventService = new EventService();
 
 	let telemetryEventRelay: TelemetryEventRelay;
@@ -182,6 +188,7 @@ describe('TelemetryEventRelay', () => {
 			dynamicCredentialsProxy,
 			dbConnection,
 			loadNodesAndCredentials,
+			postHogClient,
 		);
 
 		await telemetryEventRelay.init();
@@ -189,6 +196,8 @@ describe('TelemetryEventRelay', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		postHogClient.getFeatureFlags.mockResolvedValue({ [EMPTY_CANVAS_GROUPS_FLAG]: true });
 		globalConfig.diagnostics.enabled = true;
 		Object.assign(globalConfig.instanceSettingsLoader, getDefaultInstanceSettingsLoaderConfig());
 		const otelConfig = Container.get(OtelConfig);
@@ -215,6 +224,7 @@ describe('TelemetryEventRelay', () => {
 				dynamicCredentialsProxy,
 				dbConnection,
 				loadNodesAndCredentials,
+				postHogClient,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
@@ -243,6 +253,7 @@ describe('TelemetryEventRelay', () => {
 				dynamicCredentialsProxy,
 				dbConnection,
 				loadNodesAndCredentials,
+				postHogClient,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
@@ -2220,11 +2231,13 @@ describe('TelemetryEventRelay', () => {
 			const event: RelayEventMap['workflow-activated'] = {
 				user: {
 					id: 'user123',
+					// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+					createdAt: new Date('2025-01-01T00:00:00.000Z'),
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
-				},
+				} as User,
 				workflowId: 'workflow123',
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
@@ -2240,25 +2253,32 @@ describe('TelemetryEventRelay', () => {
 
 			await flushPromises();
 
-			expect(telemetry.track).toHaveBeenCalledWith('User activated workflow', {
-				user_id: 'user123',
-				workflow_id: 'workflow123',
-				public_api: true,
-				source: 'api',
-				private_credentials_count: 0,
-				private_credential_types: [],
-			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_ACTIVATED_WORKFLOW,
+				{
+					user_id: 'user123',
+					workflow_id: 'workflow123',
+					public_api: true,
+					source: 'api',
+					private_credentials_count: 0,
+					private_credential_types: [],
+					// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+					empty_group_count: 0,
+				},
+			);
 		});
 
 		it('should default source to ui on `workflow-activated` event', async () => {
 			const event: RelayEventMap['workflow-activated'] = {
 				user: {
 					id: 'user123',
+					// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+					createdAt: new Date('2025-01-01T00:00:00.000Z'),
 					email: 'user@example.com',
 					firstName: 'John',
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
-				},
+				} as User,
 				workflowId: 'workflow123',
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
@@ -2273,14 +2293,90 @@ describe('TelemetryEventRelay', () => {
 
 			await flushPromises();
 
-			expect(telemetry.track).toHaveBeenCalledWith('User activated workflow', {
-				user_id: 'user123',
-				workflow_id: 'workflow123',
-				public_api: false,
-				source: 'ui',
-				private_credentials_count: 0,
-				private_credential_types: [],
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_ACTIVATED_WORKFLOW,
+				{
+					user_id: 'user123',
+					workflow_id: 'workflow123',
+					public_api: false,
+					source: 'ui',
+					private_credentials_count: 0,
+					private_credential_types: [],
+					// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+					empty_group_count: 0,
+				},
+			);
+		});
+
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		it('counts empty groups in the published workflow version', async () => {
+			const anchor: INode = {
+				id: 'anchor',
+				name: 'Empty Group Anchor',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { emptyGroupAnchor: true },
+			};
+			const event: RelayEventMap['workflow-activated'] = {
+				user: {
+					id: 'user123',
+					createdAt: new Date('2025-01-01T00:00:00.000Z'),
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				} as User,
+				workflowId: 'workflow123',
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					nodes: [],
+					nodeGroups: [],
+					connections: {},
+					activeVersion: mock<WorkflowHistory>({
+						nodes: [anchor],
+						nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: [anchor.id] }],
+						connections: {},
+					}),
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-activated', event);
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_ACTIVATED_WORKFLOW,
+				expect.objectContaining({ empty_group_count: 1 }),
+			);
+			expect(postHogClient.getFeatureFlags).toHaveBeenLastCalledWith({
+				id: 'user123',
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
 			});
+		});
+
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		it('omits the empty group count when the feature is disabled', async () => {
+			postHogClient.getFeatureFlags.mockResolvedValue({ [EMPTY_CANVAS_GROUPS_FLAG]: false });
+			const event: RelayEventMap['workflow-activated'] = {
+				user: {
+					id: 'user123',
+					createdAt: new Date('2025-01-01T00:00:00.000Z'),
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				} as User,
+				workflowId: 'workflow123',
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					nodes: [],
+					connections: {},
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-activated', event);
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.USER_ACTIVATED_WORKFLOW,
+				expect.not.objectContaining({ empty_group_count: expect.anything() }),
+			);
 		});
 
 		it('should track on `workflow-deactivated` event with source', () => {
@@ -2827,7 +2923,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				'User activated workflow',
+				TELEMETRY_EVENT.WORKFLOW.USER_ACTIVATED_WORKFLOW,
 				expect.objectContaining({
 					private_credentials_count: 1,
 					private_credential_types: ['slackApi'],
