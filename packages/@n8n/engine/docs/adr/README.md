@@ -26,50 +26,32 @@ follows an existing decision.
 
 ## File name
 
-Use this format:
+The file name follows from the title and the date:
 
 ```text
-ADR-YYYYMMDD-<short-decision-title>.md
+ADR-YYYYMMDD-<title in kebab-case>.md
 ```
 
-The date is the date of the decision. The title states the decision, not the
-topic: `use-postgresql-advisory-locks`, not `database-locking`.
+The title is the H1 of the record. It states the decision, not the topic:
+"Use PostgreSQL advisory locks", not "Database locking". The date is the date
+of the decision, and it matches the `Date` field. CI checks both.
 
 Do not rename a record after it is merged. Links depend on the file name.
 Refer to a record by its full file name, for example
-`ADR-20260828-trigger-settlement-before-execution`, not by a number.
+`ADR-20260828-obtain-trigger-output-before-creating-the-execution`, not by a
+number. CI checks that every file name a record mentions exists.
 
 ## Template
 
-```markdown
-# <Decision title>
+Copy [`docs/ADR_TEMPLATE.md`](../../../../../docs/ADR_TEMPLATE.md) from the
+repository root. It is the one template, and CI checks every record against
+its structure.
 
-Date: YYYY-MM-DD
-
-Status: Active
-
-Decision Owner: <owning team>
-
-Source: <RFC, issue, project, incident, or other source>
-
-Supersedes: <full file name; omit if not relevant>
-
-Superseded by: <full file name; omit if not relevant>
-
-## Context
-
-## Decision
-
-## Alternatives Considered
-
-## Consequences
-
-## Links
-
-RFC:
-Documentation:
-Related ADRs:
-```
+The header has three required fields, `Date`, `Status`, and `Decision Owner`,
+in that order, and three optional fields, `Source`, `Supersedes`, and
+`Superseded by`. Omit an optional field that has no value. `Source` names
+where the decision came from. It is the one place in a record where a ticket,
+an RFC, or an incident may appear.
 
 ## Status
 
@@ -84,36 +66,44 @@ There is no Draft or Proposed status. The pull request holds that state while
 the record is written and checked.
 
 The status says whether the decision stands. It does not say whether the code
-exists. Implementation state belongs in Context (see below), never in the
-status line.
+exists. Implementation progress belongs nowhere in the record.
 
 ## What goes where
 
-**Context.** The problem and the constraints at the date of the record. Write
-facts in a neutral voice. Facts about the state of the code are correct here,
-because the record is dated and the reader reads Context as of that date. For
-example: "Engine v2 does not apply timeouts yet." Aim for fewer than 150
-words.
+**Context.** The problem and the constraints. State the world as it is, in
+the present tense: "In engine v1, `putExecutionToWait` sleeps in the process
+for a time wait under 65 seconds." Do not date a fact ("at the date of this
+record"), do not narrate history ("core has since decided"), and do not phase
+work ("the shim's part lands later"). The record is dated once, in its header.
+Aim for fewer than 150 words.
 
-**Decision.** What we decided, and the main reason. Use the present tense and
-the active voice: "The engine suspends the step." When the chosen mechanism is
-the decision, describe it here. Do not write implementation state here. A
-sentence such as "the engine does not do this yet" goes stale exactly where a
-reader takes the text as the current contract.
+**Decision.** What we decided, and the main reason. State the behaviour the
+decision guarantees, in the present tense and the active voice: "A wait fires
+at its deadline and not before it. A wait fires once, however many replicas
+run." Describe the mechanism only when the mechanism is the decision. A sweep
+that sleeps until the next deadline is how the engine fires waits today; the
+guarantee is what the record decides. Do not write implementation state here.
+A sentence such as "the engine does not do this yet" goes stale exactly where
+a reader takes the text as the current contract.
 
-**Alternatives Considered.** Each option we did not select, and why. Use the
-conditional mood for what an alternative would do: "This option would need a
-column." The indicative mood ("this option needs a column") reads as a
-description of shipped code.
+**Alternatives Considered.** Each option we did not select, and why. Lead with
+the reason: "We rejected it for two reasons." An option that reads as an equal
+choice leaves the reader to guess why it lost. Use the conditional mood for
+what an alternative would do: "This option would need a column." The
+indicative mood ("this option needs a column") reads as a description of
+shipped code.
 
 **Consequences.** What follows from the decision: benefits, trade-offs,
-constraints, and operational effects. Not how the decision is implemented, and
-not the order in which the work lands. This is the one section that may grow
-after the record is merged. A consequence that the team learned later belongs
-here. A changed decision does not.
+constraints, and operational effects. A constraint on the mechanism belongs
+here: "One statement must read the step rows and write the status." How the
+code meets the constraint today, and the order in which the work lands, do
+not. This is the one section that may grow after the record is merged. A
+consequence that the team learned later belongs here. A changed decision does
+not.
 
-**Links.** The RFC, the ticket or design document, and related records by full
-file name.
+**Links.** Exactly three fields, each on one line: `RFC`, `Documentation`, and
+`Related ADRs`. Write `-` when a field has no value. Name related records by
+full file name. There is no `Tickets` field.
 
 ## Changing a decision
 
@@ -139,11 +129,38 @@ When a decision no longer applies and nothing replaces it, set its status to
 
 - Write in ASD-STE100 Simplified Technical English, as `AGENTS.md` requires:
   short sentences, the active voice, one idea for each sentence.
-- Wrap lines at 80 columns. Keep each entry under `Links` on one line, even
-  when it is longer.
+- Wrap paragraph lines at 100 columns. CI enforces it. The `Links` fields
+  are exempt and stay on one line each.
+- Do not reference a ticket in the body. Every sentence must stand without
+  the ID: "Send-and-wait nodes need credentials to send their message." The
+  `Source` field is the one place for a ticket.
+- Use plain words. "Nothing moves a step from `waiting` to `completed` in one
+  step" beats "No component completes a waiting step directly".
 - Keep the record short. A reader should understand the decision in a few
   minutes without the pull request or the design document.
 - Use a Mermaid diagram when a picture says it better than prose.
+
+## Checked by CI
+
+The `adr-conventions` rule of `@n8n/code-health` runs in the Static Analysis
+check of every pull request. For every `ADR-*.md` file it checks:
+
+- a `docs/adr` directory at the repository root or at a package root;
+- a file name that matches the H1 and the `Date` field;
+- the header fields, their order, and one blank line between them;
+- a `Decision Owner` from the allowed list in
+  `packages/testing/code-health/src/index.ts`;
+- a full file name in `Supersedes` and `Superseded by`;
+- exactly the five sections, in order, each with content;
+- the three `Links` fields, one line each;
+- paragraph lines of at most 100 characters outside `Links`;
+- that every file name the record mentions exists in this repository.
+
+Run it locally:
+
+```bash
+pnpm --filter=@n8n/code-health check --rule=adr-conventions --ignore-baseline
+```
 
 ## Process
 
