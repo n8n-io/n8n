@@ -26,7 +26,6 @@ export {
 export {
 	literalParameter,
 	readDataTableReadParameters,
-	describeDataTableRead,
 	type DataTableReadCondition,
 	type DataTableReadParameters,
 } from './data-table-read';

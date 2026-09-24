@@ -284,7 +284,6 @@ describe('emit-instance-ai', () => {
 			'collectDownstreamConsumers',
 			'collectPinFieldViolations',
 			'describeAiRootShape',
-			'describeDataTableRead',
 			'findEnvelopeKey',
 			'findOutputParserTargets',
 			'isAiRootNodeType',
