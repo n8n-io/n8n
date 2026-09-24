@@ -107,10 +107,6 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.clear.yml'
   /data-tables/{dataTableId}/rows/delete:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
-  /data-tables/{dataTableId}/columns:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.yml'
-  /data-tables/{dataTableId}/columns/{columnId}:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.columnId.yml'
   /community-packages:
     $ref: './handlers/community-packages/spec/paths/community-packages.yml'
   /community-packages/{name}:

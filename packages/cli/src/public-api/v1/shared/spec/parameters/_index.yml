@@ -12,5 +12,3 @@ TestRunId:
   $ref: '../../../handlers/evaluations/spec/schemas/parameters/testRunId.yml'
 dataTableId:
   $ref: '../../../handlers/data-tables/spec/schemas/parameters/dataTableId.yml'
-columnId:
-  $ref: '../../../handlers/data-tables/spec/schemas/parameters/columnId.yml'

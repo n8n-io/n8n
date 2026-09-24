@@ -1,8 +1,13 @@
 import {
+	columnIdParamSchema,
+	CreateDataTableColumnPublicDto,
 	CreateDataTablePublicDto,
+	DataTableColumnListPublicDto,
+	DataTableColumnPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	PublicApiListDataTableQueryDto,
+	UpdateDataTableColumnPublicDto,
 	UpdateDataTablePublicDto,
 	dataTableIdParamSchema,
 } from '@n8n/api-types';
@@ -31,11 +36,14 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
+import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';
+import { DataTableColumnNameConflictError } from '@/modules/data-table/errors/data-table-column-name-conflict.error';
 import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
+import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 import {
 	encodeNextCursor,
@@ -62,6 +70,12 @@ function handleError(error: unknown): never {
 	if (error instanceof DataTableNameConflictError) {
 		throw new ConflictError(error.message);
 	}
+	if (
+		error instanceof DataTableColumnNameConflictError ||
+		error instanceof DataTableSystemColumnNameConflictError
+	) {
+		throw new ConflictError(error.message);
+	}
 
 	throw error;
 }
@@ -79,6 +93,15 @@ const toDataTablePublicDto = (dataTable: DataTable, sizeBytes: number): DataTabl
 	createdAt: dataTable.createdAt.toISOString(),
 	updatedAt: dataTable.updatedAt.toISOString(),
 	sizeBytes,
+});
+
+/** Allowlist mapper: the entity carries `createdAt`/`updatedAt`, which the public contract omits. */
+const toDataTableColumnPublicDto = (column: DataTableColumn): DataTableColumnPublicDto => ({
+	id: column.id,
+	name: column.name,
+	dataTableId: column.dataTableId,
+	type: column.type,
+	index: column.index,
 });
 
 @PublicApiController('/data-tables')
@@ -223,6 +246,124 @@ export class DataTablesPublicController {
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 
 			await this.dataTableService.deleteDataTable(dataTableId, projectId);
+		} catch (error) {
+			handleError(error);
+		}
+	}
+
+	@Get('/:dataTableId/columns')
+	@ApiKeyScope('dataTableColumn:read')
+	@ProjectScope('dataTable:readColumn')
+	@ApiSummary('List columns of a data table')
+	@ApiDescription('Retrieve all columns for a specific data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, DataTableColumnListPublicDto)
+	@ApiErrorResponse(404)
+	async listDataTableColumns(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+	): Promise<DataTableColumnListPublicDto> {
+		try {
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+			const columns = await this.dataTableService.getColumns(dataTableId, projectId);
+
+			return columns.map(toDataTableColumnPublicDto);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Post('/:dataTableId/columns')
+	@ApiKeyScope('dataTableColumn:create')
+	@ProjectScope('dataTable:writeColumn')
+	@ApiSummary('Add a column to a data table')
+	@ApiDescription('Add a new column to an existing data table.')
+	@ApiTags(tags)
+	@ApiResponse(201, DataTableColumnPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async createDataTableColumn(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Body body: CreateDataTableColumnPublicDto,
+	): Promise<DataTableColumnPublicDto> {
+		try {
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+			const column = await this.dataTableService.addColumn(dataTableId, projectId, body);
+
+			return toDataTableColumnPublicDto(column);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Patch('/:dataTableId/columns/:columnId')
+	@ApiKeyScope('dataTableColumn:update')
+	@ProjectScope('dataTable:writeColumn')
+	@ApiSummary('Update a column')
+	@ApiDescription('Rename and/or reorder a column in a data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, DataTableColumnPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async updateDataTableColumn(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Param('columnId', columnIdParamSchema) columnId: string,
+		@Body({ required: true }) body: UpdateDataTableColumnPublicDto,
+	): Promise<DataTableColumnPublicDto> {
+		const { name, index } = body;
+		if (name === undefined && index === undefined) {
+			throw new BadRequestError('Provide at least one of "name" or "index".');
+		}
+
+		try {
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+			if (name !== undefined) {
+				await this.dataTableService.renameColumn(dataTableId, projectId, columnId, { name });
+			}
+			if (index !== undefined) {
+				await this.dataTableService.moveColumn(dataTableId, projectId, columnId, {
+					targetIndex: index,
+				});
+			}
+
+			const column = await this.dataTableService.getColumnById({
+				projectId,
+				dataTableId,
+				columnId,
+			});
+
+			return toDataTableColumnPublicDto(column);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Delete('/:dataTableId/columns/:columnId')
+	@ApiKeyScope('dataTableColumn:delete')
+	@ProjectScope('dataTable:writeColumn')
+	@ApiSummary('Delete a column')
+	@ApiDescription(
+		'Remove a column from a data table. This will also delete all data in the column.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async deleteDataTableColumn(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Param('columnId', columnIdParamSchema) columnId: string,
+	): Promise<void> {
+		try {
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+			await this.dataTableService.deleteColumn(dataTableId, projectId, columnId);
 		} catch (error) {
 			handleError(error);
 		}

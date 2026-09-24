@@ -22,6 +22,24 @@ export const dataTableColumnFieldDocs = {
 	name: { description: 'Column name' },
 	type: { enum: [...dataTableColumnTypeSchema.options], description: 'Column data type' },
 	index: { type: 'integer', description: 'Column position' },
+	dataTableId: { description: 'ID of the data table this column belongs to' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+const dataTableColumnNameDescription =
+	'Column name. Must start with a letter; only letters, digits, and underscores after that; ' +
+	'maximum 63 characters.';
+
+export const createDataTableColumnFieldDocs = {
+	name: { description: dataTableColumnNameDescription },
+	type: { enum: [...dataTableColumnTypeSchema.options], description: 'Column data type' },
+	// No explicit `type: 'integer'` override here: `.int()` on the schema already derives it, and
+	// an explicit override on a constrained (`.min()`) schema drops the derived `minimum`.
+	index: { description: 'Column position (optional, appended to end if omitted)' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const updateDataTableColumnFieldDocs = {
+	name: { description: dataTableColumnNameDescription },
+	index: { description: 'New zero-based position for the column' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const dataTableListFieldDocs = {
