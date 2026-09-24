@@ -631,6 +631,12 @@ export class LoadNodesAndCredentials {
 		createAiTools(this.types, this.known);
 		createHitlTools(this.types, this.known);
 
+		// Loaders filter base nodes only. Generated tool variants are filtered here.
+		this.types.nodes = this.types.nodes.filter(({ name }) => !this.excludeNodes.includes(name));
+		this.known.nodes = Object.fromEntries(
+			Object.entries(this.known.nodes).filter(([name]) => !this.excludeNodes.includes(name)),
+		);
+
 		this.injectCustomApiCallOptions();
 
 		this.injectContextEstablishmentHooks();
