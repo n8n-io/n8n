@@ -10,16 +10,16 @@ import { Tool } from '@n8n/agents';
 import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { InstanceAiWorkflowService, OrchestrationContext } from '../../types';
+import type { OrchestrationContext } from '../../types';
 import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
 import { deriveVerificationClaim } from './verification/claim';
-import type { VerificationPublishState } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
 	handleBlockedVerification,
 	persistVerificationOutcome,
 } from './verification/finalize-result';
 import { prepareVerificationRun } from './verification/prepare-run';
+import { resolvePublishState } from './verification/publish-state';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import {
@@ -62,35 +62,6 @@ function formatLiveStateNote(claim: VerificationClaim | undefined): string | und
 	return claim.level === 'verified'
 		? `${fact} Publishing is what makes this change live — ask the user whether to do it.`
 		: fact;
-}
-
-/**
- * Version pair behind `claim.liveState`. The executed version has to come from
- * the execution record: the workflow head moves when anybody saves, so
- * substituting it would let the claim describe a version this run never ran.
- * Without that record there is no publish state — an unknown run version must
- * not become `live-current`, which reads as "production is proven".
- */
-async function resolvePublishState(args: {
-	workflowService: InstanceAiWorkflowService;
-	workflowId: string;
-	executedVersionId: string | null | undefined;
-	logger: OrchestrationContext['logger'];
-}): Promise<VerificationPublishState | undefined> {
-	const { workflowService, workflowId, executedVersionId, logger } = args;
-
-	if (!executedVersionId) return undefined;
-
-	try {
-		const head = await workflowService.getWorkflowHead(workflowId);
-		return { activeVersionId: head.activeVersionId, draftVersionId: executedVersionId };
-	} catch (error) {
-		logger.warn('Failed to read publish state for the verification claim', {
-			workflowId,
-			error: error instanceof Error ? error.message : String(error),
-		});
-		return undefined;
-	}
 }
 
 export const verifyBuiltWorkflowInputSchema = z.object({

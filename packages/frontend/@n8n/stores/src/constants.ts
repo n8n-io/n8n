@@ -27,6 +27,7 @@ export const STORES = {
 	RBAC: 'rbac',
 	PUSH: 'push',
 	COLLABORATION: 'collaboration',
+	AGENT_COLLABORATION: 'agentCollaboration',
 	ASSISTANT: 'assistant',
 	BUILDER: 'builder',
 	CHAT_PANEL: 'chatPanel',

@@ -36,6 +36,8 @@ export interface ExecutionSnapshot {
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
+	/** The host's finer execution mode. */
+	hostMode: string;
 	/** The graph captured at start, immutable for the execution's lifetime. */
 	graph: WorkflowGraph;
 	/**

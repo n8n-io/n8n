@@ -19,7 +19,9 @@ import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 // Stub the @n8n/agents SDK: fluent builder is a no-op; `generate` is a
 // controllable mock so tests drive the model's (in)valid structured output.
 const { generateMock } = vi.hoisted(() => ({ generateMock: vi.fn() }));
-vi.mock('@n8n/agents', () => ({
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	// Channel action tools import APPROVAL_* schemas from the SDK; keep those real.
+	...(await importOriginal<typeof import('@n8n/agents')>()),
 	Agent: class {
 		model() {
 			return this;

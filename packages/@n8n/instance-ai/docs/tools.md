@@ -61,7 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agents` | 1 |
-| `build-workflow`, `ask-user`, `parse-file` | single-purpose |
+| `build-workflow`, `ask-user`, `parse-file`, `searchModels` | single-purpose |
 
 ## Orchestration Tools
 
@@ -413,6 +413,26 @@ provided to bind the file to an existing workflow. If the bound workflow no
 longer exists, the tool returns blocked remediation rather than creating a
 replacement.
 
+For edits, only `INVALID_PARAMETER`, `chat_model_validation`,
+`HARDCODED_CREDENTIALS`, and `SWITCH_NO_OUTPUT_CONNECTIONS` can become
+informational. Missing saved state or a finding without a node name keeps the
+finding blocking. Other codes keep their original severity.
+
+For `HARDCODED_CREDENTIALS`, compare the saved authentication values, credential
+selection, and destination settings. The URL must be fixed and unchanged.
+Wiring, timeout, response formatting, and non-auth headers or query fields do not
+introduce a new hardcoded value. Changed auth, destination settings, or enabled
+state still block. Expression URLs stay blocking because their destination
+depends on execution data.
+
+For `SWITCH_NO_OUTPUT_CONNECTIONS`, check whether the same enabled Switch already
+had no main outputs. Changes to its inputs or rules leave that finding
+informational, including connecting an existing parked Switch. New or re-enabled
+Switches and removal of existing output branches remain blocking. These checks
+do not prove runtime correctness. The sandbox CLI has no saved-workflow baseline,
+so `build-workflow` makes the final decision. Preserve unrelated nodes and report
+any remaining blocker instead of expanding the edit.
+
 ### `workflows(action="delete")`
 
 Archive a workflow (soft delete, deactivates if needed). Reverse it with
@@ -454,7 +474,7 @@ confirmation card.
 `nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
 actively dismissed and the agent must not re-open (see `reopenSkipped`).
 
-**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): the normal setup call
+**Setup panel** (`118_instance_ai_setup_overhaul: variant`): the normal setup call
 analyzes the whole workflow, including bound slots. It publishes the `setup-items`
 snapshot and confirms that it reached storage. It then saves the build's setup
 routing marker. Only after both steps succeed does it return
@@ -589,7 +609,15 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 | `triggerNodeName` | string | no | — | Trigger node to use when a workflow has more than one trigger |
 
-**Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt? }`
+**Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim? }`
+
+**Live test evidence**: `verify-built-workflow` always simulates destructive
+nodes, so a live test runs through this action. When a successful run reaches
+every planned node of the latest build, with no saved pins and no injected
+trigger input, the run is recorded as a `verified` claim on the build outcome.
+The publish gate then reads that claim. The result carries it as
+`verificationClaim`. Other runs leave the stored claim unchanged: a live run
+can raise the verdict but never lower it.
 
 **Type-aware pin data**: Constructs proper pin data per trigger type:
 - **Chat trigger**: `{ chatInput, sessionId, action }`
@@ -613,6 +641,7 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `nodeName` | string | yes | — | Node to run |
 | `reuseExecutionId` | string | no | — | Replay this past execution's data for the nodes above the target |
 | `mockInput` | object[] | no | — | Items to feed the target, skipping every node above it |
+| `toolArguments` | object \| string | no | — | Arguments for a tool target — what an agent would fill from `$fromAI` |
 | `versionId` | string | no | current draft | Run a past version's graph |
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 
@@ -640,6 +669,96 @@ at the first node with no run data. `mockedNodeNames` lists them. A
 placeholder on an upstream IF or Switch picks a branch that real data may pick
 differently, which is why a mocked step is never evidence that the workflow
 works.
+
+The action refuses a run whose input would not keep the nodes above the target
+out of it. It applies the rules of `findStartNodes`, so the engine re-runs:
+
+- A node with neither run data nor pin data.
+- A node whose saved run failed, even a pinned one. The engine retries it.
+- A Loop Over Items node whose last run left the `done` output empty. The
+  engine restarts the loop. A loop edge that runs through the target does not
+  count, because `findSubgraph` drops it, and then the second output decides.
+
+`mockInput` can hit only the last rule: the placeholder on a loop leaves
+`done` empty when the target hangs off the loop body. Use `reuseExecutionId`
+with an execution where the loop finished.
+
+**Sub-node targets**: a tool has no main input, and the engine never runs one on
+its own. It replaces the node that owns the tool (the Agent) with a virtual Tool
+Executor that inherits that node's main parents, then runs the tool from there.
+So a step on a tool is planned against the Agent: `mockInput` feeds the Agent's
+input, and `reuseExecutionId` replays the Agent's ancestors. A chain run on a
+tool runs every node above the Agent, so supply `reuseExecutionId` or
+`mockInput` when one of those nodes writes.
+
+The engine runs the tool through a virtual node the workflow does not contain,
+`PartialExecutionToolExecutor`. The result never carries that name: the run is
+reported under the node the caller named, in the output data, the executed
+names, the last node, and a node error. The tool's own record is the one kept,
+because the executor re-serializes the result as a single string.
+
+`ranThroughNodeNames` names the nodes that can run the tool, not the one that
+ran it. A tool that hangs off several agents lists them all: the engine picks
+one and reports no choice, so any single name here would be a guess. The plan
+covers every candidate's ancestry, so the run is right whichever one the engine
+takes.
+
+The action refuses a tool when one of its agents runs above another. If the
+engine picks the lower agent, it drops the data the plan gave the upper agent
+and the nodes between them, and runs those nodes for real. The error tells the
+caller to run the upper agent instead and read the tool with
+`get-node-output`. Agents on parallel branches are not affected.
+
+`toolArguments` supplies what the agent would normally decide — the values
+behind the tool's `$fromAI` calls, keyed by argument name, or a bare string for
+a tool that takes one free-text input (Wikipedia, Code Tool, a vector store used
+as a tool). It is **required** when the node declares `$fromAI` arguments: the
+action refuses the run rather than execute the tool on empty arguments and
+report a failure that says nothing about the user's problem.
+
+The agent request names no tool. The Tool Executor looks the arguments up by the
+tool's *runtime* name, which is `nodeNameToToolName(node)` on current versions
+but comes from a parameter on older ones (`name` on Code Tool <= 1.1, Vector
+Store Tool <= 1, Workflow Tool <= 2.1; `toolName` on a retrieve-as-tool vector
+store < 1.3) and is hardcoded on Think 1. An empty name makes the Tool Executor
+run the only tool connected to it, so a name this cannot know never stops the
+run; the arguments are keyed under every name the tool can have so the lookup
+finds them. Think 1's hardcoded `thinking_tool` is the one name this cannot key,
+and there it costs the arguments, not the run.
+
+A node that holds several tools is refused: the Tool Executor runs the member
+whose name matches the request, that name is `buildMcpToolName` of the node
+name and the server's tool name, and a miss reports success with no result at
+all. Run the owning Agent instead and read the node's output from that
+execution. The check is on the node type, because a node name is the user's to
+change:
+
+- `@n8n/n8n-nodes-langchain.mcpClientTool` — "MCP Client Tool" on the canvas.
+- `@n8n/mcp-registry.<slug>` — a server the MCP registry added, one node type
+  for each server. All of them run on one hidden class
+  (`mcpRegistryClientTool`), and that class name never appears as a node type,
+  so the match is on the `@n8n/mcp-registry` package — the same test
+  `agents-tools.service.ts` makes.
+
+Every **other** sub-node kind — a model, memory, embeddings — is refused: n8n
+runs those only as part of the node that owns them, so the action points the
+caller at that node instead of starting a run that cannot work. Their output is
+still readable afterwards: a sub-node records each call under its own connection
+type, and `action="get-node-output"` reads that when a node has no `main`
+output.
+
+**Refusals**: the action fails, and starts nothing, rather than run something
+whose result would mislead:
+
+- a `reuseExecutionId` whose execution holds no data for any node above the
+  target — falling back to a chain run would execute those nodes for real, which
+  is what asking for replayed input rules out;
+- a tool that declares `$fromAI` arguments with no `toolArguments`;
+- a node that holds several tools;
+- a sub-node that is not a tool;
+- a tool no node is connected to run — the engine has no node to stand in for,
+  so the run would start and then die;
+- `toolArguments` on a node in the main graph.
 
 **Pin data**: the target's own pin, and any pin on a node whose output the
 mocked mode replaced, come off this run's copy — a pinned node never
@@ -691,11 +810,26 @@ Get the output data of a specific node from an execution.
 | `startIndex` | number | no | First item index to return. Defaults to `0` |
 | `maxItems` | number | no | Maximum items to return. Defaults to `10`; maximum `50` |
 
-**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to } }`.
+**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to }, totalRuns? }`.
 One `outputs` entry per node output, in output order; a Filter reports `Kept` and
 `Discarded` separately. `name` follows the node's output pane labels, including
 renamed Switch outputs and `Success` / `Error` for nodes that route errors to an
 extra output. `totalItems` and `returned` count across all outputs.
+
+A node records one run for each time it ran, and `totalRuns` reports how many
+when there was more than one. Which runs are read depends on the node:
+
+- A node in the **main graph** reports its **last** run. A node inside a loop
+  has one run for each iteration, so this is the run the caller usually means.
+- A **sub-node** — a model, a memory, a tool — reports **every** run, in call
+  order, because one run is one call its owner made. That is what makes this
+  action the answer to a step run the tool refuses. An item's label names the
+  call it came from, `node:Search Tickets[call 2][0][0]`, and `startIndex` and
+  `maxItems` page across the calls as one sequence.
+
+A run that failed records no items, so `totalRuns` can count more runs than the
+items account for. Read the error of that run from `action="get"`, which
+reports it under `nodeErrors`.
 
 ### `executions(action="get-resolved-node-parameters")`
 
@@ -726,6 +860,10 @@ Cancel a running execution.
 
 ## `credentials` (6 actions)
 
+The instance PostHog flag `120_credential_descriptions` controls description
+fields and selection guidance. Only boolean `true` enables them. When the flag
+is false or missing, `list` and `get` omit `description`, including managed entries.
+
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
 > `credentials(action="setup")`) or Computer Use browser credential capture.
@@ -741,9 +879,12 @@ List credentials accessible to the current user. Never exposes secrets.
 | `limit` | number | no | Page size. Default 50 and maximum 200 |
 | `offset` | number | no | Number of credentials to skip. Default 0 |
 
-**Returns**: `{ credentials: [{ id, name, type }], total, hasMore, hint? }`.
-A Gateway credits managed entry can have `id: null` and
-`__aiGatewayManaged: true`.
+**Returns**: `{ credentials: [{ id, name, type, description }], total, hasMore, hint? }`.
+Descriptions have a 256-character preview limit, including the truncation marker.
+An unset description returns `null`. Read the descriptions when several credentials
+share one type. Use `get` to read the full text if the preview does not resolve the choice.
+A Gateway credits managed entry has `id: "__AI_GATEWAY_MANAGED__"`,
+`__aiGatewayManaged: true`, and `description: null`.
 
 ### `credentials(action="get")`
 
@@ -753,8 +894,9 @@ Get credential metadata. Never returns decrypted secrets.
 |-------|------|----------|-------------|
 | `credentialId` | string | yes | Credential ID |
 
-**Returns**: credential metadata from the credential service. It never contains
-decrypted secret values.
+**Returns**: `{ id, name, type, description, nodesWithAccess? }`.
+The description contains the full stored text, or `null` when unset.
+The response never contains credential secret data.
 
 ### `credentials(action="delete")`
 
@@ -807,7 +949,7 @@ a service. When `needsBrowserSetup=true`, the orchestrator should load the
 directly, then call `credentials(action="setup")` again to select the created
 credential.
 
-**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): when the call belongs
+**Setup panel** (`118_instance_ai_setup_overhaul: variant`): when the call belongs
 to a workflow (`workflowId`, or the workflow this run last saved) and the stage
 is not `finalize`, the tool does not suspend. It merges the credential types
 into the workflow's durable `setup-items` snapshot and returns
@@ -980,6 +1122,46 @@ placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 
+## `searchModels`
+
+Preliminary models.dev catalog search when choosing a model without a relevant
+credential or a suitable named builder-hint recommendation. The `model-selection`
+skill activates this deferred tool when model-bearing node definitions are
+inspected. It can also be discovered with `search_tools` and loaded with
+`load_tool`. Activation does not call the catalog. If a provider credential or Gateway credits is
+available, use `nodes(action="explore-resources")` with that credential instead.
+Do not use catalog search to validate an unfamiliar model or to recover from a
+failed credential lookup.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `provider` | string | yes | Canonical catalog provider ID, such as `openai`, `google`, `anthropic`, `openrouter`, `aws-bedrock`, or `azure-openai`. Trimmed and case-insensitive. Model-family names are not provider IDs. |
+| `query` | string | no | Case-insensitive substring match on model IDs or names, applied before sorting and limiting. Trimmed; blank means no filter. Maximum 100 characters. |
+| `limit` | integer | no | Default 10, minimum 1, maximum 10. |
+
+For Claude through OpenRouter, use `provider: "openrouter", query: "claude"`.
+For OpenAI through OpenRouter, use `query: "openai"`. `hasMore` counts only
+matching eligible models.
+
+Returns recent non-deprecated models whose catalog input and output modalities
+both include text. Preview models remain eligible. Results are ordered by a valid ISO release
+date, newest first, then by model ID. Missing or invalid dates sort last and are
+returned as `null`. Existing catalog alias normalization removes equivalent
+dated snapshots where the catalog identifies a latest alias.
+
+The result includes exact IDs, model metadata, catalog pricing, `hasMore`,
+`source`, `fetchedAt`, `freshness`, and `credentialAccess: "not_checked"`.
+Missing metadata is `null`. Status is `ok`, `unknown_provider`,
+`no_matching_models`, or `catalog_unavailable`. Absence from this limited
+catalog result does not establish that a model is invalid.
+
+The public catalog cache is shared across requests for one hour. Refreshes have
+a five-second deadline. On failure, a snapshot younger than 24 hours can be
+returned with `freshness: "stale"`. Older snapshots are not returned. Cancelling
+one caller stops its wait without cancelling a refresh shared with other callers.
+
+---
+
 ## `data-tables` (11 actions)
 
 Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
@@ -1143,6 +1325,37 @@ Question type is `single`, `multi`, or `text`. The UI adds its own free-text
 choice to select questions. The result is `{ answered: false }` when the user
 dismisses the request. Otherwise it is `{ answered: true, answers }`, with the
 question text added to every answer.
+
+A skipped question grants no additional permission. Defaults apply only to
+unspecified details within the requested task. A skipped request to expand scope
+leaves the existing state intact. Report any remaining blocker without asking
+the same question again.
+
+---
+
+## `save_user_preference` *(conditional)*
+
+Save a durable preference for the current user. Present only when saved AI
+preferences are enabled for the user (the adapter wires `aiPreferenceService`).
+Always loaded, because a user can state a preference at any point in a
+conversation.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | string | yes | The preference in the user's own terms, at most `AI_PREFERENCE_CONTENT_MAX_LENGTH` characters |
+| `scope` | `'user'` | yes | Only `user` exists in this version |
+
+The tool does not suspend. It writes the row at once and returns
+`{ ok: true, preference: { id, content, scope } }`, which the chat renders as a
+card the user can edit or undo. It returns
+`{ ok: false, reason, message }` for `blocked_by_admin`, `too_long`,
+`scope_full`, `duplicate`, `not_permitted` or `failed`, and writes nothing in
+those cases. The model relays a rejection in its own words and never says
+"saved" without an `ok: true` result.
+
+The system prompt carries the judgment of *when* to call it (see
+`getPreferenceSavingSection` in `agent/system-prompt.ts`); the description
+carries *what* it does.
 
 ---
 

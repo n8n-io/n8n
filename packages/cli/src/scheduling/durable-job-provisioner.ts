@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
+import { MAX_INTEGER_32BITS_SIGNED, type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
 import type {
 	EntityManager,
 	NewScheduledJob,
@@ -26,6 +26,7 @@ import type {
 	RunInTransaction,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 import { isDeepStrictEqual } from 'node:util';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
@@ -40,6 +41,13 @@ import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
  * inside the column's `int` range.
  */
 const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
+
+/**
+ * Ceiling for a concurrency limit: what the column's `int` holds. Postgres rejects
+ * anything above it outright, so it is checked here for both dialects to behave the
+ * same.
+ */
+const MAX_CONCURRENCY_LIMIT = MAX_INTEGER_32BITS_SIGNED;
 
 /** One provisioning call: whose jobs to reconcile, and what to stamp on new rows. */
 export interface ProvisionRequest {
@@ -59,6 +67,11 @@ export interface ProvisionRequest {
 	misfireGraceSeconds?: number;
 	/** Retry ceiling stamped on each occurrence; omit to inherit the instance setting. */
 	maxAttempts?: number;
+	/**
+	 * How many of the job's occurrences may run at the same time. Omit or pass
+	 * `null` for no limit.
+	 */
+	concurrencyLimit?: number | null;
 }
 
 /** What provisioning stamps on the rows it writes, plus the owner it diffs against. */
@@ -161,6 +174,7 @@ export class DurableJobProvisioner {
 	 * liveness resolver (see {@link createJobProvisioner}).
 	 * @throws {InvalidOwnerIdError} when the owner id is empty or too long to store.
 	 * @throws {InvalidOwnerMemberIdError} when the owner member id is empty or too long to store.
+	 * @throws {UserError} when the concurrency limit is not a whole number of at least 1.
 	 * @returns what the call inserted, redefined, left unchanged and removed.
 	 */
 	async provision({ desired, ...scope }: ProvisionRequest): Promise<ProvisionSummary> {
@@ -237,12 +251,14 @@ export class DurableJobProvisioner {
 		misfirePolicy,
 		misfireGraceSeconds: requestedMisfireGraceSeconds,
 		maxAttempts: requestedMaxAttempts,
+		concurrencyLimit: requestedConcurrencyLimit,
 	}: ProvisionScope): RunInProvisionTransaction {
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
 			requestedMisfireGraceSeconds,
 			owner,
 		);
 		const maxAttempts = requestedMaxAttempts ?? this.globalConfig.scheduler.maxAttempts;
+		const concurrencyLimit = resolveConcurrencyLimit(requestedConcurrencyLimit);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Provisioning is evidence the owner is back, so lift any quarantine now
@@ -272,7 +288,8 @@ export class DurableJobProvisioner {
 							if (
 								graceChanged ||
 								row.misfirePolicy !== misfirePolicy ||
-								row.maxAttempts !== maxAttempts
+								row.maxAttempts !== maxAttempts ||
+								row.concurrencyLimit !== concurrencyLimit
 							) {
 								outdatedRunOptionJobIds.push(row.id);
 							}
@@ -301,6 +318,7 @@ export class DurableJobProvisioner {
 								maxAttempts,
 								misfirePolicy,
 								misfireGraceSeconds,
+								concurrencyLimit,
 							}),
 						);
 						const ids = await this.jobs.insertMany(manager, rows);
@@ -314,6 +332,7 @@ export class DurableJobProvisioner {
 							maxAttempts,
 							misfirePolicy,
 							misfireGraceSeconds,
+							concurrencyLimit,
 						});
 						seededJobIds.add(jobId);
 					},
@@ -327,6 +346,7 @@ export class DurableJobProvisioner {
 					maxAttempts,
 					misfirePolicy,
 					misfireGraceSeconds,
+					concurrencyLimit,
 				});
 				// Only `insert` writes the payload, so an existing row picks up a change to it here.
 				await this.jobs.updatePayload(manager, outdatedPayloadJobIds, payload);
@@ -471,4 +491,24 @@ export class DurableJobProvisioner {
 				return await this.jobs.deleteIfPayloadUnchanged(manager, target.job.id, target.job.payload);
 		}
 	}
+}
+
+/**
+ * Normalize a requested concurrency ceiling to what the column stores: a whole
+ * number from 1 to {@link MAX_CONCURRENCY_LIMIT}, or `null` for no limit.
+ *
+ * @throws {UserError} when the limit is set but falls outside that range. A ceiling
+ * below one would hold every occurrence back until its misfire deadline passed, so
+ * the job would never run.
+ */
+function resolveConcurrencyLimit(requested: number | null | undefined): number | null {
+	if (requested === undefined || requested === null) {
+		return null;
+	}
+	if (!Number.isInteger(requested) || requested < 1 || requested > MAX_CONCURRENCY_LIMIT) {
+		throw new UserError('Scheduled job concurrency limit is outside the range the column holds', {
+			extra: { concurrencyLimit: requested, maxConcurrencyLimit: MAX_CONCURRENCY_LIMIT },
+		});
+	}
+	return requested;
 }

@@ -3,3 +3,4 @@ export * from './evaluation-config.dto';
 export * from './evaluation-error-code';
 export * from './llm-judge-providers';
 export type * from './public-api-test-run.dto';
+export * from './test-run-public.dto';

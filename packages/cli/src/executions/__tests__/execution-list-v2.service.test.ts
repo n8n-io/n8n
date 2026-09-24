@@ -59,6 +59,7 @@ describe('ExecutionListV2Service', () => {
 			workflowId: 'wf-a',
 			status,
 			mode: 'manual',
+			hostMode: 'manual',
 			createdAt: time,
 			updatedAt: time,
 			finishedAt: time,

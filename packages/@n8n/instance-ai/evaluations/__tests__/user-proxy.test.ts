@@ -954,6 +954,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect.any(String),
 			'slackApi',
 			expect.any(Object),
+			undefined,
 		);
 		// The allowlist call must include the pre-existing id, not just the new
 		// one — setThreadCredentialAllowlist replaces the whole list.
@@ -1524,6 +1525,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect.any(String),
 			'slackApi',
 			expect.any(Object),
+			undefined,
 		);
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh'], []);
 		expect(response.kind).toBe('credentialSelection');

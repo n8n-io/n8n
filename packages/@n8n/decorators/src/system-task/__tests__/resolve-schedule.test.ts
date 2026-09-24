@@ -8,7 +8,7 @@ const taskWith = (schedule: SystemTaskSchedule): SystemTask => ({
 	name: 'test-task',
 	schedule,
 	effects: 'idempotent',
-	durable: false,
+	placement: { scope: 'cluster', durable: false },
 	run: async () => {},
 });
 

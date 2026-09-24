@@ -196,10 +196,12 @@ export interface AgentKnowledgeFileReference {
 	createdAt: string;
 }
 
-export interface AgentKnowledgeCitation {
-	file: string;
-	fileId: string;
-	displayName: string;
+type AgentKnowledgeFileIdentity = Pick<
+	AgentKnowledgeFileReference,
+	'file' | 'fileId' | 'displayName'
+>;
+
+export interface AgentKnowledgeCitation extends AgentKnowledgeFileIdentity {
 	startLine: number;
 	endLine: number;
 }
@@ -210,10 +212,7 @@ export interface AgentKnowledgeLine {
 	truncated: boolean;
 }
 
-export interface SearchKnowledgeMatch {
-	file: string;
-	fileId: string;
-	displayName: string;
+export interface SearchKnowledgeMatch extends AgentKnowledgeFileIdentity {
 	lineNumber: number;
 	text: string;
 	textTruncated: boolean;
@@ -226,10 +225,7 @@ export interface SearchKnowledgeContextLine {
 	matched: boolean;
 }
 
-export interface SearchKnowledgeCount {
-	file: string;
-	fileId: string;
-	displayName: string;
+export interface SearchKnowledgeCount extends AgentKnowledgeFileIdentity {
 	count: number;
 }
 
@@ -276,10 +272,7 @@ export interface ReadKnowledgeRangeResult {
 	citation: AgentKnowledgeCitation;
 }
 
-export interface ReadKnowledgeResult {
-	file: string;
-	fileId: string;
-	displayName: string;
+export interface ReadKnowledgeResult extends AgentKnowledgeFileIdentity {
 	ranges: ReadKnowledgeRangeResult[];
 	truncated: boolean;
 }

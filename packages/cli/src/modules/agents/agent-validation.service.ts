@@ -1,4 +1,4 @@
-import { type CredentialProvider, type ToolDescriptor } from '@n8n/agents';
+import type { CredentialProvider } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
@@ -22,7 +22,12 @@ import {
 } from '@n8n/api-types';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8n-workflow';
+import {
+	isMcpOAuth2Authentication,
+	NodeHelpers,
+	type INodeParameters,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
@@ -46,7 +51,7 @@ type FindCredential = (
 	credentialId: string,
 ) => Promise<Awaited<ReturnType<CredentialProvider['list']>>[number] | undefined>;
 
-type CustomToolEntries = Record<string, { code: string; descriptor: ToolDescriptor }>;
+type CustomToolEntries = Agent['tools'];
 type TaskBody = AgentTaskConfig;
 
 interface ConfigurationValidationContext {
@@ -389,27 +394,7 @@ export class AgentValidationService {
 			issues.push(agentIssue('incompatible_credential', 'credential'));
 		}
 
-		// Azure OpenAI classic deployments are user-named in Azure and surfaced in
-		// the deployment-based URL path. The catalog model id is not the deployment
-		// id, so a classic endpoint without a deployment name 404s at run time
-		// ("resource not found"). Surface that at save/publish time instead. Foundry
-		// and other endpoint types are unaffected.
-		const provider = model ? getProviderPrefix(model) : undefined;
-		if (provider === 'azure-openai' && !config.modelDeploymentName?.trim()) {
-			let endpointType: unknown;
-			try {
-				const data = await credentialProvider.resolve(credentialId);
-				endpointType = data?.endpointType;
-			} catch {
-				// A credential that can't be resolved here will already be reported
-				// elsewhere; don't let a transient resolve failure block publish
-				// by assuming Classic and requiring a deployment name.
-				return;
-			}
-			if (endpointType !== 'foundry') {
-				issues.push(agentIssue('missing_required', 'modelDeploymentName'));
-			}
-		}
+		await this.collectAzureDeploymentIssues(config, credentialId, credentialProvider, issues);
 	}
 
 	private collectSubAgentRefIssues(
@@ -538,16 +523,7 @@ export class AgentValidationService {
 			const tool = tools[index];
 
 			if (tool.type === 'custom') {
-				if (!ctx.customTools[tool.id]) {
-					issues.push(
-						issue('missing_reference', `tools.${index}.id`, {
-							kind: 'tool',
-							id: tool.id,
-							index,
-							toolType: 'custom',
-						}),
-					);
-				}
+				this.collectCustomToolIssues(tool.id, index, ctx.customTools, issues);
 				continue;
 			}
 
@@ -631,51 +607,16 @@ export class AgentValidationService {
 				{ typeVersion: tool.node.nodeTypeVersion },
 				nodeType.description,
 			) ?? {};
-		const requiredSlots = getRequiredNodeCredentialSlots(nodeType.description);
-		for (const slot of requiredSlots) {
-			const credentialDefinition = nodeType.description.credentials?.find(
-				(credential) => credential.name === slot.credentialType,
+		const visibleSlots = this.getVisibleCredentialSlots(tool, nodeType.description, nodeParameters);
+		for (const slot of visibleSlots) {
+			await this.collectNodeCredentialIssues(
+				tool,
+				index,
+				slot.credentialType,
+				nodeParameters,
+				findCredential,
+				issues,
 			);
-
-			if (
-				credentialDefinition &&
-				!NodeHelpers.displayParameter(
-					nodeParameters,
-					credentialDefinition,
-					{ typeVersion: tool.node.nodeTypeVersion },
-					nodeType.description,
-				)
-			) {
-				continue;
-			}
-
-			const path = `tools.${index}.node.credentials.${slot.credentialType}`;
-			const credentialRef = tool.node.credentials?.[slot.credentialType];
-
-			if (credentialRef && '__aiGatewayManaged' in credentialRef) {
-				// Only flag a definitive "gateway does not cover this slot". An
-				// indeterminate gateway state must not fail closed, mirroring the
-				// managed main-credential policy in collectMainCredentialIssues.
-				if (
-					(await this.gatewayCoversNodeToolSlot(tool.node, slot.credentialType, nodeParameters)) ===
-					false
-				) {
-					issues.push(issue('invalid_credential', path, capabilityBase));
-				}
-				continue;
-			}
-
-			const credentialId = credentialRef?.id?.trim();
-
-			if (!credentialId) {
-				issues.push(issue('missing_credential', path, capabilityBase));
-				continue;
-			}
-
-			const credential = await this.findCredentialSafe(findCredential, credentialId);
-			if (!credential || credential.type !== slot.credentialType) {
-				issues.push(issue('invalid_credential', path, capabilityBase));
-			}
 		}
 	}
 
@@ -781,5 +722,109 @@ export class AgentValidationService {
 		} catch {
 			return undefined;
 		}
+	}
+
+	private async collectAzureDeploymentIssues(
+		config: AgentJsonConfig,
+		credentialId: string,
+		credentialProvider: CredentialProvider,
+		issues: AgentConfigValidationIssue[],
+	): Promise<void> {
+		const model = config.model?.trim();
+		const provider = model ? getProviderPrefix(model) : undefined;
+		if (provider !== 'azure-openai' || config.modelDeploymentName?.trim()) return;
+		let endpointType: unknown;
+		try {
+			const data = await credentialProvider.resolve(credentialId);
+			endpointType = data?.endpointType;
+		} catch {
+			// A credential that can't be resolved here will already be reported
+			// elsewhere; don't let a transient resolve failure block publish
+			// by assuming Classic and requiring a deployment name.
+			return;
+		}
+		if (endpointType !== 'foundry') {
+			issues.push(agentIssue('missing_required', 'modelDeploymentName'));
+		}
+	}
+
+	private collectCustomToolIssues(
+		id: string,
+		index: number,
+		customTools: CustomToolEntries,
+		issues: AgentConfigValidationIssue[],
+	): void {
+		if (customTools[id]) return;
+		issues.push(
+			issue('missing_reference', `tools.${index}.id`, {
+				kind: 'tool',
+				id,
+				index,
+				toolType: 'custom',
+			}),
+		);
+	}
+
+	private async collectNodeCredentialIssues(
+		tool: AgentJsonNodeToolConfig,
+		index: number,
+		credentialType: string,
+		nodeParameters: INodeParameters,
+		findCredential: FindCredential,
+		issues: AgentConfigValidationIssue[],
+	): Promise<void> {
+		const capabilityBase: AgentConfigValidationIssue['capability'] = {
+			kind: 'tool',
+			id: tool.name,
+			index,
+			toolType: 'node',
+		};
+		const path = `tools.${index}.node.credentials.${credentialType}`;
+		const credentialRef = tool.node.credentials?.[credentialType];
+
+		if (credentialRef && '__aiGatewayManaged' in credentialRef) {
+			// Only flag a definitive "gateway does not cover this slot". An
+			// indeterminate gateway state must not fail closed, mirroring the
+			// managed main-credential policy in collectMainCredentialIssues.
+			if (
+				(await this.gatewayCoversNodeToolSlot(tool.node, credentialType, nodeParameters)) === false
+			) {
+				issues.push(issue('invalid_credential', path, capabilityBase));
+			}
+			return;
+		}
+
+		const credentialId = credentialRef?.id?.trim();
+
+		if (!credentialId) {
+			issues.push(issue('missing_credential', path, capabilityBase));
+			return;
+		}
+
+		const credential = await this.findCredentialSafe(findCredential, credentialId);
+		if (!credential || credential.type !== credentialType) {
+			issues.push(issue('invalid_credential', path, capabilityBase));
+		}
+	}
+
+	private getVisibleCredentialSlots(
+		tool: AgentJsonNodeToolConfig,
+		description: INodeTypeDescription,
+		nodeParameters: INodeParameters,
+	) {
+		return getRequiredNodeCredentialSlots(description).filter((slot) => {
+			const definition = description.credentials?.find(
+				(credential) => credential.name === slot.credentialType,
+			);
+			return (
+				!definition ||
+				NodeHelpers.displayParameter(
+					nodeParameters,
+					definition,
+					{ typeVersion: tool.node.nodeTypeVersion },
+					description,
+				)
+			);
+		});
 	}
 }
