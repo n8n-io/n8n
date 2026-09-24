@@ -6,6 +6,7 @@ import {
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -111,4 +112,20 @@ export function canWriteProjectScope(projectId: string | null | undefined): bool
 export function canWriteInstanceScope(): boolean {
 	const { currentUser } = useUsersStore();
 	return getResourcePermissions(currentUser?.globalScopes).aiPreference?.create === true;
+}
+
+/**
+ * Why a save from the settings page did not land, in the same words the assistant surfaces use.
+ * The status is what the service throws: 409 for the duplicate check, 400 for the per-scope cap,
+ * 403 for a scope the user may not write. The text length is checked in the form, so it never
+ * reaches the server as a 400.
+ */
+export function preferenceWriteRejectionReason(
+	error: unknown,
+): 'duplicate' | 'scope_full' | 'not_permitted' | 'failed' {
+	const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
+	if (status === 409) return 'duplicate';
+	if (status === 400) return 'scope_full';
+	if (status === 403) return 'not_permitted';
+	return 'failed';
 }

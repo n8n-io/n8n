@@ -401,6 +401,49 @@ describe('PreferenceCard', () => {
 		});
 	});
 
+	describe('being seen', () => {
+		it('reports the card once, with the scope and the state it rendered in', () => {
+			renderActive();
+
+			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD, {
+				scope_type: 'user',
+				state: 'saved',
+			});
+			expect(
+				track.mock.calls.filter(
+					([event]) => event === TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD,
+				),
+			).toHaveLength(1);
+		});
+
+		// Reopening an old thread re-renders every card. Counting those would read as the user
+		// being shown the same confirmation again.
+		it('reports nothing for a card in history', () => {
+			renderHistory();
+
+			expect(track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD,
+				expect.anything(),
+			);
+		});
+
+		it('names the scope the card shows after a move', () => {
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'instance',
+					projectId: null,
+				},
+			});
+
+			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD, {
+				scope_type: 'instance',
+				state: 'edited',
+			});
+		});
+	});
+
 	describe('the edit modal', () => {
 		// The same scope label, required mark, cap, and counter as the settings page modal.
 		it('opens with the stored text and "Just you" selected, and the select is enabled', async () => {
@@ -662,42 +705,19 @@ describe('PreferenceCard', () => {
 			);
 		});
 
-		it('undo reports a rejected delete once it succeeded', async () => {
+		// The undo endpoint reports the removal: only the server still holds the row, and with it
+		// the scope and the age the event carries.
+		it('undo reports no delete from the card, because the server reports it', async () => {
 			undoPreferenceCard.mockResolvedValue({ ok: true, event: undoneEvent });
 			renderActive();
 			await openModal();
 
 			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-remove'));
 
-			await waitFor(() =>
-				expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
-					count: 1,
-					source: 'rejected',
-					scope_types: ['user'],
-				}),
-			);
-		});
-
-		it('reports the real scope of a removed preference', async () => {
-			undoPreferenceCard.mockResolvedValue({ ok: true, event: undoneEvent });
-			renderActive({
-				preferenceCard: {
-					state: 'edited',
-					content: STORED_TEXT,
-					scope: 'instance',
-					projectId: null,
-				},
-			});
-			await openModal();
-
-			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-remove'));
-
-			await waitFor(() =>
-				expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
-					count: 1,
-					source: 'rejected',
-					scope_types: ['instance'],
-				}),
+			await waitFor(() => expect(undoPreferenceCard).toHaveBeenCalled());
+			expect(track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES,
+				expect.anything(),
 			);
 		});
 
@@ -709,7 +729,10 @@ describe('PreferenceCard', () => {
 			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-remove'));
 
 			await waitFor(() => expect(undoPreferenceCard).toHaveBeenCalled());
-			expect(track).not.toHaveBeenCalled();
+			expect(track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES,
+				expect.anything(),
+			);
 		});
 
 		it('undo reports nothing when the response carries no valid event', async () => {
@@ -720,7 +743,10 @@ describe('PreferenceCard', () => {
 			await userEvent.click(screen.getByTestId('instance-ai-preference-modal-remove'));
 
 			await waitFor(() => expect(undoPreferenceCard).toHaveBeenCalled());
-			expect(track).not.toHaveBeenCalled();
+			expect(track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES,
+				expect.anything(),
+			);
 		});
 
 		it('keeps the modal open and shows the error when Remove fails', async () => {

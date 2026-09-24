@@ -5,6 +5,7 @@ import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import { ResponseError } from '@n8n/rest-api-client';
 
 import type { Preference } from './context.types';
 import {
@@ -13,6 +14,7 @@ import {
 	preferenceAudience,
 	preferenceScope,
 	preferenceUserName,
+	preferenceWriteRejectionReason,
 	toPreferencePermissions,
 } from './context.utils';
 
@@ -196,6 +198,23 @@ describe('context.utils', () => {
 
 			usersStore.currentUser = null;
 			expect(canWriteInstanceScope()).toBe(false);
+		});
+	});
+
+	describe('preferenceWriteRejectionReason', () => {
+		it.each([
+			[409, 'duplicate'],
+			[400, 'scope_full'],
+			[403, 'not_permitted'],
+			[500, 'failed'],
+		])('maps %s to %s', (status, reason) => {
+			expect(
+				preferenceWriteRejectionReason(new ResponseError('no', { httpStatusCode: status })),
+			).toBe(reason);
+		});
+
+		it('reports anything that is not a response as a failure', () => {
+			expect(preferenceWriteRejectionReason(new Error('offline'))).toBe('failed');
 		});
 	});
 });

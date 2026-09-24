@@ -15,6 +15,7 @@ import { useContextStore } from '../context.store';
 import type { Preference } from '../context.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { Scope } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 
 const trackMock = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -265,6 +266,44 @@ describe('PreferenceModal', () => {
 		});
 	});
 
+	describe('opening', () => {
+		it('reports a new-preference open, so an abandoned create is visible', () => {
+			renderModal({ props: { open: true, preference: null }, pinia });
+
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_OPENED_PREFERENCE_MODAL, {
+				mode: 'new',
+			});
+		});
+
+		it('names the scope of the row on an edit open', () => {
+			const preference: Preference = {
+				id: 'p1',
+				content: 'Use sub-workflows.',
+				userId: null,
+				user: null,
+				projectId: 'p-write',
+				project: { id: 'p-write', name: 'Writable Project', type: 'team', icon: null },
+				source: 'ui',
+				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			renderModal({ props: { open: true, preference }, pinia });
+
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_OPENED_PREFERENCE_MODAL, {
+				mode: 'edit',
+				scope_type: 'project',
+			});
+		});
+
+		it('reports nothing while the dialog stays closed', () => {
+			renderModal({ props: { open: false, preference: null }, pinia });
+
+			expect(trackMock).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('submitting', () => {
 		it('creates a user-scoped preference by default', async () => {
 			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
@@ -280,6 +319,30 @@ describe('PreferenceModal', () => {
 				scope: 'user',
 				projectId: null,
 			});
+		});
+
+		it('reports a refused save with the reason the service gave', async () => {
+			contextStore.createPreference.mockRejectedValue(
+				new ResponseError('dup', { httpStatusCode: 409 }),
+			);
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
+
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				'Keep replies short.',
+			);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+				surface: 'ui',
+				reason: 'duplicate',
+				scope_type: 'user',
+				text_length: 'Keep replies short.'.length,
+			});
+			expect(trackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_CREATED_PREFERENCE,
+				expect.anything(),
+			);
 		});
 
 		it('reports a created preference without its text', async () => {
@@ -510,6 +573,7 @@ describe('PreferenceModal', () => {
 				text_length: 'Use sub-workflows.'.length,
 				scope_changed: false,
 				project_id: 'p-write',
+				surface: 'ui',
 			});
 		});
 	});

@@ -10,6 +10,8 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 
 import { VIEWS } from '@/app/constants';
@@ -27,6 +29,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 const card = computed(() => resolvePreferenceCard(props.toolCall));
 // A refused write renders too, so the person does not depend on the assistant's account.
@@ -75,6 +78,23 @@ watch(
 );
 
 const modalOpen = ref(false);
+
+// Seen, not offered: `Preference confirmation shown` already fired with the write, and a write
+// whose card never reaches the screen still counts there. Only the latest turn reports, so
+// reopening an old thread does not report the same card again.
+const reportedSeen = ref(false);
+watch(
+	[card, () => props.readOnly],
+	([value, readOnly]) => {
+		if (reportedSeen.value || !value || readOnly) return;
+		reportedSeen.value = true;
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD, {
+			scope_type: value.scope,
+			state: value.state,
+		});
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

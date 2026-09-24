@@ -32,6 +32,7 @@ import {
 	preferenceAudience,
 	preferenceScope,
 	preferenceUserName,
+	preferenceWriteRejectionReason,
 	toPreferencePermissions,
 } from '../context.utils';
 
@@ -264,10 +265,19 @@ async function handleSubmit() {
 				text_length: content.length,
 				scope_changed: form.scope !== initialScope.value,
 				...(projectId ? { project_id: projectId } : {}),
+				surface: 'ui',
 			});
 		}
 		if (token === openToken) emit('saved');
 	} catch (error) {
+		// A refused save from the settings page reports the same reasons an assistant write does,
+		// so the cap, the duplicate check and a missing right are visible on every surface.
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+			surface: 'ui',
+			reason: preferenceWriteRejectionReason(error),
+			scope_type: scope,
+			text_length: content.length,
+		});
 		showError(error, i18n.baseText('settings.context.preferences.error.save'));
 	} finally {
 		loading.value = false;
@@ -280,6 +290,11 @@ watch(
 		if (!open) return;
 		openToken += 1;
 		resetForm();
+		// The open, not the save: an open with no save that follows is an abandoned edit.
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_PREFERENCE_MODAL, {
+			mode: mode.value,
+			...(preference.value ? { scope_type: preferenceScope(preference.value) } : {}),
+		});
 		void projectsStore.getMyProjects();
 	},
 	{ immediate: true },

@@ -18,8 +18,6 @@ import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Rule, RuleGroup } from '@/Interface';
 
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
@@ -56,7 +54,6 @@ const props = defineProps<{
 const i18n = useI18n();
 const { restApiContext } = useRootStore();
 const thread = useThread();
-const telemetry = useTelemetry();
 
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
@@ -204,11 +201,6 @@ async function remove() {
 			toolCallId: props.toolCallId,
 		});
 		if (!applyReturnedFact(response, 'instanceAi.preferenceCard.modal.removeFailed')) return;
-		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
-			count: 1,
-			source: 'rejected',
-			scope_types: [props.scope],
-		});
 		open.value = false;
 	} catch (error) {
 		errorMessage.value = messageOf(error, 'instanceAi.preferenceCard.modal.removeFailed');
