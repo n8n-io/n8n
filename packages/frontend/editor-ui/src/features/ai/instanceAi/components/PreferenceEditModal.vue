@@ -22,6 +22,7 @@ import type { Rule, RuleGroup } from '@/Interface';
 
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useContextStore } from '@/features/settings/context/context.store';
 import {
 	canWriteInstanceScope,
 	canWriteProjectScope,
@@ -57,6 +58,7 @@ const thread = useThread();
 
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
+const contextStore = useContextStore();
 
 /** Select values, in the shape the settings modal uses: `user`, `instance`, `project:<id>`. */
 const USER_SCOPE_VALUE = 'user';
@@ -72,6 +74,17 @@ function scopeValueOf(scope: AiPreferenceScope, projectId: string | null): strin
 
 const currentScopeValue = computed(() => scopeValueOf(props.scope, props.projectId));
 const scopeDraft = ref(currentScopeValue.value);
+/** Whether this opening has moved the select. Only then may an edit carry a scope. */
+const scopeTouched = ref(false);
+
+/**
+ * The row behind the card may resolve while this modal is open, which moves
+ * `currentScopeValue` under the draft. A draft nobody has moved follows it, so an
+ * untouched select cannot save the scope the card guessed before the row arrived.
+ */
+watch(currentScopeValue, (value) => {
+	if (!scopeTouched.value) scopeDraft.value = value;
+});
 
 type ScopeOption = { value: string; label: string; icon: IconOrEmoji };
 
@@ -151,6 +164,7 @@ watch(open, (isOpen) => {
 	if (!isOpen) return;
 	draft.value = props.content;
 	scopeDraft.value = currentScopeValue.value;
+	scopeTouched.value = false;
 	errorMessage.value = '';
 	void projectsStore.getMyProjects();
 });
@@ -184,6 +198,8 @@ async function save() {
 			...(scopeChanged.value ? parseScope() : {}),
 		});
 		if (!applyReturnedFact(response, 'instanceAi.preferenceCard.modal.saveFailed')) return;
+		// The row the write returned, so the card reads the new scope without another read.
+		contextStore.setRow(response.preference);
 		open.value = false;
 	} catch (error) {
 		// The refusal belongs next to the text that caused it, so the modal stays open.
@@ -204,6 +220,8 @@ async function remove() {
 			toolCallId: props.toolCallId,
 		});
 		if (!applyReturnedFact(response, 'instanceAi.preferenceCard.modal.removeFailed')) return;
+		// The row is gone, so nothing may resolve it again.
+		contextStore.forgetRow(props.preferenceId);
 		open.value = false;
 	} catch (error) {
 		errorMessage.value = messageOf(error, 'instanceAi.preferenceCard.modal.removeFailed');
@@ -286,6 +304,7 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 					:disabled="busy"
 					:teleported="false"
 					data-test-id="instance-ai-preference-modal-scope"
+					@update:model-value="scopeTouched = true"
 				>
 					<template #prefix>
 						<N8nText v-if="selectedIcon.type === 'emoji'" :class="$style.emoji">{{

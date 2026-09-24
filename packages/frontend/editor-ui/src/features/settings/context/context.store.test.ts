@@ -206,4 +206,59 @@ describe('context.store', () => {
 		expect(result.deleted).toEqual([]);
 		expect(result.failed).toHaveLength(2);
 	});
+
+	describe('resolveRows', () => {
+		it('turns every ask in the same tick into one read', async () => {
+			const store = useContextStore();
+			list.mockResolvedValueOnce({ count: 2, data: [row({ id: 'a' }), row({ id: 'b' })] });
+
+			await Promise.all([store.resolveRows(['a']), store.resolveRows(['b'])]);
+
+			expect(list).toHaveBeenCalledTimes(1);
+			expect(list).toHaveBeenCalledWith(expect.anything(), { ids: ['a', 'b'], take: 2 });
+			expect(store.rowById.get('a')?.id).toBe('a');
+			expect(store.rowById.get('b')?.id).toBe('b');
+		});
+
+		it('leaves an id the read did not return unresolved', async () => {
+			const store = useContextStore();
+			// 'gone' is deleted or invisible, so the read answers without it.
+			list.mockResolvedValueOnce({ count: 1, data: [row({ id: 'a' })] });
+
+			await store.resolveRows(['a', 'gone']);
+
+			expect(store.rowById.has('a')).toBe(true);
+			expect(store.rowById.has('gone')).toBe(false);
+		});
+
+		it('resolves nothing and throws nothing when the read fails', async () => {
+			const store = useContextStore();
+			list.mockRejectedValueOnce(new Error('offline'));
+
+			await expect(store.resolveRows(['a'])).resolves.toBeUndefined();
+
+			expect(store.rowById.size).toBe(0);
+		});
+
+		it('keeps rows already resolved when a later read fails', async () => {
+			const store = useContextStore();
+			list.mockResolvedValueOnce({ count: 1, data: [row({ id: 'a' })] });
+			await store.resolveRows(['a']);
+			list.mockRejectedValueOnce(new Error('offline'));
+
+			await store.resolveRows(['b']);
+
+			expect(store.rowById.get('a')?.id).toBe('a');
+		});
+
+		it('records a row a write returned and drops one a write removed', () => {
+			const store = useContextStore();
+
+			store.setRow(row({ id: 'a', projectId: 'p-1', userId: null }));
+			expect(store.rowById.get('a')?.projectId).toBe('p-1');
+
+			store.forgetRow('a');
+			expect(store.rowById.has('a')).toBe(false);
+		});
+	});
 });

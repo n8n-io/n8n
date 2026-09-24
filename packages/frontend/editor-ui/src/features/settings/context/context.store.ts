@@ -61,6 +61,58 @@ export const useContextStore = defineStore('context', () => {
 		return pages.flat();
 	}
 
+	/**
+	 * The rows behind ids a reader holds, kept for lookup rather than for a list. A chat
+	 * card names the scope its own last write named, and a move made on the settings page
+	 * or over MCP never reaches it, so the card reads the row from here instead.
+	 */
+	const rowById = ref(new Map<string, Preference>());
+	let pendingIds = new Set<string>();
+	let pendingRead: Promise<void> | undefined;
+
+	/**
+	 * Resolves rows by id. Every ask in the same tick becomes one read, so a turn with
+	 * several cards costs one request. An id the read does not return stays unresolved:
+	 * the caller keeps what it already knew, rather than reading a row it may not see
+	 * as a row that changed. A failed read resolves nothing and throws nothing, for the
+	 * same reason.
+	 */
+	async function resolveRows(ids: string[]): Promise<void> {
+		for (const id of ids) pendingIds.add(id);
+		const read = (pendingRead ??= (async () => {
+			// One microtask, so cards that render together join the same read.
+			await Promise.resolve();
+			const batch = [...pendingIds];
+			pendingIds = new Set();
+			pendingRead = undefined;
+			if (batch.length === 0) return;
+			try {
+				const rows = await fetchPreferencesByIds(batch);
+				const next = new Map(rowById.value);
+				for (const row of rows) next.set(row.id, row);
+				rowById.value = next;
+			} catch {
+				// The caller falls back to what it knew.
+			}
+		})());
+		await read;
+	}
+
+	/** Records a row a write just returned, so the reader does not wait for another read. */
+	function setRow(row: Preference) {
+		const next = new Map(rowById.value);
+		next.set(row.id, row);
+		rowById.value = next;
+	}
+
+	/** Drops a row a write just removed. */
+	function forgetRow(id: string) {
+		if (!rowById.value.has(id)) return;
+		const next = new Map(rowById.value);
+		next.delete(id);
+		rowById.value = next;
+	}
+
 	async function fetchPreferenceCount() {
 		const countRead = ++latestCountRead;
 		const total = await api.getPreferenceCount(rootStore.restApiContext);
@@ -98,8 +150,12 @@ export const useContextStore = defineStore('context', () => {
 		preferences,
 		count,
 		loading,
+		rowById,
 		fetchPreferences,
 		fetchPreferencesByIds,
+		resolveRows,
+		setRow,
+		forgetRow,
 		fetchPreferenceCount,
 		createPreference,
 		updatePreference,
