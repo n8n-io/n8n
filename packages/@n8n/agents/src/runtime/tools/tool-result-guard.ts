@@ -197,36 +197,38 @@ export function sanitizeOffloadedToolResultsForMemory(
 	return messages.map((message) => {
 		if (!('content' in message)) return { ...message };
 
-		const content = message.content.map((block): MessageContent => {
-			if (block.type === 'tool-call') {
-				if (block.state === 'resolved' && isOffloadedToolResult(block.output)) {
-					return { ...block, output: { ...EXPIRED_OFFLOADED_TOOL_RESULT } };
-				}
-				if (block.state === 'resolved' && isContentToolResultOutput(block.output)) {
-					return {
-						...block,
-						output: toJsonValue({
-							type: 'content',
-							value: block.output.value.map((part) =>
-								part.type === 'text' && isSerializedOffloadedToolResult(part.text)
-									? { ...part, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON }
-									: part,
-							),
-						}),
-					};
-				}
-				if (block.state === 'rejected' && isSerializedOffloadedToolResult(block.error)) {
-					return { ...block, error: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
-				}
-			}
-
-			if (block.type === 'text' && isSerializedOffloadedToolResult(block.text)) {
-				return { ...block, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
-			}
-
-			return { ...block };
-		});
+		const content = message.content.map(sanitizeOffloadedContentBlock);
 		return { ...message, content };
+	});
+}
+
+function sanitizeOffloadedContentBlock(block: MessageContent): MessageContent {
+	if (block.type === 'tool-call') {
+		if (block.state === 'resolved' && isOffloadedToolResult(block.output)) {
+			return { ...block, output: { ...EXPIRED_OFFLOADED_TOOL_RESULT } };
+		}
+		if (block.state === 'resolved' && isContentToolResultOutput(block.output)) {
+			return { ...block, output: sanitizeOffloadedContentResult(block.output) };
+		}
+		if (block.state === 'rejected' && isSerializedOffloadedToolResult(block.error)) {
+			return { ...block, error: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
+		}
+	}
+
+	if (block.type === 'text' && isSerializedOffloadedToolResult(block.text)) {
+		return { ...block, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
+	}
+
+	return { ...block };
+}
+
+function sanitizeOffloadedContentResult(output: ContentToolResultOutput): JSONValue {
+	return toJsonValue({
+		type: 'content',
+		value: output.value.map((part) => {
+			if (part.type !== 'text' || !isSerializedOffloadedToolResult(part.text)) return part;
+			return { ...part, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
+		}),
 	});
 }
 
