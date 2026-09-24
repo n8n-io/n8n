@@ -175,7 +175,8 @@ describe('Community packages (Public API)', () => {
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
 
 			mockedExecuteNpmCommand.mockImplementation(() => {
-				throw {
+				const error = new Error('npm outdated');
+				Object.assign(error, {
 					code: 1,
 					stdout: JSON.stringify({
 						[pkg.packageName]: {
@@ -185,7 +186,8 @@ describe('Community packages (Public API)', () => {
 							location: path.join('node_modules', pkg.packageName),
 						},
 					}),
-				};
+				});
+				throw error;
 			});
 
 			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
