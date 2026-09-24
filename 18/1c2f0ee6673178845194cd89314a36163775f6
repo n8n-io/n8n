@@ -16,6 +16,7 @@ packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.t
   s_e5a64625bc5cd1::t_4b84117cf48f0e 16,58-76
 packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
   s_e5a64625bc5cd1::t_f98e60e423aa18 6-8,55-69,76,101,103-108,195-202,205,224-228,239-259,274
+  s_e5a64625bc5cd1::t_86d83563cd05a9 102
 packages/cli/src/modules/agents/background/agent-wake.service.ts
   s_e5a64625bc5cd1::t_73868a5dde5753 153-159,164,166,175-180,196-227,271,278,282,284-289
 packages/cli/src/modules/agents/background/background-job-tools.ts
