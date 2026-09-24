@@ -1,3 +1,17 @@
+## [2.40.6](https://github.com/n8n-io/n8n/compare/n8n@2.40.5...n8n@2.40.6) (2026-09-24)
+
+
+### Bug Fixes
+
+* **core:** Keep OpenTelemetry export working after a restart when Sentry is enabled ([#39368](https://github.com/n8n-io/n8n/issues/39368)) ([7720a02](https://github.com/n8n-io/n8n/commit/7720a02599ef7c7fb8b44407cf7646c0915ecd4d))
+* **core:** Retry instance reports that cross the UTC midnight boundary ([#39434](https://github.com/n8n-io/n8n/issues/39434)) ([5e09a78](https://github.com/n8n-io/n8n/commit/5e09a780b58278f06d159d28c0771e1af28ef670))
+
+
+### Features
+
+* **core:** Authenticate instance reports with the license certificate ([#39381](https://github.com/n8n-io/n8n/issues/39381)) ([f0ab4ea](https://github.com/n8n-io/n8n/commit/f0ab4ea7de8db16f84d44d3234b27cf36bed8a0a))
+
+
 ## [2.40.5](https://github.com/n8n-io/n8n/compare/n8n@2.40.4...n8n@2.40.5) (2026-09-21)
 
 
