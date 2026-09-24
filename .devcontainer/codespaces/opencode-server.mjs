@@ -163,10 +163,12 @@ function prepareWorkspace({ name, directory, mainDirectory, stateDir }) {
 }
 
 // The TUI resolves its own conversation with `attach --continue`. Only the browser
-// URL needs a concrete session ID, so take the directory's newest one.
+// URL needs a concrete session ID, so take the directory's most recently updated
+// root conversation, the one that resume would pick.
 async function resolveWebSession({ name, fresh, directory, server }) {
 	if (!fresh) {
-		const response = await request(server, '/session', directory);
+		const query = new URLSearchParams({ directory, roots: 'true' });
+		const response = await request(server, `/session?${query}`, directory);
 		if (!response.ok) throw new Error(`Cannot list OpenCode sessions (${response.status}).`);
 		const sessions = await response.json().catch(() => []);
 		const latest = Array.isArray(sessions)

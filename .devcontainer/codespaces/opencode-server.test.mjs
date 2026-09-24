@@ -93,11 +93,18 @@ const server = require('node:http').createServer(async (req, res) => {
     res.end(JSON.stringify(sessions[id])); return;
   }
   if (fs.existsSync(file('reject-session'))) { res.writeHead(503).end('{}'); return; }
-  if (req.url === '/session') {
-    // Newest first, like the real server. The extra-session file models a
-    // conversation created outside the launcher, newer than every stored one.
-    const list = Object.values(sessions).filter(s => s.directory === directory).reverse();
+  const url = new URL(req.url, 'http://localhost');
+  if (url.pathname === '/session') {
+    // Newest first, like the real server. The extra-session file models a root
+    // conversation created outside the launcher, the child-session file one
+    // created by a subagent. The roots query flag excludes the child.
+    const roots = url.searchParams.get('roots') === 'true';
+    const list = Object.values(sessions)
+      .filter(s => s.directory === directory && (!roots || !s.parentID))
+      .reverse();
     if (fs.existsSync(file('extra-session'))) list.unshift({ id: 'ses_extra', directory, title: 'TUI session' });
+    if (fs.existsSync(file('child-session')) && !roots)
+      list.unshift({ id: 'ses_child', directory, title: 'child', parentID: 'ses_1' });
     res.end(JSON.stringify(list)); return;
   }
   const session = sessions[req.url.split('/').at(-1)];
@@ -154,9 +161,12 @@ test(
 		assert.equal((await f.prepare({ name: 'another-task', web: true })).sessionID, 'ses_2');
 		writeFileSync(join(f.dir, 'extra-session'), '');
 		assert.equal((await f.prepare({ name: 'fix-flaky', web: true })).sessionID, 'ses_extra');
-		const fresh = await f.prepare({ name: 'fix-flaky', web: true, fresh: true });
-		assert.notEqual(fresh.sessionID, 'ses_extra');
 		rmSync(join(f.dir, 'extra-session'));
+		writeFileSync(join(f.dir, 'child-session'), '');
+		assert.equal((await f.prepare({ name: 'fix-flaky', web: true })).sessionID, 'ses_1');
+		rmSync(join(f.dir, 'child-session'));
+		const fresh = await f.prepare({ name: 'fix-flaky', web: true, fresh: true });
+		assert.notEqual(fresh.sessionID, 'ses_1');
 		assert.equal((await f.prepare({ name: 'fix-flaky', web: true })).sessionID, fresh.sessionID);
 		const env = JSON.parse(readFileSync(join(f.dir, 'server-env.json'), 'utf8'));
 		assert.deepEqual([env.worker, env.queue, env.slack], [false, false, false]);

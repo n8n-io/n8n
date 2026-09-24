@@ -72,8 +72,8 @@ OpenCode server, repository, tools, and builds run in the Codespace. Browser
 mode opens the remote web interface through a local connection.
 
 ```bash
-pnpm session:opencode fix-flaky              # resume the last conversation there
-pnpm session:opencode fix-flaky --web        # open the last conversation in a browser
+pnpm session:opencode fix-flaky              # resume the latest conversation there
+pnpm session:opencode fix-flaky --web        # open the latest conversation in a browser
 pnpm session:opencode fix-flaky --new        # start a new conversation in that worktree
 pnpm session:opencode --web --port 4100      # override the default browser port
 pnpm session:opencode --help
@@ -99,10 +99,11 @@ these commands.
 
 The command prepares the worktree, starts or reuses one server, opens an SSH
 tunnel, and connects the client. Conversations belong to the workspace
-directory. The client opens the conversation you used last in that workspace.
+directory. The client opens the most recently updated conversation in that
+workspace. A conversation moves to the front when it receives a message.
+Switching to a conversation without sending a message does not move it.
 `--new` starts a new conversation instead. It preserves the worktree and the
-old conversation. If you switch conversations inside a client, the next run
-opens the one you used last.
+old conversation.
 
 - **Exit the TUI** with `/exit` or its quit shortcut. The launcher closes its
   tunnel. The remote server stays running.
@@ -110,7 +111,8 @@ opens the one you used last.
   the browser tab does not close the tunnel. Keep the launcher running while
   you use the browser.
 - **Reconnect** with the same command after a network interruption. After a
-  Codespace stop, the command restarts the server and opens your last conversation.
+  Codespace stop, the command restarts the server and opens the most recently
+  updated conversation.
   A stop terminates running tools. It does not resume interrupted commands.
 - **Browser mode uses local port 4096 by default.** Use `--port` to override it.
   TUI mode selects an available port unless you specify one.
@@ -129,7 +131,7 @@ your laptop can access the local browser proxy while it runs. Do not forward
 this proxy or the OpenCode server port to other machines.
 
 The server enables only OpenRouter. It reads `OPENROUTER_API_KEY` when it starts.
-Browser mode opens the newest conversation directly.
+Browser mode opens the most recently updated conversation directly.
 The web UI stores opened projects in browser storage. If a new-session page
 shows **New project**, open `/workspaces/n8n` there once. Keep the same browser
 port when you reconnect to preserve this selection.
