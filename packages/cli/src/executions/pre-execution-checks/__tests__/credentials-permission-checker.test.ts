@@ -978,5 +978,19 @@ describe('CredentialsPermissionChecker', () => {
 			await expect(permissionChecker.checkForUser(userId, [node])).resolves.not.toThrow();
 			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
 		});
+
+		it('findInaccessibleForUser does not skip for a view-only user', async () => {
+			flags.credSharingEnabled = true;
+			userRepository.findOne.mockResolvedValueOnce(mock<User>({ id: userId, role: viewOnlyRole }));
+			credentialsFinderService.findCredentialsForUser.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: credentialId, name: 'Test Credential' },
+			]);
+
+			await expect(permissionChecker.findInaccessibleForUser(userId, [node])).resolves.toEqual([
+				{ id: credentialId, name: 'Test Credential', exists: true },
+			]);
+			expect(credentialsFinderService.findCredentialsForUser).toHaveBeenCalled();
+		});
 	});
 });
