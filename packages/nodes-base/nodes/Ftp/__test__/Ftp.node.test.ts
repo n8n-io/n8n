@@ -78,7 +78,10 @@ describe('Ftp', () => {
 		});
 
 		const credentialTestFunctions = mockDeep<ICredentialTestFunctions>();
-		const credential = {
+		const credential: ICredentialsDecrypted = {
+			id: 'test-credential',
+			name: 'Test FTP credential',
+			type: 'ftp',
 			data: {
 				host: 'test.com',
 				port: 21,
@@ -86,7 +89,7 @@ describe('Ftp', () => {
 				password: 'test',
 				forcePasv: true,
 			},
-		} as ICredentialsDecrypted;
+		};
 
 		const result = await new Ftp().methods.credentialTest.ftpConnectionTest.call(
 			credentialTestFunctions,

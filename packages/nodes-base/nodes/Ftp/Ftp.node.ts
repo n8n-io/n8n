@@ -525,14 +525,15 @@ export class Ftp implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				const ftp = new ftpClient();
+				const connectionOptions: ftpClient.Options & { forcePasv?: boolean } = {
+					host: credentials.host as string,
+					port: credentials.port as number,
+					user: credentials.username as string,
+					password: credentials.password as string,
+					forcePasv: credentials.forcePasv as boolean,
+				};
 				try {
-					await ftp.connect({
-						host: credentials.host as string,
-						port: credentials.port as number,
-						user: credentials.username as string,
-						password: credentials.password as string,
-						forcePasv: credentials.forcePasv as boolean,
-					});
+					await ftp.connect(connectionOptions);
 				} catch (error) {
 					await ftp.end();
 					return {
@@ -636,14 +637,15 @@ export class Ftp implements INodeType {
 					}
 				} else {
 					ftp = new ftpClient();
-					await ftp.connect({
+					const connectionOptions: ftpClient.Options & { forcePasv?: boolean } = {
 						host: credentials.host as string,
 						port: credentials.port as number,
 						user: credentials.username as string,
 						password: credentials.password as string,
 						connTimeout: connectionTimeout,
 						forcePasv: credentials.forcePasv as boolean,
-					});
+					};
+					await ftp.connect(connectionOptions);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
