@@ -40,9 +40,6 @@ export class BreakingChangeService {
 	private readonly batchSize = 100;
 	private static readonly REPORT_DURATION_CACHE_THRESHOLD = Time.seconds.toMilliseconds * 2;
 	private static readonly CACHE_KEY_PREFIX = 'breaking-changes:results:';
-	// Bump when the shape of the cached report changes. This keeps a report that an
-	// older version wrote from being served with the new schema.
-	private static readonly CACHE_SCHEMA_VERSION = 2;
 	private readonly ongoingDetections = new Map<
 		BreakingChangeVersion,
 		Promise<BreakingChangeReportResult>
@@ -298,8 +295,10 @@ export class BreakingChangeService {
 		}
 	}
 
+	// The rule set changes with every release, so a report from an older build is stale.
+	// The n8n version in the key rotates the entry on deploy; the old key ages out by TTL.
 	private getCacheKey(targetVersion: BreakingChangeVersion): string {
-		return `${BreakingChangeService.CACHE_KEY_PREFIX}${BreakingChangeService.CACHE_SCHEMA_VERSION}:${targetVersion}`;
+		return `${BreakingChangeService.CACHE_KEY_PREFIX}${N8N_VERSION}:${targetVersion}`;
 	}
 
 	private async detectWithCache(

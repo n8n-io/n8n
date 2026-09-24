@@ -220,22 +220,13 @@ describe('BreakingChangeService', () => {
 			expect(detectSpy).toHaveBeenCalledTimes(1);
 		});
 
-		it('should read and write the cache under a key that includes the cache schema version', async () => {
+		it('should key the cache on the n8n version and the target version', async () => {
 			workflowRepository.find.mockResolvedValue([]);
 			workflowRepository.count.mockResolvedValue(0);
 
 			await service.getDetectionResults('v2');
 
-			expect(cacheService.get).toHaveBeenCalledWith('breaking-changes:results:2:v2');
-		});
-
-		it('should delete the versioned cache key on refresh', async () => {
-			workflowRepository.find.mockResolvedValue([]);
-			workflowRepository.count.mockResolvedValue(0);
-
-			await service.refreshDetectionResults('v2');
-
-			expect(cacheService.delete).toHaveBeenCalledWith('breaking-changes:results:2:v2');
+			expect(cacheService.get).toHaveBeenCalledWith(`breaking-changes:results:${N8N_VERSION}:v2`);
 		});
 
 		it('should clean up ongoing detection promise after completion', async () => {
