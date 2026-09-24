@@ -1,17 +1,9 @@
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
 import { createOAuthClient } from '@/features/ai/mcpAccess/mcp.test.utils';
-
-vi.mock('@/app/components/TimeAgo.vue', () => ({
-	default: {
-		name: 'TimeAgo',
-		props: ['date'],
-		template: '<span>{{ date }}</span>',
-	},
-}));
 
 const { mockMcpStore, mockHasScope } = vi.hoisted(() => ({
 	mockMcpStore: {
@@ -43,6 +35,14 @@ vi.mock('@n8n/stores/rbac.store', () => ({
 
 const createComponent = createComponentRenderer(OAuthClientsTable, {
 	pinia: createTestingPinia(),
+	global: {
+		stubs: {
+			N8nTimeAgo: {
+				props: ['date'],
+				template: '<span>{{ date }}</span>',
+			},
+		},
+	},
 });
 
 describe('OAuthClientsTable', () => {

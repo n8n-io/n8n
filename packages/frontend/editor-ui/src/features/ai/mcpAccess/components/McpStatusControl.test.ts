@@ -1,6 +1,6 @@
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import McpStatusControl from '@/features/ai/mcpAccess/components/McpStatusControl.vue';
 
 const renderComponent = createComponentRenderer(McpStatusControl);

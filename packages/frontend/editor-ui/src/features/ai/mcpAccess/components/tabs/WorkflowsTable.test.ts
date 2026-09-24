@@ -1,19 +1,19 @@
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
-import { getTooltip } from '@/__tests__/utils';
+import { createComponentRenderer, getTooltip } from '@n8n/frontend-test-utils';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 
-vi.mock('@/app/router', () => ({
-	default: {
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRouter: () => ({
 		resolve: vi.fn(({ name, params }) => ({
 			fullPath:
 				name === 'NodeViewExisting'
 					? `/workflows/${params.workflowId}`
 					: `/projects/${params.projectId}`,
 		})),
-	},
+	}),
 }));
 
 const createComponent = createComponentRenderer(WorkflowsTable);

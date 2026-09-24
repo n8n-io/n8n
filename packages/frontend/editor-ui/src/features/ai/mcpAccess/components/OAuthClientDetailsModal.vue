@@ -11,11 +11,12 @@ import {
 	N8nDialogTitle,
 	N8nIcon,
 	N8nText,
+	N8nTimeAgo,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
-import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getClientBrand, scopeLabel } from '../clients.utils';
 
 const props = defineProps<{
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const rootStore = useRootStore();
 
 const brand = computed(() => (props.client ? getClientBrand(props.client.name) : null));
 
@@ -89,7 +91,11 @@ function onRevoke() {
 					{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedOn') }}
 				</N8nText>
 				<N8nText color="text-dark" size="small" data-test-id="mcp-client-details-connected-on">
-					<TimeAgo :date="new Date(client.grantedAt).toISOString()" capitalize />
+					<N8nTimeAgo
+						:date="new Date(client.grantedAt).toISOString()"
+						capitalize
+						:locale="rootStore.defaultLocale"
+					/>
 				</N8nText>
 
 				<N8nText color="text-light" size="small">
