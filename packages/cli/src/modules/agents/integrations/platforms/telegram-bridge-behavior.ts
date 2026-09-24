@@ -23,10 +23,13 @@ export function createTelegramBridgeExecutionContext(
 	return {
 		platformAgentContext: {},
 		...(platformMessage ? { platformMessage } : {}),
-		statusHandle: startTelegramTypingIndicator(params.thread, {
-			logger: params.logger,
-			agentId: params.agentId,
-		}),
+		statusHandle:
+			params.startStatus === false
+				? undefined
+				: startTelegramTypingIndicator(params.thread, {
+						logger: params.logger,
+						agentId: params.agentId,
+					}),
 	};
 }
 

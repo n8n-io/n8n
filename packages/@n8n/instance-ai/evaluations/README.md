@@ -314,12 +314,13 @@ The harness remaps that ID and sends the normal chat request with the workflow
 attachment and structured handoff context. The transcript records the Execute
 action so process expectations can check the response.
 
-Start each panel eval instance with `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED=true`.
+Start each panel eval instance with
+`N8N_FEATURE_FLAG_OVERRIDES='{"118_instance_ai_setup_overhaul":"variant"}'`.
 Set this variable on the n8n server process or in the lane's environment file.
 Setting it only on the eval client does not enable the server feature.
-Run the normal PR tier with the flag on and off. For panel cases, load the
+Run the normal PR tier with `control` and `variant`. For panel cases, load the
 external suite with `--source langtracer --suite <suite-id>`, or stage a local
-case and select it with `--filter <case-slug>`. Run those cases with the flag on.
+case and select it with `--filter <case-slug>`. Run those cases with `variant`.
 The repository does not include a `setup-panel-v2` tier.
 
 Remote Execute cases require LangTracer to preserve `attach.source` when it
@@ -748,7 +749,7 @@ The corpus lives in **LangTracer**. Workflow cases use the `baseline` suite. Age
 }
 ```
 
-`conversation` (≥1 turn, first must be `user`), plus `complexity` and `tags`, are required. `executionScenarios`, `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional — but **a case must declare at least one `executionScenario`, or one process/outcome expectation** (a case that asserts nothing is rejected at load). A _build-only_ case omits `executionScenarios` and is graded by its `processExpectations`/`outcomeExpectations` plus the always-on workflow checks: the workflow is still built, only the mock-execution `successCriteria` pass is skipped. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
+`conversation` (≥1 turn, first must be `user`), plus `complexity` and `tags`, are required. `executionScenarios`, `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, `requiresMemoryCompaction`, and `datasets` (default `["full"]`) are optional — but **a case must declare at least one `executionScenario`, or one process/outcome expectation** (a case that asserts nothing is rejected at load). A _build-only_ case omits `executionScenarios` and is graded by its `processExpectations`/`outcomeExpectations` plus the always-on workflow checks: the workflow is still built, only the mock-execution `successCriteria` pass is skipped. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
 **One case = one LangSmith split**, named from the case slug (the LangTracer case name; for disk-loaded files, the filename without `.json`). Pick a slug you're happy to also use as a `--filter` target.
 
@@ -815,6 +816,21 @@ The current LangTracer case-write schema accepts only `type`, `name`, and
 writes anything. Keep these cases on disk until LangTracer stores descriptions.
 The existing `blank` field also needs server support. The export check catches
 a server that drops it after a write.
+
+### `requiresMemoryCompaction` — grade the window after observational memory compacts
+
+```json
+"requiresMemoryCompaction": true
+```
+
+For a case that is only meaningful once observational memory has compacted the thread — the Observer has written its observations and the early turns are masked out of the agent's window. Production compacts at 30k tokens of visible message content (`N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS`), which is a conversation too long to hand-author, so the flag does two things per-thread, leaving every other case in the run alone:
+
+1. The harness sends a low `observerThresholdTokens` override with **every** turn of that thread. The flag means "compact as soon as there is anything to compact" — the seed does not have to hit a token number. The Observer's prompt, masking and cursor logic are the production ones at any threshold.
+2. After the build, the harness checks the premise held, and reports every expectation on the case **not judged** if it did not. That is an `incomplete` verdict — excluded from scoring, not a red.
+
+The check is the point of the flag: uncompacted, the raw early turns are still in the window, so the agent answers off them and every expectation passes for free. The evidence is structural — `GET /rest/instance-ai/eval/threads/:threadId/memory` returns the observation rows and the compaction cursor straight from `instance_ai_observations` / `instance_ai_observation_cursors`. A cursor means the observer ran and everything up to `lastObservedMessageId` is masked out; the rows are what replaced it. Both, or the case had nothing to test. Nothing parses the system prompt, so a prompt or SDK rename cannot quietly turn "never compacted" into the answer, and the case needs no debug flag.
+
+The judge never sees the premise check — it grades the conversation, not whether the harness configured the scenario. It *does* see the observation rows, as a ground-truth block, so an expectation can grade the summary itself ("memory retained the 4700 threshold") rather than only the agent's reply, which passes just as well on a lucky guess. Authoring guidance — where to state the anchors, why live turn 1 must be off-topic — is in the [skill's context case shape](../../../../.agents/skills/create-instance-ai-eval/case-shapes.md#context-cases-long-conversations-token-cost-compaction).
 
 ### Seeded cases (conversation pre-seeding)
 

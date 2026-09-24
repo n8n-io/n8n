@@ -1,12 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
-	EntityManager,
+	OperationContext,
+	TransactionRunner,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
-import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
@@ -22,14 +23,14 @@ describe('PublicationStatusReporter', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	const errorReporter = mock<ErrorReporter>();
-	const outboxRepository = mock<WorkflowPublicationOutboxRepository>({
-		manager: mock<EntityManager>(),
-	});
+	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
+	const retryStateRepository = mock<WorkflowPublicationRetryStateRepository>();
+	const transactionRunner = mock<TransactionRunner>();
 	const activationErrorsService = mock<ActivationErrorsService>();
 	const push = mock<Push>();
 	const publisher = mock<Publisher>();
 	const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
-	const entityManager = mock<EntityManager>();
+	const operationContext: OperationContext = {};
 	const workflowSharingService = mock<WorkflowSharingService>();
 	const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
 
@@ -37,6 +38,8 @@ describe('PublicationStatusReporter', () => {
 		logger,
 		errorReporter,
 		outboxRepository,
+		retryStateRepository,
+		transactionRunner,
 		activationErrorsService,
 		publisher,
 		triggerStatusRepository,
@@ -65,14 +68,15 @@ describe('PublicationStatusReporter', () => {
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
 		outboxRepository.markPartialSuccess.mockResolvedValue(undefined);
+		retryStateRepository.suppressRetry.mockResolvedValue(undefined);
+		retryStateRepository.clearRetrySuppression.mockResolvedValue(undefined);
 		activationErrorsService.deregister.mockResolvedValue(undefined);
 		activationErrorsService.register.mockResolvedValue(undefined);
 		triggerStatusRepository.replaceForWorkflow.mockResolvedValue(undefined);
 		publisher.publishCommand.mockResolvedValue(undefined);
 		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(userIds);
-		(outboxRepository.manager.transaction as unknown as Mock).mockImplementation(
-			async (runInTransaction: (trx: EntityManager) => Promise<unknown>) =>
-				await runInTransaction(entityManager),
+		transactionRunner.run.mockImplementation(
+			async (_context, runInTransaction) => await runInTransaction(operationContext),
 		);
 	});
 
@@ -103,9 +107,13 @@ describe('PublicationStatusReporter', () => {
 					errorMessage: null,
 				},
 			],
-			entityManager,
+			operationContext,
 		);
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+			'wf-1',
+			operationContext,
+		);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 		expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith('wf-1');
@@ -133,7 +141,7 @@ describe('PublicationStatusReporter', () => {
 
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(
 				1,
-				entityManager,
+				operationContext,
 				'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
 			);
 			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
@@ -207,7 +215,12 @@ describe('PublicationStatusReporter', () => {
 			expect(outboxRepository.markFailed).toHaveBeenCalledWith(
 				1,
 				'registration failed',
-				entityManager,
+				operationContext,
+			);
+			expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+				operationContext,
 			);
 		});
 
@@ -222,7 +235,7 @@ describe('PublicationStatusReporter', () => {
 
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(
 				1,
-				entityManager,
+				operationContext,
 				'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
 			);
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
@@ -242,9 +255,13 @@ describe('PublicationStatusReporter', () => {
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
 			'wf-1',
 			[],
-			entityManager,
+			operationContext,
 		);
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+			'wf-1',
+			operationContext,
+		);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -269,7 +286,11 @@ describe('PublicationStatusReporter', () => {
 		async ({ reason, message }) => {
 			await reporter.report(makeRecord(), { type: 'skipped', reason });
 
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
+			expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+				'wf-1',
+				operationContext,
+			);
 			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 			expect(push.sendToUsers).not.toHaveBeenCalled();
@@ -284,7 +305,16 @@ describe('PublicationStatusReporter', () => {
 	test('version-missing marks the record failed without reporting an error', async () => {
 		await reporter.report(makeRecord(), { type: 'version-missing' });
 
-		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'Published version not found');
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+			1,
+			'Published version not found',
+			operationContext,
+		);
 		expect(errorReporter.error).not.toHaveBeenCalled();
 		expect(activationErrorsService.deregister).not.toHaveBeenCalled();
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -313,7 +343,12 @@ describe('PublicationStatusReporter', () => {
 		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
 			1,
 			'registration failed',
-			entityManager,
+			operationContext,
+		);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
 		);
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -342,7 +377,12 @@ describe('PublicationStatusReporter', () => {
 		await reporter.report(makeRecord(), { type: 'failed', error });
 
 		expect(errorReporter.error).not.toHaveBeenCalled();
-		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, error.message, entityManager);
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, error.message, operationContext);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
 		expect(push.sendToUsers).toHaveBeenCalledWith(
 			{
 				type: 'workflowFailedToActivate',
@@ -388,12 +428,17 @@ describe('PublicationStatusReporter', () => {
 					errorMessage: 'cron unavailable',
 				},
 			],
-			entityManager,
+			operationContext,
 		);
 		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
 			1,
 			'partial registration failed',
-			entityManager,
+			operationContext,
+		);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
 		);
 	});
 
@@ -425,7 +470,11 @@ describe('PublicationStatusReporter', () => {
 		expect(outboxRepository.markPartialSuccess).toHaveBeenCalledWith(
 			1,
 			expectedMessage,
-			entityManager,
+			operationContext,
+		);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+			'wf-1',
+			operationContext,
 		);
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
 			'wf-1',
@@ -452,7 +501,7 @@ describe('PublicationStatusReporter', () => {
 					errorMessage: 'broker down',
 				},
 			],
-			entityManager,
+			operationContext,
 		);
 		// CAT-3432: partial path must NOT register activation errors
 		expect(activationErrorsService.register).not.toHaveBeenCalled();
@@ -490,7 +539,7 @@ describe('PublicationStatusReporter', () => {
 			},
 			userIds,
 		);
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
 		// The rejection is handled asynchronously; flush the microtask queue.
 		await new Promise(process.nextTick);
 		expect(errorReporter.error).toHaveBeenCalledWith(publishError, { shouldBeLogged: true });

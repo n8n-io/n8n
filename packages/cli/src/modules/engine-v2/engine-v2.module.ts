@@ -3,7 +3,7 @@ import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ExecutionResponseChannel } from '@n8n/engine';
+import type { ExecutionResponseSender } from '@n8n/engine';
 import { UserError } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 
@@ -19,7 +19,9 @@ import { randomBytes } from 'node:crypto';
  */
 @BackendModule({ name: 'engine-v2', instanceTypes: ['main'] })
 export class EngineV2Module implements ModuleInterface {
-	private responseChannel?: ExecutionResponseChannel;
+	private responseSender?: ExecutionResponseSender;
+
+	private responseReceiver?: { stop(): Promise<void> };
 
 	async init() {
 		if (Container.get(ExecutionsConfig).mode === 'queue') {
@@ -37,19 +39,32 @@ export class EngineV2Module implements ModuleInterface {
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).start();
 
-		// One channel, both planes. Handed over before the engine starts: a short
-		// run answers before `startExecution` returns, and nobody replays.
-		const { ExecutionResponseChannel, InMemoryResponseTransport } = await import('@n8n/engine');
-		// In-memory for now: both planes share this process. A transport that
-		// crosses one arrives with CAT-4572.
-		const responseChannel = new ExecutionResponseChannel(
-			new InMemoryResponseTransport(),
-			Container.get(Logger).scoped('engine-v2'),
+		// Hand both endpoints over before the engine starts. A short run can answer
+		// before `startExecution` returns, and responses are not replayed.
+		const { InMemoryExecutionResponseChannel } = await import(
+			'./response-channel/in-memory-execution-response-channel.js'
 		);
-		this.responseChannel = responseChannel;
+		const { InMemoryExecutionResponseSender } = await import(
+			'./response-channel/in-memory-execution-response-sender.js'
+		);
+		const { InMemoryExecutionResponseReceiver } = await import(
+			'./response-channel/in-memory-execution-response-receiver.js'
+		);
+		const { EngineV2WebhookResponder } = await import(
+			'@/services/engine-v2-webhook-responder.service.js'
+		);
+		// In-memory for now because both planes share this process. Redis endpoints
+		// can use the same response contracts when the planes run separately.
+		const responseChannel = new InMemoryExecutionResponseChannel();
+		const scopedLogger = Container.get(Logger).scoped('engine-v2');
+		const responseSender = new InMemoryExecutionResponseSender(responseChannel, scopedLogger);
+		const responseReceiver = new InMemoryExecutionResponseReceiver(responseChannel, scopedLogger);
+		Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
+		this.responseSender = responseSender;
+		this.responseReceiver = responseReceiver;
 
 		const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-		await Container.get(EngineV2Runtime).init(responseChannel);
+		await Container.get(EngineV2Runtime).init(responseSender);
 
 		const { EngineDataPlaneClient } = await import('./engine-data-plane-client.js');
 		const { EngineDataPlaneProxyService } = await import(
@@ -67,8 +82,8 @@ export class EngineV2Module implements ModuleInterface {
 			await Container.get(EngineV2Runtime).shutdown();
 		} finally {
 			// After the engine, so a final response still has somewhere to go.
-			// In a `finally`, so a failed runtime shutdown still releases the channel.
-			await this.responseChannel?.stop();
+			// A failed runtime shutdown must still release both endpoints.
+			await Promise.all([this.responseSender?.stop(), this.responseReceiver?.stop()]);
 		}
 
 		// After the engine, so its final flush still has somewhere to land.

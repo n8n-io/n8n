@@ -16,6 +16,7 @@ defineProps<{
 	includeAction: boolean;
 	includeCredential: boolean;
 	hasCredentialIssue?: boolean;
+	hideTabs?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -44,7 +45,7 @@ defineSlots<{ actions?: {} }>();
 			</N8nText>
 			<slot name="actions" />
 		</div>
-		<div :class="$style.tabsContainer">
+		<div v-if="!hideTabs" :class="$style.tabsContainer">
 			<NodeSettingsTabs
 				:class="extraTabsClassName"
 				:model-value="selectedTab"

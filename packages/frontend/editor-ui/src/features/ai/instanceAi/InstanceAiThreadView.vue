@@ -66,6 +66,7 @@ import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgen
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 
 const props = defineProps<{
 	threadId: string;
@@ -80,6 +81,7 @@ const router = useRouter();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const toast = useToast();
+const recentWorkflowsStore = useRecentWorkflowsStore();
 
 const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversation>>('conversation');
 
@@ -237,6 +239,13 @@ const setupPanelProjectId = computed(() =>
 		: undefined,
 );
 const setupOverlapHeight = ref(0);
+const setupPanelRef = useTemplateRef<InstanceType<typeof InstanceAiSetupPanel>>('setupPanel');
+onUnmounted(
+	thread.registerSetupChatTelemetryContext(() => {
+		const context = setupPanelRef.value?.getChatTelemetryContext();
+		return context?.workflow_id === setupPanelWorkflowId.value ? context : undefined;
+	}),
+);
 
 const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
 const agentReturnWorkflowId = agentReturnContext?.workflowId;
@@ -255,6 +264,20 @@ function openAgentChatPreview(agentId: string, projectId: string): boolean {
 	return true;
 }
 
+function openWorkflowPreview(workflowId: string): boolean {
+	const artifact = thread.producedArtifacts.get(workflowId);
+	recentWorkflowsStore.registerWorkflowOpen(workflowId, artifact?.projectId ?? thread.projectId);
+	return preview.openWorkflowPreview(workflowId);
+}
+
+function selectArtifactTab(tabId: string): void {
+	const artifact = thread.producedArtifacts.get(tabId);
+	if (artifact?.type === 'workflow') {
+		recentWorkflowsStore.registerWorkflowOpen(tabId, artifact.projectId ?? thread.projectId);
+	}
+	preview.selectTab(tabId);
+}
+
 const activeAgentPreviewSessionId = computed(() => {
 	const context = handoffContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -268,7 +291,7 @@ const activeAgentPreviewSessionId = computed(() => {
 	return persisted?.agentId === preview.activeAgentId.value ? persisted.threadId : undefined;
 });
 
-provide('openWorkflowPreview', preview.openWorkflowPreview);
+provide('openWorkflowPreview', openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
@@ -323,7 +346,7 @@ function toggleArtifactsPreview() {
 	);
 	const tabToOpen = selectedTab ?? preview.allArtifactTabs.value[0];
 	if (tabToOpen) {
-		preview.selectTab(tabToOpen.id);
+		selectArtifactTab(tabToOpen.id);
 	}
 }
 
@@ -841,6 +864,7 @@ function handleNewThreadClick() {
 					<template #above-input>
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
+							ref="setupPanel"
 							:workflow-id="setupPanelWorkflowId"
 							:project-id="setupPanelProjectId"
 							@update:overlap-height="setupOverlapHeight = $event"
@@ -928,7 +952,7 @@ function handleNewThreadClick() {
 						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
-						@update:model-value="preview.selectTab"
+						@update:model-value="selectArtifactTab"
 					>
 						<InstanceAiPreviewTabBar
 							:tabs="preview.allArtifactTabs.value"

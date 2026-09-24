@@ -311,6 +311,12 @@ export class DatabricksVectorStore extends VectorStore {
 	): Promise<string[]> {
 		const vectorColumn = this.assertDirectAccess();
 		const { primaryKey, name } = this.index;
+		// The row below would write the document text over its own primary key
+		if (this.contentColumn === primaryKey) {
+			throw new UserError(
+				`Column ${primaryKey} is the primary key of ${name}. Select another content column`,
+			);
+		}
 		const schemaColumns = new Set(this.index.schemaColumns ?? []);
 		const ids = documents.map((doc, i) => options?.ids?.[i] ?? doc.id ?? randomUUID());
 

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import {
-	N8nPreviewTag,
+	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -53,7 +53,7 @@ onMounted(async () => {
 			:show-docs-link="false"
 		>
 			<template #titleTrailing>
-				<N8nPreviewTag size="medium" />
+				<N8nPreviewBadge size="medium" />
 			</template>
 		</N8nSettingsPageHeader>
 

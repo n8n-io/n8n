@@ -14,14 +14,13 @@ import {
 import { generateId } from '../../database/generate-id';
 import type { WorkflowGraph } from '../../graph';
 import { noopLifecycleEventPublisher } from '../../lifecycle-events';
-import { createConsoleLogger } from '../../logging';
 import {
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
 	type StepMessage,
 	type WorkQueue,
 } from '../../queue';
-import { ExecutionResponseChannel, noopResponseTransport } from '../../response-channel';
+import { noopExecutionResponseSender } from '../../response-channel';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -76,7 +75,7 @@ describe('execution start (integration)', () => {
 				stepQueue,
 				orchestrationQueue,
 				noopLifecycleEventPublisher,
-				new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
+				noopExecutionResponseSender,
 			),
 		);
 		worker.start();
@@ -103,7 +102,7 @@ describe('execution start (integration)', () => {
 			workflow: {},
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: generateId(),
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 		await ready;
 
@@ -150,7 +149,7 @@ describe('execution start (integration)', () => {
 			graph,
 			workflow: {},
 			triggerOutputs: null,
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

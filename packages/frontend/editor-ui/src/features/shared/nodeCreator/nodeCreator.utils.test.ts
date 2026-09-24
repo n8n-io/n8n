@@ -30,11 +30,11 @@ import {
 } from './nodeCreator.utils';
 import {
 	mockActionCreateElement,
-	mockRestrictedNodeTypes,
 	mockNodeCreateElement,
 	mockSectionCreateElement,
 	mockSimplifiedNodeType,
 } from './__tests__/utils';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
