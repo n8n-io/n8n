@@ -41,10 +41,10 @@ export function attachResponseHooks(
 	);
 
 	additionalData.hooks.addHandler('sendResponse', (response) => {
-		const error = respond.send(toJsonPayload(response));
-		if (error) {
+		const result = respond.send(toJsonPayload(response));
+		if (!result.ok) {
 			// Fail the node so the caller can see the response error.
-			throw error;
+			throw result.error;
 		}
 	});
 }

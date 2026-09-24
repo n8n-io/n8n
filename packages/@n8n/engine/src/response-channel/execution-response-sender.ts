@@ -1,3 +1,5 @@
+import { createResultOk, type Result } from '@n8n/utils/result';
+
 import {
 	noopResponseEmitter,
 	type ExecutionResponse,
@@ -6,14 +8,14 @@ import {
 
 /** Sends responses from an execution back to its caller. */
 export interface ExecutionResponseSender {
-	send(response: ExecutionResponse): Error | null;
+	send(response: ExecutionResponse): Result<void, Error>;
 	emitterFor(executionId: string): ResponseEmitter;
 	stop(): Promise<void>;
 }
 
 /** Response sender for a host that discards execution responses. */
 export const noopExecutionResponseSender: ExecutionResponseSender = Object.freeze({
-	send: () => null,
+	send: () => createResultOk(undefined),
 	emitterFor: (_executionId: string) => noopResponseEmitter,
 	stop: async () => {},
 });

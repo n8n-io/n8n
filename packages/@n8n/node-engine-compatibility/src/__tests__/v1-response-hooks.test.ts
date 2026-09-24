@@ -6,7 +6,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { attachResponseHooks } from '../v1-response-hooks';
 
 const newRequest = () => {
-	const respond: ResponseEmitter = { send: vi.fn() };
+	const respond: ResponseEmitter = {
+		send: vi.fn(() => ({ ok: true as const, result: undefined })),
+	};
 	const request = {
 		context: {
 			executionId: 'exec-1',
