@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ExternalDependencies, IStepExecutor } from '../../dependencies';
 import { deriveLoops, type WorkflowGraph } from '../../graph';
 import type { LifecycleEventPublisher, LifecycleEvent } from '../../lifecycle-events';
+import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import {
@@ -56,6 +57,7 @@ function makeHandler(
 	queue: WorkQueue<OrchestrationMessage>,
 	dependencies: ExternalDependencies,
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
+	responseSender: ExecutionResponseSender = noopExecutionResponseSender,
 	onStepSuspended?: () => void,
 ): StepReadyHandler {
 	return new StepReadyHandler(
@@ -64,6 +66,7 @@ function makeHandler(
 		queue,
 		dependencies,
 		lifecycleEventPublisher,
+		responseSender,
 		onStepSuspended,
 	);
 }
@@ -170,6 +173,8 @@ describe('StepReadyHandler', () => {
 				iteration: 0,
 				callerContext: { hostMode: 'trigger' },
 			},
+			// The step can answer the caller while it runs.
+			respond: { send: expect.any(Function) },
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
@@ -757,6 +762,7 @@ describe('StepReadyHandler waits', () => {
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
 			makeLifecycleEventPublisher(),
+			noopExecutionResponseSender,
 			onStepSuspended,
 		);
 
@@ -775,6 +781,7 @@ describe('StepReadyHandler waits', () => {
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
 			makeLifecycleEventPublisher(),
+			noopExecutionResponseSender,
 			onStepSuspended,
 		);
 
