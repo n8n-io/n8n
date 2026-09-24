@@ -6,6 +6,39 @@ import type { Mocked } from 'vitest';
 
 import { EmbeddingsAzureOpenAi } from '../EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node';
 
+const tokenCredentialSpy = vi.fn();
+
+// Records the constructor arguments but still derives the deployment from the credential it was
+// given, so the other tests keep asserting real mapping rather than a fixed stub.
+vi.mock('../../llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential', () => ({
+	N8nOAuth2TokenCredential: class N8nOAuth2TokenCredentialMock {
+		private credential: Record<string, unknown> = {};
+
+		constructor(...args: unknown[]) {
+			tokenCredentialSpy(...args);
+			this.credential = (args[1] ?? {}) as Record<string, unknown>;
+		}
+
+		getDeploymentDetails = async () => {
+			const c = this.credential;
+			if (c.endpointType === 'foundry') {
+				return {
+					apiVersion: c.apiVersion ?? '',
+					endpoint: c.foundryEndpoint,
+					resourceName: c.resourceName ?? '',
+					endpointType: 'foundry' as const,
+					foundryEndpoint: c.foundryEndpoint,
+				};
+			}
+			return {
+				apiVersion: c.apiVersion ?? '',
+				endpoint: c.endpoint,
+				resourceName: c.resourceName ?? '',
+			};
+		};
+	},
+}));
+
 vi.mock('@langchain/openai');
 
 class MockProxyAgent {}
@@ -211,11 +244,33 @@ describe('AzureOpenAIEmbeddings', () => {
 				);
 			});
 
+			// The mint posts the client secret to a stored URL, so it runs inside the egress policy,
+			// as the chat model node's does.
+			it('should hand the egress filter to the token credential', async () => {
+				const mockContext = setupMockContext();
+				mockContext.getCredentials.mockResolvedValue({
+					...entraCredential,
+					resourceName: 'my-resource',
+					apiVersion: 'v1',
+				});
+				selectEntra(mockContext);
+
+				await embeddingsAzureOpenAi.supplyData.call(mockContext, 0);
+
+				expect(tokenCredentialSpy).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					undefined,
+					mockContext.helpers.getSecureEgressFilter(),
+				);
+			});
+
 			it('should read the Entra credential, not the API key one', async () => {
 				const mockContext = setupMockContext();
 				mockContext.getCredentials.mockResolvedValue({
 					...entraCredential,
 					endpoint: 'https://test-resource-name.openai.azure.com',
+					apiVersion: 'v1',
 				});
 				selectEntra(mockContext);
 
@@ -227,6 +282,45 @@ describe('AzureOpenAIEmbeddings', () => {
 				expect(mockContext.getCredentials).not.toHaveBeenCalledWith('azureOpenAiApi');
 			});
 		});
+
+		// Existing nodes have no `authentication` parameter stored. The Workflow constructor fills
+		// this default into node.parameters, and getCredentials gates the API key credential on it,
+		// so changing it would point every saved node at a credential it does not have.
+		it('should default authentication to the API key, for nodes saved before the selector', () => {
+			const authentication = new EmbeddingsAzureOpenAi().description.properties.find(
+				(p) => p.name === 'authentication',
+			);
+
+			expect(authentication?.default).toBe('azureOpenAiApi');
+		});
+
+		it.each([
+			[
+				'no resource name or endpoint',
+				{ apiKey: 'test-api-key', apiVersion: 'v1' },
+				'Resource Name is missing in the selected Azure OpenAI API credential.',
+			],
+			[
+				'no API version',
+				{ apiKey: 'test-api-key', resourceName: 'my-resource' },
+				'API Version is missing in the selected Azure OpenAI API credential.',
+			],
+		])(
+			'should say which field is missing when a classic credential has %s',
+			async (_, credential, message) => {
+				const mockContext = setupMockContext();
+				mockContext.getCredentials.mockResolvedValue(credential);
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'text-embedding-3-large';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+
+				await expect(embeddingsAzureOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
+					message,
+				);
+			},
+		);
 
 		it('should reject a Foundry credential that has no endpoint', async () => {
 			const mockContext = setupMockContext();

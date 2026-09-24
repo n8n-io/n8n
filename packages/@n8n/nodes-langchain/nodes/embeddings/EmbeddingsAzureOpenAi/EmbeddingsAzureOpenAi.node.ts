@@ -10,12 +10,15 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { AZURE_OPENAI_INFERENCE_SCOPE } from '../../llms/LmChatAzureOpenAi/types';
 import { N8nOAuth2TokenCredential } from '../../llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential';
+import {
+	AuthenticationType,
+	AZURE_OPENAI_INFERENCE_SCOPE,
+} from '../../llms/LmChatAzureOpenAi/types';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../../llms/LmChatAzureOpenAi/types';
 
-const API_KEY_AUTH = 'azureOpenAiApi';
-const ENTRA_AUTH = 'azureEntraCognitiveServicesOAuth2Api';
+const API_KEY_AUTH = AuthenticationType.ApiKey;
+const ENTRA_AUTH = AuthenticationType.EntraOAuth2;
 
 type AzureApiKeyCredential = {
 	apiKey: string;
@@ -189,7 +192,12 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 		if (authentication === ENTRA_AUTH) {
 			const credential =
 				await this.getCredentials<AzureEntraCognitiveServicesOAuth2ApiCredential>(ENTRA_AUTH);
-			const entraCredential = new N8nOAuth2TokenCredential(this.getNode(), credential);
+			const entraCredential = new N8nOAuth2TokenCredential(
+				this.getNode(),
+				credential,
+				undefined,
+				this.helpers.getSecureEgressFilter(),
+			);
 			const deployment = await entraCredential.getDeploymentDetails();
 
 			target = {
@@ -205,6 +213,8 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			target = credential;
 			apiKey = credential.apiKey;
 		}
+
+		const credentialLabel = authentication === ENTRA_AUTH ? 'Azure Entra ID' : 'Azure OpenAI API';
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -224,7 +234,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			if (!foundryURL) {
 				throw new NodeOperationError(
 					this.getNode(),
-					'Foundry endpoint is missing in the selected Azure OpenAI API credential.',
+					`Foundry endpoint is missing in the selected ${credentialLabel} credential.`,
 				);
 			}
 			const embeddings = new OpenAIEmbeddings({
@@ -243,6 +253,21 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			return {
 				response: logWrapper(embeddings, this),
 			};
+		}
+
+		// A classic deployment addresses <resource>.openai.azure.com/...?api-version=. An empty
+		// value for either reaches Azure as a malformed URL, so say which field is missing.
+		if (!target.endpoint?.trim() && !target.resourceName?.trim()) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Resource Name is missing in the selected ${credentialLabel} credential.`,
+			);
+		}
+		if (!target.apiVersion?.trim()) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`API Version is missing in the selected ${credentialLabel} credential.`,
+			);
 		}
 
 		const embeddings = new AzureOpenAIEmbeddings({
