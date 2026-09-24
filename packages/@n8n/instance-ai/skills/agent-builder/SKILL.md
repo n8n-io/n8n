@@ -85,6 +85,12 @@ into a request for a Slack node tool. Preserve unspecified and ambiguous
 implementation details so the builder can resolve them with its own guidance
 and interactive tools.
 
+When the target agent already has instructions, tools, or tasks, read that
+config before the handoff. Forward the user message as a request to confirm
+those predefined selections. Do not rewrite them into requirements the user
+stated. Do not add tools, tasks, or instructions the user did not ask for.
+Do not tell the builder to finish the build before the user answers.
+
 ## Prerequisites
 
 Before the first `build-agent` call, create prerequisites the builder cannot
