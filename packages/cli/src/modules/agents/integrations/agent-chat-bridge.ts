@@ -490,17 +490,32 @@ export class AgentChatBridge {
 			runId,
 			toolCallId,
 			resumeData,
-			{ ...(context ? { messageContext: context.messageContext } : {}) },
+			{
+				...(context ? { messageContext: context.messageContext } : {}),
+				// Nobody clicked, so this must not speak to them. It only keeps a
+				// card the resumed turn raises addressed to the person whose
+				// conversation it belongs to.
+				...(context?.messageContext?.interactingUserId
+					? { cardRecipientId: context.messageContext.interactingUserId }
+					: {}),
+			},
 		);
 	}
 
-	async deliverWakeResponse(threadId: string, chunks: StreamChunk[]): Promise<void> {
+	async deliverWakeResponse(
+		threadId: string,
+		chunks: StreamChunk[],
+		cardRecipientId?: string,
+	): Promise<void> {
 		await this.streamConsumer.consume(
 			(async function* () {
 				yield* chunks;
 			})(),
 			this.chat.thread(threadId),
-			{ throwOnDeliveryError: true },
+			{
+				throwOnDeliveryError: true,
+				...(cardRecipientId ? { actingUserId: cardRecipientId } : {}),
+			},
 		);
 	}
 

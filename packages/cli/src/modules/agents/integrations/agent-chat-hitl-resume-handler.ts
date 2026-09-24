@@ -270,14 +270,20 @@ export class AgentChatHitlResumeHandler {
 		resumeData: unknown,
 		options: Pick<ResumeForChatConfig, 'messageContext' | 'contextConversation'> & {
 			/**
-			 * Present means the duplicate-click notice goes to them and a card the
-			 * resumed turn raises is addressed to them. A resume no user triggered
-			 * omits it and stays silent.
+			 * The user who clicked. The duplicate-click notice goes to them, and a
+			 * card the resumed turn raises is addressed to them.
 			 */
 			actingUser?: Author;
+			/**
+			 * Addressee for a card the resumed turn raises, where no user clicked.
+			 * A server-driven resume names one so the card stays private, but it
+			 * must not speak to them, so it never triggers the notice.
+			 */
+			cardRecipientId?: string;
 		} = {},
 	): Promise<void> {
-		const { actingUser, ...context } = options;
+		const { actingUser, cardRecipientId, ...context } = options;
+		const cardUserId = actingUser?.userId ?? cardRecipientId;
 		if (this.activeResumedRuns.has(runId)) {
 			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
 			if (actingUser) {
@@ -303,7 +309,7 @@ export class AgentChatHitlResumeHandler {
 				await this.options.streamConsumer.consume(stream, thread, {
 					...resumeExecutionContext,
 					statusHandle,
-					...(actingUser ? { actingUserId: actingUser.userId } : {}),
+					...(cardUserId ? { actingUserId: cardUserId } : {}),
 				});
 			} finally {
 				// The stream consumer clears the status right before the first response;
