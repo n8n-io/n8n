@@ -194,6 +194,7 @@ describe('MigrationRuleDetail', () => {
 
 			const link = await screen.findByTestId('migration-rule-how-to-fix-docs-link');
 			expect(link).toHaveAttribute('href', 'https://docs.example.com/rule-1');
+			expect(link).toHaveTextContent('documentation');
 			expect(screen.getByTestId('migration-rule-how-to-fix')).toHaveTextContent(
 				'Follow the steps in the documentation to resolve this change.',
 			);
