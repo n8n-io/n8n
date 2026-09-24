@@ -419,11 +419,9 @@ const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
 const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 
 function isHttpFullResponse(response: unknown): response is IN8nHttpFullResponse {
+	// A missing body means that the response has an empty body.
 	return (
-		isRecord(response) &&
-		'body' in response &&
-		isRecord(response.headers) &&
-		typeof response.statusCode === 'number'
+		isRecord(response) && isRecord(response.headers) && typeof response.statusCode === 'number'
 	);
 }
 

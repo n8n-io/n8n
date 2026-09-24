@@ -2376,6 +2376,24 @@ describe('executeWebhook on engine 2.0', () => {
 			});
 		});
 
+		it('answers with an empty body when the response has no body key', async () => {
+			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
+			const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
+
+			dataPlane.get(executionId)?.({
+				type: 'response',
+				executionId,
+				payload: { headers: { location: 'https://example.com' }, statusCode: 307 },
+			});
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback).toHaveBeenCalledWith(null, {
+				data: undefined,
+				headers: { location: 'https://example.com' },
+				responseCode: 307,
+			});
+		});
+
 		it('answers with an empty body when the Respond node never runs', async () => {
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
 
