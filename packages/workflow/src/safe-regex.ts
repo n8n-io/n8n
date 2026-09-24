@@ -186,6 +186,12 @@ export function resetInternalRegexEngine(): void {
 	internalEngine = createDefaultEngine();
 }
 
+/** @deprecated Renamed to {@link setInternalRegexEngine}. */
+export const setSafeRegexEngine = setInternalRegexEngine;
+
+/** @deprecated Renamed to {@link resetInternalRegexEngine}. */
+export const resetSafeRegexEngine = resetInternalRegexEngine;
+
 internalEngine = createDefaultEngine();
 
 /** For a pattern n8n itself authored. Always the built-in engine, whatever an instance selects for a user's patterns. */
@@ -197,3 +203,6 @@ export const safeInternalRegex: RegexEngine = {
 	matchAll: (pattern, input, flags) => internalEngine.matchAll(pattern, input, flags),
 	split: (pattern, input, flags) => internalEngine.split(pattern, input, flags),
 };
+
+/** @deprecated Renamed to {@link safeInternalRegex}. */
+export const safeRegex: RegexEngine = safeInternalRegex;
