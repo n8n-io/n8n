@@ -357,7 +357,6 @@ export class EvalExecutionService {
 				}
 			}
 
-			// The real node applies its conditions and limit to the rows before emitting them.
 			const bypassSet = new Set(bypassNodeNames);
 			for (const node of workflowEntity.nodes) {
 				if (!bypassSet.has(node.name) || !emitsDataTableRows(node)) continue;

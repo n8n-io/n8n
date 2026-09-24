@@ -45,8 +45,7 @@ export function applyDataTableReadParameters(
 		kept = items.filter((item) =>
 			matchType === 'allConditions'
 				? predicates.every((p) => p(item.json))
-				: // An unevaluable condition counts as a match, so a partial OR keeps every row.
-					!allEvaluable || predicates.some((p) => p(item.json)),
+				: !allEvaluable || predicates.some((p) => p(item.json)),
 		);
 	}
 	if (sortBy) kept = sortRows(kept, sortBy);
@@ -118,7 +117,6 @@ function isEmptyCell(value: unknown): boolean {
 	return value === null || value === undefined || value === '';
 }
 
-// Only scalar cells take part in comparisons; an object cell never matches a filter value.
 function asText(value: unknown): string | undefined {
 	if (typeof value === 'string') return value;
 	if (typeof value === 'number' || typeof value === 'boolean') return String(value);

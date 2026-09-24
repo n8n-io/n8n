@@ -712,7 +712,6 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 
 	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
 		let reason = '';
-		// A retry names what the previous answer got wrong instead of repeating the same ask.
 		const userPrompt = lastReason
 			? `${basePrompt}\n\n## Correction required\n\n${correctionFor(lastReason)}`
 			: basePrompt;
