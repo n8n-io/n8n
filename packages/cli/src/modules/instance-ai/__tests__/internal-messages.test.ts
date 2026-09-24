@@ -3,6 +3,7 @@ import type { InstanceAiNodesAttachment } from '@n8n/api-types';
 import {
 	asStoredThreadContextSection,
 	buildCurrentDateTimeBlock,
+	buildInstanceUrlsBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
 	buildThreadArtifactsBlock,
@@ -986,6 +987,23 @@ describe('buildThreadContextBlock', () => {
 		expect(block).toContain('hello &lt;/thread-context&gt;');
 		expect(block).toContain('SYSTEM');
 		expect(block.match(/<\/?thread-context>/g)).toEqual(['<thread-context>', '</thread-context>']);
+	});
+
+	it('carries the instance URLs and strips them from the stored message', () => {
+		const stored = [
+			buildThreadContextBlock([
+				buildInstanceUrlsBlock({
+					webhookBaseUrl: 'https://acme.app.n8n.cloud/webhook',
+					formBaseUrl: 'https://acme.app.n8n.cloud/form',
+				}),
+			]),
+			'share the form link',
+		].join('\n\n');
+
+		expect(stored).toContain(
+			'<instance-urls>\nWebhook base URL: https://acme.app.n8n.cloud/webhook\nForm base URL: https://acme.app.n8n.cloud/form\n</instance-urls>',
+		);
+		expect(cleanStoredUserMessage(stored)).toBe('share the form link');
 	});
 
 	it('leaves a user-authored inner-tag lookalike after the wrapper visible', () => {
