@@ -256,16 +256,20 @@ function isCollectionLocation(segments: string[], kind: EntityKind): boolean {
 	return segments.length === 3 && segments[0] === PACKAGE_ENTITY_LAYOUT[kind].directory;
 }
 
-/** `workflows/<entry>/workflow.json`, optionally below one or more `folders/<entry>/` levels. */
+/**
+ * `workflows/<entry>/workflow.json`, optionally nested below folders. The export
+ * writes deeper folder levels as bare slugs under the first `folders/` segment
+ * (`folders/<a>/<b>/workflows/...`), not as repeated `folders/<slug>` pairs, so
+ * accept any folder-chain depth before the `workflows/<entry>/` leaf.
+ */
 function isWorkflowLocation(segments: string[]): boolean {
-	let start = 0;
-	while (
-		segments[start] === PACKAGE_ENTITY_LAYOUT.folders.directory &&
-		segments.length - start > 3
-	) {
-		start += 2;
-	}
-	return isCollectionLocation(segments.slice(start), 'workflows');
+	if (!isCollectionLocation(segments.slice(-3), 'workflows')) return false;
+	const container = segments.slice(0, -3);
+	// Either a project/root workflow (no container), or one under a folder chain.
+	// A folder chain is `folders/<slug>(/<slug>)*`, so it needs at least one slug
+	// after `folders/` — reject a bare `folders/` with no folder entry.
+	if (container.length === 0) return true;
+	return container[0] === PACKAGE_ENTITY_LAYOUT.folders.directory && container.length >= 2;
 }
 
 function unsupportedLocation(file: EntityFile): UserError {
