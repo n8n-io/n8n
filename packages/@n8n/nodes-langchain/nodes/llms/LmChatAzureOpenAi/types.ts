@@ -67,7 +67,11 @@ export interface AzureOpenAIOAuth2ModelConfig extends AzureOpenAIBaseModelConfig
 /** Audience for the node's inference requests. */
 export const AZURE_OPENAI_INFERENCE_AUDIENCE = 'https://cognitiveservices.azure.com';
 
-/** The same audience in the form `getBearerTokenProvider` expects. */
+/**
+ * The audience in the form `getBearerTokenProvider` takes. It is only required by that API:
+ * `N8nOAuth2TokenCredential` ignores the scopes it is handed and asks for the audience as the
+ * `resource` body parameter, which is what the v1.0 token endpoint reads.
+ */
 export const AZURE_OPENAI_INFERENCE_SCOPE = `${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`;
 
 /**
