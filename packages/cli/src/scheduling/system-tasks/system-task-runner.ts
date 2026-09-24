@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { InstanceType } from '@n8n/constants';
+import { Time, type InstanceType } from '@n8n/constants';
 import type {
 	SystemTask,
 	SystemTaskClass,
@@ -174,6 +174,7 @@ export class SystemTaskRunner {
 		}
 
 		const schedule = resolveSystemTaskSchedule(task);
+		this.warnIfIntervalIsRounded(task, schedule);
 
 		if (placement.scope === 'instance') {
 			this.logger.debug('System task will run on a per-instance timer', {
@@ -195,6 +196,20 @@ export class SystemTaskRunner {
 					? async () => await this.isProvisionedElsewhere(task)
 					: undefined,
 			});
+		}
+	}
+
+	private warnIfIntervalIsRounded(task: SystemTask, schedule: SystemTaskSchedule): void {
+		if (task.schedule.kind === 'interval' && schedule.kind === 'interval') {
+			const declaredMs = Math.round(task.schedule.intervalSeconds * Time.seconds.toMilliseconds);
+			const plannedMs = schedule.intervalSeconds * Time.seconds.toMilliseconds;
+			if (declaredMs !== plannedMs) {
+				this.logger.warn('A system task interval is rounded to the whole second', {
+					name: task.name,
+					declaredSeconds: task.schedule.intervalSeconds,
+					intervalSeconds: schedule.intervalSeconds,
+				});
+			}
 		}
 	}
 
