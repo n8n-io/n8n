@@ -33,6 +33,10 @@ import type { RawActionToolOperation, RawContextToolOperation } from './integrat
 /** Resume shape for the action tool, including a follow-up interactive card. */
 export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
 
+export function integrationActionApprovalKey(connectionId: string, action: string): string {
+	return JSON.stringify(['integration_action', connectionId, action]);
+}
+
 export async function executeContextToolOperation(params: {
 	operation: RawContextToolOperation;
 	descriptor: IntegrationToolConnectionDescriptor;
@@ -191,7 +195,10 @@ export async function executeActionToolOperation(params: {
 
 	const needsApproval =
 		operation.action !== approvedAction &&
-		actionNeedsApproval(descriptor.approval, operation.action);
+		actionNeedsApproval(descriptor.approval, operation.action) &&
+		!ctx.approvalContext?.approvedKeys.has(
+			integrationActionApprovalKey(descriptor.integrationConnectionId, operation.action),
+		);
 
 	if (needsApproval) {
 		// A batch cannot suspend, so a gated action inside one has to be refused
@@ -210,6 +217,7 @@ export async function executeActionToolOperation(params: {
 			{
 				type: 'approval',
 				toolName: operation.action,
+				...(ctx.approvalContext ? { supportsSessionApproval: true } : {}),
 				displayName: describeActionForApproval(operation),
 				args: actionInput,
 			},

@@ -9,7 +9,7 @@
 | agentName | varchar(255) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | emoji | varchar(8) |  | true |  |  |  |
-| id | varchar(128) |  | false | [public.agent_execution](public.agent_execution.md) [public.agent_message_queue](public.agent_message_queue.md) |  |  |
+| id | varchar(128) |  | false | [public.agent_execution](public.agent_execution.md) [public.agent_message_queue](public.agent_message_queue.md) [public.agent_thread_grants](public.agent_thread_grants.md) |  |  |
 | ownerId | uuid |  | true |  | [public.user](public.user.md) | User who started this private session |
 | parentAgentId | varchar(36) |  | true |  |  | Saved agent id of the parent that delegated this subagent run. |
 | parentThreadId | varchar(128) |  | true |  |  | Parent session thread id that delegated this subagent run. |
@@ -65,6 +65,7 @@ erDiagram
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_thread_grants" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
@@ -136,6 +137,12 @@ erDiagram
   bigint id
   json payload
   varchar_32_ source
+  varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_thread_grants" {
+  timestamp_3__with_time_zone createdAt
+  varchar_512_ grantKey
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }

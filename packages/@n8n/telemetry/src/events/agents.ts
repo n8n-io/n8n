@@ -160,6 +160,18 @@ const agentPublish = {
 };
 
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
+	USER_RESPONDED_TO_AGENT_TOOL_APPROVAL: {
+		name: 'User responded to agent tool approval',
+		description:
+			'The tool gate accepted a human approval response. Excludes parent forwarding and calls that use an existing session grant. A session grant can still fail to save.',
+		properties: z.object({
+			agent_id: z.string(),
+			user_id: z.string().optional(),
+			run_type: agentRunType,
+			approved: z.boolean(),
+			scope: z.enum(['once', 'session']),
+		}),
+	},
 	AGENT_SETUP_COMPLETED: {
 		name: 'Agent setup completed',
 		description:

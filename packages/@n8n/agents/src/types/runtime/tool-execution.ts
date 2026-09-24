@@ -12,6 +12,7 @@ import type {
 	BuiltTool,
 	PendingToolCall,
 	ToolSuspendOptions,
+	ToolApprovalContext,
 } from '../index';
 import type { AgentPersistenceOptions, ToolResultEntry } from '../sdk/agent';
 import type { AgentMessage } from '../sdk/message';
@@ -103,6 +104,7 @@ export interface ToolBatchContext {
 	persistence?: AgentPersistenceOptions;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	approvalContext?: ToolApprovalContext;
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
 }
@@ -120,6 +122,7 @@ export interface ProcessToolCallParams extends ToolCallIdentity {
 	resumeData?: unknown;
 	resolvedTelemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	approvalContext?: ToolApprovalContext;
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;

@@ -12,6 +12,7 @@ export const APPROVAL_SUSPEND_SCHEMA = z.object({
 	type: z.literal('approval'),
 	toolName: z.string(),
 	displayName: z.string().optional(),
+	supportsSessionApproval: z.boolean().optional(),
 	args: z.unknown(),
 });
 
@@ -19,6 +20,7 @@ export type ApprovalSuspendPayload = z.infer<typeof APPROVAL_SUSPEND_SCHEMA>;
 
 export const APPROVAL_RESUME_SCHEMA = z.object({
 	approved: z.boolean(),
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 export type ApprovalResumePayload = z.infer<typeof APPROVAL_RESUME_SCHEMA>;
@@ -84,7 +86,6 @@ function isApprovalGateContinuation(value: unknown): boolean {
  *
  * The wrapped tool has suspendSchema/resumeSchema set, making it an
  * interruptible tool that uses the existing suspend/resume mechanism.
- * No validation is done here — all schema validation happens in the runtime.
  */
 
 export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): BuiltTool {
@@ -120,7 +121,15 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			if (resumingInnerTool) {
 				return await originalHandler(input, interruptCtx);
 			}
+			const grantKey = JSON.stringify(['tool', currentTool.name]);
+			const approvalContext = interruptCtx.approvalContext;
 			if (interruptCtx.resumeData === undefined) {
+				if (approvalContext?.approvedKeys.has(grantKey)) {
+					if (config.requireApproval || hasConditionalApproval) {
+						emitToolExecutionStart(currentTool, input, interruptCtx);
+					}
+					return await originalHandler(input, interruptCtx);
+				}
 				let needs = config.requireApproval ?? false;
 				if (!needs && config.needsApprovalFn) {
 					needs = await config.needsApprovalFn(input);
@@ -131,6 +140,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 						{
 							type: 'approval',
 							toolName: currentTool.name,
+							...(approvalContext ? { supportsSessionApproval: true } : {}),
 							...(displayName ? { displayName } : {}),
 							args: input,
 						},
@@ -146,8 +156,13 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				return await originalHandler(input, interruptCtx);
 			}
 
-			const { approved } = interruptCtx.resumeData as z.infer<typeof APPROVAL_RESUME_SCHEMA>;
-			if (!approved) {
+			const decision = APPROVAL_RESUME_SCHEMA.parse(interruptCtx.resumeData);
+			if (decision.scope === 'session' && !approvalContext) {
+				throw new Error('Session approvals are not available for this tool.');
+			}
+			await approvalContext?.onDecision(grantKey, decision);
+			interruptCtx.abortSignal?.throwIfAborted();
+			if (!decision.approved) {
 				return { declined: true, message: `Tool "${currentTool.name}" was not approved` };
 			}
 			if (tool.suspendSchema === undefined) {

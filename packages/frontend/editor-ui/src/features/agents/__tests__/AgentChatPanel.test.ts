@@ -457,13 +457,18 @@ describe('AgentChatPanel', () => {
 			suspendPayload: {
 				type: 'approval',
 				toolName: 'send_email',
+				supportsSessionApproval: true,
 				args: { to: 'team@example.com' },
 			},
 		};
 
-		it.each([true, false])(
-			'sends approved=%s to the selected child while the parent streams',
-			async (approved) => {
+		it.each([
+			{ action: 'approve', decision: { approved: true } },
+			{ action: 'reject', decision: { approved: false } },
+			{ action: 'session', decision: { approved: true, scope: 'session' } },
+		])(
+			'sends $action to the selected child while the parent streams',
+			async ({ action, decision }) => {
 				backgroundJobsMock.value = [
 					{ ...job, status: 'suspended', approval },
 					{ ...job, id: 'job-2', title: 'Other child' },
@@ -479,15 +484,13 @@ describe('AgentChatPanel', () => {
 				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
 				expect(wrapper.text()).toContain('Approval for Check escalations');
 				expect(wrapper.text()).toContain('Other child');
-				const button = wrapper.get(
-					`[data-testid="agent-approval-${approved ? 'approve' : 'reject'}"]`,
-				);
+				const button = wrapper.get(`[data-testid="agent-approval-${action}"]`);
 				await button.trigger('click');
 				expect(button.attributes('disabled')).toBeDefined();
 				expect(respondToApprovalMock).toHaveBeenCalledExactlyOnceWith({
 					runId: approval.runId,
 					toolCallId: approval.toolCallId,
-					resumeData: { approved },
+					resumeData: decision,
 				});
 				finishResponse();
 				await flushPromises();

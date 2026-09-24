@@ -47,6 +47,7 @@ import type { AgentSetupCompletionService } from '../agent-setup-completion.serv
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSkillsService } from '../agent-skills.service';
@@ -286,6 +287,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),
 				mock<AgentMessageQueueService>(),
+				mock<AgentToolApprovalService>(),
 			),
 			telemetry,
 			runtimeCacheService,

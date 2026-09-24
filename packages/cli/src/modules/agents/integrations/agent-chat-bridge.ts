@@ -1,4 +1,9 @@
-import { isAttachmentValidationError, type AgentMessage, type StreamChunk } from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	isAttachmentValidationError,
+	type AgentMessage,
+	type StreamChunk,
+} from '@n8n/agents';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -516,12 +521,14 @@ export class AgentChatBridge {
 			toolCall.toolCallId,
 			toolCall.resumeSchema,
 			async (_actionId, value) => {
-				const response: unknown = JSON.parse(value);
-				if (!isRecord(response) || typeof response.approved !== 'boolean') {
+				const response = APPROVAL_RESUME_SCHEMA.safeParse(JSON.parse(value));
+				if (!response.success) {
 					throw new UserError('Invalid background approval response');
 				}
+				let decision = response.data.approved ? '1' : '0';
+				if (response.data.approved && response.data.scope === 'session') decision = 's';
 				// The durable checkpoint resolves this 64-byte callback after a restart.
-				return { id: `bg:${jobId}:${token}:${response.approved ? '1' : '0'}`, value: '' };
+				return { id: `bg:${jobId}:${token}:${decision}`, value: '' };
 			},
 			this.integration.type,
 		);

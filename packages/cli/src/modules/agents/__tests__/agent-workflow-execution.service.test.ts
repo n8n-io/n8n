@@ -19,6 +19,7 @@ import type { AgentChatExecutionService } from '../agent-chat-execution.service'
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -149,6 +150,7 @@ function makeService() {
 			executionService,
 			mock<AgentChatExecutionService>(),
 			mock<AgentMessageQueueService>(),
+			mock<AgentToolApprovalService>(),
 		),
 		telemetry,
 		credentialsService,
