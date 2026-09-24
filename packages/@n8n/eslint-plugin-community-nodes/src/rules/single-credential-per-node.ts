@@ -10,13 +10,20 @@ import {
 	getPropertyKeyName,
 	isFileType,
 	isNodeTypeClass,
-	isTriggerNode,
 } from '../utils/index.js';
+
+type DisplayValue =
+	| { kind: 'literal'; value: string }
+	| {
+			kind: 'importedMember';
+			binding: NonNullable<ReturnType<typeof ASTUtils.findVariable>>;
+			member: string;
+	  };
 
 function getDisplayValue(
 	node: TSESTree.Node | null,
 	sourceCode: TSESLint.SourceCode,
-): string | null {
+): DisplayValue | null {
 	if (!node) return null;
 
 	let value = ASTUtils.getStaticValue(node, sourceCode.getScope(node))?.value;
@@ -40,17 +47,45 @@ function getDisplayValue(
 	}
 
 	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-		return `${typeof value}:${String(value)}`;
+		return { kind: 'literal', value: `${typeof value}:${String(value)}` };
+	}
+
+	if (
+		node.type === AST_NODE_TYPES.MemberExpression &&
+		node.object.type === AST_NODE_TYPES.Identifier &&
+		!node.computed &&
+		node.property.type === AST_NODE_TYPES.Identifier
+	) {
+		const binding = ASTUtils.findVariable(sourceCode.getScope(node), node.object);
+		const definition = binding?.defs.length === 1 ? binding.defs[0]?.node : null;
+		if (
+			binding &&
+			(definition?.type === AST_NODE_TYPES.ImportSpecifier ||
+				definition?.type === AST_NODE_TYPES.ImportDefaultSpecifier ||
+				definition?.type === AST_NODE_TYPES.ImportNamespaceSpecifier)
+		) {
+			return { kind: 'importedMember', binding, member: node.property.name };
+		}
 	}
 
 	return null;
+}
+
+function areDifferent(left: DisplayValue, right: DisplayValue): boolean {
+	if (left.kind === 'literal' && right.kind === 'literal') return left.value !== right.value;
+	return (
+		left.kind === 'importedMember' &&
+		right.kind === 'importedMember' &&
+		left.binding === right.binding &&
+		left.member !== right.member
+	);
 }
 
 function getShowConditions(
 	element: TSESTree.ArrayExpression['elements'][number],
 	sourceCode: TSESLint.SourceCode,
 ) {
-	const conditions = new Map<string, Set<string>>();
+	const conditions = new Map<string, DisplayValue[]>();
 	if (element?.type !== AST_NODE_TYPES.ObjectExpression) return conditions;
 
 	const displayOptions = findObjectProperty(element, 'displayOptions');
@@ -70,17 +105,17 @@ function getShowConditions(
 		const name = getPropertyKeyName(property);
 		if (!name) continue;
 
-		const values = new Set<string>();
+		const values: DisplayValue[] = [];
 		for (const valueNode of property.value.elements) {
 			const value = getDisplayValue(valueNode, sourceCode);
 			if (value === null) {
-				values.clear();
+				values.length = 0;
 				break;
 			}
-			values.add(value);
+			values.push(value);
 		}
 
-		if (values.size > 0) conditions.set(name, values);
+		if (values.length > 0) conditions.set(name, values);
 	}
 
 	return conditions;
@@ -121,7 +156,10 @@ function areMutuallyExclusive(
 		if (multiOptionPropertyNames.has(name)) continue;
 
 		const rightValues = rightConditions.get(name);
-		if (rightValues && [...leftValues].every((value) => !rightValues.has(value))) {
+		if (
+			rightValues &&
+			leftValues.every((left) => rightValues.every((right) => areDifferent(left, right)))
+		) {
 			return true;
 		}
 	}
@@ -134,7 +172,7 @@ export const SingleCredentialPerNodeRule = createRule({
 	meta: {
 		type: 'problem',
 		docs: {
-			description: 'Ensure a regular node uses only one credential at a time',
+			description: 'Ensure a node uses only one credential at a time',
 		},
 		messages: {
 			multipleCredentials:
@@ -152,8 +190,6 @@ export const SingleCredentialPerNodeRule = createRule({
 
 				const description = findNodeDescriptionObject(node);
 				if (!description) return;
-				if (isTriggerNode(node, description)) return;
-
 				const credentials = findArrayLiteralProperty(description, 'credentials');
 				if (!credentials || credentials.elements.length < 2) return;
 				const multiOptionPropertyNames = getMultiOptionPropertyNames(description);

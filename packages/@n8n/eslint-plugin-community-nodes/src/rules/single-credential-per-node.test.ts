@@ -117,7 +117,25 @@ ${createNodeCode(`[
 ]`)}`,
 		},
 		{
-			name: 'trigger node can use concurrent credentials',
+			name: 'alternative authentication methods use distinct members of an imported enum',
+			filename: 'Test.node.ts',
+			code: `
+import { AuthenticationType } from './AuthenticationType';
+${createNodeCode(`[
+	{
+		name: 'testApi',
+		displayOptions: { show: { authentication: [AuthenticationType.ApiKey] } },
+	},
+	{
+		name: 'testOAuth2Api',
+		displayOptions: { show: { authentication: [AuthenticationType.OAuth2] } },
+	},
+]`)}`,
+		},
+	],
+	invalid: [
+		{
+			name: 'reports concurrent credentials on trigger nodes',
 			filename: 'TestTrigger.node.ts',
 			code: createNodeCode(
 				`[
@@ -127,9 +145,8 @@ ${createNodeCode(`[
 				'[]',
 				{ className: 'TestTrigger', group: 'trigger' },
 			),
+			errors: [{ messageId: 'multipleCredentials' }],
 		},
-	],
-	invalid: [
 		{
 			name: 'reports concurrent credentials (CE-2317 reproduction)',
 			filename: 'Test.node.ts',
@@ -204,6 +221,40 @@ ${createNodeCode(`[
 					displayOptions: { show: { authentication: ['oAuth2'] } },
 				},
 			]`),
+			errors: [{ messageId: 'multipleCredentials' }],
+		},
+		{
+			name: 'reports matching members of an imported enum',
+			filename: 'Test.node.ts',
+			code: `
+import { AuthenticationType } from './AuthenticationType';
+${createNodeCode(`[
+	{
+		name: 'firstApi',
+		displayOptions: { show: { authentication: [AuthenticationType.ApiKey] } },
+	},
+	{
+		name: 'secondApi',
+		displayOptions: { show: { authentication: [AuthenticationType.ApiKey] } },
+	},
+]`)}`,
+			errors: [{ messageId: 'multipleCredentials' }],
+		},
+		{
+			name: 'reports imported enum members against values that might overlap',
+			filename: 'Test.node.ts',
+			code: `
+import { AuthenticationType } from './AuthenticationType';
+${createNodeCode(`[
+	{
+		name: 'firstApi',
+		displayOptions: { show: { authentication: [AuthenticationType.ApiKey] } },
+	},
+	{
+		name: 'secondApi',
+		displayOptions: { show: { authentication: ['apiKey'] } },
+	},
+]`)}`,
 			errors: [{ messageId: 'multipleCredentials' }],
 		},
 		{
