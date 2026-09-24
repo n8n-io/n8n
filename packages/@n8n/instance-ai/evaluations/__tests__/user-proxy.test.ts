@@ -906,6 +906,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect.any(String),
 			'httpTemplatedCustomAuth',
 			expect.objectContaining({ template: expect.stringContaining('Bearer') }),
+			undefined,
 		);
 		// Filling the slot means the credential works, so its test is bypassed.
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
