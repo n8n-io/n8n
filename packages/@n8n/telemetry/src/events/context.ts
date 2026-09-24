@@ -14,11 +14,31 @@ const textLength = z
 	.describe('Character count of the preference text. The text itself is never reported');
 
 /** Keep settings UI activity separate from assistant activity. */
-const surface = z
+const surfaceType = z
 	.enum(['ui', 'aia', 'mcp'])
 	.describe('Surface the event came from, with the same values as the `source` column');
 
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
+	USER_VIEWED_PREFERENCES: {
+		name: 'User viewed preferences',
+		description:
+			'A user opened the preferences list in the Context settings area. Fires on every visit, so it is the first step of the create funnel and the only sign that somebody read their saved preferences without changing one.',
+		properties: z.object({
+			count: z.number().describe('Preferences the list held at that moment'),
+			scope_types: z.array(scopeType).describe('Distinct scopes the listed preferences covered'),
+		}),
+	},
+	USER_OPENED_PREFERENCE_MODAL: {
+		name: 'User opened preference modal',
+		description:
+			'A user opened the create or edit dialog on the preferences settings page. Pairs with `User created preference` and `User updated preference`: an open with no save that follows is an abandoned edit, which no other event shows.',
+		properties: z.object({
+			mode: z
+				.enum(['new', 'edit'])
+				.describe('`new` is the Add button. `edit` is the pencil on an existing row'),
+			scope_type: scopeType.optional().describe('Scope of the row being edited. Absent on `new`'),
+		}),
+	},
 	USER_CREATED_PREFERENCE: {
 		name: 'User created preference',
 		description:
@@ -43,6 +63,11 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				.string()
 				.optional()
 				.describe('Present only when the resulting scope is a project'),
+			surface: surfaceType
+				.optional()
+				.describe(
+					'Where the user made the edit: `ui` is the settings page and `aia` the chat card. Absent on a row written before the chat card could edit',
+				),
 		}),
 	},
 	USER_DELETED_PREFERENCES: {
@@ -100,6 +125,24 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		}),
 	},
 
+	PREFERENCES_READ_OVER_MCP: {
+		name: 'Preferences read over MCP',
+		description:
+			'An MCP client called `get_user_preferences`. Kept apart from `Preferences applied to a turn` because an MCP read is not a turn: n8n hands the text over and never learns whether the client applied it, so the latency and token columns of the turn event would stay empty. Fires on a successful read, including one that found nothing.',
+		properties: z.object({
+			count: z.number().describe('Preferences the read returned. 0 when none are saved'),
+			scope_types: z.array(scopeType).describe('Distinct scopes the returned preferences covered'),
+			rendered_length: z
+				.number()
+				.describe(
+					'Characters in the rendered block the client received. 0 when nothing is saved. Reviews the caps against the same number the turn event reports',
+				),
+			project_scoped: z
+				.boolean()
+				.describe('Whether the call named one project instead of reading every visible project'),
+		}),
+	},
+
 	ASSISTANT_SAVED_PREFERENCE: {
 		name: 'Assistant saved preference',
 		description:
@@ -110,7 +153,9 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			text_length: textLength,
 			replaced_existing: z
 				.boolean()
-				.describe('Whether the write updated an existing preference instead of adding one'),
+				.describe(
+					'Whether the write updated an existing preference instead of adding one. Only `update_user_preference` on MCP sets this true. The chat assistant has no update tool, so an `aia` row is always false',
+				),
 		}),
 	},
 
@@ -125,16 +170,30 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		}),
 	},
 
+	USER_SAW_PREFERENCE_CARD: {
+		name: 'User saw preference card',
+		description:
+			'The preference card rendered in the chat thread. `Preference confirmation shown` fires with the write, so it counts confirmations offered, not confirmations seen. The gap between the two is a write whose card never reached the screen, which an MCP client without a review form always produces.',
+		properties: z.object({
+			scope_type: scopeType.describe('Scope the card names at render time'),
+			state: z
+				.enum(['saved', 'edited', 'undone'])
+				.describe(
+					'State the card rendered in, so a re-render after an edit is not read as a new write',
+				),
+		}),
+	},
+
 	PREFERENCE_CONFIRMATION_RESOLVED: {
 		name: 'Preference confirmation resolved',
 		description:
-			'How a preference the assistant saved was settled. `accepted` fires with the write itself: the assistant writes first and silence is agreement, so it is not a user answer. `accepted_after_edit` is the explicit user action, an edit from the card. A removal from the card is `User deleted preferences` with source `rejected`. A high share of edits and removals means the assistant saves the wrong preferences, and no other number shows that.',
+			'How a preference the assistant saved was settled. `accepted` fires with the write itself: the assistant writes first and silence is agreement, so it is not a user answer. `accepted_after_edit` and `rejected` are the explicit user actions, and either one supersedes the `accepted` already recorded for the same preference: read the last outcome for a preference, not the count of them. A high share of edits and removals means the assistant saves the wrong preferences, and no other number shows that.',
 		properties: z.object({
 			surface: assistantSurfaceSchema,
 			outcome: z
 				.enum(['accepted', 'accepted_after_edit', 'rejected'])
 				.describe(
-					'`accepted` is implicit, fired with the write. `accepted_after_edit` means the user changed the text from the card or the MCP review form. `rejected` is reserved for a surface that asks before it writes',
+					'`accepted` is implicit, fired with the write. `accepted_after_edit` means the user changed the text from the card or the MCP review form. `rejected` means the user took the write back: Undo on the card, Decline on the MCP review form, or the MCP undo tool. The same removal also fires `User deleted preferences` with source `rejected`',
 				),
 			scope_type: scopeType.describe(
 				'Scope the preference was saved with, or the offered scope on a rejection',
@@ -160,7 +219,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A preference write was refused before it reached the database. Separates a rule the code applied from a user saying no, which is `Preference confirmation resolved`.',
 		properties: z.object({
-			surface,
+			surface: surfaceType,
 			reason: z
 				.enum([
 					'too_long',

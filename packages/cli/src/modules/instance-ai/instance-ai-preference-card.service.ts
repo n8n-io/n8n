@@ -11,6 +11,7 @@ import { orchestratorAgentId } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { AiPreferenceService } from '@/services/ai-preference.service';
+import { secondsSinceSaved } from '@/services/ai-preference-write';
 import { Telemetry } from '@/telemetry';
 
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
@@ -42,13 +43,33 @@ export class InstanceAiPreferenceCardService {
 		preferenceId: string,
 		{ runId, toolCallId }: InstanceAiPreferenceCardUndoRequestDto,
 	): Promise<InstanceAiPreferenceCardEvent> {
+		// Read before the delete: the removal reports the scope and the age of the row, and both
+		// are gone once the row is.
+		const removed = await this.aiPreferenceService.getById(user, preferenceId);
 		await this.aiPreferenceService.delete(user, preferenceId);
-		return this.publish(threadId, {
+		const event = this.publish(threadId, {
 			type: 'preference-card',
 			runId,
 			agentId: orchestratorAgentId(runId),
 			payload: { toolCallId, preferenceId, state: 'undone' },
 		});
+		const { scope } = aiPreferenceTargetOf(removed);
+		// The same pair the MCP undo fires, so one number covers every way a user takes back an
+		// assistant write, whatever the surface.
+		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			count: 1,
+			source: 'rejected',
+			scope_types: [scope],
+			surface: 'aia',
+			seconds_since_saved: secondsSinceSaved(removed),
+		});
+		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+			surface: 'aia',
+			outcome: 'rejected',
+			scope_type: scope,
+			text_length: removed.content.length,
+		});
+		return event;
 	}
 
 	async edit(
@@ -93,6 +114,15 @@ export class InstanceAiPreferenceCardService {
 			outcome: 'accepted_after_edit',
 			scope_type: after.scope,
 			text_length: preference.content.length,
+		});
+		// The card edits the same row the settings page edits, so it reports the same event.
+		// `surface` is what tells the two apart.
+		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			scope_type: after.scope,
+			text_length: preference.content.length,
+			scope_changed: before.scope !== after.scope,
+			...(preference.projectId ? { project_id: preference.projectId } : {}),
+			surface: 'aia',
 		});
 		// The tool offered `user`; a later edit may have moved the row already, so the
 		// offered scope is the one this edit found, not always `user`.

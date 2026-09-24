@@ -719,11 +719,13 @@ export class InstanceAiAdapterService {
 				const { id, content: saved, userId, projectId } = result.preference;
 				return { ok: true, preference: { id, content: saved, scope, userId, projectId } };
 			},
-			recordRejection: (reason, textLength) => {
+			recordRejection: (reason, textLength, scope) => {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
 					surface: 'aia',
 					reason,
-					scope_type: 'user',
+					// From the tool input, so the reported scope follows the tool instead of a constant
+					// that turns wrong the day the tool offers a second scope.
+					scope_type: scope,
 					text_length: textLength,
 				});
 			},

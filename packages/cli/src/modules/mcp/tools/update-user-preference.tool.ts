@@ -1,4 +1,4 @@
-import type { AiPreferenceDto } from '@n8n/api-types';
+import type { AiPreferenceDto, AiPreferenceScope } from '@n8n/api-types';
 import { aiPreferenceContentSchema } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -86,9 +86,13 @@ export const createUpdateUserPreferenceTool = (
 			if (reason === 'failed') {
 				logger.error('Updating an AI preference over MCP failed', { error });
 			}
+			// Best effort: the refusal knows the id, not the scope. A row the caller cannot read
+			// reports no scope at all, which is the honest answer for a refusal on a hidden row.
+			const refusedScope = await scopeOfOrUndefined(aiPreferenceService, user, id);
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
 				surface: 'mcp',
 				reason: toRejectedReason(reason),
+				...(refusedScope ? { scope_type: refusedScope } : {}),
 				text_length: content.length,
 			});
 			telemetryPayload.results = { success: false, error: message, data: { reason } };
@@ -112,6 +116,15 @@ export const createUpdateUserPreferenceTool = (
 			text_length: preference.content.length,
 			replaced_existing: true,
 		});
+		// The user asked the client to change a saved preference, so it lands in the same funnel
+		// as an edit from the review form. Without it an MCP edit is invisible to the ratio that
+		// says whether the assistant saves the right text.
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+			surface: 'mcp',
+			outcome: 'accepted_after_edit',
+			scope_type: scope,
+			text_length: preference.content.length,
+		});
 		telemetryPayload.results = { success: true, data: { scope } };
 		telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
@@ -127,3 +140,19 @@ export const createUpdateUserPreferenceTool = (
 		};
 	},
 });
+
+/**
+ * The scope of a row for a refusal that only holds an id. A read that fails too reports nothing:
+ * the refusal is already recorded, and a second failure must not replace it.
+ */
+async function scopeOfOrUndefined(
+	aiPreferenceService: AiPreferenceService,
+	user: User,
+	id: string,
+): Promise<AiPreferenceScope | undefined> {
+	try {
+		return preferenceScopeOf(await aiPreferenceService.getById(user, id));
+	} catch {
+		return undefined;
+	}
+}

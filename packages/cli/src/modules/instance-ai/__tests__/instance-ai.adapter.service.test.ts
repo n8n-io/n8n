@@ -6930,7 +6930,7 @@ describe('createContext: aiPreferenceService', () => {
 			const { service, aiPreferenceService, telemetry } = buildService();
 			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
 
-			context.aiPreferenceService!.recordRejection(reason, 19);
+			context.aiPreferenceService!.recordRejection(reason, 19, 'user');
 
 			expect(telemetry.track).toHaveBeenCalledTimes(1);
 			expect(telemetry.track).toHaveBeenCalledWith(

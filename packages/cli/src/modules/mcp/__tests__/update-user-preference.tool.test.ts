@@ -118,6 +118,44 @@ describe('update_user_preference MCP tool', () => {
 		});
 	});
 
+	test('reports the edit in the confirmation funnel, so an MCP edit is not invisible', async () => {
+		const { aiPreferenceService, telemetry, tool } = createMocks();
+		aiPreferenceService.updateContent.mockResolvedValue(dto({ content: 'New text.' }));
+
+		await tool.handler({ id: 'pref-1', content: 'New text.' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
+			{ surface: 'mcp', outcome: 'accepted_after_edit', scope_type: 'user', text_length: 9 },
+		);
+	});
+
+	test('names the scope of the refused row when it can still read it', async () => {
+		const { aiPreferenceService, telemetry, tool } = createMocks();
+		aiPreferenceService.updateContent.mockRejectedValue(new ConflictError('dup'));
+		aiPreferenceService.getById.mockResolvedValue(dto({ userId: null, projectId: 'p-1' }));
+
+		await tool.handler({ id: 'pref-1', content: 'New text.' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+			{ surface: 'mcp', reason: 'duplicate', scope_type: 'project', text_length: 9 },
+		);
+	});
+
+	test('leaves the scope out when the refused row cannot be read', async () => {
+		const { aiPreferenceService, telemetry, tool } = createMocks();
+		aiPreferenceService.updateContent.mockRejectedValue(new NotFoundError('gone'));
+		aiPreferenceService.getById.mockRejectedValue(new NotFoundError('gone'));
+
+		await tool.handler({ id: 'pref-1', content: 'New text.' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+			{ surface: 'mcp', reason: 'not_permitted', text_length: 9 },
+		);
+	});
+
 	test.each([
 		[new NotFoundError('gone'), 'not_found', 'not_permitted', 'gone'],
 		[new ConflictError('dup'), 'duplicate', 'duplicate', 'dup'],

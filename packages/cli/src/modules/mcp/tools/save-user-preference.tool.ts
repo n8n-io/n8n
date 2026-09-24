@@ -204,6 +204,12 @@ export const createSaveUserPreferenceTool = (
 						surface: 'mcp',
 						seconds_since_saved: secondsSinceSaved(removed),
 					});
+					telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+						surface: 'mcp',
+						outcome: 'rejected',
+						scope_type: 'user',
+						text_length: removed.content.length,
+					});
 					return done(
 						{ saved: false, removed: true },
 						'The user removed the preference in the review. Nothing is saved now. Do not save it again unless they ask.',

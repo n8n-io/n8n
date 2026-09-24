@@ -19,6 +19,8 @@ describe('InstanceAiPreferenceCardService', () => {
 	beforeEach(() => vi.resetAllMocks());
 
 	it('undo deletes the row, then appends an undone fact to the run', async () => {
+		aiPreferenceService.getById.mockResolvedValue(userDto());
+
 		const event = await service.undo(user, 'thread-1', 'pref-1', {
 			runId: 'run-1',
 			toolCallId: 'tc-1',
@@ -33,6 +35,31 @@ describe('InstanceAiPreferenceCardService', () => {
 		});
 		// The caller renders from this without waiting for the stream.
 		expect(event).toEqual(eventBus.publish.mock.calls[0][1]);
+	});
+
+	it('undo reports the removal as a late refusal of the assistant write', async () => {
+		aiPreferenceService.getById.mockResolvedValue(
+			userDto({ createdAt: new Date(Date.now() - 12_000).toISOString() }),
+		);
+
+		await service.undo(user, 'thread-1', 'pref-1', { runId: 'run-1', toolCallId: 'tc-1' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			count: 1,
+			source: 'rejected',
+			scope_types: ['user'],
+			surface: 'aia',
+			seconds_since_saved: 12,
+		});
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
+			{
+				surface: 'aia',
+				outcome: 'rejected',
+				scope_type: 'user',
+				text_length: 'Keep replies brief.'.length,
+			},
+		);
 	});
 
 	it('undo appends nothing when the delete throws', async () => {
@@ -103,6 +130,21 @@ describe('InstanceAiPreferenceCardService', () => {
 		});
 
 		expect(event.payload).toMatchObject({ state: 'edited', scope: 'project', projectId: 'p-1' });
+	});
+
+	it('edit reports the same update event the settings page reports, named by surface', async () => {
+		aiPreferenceService.getById.mockResolvedValue(userDto({ content: 'Keep replies short.' }));
+		aiPreferenceService.update.mockResolvedValue(userDto({ userId: null, projectId: 'p-1' }));
+
+		await service.edit(user, 'thread-1', 'pref-1', { ...editBody, scope: 'project' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			scope_type: 'project',
+			text_length: 19,
+			scope_changed: true,
+			project_id: 'p-1',
+			surface: 'aia',
+		});
 	});
 
 	it('edit fires resolved(accepted_after_edit) with the new scope, and no scope event without a move', async () => {

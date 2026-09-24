@@ -392,9 +392,10 @@ describe('save_user_preference MCP tool', () => {
 					seconds_since_saved: 30,
 				},
 			);
-			expect(telemetry.track).not.toHaveBeenCalledWith(
+			// The removal closes the funnel the write opened with `accepted`.
+			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
-				expect.anything(),
+				{ surface: 'mcp', outcome: 'rejected', scope_type: 'user', text_length: TEXT.length },
 			);
 		});
 
