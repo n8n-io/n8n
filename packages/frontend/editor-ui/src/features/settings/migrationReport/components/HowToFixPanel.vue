@@ -3,6 +3,7 @@ import type { BreakingChangeRecommendation } from '@n8n/api-types';
 import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { I18nT } from 'vue-i18n';
 import { BREAKING_CHANGES_DOCUMENTATION_URL } from '../constants';
 
 defineOptions({ name: 'HowToFixPanel' });
@@ -37,20 +38,25 @@ const fallbackDocumentationUrl = computed(
 			</ul>
 
 			<N8nText v-else size="small" color="text-base">
-				{{ i18n.baseText('settings.migrationReport.detail.howToFix.fallback') }}
-				<N8nLink
-					theme="text"
-					:href="fallbackDocumentationUrl"
-					target="_blank"
-					rel="noopener noreferrer"
-					:class="$style.noLineBreak"
-					data-test-id="migration-rule-how-to-fix-docs-link"
+				<I18nT
+					keypath="settings.migrationReport.detail.howToFix.fallback"
+					tag="span"
+					scope="global"
 				>
-					<span :class="$style.underlinedText">{{
-						i18n.baseText('settings.migrationReport.documentation')
-					}}</span>
-					↗
-				</N8nLink>
+					<template #link>
+						<N8nLink
+							theme="text"
+							:href="fallbackDocumentationUrl"
+							target="_blank"
+							rel="noopener noreferrer"
+							data-test-id="migration-rule-how-to-fix-docs-link"
+						>
+							<span :class="$style.underlinedText">{{
+								i18n.baseText('settings.migrationReport.detail.howToFix.fallback.link')
+							}}</span>
+						</N8nLink>
+					</template>
+				</I18nT>
 			</N8nText>
 
 			<N8nText
@@ -83,10 +89,6 @@ const fallbackDocumentationUrl = computed(
 .item {
 	display: flex;
 	flex-direction: column;
-}
-
-.noLineBreak {
-	white-space: nowrap;
 }
 
 .underlinedText {
