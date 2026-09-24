@@ -39,7 +39,7 @@ of the decision, and it matches the `Date` field. CI checks both.
 Do not rename a record after it is merged. Links depend on the file name.
 Refer to a record by its full file name, for example
 `ADR-20260828-obtain-trigger-output-before-creating-the-execution`, not by a
-number. CI checks that every file name a record mentions exists.
+number. CI checks that every record ID a record mentions names a file.
 
 ## Template
 
@@ -50,8 +50,8 @@ its structure.
 The header has three required fields, `Date`, `Status`, and `Decision Owner`,
 in that order, and three optional fields, `Source`, `Supersedes`, and
 `Superseded by`. Omit an optional field that has no value. `Source` names
-where the decision came from. It is the one place in a record where a ticket,
-an RFC, or an incident may appear.
+where the decision came from: a ticket, an RFC, or an incident. The body
+names none of these. The `RFC` field under `Links` holds the link to the RFC.
 
 ## Status
 
@@ -154,7 +154,8 @@ check of every pull request. For every `ADR-*.md` file it checks:
 - exactly the five sections, in order, each with content;
 - the three `Links` fields, one line each;
 - paragraph lines of at most 100 characters outside `Links`;
-- that every file name the record mentions exists in this repository.
+- that every record ID (`ADR-YYYYMMDD-…`) the record mentions names a file
+  in this repository.
 
 Run it locally:
 
