@@ -224,6 +224,45 @@ describe('MigrationFindingRepository', () => {
 		});
 	});
 
+	describe('markNotifiedForIds', () => {
+		test('sets the status to notified and records notifiedAt', async () => {
+			const workflow = await createWorkflow();
+			const id = await insertWithStatusChangedAt(workflow.id, PAST);
+
+			await findingRepository.markNotifiedForIds([id], ctx);
+
+			const [after] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+			expect(after.status).toBe('notified');
+			expect(after.notifiedAt?.getTime()).toBeGreaterThan(PAST.getTime());
+			expect(after.statusChangedAt.getTime()).toBeGreaterThan(PAST.getTime());
+		});
+
+		test('bumps notifiedAt on a reminder without moving statusChangedAt', async () => {
+			const workflow = await createWorkflow();
+			const id = await insertWithStatusChangedAt(workflow.id, PAST);
+			await findingRepository.markNotifiedForIds([id], ctx);
+			await findingRepository.update({ id }, { statusChangedAt: PAST, notifiedAt: PAST });
+
+			await findingRepository.markNotifiedForIds([id], ctx);
+
+			const [after] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+			expect(after.status).toBe('notified');
+			expect(after.notifiedAt?.getTime()).toBeGreaterThan(PAST.getTime());
+			expect(after.statusChangedAt.getTime()).toBe(PAST.getTime());
+		});
+
+		test('does nothing for an empty id array', async () => {
+			const workflow = await createWorkflow();
+			await findingRepository.insertMany([finding(workflow.id)], ctx);
+
+			await findingRepository.markNotifiedForIds([], ctx);
+
+			const [row] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+			expect(row.status).toBe('open');
+			expect(row.notifiedAt).toBeNull();
+		});
+	});
+
 	describe('cascade delete', () => {
 		test('deletes the findings of a deleted workflow and keeps the others', async () => {
 			const [deleted, kept] = await Promise.all([createWorkflow(), createWorkflow()]);

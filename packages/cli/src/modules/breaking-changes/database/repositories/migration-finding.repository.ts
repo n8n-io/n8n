@@ -78,4 +78,16 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	async markFixedForIds(ids: number[], ctx: OperationContext): Promise<void> {
 		await this.updateStatusForIds(ids, 'fixed', undefined, ctx);
 	}
+
+	/**
+	 * Records a notification. `notifiedAt` is bumped for every id, so a reminder
+	 * updates it, while `statusChangedAt` moves only on the first transition.
+	 */
+	async markNotifiedForIds(ids: number[], ctx: OperationContext): Promise<void> {
+		if (ids.length === 0) return;
+
+		const manager = this.managerFor(ctx);
+		await this.transitionStatus(manager, ids, 'notified');
+		await manager.update(MigrationFinding, { id: In(ids) }, { notifiedAt: new Date() });
+	}
 }
