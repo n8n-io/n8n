@@ -21,6 +21,7 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
 
@@ -78,14 +79,21 @@ describe('AgentExecutionService', () => {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
 	const txRunner = mock<TransactionRunner>();
+	const queueRepository = mock<AgentMessageQueueRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
+		agentExecutionRepository.findRunningByThread.mockResolvedValue([]);
+		agentExecutionRepository.touchRunning.mockResolvedValue(true);
+		queueRepository.findActive.mockResolvedValue(null);
+		queueRepository.findHead.mockResolvedValue(null);
+		checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 		agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 		agentExecutionRepository.updateTimelineIfRunning.mockResolvedValue(true);
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
+		agentExecutionThreadRepository.lockById.mockResolvedValue(makeThread());
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
@@ -110,6 +118,7 @@ describe('AgentExecutionService', () => {
 			executionUpdateBroadcaster,
 			checkpointStorage,
 			txRunner,
+			queueRepository,
 		);
 	});
 
@@ -174,7 +183,7 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
-		it('keeps a running execution alive during title lookup and until finalization', async () => {
+		it('keeps an execution alive until finalization and then synchronizes its title', async () => {
 			vi.useFakeTimers();
 			const titleLookupStarted = createDeferredPromise();
 			const titleLookup =
@@ -192,7 +201,7 @@ describe('AgentExecutionService', () => {
 				agentExecutionRepository.saveInContext.mockResolvedValue({
 					id: 'execution-1',
 				} as AgentExecution);
-				agentExecutionRepository.touchRunning.mockResolvedValue();
+				agentExecutionRepository.touchRunning.mockResolvedValue(true);
 				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 
 				const recording = service.startExecutionRecording(
@@ -206,11 +215,10 @@ describe('AgentExecutionService', () => {
 					},
 					new Date(),
 				);
-				await titleLookupStarted.promise;
+				const executionId = await recording;
+				expect(memoryBackend.getThread).not.toHaveBeenCalled();
 				await vi.advanceTimersByTimeAsync(30_000);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith('execution-1');
-				titleLookup.resolve(null);
-				const executionId = await recording;
 
 				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
 					projectId: 'project-1',
@@ -223,7 +231,7 @@ describe('AgentExecutionService', () => {
 				);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith(executionId);
 
-				await service.finalizeExecution(executionId, {
+				const finalization = service.finalizeExecution(executionId, {
 					threadId: 'thread-1',
 					agentId: 'agent-1',
 					agentName: 'Agent',
@@ -231,9 +239,11 @@ describe('AgentExecutionService', () => {
 					userMessage: 'Run',
 					record: makeMessageRecord(),
 				});
+				await titleLookupStarted.promise;
 				await vi.advanceTimersByTimeAsync(30_000);
-
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledOnce();
+				titleLookup.resolve(null);
+				await finalization;
 			} finally {
 				titleLookup.resolve(null);
 				vi.useRealTimers();
@@ -261,6 +271,21 @@ describe('AgentExecutionService', () => {
 		executionUpdateBroadcaster.notify.mockClear();
 		return params;
 	}
+
+	it('aborts local processing when the database no longer owns its execution', async () => {
+		vi.useFakeTimers();
+		try {
+			await startSnapshotExecution();
+			const signal = service.getAbortSignal('execution-1');
+			agentExecutionRepository.touchRunning.mockResolvedValue(false);
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(signal.aborted).toBe(true);
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 
 	it('serializes timeline snapshot updates', async () => {
 		const params = await startSnapshotExecution();
@@ -468,6 +493,7 @@ describe('AgentExecutionService', () => {
 				executionUpdateBroadcaster,
 				checkpointStorage,
 				txRunner,
+				queueRepository,
 			);
 
 			const record = makeMessageRecord({
@@ -559,6 +585,7 @@ describe('AgentExecutionService', () => {
 					executionUpdateBroadcaster,
 					checkpointStorage,
 					txRunner,
+					queueRepository,
 				);
 
 				const record = makeMessageRecord({
@@ -1024,18 +1051,22 @@ describe('AgentExecutionService', () => {
 				executionUpdateBroadcaster,
 				checkpointStorage,
 				txRunner,
+				queueRepository,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
 
-			await service.finalizeInterruptedExecution({
-				id: 'execution-1',
-				threadId: 'thread-1',
-				startedAt: new Date(Date.now() - 100),
-				timeline: [...partial],
-				thread: makeThread(),
-			} as AgentExecution);
+			await service.finalizeInterruptedExecution(
+				{
+					id: 'execution-1',
+					threadId: 'thread-1',
+					startedAt: new Date(Date.now() - 100),
+					timeline: [...partial],
+					thread: makeThread(),
+				} as AgentExecution,
+				new Date(Date.now() - 120_000),
+			);
 
 			await vi.waitFor(() =>
 				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
@@ -1062,6 +1093,8 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
+				expect.any(Date),
+				{},
 			);
 			expect(agentExecutionLogStore.write).not.toHaveBeenCalled();
 		});

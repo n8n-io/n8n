@@ -20,6 +20,9 @@ import { Telemetry } from '@/telemetry';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
+import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
+import { checkpointExecutionId } from './types/agent-queued-message';
 import { buildAgentTurnMetrics } from './agent-telemetry';
 import {
 	AgentExecutionThread,
@@ -84,6 +87,15 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	access: AgentThreadAccess;
 	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
+	/** Internal admission data. These fields are not stored on the execution. */
+	queueItemId?: string;
+	resumeRunId?: string;
+	allowSuspendedPredecessor?: boolean;
+}
+
+export interface AgentExecutionReservation {
+	execution: AgentExecution;
+	needsTitleSync: boolean;
 }
 
 interface TimelineSnapshotParams extends AgentExecutionLogRef {
@@ -119,6 +131,7 @@ export class AgentExecutionService {
 	private static readonly heartbeatIntervalMs = 30_000;
 
 	private readonly heartbeatTimers = new Map<string, NodeJS.Timeout>();
+	private readonly executionControllers = new Map<string, AbortController>();
 
 	private readonly pendingTimelineSnapshots = new Map<
 		string,
@@ -142,49 +155,115 @@ export class AgentExecutionService {
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly txRunner: TransactionRunner,
+		private readonly queueRepository: AgentMessageQueueRepository,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
-		const { inserted, created, needsTitleSync } = await this.txRunner.run({}, async (ctx) => {
-			const prepared = await this.prepareThread(params, ctx);
-			const execution = this.agentExecutionRepository.create({
-				threadId: params.threadId,
-				status: 'running',
-				startedAt,
-				stoppedAt: null,
-				duration: 0,
-				userMessage: prepared.userMessage,
-				author: params.author ?? null,
-				model: null,
-				promptTokens: null,
-				completionTokens: null,
-				totalTokens: null,
-				cost: null,
-				// Save the background job signal before notifying clients that the execution started.
-				timeline: params.initialTimeline?.length ? params.initialTimeline : null,
-				storedAt: 'db',
-				error: null,
-				failureSummary: null,
-				hitlStatus: null,
-				source: params.source ?? null,
-				attachments: params.attachments?.length ? params.attachments : null,
-			});
-			return {
-				inserted: await this.agentExecutionRepository.saveInContext(execution, ctx),
-				created: prepared.created,
-				needsTitleSync: !prepared.created && !prepared.thread.title,
-			};
+		const reservation = await this.txRunner.run(
+			{},
+			async (ctx) => await this.reserveExecution(params, startedAt, ctx),
+		);
+		this.activateExecution(reservation, params);
+		return reservation.execution.id;
+	}
+
+	async reserveExecution(
+		params: StartExecutionParams,
+		startedAt: Date,
+		ctx: OperationContext,
+	): Promise<AgentExecutionReservation> {
+		const prepared = await this.prepareThread(params, ctx);
+		const queueItem = await this.checkAdmission(params, ctx);
+		const execution = this.agentExecutionRepository.create({
+			threadId: params.threadId,
+			status: 'running',
+			startedAt,
+			stoppedAt: null,
+			duration: 0,
+			userMessage: prepared.userMessage,
+			author: params.author ?? null,
+			model: null,
+			promptTokens: null,
+			completionTokens: null,
+			totalTokens: null,
+			cost: null,
+			// Save the background job signal before notifying clients that the execution started.
+			timeline: params.initialTimeline?.length ? params.initialTimeline : null,
+			storedAt: 'db',
+			error: null,
+			failureSummary: null,
+			hitlStatus: null,
+			source: params.source ?? null,
+			attachments: params.attachments?.length ? params.attachments : null,
 		});
-		this.startHeartbeat(inserted.id);
-		if (created) this.executionsNeedingTitleSync.add(inserted.id);
-		if (needsTitleSync) await this.syncTitleFromMemory(params.threadId, params.agentId);
+		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
+		if (
+			queueItem &&
+			!(await this.queueRepository.linkExecution(
+				queueItem.id,
+				queueItem.executionId,
+				inserted.id,
+				ctx,
+			))
+		) {
+			throw new AgentTurnAlreadyRunningError();
+		}
+		return { execution: inserted, needsTitleSync: prepared.created || !prepared.thread.title };
+	}
+
+	private async checkAdmission(params: StartExecutionParams, ctx: OperationContext) {
+		const { threadId, agentId, resumeRunId, queueItemId } = params;
+		const running = await this.agentExecutionRepository.findRunningByThread(threadId, ctx);
+		const active = await this.queueRepository.findActive(threadId, ctx);
+		if (resumeRunId) {
+			const checkpoint = await this.checkpointStorage.getStatus(resumeRunId, agentId, ctx);
+			if (
+				checkpoint.status !== 'active' ||
+				checkpoint.checkpoint.status !== 'suspended' ||
+				checkpoint.checkpoint.persistence?.threadId !== threadId
+			) {
+				throw new AgentTurnAlreadyRunningError();
+			}
+			const predecessorId = checkpointExecutionId(checkpoint.checkpoint);
+			const legacyPredecessor = !predecessorId && !active && params.allowSuspendedPredecessor;
+			if (
+				running.some(({ id }) => id !== predecessorId) &&
+				!(legacyPredecessor && running.length === 1)
+			) {
+				throw new AgentTurnAlreadyRunningError();
+			}
+			return active;
+		}
+		if (
+			running.length ||
+			active ||
+			(await this.checkpointStorage.findSuspendedForThread(agentId, threadId, ctx))
+		) {
+			throw new AgentTurnAlreadyRunningError();
+		}
+		const head = await this.queueRepository.findHead(threadId, ctx);
+		if (head?.id !== queueItemId && (head || queueItemId)) throw new AgentTurnAlreadyRunningError();
+		return head;
+	}
+
+	/** Activate only after the reservation transaction commits. */
+	activateExecution(
+		{ execution, needsTitleSync }: AgentExecutionReservation,
+		params: StartExecutionParams,
+	): void {
+		this.executionControllers.set(execution.id, new AbortController());
+		this.startHeartbeat(execution.id);
+		if (needsTitleSync) this.executionsNeedingTitleSync.add(execution.id);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
 			agentId: params.agentId,
 			threadId: params.threadId,
-			executionId: inserted.id,
+			executionId: execution.id,
 		});
-		return inserted.id;
+	}
+
+	getAbortSignal(executionId: string): AbortSignal {
+		return this.executionControllers.get(executionId)?.signal ?? AbortSignal.abort();
 	}
 
 	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {
@@ -246,26 +325,38 @@ export class AgentExecutionService {
 		}
 	}
 
-	async finalizeInterruptedExecution(execution: RunningAgentExecution): Promise<boolean> {
+	async finalizeInterruptedExecution(
+		execution: RunningAgentExecution,
+		staleBefore: Date,
+	): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
 		const error = 'Agent execution was interrupted by a process restart.';
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
-		const finalized = await this.agentExecutionRepository.updateIfRunning(execution.id, {
-			status: 'interrupted',
-			stoppedAt,
-			duration,
-			timeline: timeline.length > 0 ? timeline : null,
-			storedAt: 'db',
-			error,
-			failureSummary: computeExecutionFailureSummary({
-				timeline,
-				status: 'interrupted',
-				error,
-				stoppedAt: stoppedAt.getTime(),
-			}),
+		const finalized = await this.txRunner.run({}, async (ctx) => {
+			if (!(await this.agentExecutionThreadRepository.lockById(execution.threadId, ctx)))
+				return false;
+			return await this.agentExecutionRepository.updateIfRunning(
+				execution.id,
+				{
+					status: 'interrupted',
+					stoppedAt,
+					duration,
+					timeline: timeline.length > 0 ? timeline : null,
+					storedAt: 'db',
+					error,
+					failureSummary: computeExecutionFailureSummary({
+						timeline,
+						status: 'interrupted',
+						error,
+						stoppedAt: stoppedAt.getTime(),
+					}),
+				},
+				staleBefore,
+				ctx,
+			);
 		});
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
@@ -294,21 +385,35 @@ export class AgentExecutionService {
 
 	private startHeartbeat(executionId: string): void {
 		const timer = setInterval(() => {
-			void this.agentExecutionRepository.touchRunning(executionId).catch((error: unknown) => {
-				this.logger.warn('Failed to heartbeat a running agent execution', {
-					executionId,
-					error: error instanceof Error ? error.message : String(error),
+			void this.agentExecutionRepository
+				.touchRunning(executionId)
+				.then((owned) => {
+					if (!owned) this.abortLostExecution(executionId);
+				})
+				.catch((error: unknown) => {
+					this.abortLostExecution(executionId);
+					this.logger.warn('Failed to heartbeat a running agent execution', {
+						executionId,
+						error: error instanceof Error ? error.message : String(error),
+					});
 				});
-			});
 		}, AgentExecutionService.heartbeatIntervalMs);
 		timer.unref();
 		this.heartbeatTimers.set(executionId, timer);
+	}
+
+	private abortLostExecution(executionId: string): void {
+		this.executionControllers
+			.get(executionId)
+			?.abort(new OperationalError('Agent execution ownership was lost'));
+		this.stopHeartbeat(executionId);
 	}
 
 	private stopHeartbeat(executionId: string): void {
 		const timer = this.heartbeatTimers.get(executionId);
 		if (timer) clearInterval(timer);
 		this.heartbeatTimers.delete(executionId);
+		this.executionControllers.delete(executionId);
 	}
 
 	private ensureTimelineSnapshotWrite(executionId: string): void {
@@ -334,7 +439,7 @@ export class AgentExecutionService {
 		}
 	}
 
-	private async prepareThread(
+	async prepareThread(
 		params: StartExecutionParams,
 		ctx: OperationContext,
 	): Promise<{ userMessage: string | null; created: boolean; thread: AgentExecutionThread }> {
