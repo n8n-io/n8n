@@ -71,7 +71,8 @@ describe('McpToolSettingsContent', () => {
 				stubs: {
 					Select: defineComponent({
 						props: ['modelValue'],
-						template: '<div><span data-test-id="select-value">{{ modelValue }}</span><slot /></div>',
+						template:
+							'<div><span data-test-id="select-value">{{ modelValue }}</span><slot /></div>',
 					}),
 					Option: defineComponent({
 						props: ['label'],
