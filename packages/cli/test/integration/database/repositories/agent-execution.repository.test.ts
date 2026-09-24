@@ -1363,7 +1363,7 @@ describe('AgentExecutionRepository', () => {
 			},
 		);
 
-		it.each(['steer', 'stop', 'completion', 'edit', 'remove'] as const)(
+		it.each(['steer', 'stop', 'completion', 'failure', 'edit', 'remove'] as const)(
 			'serializes steering with %s on another database connection',
 			async (operation) => {
 				const local = recordingServices();
@@ -1403,6 +1403,15 @@ describe('AgentExecutionRepository', () => {
 								new ExecutionRecorder(),
 								new AbortController().signal,
 							);
+						case 'failure':
+							return await local.executionService.finalizeExecution(executionId, {
+								...active.recording,
+								record: {
+									...new ExecutionRecorder().getMessageRecord(),
+									finishReason: 'error',
+									error: 'Failed',
+								},
+							});
 						case 'edit':
 							return await local.queue.updatePending({ ...target, message: 'edited' });
 						case 'remove':
@@ -1425,7 +1434,14 @@ describe('AgentExecutionRepository', () => {
 					expect((await remote.queueRepository.findOneByOrFail({ id: c.id })).payload.message).toBe(
 						'edited',
 					);
-				await finish(local, active);
+				if (operation === 'failure') {
+					expect(settled[1]).toMatchObject({
+						reason: { message: 'This message cannot be added to that execution' },
+					});
+					await local.queue.settle(threadId, executionId);
+				} else {
+					await finish(local, active);
+				}
 			},
 		);
 

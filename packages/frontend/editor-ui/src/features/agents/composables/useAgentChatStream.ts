@@ -126,7 +126,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			steerableExecutionId.value === activeExecutionId.value &&
 			!isCancelling.value &&
 			!isLoadingHistory.value &&
-			!findOpenSuspension(),
+			!findTailOpenInteractive(messages.value),
 	);
 	let stopTargetId: string | undefined;
 	const abortController = ref<AbortController | null>(null);

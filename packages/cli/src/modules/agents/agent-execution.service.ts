@@ -784,20 +784,28 @@ export class AgentExecutionService {
 	): Promise<void> {
 		const { record, hitlStatus } = params;
 		await this.timelineSnapshotWrites.get(executionId);
-		const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
-			status,
-			stoppedAt,
-			duration: record.duration,
-			model: record.model,
-			promptTokens: record.usage?.promptTokens ?? null,
-			completionTokens: record.usage?.completionTokens ?? null,
-			totalTokens: record.usage?.totalTokens ?? null,
-			cost: record.totalCost,
-			timeline: record.timeline.length > 0 ? record.timeline : null,
-			storedAt: 'db',
-			error: record.error,
-			failureSummary,
-			hitlStatus: hitlStatus ?? null,
+		const finalized = await this.txRunner.run({}, async (ctx) => {
+			if (!(await this.agentExecutionThreadRepository.lockById(params.threadId, ctx))) return false;
+			return await this.agentExecutionRepository.updateIfRunning(
+				executionId,
+				{
+					status,
+					stoppedAt,
+					duration: record.duration,
+					model: record.model,
+					promptTokens: record.usage?.promptTokens ?? null,
+					completionTokens: record.usage?.completionTokens ?? null,
+					totalTokens: record.usage?.totalTokens ?? null,
+					cost: record.totalCost,
+					timeline: record.timeline.length > 0 ? record.timeline : null,
+					storedAt: 'db',
+					error: record.error,
+					failureSummary,
+					hitlStatus: hitlStatus ?? null,
+				},
+				undefined,
+				ctx,
+			);
 		});
 		if (!finalized) {
 			throw new OperationalError('Agent execution is no longer running', {

@@ -3463,6 +3463,46 @@ describe('useAgentChatStream — queued submissions', () => {
 		expect(steerAgentQueuedMessageMock).toHaveBeenCalledOnce();
 		expect(hook.steeringQueueIds.value.has('3')).toBe(false);
 		expect(hook.queuedMessages.value[0]).toMatchObject({ id: '3', steeringExecutionId: 'A' });
+		expect(hook.messages.value).toEqual([]);
+
+		const history = Promise.withResolvers<AgentChatMessagesResponse>();
+		getChatMessagesMock.mockReturnValueOnce(history.promise);
+		getAgentChatQueueMock.mockResolvedValue({
+			items: [
+				{ id: '3', message: 'C', createdAt: new Date().toISOString(), steeringExecutionId: null },
+			],
+			steerableExecutionId: 'B',
+		});
+		for (const listener of [...pushListeners])
+			listener({
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1', executionId: 'A' },
+			});
+		await flushPromises();
+		expect(hook.activeExecutionId.value).toBe('A');
+		expect(hook.canSteer.value).toBe(false);
+		expect(hook.messages.value).toEqual([]);
+
+		history.resolve({
+			messages: [
+				{
+					id: 'a-finished',
+					executionId: 'A',
+					executionStatus: 'success',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'A finished' }],
+				},
+			],
+			openSuspensions: [],
+			activeExecutionId: 'B',
+		});
+		await flushPromises();
+		expect(hook.queuedMessages.value).toEqual([
+			expect.objectContaining({ id: '3', message: 'C', steeringExecutionId: null }),
+		]);
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['A finished']);
+		expect(hook.activeExecutionId.value).toBe('B');
+		expect(hook.canSteer.value).toBe(true);
 	});
 
 	it.each([false, true])(
@@ -3490,6 +3530,21 @@ describe('useAgentChatStream — queued submissions', () => {
 				}),
 			);
 			const hook = buildHook('thread-1');
+			// The card is stale after a remote resume and has not refreshed in this tab.
+			hook.messages.value = [
+				{
+					id: 'old-question',
+					role: 'assistant',
+					content: 'Old question',
+					status: 'awaitingUser',
+					interactive: {
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'old-tool-call',
+						runId: 'old-run',
+						input: { card: { components: [{ type: 'button', label: 'Yes', value: 'yes' }] } },
+					},
+				},
+			];
 			await hook.sendMessage('A');
 			getAgentChatQueueMock.mockResolvedValue({ items: pending, steerableExecutionId: 'A' });
 			await hook.sendMessage('B');
@@ -3512,7 +3567,7 @@ describe('useAgentChatStream — queued submissions', () => {
 				{ executionId: 'A' },
 			);
 			expect(hook.queuedMessages.value[1].steeringExecutionId).toBe('A');
-			expect(hook.messages.value.map(({ content }) => content)).toEqual(['A']);
+			expect(hook.messages.value.map(({ content }) => content)).toEqual(['Old question', 'A']);
 			const steered: AgentSseEvent = {
 				type: 'message-steered',
 				queueId: '3',
@@ -3539,12 +3594,13 @@ describe('useAgentChatStream — queued submissions', () => {
 			await flushPromises();
 			streams[2].close([{ type: 'done', executionId: 'A' }]);
 			expect(hook.messages.value.map(({ content }) => content)).toEqual([
+				'Old question',
 				'A',
 				'before',
 				'C',
 				'after again',
 			]);
-			expect(hook.messages.value[2].id).toBe('stable-c');
+			expect(hook.messages.value[3].id).toBe('stable-c');
 			expect(hook.queuedMessages.value.map(({ id }) => id)).toEqual(['2']);
 			expect(signals[2]?.aborted).toBe(true);
 			expect(signals[0]?.aborted).toBe(false);

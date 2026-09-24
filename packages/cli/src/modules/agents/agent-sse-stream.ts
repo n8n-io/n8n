@@ -240,6 +240,8 @@ export function emitChunkEvents(chunk: StreamChunk, send: (event: AgentSseEvent)
 		case 'message': {
 			if (
 				chunk.message.type === 'custom' &&
+				typeof chunk.message.data === 'object' &&
+				chunk.message.data !== null &&
 				'type' in chunk.message.data &&
 				chunk.message.data.type === 'message-steered'
 			) {
