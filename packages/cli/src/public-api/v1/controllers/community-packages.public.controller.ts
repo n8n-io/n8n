@@ -13,7 +13,7 @@ import {
 import type { Response } from 'express';
 
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
-import { toCommunityPackageListPublicDto } from '@/public-api/v1/handlers/community-packages/community-packages.mapper';
+import { toCommunityPackageListPublic } from '@/public-api/v1/handlers/community-packages/community-packages.mapper';
 
 @PublicApiController('/community-packages')
 export class CommunityPackagesPublicController {
@@ -34,6 +34,6 @@ export class CommunityPackagesPublicController {
 	): Promise<CommunityPackageListPublicDto> {
 		const packages = await this.communityPackagesLifecycleService.listInstalledPackages();
 
-		return toCommunityPackageListPublicDto(packages);
+		return toCommunityPackageListPublic(packages);
 	}
 }

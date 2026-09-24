@@ -19,7 +19,7 @@ function stripInstalledNode(node: PublicInstalledNode): Record<string, unknown> 
 	return rest;
 }
 
-export function toCommunityPackagePublicDto(pkg: PublicInstalledPackage): CommunityPackagePublic {
+export function toCommunityPackagePublic(pkg: PublicInstalledPackage): CommunityPackagePublic {
 	return communityPackagePublicSchema.parse({
 		packageName: pkg.packageName,
 		installedVersion: pkg.installedVersion,
@@ -33,8 +33,8 @@ export function toCommunityPackagePublicDto(pkg: PublicInstalledPackage): Commun
 	});
 }
 
-export function toCommunityPackageListPublicDto(
+export function toCommunityPackageListPublic(
 	packages: PublicInstalledPackage[],
 ): CommunityPackagePublic[] {
-	return packages.map(toCommunityPackagePublicDto);
+	return packages.map(toCommunityPackagePublic);
 }

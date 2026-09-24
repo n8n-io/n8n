@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 
-import { toCommunityPackagePublicDto } from './community-packages.mapper';
+import { toCommunityPackagePublic } from './community-packages.mapper';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
@@ -37,7 +37,7 @@ const communityPackageHandlers: CommunityPackageHandlers = {
 				'publicApi',
 			);
 
-			return res.json(toCommunityPackagePublicDto(installedPackage));
+			return res.json(toCommunityPackagePublic(installedPackage));
 		},
 	],
 
@@ -55,7 +55,7 @@ const communityPackageHandlers: CommunityPackageHandlers = {
 				req.user,
 				'notFound',
 			);
-			return res.json(toCommunityPackagePublicDto(updated));
+			return res.json(toCommunityPackagePublic(updated));
 		},
 	],
 

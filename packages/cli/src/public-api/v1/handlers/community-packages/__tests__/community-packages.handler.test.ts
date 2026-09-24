@@ -11,7 +11,7 @@ import { CommunityPackagesLifecycleService } from '@/modules/community-packages/
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
-import { toCommunityPackagePublicDto } from '../community-packages.mapper';
+import { toCommunityPackagePublic } from '../community-packages.mapper';
 
 const mockMiddleware = vi.fn(async (_req: unknown, _res: unknown, next: unknown) =>
 	(next as () => void)(),
@@ -74,7 +74,7 @@ describe('CommunityPackages Handler', () => {
 				'publicApi',
 			);
 			expect(mockResponse.json).toHaveBeenCalledWith(
-				toCommunityPackagePublicDto(mockInstalledPackage),
+				toCommunityPackagePublic(mockInstalledPackage),
 			);
 		});
 
@@ -166,7 +166,7 @@ describe('CommunityPackages Handler', () => {
 				mockUser,
 				'notFound',
 			);
-			expect(mockResponse.json).toHaveBeenCalledWith(toCommunityPackagePublicDto(updatedPackage));
+			expect(mockResponse.json).toHaveBeenCalledWith(toCommunityPackagePublic(updatedPackage));
 		});
 
 		it('should throw NotFoundError when package is not installed', async () => {
