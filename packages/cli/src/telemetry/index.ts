@@ -108,8 +108,6 @@ export class Telemetry {
 
 	private userCloudId?: string;
 
-	private pulseIntervalReference: NodeJS.Timeout;
-
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
 	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
@@ -209,25 +207,14 @@ export class Telemetry {
 					this.errorReporter.error(error);
 				},
 			});
-
-			this.startPulse();
 		}
-	}
-
-	private startPulse() {
-		this.pulseIntervalReference = setInterval(
-			() => {
-				this.flushBuffers();
-			},
-			6 * 60 * 60 * 1000,
-		); // every 6 hours
 	}
 
 	/**
 	 * Sends the events buffered in this process and empties the buffers. Does
 	 * nothing while diagnostics are off, because nothing buffers then.
 	 */
-	private flushBuffers(): void {
+	flushBuffers(): void {
 		if (!this.rudderStack) {
 			return;
 		}
@@ -531,8 +518,6 @@ export class Telemetry {
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
-		clearInterval(this.pulseIntervalReference);
-
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 

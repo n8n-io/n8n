@@ -30,8 +30,6 @@ vi.mock('@rudderstack/rudder-sdk-node', () => ({
 describe('Telemetry', () => {
 	let spyTrack: MockInstance;
 
-	let spyStartPulse: MockInstance;
-
 	const mockRudderStack = mock<RudderStack>();
 
 	let telemetry: Telemetry;
@@ -57,8 +55,6 @@ describe('Telemetry', () => {
 
 	beforeEach(async () => {
 		spyTrack = vi.spyOn(Telemetry.prototype, 'track').mockName('track');
-		// @ts-expect-error Spying on private method
-		spyStartPulse = vi.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(function () {});
 
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
@@ -1262,43 +1258,32 @@ describe('Telemetry', () => {
 		});
 	});
 
-	describe('pulse interval', () => {
-		test('should flush the buffers without sending a pulse packet', async () => {
-			mockPulsePacketSources();
-			spyStartPulse.mockRestore();
-
-			const intervalTelemetry = new Telemetry(
-				mock(),
-				new PostHogClient(instanceSettings, mock()),
-				mock(),
-				instanceSettings,
-				mock(),
-				globalConfig,
-				mock(),
-				mock(),
-			);
-			// @ts-expect-error Assigning to private property
-			intervalTelemetry.rudderStack = mockRudderStack;
-			// @ts-expect-error Calling a private method
-			intervalTelemetry.startPulse();
-
-			intervalTelemetry.trackApiInvocation({
+	describe('flushBuffers', () => {
+		test('should send the buffered events and empty the buffers', () => {
+			telemetry.trackApiInvocation({
 				user_id: 'user1',
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
 			});
 
-			await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000);
+			telemetry.flushBuffers();
 
 			expect(spyTrack).toHaveBeenCalledWith(
 				'Public API usage',
-				expect.objectContaining({ user_id: 'user1' }),
+				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
-			expect(intervalTelemetry.getApiInvocationsBuffer()).toEqual({});
+			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+		});
 
-			await intervalTelemetry.stopTracking();
+		test('should send nothing when RudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.flushBuffers();
+
+			expect(spyTrack).not.toHaveBeenCalled();
 		});
 	});
 });
