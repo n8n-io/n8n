@@ -408,6 +408,20 @@ The schema defines this event. CONTEXT-139 publishes it.
 {"type":"preferences-applied","runId":"run_abc123","agentId":"agent-001","payload":{"preferences":[{"id":"9f1c…","scope":"user"},{"id":"3c7a…","scope":"project","projectId":"pr_1","projectName":"Marketing"}],"renderedLength":1240,"injectedThisTurn":true}}
 ```
 
+### `preference-card`
+
+A later fact about a preference the `save_user_preference` tool saved in this run: the
+user edited it or removed it from the card. The two card endpoints append it after the
+row write succeeded, and return the same fact so the card renders at once.
+
+An edit names the text and the scope the row now has, with `projectId` when the scope is
+`project`. A removal names neither. The reducer keeps the last named text and scope
+through a later fact, so an edit then a removal still strikes out the edited text.
+
+```json
+{"type":"preference-card","runId":"run_abc123","agentId":"orchestrator-run_abc123","payload":{"toolCallId":"tc-1","preferenceId":"9f1c…","state":"edited","content":"Name trigger nodes On <event>.","scope":"project","projectId":"pr_1"}}
+```
+
 ### `thread-title-updated`
 
 The thread title has been updated (e.g., auto-generated from conversation).
@@ -696,6 +710,7 @@ creating duplicate messages.
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |
 | `thread-title-updated` | `title` | Thread title changed |
 | `preferences-applied` | `preferences`, `renderedLength`, `injectedThisTurn`, `carriedFromRunId?` | Which saved preferences the turn carried |
+| `preference-card` | `toolCallId`, `preferenceId`, `state`, `content?`, `scope?`, `projectId?` | A saved preference was edited or removed from the chat card |
 | `filesystem-request` | `requestId`, `toolCall` | Local gateway MCP tool request (internal) |
 | `tool-input-start` | `toolCallId`, `toolName` | Tool arguments began streaming |
 | `text-block` | `text` (`responseId` is on the event) | Completed text segment, coalesced |
