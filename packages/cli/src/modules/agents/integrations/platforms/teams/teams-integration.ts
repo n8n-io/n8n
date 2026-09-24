@@ -29,12 +29,22 @@ const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 /** Interval picked to match Discord's; Teams does not document the expiry. */
 const TEAMS_TYPING_REFRESH_MS = 8000;
 
+/** How long a connection stays buffered after its stream stalled. */
+const BUFFERED_ONLY_TTL_MS = 30 * 60 * 1000;
+
 /**
  * The adapter waits for Teams to acknowledge the first chunk before it finishes
  * the post, and the Teams SDK swallows the 403 a tenant without streaming
  * returns — so a stream that never starts would hang the turn for good.
+ *
+ * Set above the SDK's own retry ceiling, not just above a healthy round trip.
+ * Teams throttles streaming to one request a second and the SDK flushes twice
+ * that, so a 429 is ordinary; the SDK then retries five times over 7.5s of
+ * backoff and can still succeed. Giving up sooner than that would post the
+ * reply here while the stream went on to deliver it too, and the user would
+ * read it twice.
  */
-const TEAMS_STREAMING_POST_TIMEOUT_MS = 15_000;
+const TEAMS_STREAMING_POST_TIMEOUT_MS = 45_000;
 
 /**
  * A tenant ID is a GUID or a verified domain. The value reaches the Teams SDK,
@@ -122,8 +132,13 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	readonly singleStreamedRunPerTurn = true;
 
-	/** Connections whose stream stalled. Re-probed after a restart. */
-	private readonly bufferedOnly = new Set<string>();
+	/**
+	 * When each connection's stream last stalled. A stall can be a passing
+	 * throttle rather than a tenant that refuses streaming, so the entry expires
+	 * and the next turn tries again instead of demoting the connection for the
+	 * life of the process.
+	 */
+	private readonly bufferedOnlyUntil = new Map<string, number>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -171,10 +186,19 @@ export class TeamsIntegration extends AgentChatIntegration {
 	}
 
 	onStreamingPostStalled(integration: AgentIntegrationConfig): void {
-		this.bufferedOnly.add(integration.credentialId);
-		this.logger.warn('[TeamsIntegration] Streaming disabled for this connection after a stall', {
+		this.bufferedOnlyUntil.set(integration.credentialId, Date.now() + BUFFERED_ONLY_TTL_MS);
+		this.logger.warn('[TeamsIntegration] Streaming paused for this connection after a stall', {
 			credentialId: integration.credentialId,
+			retryInMs: BUFFERED_ONLY_TTL_MS,
 		});
+	}
+
+	private streamingPaused(credentialId: string): boolean {
+		const until = this.bufferedOnlyUntil.get(credentialId);
+		if (until === undefined) return false;
+		if (until > Date.now()) return true;
+		this.bufferedOnlyUntil.delete(credentialId);
+		return false;
 	}
 
 	/**
@@ -185,8 +209,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 	async createBridgeExecutionContext(
 		params: BridgeMessageContextParams,
 	): Promise<BridgeExecutionContext> {
-		const streamable =
-			params.thread.isDM && !this.bufferedOnly.has(params.integration.credentialId);
+		const streamable = params.thread.isDM && !this.streamingPaused(params.integration.credentialId);
 		return {
 			platformAgentContext: {},
 			forceBuffered: !streamable,

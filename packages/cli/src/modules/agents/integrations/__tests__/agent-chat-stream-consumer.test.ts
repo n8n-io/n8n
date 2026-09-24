@@ -121,7 +121,11 @@ function isAsyncIterable(value: unknown): boolean {
  * A thread whose `post` separates a streamed post (an async iterable) from a
  * discrete one, and can be told to leave the streamed post pending forever.
  */
-function makeStreamingThread({ stall = false }: { stall?: boolean } = {}) {
+function makeStreamingThread({
+	stall = false,
+	settleAfterMs,
+	rejectAfterMs,
+}: { stall?: boolean; settleAfterMs?: number; rejectAfterMs?: number } = {}) {
 	const streamed: unknown[] = [];
 	const discrete: unknown[] = [];
 	const post = vi.fn(async (message: unknown) => {
@@ -130,6 +134,14 @@ function makeStreamingThread({ stall = false }: { stall?: boolean } = {}) {
 			return undefined;
 		}
 		streamed.push(message);
+		if (settleAfterMs !== undefined) {
+			return await new Promise((resolve) => setTimeout(resolve, settleAfterMs));
+		}
+		if (rejectAfterMs !== undefined) {
+			return await new Promise((_resolve, reject) =>
+				setTimeout(() => reject(new Error('late failure')), rejectAfterMs),
+			);
+		}
 		if (stall) return await new Promise(() => {});
 		for await (const _chunk of message as AsyncIterable<string>) {
 			// Drain the iterable the way a real adapter does.
@@ -142,11 +154,7 @@ function makeStreamingThread({ stall = false }: { stall?: boolean } = {}) {
 }
 
 function makeStreamingConsumer(
-	options: {
-		streamingPostTimeoutMs?: number;
-		singleStreamedRunPerTurn?: boolean;
-		onStreamingPostStalled?: () => void;
-	} = {},
+	options: Partial<ConstructorParameters<typeof AgentChatStreamConsumer>[0]> = {},
 ) {
 	return new AgentChatStreamConsumer({
 		disableStreaming: false,
@@ -269,5 +277,50 @@ describe('AgentChatStreamConsumer — delivery that must not stream', () => {
 
 		expect(streamed).toEqual([]);
 		expect(discrete).toEqual([{ markdown: 'Scheduled reminder' }]);
+	});
+});
+
+describe('AgentChatStreamConsumer — a streamed post that settles after the deadline', () => {
+	it('posts the buffered text once and does not wait for the late post', async () => {
+		const onStreamingPostStalled = vi.fn();
+		const { thread, streamed, discrete } = makeStreamingThread({ settleAfterMs: 200 });
+		const consumer = makeStreamingConsumer({
+			streamingPostTimeoutMs: 10,
+			onStreamingPostStalled,
+		});
+
+		await consumer.consume(
+			makeStream([{ type: 'text-delta', id: 't-1', delta: 'Late but fine' }]),
+			thread,
+		);
+
+		expect(streamed).toHaveLength(1);
+		expect(discrete).toEqual([{ markdown: 'Late but fine' }]);
+		expect(onStreamingPostStalled).toHaveBeenCalledTimes(1);
+
+		// The turn is over; the late settle must not add a second message.
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(discrete).toEqual([{ markdown: 'Late but fine' }]);
+	});
+
+	it('stays quiet when an abandoned post rejects after the turn ended', async () => {
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+		const { thread, discrete } = makeStreamingThread({ rejectAfterMs: 200 });
+		const consumer = makeStreamingConsumer({
+			streamingPostTimeoutMs: 10,
+			postErrorToThread,
+		});
+
+		await consumer.consume(
+			makeStream([{ type: 'text-delta', id: 't-1', delta: 'Recovered text' }]),
+			thread,
+		);
+
+		expect(discrete).toEqual([{ markdown: 'Recovered text' }]);
+
+		// An error posted now would land after the reply the user already has.
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(postErrorToThread).not.toHaveBeenCalled();
+		expect(discrete).toEqual([{ markdown: 'Recovered text' }]);
 	});
 });

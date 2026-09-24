@@ -14,6 +14,13 @@ type ToolResultChunk = Extract<StreamChunk, { type: 'tool-result' }>;
 
 export type SuspensionHandlingResult = 'posted' | 'skipped' | 'failed';
 
+/**
+ * A post that rejected counts as settled: its handler has already told the user,
+ * and the platform may have rendered part of the reply, so the text must not be
+ * posted again either way. Only a post that never settles is 'stalled'.
+ */
+type StreamingPostOutcome = 'settled' | 'stalled';
+
 interface AgentChatStreamConsumerOptions {
 	disableStreaming: boolean;
 	logger: Logger;
@@ -126,7 +133,14 @@ export class AgentChatStreamConsumer {
 		 */
 		const retainText =
 			this.options.streamingPostTimeoutMs !== undefined ||
-			(this.options.singleStreamedRunPerTurn ?? false);
+			this.options.singleStreamedRunPerTurn === true;
+		/**
+		 * Set when a post outlived its deadline and the turn recovered without it.
+		 * Its rejection handler is already attached and cannot be detached, so it
+		 * has to know to stay quiet: an error posted then would land after the
+		 * reply the user already has, and after the turn is over.
+		 */
+		let streamingPostAbandoned = false;
 
 		const createTextIterable = (): AsyncIterable<string> => {
 			const queue: string[] = [];
@@ -173,11 +187,17 @@ export class AgentChatStreamConsumer {
 
 		const startStreamingPost = () => {
 			const iterable = createTextIterable();
+			streamingPostAbandoned = false;
 			streamingPost = thread.post(iterable).catch(async (postError: unknown) => {
+				const message = postError instanceof Error ? postError.message : String(postError);
+				if (streamingPostAbandoned) {
+					this.options.logger.debug('[AgentChatBridge] Abandoned streaming post failed', {
+						error: message,
+					});
+					return;
+				}
 				await this.options.postErrorToThread(thread, postError);
-				this.options.logger.error('[AgentChatBridge] Streaming post failed', {
-					error: postError instanceof Error ? postError.message : String(postError),
-				});
+				this.options.logger.error('[AgentChatBridge] Streaming post failed', { error: message });
 			});
 		};
 
@@ -195,7 +215,9 @@ export class AgentChatStreamConsumer {
 				// so a second run refills the first bubble, which sits above anything
 				// posted in between.
 				if (this.options.singleStreamedRunPerTurn) streamingStopped = true;
-				if (await this.streamingPostStalled(post, thread)) {
+				const outcome = await this.awaitStreamingPost(post, thread);
+				if (outcome === 'stalled') {
+					streamingPostAbandoned = true;
 					// Re-opening a stream the platform never acknowledged would stall
 					// again, so the rest of the turn is buffered whatever the platform
 					// asked for.
@@ -285,26 +307,26 @@ export class AgentChatStreamConsumer {
 	 * signal this layer gets, and it does not settle until the stream ends even
 	 * on a healthy run.
 	 */
-	private async streamingPostStalled(
+	private async awaitStreamingPost(
 		post: Promise<unknown>,
 		thread: Thread<unknown, unknown>,
-	): Promise<boolean> {
+	): Promise<StreamingPostOutcome> {
 		const timeoutMs = this.options.streamingPostTimeoutMs;
-		if (timeoutMs === undefined) {
+		if (timeoutMs === undefined || timeoutMs <= 0) {
 			await post;
-			return false;
+			return 'settled';
 		}
 
 		let timer: NodeJS.Timeout | undefined;
 		try {
-			const stalled = await Promise.race([
-				post.then(() => false),
+			const settled = await Promise.race([
+				post.then(() => true),
 				new Promise<boolean>((resolve) => {
-					timer = setTimeout(() => resolve(true), timeoutMs);
+					timer = setTimeout(() => resolve(false), timeoutMs);
 					timer.unref();
 				}),
 			]);
-			if (!stalled) return false;
+			if (settled) return 'settled';
 		} finally {
 			clearTimeout(timer);
 		}
@@ -313,7 +335,7 @@ export class AgentChatStreamConsumer {
 			'[AgentChatBridge] Streaming post did not settle, posting buffered instead',
 			{ threadId: thread.id, timeoutMs },
 		);
-		return true;
+		return 'stalled';
 	}
 
 	/**
