@@ -1090,6 +1090,7 @@ export class ChatIntegrationService {
 				: memoryState;
 
 			chat = new Chat({
+				concurrency: 'concurrent',
 				userName: `n8n-agent-${agentId}`,
 				// Use the platform type as the adapter key (e.g. 'slack') so that
 				// bot.webhooks.slack maps correctly to the handler.

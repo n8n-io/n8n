@@ -1,8 +1,10 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, Not } from '@n8n/typeorm';
+import { isDraftIntegration } from '@n8n/api-types';
 
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
+import { Agent } from '../entities/agent.entity';
 import type { AgentQueuedMessage } from '../types/agent-queued-message';
 
 @Service()
@@ -37,6 +39,14 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		});
 	}
 
+	async findThreadIds(): Promise<string[]> {
+		const rows = await this.createQueryBuilder('queue')
+			.select('queue.threadId', 'threadId')
+			.distinct(true)
+			.getRawMany<{ threadId: string }>();
+		return rows.map(({ threadId }) => threadId);
+	}
+
 	async linkExecution(
 		id: string,
 		previousId: string | null,
@@ -58,5 +68,22 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 
 	async findDeliveryState(id: string) {
 		return await this.findOne({ where: { id }, relations: { execution: true } });
+	}
+
+	async findPublishedConnection(
+		agentId: string,
+		projectId: string,
+		source: string,
+		credentialId: string,
+		ctx: OperationContext = {},
+	) {
+		const agent = await this.managerFor(ctx).findOneBy(Agent, { id: agentId, projectId });
+		if (!agent?.activeVersionId) return undefined;
+		return agent.integrations?.find(
+			(connection) =>
+				connection.type === source &&
+				connection.credentialId === credentialId &&
+				!isDraftIntegration(connection),
+		);
 	}
 }

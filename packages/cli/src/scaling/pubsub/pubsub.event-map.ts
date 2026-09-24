@@ -1,5 +1,6 @@
 import type {
 	AgentIntegrationConfig,
+	AgentSseEvent,
 	ChatHubMessageStatus,
 	InstanceAiEvent,
 	PushMessage,
@@ -10,6 +11,11 @@ import type {
 import type { IWorkflowBase, RelatedAgentRun, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
+	'relay-agent-queued-chat': {
+		queueId: string;
+		sequence: number;
+		event: AgentSseEvent | null;
+	};
 	// #region Lifecycle
 
 	'reload-license': never;

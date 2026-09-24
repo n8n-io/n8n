@@ -1,4 +1,9 @@
-import type { AgentChatMessagesResponse, AgentJsonConfig, AgentSseEvent } from '@n8n/api-types';
+import type {
+	AgentChatMessageDto,
+	AgentChatMessagesResponse,
+	AgentJsonConfig,
+	AgentSseEvent,
+} from '@n8n/api-types';
 
 import type { ApiHelpers } from './api-helper';
 import { N8N_AUTH_COOKIE } from '../config/constants';
@@ -38,7 +43,7 @@ export class AgentApiHelper {
 		projectId: string,
 		agentId: string,
 		threadId: string,
-	): Promise<Array<{ id: string; status: string }>> {
+	): Promise<Array<{ id: string; status: string; userMessage: string | null }>> {
 		const response = await this.api.request.get(
 			`/rest/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}`,
 		);
@@ -59,51 +64,54 @@ export class AgentApiHelper {
 		return (await response.json()).data;
 	}
 
-	/** Playwright buffers responses. Read acceptance with fetch, then close only the reader. */
-	async startAndDisconnect(
+	/** Fetch exposes SSE before the response ends. Playwright buffers the response. */
+	async openChat(
 		baseUrl: string,
 		projectId: string,
 		agentId: string,
-		threadId: string,
-	): Promise<string> {
+		payload: AgentChatMessageDto,
+	) {
 		const { cookies } = await this.api.request.storageState();
 		const cookie = cookies.find((entry) => entry.name === N8N_AUTH_COOKIE);
 		if (!cookie) throw new TestError('Missing authentication cookie');
 		const controller = new AbortController();
-		try {
-			const response = await fetch(
-				`${baseUrl}/rest/projects/${projectId}/agents/v2/${agentId}/chat`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json', Cookie: `${cookie.name}=${cookie.value}` },
-					body: JSON.stringify({ sessionId: threadId, message: 'Reply with the word survived.' }),
-					signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]),
-				},
-			);
-			if (!response.ok || !response.body)
-				throw new TestError(`Chat returned HTTP ${response.status}`);
-			return await this.readAcceptance(response.body);
-		} finally {
-			controller.abort();
-		}
+		const response = await fetch(
+			`${baseUrl}/rest/projects/${projectId}/agents/v2/${agentId}/chat`,
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Cookie: `${cookie.name}=${cookie.value}` },
+				body: JSON.stringify(payload),
+				signal: AbortSignal.any([controller.signal, AbortSignal.timeout(360_000)]),
+			},
+		);
+		if (!response.ok || !response.body)
+			throw new TestError(`Chat returned HTTP ${response.status}`);
+		const events: AgentSseEvent[] = [];
+		const done = this.readEvents(response.body, events).catch((error: unknown) => {
+			if (!controller.signal.aborted) return String(error);
+			return undefined;
+		});
+		return { events, done, disconnect: () => controller.abort() };
 	}
 
-	private async readAcceptance(body: ReadableStream<Uint8Array>): Promise<string> {
+	private async readEvents(
+		body: ReadableStream<Uint8Array>,
+		events: AgentSseEvent[],
+	): Promise<void> {
 		const reader = body.getReader();
 		const decoder = new TextDecoder();
 		let buffer = '';
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
-				if (done) throw new TestError('Chat closed before acceptance');
+				if (done) return;
 				buffer += decoder.decode(value, { stream: true });
 				const lines = buffer.split('\n');
 				buffer = lines.pop() ?? '';
 				for (const line of lines) {
 					if (!line.startsWith('data: ')) continue;
 					const event: AgentSseEvent = JSON.parse(line.slice(6));
-					if (event.type === 'error') throw new TestError(event.message);
-					if (event.type === 'execution-started') return event.executionId;
+					events.push(event);
 				}
 			}
 		} finally {
