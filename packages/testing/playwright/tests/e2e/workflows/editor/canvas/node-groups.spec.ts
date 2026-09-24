@@ -69,7 +69,7 @@ test.describe(
 			expect(after.width).toBeGreaterThan(before.width);
 		});
 
-		test('keeps a cross-group connection add button inside its source group after tidy up', async ({
+		test('keeps a diagonal connection add button on the edge inside its source group', async ({
 			n8n,
 		}) => {
 			await n8n.canvas.hoverConnectionBetweenNodes('Set A', 'Set B');
@@ -84,6 +84,7 @@ test.describe(
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(2);
 
 			await n8n.canvas.clickTidyUpButton();
+			await n8n.canvas.dragNodeGroupFromTitleBar('Group 2', 0, -160);
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.canvas.hoverConnectionBetweenNodes('No Operation, do nothing', 'Set B');
 			await expect(
@@ -95,6 +96,9 @@ test.describe(
 				'No Operation, do nothing',
 				'Set B',
 			);
+			const sourceHandle = await n8n.canvas.getNodeOutputHandleBoundingBox(
+				'No Operation, do nothing',
+			);
 			expect(addButton.x).toBeGreaterThanOrEqual(sourceGroup.x + 8);
 			expect(addButton.y).toBeGreaterThanOrEqual(sourceGroup.y + 8);
 			expect(addButton.x + addButton.width).toBeLessThanOrEqual(
@@ -103,6 +107,9 @@ test.describe(
 			expect(addButton.y + addButton.height).toBeLessThanOrEqual(
 				sourceGroup.y + sourceGroup.height - 8,
 			);
+			expect(
+				Math.abs(addButton.y + addButton.height / 2 - (sourceHandle.y + sourceHandle.height / 2)),
+			).toBeLessThanOrEqual(8);
 		});
 
 		test('keeps the output plus inside a regular multi-node group after tidy up', async ({

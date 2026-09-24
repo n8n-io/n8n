@@ -102,7 +102,10 @@ const labelPosition = computed<[number, number]>(() => {
 
 const toolbarPosition = computed(() => {
 	const canonicalSourceId = data.value.canonicals?.[0]?.source ?? props.source;
-	return getEdgeToolbarPosition(labelPosition.value, getContainingGroupRect(canonicalSourceId));
+	return getEdgeToolbarPosition(labelPosition.value, getContainingGroupRect(canonicalSourceId), [
+		props.sourceX,
+		props.sourceY,
+	]);
 });
 
 const renderedLabelPosition = computed(() =>

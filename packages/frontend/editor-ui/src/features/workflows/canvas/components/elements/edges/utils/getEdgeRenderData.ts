@@ -21,22 +21,21 @@ function clampToInset(start: number, size: number, inset: number, value: number)
 export function getEdgeToolbarPosition(
 	labelPosition: [number, number],
 	containingGroupRect?: BoundingBox,
+	sourcePoint?: [number, number],
 ): [number, number] {
 	if (!containingGroupRect) return labelPosition;
 
+	const x = clampToInset(
+		containingGroupRect.x,
+		containingGroupRect.width,
+		EDGE_TOOLBAR_INSET_X,
+		labelPosition[0],
+	);
+	const y = x !== labelPosition[0] && sourcePoint ? sourcePoint[1] : labelPosition[1];
+
 	return [
-		clampToInset(
-			containingGroupRect.x,
-			containingGroupRect.width,
-			EDGE_TOOLBAR_INSET_X,
-			labelPosition[0],
-		),
-		clampToInset(
-			containingGroupRect.y,
-			containingGroupRect.height,
-			EDGE_TOOLBAR_INSET_Y,
-			labelPosition[1],
-		),
+		x,
+		clampToInset(containingGroupRect.y, containingGroupRect.height, EDGE_TOOLBAR_INSET_Y, y),
 	];
 }
 

@@ -1127,6 +1127,15 @@ export class CanvasPage extends BasePage {
 		);
 	}
 
+	async getNodeOutputHandleBoundingBox(
+		nodeName: string,
+		outputIndex = 0,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.getNodeOutputHandle(nodeName, outputIndex).boundingBox();
+		if (!box) throw new Error(`Output handle for "${nodeName}" is not visible`);
+		return box;
+	}
+
 	getNodeInputHandle(nodeName: string, inputIndex = 0): Locator {
 		return this.page.locator(
 			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"][data-index="${inputIndex}"]`,

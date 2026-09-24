@@ -53,6 +53,12 @@ describe('CanvasEdge', () => {
 				200, 150,
 			]);
 		});
+
+		it('keeps a clamped diagonal toolbar at the source height', () => {
+			expect(
+				getEdgeToolbarPosition([450, 100], { x: 0, y: 0, width: 400, height: 300 }, [200, 220]),
+			).toEqual([352, 220]);
+		});
 	});
 
 	it('should emit delete event when toolbar delete is clicked', async () => {
