@@ -287,4 +287,55 @@ describe('Microsoft Teams integration scenarios', () => {
 			await ctx.shutdown();
 		}
 	});
+
+	it('answers a click on a card whose run is gone, privately', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: [
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-group-1',
+					toolCallId: 'tool-group-1',
+					toolName: 'approval',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_teams_message',
+						displayName: 'Send Teams message',
+						args: { text: 'Continue?' },
+					},
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		try {
+			await ctx.sendWebhook(groupChatMention);
+			const cardMessageId = ctx.lastPostedMessageId();
+			if (!cardMessageId) throw new Error('Expected the approval card to have been posted');
+			const approve = cardActions(ctx.lastPost()?.body)[0];
+			if (!approve) throw new Error('Expected an Adaptive Card action on the approval card');
+
+			ctx.agentExecutor.isResumable.mockResolvedValue(false);
+			await ctx.sendWebhook(
+				cardAction(approve.data as Record<string, unknown>, cardMessageId, groupChatMention),
+			);
+
+			// No decision took effect, so the click is answered rather than resumed.
+			expect(ctx.agentExecutor.resumeForChat).not.toHaveBeenCalled();
+			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
+
+			const notice = ctx.lastPost();
+			expect(notice?.body).toMatchObject({
+				conversation: { id: TEAMS_GROUP_CHAT_CONVERSATION_ID },
+				// Targeted, so the rest of the group chat never sees it.
+				recipient: { id: TEAMS_USER_ID },
+			});
+			expect(notice?.body.text).toContain('This action is no longer available');
+		} finally {
+			await ctx.shutdown();
+		}
+	});
 });
