@@ -235,6 +235,16 @@ describe('N8nOAuth2TokenCredential', () => {
 			});
 		});
 
+		// Not '': callers fall back with `??`, which an empty string would pass straight through.
+		it('should leave a missing endpoint undefined', async () => {
+			delete mockCredential.endpoint;
+			credential = new N8nOAuth2TokenCredential(mockNode, mockCredential);
+
+			const result = await credential.getDeploymentDetails();
+
+			expect(result.endpoint).toBeUndefined();
+		});
+
 		it('should return the Foundry endpoint when endpointType is foundry', async () => {
 			mockCredential.endpointType = 'foundry';
 			mockCredential.foundryEndpoint = 'https://test.services.ai.azure.com/openai/v1';

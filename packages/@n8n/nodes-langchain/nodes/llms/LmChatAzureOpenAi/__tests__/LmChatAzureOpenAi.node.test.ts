@@ -60,7 +60,7 @@ describe('LmChatAzureOpenAi', () => {
 			apiKeyCredential,
 			'https://my-resource.openai.azure.com',
 		],
-		// The Entra handler turns a missing endpoint into '' rather than undefined
+		// The Entra handler has no endpoint to report, so the host comes from the resource name
 		[
 			'Entra ID without endpoint',
 			'azureEntraCognitiveServicesOAuth2Api',

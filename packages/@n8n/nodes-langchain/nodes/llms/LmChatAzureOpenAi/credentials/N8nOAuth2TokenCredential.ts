@@ -72,13 +72,16 @@ export class N8nOAuth2TokenCredential implements TokenCredential {
 	}
 
 	/**
-	 * Gets the deployment details from the credential
+	 * Gets the deployment details from the credential.
+	 *
+	 * A missing endpoint stays `undefined`. Callers fall back to a host built from the resource
+	 * name, and '' is falsy but not nullish, so returning it would quietly defeat a `??` fallback.
 	 */
 	async getDeploymentDetails() {
 		if (this.credential.endpointType === 'foundry') {
 			return {
 				apiVersion: this.credential.apiVersion ?? '',
-				endpoint: this.credential.foundryEndpoint ?? '',
+				endpoint: this.credential.foundryEndpoint,
 				resourceName: this.credential.resourceName ?? '',
 				endpointType: 'foundry' as const,
 				foundryEndpoint: this.credential.foundryEndpoint,
@@ -86,7 +89,7 @@ export class N8nOAuth2TokenCredential implements TokenCredential {
 		}
 		return {
 			apiVersion: this.credential.apiVersion ?? '',
-			endpoint: this.credential.endpoint ?? '',
+			endpoint: this.credential.endpoint,
 			resourceName: this.credential.resourceName ?? '',
 		};
 	}

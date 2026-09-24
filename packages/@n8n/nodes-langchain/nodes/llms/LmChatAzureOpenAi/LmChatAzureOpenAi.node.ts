@@ -164,7 +164,7 @@ export class LmChatAzureOpenAi implements INodeType {
 				configuration: {
 					fetchOptions: {
 						// Resolve the proxy against the host LangChain dials so NO_PROXY applies to it.
-						// `||` rather than `??`: the Entra handler yields '' for a missing endpoint.
+						// `||` rather than `??`, so an endpoint that is set but empty also falls back.
 						dispatcher: getProxyAgent(
 							modelConfig.azureOpenAIEndpoint ||
 								`https://${modelConfig.azureOpenAIApiInstanceName}.openai.azure.com`,
