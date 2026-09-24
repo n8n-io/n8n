@@ -17,10 +17,11 @@ import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import type { EvalLogger } from './logger';
+import { MIN_TURN_BUDGET_MS, RunTimeoutError } from './timeouts';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import { lastSavedWorkflowIdFromEvents, savedWorkflowsFromEvents } from '../outcome/event-parser';
-import type { CapturedEvent } from '../types';
+import type { BuildTimeout, CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
 import { getNestedRecord } from '../utils/safe-extract';
@@ -99,8 +100,16 @@ export interface WaitConfig {
 	threadId: string;
 	events: CapturedEvent[];
 	approvedRequests: Set<string>;
+	/** When the conversation started (the opening message was sent). */
 	startTime: number;
+	/** Conversation budget, measured from `startTime`. */
 	timeoutMs: number;
+	/** Budget of one user turn, measured from `turnStartedAt`. Absent: no per-turn cap. */
+	turnTimeoutMs?: number;
+	/** When the user message of the turn in flight was sent. */
+	turnStartedAt?: number;
+	/** Cancel a run in flight after this long without an event. Absent: no bound. */
+	inactivityTimeoutMs?: number;
 	logger: EvalLogger;
 	confirmationStrategy?: ConfirmationStrategy;
 	/** Per-conversation retry count by requestId. Auto-allocated when omitted. */
@@ -125,8 +134,7 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 		);
 
 		// Wait for background agent tasks to complete
-		const remainingMs = Math.max(0, config.timeoutMs - (Date.now() - config.startTime));
-		await waitForBackgroundTasks(config, remainingMs);
+		await waitForBackgroundTasks(config, remainingBudgetMs(config));
 
 		// Wait for observational-memory jobs (observer/reflector) before the next user turn
 		await waitForMemoryTasks(config);
@@ -143,21 +151,65 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 			`[${config.threadId}] Main agent resumed (run-start #${String(newRunStarts)}) -- waiting for completion`,
 		);
 
-		if (Date.now() - config.startTime > config.timeoutMs) {
-			await config.client.cancelRun(config.threadId).catch(() => {});
-			throw new Error(`Run timed out after ${String(config.timeoutMs)}ms`);
-		}
+		await cancelOnTimeout(config);
 	}
+}
+
+/**
+ * Conversation budget a follow-up needs before it is sent: the fixed floor, or a
+ * quarter of a turn budget when that is smaller (short local budgets). Without
+ * a turn budget the loop keeps the old rule: send while any time is left.
+ */
+function minTurnBudgetMs(config: WaitConfig): number {
+	if (config.turnTimeoutMs === undefined) return 0;
+	return Math.min(MIN_TURN_BUDGET_MS, config.turnTimeoutMs / 4);
+}
+
+/** Time left in the tightest of the conversation and turn budgets. */
+function remainingBudgetMs(config: WaitConfig, now = Date.now()): number {
+	const conversation = config.timeoutMs - (now - config.startTime);
+	const turn =
+		config.turnTimeoutMs !== undefined && config.turnStartedAt !== undefined
+			? config.turnTimeoutMs - (now - config.turnStartedAt)
+			: Infinity;
+	return Math.max(0, Math.min(conversation, turn));
+}
+
+/**
+ * The budget the run in flight has overrun, if any. The conversation budget is
+ * the ceiling the other two live inside, so it is checked first. Inactivity
+ * reads the last captured event: harness markers count, so a turn whose run has
+ * not started yet is measured from its own user message.
+ */
+export function timeoutBreach(config: WaitConfig, now = Date.now()): BuildTimeout | undefined {
+	const turn = Math.max(1, countEvents(config.events, USER_TURN_EVENT));
+	const conversationElapsed = now - config.startTime;
+	if (conversationElapsed > config.timeoutMs) {
+		return { kind: 'conversation', turn, elapsedMs: conversationElapsed };
+	}
+	if (config.turnTimeoutMs !== undefined && config.turnStartedAt !== undefined) {
+		const turnElapsed = now - config.turnStartedAt;
+		if (turnElapsed > config.turnTimeoutMs) return { kind: 'turn', turn, elapsedMs: turnElapsed };
+	}
+	if (config.inactivityTimeoutMs !== undefined) {
+		const lastEventAt = config.events.at(-1)?.timestamp ?? config.turnStartedAt ?? config.startTime;
+		const idleMs = now - lastEventAt;
+		if (idleMs > config.inactivityTimeoutMs) return { kind: 'inactivity', turn, elapsedMs: idleMs };
+	}
+	return undefined;
+}
+
+/** Cancel the run in flight and throw when a budget has fired. */
+async function cancelOnTimeout(config: WaitConfig): Promise<void> {
+	const breach = timeoutBreach(config);
+	if (!breach) return;
+	await config.client.cancelRun(config.threadId).catch(() => {});
+	throw new RunTimeoutError(breach);
 }
 
 async function waitForRunFinish(config: WaitConfig, expectedFinishCount: number): Promise<void> {
 	while (countEvents(config.events, 'run-finish') <= expectedFinishCount) {
-		const elapsed = Date.now() - config.startTime;
-		if (elapsed > config.timeoutMs) {
-			await config.client.cancelRun(config.threadId).catch(() => {});
-			throw new Error(`Run timed out after ${String(config.timeoutMs)}ms`);
-		}
-
+		await cancelOnTimeout(config);
 		await processConfirmationRequests(config);
 		await delay(POLL_INTERVAL_MS);
 	}
@@ -305,22 +357,38 @@ export interface MultiTurnConfig extends WaitConfig {
 	observerThresholdTokens?: number;
 }
 
-export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
+/**
+ * Drives the conversation until the proxy is done or a budget ends it. Returns
+ * the budget that ended it, or undefined when the proxy said done. A budget that
+ * fires inside a run throws `RunTimeoutError` from `waitForAllActivity`; one that
+ * runs out between turns returns here, with the state saved so far intact.
+ */
+export async function runMultiTurnConversation(
+	config: MultiTurnConfig,
+): Promise<BuildTimeout | undefined> {
 	while (true) {
 		await waitForAllActivity(config);
-
-		if (Date.now() - config.startTime > config.timeoutMs) {
-			config.logger.verbose(
-				`[multi-turn] Timeout reached after ${String(Date.now() - config.startTime)}ms — exiting loop`,
-			);
-			return;
-		}
 
 		const decision = await config.nextMessageDecider();
 		if (decision.kind === 'done') {
 			config.logger.verbose('[multi-turn] Proxy returned done — exiting loop');
-			return;
+			return undefined;
 		}
+
+		// The proxy still has something to say: only a turn that can get a minimal
+		// budget is worth starting. Otherwise the conversation ends here and the
+		// saved state is graded.
+		const nextTurn = countEvents(config.events, USER_TURN_EVENT) + 1;
+		const conversationBudgetExhausted = (): BuildTimeout | undefined => {
+			const elapsedMs = Date.now() - config.startTime;
+			if (config.timeoutMs - elapsedMs >= minTurnBudgetMs(config)) return undefined;
+			config.logger.verbose(
+				`[multi-turn] ${String(Math.max(0, Math.round((config.timeoutMs - elapsedMs) / 1000)))}s of conversation budget left — not sending user turn ${String(nextTurn)}`,
+			);
+			return { kind: 'conversation', turn: nextTurn, elapsedMs };
+		};
+		const exhaustedBeforeEdits = conversationBudgetExhausted();
+		if (exhaustedBeforeEdits) return exhaustedBeforeEdits;
 
 		// After the decision, so an edit never lands on the boundary that ends the
 		// conversation: there the agent would get no turn to react, and the renamed
@@ -336,11 +404,13 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 			await applyUserExecution(config, decision.runWorkflowId);
 		}
 
-		if (Date.now() - config.startTime >= config.timeoutMs) return;
+		const exhaustedAfterEdits = conversationBudgetExhausted();
+		if (exhaustedAfterEdits) return exhaustedAfterEdits;
 
 		config.logger.verbose(
 			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
 		);
+		config.turnStartedAt = Date.now();
 		recordUserTurn(config.events, decision.message);
 		try {
 			await config.client.sendMessage(
@@ -356,7 +426,7 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);
 			config.logger.verbose(`[multi-turn] sendMessage failed: ${msg} — exiting loop`);
-			return;
+			return undefined;
 		}
 	}
 }

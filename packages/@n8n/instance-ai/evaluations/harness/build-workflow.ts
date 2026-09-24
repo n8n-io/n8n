@@ -61,6 +61,7 @@ import {
 	reseedScenarioTables,
 	uniquifyScenarioTableNames,
 } from './seed-tables';
+import { CONVERSATION_BUDGET_TURNS, INACTIVITY_TIMEOUT_MS, RunTimeoutError } from './timeouts';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
@@ -73,6 +74,7 @@ import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
 	ArtifactRef,
+	BuildTimeout,
 	BuildTrace,
 	CapturedEvent,
 	ConversationMetrics,
@@ -96,12 +98,16 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 // Constants
 // ---------------------------------------------------------------------------
 
-// 15 min. Lanes with heavy multi-agent scenarios (large mocked payloads)
-// legitimately need more — the MCP CI workflow passes --timeout-ms 1500000
-// explicitly (observed: trading-bot at 863s with a 15-row dataset, hard
-// timeouts at 32 rows). Do NOT raise this default: a timed-out attempt is
-// retried once, so under high-concurrency contention (the Instance AI
-// experiments suite runs ~4x the MCP lane's concurrency) a generous default
+// 15 min, the budget of ONE USER TURN of the build conversation (the whole
+// conversation gets CONVERSATION_BUDGET_TURNS of these, see harness/timeouts.ts)
+// and of one scenario execution attempt. No productive completed turn in the
+// 2026-09 model-comparison traces exceeded 744 s (medium) or 1304 s (complex,
+// which gets 1.5x). Lanes with heavy multi-agent scenarios (large mocked
+// payloads) legitimately need more for scenarios — the MCP CI workflow passes
+// --timeout-ms 1500000 explicitly (observed: trading-bot at 863s with a 15-row
+// dataset, hard timeouts at 32 rows). Do NOT raise this default: a timed-out
+// attempt is retried once, so under high-concurrency contention (the Instance
+// AI experiments suite runs ~4x the MCP lane's concurrency) a generous default
 // lets starved scenarios hold lane slots for 2x the budget and amplify the
 // very contention that starved them (observed: run 28779266673).
 const DEFAULT_TIMEOUT_MS = 900_000;
@@ -128,7 +134,10 @@ interface MultiTurnDriverConfig {
 	events: CapturedEvent[];
 	approvedRequests: Set<string>;
 	startTime: number;
+	/** Conversation budget, from `startTime`. */
 	timeoutMs: number;
+	/** Budget of each user turn. */
+	turnTimeoutMs: number;
 	logger: EvalLogger;
 	proxyResponses?: Map<string, InstanceAiConfirmRequest>;
 	followUpMessagesOut?: string[];
@@ -169,7 +178,7 @@ function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
 
 async function driveMultiTurnConversation(
 	config: MultiTurnDriverConfig,
-): Promise<ProxyDecisionStats> {
+): Promise<{ proxyDecisionStats: ProxyDecisionStats; timeout?: BuildTimeout }> {
 	const openingMessage = config.conversation[0]?.text ?? '';
 	const recordedOpeningMessage = config.recordedOpeningMessage ?? openingMessage;
 	// The proxy renders both its script and its running transcript from `text` alone,
@@ -220,25 +229,36 @@ async function driveMultiTurnConversation(
 		config.observerThresholdTokens,
 	);
 
-	await runMultiTurnConversation({
-		client: config.client,
-		threadId: config.threadId,
-		events: config.events,
-		approvedRequests: config.approvedRequests,
-		startTime: config.startTime,
-		timeoutMs: config.timeoutMs,
-		logger: config.logger,
-		confirmationStrategy,
-		nextMessageDecider,
-		proxyResponses: config.proxyResponses,
-		buildMode: config.buildMode,
-		promptVersion: config.promptVersion,
-		observerThresholdTokens: config.observerThresholdTokens,
-		allowUserExecution: config.allowUserExecution,
-		beforeUserExecution: config.beforeUserExecution,
-	});
+	let timeout: BuildTimeout | undefined;
+	try {
+		timeout = await runMultiTurnConversation({
+			client: config.client,
+			threadId: config.threadId,
+			events: config.events,
+			approvedRequests: config.approvedRequests,
+			startTime: config.startTime,
+			timeoutMs: config.timeoutMs,
+			turnTimeoutMs: config.turnTimeoutMs,
+			turnStartedAt: config.startTime,
+			inactivityTimeoutMs: INACTIVITY_TIMEOUT_MS,
+			logger: config.logger,
+			confirmationStrategy,
+			nextMessageDecider,
+			proxyResponses: config.proxyResponses,
+			buildMode: config.buildMode,
+			promptVersion: config.promptVersion,
+			observerThresholdTokens: config.observerThresholdTokens,
+			allowUserExecution: config.allowUserExecution,
+			beforeUserExecution: config.beforeUserExecution,
+		});
+	} catch (error: unknown) {
+		// A budget that fires inside a run ends the conversation, not the build:
+		// what the agent saved before it is graded, stamped with the timeout.
+		if (!(error instanceof RunTimeoutError)) throw error;
+		timeout = error.timeout;
+	}
 
-	return { ...proxy.getDecisionStats() };
+	return { proxyDecisionStats: { ...proxy.getDecisionStats() }, timeout };
 }
 
 // ---------------------------------------------------------------------------
@@ -250,6 +270,9 @@ export interface BuildResult {
 	workflowId?: string;
 	workflowJsons: WorkflowResponse[];
 	error?: string;
+	/** Set when a budget ended the conversation (harness/timeouts.ts). `success`
+	 *  and the workflow fields describe what the agent had saved by then. */
+	timeout?: BuildTimeout;
 	buildTrace?: BuildTrace;
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
@@ -541,8 +564,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		? COMPACTION_OBSERVER_THRESHOLD_TOKENS
 		: undefined;
 	const threadId = crypto.randomUUID();
-	const startTime = Date.now();
-	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+	// Restarted when the opening message goes out: seed restore, prior-run
+	// staging and table creation are the harness's time, not the agent's.
+	let startTime = Date.now();
+	const turnTimeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+	const timeoutMs = turnTimeoutMs * CONVERSATION_BUDGET_TURNS;
+	let timeout: BuildTimeout | undefined;
 
 	const abortController = new AbortController();
 	const events: CapturedEvent[] = [];
@@ -1066,8 +1093,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			.join(' ');
 
 		let proxyDecisionStats: ProxyDecisionStats | undefined;
+		startTime = Date.now();
 		if (isMultiTurn) {
-			proxyDecisionStats = await driveMultiTurnConversation({
+			const driven = await driveMultiTurnConversation({
 				client,
 				threadId,
 				conversation,
@@ -1098,6 +1126,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				approvedRequests,
 				startTime,
 				timeoutMs,
+				turnTimeoutMs,
 				logger,
 				proxyResponses,
 				observerThresholdTokens,
@@ -1120,6 +1149,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				openingHandoffContext,
 				recordedOpeningMessage,
 			});
+			proxyDecisionStats = driven.proxyDecisionStats;
+			timeout = driven.timeout;
 		} else {
 			recordUserTurn(events, recordedOpeningMessage);
 			await client.sendMessage(
@@ -1131,20 +1162,34 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				openingHandoffContext,
 				observerThresholdTokens,
 			);
-			await waitForAllActivity({
-				client,
-				threadId,
-				events,
-				approvedRequests,
-				startTime,
-				timeoutMs,
-				logger,
-				proxyResponses,
-			});
+			try {
+				await waitForAllActivity({
+					client,
+					threadId,
+					events,
+					approvedRequests,
+					startTime,
+					timeoutMs,
+					turnTimeoutMs,
+					turnStartedAt: startTime,
+					inactivityTimeoutMs: INACTIVITY_TIMEOUT_MS,
+					logger,
+					proxyResponses,
+				});
+			} catch (error: unknown) {
+				if (!(error instanceof RunTimeoutError)) throw error;
+				timeout = error.timeout;
+			}
 		}
 
 		abortController.abort();
 		await ssePromise.catch(() => {});
+
+		if (timeout) {
+			logger.info(
+				`  Conversation ended by the ${timeout.kind} budget after ${String(Math.round(timeout.elapsedMs / 1000))}s at user turn ${String(timeout.turn)}; grading what was saved${config.laneTag ?? ''} [thread ${threadId}]`,
+			);
+		}
 
 		const conversationMetrics = mergeSeededConversationMetrics(
 			seededTranscript,
@@ -1228,6 +1273,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				);
 				return {
 					success: true,
+					...(timeout ? { timeout } : {}),
 					workflowJsons: [],
 					buildTrace,
 					artifactRefs,
@@ -1249,7 +1295,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			}
 			return {
 				success: false,
-				error: summarizeMissingWorkflowError(events),
+				// The budget is the reason nothing was saved; the event summary would
+				// only describe the cancelled run.
+				error: timeout
+					? new RunTimeoutError(timeout).message
+					: summarizeMissingWorkflowError(events),
+				...(timeout ? { timeout } : {}),
 				workflowJsons: [],
 				buildTrace,
 				createdWorkflowIds: restoredWorkflowIds,
@@ -1291,6 +1342,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// per-scenario rows are seeded in runScenario via seededScenarioTableIdsByName.
 		return {
 			success: true,
+			...(timeout ? { timeout } : {}),
 			// Carried on the SUCCESS path too. A staged run that never landed is the one
 			// infra signal that outlives a healthy build, and that is exactly the case
 			// `case-pipeline` has to catch — the graded turn answered a question the

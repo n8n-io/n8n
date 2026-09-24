@@ -291,6 +291,10 @@ const KNOWN_FAILURE_CATEGORIES = new Set([
 	'verification_gap',
 	'verification_failure',
 	'build_failure',
+	// A budget ended the conversation (harness/timeouts.ts): the category and the
+	// attribution both travel on such rows.
+	'build_timeout',
+	'timeout',
 	// Build-only sentinel rows — reachable through a LangSmith baseline fetch,
 	// which reads run outputs rather than execution-scenario results.
 	'expectations_failed',
