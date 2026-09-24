@@ -153,11 +153,18 @@ global Design System guidance.
 
 ## Preview composer queue
 
-Keep Send on the right. Put Stop at the left end when a turn can be stopped.
+Use one action on the right. Show Stop when a turn can be stopped and the
+composer has no text or attachments. Otherwise, show Send. Keep file and voice
+input available during a turn.
 Stack the background task card above the composer. Attach pending messages to
-the top of the composer. Keep the first two messages visible. Put the third and
-later messages in a collapsed activity group. Show the number of additional
-pending messages in its header. Keep messages in queue order when expanded.
+the top of the composer. Use a subtle background and dividers between messages.
+Use muted gray for queue text and icons. Use the same gray for all queue icons.
+Give text more contrast than icons. Keep text contrast at least 4.5:1.
+Use `2xs` text and `large` icons. Keep the action targets at least 24 by 24 pixels.
+Keep the first two messages visible.
+Put the third and later messages in a collapsed activity group. Show the number
+of additional pending messages in its header. Keep messages in queue order when
+expanded.
 Keep pending messages out of the conversation until processing starts. Give each
 message a Remove action. Hide an empty queue section. Removal discards the
 message. It does not restore the composer draft.

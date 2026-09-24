@@ -51,7 +51,7 @@ vi.mock('@n8n/i18n', () => {
 	) => {
 		const translations: Record<string, string> = {
 			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
-			'agents.chat.queue.title': `${options?.interpolate?.count} more pending ${options?.adjustToNumber === 1 ? 'message' : 'messages'}`,
+			'agents.chat.queue.title': `${options?.interpolate?.count} ${options?.adjustToNumber === 1 ? 'message' : 'messages'} up next`,
 			'agents.chat.misconfigured.issuesPrefix': 'Check:',
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
@@ -99,12 +99,6 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
 	},
 	N8nText: { template: '<span><slot /></span>' },
-	N8nSendStopButton: {
-		name: 'N8nSendStopButton',
-		props: ['streaming', 'stopButtonTestId'],
-		emits: ['stop'],
-		template: '<button :data-test-id="stopButtonTestId" @click="$emit(\'stop\')" />',
-	},
 	N8nTooltip: { template: '<div><slot /></div>' },
 	TOOLTIP_DELAY_MS: 500,
 }));
@@ -157,7 +151,15 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 			name: 'ChatInputBase',
 			template:
 				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><textarea ref="input" /><slot name="footer-start" /></form>',
-			props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
+			props: [
+				'modelValue',
+				'placeholder',
+				'isStreaming',
+				'showStopButton',
+				'canSubmit',
+				'disabled',
+				'maxLength',
+			],
 			emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
 			setup(_, { expose }) {
 				const input = ref<HTMLTextAreaElement>();
@@ -344,12 +346,12 @@ describe('AgentChatPanel', () => {
 		await nextTick();
 		const toggle = queue.get('button[aria-expanded]');
 		expect(toggle.attributes('aria-expanded')).toBe('false');
-		expect(toggle.text()).toBe('1 more pending message');
+		expect(toggle.text()).toBe('1 message up next');
 		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
 
 		queuedMessagesMock.value = items;
 		await nextTick();
-		expect(toggle.text()).toBe('2 more pending messages');
+		expect(toggle.text()).toBe('2 messages up next');
 		expect(queue.findAll('li').map((row) => row.text())).toEqual(['Message 1', 'Message 2']);
 		await toggle.trigger('click');
 		expect(queue.findAll('li').map((row) => row.text())).toEqual([
@@ -863,13 +865,14 @@ describe('AgentChatPanel', () => {
 		const response = Promise.withResolvers<'sent'>();
 		sendMessageMock.mockReturnValueOnce(response.promise);
 		const wrapper = mountPanel();
+		const input = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(input.props('showStopButton')).toBe(false);
 		(
 			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
 		).sendMessageFromOutside('Test this task');
 		await flushPromises();
-		const input = wrapper.findComponent({ name: 'ChatInputBase' });
 		expect(input.props('canSubmit')).toBe(false);
-		expect(wrapper.findComponent({ name: 'N8nSendStopButton' }).exists()).toBe(false);
+		expect(input.props('showStopButton')).toBe(false);
 		expect(input.props('modelValue')).toBe('Test this task');
 		expect(sendMessageMock).not.toHaveBeenCalled();
 		expect(trackSubmittedMessageMock).not.toHaveBeenCalled();
@@ -877,7 +880,7 @@ describe('AgentChatPanel', () => {
 
 		isLoadingHistoryMock.value = false;
 		await flushPromises();
-		expect(wrapper.findComponent({ name: 'N8nSendStopButton' }).exists()).toBe(true);
+		expect(input.props('showStopButton')).toBe(false);
 		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
 			'Test this task',
 			undefined,
@@ -889,6 +892,7 @@ describe('AgentChatPanel', () => {
 		response.resolve('sent');
 		await flushPromises();
 		expect(input.props('modelValue')).toBe('');
+		expect(input.props('showStopButton')).toBe(true);
 		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
 		expect(trackSubmittedMessageMock).toHaveBeenCalledOnce();
 		wrapper.unmount();
@@ -899,15 +903,16 @@ describe('AgentChatPanel', () => {
 		sendMessageMock.mockReturnValueOnce(response.promise);
 		isStreamingMock.value = true;
 		const wrapper = mountPanel();
+		const input = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(input.props('showStopButton')).toBe(true);
 
 		(
 			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
 		).sendMessageFromOutside('Test these instructions');
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe(
-			'Test these instructions',
-		);
+		expect(input.props('modelValue')).toBe('Test these instructions');
+		expect(input.props('showStopButton')).toBe(false);
 		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
 
 		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
@@ -917,6 +922,7 @@ describe('AgentChatPanel', () => {
 		);
 		sendMessageMock.mock.lastCall?.[2]?.();
 		await nextTick();
+		expect(input.props('showStopButton')).toBe(true);
 		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
 		wrapper.unmount();
 		response.resolve('sent');
@@ -1168,16 +1174,23 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('disabled')).toBe(false);
 	});
 
-	it('shows send and stop controls while an interactive question is unresolved', async () => {
+	it('switches between Stop and Send as a question reply changes', async () => {
 		messagesMock.value = [openInteractiveMessage()];
 
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
 		expect(chatInput.props('isStreaming')).toBe(false);
-		const stopButton = wrapper.find('[data-test-id="agent-chat-stop-button"]');
-		expect(stopButton.exists()).toBe(true);
-		await stopButton.trigger('click');
+		expect(chatInput.props('showStopButton')).toBe(true);
+		chatInput.vm.$emit('update:modelValue', 'My answer');
+		await nextTick();
+		expect(chatInput.props('showStopButton')).toBe(false);
+		expect(chatInput.props('canSubmit')).toBe(true);
+		chatInput.vm.$emit('update:modelValue', '  ');
+		await nextTick();
+		expect(chatInput.props('showStopButton')).toBe(true);
+		expect(chatInput.props('canSubmit')).toBe(false);
+		chatInput.vm.$emit('stop');
 		await flushPromises();
 		expect(stopGeneratingMock).toHaveBeenCalledTimes(1);
 	});
@@ -1218,7 +1231,7 @@ describe('AgentChatPanel', () => {
 
 		expect(chatInput.props('disabled')).toBe(false);
 		expect(chatInput.props('isStreaming')).toBe(false);
-		expect(wrapper.find('[data-test-id="agent-chat-stop-button"]').exists()).toBe(true);
+		expect(chatInput.props('showStopButton')).toBe(true);
 		expect(chatInput.props('placeholder')).toBe('Message Agent…');
 	});
 
@@ -1353,7 +1366,7 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('disabled')).toBe(false);
 	});
 
-	it('keeps the stop control available for a non-card suspension', () => {
+	it('switches from Stop to Send for an attachment-only draft during a non-card suspension', async () => {
 		messagesMock.value = [
 			{
 				id: 'assistant-1',
@@ -1374,7 +1387,18 @@ describe('AgentChatPanel', () => {
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
 		expect(chatInput.props('isStreaming')).toBe(false);
-		expect(wrapper.find('[data-test-id="agent-chat-stop-button"]').exists()).toBe(true);
+		expect(chatInput.props('showStopButton')).toBe(true);
+		const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+		chatInput.vm.$emit('files-selected', [file]);
+		await nextTick();
+		expect(chatInput.props('showStopButton')).toBe(false);
+		expect(chatInput.props('canSubmit')).toBe(true);
+		chatInput.vm.$emit('submit');
+		await flushPromises();
+		expect(sendMessageMock).toHaveBeenCalledWith('', [file], expect.any(Function));
+		sendMessageMock.mock.lastCall?.[2]?.();
+		await nextTick();
+		expect(chatInput.props('showStopButton')).toBe(true);
 	});
 
 	it('shows stop while tool calls are in-flight even when the stream ended (desync)', () => {
@@ -1400,7 +1424,7 @@ describe('AgentChatPanel', () => {
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
 		expect(chatInput.props('isStreaming')).toBe(false);
-		expect(wrapper.find('[data-test-id="agent-chat-stop-button"]').exists()).toBe(true);
+		expect(chatInput.props('showStopButton')).toBe(true);
 	});
 
 	it('does not apply a build-specific character limit', () => {

@@ -7918,7 +7918,7 @@
 	"agents.chat.loadHistory.error": "Could not load chat history",
 	"agents.chat.clearHistory.error": "Could not clear chat history",
 	"agents.chat.stop.error": "Couldn't stop the agent. Try again.",
-	"agents.chat.queue.title": "{count} more pending message | {count} more pending messages",
+	"agents.chat.queue.title": "{count} message up next | {count} messages up next",
 	"agents.chat.queue.edit": "Edit queued message",
 	"agents.chat.queue.save": "Save changes",
 	"agents.chat.queue.cancelEdit": "Discard edits",

@@ -16,7 +16,6 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nLink,
-	N8nSendStopButton,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core';
@@ -395,6 +394,9 @@ const inputText = computed<string>({
 		}
 	},
 });
+const hasDraft = computed(
+	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
+);
 const isPreparingToSend = ref(false);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
@@ -470,6 +472,7 @@ const hasInFlightToolCalls = computed(() =>
 );
 const showStop = computed(
 	() =>
+		!hasDraft.value &&
 		!isLoadingHistory.value &&
 		(isStreaming.value ||
 			isCancelling.value ||
@@ -774,12 +777,11 @@ onBeforeUnmount(() => {
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
 				:is-streaming="false"
+				:show-stop-button="showStop"
 				show-voice
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"
-				:can-submit="
-					!isSubmissionBlocked && (inputText.trim().length > 0 || attachedFiles.length > 0)
-				"
+				:can-submit="!isSubmissionBlocked && hasDraft"
 				:disabled="isPreparingToSend"
 				data-testid="chat-input"
 				@submit="onSubmit"
@@ -831,7 +833,7 @@ onBeforeUnmount(() => {
 													@click="saveQueueEdit"
 												>
 													<template #icon
-														><N8nIcon icon="check" size="xsmall" aria-hidden="true"
+														><N8nIcon icon="check" size="large" aria-hidden="true"
 													/></template>
 												</N8nButton>
 											</N8nTooltip>
@@ -849,7 +851,7 @@ onBeforeUnmount(() => {
 													@click="queueEdit = undefined"
 												>
 													<template #icon
-														><N8nIcon icon="x" size="xsmall" aria-hidden="true"
+														><N8nIcon icon="x" size="large" aria-hidden="true"
 													/></template>
 												</N8nButton>
 											</N8nTooltip>
@@ -869,7 +871,7 @@ onBeforeUnmount(() => {
 													@click="startQueueEdit(item)"
 												>
 													<template #icon
-														><N8nIcon icon="pencil" size="xsmall" aria-hidden="true"
+														><N8nIcon icon="pencil" size="large" aria-hidden="true"
 													/></template>
 												</N8nButton>
 											</N8nTooltip>
@@ -887,7 +889,7 @@ onBeforeUnmount(() => {
 													@click="removeQueuedMessage(item.id)"
 												>
 													<template #icon>
-														<N8nIcon icon="trash-2" size="xsmall" aria-hidden="true" />
+														<N8nIcon icon="trash-2" size="large" aria-hidden="true" />
 													</template>
 												</N8nButton>
 											</N8nTooltip>
@@ -927,12 +929,6 @@ onBeforeUnmount(() => {
 					</div>
 				</template>
 				<template #footer-start>
-					<N8nSendStopButton
-						v-if="showStop"
-						streaming
-						stop-button-test-id="agent-chat-stop-button"
-						@stop="stopGenerating"
-					/>
 					<slot name="footer-start" />
 				</template>
 			</ChatInputBase>
@@ -989,8 +985,16 @@ onBeforeUnmount(() => {
 }
 
 .messageQueue {
+	--text-color: var(--text-color--subtle);
+
 	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
+	background: var(--background--subtle);
+	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	border-bottom: var(--border);
+}
+
+.messageQueue :global(.n8n-icon) {
+	color: light-dark(var(--color--neutral-600), var(--color--neutral-400));
 }
 
 .backgroundJobDetails {
@@ -1023,12 +1027,25 @@ onBeforeUnmount(() => {
 	}
 }
 
-.queueList {
-	padding: 0 var(--spacing--sm) var(--spacing--2xs);
+.messageQueue :global(button[aria-expanded]),
+.queueList > li {
+	font-size: var(--font-size--2xs);
+}
+
+.queueList > li {
+	align-items: center;
+	padding-inline: var(--spacing--sm);
+	color: var(--text-color);
+	border-bottom: var(--border);
+	line-height: var(--line-height--md);
 }
 
 .messageQueue > .queueList {
-	padding-top: var(--spacing--2xs);
+	padding-block: var(--spacing--2xs);
+
+	&:last-child > li:last-child {
+		border-bottom: 0;
+	}
 }
 
 .messageQueue > .queueList:not(:last-child) {
