@@ -171,6 +171,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
@@ -257,6 +258,7 @@ export function useCanvasOperations() {
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
+	const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	// `useCanvasOperations` runs in out-of-tree contexts (push/socket handlers,
 	// router guards) as well as inside the editor, so derive the NDV store from
@@ -662,6 +664,7 @@ export function useCanvasOperations() {
 
 		const group = workflowDocumentStore.value.getGroupForNode(id);
 		const shouldRestoreEmptyGroupAnchor =
+			emptyCanvasGroupsEnabled.value &&
 			preserveEmptyGroupAnchor &&
 			group?.nodeIds.length === 1 &&
 			node.type !== STICKY_NODE_TYPE &&
@@ -3570,7 +3573,6 @@ export function useCanvasOperations() {
 		if (hasRestrictedNode) return false;
 
 		const workflowData = deepCopy(getNodesToSave(nodes));
-
 		workflowData.meta = {
 			...workflowData.meta,
 			...workflowDocumentStore.value.meta,

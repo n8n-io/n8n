@@ -31,6 +31,12 @@ import {
 	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 
+const mockEmptyCanvasGroupsEnabled = vi.hoisted(() => ({ value: true }));
+
+vi.mock('@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag', () => ({
+	useEmptyCanvasGroupsFlag: () => mockEmptyCanvasGroupsEnabled,
+}));
+
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
@@ -120,6 +126,7 @@ describe('useContextMenu', () => {
 	// `restoreMocks` restores spies before each test, so re-establish them per-test.
 	beforeEach(() => {
 		groupViewState.current = undefined;
+		mockEmptyCanvasGroupsEnabled.value = true;
 		setActivePinia(createPinia());
 		sourceControlStore = useSourceControlStore();
 		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
