@@ -136,6 +136,47 @@ describe('EngineV2WebhookResponder', () => {
 		await expect(pending.settled).resolves.toEqual({ status: 'completed', lastNode: undefined });
 	});
 
+	it('reports the response produced by the Respond node', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2(), true);
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: { body: { ok: true }, headers: {}, statusCode: 200 },
+		});
+
+		await expect(pending.settled).resolves.toEqual({
+			status: 'response',
+			response: { body: { ok: true }, headers: {}, statusCode: 200 },
+		});
+	});
+
+	it('keeps the first terminal outcome', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2(), true);
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: { body: { ok: true }, headers: {}, statusCode: 200 },
+		});
+		deliver(endedResponse(pending.executionId));
+
+		await expect(pending.settled).resolves.toMatchObject({ status: 'response' });
+	});
+
+	it('ignores a Respond node result when the response mode waits for the last node', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2());
+
+		deliver({
+			type: 'response',
+			executionId: pending.executionId,
+			payload: { body: { ignored: true }, headers: {}, statusCode: 200 },
+		});
+		deliver(endedResponse(pending.executionId));
+
+		await expect(pending.settled).resolves.toMatchObject({ status: 'completed' });
+	});
+
 	it('reports a failure with the node that caused it', async () => {
 		const pending = responder.waitForResponse(createExecutionIdV2());
 
@@ -156,6 +197,21 @@ describe('EngineV2WebhookResponder', () => {
 			status: 'failed',
 			nodeName: 'C',
 			error: { name: 'NodeOperationError', message: 'it broke' },
+		});
+	});
+
+	it('reports a response failure without attributing it to a node', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2());
+
+		deliver({
+			type: 'undeliverable',
+			executionId: pending.executionId,
+			error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+		});
+
+		await expect(pending.settled).resolves.toEqual({
+			status: 'undeliverable',
+			error: { name: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
 		});
 	});
 

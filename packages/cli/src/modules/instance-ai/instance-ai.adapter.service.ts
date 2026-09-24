@@ -82,6 +82,7 @@ import type {
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
+	InstanceAiPreferenceService,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
 	ExecuteNodeResult as InstanceAiExecuteNodeResult,
@@ -174,6 +175,8 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { writeAssistantPreference } from '@/services/ai-preference-write';
+import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -416,6 +419,9 @@ export class InstanceAiAdapterService {
 		// Optional for the same positional-construction reason as above.
 		// See `teamProjectsLicensed()` for the absent case.
 		private readonly licenseState?: LicenseState,
+		// Optional for the same reason as the other services above: existing tests
+		// construct this class positionally, and this must stay the last parameter.
+		private readonly aiPreferenceService?: AiPreferenceService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -461,6 +467,9 @@ export class InstanceAiAdapterService {
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
 			credentialDescriptionsEnabled?: boolean;
+			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
+			 *  `save_user_preference` tool. */
+			aiPreferencesEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -482,6 +491,7 @@ export class InstanceAiAdapterService {
 			conversationHistory,
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
+			aiPreferencesEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -528,6 +538,7 @@ export class InstanceAiAdapterService {
 			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
+			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -683,6 +694,38 @@ export class InstanceAiAdapterService {
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
 			expand: async (id) => await instanceContext.expand({ id, user, scope }),
+		};
+	}
+
+	/** `source` is chosen here, never by the model: this is the assistant's write. */
+	private createPreferenceAdapter(user: User): InstanceAiPreferenceService {
+		const aiPreferenceService = this.aiPreferenceService;
+		if (!aiPreferenceService) throw new UnexpectedError('AI preference service is not available');
+
+		return {
+			create: async ({ content, scope }) => {
+				// The write, the refusal mapping and the events are shared with the MCP tool.
+				const result = await writeAssistantPreference({
+					aiPreferenceService,
+					telemetry: this.telemetry,
+					logger: this.logger,
+					user,
+					surface: 'aia',
+					content,
+					scope,
+				});
+				if (!result.ok) return result;
+				const { id, content: saved } = result.preference;
+				return { ok: true, preference: { id, content: saved, scope } };
+			},
+			recordRejection: (reason, textLength) => {
+				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+					surface: 'aia',
+					reason,
+					scope_type: 'user',
+					text_length: textLength,
+				});
+			},
 		};
 	}
 

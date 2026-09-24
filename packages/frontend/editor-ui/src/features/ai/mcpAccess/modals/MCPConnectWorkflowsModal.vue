@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
-import {
-	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
-	MCP_DOCS_PAGE_URL,
-	ELIGIBLE_WORKFLOWS_DOCS_SECTION,
-} from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
-import { N8nButton, N8nNotice } from '@n8n/design-system';
+import { N8nButton } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -28,7 +24,6 @@ const selectedWorkflowIds = ref<string[]>([]);
 const selectRef = ref<SelectRef | null>(null);
 const modalBus = createEventBus();
 const closedByAction = ref(false);
-const docsLink = `${MCP_DOCS_PAGE_URL}#${ELIGIBLE_WORKFLOWS_DOCS_SECTION}`;
 
 const canSave = computed(() => selectedWorkflowIds.value.length > 0);
 
@@ -90,24 +85,14 @@ onBeforeUnmount(() => {
 		:close-on-click-modal="false"
 	>
 		<template #content>
-			<div :class="$style.content">
-				<N8nNotice
-					data-test-id="mcp-connect-workflows-info-notice"
-					theme="info"
-					:content="
-						i18n.baseText('settings.mcp.connectWorkflows.notice', { interpolate: { docsLink } })
-					"
-					:class="$style.notice"
-				/>
-				<MCPWorkflowsSelect
-					ref="selectRef"
-					v-model="selectedWorkflowIds"
-					:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
-					:disabled="isSaving"
-					@ready="onSelectReady"
-					@confirm="onConfirm"
-				/>
-			</div>
+			<MCPWorkflowsSelect
+				ref="selectRef"
+				v-model="selectedWorkflowIds"
+				:placeholder="i18n.baseText('settings.mcp.connectWorkflows.input.placeholder')"
+				:disabled="isSaving"
+				@ready="onSelectReady"
+				@confirm="onConfirm"
+			/>
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
@@ -135,20 +120,6 @@ onBeforeUnmount(() => {
 .container {
 	display: flex;
 	flex-direction: column;
-}
-
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-
-	.notice {
-		margin: 0;
-
-		a {
-			font-weight: normal;
-		}
-	}
 }
 
 .footer {

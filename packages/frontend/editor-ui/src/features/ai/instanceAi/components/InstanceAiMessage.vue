@@ -172,7 +172,12 @@ function formatJson(value: unknown): string {
 		<!-- Assistant message -->
 		<template v-else>
 			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
-			<AgentActivityTree v-if="props.message.agentTree" :agent-node="props.message.agentTree" />
+			<AgentActivityTree
+				v-if="props.message.agentTree"
+				:agent-node="props.message.agentTree"
+				:message-id="props.message.id"
+				:run-id="props.message.runId"
+			/>
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
 			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">

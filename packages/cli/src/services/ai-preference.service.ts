@@ -21,6 +21,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -171,11 +172,16 @@ export class AiPreferenceService {
 	}
 
 	/** The instance rows, the caller's rows, the rows of readable projects and, for admins, every user's rows. */
-	async list(user: User, page: { skip: number; take: number }): Promise<AiPreferenceListDto> {
+	async list(
+		user: User,
+		page: { skip: number; take: number; ids?: string[] },
+	): Promise<AiPreferenceListDto> {
 		const access = this.projectAccess(user);
 		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
 			...(await this.visibleTo(user, access)),
-			...page,
+			skip: page.skip,
+			take: page.take,
+			...(page.ids ? { ids: page.ids } : {}),
 		});
 
 		return {
@@ -205,6 +211,7 @@ export class AiPreferenceService {
 		const access = this.projectAccess(user);
 		const target = await this.resolveTarget(user, request, 'create', access);
 		await this.assertScopeHasRoom(target);
+		await this.assertNotDuplicate(target, request.content);
 
 		const row = await this.aiPreferenceRepository.save(
 			this.aiPreferenceRepository.create({
@@ -231,6 +238,9 @@ export class AiPreferenceService {
 		const target = await this.resolveTarget(user, request, moved ? 'create' : 'update', access);
 		// A move adds a row to the scope it lands in. An edit in place adds nothing.
 		if (moved) await this.assertScopeHasRoom(target);
+		if (moved || row.content !== request.content) {
+			await this.assertNotDuplicate(target, request.content, row.id);
+		}
 
 		// `source` is not touched: it records the surface that created the row. An assistant
 		// edit of a row a person wrote does not make that row the assistant's.
@@ -244,12 +254,55 @@ export class AiPreferenceService {
 		return this.toDto(saved, await this.scopesFor(user, saved, access));
 	}
 
+	/**
+	 * Replaces the text and leaves the scope where it is. For a caller that holds an id but no
+	 * scope, such as an MCP client editing what `get_user_preferences` returned: `update()` needs
+	 * the full request and would read a missing scope as a move.
+	 *
+	 * Only the caller's own personal rows. A project or instance row is a shared rule that applies
+	 * to other people, and the settings area owns it, as in `undoWrite()`. A row that fails the
+	 * check answers like a row that does not exist.
+	 */
+	async updateContent(user: User, id: string, content: string): Promise<AiPreferenceDto> {
+		const access = this.projectAccess(user);
+		const row = await this.requireVisible(user, id, access);
+		if (row.userId !== user.id) {
+			throw new NotFoundError(`Preference with id ${id} is not one of your personal preferences`);
+		}
+		await this.assertCanWrite(user, row, 'update', access);
+		if (row.content !== content) await this.assertNotDuplicate(row, content, row.id);
+
+		row.content = content;
+		const saved = await this.aiPreferenceRepository.save(row);
+		return this.toDto(saved, await this.scopesFor(user, saved, access));
+	}
+
 	async delete(user: User, id: string): Promise<void> {
 		const access = this.projectAccess(user);
 		const row = await this.requireVisible(user, id, access);
 		await this.assertCanWrite(user, row, 'delete', access);
 
 		await this.aiPreferenceRepository.delete({ id: row.id });
+	}
+
+	/**
+	 * The undo of an assistant write: removes a row only when the named surface wrote it for this
+	 * caller. Narrower than `delete()` on purpose, so a client can take back what it saved and
+	 * nothing the person wrote by hand in settings. A row that fails the check answers like a row
+	 * that does not exist.
+	 */
+	async undoWrite(user: User, id: string, source: AiPreferenceSource): Promise<AiPreferenceDto> {
+		const access = this.projectAccess(user);
+		const row = await this.requireVisible(user, id, access);
+		// Only a personal row the surface saved for the caller. A row the person has since moved to
+		// a project or the instance is a shared rule now, and the settings area owns it.
+		if (row.source !== source || row.createdById !== user.id || row.userId !== user.id) {
+			throw new NotFoundError(`Preference with id ${id} was not saved by ${source} for you`);
+		}
+		await this.assertCanWrite(user, row, 'delete', access);
+
+		await this.aiPreferenceRepository.delete({ id: row.id });
+		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 
 	private projectAccess(user: User): ProjectAccess {
@@ -402,6 +455,20 @@ export class AiPreferenceService {
 			throw new BadRequestError(
 				`A ${scope.scope} cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`,
 			);
+		}
+	}
+
+	/** Every surface refuses a restatement at this one point. A duplicate is a
+	 *  409, not a 400: the request is well formed, the state conflicts. */
+	private async assertNotDuplicate(target: PreferenceTarget, content: string, excludeId?: string) {
+		const scope = aiPreferenceTargetOf(target);
+		const exists = await this.aiPreferenceRepository.existsForTargetWithContent(
+			scope,
+			content,
+			excludeId,
+		);
+		if (exists) {
+			throw new ConflictError(`This ${scope.scope} already has a preference with the same text`);
 		}
 	}
 
@@ -654,15 +721,15 @@ function singleLine(text: string): string {
  * the real one.
  */
 export const AI_PREFERENCES_REPLACES_EARLIER =
-	'This block replaces every earlier ai-preferences block in this conversation. Apply this one and set the earlier copies aside.';
+	'This block lists the saved preferences that apply now. It replaces every earlier ai-preferences block and earlier chat or tool claims about saved preferences. Do not treat a preference missing from this block as a standing rule, even if the user previously asked to save it. Follow the current user request.';
 
 /**
- * Sent when every preference is gone but an earlier turn of the conversation carried a
- * block: silence would leave the model applying the deleted preferences. Constant text, so
+ * Sent when every preference is gone but the conversation carries an earlier block or
+ * successful save. Silence would leave the model applying deleted preferences. Constant text, so
  * the change rule treats it like any other block and a thread that stays empty carries it
  * once.
  */
-export const AI_PREFERENCES_CLEARED_BLOCK = `<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\nThe user has no saved preferences now. Do not apply preferences an earlier block carried.\n</ai-preferences>`;
+export const AI_PREFERENCES_CLEARED_BLOCK = `<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\nThe user has no saved preferences now. Do not continue applying a previously saved preference from this conversation.\n</ai-preferences>`;
 
 /**
  * The same text as `renderAiPreferences`, wrapped in one tagged block, or `undefined` when there
