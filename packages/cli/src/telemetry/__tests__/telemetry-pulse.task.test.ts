@@ -22,10 +22,10 @@ describe('TelemetryPulseTask', () => {
 		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
 	});
 
-	it('should keep a missed occurrence for an hour and never retry a failed one', () => {
+	it('should keep a missed occurrence for an hour, coalesce a longer backlog and never retry a failed one', () => {
 		expect(task.misfireGraceSeconds).toBe(3600);
 		expect(resolveSystemTaskRunOptions(task)).toEqual({
-			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 3600,
 			maxAttempts: 1,
 		});

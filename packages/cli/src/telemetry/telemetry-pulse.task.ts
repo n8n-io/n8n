@@ -1,4 +1,4 @@
-import { Time } from '@n8n/constants';
+import { ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
 import { SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
@@ -25,6 +25,9 @@ export class TelemetryPulseTask implements SystemTask {
 	 * window to the default grace of a minute.
 	 */
 	readonly misfireGraceSeconds = Time.hours.toSeconds;
+
+	/** An outage past the grace still sends one catch-up packet, not none. */
+	readonly misfirePolicy = ScheduledJobMisfirePolicy.Coalesce;
 
 	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
