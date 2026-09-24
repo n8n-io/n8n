@@ -46,7 +46,8 @@ create an 8-core Codespace by default.
   terminal's own text selection, hold **Shift** and drag.
 - **Reattach** by running the same session command from any machine.
 - Each named session gets its own worktree (`/workspaces/wt-<name>`, branch
-  `session/<name>`), so parallel agents never touch each other's tree. Builds
+  `session/<name>`), so parallel agents never touch each other's tree. A new
+  branch starts from the latest `origin/master`. Builds
   in fresh worktrees are cache-hits via a shared turbo cache.
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~10 s: the
@@ -423,7 +424,7 @@ partial mapping breaks it.
 | Event | Running processes | Disk (checkout, worktrees, chat history) |
 |---|---|---|
 | Detach / close laptop / network drop | ✅ keep running | ✅ |
-| Stop, or idle timeout (default 30 min, max 4 h) | ❌ killed | ✅ |
+| Stop, or idle timeout (2 h for a codespace that `pnpm session` creates, max 4 h) | ❌ killed | ✅ |
 | Delete (`pnpm session rm`) | ❌ | ❌ (push your branches first) |
 
 After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
