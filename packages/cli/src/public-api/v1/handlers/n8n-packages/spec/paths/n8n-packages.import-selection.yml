@@ -15,10 +15,12 @@ post:
     and deletes only the destination workflows named in `deletedWorkflowIds`.
 
     `selectedProjectId` names the single source project the selection is scoped to (its id as it
-    appears in the package). `selectedWorkflowIds` are source ids within that project; ids that
-    belong to another project are dropped. `deletedWorkflowIds` are destination ids in the same
-    project; an already-archived or absent id is a tolerated no-op, and a delete needs the
-    `workflow:delete` scope.
+    appears in the package). The selected workflows are written into the instance project whose id
+    matches that source project, which is created if it does not yet exist; there is no separate
+    target-project field. `selectedWorkflowIds` are source ids within that project; ids that belong
+    to another project are dropped. `deletedWorkflowIds` are destination ids in the same project; an
+    already-archived or absent id is a tolerated no-op, and a delete needs the `workflow:delete`
+    scope.
 
     The package must be a project package (a workflow package is rejected with a 400). The
     cherry-pick conflict policies (folder, tag, project, and deletion mode) are fixed and are not
@@ -57,14 +59,6 @@ post:
                 Optional JSON-encoded array of destination workflow ids to remove from the scoped
                 project, e.g. `["wf-3"]`. Removal happens even under the additive profile. An
                 already-archived or absent id is a no-op. Needs the `workflow:delete` scope.
-            projectId:
-              type: string
-              description: >
-                Target project id. Omit or send empty to import into the caller's personal project.
-            folderId:
-              type: string
-              description: >
-                Optional folder within the target project. Omit or send empty for project root.
             workflowConflictPolicy:
               type: string
               enum:

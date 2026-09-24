@@ -255,17 +255,11 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 	importPackageSelection: [
 		publicApiCompositeScope('workflow:import'),
 		async (req, res) => {
-			let projectId: string | undefined;
-			let folderId: string | undefined;
-
 			try {
 				const payload = ImportPackageSelectionRequestDto.safeParse(req.body ?? {});
 				if (!payload.success) {
 					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
 				}
-
-				projectId = payload.data.projectId;
-				folderId = payload.data.folderId;
 
 				assertPackageImportApiKeyScopes(req);
 
@@ -278,8 +272,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					{
 						user: req.user,
 						apiKeyScopes: req.tokenGrant?.apiKeyScopes,
-						projectId,
-						folderId,
 						workflowConflictPolicy: payload.data.workflowConflictPolicy,
 						workflowIdPolicy: payload.data.workflowIdPolicy,
 						packageBuffer: packageFile.buffer,
@@ -297,8 +289,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				Container.get(EventService).emit('n8n-package-import-failed', {
 					user: req.user,
 					reason: classifyPackageFailure(error),
-					...(projectId ? { projectId } : {}),
-					...(folderId ? { folderId } : {}),
 				});
 				throw error;
 			}

@@ -289,14 +289,14 @@ export interface ImportSelection {
 }
 
 /**
- * The narrow request a selection import accepts. It carries the actor, an optional destination and
- * bindings, and only the two overridable policies; every other policy is locked to the cherry-pick
- * profile inside the service entry point. Contrast with {@link ImportRequest}, the whole-scope shape.
+ * The narrow request a selection import accepts. It carries the actor, optional bindings, and only
+ * the two overridable policies; every other policy is locked to the cherry-pick profile inside the
+ * service entry point. A selection import writes into the project the package's own source project
+ * matches (or creates), so it takes no target `projectId`/`folderId`. Contrast with
+ * {@link ImportRequest}, the whole-scope shape.
  */
 export type ImportSelectionRequest = {
 	user: User;
-	projectId?: string;
-	folderId?: string;
 	apiKeyScopes?: string[];
 	bindings?: Partial<PackageImportBindings>;
 	workflowConflictPolicy?: WorkflowConflictPolicy;

@@ -127,8 +127,6 @@ export class ImportPackageRequestDto extends Z.class({
 
 /** Multipart text field names validated by {@link ImportPackageSelectionRequestDto}. */
 export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
-	'projectId',
-	'folderId',
 	'selectedProjectId',
 	'selectedWorkflowIds',
 	'deletedWorkflowIds',
@@ -195,8 +193,6 @@ const optionalJsonStringIdArray = (errorMessage: string) =>
  * mode) and `bindings` are fixed inside the service and are NOT accepted here.
  */
 export class ImportPackageSelectionRequestDto extends Z.class({
-	projectId: optionalFormId,
-	folderId: optionalFormId,
 	selectedProjectId: z.string().min(1),
 	selectedWorkflowIds: requiredJsonStringIdArray(SELECTED_WORKFLOW_IDS_ERROR_MESSAGE),
 	deletedWorkflowIds: optionalJsonStringIdArray(DELETED_WORKFLOW_IDS_ERROR_MESSAGE),

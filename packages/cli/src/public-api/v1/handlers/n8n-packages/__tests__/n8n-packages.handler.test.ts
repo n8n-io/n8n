@@ -821,7 +821,7 @@ describe('n8n-packages handler', () => {
 	describe('importPackageSelection', () => {
 		it('throws ForbiddenError and emits access-denied when the API key lacks workflow:import scope', async () => {
 			const caught = await runImportSelection(
-				makeImportSelectionRequest({ projectId: 'proj-brie' }, ['workflow:export']),
+				makeImportSelectionRequest({}, ['workflow:export']),
 				makeResponse(),
 			);
 
@@ -830,7 +830,6 @@ describe('n8n-packages handler', () => {
 			expect(emittedEvent('n8n-package-import-failed')).toEqual({
 				user: { id: 'user-1' },
 				reason: 'access-denied',
-				projectId: 'proj-brie',
 			});
 		});
 
@@ -855,6 +854,19 @@ describe('n8n-packages handler', () => {
 			expect(mockService.importPackageSelection).not.toHaveBeenCalled();
 		});
 
+		it.each(['projectId', 'folderId'])(
+			'rejects a stray %s field, which the selection endpoint does not accept',
+			async (field) => {
+				const caught = await runImportSelection(
+					makeImportSelectionRequest({ [field]: 'proj-brie' }, ['workflow:import']),
+					makeResponse(),
+				);
+
+				expect(caught).toBeInstanceOf(BadRequestError);
+				expect(mockService.importPackageSelection).not.toHaveBeenCalled();
+			},
+		);
+
 		it('parses the DTO and forwards the selection to the service', async () => {
 			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
 			mockService.importPackageSelection.mockResolvedValue(result as never);
@@ -863,7 +875,6 @@ describe('n8n-packages handler', () => {
 			const caught = await runImportSelection(
 				makeImportSelectionRequest(
 					{
-						projectId: 'proj-brie',
 						selectedProjectId: 'P1',
 						selectedWorkflowIds: '["WFA","WFB"]',
 						deletedWorkflowIds: '["WFC"]',
@@ -880,7 +891,6 @@ describe('n8n-packages handler', () => {
 				expect.objectContaining({
 					user: { id: 'user-1' },
 					apiKeyScopes: ['workflow:import'],
-					projectId: 'proj-brie',
 					workflowConflictPolicy: 'skip',
 					workflowIdPolicy: 'new',
 					packageBuffer: expect.any(Buffer),
@@ -910,14 +920,10 @@ describe('n8n-packages handler', () => {
 		it('emits blocked when the service rejects the import as blocked', async () => {
 			mockService.importPackageSelection.mockRejectedValue(new ConflictError('Import blocked'));
 
-			await runImportSelection(
-				makeImportSelectionRequest({ projectId: 'proj-brie' }, ['workflow:import']),
-				makeResponse(),
-			);
+			await runImportSelection(makeImportSelectionRequest({}, ['workflow:import']), makeResponse());
 
 			expect(emittedEvent('n8n-package-import-failed')).toMatchObject({
 				reason: 'blocked',
-				projectId: 'proj-brie',
 			});
 		});
 	});

@@ -122,12 +122,14 @@ are stubbed instead of blocking the import.
 
 ## `package import-selection`
 
-Import a chosen subset of workflows from a `.n8np` archive into a project. Only
-the workflows in `--selected-workflow-ids` are imported, and only the workflows
-in `--deleted-workflow-ids` are removed; all other content is left untouched.
-The selection is scoped to one source project (`--selected-project-id`), and the
-locked cherry-pick policies (folders are merged, tags are skipped) are fixed and
-cannot be changed.
+Import a chosen subset of workflows from a `.n8np` archive. Only the workflows in
+`--selected-workflow-ids` are imported, and only the workflows in
+`--deleted-workflow-ids` are removed; all other content is left untouched. The
+selection is scoped to one source project (`--selected-project-id`); the selected
+workflows are written into the instance project whose ID matches that source
+project, which is created if it does not yet exist, so there is no separate target
+option. The locked cherry-pick policies (folders are merged, tags are skipped) are
+fixed and cannot be changed.
 
 ```bash
 n8n-cli package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1>,<id2>
@@ -140,8 +142,6 @@ n8n-cli package import-selection --file=export.n8np --selected-project-id=<id> -
 | `--selected-project-id` | Source project ID the selection is scoped to. Only this project is touched. (required) |
 | `--selected-workflow-ids` | Source workflow IDs to import. Comma-separate them, or repeat the flag. Only these workflows are imported. |
 | `--deleted-workflow-ids` | Target workflow IDs to delete. Comma-separate them, or repeat the flag. Only these workflows are removed; already-gone or already-archived IDs are ignored. |
-| `-p, --project-id` | Target project ID. Defaults to your personal project. (alias: `--project`) |
-| `--folder-id` | Target folder ID within the project. Defaults to the project root. (alias: `--folder`) |
 | `--workflow-conflict-policy` | What to do when a workflow already exists by source ID: `new-version` (default), `fail`, or `skip`. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
 

@@ -38,8 +38,6 @@ export interface ImportPackageFields {
  * overridable policies; the locked cherry-pick policies are fixed inside the endpoint.
  */
 export interface ImportPackageSelectionFields {
-	projectId?: string;
-	folderId?: string;
 	selectedProjectId: string;
 	selectedWorkflowIds: string[];
 	deletedWorkflowIds?: string[];
@@ -743,8 +741,6 @@ export class N8nClient {
 		const form = new FormData();
 		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
 		const stringFields: Record<string, string | undefined> = {
-			projectId: fields.projectId,
-			folderId: fields.folderId,
 			selectedProjectId: fields.selectedProjectId,
 			workflowConflictPolicy: fields.workflowConflictPolicy,
 			workflowIdPolicy: fields.workflowIdPolicy,

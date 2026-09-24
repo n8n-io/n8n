@@ -12,21 +12,12 @@ export default class PackageImportSelection extends BaseCommand {
 	static override examples = [
 		'<%= config.bin %> package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1>,<id2>',
 		'<%= config.bin %> package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1> --deleted-workflow-ids=<id3>',
-		'<%= config.bin %> package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1> --project-id=<id> --workflow-conflict-policy=skip',
+		'<%= config.bin %> package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1> --workflow-conflict-policy=skip',
 	];
 
 	static override flags = {
 		...BaseCommand.baseFlags,
 		file: Flags.string({ description: 'Path to the .n8np package file', required: true }),
-		projectId: Flags.string({
-			char: 'p',
-			description: 'Target project ID (defaults to your personal project)',
-			aliases: ['project-id', 'project'],
-		}),
-		folderId: Flags.string({
-			description: 'Target folder ID within the project (defaults to the project root)',
-			aliases: ['folder-id', 'folder'],
-		}),
 		selectedProjectId: Flags.string({
 			description: 'Source project ID the selection is scoped to',
 			required: true,
@@ -74,8 +65,6 @@ export default class PackageImportSelection extends BaseCommand {
 				result = await client.importPackageSelection(
 					{ buffer, filename: path.basename(flags.file) },
 					{
-						projectId: flags.projectId,
-						folderId: flags.folderId,
 						selectedProjectId: flags.selectedProjectId,
 						selectedWorkflowIds: flags.selectedWorkflowIds ?? [],
 						deletedWorkflowIds: flags.deletedWorkflowIds,

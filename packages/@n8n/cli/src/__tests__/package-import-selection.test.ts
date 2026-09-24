@@ -13,8 +13,6 @@ const packageRoot = process.cwd();
 
 interface ImportSelectionFlags {
 	file: string;
-	projectId?: string;
-	folderId?: string;
 	selectedProjectId: string;
 	selectedWorkflowIds?: string[];
 	deletedWorkflowIds?: string[];
@@ -54,8 +52,6 @@ describe('package import-selection command', () => {
 	it('forwards the selection and options to the client, with the id lists as arrays', async () => {
 		const { command, importPackageSelection } = stubCommand({
 			file: '/tmp/export.n8np',
-			projectId: 'p-1',
-			folderId: 'f-1',
 			selectedProjectId: 'sp-1',
 			selectedWorkflowIds: ['w-1', 'w-2'],
 			deletedWorkflowIds: ['w-3'],
@@ -71,8 +67,6 @@ describe('package import-selection command', () => {
 			filename: 'export.n8np',
 		});
 		expect(importPackageSelection.mock.calls[0][1]).toStrictEqual({
-			projectId: 'p-1',
-			folderId: 'f-1',
 			selectedProjectId: 'sp-1',
 			selectedWorkflowIds: ['w-1', 'w-2'],
 			deletedWorkflowIds: ['w-3'],
@@ -91,8 +85,6 @@ describe('package import-selection command', () => {
 		await command.run();
 
 		expect(importPackageSelection.mock.calls[0][1]).toStrictEqual({
-			projectId: undefined,
-			folderId: undefined,
 			selectedProjectId: 'sp-1',
 			selectedWorkflowIds: [],
 			deletedWorkflowIds: undefined,

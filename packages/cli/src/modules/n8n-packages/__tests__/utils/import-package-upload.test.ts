@@ -153,8 +153,6 @@ describe('resolveImportPackageUpload', () => {
 					{
 						files: [makeFile('package', packageBuffer)],
 						body: {
-							projectId: 'proj-1',
-							folderId: 'fld-1',
 							selectedProjectId: 'P1',
 							selectedWorkflowIds: '["WFA"]',
 							deletedWorkflowIds: '["WFB"]',
@@ -168,18 +166,20 @@ describe('resolveImportPackageUpload', () => {
 			).not.toThrow();
 		});
 
-		it('rejects a field that is not in the selection set', () => {
-			expect(() =>
-				resolveImportPackageUpload(
-					{
-						files: [makeFile('package', packageBuffer)],
-						// A whole-scope field that the selection endpoint must not accept.
-						body: { selectedProjectId: 'P1', folderConflictPolicy: 'overwrite' },
-					},
-					IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
-				),
-			).toThrow('Unexpected form field "folderConflictPolicy"');
-		});
+		it.each(['folderConflictPolicy', 'projectId', 'folderId'])(
+			'rejects the %s field, which the selection endpoint does not accept',
+			(field) => {
+				expect(() =>
+					resolveImportPackageUpload(
+						{
+							files: [makeFile('package', packageBuffer)],
+							body: { selectedProjectId: 'P1', [field]: 'x' },
+						},
+						IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
+					),
+				).toThrow(`Unexpected form field "${field}"`);
+			},
+		);
 
 		it('leaves the default field set unchanged', () => {
 			// A selection-only field is rejected by the default (whole-scope) validation.

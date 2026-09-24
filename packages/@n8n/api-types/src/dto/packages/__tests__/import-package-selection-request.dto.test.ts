@@ -23,37 +23,20 @@ describe('ImportPackageSelectionRequestDto', () => {
 		}
 	});
 
-	it('parses deletedWorkflowIds when present and trims routing ids', () => {
+	it('parses deletedWorkflowIds when present', () => {
 		const result = ImportPackageSelectionRequestDto.safeParse({
 			...base,
-			projectId: '  proj-1  ',
-			folderId: 'fld-1',
 			deletedWorkflowIds: '["WFC"]',
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data).toEqual({
-				projectId: 'proj-1',
-				folderId: 'fld-1',
 				selectedProjectId: 'P1',
 				selectedWorkflowIds: ['WFA', 'WFB'],
 				deletedWorkflowIds: ['WFC'],
 				workflowConflictPolicy: 'new-version',
 				workflowIdPolicy: 'source',
 			});
-		}
-	});
-
-	it('treats empty projectId and folderId as omitted', () => {
-		const result = ImportPackageSelectionRequestDto.safeParse({
-			...base,
-			projectId: '',
-			folderId: '   ',
-		});
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data.projectId).toBeUndefined();
-			expect(result.data.folderId).toBeUndefined();
 		}
 	});
 
@@ -145,9 +128,11 @@ describe('ImportPackageSelectionRequestDto', () => {
 		});
 	});
 
-	it('does not accept the locked cherry-pick policies nor bindings', () => {
+	it('does not accept a target projectId/folderId, the locked cherry-pick policies, nor bindings', () => {
 		const result = ImportPackageSelectionRequestDto.safeParse({
 			...base,
+			projectId: 'proj-1',
+			folderId: 'fld-1',
 			folderConflictPolicy: 'overwrite',
 			tagConflictPolicy: 'fail',
 			projectConflictPolicy: 'overwrite',
@@ -156,7 +141,10 @@ describe('ImportPackageSelectionRequestDto', () => {
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {
-			// Unknown keys are stripped, so the locked policies never reach the service.
+			// Unknown keys are stripped: a selection import derives its destination from the package's
+			// own project, so a target projectId/folderId and the locked policies never reach the service.
+			expect(result.data).not.toHaveProperty('projectId');
+			expect(result.data).not.toHaveProperty('folderId');
 			expect(result.data).not.toHaveProperty('folderConflictPolicy');
 			expect(result.data).not.toHaveProperty('tagConflictPolicy');
 			expect(result.data).not.toHaveProperty('projectConflictPolicy');
@@ -167,8 +155,6 @@ describe('ImportPackageSelectionRequestDto', () => {
 
 	it('lists the selection fields as multipart form fields', () => {
 		expect(IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS).toEqual([
-			'projectId',
-			'folderId',
 			'selectedProjectId',
 			'selectedWorkflowIds',
 			'deletedWorkflowIds',

@@ -544,8 +544,6 @@ export class N8nPackagesService {
 
 		const resolvedRequest: ResolvedImportRequest = {
 			user: request.user,
-			...(request.projectId !== undefined ? { projectId: request.projectId } : {}),
-			...(request.folderId !== undefined ? { folderId: request.folderId } : {}),
 			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,
