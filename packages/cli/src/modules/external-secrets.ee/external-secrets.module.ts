@@ -21,6 +21,27 @@ export class ExternalSecretsModule implements ModuleInterface {
 
 		await externalSecretsManager.init();
 		externalSecretsProxy.setManager(externalSecretsManager);
+
+		const { ExternalSecretsConfig } = await import('./external-secrets.config.js');
+		const config = Container.get(ExternalSecretsConfig);
+		const { InstanceSettings } = await import('n8n-core');
+
+		// In multi-main setups, only the leader reconciles the config file — every instance
+		// shares one DB, so a non-leader would otherwise race the leader on the same rows.
+		if (config.configFilePath && Container.get(InstanceSettings).isLeader) {
+			const { ExternalSecretsConfigFileLoader } = await import(
+				'./config-file/external-secrets-config-file-loader.js'
+			);
+			const { ExternalSecretsConfigFileReconciler } = await import(
+				'./config-file/external-secrets-config-file-reconciler.js'
+			);
+
+			const loader = Container.get(ExternalSecretsConfigFileLoader);
+			const reconciler = Container.get(ExternalSecretsConfigFileReconciler);
+
+			const connections = await loader.load(config.configFilePath);
+			await reconciler.reconcile(connections);
+		}
 	}
 
 	async settings() {
