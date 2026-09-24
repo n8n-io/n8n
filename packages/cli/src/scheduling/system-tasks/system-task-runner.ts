@@ -200,7 +200,11 @@ export class SystemTaskRunner {
 	}
 
 	private warnIfIntervalIsRounded(task: SystemTask, schedule: SystemTaskSchedule): void {
-		if (task.schedule.kind === 'interval' && schedule.kind === 'interval') {
+		if (
+			task.placement.scope === 'cluster' &&
+			task.schedule.kind === 'interval' &&
+			schedule.kind === 'interval'
+		) {
 			const declaredMs = Math.round(task.schedule.intervalSeconds * Time.seconds.toMilliseconds);
 			const plannedMs = schedule.intervalSeconds * Time.seconds.toMilliseconds;
 			if (declaredMs !== plannedMs) {

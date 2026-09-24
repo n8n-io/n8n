@@ -150,6 +150,7 @@ describe('SystemTaskRunner', () => {
 				59.99999999999999,
 			],
 			['an instance-scoped task with a sub-second interval', PerInstanceDummySystemTask, 0.5],
+			['an instance-scoped task with a millisecond interval', PerInstanceDummySystemTask, 1.001],
 		])('does not warn about %s', async (_label, taskClass, intervalSeconds) => {
 			const { runner, metadata, logger } = setup({ isLeader: true });
 			Container.get(taskClass).schedule = { kind: 'interval', intervalSeconds };
