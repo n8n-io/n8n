@@ -81,7 +81,19 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
-export const AgentWhatsAppSettingsSchema = AgentSessionOnlySettingsSchema;
+export const AgentWhatsAppSettingsSchema = z
+	.object({
+		sessionIdleTimeoutMinutes,
+		/** Whether inbound media (images, documents, audio, …) is downloaded and stored. */
+		downloadMedia: z.boolean().default(true),
+		/**
+		 * Shows WhatsApp's native "typing…" indicator while the agent is working.
+		 * Off by default: the Cloud API bundles this with marking the customer's
+		 * message as read, so enabling it also turns on read receipts.
+		 */
+		typingIndicator: z.boolean().default(false),
+	})
+	.strict();
 export type AgentWhatsAppIntegrationSettings = z.infer<typeof AgentWhatsAppSettingsSchema>;
 
 export const AgentIntegrationSettingsSchema = z.union([

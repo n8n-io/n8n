@@ -1,6 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, shallowRef } from 'vue';
-import { N8nIconButton, N8nInput, N8nStepper, N8nText } from '@n8n/design-system';
+import { computed, onMounted, shallowRef, watch } from 'vue';
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nInput,
+	N8nStepper,
+	N8nSwitch2,
+	N8nText,
+} from '@n8n/design-system';
 import type { ChatIntegrationDescriptor, AgentIntegrationSettings } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -9,6 +16,7 @@ import { TIME } from '@/app/constants';
 import { getWhatsAppVerifyToken } from '../../composables/useAgentApi';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
+import { resolveSavedWhatsAppSettings } from '../../utils/whatsappChannelSettings';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -56,18 +64,26 @@ const copied = shallowRef(false);
 const verifyTokenCopied = shallowRef(false);
 const verifyToken = shallowRef('');
 
-// Only two steps: unlike Telegram/Discord, WhatsApp has no separate "connect"
-// step — connecting happens by picking a credential, which is step two here.
+const META_APP_DASHBOARD_URL = 'https://developers.facebook.com/apps';
+
+// Create app, then credential, then webhook — credential comes before the
+// webhook step because the Callback URL's own hint tells the user to save it
+// in Meta only after the agent is connected and published.
 const steps = computed(() => [
 	{
-		id: 'webhook',
-		title: i18n.baseText('agents.channels.whatsapp.setup.webhook.title'),
-		description: i18n.baseText('agents.channels.whatsapp.setup.webhook.description'),
+		id: 'create-app',
+		title: i18n.baseText('agents.channels.whatsapp.setup.createApp.title'),
+		description: i18n.baseText('agents.channels.whatsapp.setup.createApp.description'),
 	},
 	{
 		id: 'credential',
 		title: i18n.baseText('agents.channels.whatsapp.setup.credential.title'),
 		description: i18n.baseText('agents.channels.whatsapp.setup.credential.description'),
+	},
+	{
+		id: 'webhook',
+		title: i18n.baseText('agents.channels.whatsapp.setup.webhook.title'),
+		description: i18n.baseText('agents.channels.whatsapp.setup.webhook.description'),
 	},
 ]);
 
@@ -75,6 +91,11 @@ const webhookUrl = computed(() => {
 	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
 	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/whatsapp`;
 });
+
+// Meta only accepts an HTTPS callback URL — a self-hosted instance tested
+// locally over plain HTTP would otherwise fail Meta's verification with no
+// clue why, so this catches it before the user ever tries.
+const webhookUrlIsInsecure = computed(() => webhookUrl.value.startsWith('http://'));
 
 async function copyWebhookUrl() {
 	await navigator.clipboard.writeText(webhookUrl.value);
@@ -125,7 +146,23 @@ onMounted(async () => {
 	}
 });
 
-const currentSettings = computed(() => undefined);
+const downloadMedia = shallowRef(true);
+const typingIndicator = shallowRef(false);
+
+watch(
+	() => props.savedSettings,
+	(settings) => {
+		const resolved = resolveSavedWhatsAppSettings(settings);
+		downloadMedia.value = resolved.downloadMedia;
+		typingIndicator.value = resolved.typingIndicator;
+	},
+	{ immediate: true },
+);
+
+const currentSettings = computed(() => ({
+	downloadMedia: downloadMedia.value,
+	typingIndicator: typingIndicator.value,
+}));
 const validationError = computed(() => null);
 
 defineExpose({ credentialId, currentSettings, validationError });
@@ -136,7 +173,24 @@ defineExpose({ credentialId, currentSettings, validationError });
 		<N8nStepper v-if="mode === 'setup'" :steps="steps">
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
-					<template v-if="step.id === 'webhook'">
+					<template v-if="step.id === 'create-app'">
+						<N8nText size="small" :class="$style.hint">
+							{{ i18n.baseText('agents.channels.whatsapp.setup.createApp.hint') }}
+						</N8nText>
+						<N8nButton
+							:href="META_APP_DASHBOARD_URL"
+							target="_blank"
+							rel="noopener noreferrer"
+							variant="subtle"
+							size="medium"
+							icon="whatsapp"
+							data-testid="whatsapp-app-dashboard-link"
+						>
+							{{ i18n.baseText('agents.channels.whatsapp.setup.createApp.button') }}
+						</N8nButton>
+					</template>
+
+					<template v-else-if="step.id === 'webhook'">
 						<div :class="$style.urlField">
 							<label for="whatsapp-webhook-url">
 								<N8nText size="small" bold>
@@ -164,7 +218,15 @@ defineExpose({ credentialId, currentSettings, validationError });
 									/>
 								</template>
 							</N8nInput>
-							<N8nText :class="$style.hint" size="small">
+							<N8nText
+								v-if="webhookUrlIsInsecure"
+								:class="$style.errorText"
+								size="small"
+								data-testid="whatsapp-webhook-https-warning"
+							>
+								{{ i18n.baseText('agents.channels.whatsapp.setup.webhookHttpsWarning') }}
+							</N8nText>
+							<N8nText v-else :class="$style.hint" size="small">
 								{{ i18n.baseText('agents.channels.whatsapp.setup.webhookHint') }}
 							</N8nText>
 						</div>
@@ -203,6 +265,9 @@ defineExpose({ credentialId, currentSettings, validationError });
 					</template>
 
 					<template v-else-if="step.id === 'credential'">
+						<N8nText v-if="!connected" size="small" :class="$style.hint">
+							{{ i18n.baseText('agents.channels.whatsapp.setup.credentialHint') }}
+						</N8nText>
 						<AgentIntegrationCredentialConnection
 							v-if="!connected"
 							v-model="credentialId"
@@ -212,9 +277,12 @@ defineExpose({ credentialId, currentSettings, validationError });
 							:credential-permissions="credentialPermissions"
 							:credentials-loading="credentialsLoading"
 							:disabled="loading"
+							:loading="loading"
 							:force-new-credential="forceNewCredential"
+							show-connect-button
 							@create="emit('create')"
 							@edit="emit('edit')"
+							@connect="emit('connect')"
 						/>
 						<N8nText v-else-if="connectedDescription" size="small">{{
 							connectedDescription
@@ -319,11 +387,34 @@ defineExpose({ credentialId, currentSettings, validationError });
 				:credential-permissions="credentialPermissions"
 				:credentials-loading="credentialsLoading"
 				:disabled="loading"
+				:loading="loading"
 				:force-new-credential="forceNewCredential"
 				@create="emit('create')"
 				@edit="emit('edit')"
 			/>
 			<N8nText v-else-if="connectedDescription" size="small">{{ connectedDescription }}</N8nText>
+
+			<div :class="$style.switchRow">
+				<N8nSwitch2
+					:model-value="downloadMedia"
+					:disabled="loading"
+					data-testid="whatsapp-download-media-toggle"
+					:label="i18n.baseText('agents.channels.whatsapp.setup.downloadMedia')"
+					@update:model-value="downloadMedia = Boolean($event)"
+				/>
+			</div>
+			<div :class="$style.switchRow">
+				<N8nSwitch2
+					:model-value="typingIndicator"
+					:disabled="loading"
+					data-testid="whatsapp-typing-indicator-toggle"
+					:label="i18n.baseText('agents.channels.whatsapp.setup.typingIndicator')"
+					@update:model-value="typingIndicator = Boolean($event)"
+				/>
+			</div>
+			<N8nText :class="$style.hint" size="small">
+				{{ i18n.baseText('agents.channels.whatsapp.setup.typingIndicatorHint') }}
+			</N8nText>
 
 			<N8nText
 				v-if="connected && !isPublished"
@@ -383,6 +474,13 @@ defineExpose({ credentialId, currentSettings, validationError });
 
 .hint {
 	color: var(--text-color--subtler);
+}
+
+.switchRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 }
 
 .errorText {

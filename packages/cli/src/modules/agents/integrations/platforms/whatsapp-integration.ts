@@ -20,12 +20,15 @@ import {
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
 } from '../agent-chat-integration';
 import { componentTextToString, type SuspendComponent } from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
 import { deriveWhatsAppVerifyToken } from '../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
+import { startTypingIndicator } from './typing-indicator';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 
@@ -49,6 +52,13 @@ const WHATSAPP_DEFAULT_SESSION_IDLE_TIMEOUT_MINUTES = 30;
 
 /** WhatsApp Cloud API's own limit on interactive reply buttons per message. */
 const WHATSAPP_MAX_REPLY_BUTTONS = 3;
+
+/**
+ * WhatsApp's typing indicator expires after ~25 seconds or as soon as a reply
+ * is sent, whichever comes first — refresh comfortably inside that window.
+ * @see https://developers.facebook.com/documentation/business-messaging/whatsapp/typing-indicators
+ */
+const WHATSAPP_TYPING_REFRESH_MS = 20 * 1000;
 
 const WHATSAPP_BOT_USER_NAME = 'n8n-agent';
 
@@ -192,6 +202,30 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		}
 
 		return new ConversationWindowGuardedAdapter(config);
+	}
+
+	/**
+	 * Off by default (see `AgentWhatsAppSettingsSchema`): the Cloud API's typing
+	 * indicator implicitly marks the customer's message as read, so this is the
+	 * one place read receipts and the typing indicator can't be split apart.
+	 */
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		const wantsTypingIndicator =
+			params.integration.type === 'whatsapp' &&
+			params.integration.settings?.typingIndicator === true;
+		if (!wantsTypingIndicator) return { platformAgentContext: {} };
+
+		return {
+			platformAgentContext: {},
+			statusHandle: startTypingIndicator(params.thread, {
+				logger: params.logger,
+				agentId: params.agentId,
+				platform: 'WhatsApp',
+				refreshMs: WHATSAPP_TYPING_REFRESH_MS,
+			}),
+		};
 	}
 
 	formatActionDecisionMessage({

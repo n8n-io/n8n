@@ -786,6 +786,15 @@ export class AgentChatBridge {
 			return { attachments, attachmentNotes };
 		}
 
+		if (!this.downloadMediaEnabled()) {
+			for (const attachment of inboundAttachments) {
+				attachmentNotes.push(
+					`[Attachment "${attachment.name ?? 'file'}" was not downloaded: media download is disabled for this channel]`,
+				);
+			}
+			return { attachments, attachmentNotes };
+		}
+
 		const skipped = inboundAttachments.slice(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE);
 		for (const attachment of skipped) {
 			attachmentNotes.push(
@@ -851,6 +860,16 @@ export class AgentChatBridge {
 		}
 
 		return { attachments, attachmentNotes };
+	}
+
+	/**
+	 * Only WhatsApp exposes this today — a customer's media can be large and
+	 * some deployments would rather keep it off their phone number's traffic
+	 * than store every inbound file by default.
+	 */
+	private downloadMediaEnabled(): boolean {
+		if (this.integration.type !== 'whatsapp') return true;
+		return this.integration.settings?.downloadMedia ?? true;
 	}
 
 	private async fetchAttachmentData(attachment: Attachment): Promise<Buffer | null> {

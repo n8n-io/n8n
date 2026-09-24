@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { configure } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
@@ -15,10 +16,16 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
+const { getUrlBaseWebhook } = vi.hoisted(() => ({
+	getUrlBaseWebhook: vi.fn(() => 'https://n8n.example.com/'),
+}));
+
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		restApiContext: {},
-		urlBaseWebhook: 'https://n8n.example.com/',
+		get urlBaseWebhook() {
+			return getUrlBaseWebhook();
+		},
 	}),
 }));
 
@@ -46,7 +53,19 @@ vi.mock('../../composables/useAgentApi', () => ({
 vi.mock('../../components/AgentIntegrationCredentialConnection.vue', () => ({
 	default: {
 		name: 'AgentIntegrationCredentialConnection',
-		template: '<div data-testid="whatsapp-credential-connection-stub" />',
+		// `type: Boolean` matters: only a Boolean-typed prop gets Vue's special
+		// value-less-attribute casting (`show-connect-button` -> `true`) — a
+		// bare `props: ['showConnectButton']` would receive the literal `""`
+		// instead, which is falsy and silently hides the button.
+		props: { showConnectButton: { type: Boolean, default: false } },
+		emits: ['connect'],
+		template: `<div data-testid="whatsapp-credential-connection-stub">
+			<button
+				v-if="showConnectButton"
+				data-testid="whatsapp-credential-connection-stub-connect"
+				@click="$emit('connect')"
+			/>
+		</div>`,
 	},
 }));
 
@@ -74,6 +93,8 @@ describe('AgentChannelWhatsAppSetup', () => {
 	beforeEach(() => {
 		getWhatsAppVerifyToken.mockReset();
 		getWhatsAppVerifyToken.mockResolvedValue({ verifyToken: 'verify-token-123' });
+		getUrlBaseWebhook.mockReset();
+		getUrlBaseWebhook.mockReturnValue('https://n8n.example.com/');
 		Object.defineProperty(window.navigator, 'clipboard', {
 			value: { writeText: vi.fn().mockResolvedValue(undefined) },
 			configurable: true,
@@ -101,6 +122,26 @@ describe('AgentChannelWhatsAppSetup', () => {
 			await flushPromises();
 
 			expect(navigator.clipboard.writeText).toHaveBeenCalledExactlyOnceWith(expectedWebhookUrl);
+		});
+
+		it('warns instead of showing the normal hint when the callback URL is not HTTPS', async () => {
+			getUrlBaseWebhook.mockReturnValue('http://localhost:5678/');
+			const { getByTestId, queryByText } = renderComponent({ props: baseProps });
+			await flushPromises();
+
+			expect(getByTestId('whatsapp-webhook-https-warning')).toBeInTheDocument();
+			expect(queryByText('agents.channels.whatsapp.setup.webhookHint')).toBeNull();
+		});
+	});
+
+	describe('create Meta app step', () => {
+		it('links to the Meta App Dashboard, opening in a new tab', async () => {
+			const { getByTestId } = renderComponent({ props: baseProps });
+			await flushPromises();
+
+			const link = getByTestId('whatsapp-app-dashboard-link');
+			expect(link.getAttribute('href')).toBe('https://developers.facebook.com/apps');
+			expect(link.getAttribute('target')).toBe('_blank');
 		});
 	});
 
@@ -152,6 +193,31 @@ describe('AgentChannelWhatsAppSetup', () => {
 		});
 	});
 
+	describe('connecting via the explicit connect button', () => {
+		// WhatsApp now has the same explicit connect step Telegram/Discord/Slack
+		// use, rather than connecting automatically the moment a credential is
+		// picked — see the module doc on `steps` above.
+		it('shows a connect button during setup and emits connect when clicked', async () => {
+			const { getByTestId, emitted } = renderComponent({
+				props: { ...baseProps, mode: 'setup', connected: false },
+			});
+			await flushPromises();
+
+			getByTestId('whatsapp-credential-connection-stub-connect').click();
+
+			expect(emitted().connect).toHaveLength(1);
+		});
+
+		it('does not show a connect button in edit mode', async () => {
+			const { queryByTestId } = renderComponent({
+				props: { ...baseProps, mode: 'edit', connected: false },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('whatsapp-credential-connection-stub-connect')).toBeNull();
+		});
+	});
+
 	describe('error message state', () => {
 		it('renders the error message without an edit link when no credential is selected', async () => {
 			const { getByText, queryByText } = renderComponent({
@@ -194,6 +260,59 @@ describe('AgentChannelWhatsAppSetup', () => {
 
 			expect(container.textContent).toContain('Already connected');
 			expect(queryByText('agents.builder.addTrigger.editCredential')).toBeNull();
+		});
+	});
+
+	describe('channel settings', () => {
+		it('defaults to media download on and typing indicator off when nothing is saved yet', async () => {
+			const { getByTestId } = renderComponent({
+				props: { ...baseProps, mode: 'edit', connected: true },
+			});
+			await flushPromises();
+
+			expect(getByTestId('whatsapp-download-media-toggle')).toHaveAttribute(
+				'data-state',
+				'checked',
+			);
+			expect(getByTestId('whatsapp-typing-indicator-toggle')).toHaveAttribute(
+				'data-state',
+				'unchecked',
+			);
+		});
+
+		it('renders the saved settings values', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...baseProps,
+					mode: 'edit',
+					connected: true,
+					savedSettings: { downloadMedia: false, typingIndicator: true },
+				},
+			});
+			await flushPromises();
+
+			expect(getByTestId('whatsapp-download-media-toggle')).toHaveAttribute(
+				'data-state',
+				'unchecked',
+			);
+			expect(getByTestId('whatsapp-typing-indicator-toggle')).toHaveAttribute(
+				'data-state',
+				'checked',
+			);
+		});
+
+		it('toggles the download-media switch on click', async () => {
+			const { getByTestId } = renderComponent({
+				props: { ...baseProps, mode: 'edit', connected: true },
+			});
+			await flushPromises();
+
+			const toggle = getByTestId('whatsapp-download-media-toggle');
+			expect(toggle).toHaveAttribute('data-state', 'checked');
+
+			await userEvent.click(toggle);
+
+			expect(toggle).toHaveAttribute('data-state', 'unchecked');
 		});
 	});
 });

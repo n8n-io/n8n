@@ -191,6 +191,35 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			}
 		});
 
+		it('skips downloading media when the channel has media download disabled', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				integration: {
+					type: 'whatsapp',
+					credentialId: 'cred-whatsapp',
+					settings: { downloadMedia: false, typingIndicator: false },
+				},
+			});
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundImageMessage({ from: fixtures.contact.wa_id }),
+					}),
+				);
+
+				expect(ctx.attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						message: expect.stringContaining('media download is disabled'),
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
 		it('drops a contacts message entirely — the adapter has no handling for it', async () => {
 			// Documents a real gap in the pinned adapter version: `type: "contacts"`
 			// has no structured field on `WhatsAppInboundMessage` and no text
@@ -292,6 +321,49 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		} finally {
 			await ctx.shutdown();
 		}
+	});
+
+	describe('typing indicator', () => {
+		it('sends the typing indicator when enabled', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				integration: {
+					type: 'whatsapp',
+					credentialId: 'cred-whatsapp',
+					settings: { downloadMedia: true, typingIndicator: true },
+				},
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+
+				expect(ctx.apiCalls).toContainEqual(
+					expect.objectContaining({
+						body: expect.objectContaining({
+							status: 'read',
+							typing_indicator: { type: 'text' },
+						}),
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('does not send the typing indicator by default', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+
+				expect(ctx.apiCalls).not.toContainEqual(
+					expect.objectContaining({
+						body: expect.objectContaining({ typing_indicator: expect.anything() }),
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
 	});
 
 	describe('24-hour customer service window', () => {
