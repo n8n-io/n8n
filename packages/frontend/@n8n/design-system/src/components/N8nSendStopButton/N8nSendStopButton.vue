@@ -39,20 +39,21 @@ function handleStop() {
 <template>
 	<N8nButton
 		v-if="streaming"
-		variant="solid"
+		variant="brand"
 		icon-only
 		:aria-label="t('sendStopButton.stop')"
 		:size="size"
 		icon="filled-square"
-		icon-size="small"
+		icon-size="medium"
 		:data-test-id="stopButtonTestId"
 		@click="handleStop"
 	/>
 	<N8nButton
 		v-else
-		variant="solid"
+		variant="brand"
 		:size="size"
 		:icon-only="!label"
+		icon-size="medium"
 		:icon="label ? undefined : 'arrow-up'"
 		:aria-label="label ? undefined : t('sendStopButton.send')"
 		:disabled="disabled"
