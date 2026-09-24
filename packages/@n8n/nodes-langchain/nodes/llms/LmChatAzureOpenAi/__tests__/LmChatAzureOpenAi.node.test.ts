@@ -109,6 +109,61 @@ describe('LmChatAzureOpenAi', () => {
 			});
 		});
 
+		// The toggle must not appear on nodes saved before it existed, and the node has to keep
+		// offering both versions so those nodes still resolve.
+		it('should offer version 1 alongside 1.1', () => {
+			expect(new LmChatAzureOpenAi().description.version).toEqual([1, 1.1]);
+		});
+
+		it('should show the toggle only from version 1.1', () => {
+			const toggle = new LmChatAzureOpenAi().description.properties.find(
+				(p) => p?.name === 'responsesApiEnabled',
+			);
+
+			expect(toggle).toEqual(
+				expect.objectContaining({
+					type: 'boolean',
+					default: false,
+					displayOptions: { show: { '@version': [{ _cnd: { gte: 1.1 } }] } },
+				}),
+			);
+		});
+
+		// A version 1 node has no stored value for it, so the read has to fall back to off.
+		it('should force Chat Completions when the parameter is absent', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, {});
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string, _i, fallback) => {
+				if (paramName === 'authentication') return 'azureOpenAiApi';
+				if (paramName === 'model') return 'gpt-4o';
+				if (paramName === 'options') return {};
+				return fallback;
+			});
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(ChatOpenAI).mock.calls[0][0]).toMatchObject({ useResponsesApi: false });
+		});
+
+		// The two APIs name the format differently, and modelKwargs is spread over LangChain's own.
+		it.each([
+			[false, { response_format: { type: 'json_object' } }],
+			[true, { text: { format: { type: 'json_object' } } }],
+		])(
+			'should send the response format in the shape that API takes (on=%s)',
+			async (enabled, expected) => {
+				const ctx = setupMockContext(
+					'azureOpenAiApi',
+					foundry,
+					{ responseFormat: 'json_object' },
+					enabled,
+				);
+
+				await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+				expect(vi.mocked(ChatOpenAI).mock.calls[0][0]).toMatchObject({ modelKwargs: expected });
+			},
+		);
+
 		// Azure answers the route it does not serve with a bare 404, which reads as a missing
 		// deployment. The handler has to say which API the node asked for.
 		it.each([

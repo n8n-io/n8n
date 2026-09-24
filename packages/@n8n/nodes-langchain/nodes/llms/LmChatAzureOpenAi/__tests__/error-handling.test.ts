@@ -43,6 +43,40 @@ describe('makeAzureFoundryFailedAttemptHandler', () => {
 		);
 	});
 
+	// The two most common Azure 400s. Relabelling either as an API-mode problem would send the
+	// builder after the wrong thing entirely.
+	it.each([
+		[
+			'an unsupported parameter value',
+			"Unsupported value: 'temperature' does not support 0.5 with this model. Only the default (1) value is supported.",
+		],
+		[
+			'an unsupported parameter name',
+			"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.",
+		],
+	])('should leave %s alone, even though it mentions the model', (_, message) => {
+		const handler = makeAzureFoundryFailedAttemptHandler('gpt-4o', false);
+
+		expect(() => handler({ status: 400, message })).not.toThrow();
+	});
+
+	// Both halves apply here: the classifier says unsupported_parameter and the narrow pattern
+	// also matches. The parameter reading has to win, or the builder is sent to the wrong setting.
+	it('should treat a parameter error as such even when it also names the model', () => {
+		const handler = makeAzureFoundryFailedAttemptHandler('gpt-4o', false);
+		const message =
+			"Unsupported parameter: 'max_tokens'. The model is not supported with that parameter.";
+
+		expect(() => handler({ status: 400, message })).not.toThrow();
+	});
+
+	// Some clients put the status on a response object rather than the error.
+	it('should read a status nested under response', () => {
+		const handler = makeAzureFoundryFailedAttemptHandler('gpt-4o', false);
+
+		expect(() => handler({ response: { status: 404 } })).toThrow('gpt-4o');
+	});
+
 	// Anything else has to fall through so the shared handler can retry it.
 	it.each([
 		['a rate limit', { status: 429 }],

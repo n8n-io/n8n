@@ -94,14 +94,6 @@ export class LmChatAzureOpenAi implements INodeType {
 			// raw JSON string would put an `extraBody` field on the constructor.
 			const { extraBody, ...options } = allOptions;
 
-			// `responseFormat` and `extraBody` both end up in the request body. Extra Body is the
-			// escape hatch, so it wins on a key collision.
-			const modelKwargs: Record<string, unknown> = {
-				...(options.responseFormat ? { response_format: { type: options.responseFormat } } : {}),
-				...(extraBody ? parseExtraBody(this, extraBody, itemIndex) : {}),
-			};
-			const hasModelKwargs = Object.keys(modelKwargs).length > 0;
-
 			// Azure exposes no way to ask a deployment which API it answers on, so this is the user's
 			// call. Absent on version 1 nodes, which keep the forced Chat Completions behaviour.
 			const responsesApiEnabled = this.getNodeParameter(
@@ -109,6 +101,23 @@ export class LmChatAzureOpenAi implements INodeType {
 				itemIndex,
 				false,
 			) as boolean;
+
+			// The two APIs name this differently: Chat Completions takes `response_format`, the
+			// Responses API takes the same thing under `text.format`. LangChain spreads modelKwargs
+			// last, over its own `text`, so sending the wrong shape puts an unknown key on the body.
+			const responseFormat = options.responseFormat
+				? responsesApiEnabled
+					? { text: { format: { type: options.responseFormat } } }
+					: { response_format: { type: options.responseFormat } }
+				: {};
+
+			// `responseFormat` and `extraBody` both end up in the request body. Extra Body is the
+			// escape hatch, so it wins on a key collision.
+			const modelKwargs: Record<string, unknown> = {
+				...responseFormat,
+				...(extraBody ? parseExtraBody(this, extraBody, itemIndex) : {}),
+			};
+			const hasModelKwargs = Object.keys(modelKwargs).length > 0;
 
 			// Set up Authentication based on selection and get configuration
 			let modelConfig: AzureOpenAIApiKeyModelConfig | AzureOpenAIOAuth2ModelConfig;
@@ -187,7 +196,9 @@ export class LmChatAzureOpenAi implements INodeType {
 			}
 
 			const model = new AzureChatOpenAI({
-				// Forced off: see the check above.
+				// The classic route never asks for Responses; the check above already refused the
+				// toggle. LangChain can still pick it from the model name, which is why that case
+				// needs the Foundry endpoint type.
 				useResponsesApi: false,
 				// Model name is required so logs are correct
 				// Also ensures internal logic (like mapping "maxTokens" to "maxCompletionTokens") is correct
