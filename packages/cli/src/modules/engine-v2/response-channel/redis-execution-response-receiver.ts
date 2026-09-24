@@ -14,6 +14,7 @@ type RedisMessageHandler = (channel: string, message: string) => void;
 type ExecutionSubscription = {
 	executionId: string;
 	handler: (response: ExecutionResponse) => void;
+	/** Resolves when the channel is ready. Shutdown uses it to wait for in-flight subscriptions. */
 	ready: Promise<void>;
 };
 
