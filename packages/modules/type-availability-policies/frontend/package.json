@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-type-availability-policies",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -18,22 +18,34 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
-    "@n8n/frontend-module-sdk": "workspace:*"
+    "@n8n/api-types": "workspace:*",
+    "@n8n/design-system": "workspace:*",
+    "@n8n/frontend-module-sdk": "workspace:*",
+    "@n8n/i18n": "workspace:*",
+    "@n8n/rest-api-client": "workspace:*",
+    "@n8n/stores": "workspace:*",
+    "@vueuse/core": "catalog:frontend",
+    "pinia": "catalog:frontend",
+    "vue": "catalog:frontend"
   },
   "devDependencies": {
+    "@iconify/json": "catalog:",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/frontend-test-utils": "workspace:*",
     "@n8n/frontend-vite-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@pinia/testing": "^0.1.6",
     "@testing-library/jest-dom": "catalog:frontend",
+    "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@vitejs/plugin-vue": "catalog:frontend",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
+    "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },

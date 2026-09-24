@@ -3,7 +3,7 @@ import { ExecutionStatusList, WorkflowExecuteModeList, type ExecutionStatus } fr
 import z from 'zod';
 
 import { parseExecutionCursor } from '@/executions/execution-cursor';
-import type { ExecutionService } from '@/executions/execution.service';
+import type { ExecutionListService } from '@/executions/execution-list.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -70,7 +70,7 @@ const outputSchema = {
 
 export const createSearchExecutionsTool = (
 	user: User,
-	executionService: ExecutionService,
+	executionListService: ExecutionListService,
 	workflowFinderService: WorkflowFinderService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
@@ -117,17 +117,15 @@ export const createSearchExecutionsTool = (
 			}
 
 			const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
-			const sharingOptions = await executionService.buildSharingOptions('workflow:read');
-			const beforeId = parseExecutionCursor(cursor);
+			const sharingOptions = await executionListService.buildSharingOptions('workflow:read');
+			const parsedCursor = parseExecutionCursor(cursor);
 
 			const query = {
 				kind: 'range' as const,
 				user,
 				sharingOptions,
-				range: {
-					limit: safeLimit,
-					...(beforeId ? { beforeId } : {}),
-				},
+				// The cursor goes to the list service, which bounds each store itself.
+				range: { limit: safeLimit },
 				...(workflowId ? { workflowId } : {}),
 				...(status?.length ? { status } : {}),
 				...(startedAfter ? { startedAfter } : {}),
@@ -137,7 +135,7 @@ export const createSearchExecutionsTool = (
 			};
 
 			const { results, count, estimated, nextCursor } =
-				await executionService.findRangeWithCount(query);
+				await executionListService.findPageWithCount(query, parsedCursor);
 
 			const data = results.map((execution) => ({
 				id: execution.id,

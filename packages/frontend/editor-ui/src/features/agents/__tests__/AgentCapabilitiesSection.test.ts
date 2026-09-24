@@ -40,6 +40,16 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData: openModalWithDataSpy }),
 }));
 
+const createAgentSpy = vi.fn();
+vi.mock('../composables/useCreateAgent', () => ({
+	useCreateAgent: () => ({ createAgent: createAgentSpy }),
+}));
+
+const canCreateAgentRef = ref(true);
+vi.mock('../composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => ({ canCreate: canCreateAgentRef }),
+}));
+
 const showErrorSpy = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy }),
@@ -67,6 +77,14 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => key,
 	}),
+}));
+
+vi.mock('../components/AgentWebSearchSection.vue', () => ({
+	default: {
+		name: 'AgentWebSearchSection',
+		emits: ['update:config'],
+		template: '<div data-testid="agent-web-search-section" />',
+	},
 }));
 
 function mountSection(
@@ -156,6 +174,17 @@ describe('AgentCapabilitiesSection', () => {
 		ensureProjectAgentsLoadedSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
 		refreshProjectAgentsSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
 		integrationsCatalogRef.value = [];
+		canCreateAgentRef.value = true;
+	});
+
+	it('renders web search and forwards its config updates', () => {
+		const wrapper = mountSection([]);
+		const webSearchSection = wrapper.getComponent({ name: 'AgentWebSearchSection' });
+		const update = { config: { webSearch: { enabled: false } } };
+
+		webSearchSection.vm.$emit('update:config', update);
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([update]);
 	});
 
 	it('formats node and custom tool chip labels for display', () => {
@@ -372,16 +401,44 @@ describe('AgentCapabilitiesSection', () => {
 				name: AGENT_SUB_AGENTS_MODAL_KEY,
 				data: expect.objectContaining({
 					agents: [
-						{ id: 'agent-3', name: 'Research Agent' },
-						{ id: 'agent-4', name: 'Draft Agent' },
+						{
+							id: 'agent-2',
+							name: 'Helper Agent',
+							added: true,
+							useWhen: 'Use for billing support requests.',
+							invalidReasons: [],
+							agentHref: '/projects/project-id/agents/agent-2',
+						},
+						{
+							id: 'agent-3',
+							name: 'Research Agent',
+							added: false,
+							useWhen: undefined,
+							invalidReasons: [],
+							agentHref: '/projects/project-id/agents/agent-3',
+						},
+						{
+							id: 'agent-4',
+							name: 'Draft Agent',
+							added: false,
+							useWhen: undefined,
+							invalidReasons: [],
+							agentHref: '/projects/project-id/agents/agent-4',
+						},
 					],
 				}),
 			}),
 		);
 
 		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
-			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
+			data: {
+				onCreateAgent?: () => void;
+				onConfirm: (payload: { agentId: string; useWhen?: string }) => void;
+			};
 		};
+		modalCall.data.onCreateAgent?.();
+		expect(createAgentSpy).toHaveBeenCalledWith('button', 'project-id');
+
 		modalCall.data.onConfirm({
 			agentId: 'agent-4',
 			useWhen: 'Use for draft research requests.',
@@ -398,6 +455,20 @@ describe('AgentCapabilitiesSection', () => {
 				},
 			},
 		]);
+	});
+
+	it('omits agent creation when the project does not allow it', async () => {
+		canCreateAgentRef.value = false;
+		const wrapper = mountSection([], {}, null, [], [makeAgent()]);
+		await flushPromises();
+
+		await wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').trigger('click');
+		await flushPromises();
+
+		const modalCall = openModalWithDataSpy.mock.calls[0]?.[0] as {
+			data: { onCreateAgent?: () => void };
+		};
+		expect(modalCall.data.onCreateAgent).toBeUndefined();
 	});
 
 	it('refreshes a stale project-agent cache and renders only the sub-agent name', async () => {
@@ -997,42 +1068,17 @@ describe('AgentCapabilitiesSection', () => {
 		});
 
 		it('renders only the allowlisted sections and skips sub-agents', async () => {
-			const wrapper = mount(AgentCapabilitiesSection, {
-				props: {
-					config: null,
-					tools: [],
-					customTools: {},
-					skills: [],
-					projectId: 'project-id',
-					agentId: 'agent-id',
-					isPublished: false,
-					sections: ['tools', 'skills'],
-				},
-				global: {
-					stubs: {
-						NodeIcon: { template: '<span />' },
-						N8nButton: {
-							props: ['disabled'],
-							emits: ['click'],
-							template:
-								'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
-						},
-						N8nIcon: { template: '<span />' },
-						N8nText: { template: '<span><slot /></span>' },
-						N8nTooltip: { template: '<span><slot /></span>' },
-					},
-				},
-			});
+			const wrapper = mountSection([], {}, null, [], [], { sections: ['tools', 'skills'] });
 			await flushPromises();
 
-			// Allowlisted rows present.
+			/** Allowlisted rows are present. */
 			expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
 
-			// Suppressed rows absent.
+			/** Suppressed rows are absent. */
 			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(false);
 
-			// The project-agents list (only needed for sub-agents) is not fetched.
+			/** The project-agent list is not needed for hidden sub-agents. */
 			expect(ensureProjectAgentsLoadedSpy).not.toHaveBeenCalled();
 		});
 	});

@@ -8,10 +8,12 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
+import { AgentApprovalSchema } from './agent-integration.schema';
 import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
 import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
+import { booleanFromString } from '../schemas/boolean-from-string';
 import { Z } from '../zod-class';
 
 export const AGENTS_LIST_SORT_OPTIONS = [
@@ -42,6 +44,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'telegram',
 	'linear',
 	'discord',
+	'teams',
 ] as const;
 
 export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
@@ -90,6 +93,7 @@ export class ListAgentsQueryDto extends Z.class({
 export class ListAgentSessionsQueryDto extends Z.class({
 	cursor: z.string().optional(),
 	limit: z.string().optional(),
+	previewOnly: booleanFromString.optional(),
 	status: z.enum(AGENT_SESSION_STATUSES).optional(),
 	origin: z.enum(AGENT_SESSION_ORIGINS).optional(),
 	updatedAfter: z.coerce.date().optional(),
@@ -98,7 +102,7 @@ export class ListAgentSessionsQueryDto extends Z.class({
 
 export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
-	'status' | 'origin' | 'updatedAfter' | 'updatedBefore'
+	'status' | 'origin' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
 >;
 
 export class AgentProviderModelsQueryDto extends Z.class({
@@ -222,6 +226,7 @@ const agentChatMessageShape = {
 	// (attachment-only sends) — see the schema-level refinement below.
 	message: z.string(),
 	sessionId: z.string().min(1).optional(),
+	newSession: z.literal(true).optional(),
 	attachments: z
 		.array(agentChatAttachmentSchema)
 		.max(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)
@@ -279,6 +284,8 @@ export class AgentConnectIntegrationDto extends Z.class({
 	 * request keeps the agent from ever holding two live channels or none.
 	 */
 	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
+	/** Channel actions that need approval before they run. */
+	approval: AgentApprovalSchema.optional(),
 }) {}
 
 export class AgentDisconnectIntegrationDto extends Z.class({

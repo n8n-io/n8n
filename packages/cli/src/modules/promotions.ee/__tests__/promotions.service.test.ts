@@ -1,3 +1,4 @@
+import type { PromotionBindingPreflightResult } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { ProjectRepository, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
@@ -17,6 +18,7 @@ import {
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { ProjectService } from '@/services/project.service.ee';
 
+import type { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import type { PromotionConfigResolver } from '../promotion-config.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
@@ -60,6 +62,7 @@ describe('PromotionsService', () => {
 	const projectRepository = mock<ProjectRepository>();
 	const projectService = mock<ProjectService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
+	const bindingPreflight = mock<PromotionBindingPreflightService>();
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -124,6 +127,7 @@ describe('PromotionsService', () => {
 			projectRepository,
 			projectService,
 			n8nPackagesService,
+			bindingPreflight,
 			logger,
 		);
 		providersService.decryptCredentials.mockResolvedValue({
@@ -890,6 +894,84 @@ describe('PromotionsService', () => {
 		});
 	});
 
+	describe('readBranchPackage', () => {
+		const commitSha = 'c'.repeat(40);
+		const workflowPath = 'n8n-export/projects/orders-p1/workflows/order-w1/workflow.json';
+
+		beforeEach(async () => {
+			const input = applyInput();
+			resolver.resolveForProject.mockResolvedValue(input);
+			await markCloned(input, 'dev');
+		});
+
+		it('lists the package of the branch at one commit and reads files from that commit', async () => {
+			gitService.listBranchTree.mockResolvedValue({
+				commitSha,
+				lsTreeOutput:
+					[
+						'100644 blob p1\tn8n-export/projects/orders-p1/project.json',
+						`100644 blob w1\t${workflowPath}`,
+						'100644 blob x1\tn8n-export/projects/other-p2/project.json',
+					].join('\0') + '\0',
+			});
+			gitService.readFilesAtCommit.mockResolvedValue(new Map([[workflowPath, '{"id":"w1"}']]));
+
+			const branch = await service.readBranchPackage('p1', 'apply');
+
+			expect(resolver.resolveForProject).toHaveBeenCalledWith('p1', 'apply');
+			expect(gitService.listBranchTree).toHaveBeenCalledWith(
+				expect.objectContaining({
+					remoteUrl: REMOTE_URL,
+					branchName: 'dev',
+					configId: CONFIG_ID,
+					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
+					pathspecs: [
+						'n8n-export/projects/',
+						'n8n-export/credentials/',
+						'n8n-export/data-tables/',
+						'n8n-export/variables/',
+						'n8n-export/tags/',
+					],
+				}),
+			);
+			expect(branch.commitSha).toBe(commitSha);
+			expect(branch.files.map(({ entityId, type }) => ({ entityId, type }))).toEqual([
+				{ entityId: 'p1', type: 'project' },
+				{ entityId: 'w1', type: 'workflow' },
+			]);
+			await expect(branch.readFiles([workflowPath])).resolves.toEqual(
+				new Map([[workflowPath, '{"id":"w1"}']]),
+			);
+			expect(gitService.readFilesAtCommit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitSha,
+					branchName: 'dev',
+					configId: CONFIG_ID,
+					filePaths: [workflowPath],
+				}),
+			);
+		});
+
+		it('lists a branch without commits as empty and refuses to read a file from it', async () => {
+			gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
+
+			const branch = await service.readBranchPackage('p1', 'apply');
+
+			expect(branch).toMatchObject({ commitSha: null, files: [] });
+			await expect(branch.readFiles(['n8n-export/manifest.json'])).rejects.toThrow(
+				'no exported package',
+			);
+			expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
+		});
+
+		it('refuses to read before the direction is cloned', async () => {
+			gitService.hasCheckout.mockResolvedValueOnce(false);
+
+			await expect(service.readBranchPackage('p1', 'apply')).rejects.toThrow('not cloned');
+			expect(gitService.listBranchTree).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('apply', () => {
 		const actor = mock<User>({ id: 'actor', role: { slug: 'global:owner' } });
 
@@ -922,6 +1004,13 @@ describe('PromotionsService', () => {
 		let packageFolder: string;
 
 		beforeEach(async () => {
+			bindingPreflight.checkDirectory.mockResolvedValue({
+				missingProjects: [],
+				missingBindings: [],
+				accessRequirements: [],
+				conflicts: [],
+				warnings: [],
+			});
 			const input = applyInput();
 			resolver.resolveForConnection.mockResolvedValue(input);
 			await markCloned(input, 'dev');
@@ -945,14 +1034,14 @@ describe('PromotionsService', () => {
 					workflowPublishingPolicy: 'match-source',
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
-					credentialMissingMode: 'create-stub',
+					credentialMissingMode: 'must-preexist',
 					folderConflictPolicy: 'overwrite',
 					overwriteDeletionPolicy: 'hard-delete',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'fail',
-					variableMissingMode: 'create-with-value',
-					variableConflictPolicy: 'overwrite',
+					variableMissingMode: 'must-preexist',
+					variableConflictPolicy: 'keep-existing',
 					tagMissingMode: 'create',
 					tagConflictPolicy: 'rename',
 				},
@@ -986,7 +1075,182 @@ describe('PromotionsService', () => {
 					tags: { matched: 0, created: 1, renamed: 1, reconciled: 0, skipped: 0 },
 				},
 				git: { commitSha: 'remotesha', branchName: 'dev' },
+				status: 'applied',
+				warnings: [],
 			});
+		});
+
+		const consumers = [
+			{ project: { id: 'p1', name: 'Orders' }, workflows: [{ id: 'w1', name: 'Process order' }] },
+		];
+		const unresolved: PromotionBindingPreflightResult = {
+			missingProjects: [],
+			missingBindings: [
+				{
+					kind: 'variable',
+					name: 'API_URL',
+					variableType: 'string',
+					scope: { kind: 'global' },
+					sourceValue: '',
+					consumers,
+				},
+			],
+			accessRequirements: [
+				{
+					kind: 'credential',
+					code: 'access-required',
+					sourceId: 'c1',
+					name: 'Header',
+					credentialType: 'httpHeaderAuth',
+					consumers,
+				},
+			],
+			conflicts: [
+				{
+					kind: 'variable',
+					code: 'missing-definition',
+					name: 'REGION',
+					referenceFiles: ['workflow.json'],
+					consumers,
+				},
+			],
+			warnings: [
+				{
+					kind: 'variable',
+					code: 'variable-shadowed',
+					name: 'API_URL',
+					scope: { kind: 'global' },
+					consumers,
+				},
+			],
+		};
+		const request = {
+			expectedSource: { configId: CONFIG_ID, branchName: 'dev', commitSha: 'remotesha' },
+		};
+
+		it('imports when only projects are missing', async () => {
+			await mkdir(packageFolder, { recursive: true });
+			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingProjects: [{ id: 'p1', name: 'Orders' }],
+				missingBindings: [],
+				accessRequirements: [],
+				conflicts: [],
+				warnings: [],
+			});
+			expect(await service.apply('conn1', actor)).toMatchObject({ status: 'applied' });
+			expect(n8nPackagesService.importPackageFromDirectory).toHaveBeenCalled();
+		});
+
+		it.each(['missingBindings', 'accessRequirements', 'conflicts'] as const)(
+			'blocks on %s before import or reconciliation',
+			async (group) => {
+				await mkdir(packageFolder, { recursive: true });
+				const preflight = {
+					missingProjects: [],
+					missingBindings: [],
+					accessRequirements: [],
+					conflicts: [],
+					warnings: [],
+					[group]: unresolved[group],
+				};
+				bindingPreflight.checkDirectory.mockResolvedValueOnce(preflight);
+				expect(await service.apply('conn1', actor)).toEqual({
+					status: 'blocked',
+					connectionId: 'conn1',
+					configId: CONFIG_ID,
+					git: { commitSha: 'remotesha', branchName: 'dev' },
+					preflight,
+				});
+				expect(bindingPreflight.checkDirectory).toHaveBeenCalledWith({
+					sourceDir: packageFolder,
+				});
+				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+				expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
+				expect(projectService.deleteProject).not.toHaveBeenCalled();
+			},
+		);
+
+		it('returns fresh groups on Continue and imports only after they clear', async () => {
+			await mkdir(packageFolder, { recursive: true });
+			bindingPreflight.checkDirectory.mockResolvedValueOnce(unresolved);
+			expect(await service.apply('conn1', actor)).toMatchObject({
+				status: 'blocked',
+				preflight: unresolved,
+			});
+			const fresh = { ...unresolved, missingBindings: [] };
+			bindingPreflight.checkDirectory.mockResolvedValueOnce(fresh);
+			expect(await service.continueApply('conn1', actor, request)).toMatchObject({
+				status: 'blocked',
+				preflight: fresh,
+			});
+			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingProjects: [],
+				missingBindings: [],
+				accessRequirements: [],
+				conflicts: [],
+				warnings: unresolved.warnings,
+			});
+			expect(await service.continueApply('conn1', actor, request)).toMatchObject({
+				status: 'applied',
+				warnings: unresolved.warnings,
+			});
+			expect(bindingPreflight.checkDirectory).toHaveBeenCalledTimes(3);
+			expect(n8nPackagesService.importPackageFromDirectory).toHaveBeenCalledWith(
+				expect.objectContaining({
+					credentialMissingMode: 'must-preexist',
+					variableMissingMode: 'must-preexist',
+					variableConflictPolicy: 'keep-existing',
+				}),
+				{ sourceDir: packageFolder },
+			);
+		});
+
+		it('imports with warnings on initial Apply', async () => {
+			await mkdir(packageFolder, { recursive: true });
+			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingProjects: [],
+				missingBindings: [],
+				accessRequirements: [],
+				conflicts: [],
+				warnings: unresolved.warnings,
+			});
+			expect(await service.apply('conn1', actor)).toMatchObject({
+				status: 'applied',
+				warnings: unresolved.warnings,
+			});
+		});
+
+		it.each([{ commitSha: 'older' }, { branchName: 'older' }, { configId: 'older' }])(
+			'stops Continue before preflight when source differs: %j',
+			async (change) => {
+				expect(
+					await service.continueApply('conn1', actor, {
+						expectedSource: { ...request.expectedSource, ...change },
+					}),
+				).toEqual({
+					status: 'source-changed',
+					connectionId: 'conn1',
+					configId: CONFIG_ID,
+					git: { branchName: 'dev', commitSha: 'remotesha' },
+				});
+				expect(gitService.refreshCheckout).toHaveBeenCalledOnce();
+				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+				expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
+			},
+		);
+
+		it('keeps importer errors and does not reconcile projects after failure', async () => {
+			await mkdir(packageFolder, { recursive: true });
+			n8nPackagesService.importPackageFromDirectory.mockRejectedValueOnce(
+				new BadRequestError('Import blocked'),
+			);
+			await expect(service.continueApply('conn1', actor, request)).rejects.toThrow(
+				'Import blocked',
+			);
+			expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
+			expect(projectService.deleteProject).not.toHaveBeenCalled();
 		});
 
 		it('explains that the branch holds no package to import', async () => {

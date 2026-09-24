@@ -45,3 +45,20 @@ export const MAX_STICKY_SEPARATION_STEPS = 50;
 export const NODE_SPACING_X = 200;
 export const DEFAULT_Y = 300;
 export const START_X = 100;
+
+// Node group geometry. Mirrors
+// packages/frontend/editor-ui/src/features/workflows/canvas/stores/canvasNodeGroups.constants.ts
+// A collapsed group is drawn as a fixed-size chip, so that is the footprint
+// layout reserves; the canvas pushes neighbours aside when a group is expanded.
+
+/** Gap between the group frame's edge and its member nodes. */
+export const GROUP_PADDING_X = 56;
+
+/** Headroom between the group's title bar and its member nodes. */
+export const GROUP_PADDING_Y_TOP = 40;
+
+/** Title bar height; matches node height. */
+export const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1]; // 96
+
+/** Fixed title bar width while collapsed. */
+export const GROUP_HEADER_WIDTH_COLLAPSED = 400;

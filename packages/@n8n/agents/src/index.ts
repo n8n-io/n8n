@@ -197,6 +197,7 @@ export {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_TOOL_NAMES,
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
@@ -265,6 +266,7 @@ export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
+	getCreatedAt,
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
@@ -334,6 +336,7 @@ export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/wri
 export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
+export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {

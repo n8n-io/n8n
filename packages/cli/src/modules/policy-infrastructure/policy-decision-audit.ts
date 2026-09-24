@@ -1,5 +1,6 @@
 import type {
 	CredentialDecryptContext,
+	CredentialSaveContext,
 	EnforcementPoint,
 	PolicyCheckFailure,
 	PolicyDecision,
@@ -46,7 +47,8 @@ export type PolicyDecisionAudit = {
 	/** `null` for a create, which has no id yet — read `workflowName` instead. */
 	workflowId?: string | null;
 	workflowName?: string;
-	credentialId?: string;
+	/** `null` for a credential create, which has no id yet — read `credentialType` instead. */
+	credentialId?: string | null;
 	credentialType?: string;
 	consumerNodeType?: string;
 	projectId: string | null;
@@ -75,11 +77,21 @@ const auditedViolation = ({
  * than a committed row — the seal discards it for the same reason. `workflowName` is what
  * identifies a create.
  */
-const policedWorkflowId = (context: Exclude<AnyPolicyContext, CredentialDecryptContext>) =>
-	'storedWorkflow' in context ? (context.storedWorkflow?.id ?? null) : context.workflow.id;
+const policedWorkflowId = (
+	context: Exclude<AnyPolicyContext, CredentialDecryptContext | CredentialSaveContext>,
+) => ('storedWorkflow' in context ? (context.storedWorkflow?.id ?? null) : context.workflow.id);
 
 /** What was policed, read off the context. */
 function targetOf(context: AnyPolicyContext) {
+	// Same rule as a workflow save: a create has no committed id, whatever the payload claims.
+	if ('credential' in context) {
+		return {
+			credentialId: context.storedCredential?.id ?? null,
+			credentialType: context.credential.type,
+			projectId: context.projectId,
+		};
+	}
+
 	if ('credentialId' in context) {
 		return {
 			credentialId: context.credentialId,

@@ -6,7 +6,7 @@ import { Agent, request as undiciRequest } from 'undici';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { FileToMount, HelperContext, Service, ServiceResult } from './types';
+import type { FileToMount, HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const HOSTNAME = 'keycloak';
 const HTTPS_PORT = 8443;
@@ -262,6 +262,7 @@ export const keycloak: Service<KeycloakResult> = {
 		network: StartedNetwork,
 		projectName: string,
 		config?: unknown,
+		ctx?: StartContext,
 	): Promise<KeycloakResult> {
 		const { n8nCallbackUrl } = config as KeycloakConfig;
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
@@ -300,6 +301,7 @@ export const keycloak: Service<KeycloakResult> = {
 				.withLogConsumer(consumer)
 				.withReuse()
 				.start();
+			ctx?.registerContainer?.(container);
 
 			const discoveryUrl = `https://localhost:${allocatedHostPort}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;
 			const internalDiscoveryUrl = `https://${HOSTNAME}:${HTTPS_PORT}/realms/${KEYCLOAK_TEST_REALM}/.well-known/openid-configuration`;

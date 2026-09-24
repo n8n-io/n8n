@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { guidIdMode, idMode, listMode } from './rlc.modes';
+
 export const teamRLC: INodeProperties = {
 	displayName: 'Team',
 	name: 'teamId',
@@ -9,16 +11,7 @@ export const teamRLC: INodeProperties = {
 	description:
 		'Select the team from the list, by URL, or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
 	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'e.g. My Team',
-			typeOptions: {
-				searchListMethod: 'getTeams',
-				searchable: true,
-			},
-		},
+		listMode('getTeams', 'e.g. My Team'),
 		{
 			displayName: 'From URL',
 			name: 'url',
@@ -38,25 +31,7 @@ export const teamRLC: INodeProperties = {
 				},
 			],
 		},
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
-			placeholder: 'e.g. 61165b04-e4cc-4026-b43f-926b4e2a7182',
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
-						errorMessage: 'Not a valid Microsoft Teams Team ID',
-					},
-				},
-			],
-			extractValue: {
-				type: 'regex',
-				regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
-			},
-		},
+		guidIdMode('e.g. 61165b04-e4cc-4026-b43f-926b4e2a7182', 'Not a valid Microsoft Teams Team ID'),
 	],
 };
 
@@ -72,23 +47,9 @@ export const channelRLC: INodeProperties = {
 		loadOptionsDependsOn: ['teamId.value'],
 	},
 	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'Select a Channel...',
-			typeOptions: {
-				searchListMethod: 'getChannels',
-				searchable: true,
-			},
-		},
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
-			placeholder: '19:-xlxyqXNSCxpI1SDzgQ_L9ZvzSR26pgphq1BJ9y7QJE1@thread.tacv2',
-			// validation missing because no documentation found how these unique ids look like.
-		},
+		listMode('getChannels', 'Select a Channel...'),
+		// validation missing because no documentation found how these unique ids look like.
+		idMode({ placeholder: '19:-xlxyqXNSCxpI1SDzgQ_L9ZvzSR26pgphq1BJ9y7QJE1@thread.tacv2' }),
 	],
 };
 
@@ -101,25 +62,13 @@ export const chatRLC: INodeProperties = {
 	description:
 		'Select the chat from the list, by URL, or by ID (find the chat ID after "conversations/" in the URL)',
 	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'Select a Chat...',
-			typeOptions: {
-				searchListMethod: 'getChats',
-				searchable: true,
-			},
-		},
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
+		listMode('getChats', 'Select a Chat...'),
+		// validation missing because no documentation found how these unique chat ids look like.
+		idMode({
 			placeholder:
 				'19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces',
-			// validation missing because no documentation found how these unique chat ids look like.
 			url: '=https://teams.microsoft.com/l/chat/{{encodeURIComponent($value)}}/0',
-		},
+		}),
 	],
 };
 
@@ -133,35 +82,8 @@ export const groupRLC: INodeProperties = {
 		loadOptionsDependsOn: ['groupSource'],
 	},
 	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'Select a Team...',
-			typeOptions: {
-				searchListMethod: 'getGroups',
-				searchable: true,
-			},
-		},
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
-			placeholder: '12f0ca7d-b77f-4c4e-93d2-5cbdb4f464c6',
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
-						errorMessage: 'Not a valid Microsoft Teams Team ID',
-					},
-				},
-			],
-			extractValue: {
-				type: 'regex',
-				regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
-			},
-		},
+		listMode('getGroups', 'Select a Team...'),
+		guidIdMode('12f0ca7d-b77f-4c4e-93d2-5cbdb4f464c6', 'Not a valid Microsoft Teams Team ID'),
 	],
 };
 
@@ -175,23 +97,9 @@ export const planRLC: INodeProperties = {
 		loadOptionsDependsOn: ['groupId.value'],
 	},
 	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'Select a Plan...',
-			typeOptions: {
-				searchListMethod: 'getPlans',
-				searchable: true,
-			},
-		},
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
-			placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of',
-			// validation missing because no documentation found how these unique ids look like.
-		},
+		listMode('getPlans', 'Select a Plan...'),
+		// validation missing because no documentation found how these unique ids look like.
+		idMode({ placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of' }),
 	],
 	description: 'The plan for the task to belong to',
 };
@@ -206,27 +114,16 @@ export const bucketRLC: INodeProperties = {
 		loadOptionsDependsOn: ['planId.value'],
 	},
 	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'Select a Bucket...',
-			typeOptions: {
-				searchListMethod: 'getBuckets',
-				searchable: true,
-			},
-		},
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
-			placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of',
-			// validation missing because no documentation found how these unique ids look like.
-		},
+		listMode('getBuckets', 'Select a Bucket...'),
+		// validation missing because no documentation found how these unique ids look like.
+		idMode({ placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of' }),
 	],
 	description: 'The bucket for the task to belong to',
 };
 
+// No `required` on purpose: task:create and task:update spread memberRLC into a `collection`
+// (as "Assigned To"), and `required` on a collection child raises a permanent node issue,
+// because the issue check reads the child at the top level, where it is never set.
 export const memberRLC: INodeProperties = {
 	displayName: 'Member',
 	name: 'memberId',
@@ -236,35 +133,8 @@ export const memberRLC: INodeProperties = {
 		loadOptionsDependsOn: ['groupId.value'],
 	},
 	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'Select a Member...',
-			typeOptions: {
-				searchListMethod: 'getMembers',
-				searchable: true,
-			},
-		},
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
-			placeholder: '7e2f1174-e8ee-4859-b8b1-a8d1cc63d276',
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
-						errorMessage: 'Not a valid Microsoft Teams Team ID',
-					},
-				},
-			],
-			extractValue: {
-				type: 'regex',
-				regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
-			},
-		},
+		listMode('getMembers', 'Select a Member...'),
+		guidIdMode('7e2f1174-e8ee-4859-b8b1-a8d1cc63d276', 'Not a valid Microsoft Teams Team ID'),
 	],
 };
 
@@ -276,10 +146,7 @@ export const meetingRLC: INodeProperties = {
 	required: true,
 	description: 'The online meeting, by its ID or by its join URL',
 	modes: [
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
+		idMode({
 			placeholder: 'e.g. MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi...',
 			hint: 'The ID returned when the meeting was created, not the numeric meeting ID from the invite',
 			validation: [
@@ -291,7 +158,7 @@ export const meetingRLC: INodeProperties = {
 					},
 				},
 			],
-		},
+		}),
 		{
 			displayName: 'By URL',
 			name: 'url',
@@ -320,20 +187,8 @@ export const userRLC: INodeProperties = {
 	description:
 		'Select the user from the list or by ID. Guest users must be given by their object ID, not by their user principal name.',
 	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'Select a User...',
-			typeOptions: {
-				searchListMethod: 'getUsers',
-				searchable: true,
-			},
-		},
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
+		listMode('getUsers', 'Select a User...'),
+		idMode({
 			placeholder: 'e.g. jacob@contoso.com',
 			// `validation` only, never an `extractValue`: a GUID-only extractor makes core
 			// reject any expression that resolves to a user principal name before the node
@@ -349,7 +204,48 @@ export const userRLC: INodeProperties = {
 					},
 				},
 			],
-		},
+		}),
+	],
+};
+
+/**
+ * Team tag picker, scoped to the node's `teamId` and backed by `getTags`. Like `userRLC`, no mode
+ * declares an `extractValue`: the row read that consumes it cannot pass `{ extractValue: true }`,
+ * because a row-level `displayOptions` makes that read throw.
+ */
+export const teamworkTagRLC: INodeProperties = {
+	displayName: 'Team Tag',
+	name: 'tagId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description: 'Select a tag from the team, or enter its ID',
+	typeOptions: {
+		loadOptionsDependsOn: ['teamId.value'],
+	},
+	modes: [
+		listMode('getTags', 'e.g. Engineering'),
+		idMode({
+			hint: 'The base64 tag ID from the Microsoft Graph tags endpoint',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						// A tag ID is base64 of `{groupId}##{tagGuid}##{token}`. base64 emits `+` or
+						// `/` only for a plaintext byte of `>`, `~`, `?`, DEL or non-ASCII, and hex,
+						// `-`, `#` and alphanumerics contain none of those, so only `[A-Za-z0-9]`
+						// and `=` padding can occur. No length check: a GUID-shaped token gives 152
+						// characters (pinned in `v2/test/methods/getUsers.test.ts`), but nothing
+						// documents the token as a GUID, so both that length and the alphabet above
+						// rest on the assumed token shape. If Microsoft widens it, a From List pick
+						// bypasses this regex and dies at `buildTeamsPath` with "remove any slashes"
+						// for a tag the user chose from a dropdown.
+						regex: '^[A-Za-z0-9=]+[ \t]*$',
+						errorMessage: 'Not a valid Microsoft Teams tag ID',
+					},
+				},
+			],
+		}),
 	],
 };
 
@@ -365,22 +261,8 @@ export const chatMemberRLC: INodeProperties = {
 		loadOptionsDependsOn: ['chatId.value'],
 	},
 	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'Select a Member...',
-			typeOptions: {
-				searchListMethod: 'getChatMembers',
-				searchable: true,
-			},
-		},
-		{
-			displayName: 'By ID',
-			name: 'id',
-			type: 'string',
-			placeholder: 'e.g. MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDll...',
-			// validation missing because Microsoft documents no shape for membership ids.
-		},
+		listMode('getChatMembers', 'Select a Member...'),
+		// validation missing because Microsoft documents no shape for membership ids.
+		idMode({ placeholder: 'e.g. MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDll...' }),
 	],
 };

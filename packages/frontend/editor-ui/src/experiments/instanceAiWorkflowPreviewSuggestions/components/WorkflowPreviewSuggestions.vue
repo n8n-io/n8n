@@ -5,6 +5,7 @@ import { onUnmounted, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { type WorkflowPreviewSuggestion } from '../suggestions';
+import type { InstanceAiPrefillDeclaration } from '@/features/ai/instanceAi/prefills';
 
 const PREVIEW_HOVER_DELAY_MS = 30;
 
@@ -13,7 +14,7 @@ const props = defineProps<{
 	disabled: boolean;
 }>();
 
-interface InsertSuggestionPayload {
+interface InsertSuggestionPayload extends InstanceAiPrefillDeclaration {
 	promptKey: BaseTextKey;
 	suggestionId: string;
 	suggestionKind: 'prompt';
@@ -95,6 +96,7 @@ function handleSuggestionClick(suggestion: WorkflowPreviewSuggestion) {
 		suggestionId: suggestion.id,
 		suggestionKind: 'prompt',
 		position,
+		prefillType: 'suggestion_catalog',
 	});
 }
 

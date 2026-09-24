@@ -1,3 +1,4 @@
+import { AI_PREFERENCES_MAX_IDS_FILTER } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -34,6 +35,7 @@ function row(overrides: Partial<Preference> = {}): Preference {
 		user: null,
 		projectId: null,
 		project: null,
+		source: 'ui',
 		scopes: [],
 		createdAt: '2026-09-08T00:00:00.000Z',
 		updatedAt: '2026-09-08T00:00:00.000Z',
@@ -59,6 +61,38 @@ describe('context.store', () => {
 
 		expect(store.preferences).toHaveLength(1);
 		expect(store.count).toBe(1);
+	});
+
+	it('looks rows up by id in one request, without touching the paged list', async () => {
+		const store = useContextStore();
+		list.mockResolvedValueOnce({ count: 2, data: [row({ id: 'a' }), row({ id: 'b' })] });
+
+		const rows = await store.fetchPreferencesByIds(['a', 'b']);
+
+		expect(list).toHaveBeenCalledTimes(1);
+		expect(list).toHaveBeenCalledWith(expect.anything(), { ids: ['a', 'b'], take: 2 });
+		expect(rows.map(({ id }) => id)).toEqual(['a', 'b']);
+		expect(store.preferences).toEqual([]);
+		expect(store.count).toBe(0);
+	});
+
+	it('splits a long id list into page-sized requests and joins the answers', async () => {
+		const store = useContextStore();
+		const ids = Array.from({ length: AI_PREFERENCES_MAX_IDS_FILTER + 1 }, (_, i) => `id-${i}`);
+		list.mockImplementation(async (_context: unknown, query: { ids: string[] }) => ({
+			count: query.ids.length,
+			data: query.ids.map((id) => row({ id })),
+		}));
+
+		const rows = await store.fetchPreferencesByIds(ids);
+
+		expect(list).toHaveBeenCalledTimes(2);
+		expect(list.mock.calls[0][1]).toEqual({
+			ids: ids.slice(0, AI_PREFERENCES_MAX_IDS_FILTER),
+			take: AI_PREFERENCES_MAX_IDS_FILTER,
+		});
+		expect(list.mock.calls[1][1]).toEqual({ ids: [ids[AI_PREFERENCES_MAX_IDS_FILTER]], take: 1 });
+		expect(rows.map(({ id }) => id)).toEqual(ids);
 	});
 
 	it('reads the total without holding a page', async () => {

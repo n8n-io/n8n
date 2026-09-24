@@ -7,6 +7,7 @@ import type {
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
@@ -18,6 +19,7 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { AgentApiHelper } from './agent-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { InstanceAiApiHelper } from './instance-ai-api-helper';
@@ -35,6 +37,14 @@ import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
+
+export interface ApiHelpersOptions {
+	/**
+	 * Settings merged over every workflow this helper creates. Set per stack, so
+	 * a project that runs engine 2.0 routes every workflow to it.
+	 */
+	workflowSettings?: Partial<IWorkflowSettings>;
+}
 
 export interface LoginResponseData {
 	id: string;
@@ -77,6 +87,7 @@ export class ApiHelpers {
 	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
+	agents: AgentApiHelper;
 	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
 	externalSecrets: ExternalSecretsApiHelper;
@@ -90,7 +101,10 @@ export class ApiHelpers {
 
 	publicApi: PublicApiHelper;
 
-	constructor(requestContext: APIRequestContext) {
+	constructor(
+		requestContext: APIRequestContext,
+		readonly options: ApiHelpersOptions = {},
+	) {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
@@ -99,6 +113,7 @@ export class ApiHelpers {
 		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
+		this.agents = new AgentApiHelper(this);
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
 		this.externalSecrets = new ExternalSecretsApiHelper(this);
@@ -411,7 +426,7 @@ export class ApiHelpers {
 	 */
 	async createApiForUser(user: Pick<TestUser, 'email' | 'password'>): Promise<ApiHelpers> {
 		const userContext = await request.newContext();
-		const userApi = new ApiHelpers(userContext);
+		const userApi = new ApiHelpers(userContext, this.options);
 		await userApi.login({ email: user.email, password: user.password });
 		return userApi;
 	}

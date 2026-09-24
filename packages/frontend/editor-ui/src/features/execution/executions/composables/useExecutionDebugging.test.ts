@@ -10,7 +10,7 @@ import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.sto
 import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 vi.mock('@n8n/composables/useToast', () => {
 	const showToast = vi.fn();
@@ -21,10 +21,12 @@ vi.mock('@n8n/composables/useToast', () => {
 	};
 });
 
-const { mockConfirm, mockWorkflowDocumentStore } = vi.hoisted(() => ({
+const { mockConfirm, mockRouterPush, mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockConfirm: vi.fn(),
+	mockRouterPush: vi.fn(),
 	mockWorkflowDocumentStore: {
 		documentId: 'test-id@latest',
+		workflowId: 'test-workflow',
 		allNodes: [] as INodeUi[],
 		workflowTriggerNodes: [] as INodeUi[],
 		getParentNodes: vi.fn().mockReturnValue([]),
@@ -46,6 +48,11 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: mockConfirm }),
+}));
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ push: mockRouterPush }),
 }));
 
 let executionDebugging: ReturnType<typeof useExecutionDebugging>;
@@ -407,6 +414,104 @@ describe('useExecutionDebugging()', () => {
 			'TrimmedTrigger',
 			expect.anything(),
 		);
+	});
+
+	describe('redacted execution data', () => {
+		const redactedRunData = {
+			Trigger: [
+				{
+					data: {
+						main: [[{ json: {}, redaction: { isRedacted: true, reason: 'policy' } }]],
+					},
+				},
+			],
+		};
+		const revealedExecution = {
+			data: {
+				resultData: {
+					runData: {
+						Trigger: [{ data: { main: [[{ json: { secret: 'value' } }]] } }],
+					},
+				},
+			},
+		} as unknown as IExecutionResponse;
+
+		const createRedactedExecution = (canReveal: boolean) =>
+			({
+				data: {
+					redactionInfo: { isRedacted: true, reason: 'policy', canReveal },
+					resultData: { runData: redactedRunData },
+				},
+			}) as unknown as IExecutionResponse;
+
+		beforeEach(() => {
+			mockWorkflowDocumentStore.allNodes = [{ name: 'Trigger' }] as INodeUi[];
+		});
+
+		it('should pin the revealed data when the user can reveal it', async () => {
+			const workflowStore = mockedStore(useWorkflowsStore);
+			workflowStore.getExecution.mockResolvedValueOnce(createRedactedExecution(true));
+			workflowStore.fetchExecutionDataById.mockResolvedValueOnce(revealedExecution);
+
+			await executionDebugging.applyExecutionData('1');
+
+			expect(workflowStore.fetchExecutionDataById).toHaveBeenCalledWith('1', {
+				redactExecutionData: false,
+			});
+			expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledTimes(1);
+			expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledWith('Trigger', [
+				{ json: { secret: 'value' } },
+			]);
+		});
+
+		it('should not request the revealed data when the user cannot reveal it', async () => {
+			const workflowStore = mockedStore(useWorkflowsStore);
+			workflowStore.getExecution.mockResolvedValueOnce(createRedactedExecution(false));
+
+			await executionDebugging.applyExecutionData('1');
+
+			expect(workflowStore.fetchExecutionDataById).not.toHaveBeenCalled();
+		});
+
+		it('should pin nothing and return to the preview when the user cannot reveal it', async () => {
+			const workflowStore = mockedStore(useWorkflowsStore);
+			const uiStore = mockedStore(useUIStore);
+			workflowStore.getExecution.mockResolvedValueOnce(createRedactedExecution(false));
+
+			await executionDebugging.applyExecutionData('1');
+
+			expect(mockWorkflowDocumentStore.pinNodeData).not.toHaveBeenCalled();
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
+			expect(toast.showToast).not.toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Execution data imported' }),
+			);
+			expect(toast.showToast).toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Execution data not imported', type: 'warning' }),
+			);
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { workflowId: 'test-workflow', executionId: '1' },
+			});
+		});
+
+		it('should not request the data again when it is not redacted', async () => {
+			const mockExecution = {
+				data: {
+					resultData: {
+						runData: { Trigger: [{ data: { main: [[{ json: { ok: true } }]] } }] },
+					},
+				},
+			} as unknown as IExecutionResponse;
+			const workflowStore = mockedStore(useWorkflowsStore);
+			workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
+
+			await executionDebugging.applyExecutionData('1');
+
+			expect(workflowStore.fetchExecutionDataById).not.toHaveBeenCalled();
+			expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledWith('Trigger', [
+				{ json: { ok: true } },
+			]);
+		});
 	});
 
 	it('should not mark workflow state dirty when nothing is pinned or unpinned', async () => {

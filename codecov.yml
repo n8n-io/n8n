@@ -60,6 +60,7 @@ component_management:
         - packages/extensions/**
         - packages/@n8n/api-types/**
         - packages/@n8n/backend-common/**
+        - packages/@n8n/backend-services/**
         - packages/@n8n/backend-test-utils/**
         - packages/@n8n/cli/**
         - packages/@n8n/client-oauth2/**

@@ -2,7 +2,11 @@
 import { useCssModule } from 'vue';
 
 import N8nLoading from '../N8nLoading';
-import type { DropdownMenuItemProps, DropdownMenuSlots } from './DropdownMenu.types';
+import type {
+	DropdownMenuItemProps,
+	DropdownMenuSearchMode,
+	DropdownMenuSlots,
+} from './DropdownMenu.types';
 import N8nDropdownMenuItem from './DropdownMenuItem.vue';
 
 defineOptions({ name: 'N8nDropdownMenuItems' });
@@ -18,6 +22,7 @@ withDefaults(
 		getItemDomId?: (index: number) => string;
 		onItemHover?: (index: number) => void;
 		disablePointerFocus?: boolean;
+		searchMode?: DropdownMenuSearchMode;
 	}>(),
 	{
 		loading: false,
@@ -25,6 +30,7 @@ withDefaults(
 		emptyText: 'No items',
 		highlightedIndex: -1,
 		openSubMenuIndex: -1,
+		searchMode: 'internal',
 	},
 );
 
@@ -73,6 +79,7 @@ const $style = useCssModule();
 						:highlighted="highlightedIndex === index"
 						:sub-menu-open="openSubMenuIndex === index"
 						:disable-pointer-focus="disablePointerFocus"
+						:search-mode="searchMode"
 						:divided="item.divided && index > 0"
 						@select="emit('select', $event)"
 						@search="(term: string, itemId: T) => emit('search', term, itemId)"

@@ -17,7 +17,7 @@ type WorkflowAgentStreamEvent =
 
 export type WorkflowAgentStreamObserver = (event: WorkflowAgentStreamEvent) => Promise<void>;
 
-type PendingTool = {
+export type PendingTool = {
 	toolName: string;
 	input: unknown;
 };

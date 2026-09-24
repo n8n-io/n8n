@@ -4,9 +4,10 @@ import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropd
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME, MIGRATE_WORKFLOW_MODAL_KEY, VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import type { BreakingChangeWorkflowIssue, BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
@@ -17,7 +18,6 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nSettingsLayout,
-	N8nTag,
 	N8nText,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system';
@@ -112,10 +112,6 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 
 	return headers;
 });
-
-/** Only node-anchored issues can link into the canvas; workflow-level issues carry no node. */
-const nodeIssues = (issues: BreakingChangeWorkflowIssue[]) =>
-	issues.filter((issue) => issue.nodeId !== undefined);
 
 // Workflows successfully migrated this session (the row shows a "Migrated" state).
 const migratedWorkflowIds = ref<Set<string>>(new Set());
@@ -262,14 +258,13 @@ const sortedWorkflows = computed(() => {
 				>
 					{{ state.ruleTitle }}
 					<SeverityTag :severity="state.ruleSeverity" />
-					<N8nTag
-						:text="
+					<N8nBadge>
+						{{
 							i18n.baseText('settings.migrationReport.detail.affectedTag', {
 								interpolate: { count: String(state.affectedWorkflows.length) },
 							})
-						"
-						:clickable="false"
-					/>
+						}}
+					</N8nBadge>
 				</N8nText>
 				<N8nText tag="p" color="text-base">
 					{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
@@ -350,9 +345,7 @@ const sortedWorkflows = computed(() => {
 		>
 			<template #[`item.issues`]="{ item }">
 				<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
-					<!-- Workflow-level issues carry no node, so there is nothing to link to. -->
-					<template v-for="(issue, index) in nodeIssues(item.issues)" :key="issue.nodeId">
-						<template v-if="index > 0">, </template>
+					<template v-for="(issue, index) in item.issues" :key="issue.nodeId">
 						<N8nLink
 							theme="text"
 							:to="`/workflow/${item.id}/${issue.nodeId}`"
@@ -361,6 +354,7 @@ const sortedWorkflows = computed(() => {
 						>
 							{{ issue.nodeName }}
 						</N8nLink>
+						<template v-if="index < item.issues.length - 1">, </template>
 					</template>
 				</div>
 			</template>

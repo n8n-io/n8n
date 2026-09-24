@@ -5,6 +5,8 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
+import type { ExecutionCursor } from '@/executions/execution-cursor';
+import type { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';
@@ -14,6 +16,7 @@ const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 
 describe('ExecutionsController', () => {
 	const executionService = mock<ExecutionService>();
+	const executionListService = mock<ExecutionListService>();
 	const workflowSharingService = mock<WorkflowSharingService>();
 
 	const executionsController = new ExecutionsController(
@@ -21,6 +24,7 @@ describe('ExecutionsController', () => {
 		mock(),
 		workflowSharingService,
 		mock(),
+		executionListService,
 	);
 
 	beforeEach(() => {
@@ -91,126 +95,46 @@ describe('ExecutionsController', () => {
 	});
 
 	describe('getMany', () => {
-		const NO_EXECUTIONS = {
-			count: 0,
-			estimated: false,
-			results: [],
-			nextCursor: null,
-			concurrentExecutionsCount: -1,
-		};
-
-		const CURSOR_BEFORE = '999';
-
-		const QUERIES_WITH_STATUS_OR_CURSOR: ExecutionSummaries.RangeQuery[] = [
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: ['waiting'],
-				range: { limit: 20, beforeId: undefined },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: ['waiting'],
-				range: { limit: 20, beforeId: CURSOR_BEFORE },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: undefined,
-				range: { limit: 20, beforeId: CURSOR_BEFORE },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: [],
-				range: { limit: 20, beforeId: CURSOR_BEFORE },
-			},
-		];
-
-		const QUERIES_WITHOUT_STATUS_OR_CURSOR: ExecutionSummaries.RangeQuery[] = [
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: undefined,
-				range: { limit: 20, beforeId: undefined },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: [],
-				range: { limit: 20, beforeId: undefined },
-			},
-		];
-
-		executionService.findRangeWithCount.mockResolvedValue(NO_EXECUTIONS);
-
-		describe('if a status filter or a cursor is provided', () => {
-			test.each(QUERIES_WITH_STATUS_OR_CURSOR)(
-				'should fetch executions per query',
-				async (rangeQuery) => {
-					executionService.buildSharingOptions.mockResolvedValue({
-						workflowRoles: [],
-						projectRoles: [],
-					});
-					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
-
-					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
-
-					await executionsController.getMany(req);
-
-					expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
-					expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
-					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
-				},
-			);
-		});
-
-		describe('if neither a status filter nor a cursor is provided', () => {
-			test.each(QUERIES_WITHOUT_STATUS_OR_CURSOR)(
-				'should fetch current and completed executions per query',
-				async (rangeQuery) => {
-					executionService.buildSharingOptions.mockResolvedValue({
-						workflowRoles: [],
-						projectRoles: [],
-					});
-					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
-
-					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
-
-					await executionsController.getMany(req);
-
-					expect(executionService.findLatestCurrentAndCompleted).toHaveBeenCalled();
-					expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
-					expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
-				},
-			);
-		});
-
-		describe('if both status and range provided', () => {
-			it('should fetch executions per query', async () => {
-				executionService.buildSharingOptions.mockResolvedValue({
-					workflowRoles: [],
-					projectRoles: [],
-				});
-				executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
-
+		it.each([undefined, [], ['success']] as const)(
+			'passes filters and cursor to the editor list for %s',
+			async (status) => {
 				const rangeQuery: ExecutionSummaries.RangeQuery = {
 					kind: 'range',
-					workflowId: undefined,
-					status: ['success'],
-					range: { limit: 5, beforeId: CURSOR_BEFORE },
+					range: { limit: 20 },
+					status: status ? [...status] : undefined,
 				};
+				const user = mock<User>({ id: 'member' });
+				const sharingOptions = {
+					scopes: ['workflow:read' as const],
+					workflowRoles: ['workflow:editor'],
+					projectRoles: ['project:viewer'],
+				};
+				executionListService.buildSharingOptions.mockResolvedValue(sharingOptions);
+				executionListService.listExecutionsForUI.mockResolvedValue({
+					results: [],
+					count: 0,
+					estimated: false,
+					nextCursor: null,
+				});
+				// The middleware decodes the cursor, so the controller forwards the
+				// decoded object rather than the query param.
+				const cursor: ExecutionCursor = {
+					version: 1,
+					v1: { id: '10', timestamp: '2026-09-07T12:00:00.000Z' },
+				};
+				const req = mock<ExecutionRequest.GetMany>({ rangeQuery, user, cursor });
 
-				const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
-
-				await executionsController.getMany(req);
-
-				expect(executionService.findLatestCurrentAndCompleted).not.toHaveBeenCalled();
-				expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
-				expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
-			});
-		});
+				await expect(executionsController.getMany(req)).resolves.toMatchObject({
+					results: [],
+					nextCursor: null,
+				});
+				expect(executionListService.listExecutionsForUI).toHaveBeenCalledWith(
+					expect.objectContaining({ user, sharingOptions, status: rangeQuery.status }),
+					cursor,
+				);
+				expect(executionListService.addScopes).toHaveBeenCalledWith(user, []);
+			},
+		);
 	});
 
 	describe('stop', () => {

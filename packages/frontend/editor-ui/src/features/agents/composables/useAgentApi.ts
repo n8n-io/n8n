@@ -1,4 +1,5 @@
 import type {
+	AgentApproval,
 	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
@@ -221,6 +222,8 @@ export const warmAgentKnowledgeSandbox = async (
 /** `replaces` swaps a same-type channel in the same request instead of a follow-up disconnect. */
 export interface ConnectIntegrationOptions {
 	replaces?: { credentialId: string };
+	/** Channel actions that need approval before they run. */
+	approval?: AgentApproval;
 }
 
 export const connectIntegration = async (
@@ -241,6 +244,7 @@ export const connectIntegration = async (
 			credentialId,
 			...(settings ? { settings } : {}),
 			...(options?.replaces ? { replaces: options.replaces } : {}),
+			...(options?.approval ? { approval: options.approval } : {}),
 		},
 	);
 };
@@ -588,6 +592,20 @@ export const cancelAgentChatRun = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/runs/${runId}`,
+	);
+};
+
+export const cancelAgentChatExecution = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	executionId: string,
+): Promise<{ cancelRequested: boolean }> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
 	);
 };
 

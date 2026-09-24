@@ -4,7 +4,13 @@ import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
+import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
 import { createExecutionsTool } from '../executions.tool';
+import { recordLiveRunVerification } from '../orchestration/verification/record-live-run';
+
+vi.mock('../orchestration/verification/record-live-run', () => ({
+	recordLiveRunVerification: vi.fn().mockResolvedValue(undefined),
+}));
 
 // ── Mock helpers ───────────────────────────────────────────────────────────────
 
@@ -31,6 +37,7 @@ function createMockContext(
 			getDebugInfo: vi.fn(),
 			getNodeOutput: vi.fn(),
 			getResolvedNodeParameters: vi.fn(),
+			runStep: vi.fn(),
 		},
 		credentialService: {} as never,
 		nodeService: {} as never,
@@ -460,6 +467,63 @@ describe('executions tool', () => {
 			);
 		});
 
+		describe('live run verification', () => {
+			const runResult = { executionId: 'exec-1', status: 'success' as const };
+
+			function createAllowedContext() {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					aiCreatedWorkflowIds: new Set(['wf-1']),
+				});
+				(context.executionService.run as Mock).mockResolvedValue(runResult);
+				return context;
+			}
+
+			it('returns the recorded claim with the run result', async () => {
+				const context = createAllowedContext();
+				const claim: VerificationClaim = {
+					level: 'verified',
+					plannedNodeCount: 1,
+					reachedNodeCount: 1,
+					nodesNotReached: [],
+					simulatedNodes: [],
+					pinnedNodes: [],
+					unprovenTargets: [],
+					publishReady: true,
+					liveTestRecommended: false,
+				};
+				vi.mocked(recordLiveRunVerification).mockResolvedValueOnce(claim);
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1', triggerNodeName: 'Every Morning' },
+					createAgentCtx() as never,
+				);
+
+				expect(result).toEqual({ ...runResult, verificationClaim: claim });
+				expect(recordLiveRunVerification).toHaveBeenCalledWith({
+					context,
+					workflowId: 'wf-1',
+					triggerNodeName: 'Every Morning',
+					result: runResult,
+				});
+			});
+
+			it('returns the plain run result when no claim was recorded', async () => {
+				const context = createAllowedContext();
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx() as never,
+				);
+
+				expect(result).toEqual(runResult);
+			});
+		});
+
 		describe('session grant (always allow)', () => {
 			it('runs without HITL when the workflow has a session grant', async () => {
 				const context = createMockContext({
@@ -844,6 +908,212 @@ describe('executions tool', () => {
 	});
 
 	// ── debug ───────────────────────────────────────────────────────────────
+
+	// ── run-step ────────────────────────────────────────────────────────────
+
+	describe('run-step action', () => {
+		const stepInput = {
+			action: 'run-step' as const,
+			workflowId: 'wf-1',
+			nodeName: 'Send Slack message',
+		};
+
+		it('returns denied when the admin blocked workflow runs', async () => {
+			const context = createMockContext({ permissions: { runWorkflow: 'blocked' } });
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool(tool, stepInput, createAgentCtx() as never);
+
+			expect(result).toEqual({
+				executionId: '',
+				status: 'error',
+				denied: true,
+				reason: 'Action blocked by admin',
+			});
+			expect(context.executionService.runStep).not.toHaveBeenCalled();
+		});
+
+		it('reports unavailable when the host did not wire step execution', async () => {
+			const context = createMockContext({ permissions: {} });
+			delete (context.executionService as { runStep?: unknown }).runStep;
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool(tool, stepInput, createAgentCtx() as never);
+
+			expect(result).toEqual({
+				executionId: '',
+				status: 'error',
+				denied: true,
+				reason: 'Running a single node is not available on this instance',
+			});
+		});
+
+		it('suspends for confirmation naming the node and the workflow', async () => {
+			const suspendFn = vi.fn();
+			const context = createMockContext({ permissions: {} });
+			(context.workflowService.get as Mock).mockResolvedValue({ id: 'wf-1', name: 'My Workflow' });
+
+			const tool = createExecutionsTool(context);
+			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
+
+			expect(suspendFn).toHaveBeenCalled();
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					message: 'Run the node "Send Slack message" in My Workflow',
+					severity: 'warning',
+				}),
+			);
+			expect(context.executionService.runStep).not.toHaveBeenCalled();
+		});
+
+		it('returns denied when the user rejects the prompt', async () => {
+			const context = createMockContext({ permissions: {} });
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool(
+				tool,
+				stepInput,
+				createAgentCtx({ resumeData: { approved: false } }) as never,
+			);
+
+			expect(result).toEqual({
+				executionId: '',
+				status: 'error',
+				denied: true,
+				reason: 'User denied the action',
+			});
+			expect(context.executionService.runStep).not.toHaveBeenCalled();
+		});
+
+		it('passes every input option through once approved', async () => {
+			const context = createMockContext({ permissions: {} });
+
+			const tool = createExecutionsTool(context);
+			await executeTool(
+				tool,
+				{
+					...stepInput,
+					reuseExecutionId: 'exec-9',
+					mockInput: [{ text: 'hi' }],
+					versionId: 'v-2',
+					timeout: 30_000,
+				},
+				createAgentCtx({ resumeData: { approved: true } }) as never,
+			);
+
+			expect(context.executionService.runStep).toHaveBeenCalledWith(
+				'wf-1',
+				'Send Slack message',
+				expect.objectContaining({
+					reuseExecutionId: 'exec-9',
+					mockInput: [{ text: 'hi' }],
+					versionId: 'v-2',
+					timeout: 30_000,
+				}),
+			);
+		});
+
+		it('persists a per-node grant when the user picks "always allow"', async () => {
+			const grantSessionToolApproval = vi.fn();
+			const context = createMockContext({ permissions: {}, grantSessionToolApproval });
+
+			const tool = createExecutionsTool(context);
+			await executeTool(
+				tool,
+				stepInput,
+				createAgentCtx({ resumeData: { approved: true, scope: 'session' } }) as never,
+			);
+
+			expect(grantSessionToolApproval).toHaveBeenCalledWith(
+				'executions:run-step:wf-1:Send Slack message',
+			);
+		});
+
+		it('skips the prompt for a node already granted in this session', async () => {
+			const suspendFn = vi.fn();
+			const context = createMockContext({
+				permissions: {},
+				sessionApprovedToolKeys: new Set(['executions:run-step:wf-1:Send Slack message']),
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(context.executionService.runStep).toHaveBeenCalled();
+		});
+
+		it('still prompts for a different node of the same workflow', async () => {
+			const suspendFn = vi.fn();
+			const context = createMockContext({
+				permissions: {},
+				sessionApprovedToolKeys: new Set(['executions:run-step:wf-1:Other node']),
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
+
+			expect(suspendFn).toHaveBeenCalled();
+			expect(context.executionService.runStep).not.toHaveBeenCalled();
+		});
+
+		it('accepts a whole-workflow run grant, which is the wider permission', async () => {
+			const suspendFn = vi.fn();
+			const context = createMockContext({
+				permissions: {},
+				sessionApprovedToolKeys: new Set(['executions:run:wf-1']),
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(context.executionService.runStep).toHaveBeenCalled();
+		});
+
+		it('skips the prompt for a pre-authorized workflow under always_allow', async () => {
+			const suspendFn = vi.fn();
+			const context = createMockContext({
+				permissions: { runWorkflow: 'always_allow' },
+				allowedRunWorkflowIds: new Set(['wf-1']),
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(context.executionService.runStep).toHaveBeenCalled();
+		});
+
+		it('prompts for a workflow outside the pre-authorized list', async () => {
+			const suspendFn = vi.fn();
+			const context = createMockContext({
+				permissions: { runWorkflow: 'always_allow' },
+				allowedRunWorkflowIds: new Set(['wf-other']),
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
+
+			expect(suspendFn).toHaveBeenCalled();
+		});
+
+		it('lets the admin approval requirement override every grant', async () => {
+			const suspendFn = vi.fn();
+			const context = createMockContext({
+				permissions: { runWorkflow: 'always_allow' },
+				allowedRunWorkflowIds: new Set(['wf-1']),
+				sessionApprovedToolKeys: new Set(['executions:run-step:wf-1:Send Slack message']),
+				requireRunWorkflowApproval: true,
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
+
+			expect(suspendFn).toHaveBeenCalled();
+			expect(context.executionService.runStep).not.toHaveBeenCalled();
+		});
+	});
 
 	describe('debug action', () => {
 		it('should call executionService.getDebugInfo with execution ID', async () => {

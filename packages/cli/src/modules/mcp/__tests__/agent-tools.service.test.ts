@@ -1308,6 +1308,7 @@ describe('McpAgentToolsService', () => {
 				status: 'suspended',
 				response: 'Deleted. Archive it too?',
 				sessionId: 'session-1',
+				executionId: 'execution-2',
 				suspensions: [chained],
 			});
 
@@ -1339,6 +1340,7 @@ describe('McpAgentToolsService', () => {
 				status: 'suspended',
 				response: 'Deleted. Archive it too?',
 				sessionId: 'session-1',
+				executionId: 'execution-2',
 				approvals: [
 					{
 						type: 'approval',
@@ -1417,6 +1419,7 @@ describe('McpAgentToolsService', () => {
 				status: 'suspended',
 				response: '',
 				sessionId: 'session-1',
+				executionId: 'execution-1',
 				suspensions: [
 					{
 						runId: 'run-1',

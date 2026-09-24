@@ -4,7 +4,7 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { encodeExecutionCursor } from '@/executions/execution-cursor';
-import { ExecutionService } from '@/executions/execution.service';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -26,22 +26,24 @@ const createExecution = (overrides: Partial<ExecutionSummary> = {}): ExecutionSu
 
 describe('search-executions MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	let executionService: ExecutionService;
+	const uuid = '01992380-0000-7000-8000-000000000001';
+	const time = '2026-09-07T12:00:00.000Z';
+	let executionListService: ExecutionListService;
 	let workflowFinderService: WorkflowFinderService;
 	let telemetry: Telemetry;
 
 	beforeEach(() => {
-		executionService = mockInstance(ExecutionService, {
-			findRangeWithCount: vi.fn().mockResolvedValue({
-				results: [],
-				count: 0,
-				estimated: false,
-				nextCursor: null,
-			}),
+		executionListService = mockInstance(ExecutionListService, {
 			buildSharingOptions: vi.fn().mockResolvedValue({
 				scopes: ['workflow:read'],
 				projectRoles: ['project:editor'],
 				workflowRoles: ['workflow:editor'],
+			}),
+			findPageWithCount: vi.fn().mockResolvedValue({
+				results: [],
+				count: 0,
+				estimated: false,
+				nextCursor: null,
 			}),
 		});
 		workflowFinderService = mockInstance(WorkflowFinderService, {
@@ -57,7 +59,7 @@ describe('search-executions MCP tool', () => {
 	});
 
 	const createTool = () =>
-		createSearchExecutionsTool(user, executionService, workflowFinderService, telemetry);
+		createSearchExecutionsTool(user, executionListService, workflowFinderService, telemetry);
 
 	test('creates tool with correct metadata', () => {
 		const tool = createTool();
@@ -79,7 +81,7 @@ describe('search-executions MCP tool', () => {
 				stoppedAt: '2024-06-01T10:02:00.000Z',
 			}),
 		];
-		(executionService.findRangeWithCount as Mock).mockResolvedValue({
+		(executionListService.findPageWithCount as Mock).mockResolvedValue({
 			results: executions,
 			count: 2,
 			estimated: false,
@@ -125,14 +127,14 @@ describe('search-executions MCP tool', () => {
 			{ includeActiveVersion: undefined },
 		);
 
-		const query = (executionService.findRangeWithCount as Mock).mock.calls[0][0];
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
 		expect(query.workflowId).toBe('wf-1');
 	});
 
 	test('filters by status', async () => {
 		await createTool().handler({ status: ['error', 'crashed'] } as never, {} as never);
 
-		const query = (executionService.findRangeWithCount as Mock).mock.calls[0][0];
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
 		expect(query.status).toEqual(['error', 'crashed']);
 	});
 
@@ -145,7 +147,7 @@ describe('search-executions MCP tool', () => {
 			{} as never,
 		);
 
-		const query = (executionService.findRangeWithCount as Mock).mock.calls[0][0];
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
 		expect(query.startedAfter).toBe('2024-06-01T00:00:00.000Z');
 		expect(query.startedBefore).toBe('2024-06-07T23:59:59.999Z');
 	});
@@ -153,31 +155,41 @@ describe('search-executions MCP tool', () => {
 	test('respects limit parameter and clamps to max', async () => {
 		await createTool().handler({ limit: 500 } as never, {} as never);
 
-		const query = (executionService.findRangeWithCount as Mock).mock.calls[0][0];
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
 		expect(query.range.limit).toBe(200);
 	});
 
 	test('uses default limit when not provided', async () => {
 		await createTool().handler({} as never, {} as never);
 
-		const query = (executionService.findRangeWithCount as Mock).mock.calls[0][0];
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
 		expect(query.range.limit).toBe(200);
 	});
 
-	test('pages from the execution ID the cursor encodes', async () => {
-		const cursor = encodeExecutionCursor('50');
+	// The tool does not bound the page itself. It hands the decoded cursor over,
+	// and the list service applies each store's position to that store.
+	test('forwards the decoded cursor instead of bounding the range', async () => {
+		const position = {
+			version: 1 as const,
+			v1: { id: '50', timestamp: time },
+			v2: { id: uuid, timestamp: time },
+		};
 
-		await createTool().handler({ cursor } as never, {} as never);
+		await createTool().handler({ cursor: encodeExecutionCursor(position) } as never, {} as never);
 
-		const query = (executionService.findRangeWithCount as Mock).mock.calls[0][0];
-		expect(query.range.beforeId).toBe('50');
+		expect(executionListService.findPageWithCount).toHaveBeenCalledWith(
+			expect.anything(),
+			position,
+		);
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
+		expect(query.range).toEqual({ limit: 200 });
 	});
 
 	test('returns an error for an invalid cursor', async () => {
 		const result = await createTool().handler({ cursor: 'not-a-cursor' } as never, {} as never);
 
 		expect(result.isError).toBe(true);
-		expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
+		expect(executionListService.findPageWithCount).not.toHaveBeenCalled();
 	});
 
 	test('returns empty results with correct structure', async () => {
@@ -191,14 +203,14 @@ describe('search-executions MCP tool', () => {
 		});
 	});
 
-	test('delegates sharing options to executionService.buildSharingOptions', async () => {
+	test('delegates sharing options to the list service', async () => {
 		await createTool().handler({} as never, {} as never);
 
-		expect(executionService.buildSharingOptions).toHaveBeenCalledWith('workflow:read');
+		expect(executionListService.buildSharingOptions).toHaveBeenCalledWith('workflow:read');
 	});
 
 	test('tracks telemetry on success', async () => {
-		(executionService.findRangeWithCount as Mock).mockResolvedValue({
+		(executionListService.findPageWithCount as Mock).mockResolvedValue({
 			results: [createExecution()],
 			count: 1,
 			estimated: false,
@@ -218,7 +230,7 @@ describe('search-executions MCP tool', () => {
 	});
 
 	test('tracks telemetry on failure and returns error response', async () => {
-		(executionService.findRangeWithCount as Mock).mockRejectedValue(
+		(executionListService.findPageWithCount as Mock).mockRejectedValue(
 			new Error('DB connection lost'),
 		);
 

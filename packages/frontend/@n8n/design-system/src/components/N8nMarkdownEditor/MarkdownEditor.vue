@@ -46,7 +46,7 @@ const expandButtonIcon = computed(() => (collapsed.value ? 'arrow-down' : 'arrow
 
 const shouldShowInlineToolbar = computed(() => ['always', 'hover'].includes(props.showToolbar));
 const toolbarMode = computed(() => (props.showToolbar === 'always' ? 'always' : 'hover'));
-const shouldPadContentTop = computed(() => props.showToolbar === 'always');
+const shouldPadContentTop = computed(() => shouldShowInlineToolbar.value);
 
 const editor = useMarkdownEditor(props, emit);
 const isRawMode = ref(false);

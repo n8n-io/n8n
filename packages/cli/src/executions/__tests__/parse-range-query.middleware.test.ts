@@ -1,4 +1,3 @@
-import type { SerializedCursor } from '@n8n/api-types';
 import type { NextFunction } from 'express';
 import type * as express from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -14,6 +13,24 @@ describe('`parseRangeQuery` middleware', () => {
 
 	const nextFn: NextFunction = vi.fn();
 
+	/**
+	 * The middleware reads the raw express query, which still carries the legacy
+	 * `firstId` / `lastId` params that the request type no longer declares. Every
+	 * param it reads needs an explicit `undefined`, or `mock` auto-mocks the key
+	 * into a function and the middleware sees a value that was never sent.
+	 */
+	const request = (query: Record<string, string | undefined>) =>
+		mock<ExecutionRequest.GetMany>({
+			query: {
+				cursor: undefined,
+				filter: undefined,
+				limit: undefined,
+				firstId: undefined,
+				lastId: undefined,
+				...query,
+			} as unknown as ExecutionRequest.GetMany['query'],
+		});
+
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
@@ -21,55 +38,27 @@ describe('`parseRangeQuery` middleware', () => {
 
 	describe('errors', () => {
 		test('should fail on invalid JSON', () => {
-			const statusSpy = res.status;
-
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					filter: '{ "status": ["waiting }',
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+			const req = request({ filter: '{ "status": ["waiting }' });
 
 			parseRangeQuery(req, res, nextFn);
 
 			expect(nextFn).toBeCalledTimes(0);
-			expect(statusSpy).toBeCalledWith(400);
+			expect(res.status).toBeCalledWith(400);
 		});
 
 		test('should fail on invalid schema', () => {
-			const statusSpy = res.status;
-
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					filter: '{ "status": 123 }',
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+			const req = request({ filter: '{ "status": 123 }' });
 
 			parseRangeQuery(req, res, nextFn);
 
 			expect(nextFn).toBeCalledTimes(0);
-			expect(statusSpy).toBeCalledWith(400);
+			expect(res.status).toBeCalledWith(400);
 		});
 	});
 
 	describe('filter', () => {
 		test('should parse status and mode fields', () => {
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					filter: '{ "status": ["waiting"], "mode": "manual" }',
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+			const req = request({ filter: '{ "status": ["waiting"], "mode": "manual" }' });
 
 			parseRangeQuery(req, res, nextFn);
 
@@ -79,14 +68,8 @@ describe('`parseRangeQuery` middleware', () => {
 		});
 
 		test('should parse date-related fields', () => {
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					filter: '{ "startedBefore": "2021-01-01", "startedAfter": "2020-01-01" }',
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
+			const req = request({
+				filter: '{ "startedBefore": "2021-01-01", "startedAfter": "2020-01-01" }',
 			});
 
 			parseRangeQuery(req, res, nextFn);
@@ -97,15 +80,7 @@ describe('`parseRangeQuery` middleware', () => {
 		});
 
 		test('should parse `workflowId` field', () => {
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					filter: '{ "workflowId": "456" }',
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+			const req = request({ filter: '{ "workflowId": "456" }' });
 
 			parseRangeQuery(req, res, nextFn);
 
@@ -114,15 +89,7 @@ describe('`parseRangeQuery` middleware', () => {
 		});
 
 		test('should parse `projectId` field', () => {
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					filter: '{ "projectId": "123" }',
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+			const req = request({ filter: '{ "projectId": "123" }' });
 
 			parseRangeQuery(req, res, nextFn);
 
@@ -131,16 +98,8 @@ describe('`parseRangeQuery` middleware', () => {
 		});
 
 		test('should delete invalid fields', () => {
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					// `id` is no longer a filter, so it is dropped like any unknown field.
-					filter: '{ "workflowId": "456", "id": "123", "test": "789" }',
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+			// `id` is no longer a filter, so it is dropped like any unknown field.
+			const req = request({ filter: '{ "workflowId": "456", "id": "123", "test": "789" }' });
 
 			parseRangeQuery(req, res, nextFn);
 
@@ -152,16 +111,8 @@ describe('`parseRangeQuery` middleware', () => {
 	});
 
 	describe('range', () => {
-		test('should reject first and last IDs', () => {
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					filter: undefined,
-					limit: undefined,
-					firstId: '111',
-					lastId: '999',
-				},
-			});
+		test.each(['firstId', 'lastId'])('should reject the legacy `%s` param', (param) => {
+			const req = request({ [param]: '111' });
 
 			parseRangeQuery(req, res, nextFn);
 
@@ -170,15 +121,7 @@ describe('`parseRangeQuery` middleware', () => {
 		});
 
 		test('should parse limit', () => {
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					filter: undefined,
-					limit: '50',
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+			const req = request({ limit: '50' });
 
 			parseRangeQuery(req, res, nextFn);
 
@@ -187,15 +130,7 @@ describe('`parseRangeQuery` middleware', () => {
 		});
 
 		test('should default limit to 20 if absent', () => {
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					filter: undefined,
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+			const req = request({});
 
 			parseRangeQuery(req, res, nextFn);
 
@@ -203,51 +138,46 @@ describe('`parseRangeQuery` middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should leave `beforeId` unset without a cursor', () => {
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: undefined,
-					filter: undefined,
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+		test('should leave the cursor unset without a `cursor` param', () => {
+			const req = request({});
 
 			parseRangeQuery(req, res, nextFn);
 
+			expect(req.cursor).toBeUndefined();
 			expect(req.rangeQuery.range.beforeId).toBeUndefined();
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should set range.beforeId from a valid cursor', () => {
-			const cursor = encodeExecutionCursor('123');
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor,
-					filter: undefined,
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+		// The middleware only decodes the cursor. Each store derives its own page
+		// bound from it, so `range.beforeId` stays unset here.
+		test('should decode a v1 cursor position', () => {
+			const v1 = { id: '123', timestamp: '2026-09-07T12:00:00.000Z' };
+			const req = request({ cursor: encodeExecutionCursor({ version: 1, v1 }) });
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(req.rangeQuery.range.beforeId).toBe('123');
+			expect(req.cursor?.v1).toEqual(v1);
+			expect(req.rangeQuery.range.beforeId).toBeUndefined();
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should reject an invalid cursor', () => {
-			const req = mock<ExecutionRequest.GetMany>({
-				query: {
-					cursor: 'not-a-real-cursor' as SerializedCursor,
-					filter: undefined,
-					limit: undefined,
-					firstId: undefined,
-					lastId: undefined,
-				},
-			});
+		test('should decode a v2 cursor position', () => {
+			const v2 = {
+				id: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa',
+				timestamp: '2026-09-07T12:00:00.000Z',
+			};
+			const req = request({ cursor: encodeExecutionCursor({ version: 1, v2 }) });
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(req.cursor?.v2).toEqual(v2);
+			expect(req.cursor?.v1).toBeUndefined();
+			expect(req.rangeQuery.range.beforeId).toBeUndefined();
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test.each(['not-a-real-cursor', ''])('should reject the invalid cursor %j', (cursor) => {
+			const req = request({ cursor });
 
 			parseRangeQuery(req, res, nextFn);
 

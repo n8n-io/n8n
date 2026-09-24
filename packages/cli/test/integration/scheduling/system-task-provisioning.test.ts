@@ -10,6 +10,7 @@ import { ErrorReporter } from 'n8n-core';
 import { inc } from 'semver';
 
 import { N8N_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import {
 	SystemTaskJobRegistrar,
@@ -38,7 +39,7 @@ describe('system task provisioning', () => {
 		name: TASK_NAME,
 		schedule: { kind: 'interval', intervalSeconds: 60 },
 		effects: 'idempotent',
-		durable: true,
+		placement: { scope: 'cluster', durable: true },
 		run: async () => {},
 		...over,
 	});
@@ -174,6 +175,7 @@ describe('system task provisioning', () => {
 			booting,
 			Container.get(GlobalConfig),
 			Container.get(ErrorReporter),
+			Container.get(EventService),
 		);
 		await provisioner.provision(systemTaskProvisionRequest(task(), booting, 'UTC', new Date()));
 		await store('from-a-newer-version', inc(N8N_VERSION, 'minor') as string);
