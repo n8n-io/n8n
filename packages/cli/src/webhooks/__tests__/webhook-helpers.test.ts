@@ -1345,6 +1345,41 @@ describe('handleImmediateWebhookResponse', () => {
 		});
 	});
 
+	it('handles a no-response result and stops without workflow data', () => {
+		const responseCallback = vi.fn();
+
+		const result = handleImmediateWebhookResponse({
+			webhookResultData: { noWebhookResponse: true },
+			didSendResponse: false,
+			responseCode: 200,
+			responseCallback,
+		});
+
+		expect(responseCallback).toHaveBeenCalledOnce();
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+		expect(result).toEqual({
+			didSendResponse: true,
+			shouldContinueWorkflowExecution: false,
+		});
+	});
+
+	it('does not send another response when a response was already sent', () => {
+		const responseCallback = vi.fn();
+
+		const result = handleImmediateWebhookResponse({
+			webhookResultData: {},
+			didSendResponse: true,
+			responseCode: 200,
+			responseCallback,
+		});
+
+		expect(responseCallback).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			didSendResponse: true,
+			shouldContinueWorkflowExecution: false,
+		});
+	});
+
 	it.each([
 		{
 			name: 'a custom response',
@@ -1355,6 +1390,11 @@ describe('handleImmediateWebhookResponse', () => {
 			name: 'the default response',
 			webhookResultData: {},
 			expectedData: { message: 'Webhook call received' },
+		},
+		{
+			name: 'an explicit null response',
+			webhookResultData: { webhookResponse: null },
+			expectedData: null,
 		},
 	])('handles $name and stops execution', ({ webhookResultData, expectedData }) => {
 		const responseCallback = vi.fn();

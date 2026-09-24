@@ -661,9 +661,10 @@ export function handleImmediateWebhookResponse({
 
 	if (!didSendResponse) {
 		responseCallback(null, {
-			data: (webhookResultData.webhookResponse as IDataObject | IDataObject[] | undefined) ?? {
-				message: 'Webhook call received',
-			},
+			data:
+				webhookResultData.webhookResponse !== undefined
+					? (webhookResultData.webhookResponse as IDataObject | IDataObject[])
+					: { message: 'Webhook call received' },
 			responseCode,
 		});
 		didSendResponse = true;
