@@ -1,6 +1,8 @@
 import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
 
-export const GROUP_PADDING_X = 56;
+export const GROUP_PADDING_X_LEFT = 56;
+/** Fits the widest output plus (80px line + 24px button) with 8px clearance. */
+export const GROUP_PADDING_X_RIGHT = 112;
 export const GROUP_PADDING_Y_TOP = 40;
 export const GROUP_PADDING_Y_BOTTOM = 88;
 /** Matches node height */

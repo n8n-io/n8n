@@ -5,8 +5,8 @@ import { useCanvasNodeGroupDrag } from './useCanvasNodeGroupDrag';
 import { CANVAS_NODE_GROUP_TYPE } from '../canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
-	GROUP_HEADER_WIDTH_COLLAPSED,
-	GROUP_PADDING_X,
+	GROUP_PADDING_X_LEFT,
+	GROUP_PADDING_X_RIGHT,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
@@ -340,10 +340,10 @@ describe('useCanvasNodeGroupDrag', () => {
 			const patch = updater({ data: { foo: 'bar' } });
 			// Live nodes rect: x=[120..400], y=[200..300].
 			expect(patch.position).toEqual({
-				x: snapToGrid(120 - GROUP_PADDING_X),
+				x: snapToGrid(120 - GROUP_PADDING_X_LEFT),
 				y: snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
 			});
-			expect(patch.width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
+			expect(patch.width).toBe(280 + GROUP_PADDING_X_LEFT + GROUP_PADDING_X_RIGHT);
 			expect(patch.data.foo).toBe('bar'); // preserves other data fields
 			expect(patch.data.nodesRect).toEqual({ x: 120, y: 200, width: 280, height: 100 });
 		});
@@ -369,7 +369,7 @@ describe('useCanvasNodeGroupDrag', () => {
 			// store position (300, 200) — the title bar must not jump up by the offset.
 			expect(patch.data.nodesRect).toEqual({ x: 120, y: 416, width: 280, height: 100 });
 			expect(patch.position).toEqual({
-				x: snapToGrid(120 - GROUP_PADDING_X),
+				x: snapToGrid(120 - GROUP_PADDING_X_LEFT),
 				y: snapToGrid(416 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
 			});
 		});
@@ -418,7 +418,7 @@ describe('useCanvasNodeGroupDrag', () => {
 
 			// Rect at mapping-time dimensions: x=[100..400], y=[200..280].
 			expect(patch.data.nodesRect).toEqual({ x: 100, y: 200, width: 300, height: 80 });
-			expect(patch.width).toBe(300 + 2 * GROUP_PADDING_X);
+			expect(patch.width).toBe(300 + GROUP_PADDING_X_LEFT + GROUP_PADDING_X_RIGHT);
 		});
 
 		it('returns only ordinary-node moves when no group title bar is in the selection', () => {

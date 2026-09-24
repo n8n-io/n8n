@@ -20,7 +20,8 @@ import {
 	GROUP_NODE_Z_INDEX_COLLAPSED,
 	GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED,
 	GROUP_NODE_Z_INDEX_EXPANDED,
-	GROUP_PADDING_X,
+	GROUP_PADDING_X_LEFT,
+	GROUP_PADDING_X_RIGHT,
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
@@ -72,14 +73,17 @@ export function computeGroupFrameRects(nodesRect: NodesRect): {
 	collapsed: BoundingBox;
 	expanded: BoundingBox;
 } {
-	const x = nodesRect.x - GROUP_PADDING_X;
+	const x = nodesRect.x - GROUP_PADDING_X_LEFT;
 	const y = nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
 	return {
 		collapsed: { x, y, width: GROUP_HEADER_WIDTH_COLLAPSED, height: GROUP_HEADER_HEIGHT },
 		expanded: {
 			x,
 			y,
-			width: Math.max(nodesRect.width + 2 * GROUP_PADDING_X, GROUP_HEADER_WIDTH_COLLAPSED),
+			width: Math.max(
+				nodesRect.width + GROUP_PADDING_X_LEFT + GROUP_PADDING_X_RIGHT,
+				GROUP_HEADER_WIDTH_COLLAPSED,
+			),
 			height: GROUP_HEADER_HEIGHT + nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
 		},
 	};

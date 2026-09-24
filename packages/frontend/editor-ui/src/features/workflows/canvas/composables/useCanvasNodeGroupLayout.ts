@@ -9,7 +9,7 @@ import {
 import { applyOffset, checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import {
 	GROUP_HEADER_HEIGHT,
-	GROUP_PADDING_X,
+	GROUP_PADDING_X_LEFT,
 	GROUP_PADDING_Y_TOP,
 } from '@/features/workflows/canvas/stores/canvasNodeGroups.constants';
 import {
@@ -149,7 +149,7 @@ function overlapsHorizontalBand(rect: BoundingBox, band: BoundingBox): boolean {
 function getComponentLaneOrigin(component: NodeGroupLayoutComponent, componentRect: BoundingBox) {
 	if (component.kind === 'group') {
 		return {
-			x: componentRect.x + GROUP_PADDING_X,
+			x: componentRect.x + GROUP_PADDING_X_LEFT,
 			y: componentRect.y + GROUP_HEADER_HEIGHT + GROUP_PADDING_Y_TOP,
 		};
 	}
@@ -190,7 +190,8 @@ function getComponentPushLane(
 	const skipDownPush =
 		targetExpandedAfterSource &&
 		component.kind === 'group' &&
-		collapsedGroupRect.x + GROUP_PADDING_X >= componentAnchorRect.x + component.collapsedRect.width;
+		collapsedGroupRect.x + GROUP_PADDING_X_LEFT >=
+			componentAnchorRect.x + component.collapsedRect.width;
 	const componentIntersectsBottomExpansion =
 		componentAnchorRect.y + componentAnchorRect.height > collapsedGroupBottom;
 	// Lane extents are directional, following how a group frame grows from its

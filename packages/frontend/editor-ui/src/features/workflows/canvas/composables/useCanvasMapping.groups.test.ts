@@ -18,7 +18,8 @@ import {
 	GROUP_NODE_Z_INDEX_COLLAPSED,
 	GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED,
 	GROUP_NODE_Z_INDEX_EXPANDED,
-	GROUP_PADDING_X,
+	GROUP_PADDING_X_LEFT,
+	GROUP_PADDING_X_RIGHT,
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
@@ -67,7 +68,7 @@ describe('computeGroupFrameRects', () => {
 
 	it('anchors both rects at the same unsnapped top-left, offset by padding and header', () => {
 		const { collapsed, expanded } = computeGroupFrameRects(nodesRect);
-		const x = nodesRect.x - GROUP_PADDING_X;
+		const x = nodesRect.x - GROUP_PADDING_X_LEFT;
 		const y = nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
 
 		expect(collapsed).toMatchObject({ x, y });
@@ -82,7 +83,7 @@ describe('computeGroupFrameRects', () => {
 
 	it('sizes the expanded rect to span the cluster plus padding', () => {
 		const { expanded } = computeGroupFrameRects(nodesRect);
-		expect(expanded.width).toBe(nodesRect.width + 2 * GROUP_PADDING_X);
+		expect(expanded.width).toBe(nodesRect.width + GROUP_PADDING_X_LEFT + GROUP_PADDING_X_RIGHT);
 		expect(expanded.height).toBe(
 			GROUP_HEADER_HEIGHT + nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
 		);
@@ -117,7 +118,7 @@ describe('titleBarFromNodesRect', () => {
 	it('uses the chip width when collapsed and the expanded width otherwise', () => {
 		expect(titleBarFromNodesRect(nodesRect, true).width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 		expect(titleBarFromNodesRect(nodesRect, false).width).toBe(
-			nodesRect.width + 2 * GROUP_PADDING_X,
+			nodesRect.width + GROUP_PADDING_X_LEFT + GROUP_PADDING_X_RIGHT,
 		);
 	});
 });
@@ -329,11 +330,11 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].data?.isEmptyGroup).toBe(true);
 	});
 
-	it('left edge sits at nodesRect.x - GROUP_PADDING_X (snapped to the grid), in both states', () => {
+	it('left edge sits at nodesRect.x - GROUP_PADDING_X_LEFT (snapped to the grid), in both states', () => {
 		const collapsed = setup(true);
 		const expanded = setup(false);
-		expect(collapsed[0].position.x).toBe(snapToGrid(100 - GROUP_PADDING_X));
-		expect(expanded[0].position.x).toBe(snapToGrid(100 - GROUP_PADDING_X));
+		expect(collapsed[0].position.x).toBe(snapToGrid(100 - GROUP_PADDING_X_LEFT));
+		expect(expanded[0].position.x).toBe(snapToGrid(100 - GROUP_PADDING_X_LEFT));
 	});
 
 	it('top edge places title bar above nodesRect, snapped to the canvas grid', () => {
@@ -348,11 +349,11 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 	});
 
-	it('expanded width matches nodes rect + 2 * GROUP_PADDING_X when wider than the minimum', () => {
+	it('expanded width includes the left and right padding when wider than the minimum', () => {
 		const out = setup(false);
 		// nodes rect width = (400 + 96) - 100 = 396  (DEFAULT_NODE_SIZE = 96)
 		const NODE_W = 96;
-		expect(out[0].width).toBe(400 + NODE_W - 100 + 2 * GROUP_PADDING_X);
+		expect(out[0].width).toBe(400 + NODE_W - 100 + GROUP_PADDING_X_LEFT + GROUP_PADDING_X_RIGHT);
 	});
 
 	it('expanded width matches collapsed width for tight node clusters', () => {
@@ -474,7 +475,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 		});
 
 		expect(out[0].position).toEqual({
-			x: snapToGrid(100 - GROUP_PADDING_X) + 50,
+			x: snapToGrid(100 - GROUP_PADDING_X_LEFT) + 50,
 			y: snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT) + 80,
 		});
 		expect(out[0].data?.nodesRect).toEqual({

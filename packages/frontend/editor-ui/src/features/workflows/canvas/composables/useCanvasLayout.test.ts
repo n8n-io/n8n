@@ -1359,7 +1359,7 @@ describe('useCanvasLayout', () => {
 			const groupOnly = createStickyOverParallelGroupsSetup({
 				x: 496,
 				y: -64,
-				width: 464,
+				width: 520,
 				height: 352,
 			}).layout('selection', {
 				nodeIdsFilter: ['approval-start', 'approval-done'],
