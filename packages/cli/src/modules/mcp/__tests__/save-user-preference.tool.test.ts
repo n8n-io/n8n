@@ -301,6 +301,11 @@ describe('save_user_preference MCP tool', () => {
 					},
 				},
 			});
+			// The person learns where to manage the preference, and which consent stops more saves.
+			const message = request?.method === 'elicitation/create' ? request.params.message : '';
+			expect(message).toMatch(/^Saved to your n8n preferences\. Accept to keep it, or Decline/);
+			expect(message).toContain('Settings > Context > Preferences');
+			expect(message).toContain('"Save, update and undo AI preferences" permission');
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
 				{ surface: 'mcp', scope_type: 'user', text_length: TEXT.length },

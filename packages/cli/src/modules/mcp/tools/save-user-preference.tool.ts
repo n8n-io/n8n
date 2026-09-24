@@ -314,16 +314,16 @@ export const createSaveUserPreferenceTool = (
 			inputRequests: {
 				[REVIEW_KEY]: inputRequired.elicit({
 					// Clients may show only the first lines of the message, so the state comes first:
-					// the row is already saved, and closing the form keeps it.
-					message: `Already saved to your n8n preferences. Accept keeps it, Decline removes it.\n\n"${preference.content}"\n\nThe n8n assistant and connected AI tools apply it from now on. Edit the text before you accept to change it. Closing this without an answer keeps it as saved.`,
+					// the row is already saved, and closing the form keeps it. The last lines name where
+					// the person manages it, and the consent permission that stops this tool saving more.
+					message: `Saved to your n8n preferences. Accept to keep it, or Decline to delete it.\n\n"${preference.content}"\n\nFrom now on, the n8n assistant and your connected AI tools follow this preference. To change it, edit the text, then accept. If you close this, the preference stays saved.\n\nYou can change or delete it anytime in n8n under Settings > Context > Preferences. To stop this tool from saving preferences, connect it again without the "Save, update and undo AI preferences" permission.`,
 					requestedSchema: {
 						type: 'object',
 						properties: {
 							text: {
 								type: 'string',
-								title: 'Preference (already saved)',
-								description:
-									'Accept keeps this text, edited or not. Decline removes the preference.',
+								title: 'Preference',
+								description: "Edit the text to change what's saved.",
 								default: preference.content,
 								maxLength: AI_PREFERENCE_CONTENT_MAX_LENGTH,
 							},
