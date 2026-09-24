@@ -209,6 +209,9 @@ export function useWorkflowSetupItems(
 				: [];
 		});
 	});
+	const isCheckingOAuthCredentials = computed(() =>
+		boundOAuthCredentials.value.some((credential) => !oauthConnections.has(credential.id)),
+	);
 	watch(
 		[() => toValue(workflowId), boundOAuthCredentials],
 		async ([, credentials], _previous, onCleanup) => {
@@ -430,6 +433,7 @@ export function useWorkflowSetupItems(
 
 	return {
 		credentialsAvailable,
+		isCheckingOAuthCredentials,
 		isWorkflowAvailable,
 		hasWorkflowNodes: computed(() => (workflowNodes.value?.length ?? 0) > 0),
 		workflowProjectId,

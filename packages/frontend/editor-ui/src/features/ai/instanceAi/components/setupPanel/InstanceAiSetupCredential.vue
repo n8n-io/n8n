@@ -11,17 +11,14 @@ import {
 	N8nSegmentControl,
 	N8nSetupConnection,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { addCredentialTranslation, useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import {
-	deepCopy,
-	DOMAIN_RESTRICTION_FIELDS,
-	type ICredentialDataDecryptedObject,
-} from 'n8n-workflow';
+import { deepCopy, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { AI_GATEWAY_UNSUPPORTED_NODE_TYPES, BUILTIN_CREDENTIALS_DOCS_URL } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -259,30 +256,23 @@ watch(
 	{ immediate: true },
 );
 
-const inlineFields = computed(() => {
-	const fields = form.credentialProperties.value.filter(
-		(property) =>
-			property.type !== 'hidden' &&
-			property.type !== 'notice' &&
-			!property.typeOptions?.copyButton &&
-			!(
-				props.item.credentialType === 'googlePalmApi' &&
-				property.name === 'host' &&
-				(form.credentialData.value.host ?? property.default) === property.default
-			) &&
-			!DOMAIN_RESTRICTION_FIELDS.some(({ name }) => name === property.name),
-	);
-	const required = fields.filter((property) => property.required);
-	// Older credential definitions can omit required flags even for access tokens.
-	const inputs = required.length ? required : fields.filter((property) => !property.default);
-	return inputs.length <= 2 ? inputs : [];
-});
+const helpFields = computed(() =>
+	form.credentialProperties.value.filter(
+		(property) => property.type !== 'notice' && !property.typeOptions?.copyButton,
+	),
+);
 const fieldTitles = computed(() =>
 	isTemplated.value
 		? listPlaceholderTitles(form.credentialData.value)
-		: inlineFields.value.map((property) => property.displayName),
+		: helpFields.value.map((property) => property.displayName),
 );
-const useAdvancedForm = computed(() => !canQuickConnect.value && fieldTitles.value.length === 0);
+const useAdvancedForm = computed(
+	() =>
+		!canQuickConnect.value &&
+		(isTemplated.value
+			? fieldTitles.value.length === 0
+			: form.credentialProperties.value.length === 0),
+);
 const advancedIsPrimary = computed(() => isTemplated.value && useAdvancedForm.value);
 const valueLabel = computed(() =>
 	binding.value?.__aiGatewayManaged
@@ -384,7 +374,7 @@ const actions = computed<DropdownMenuItemProps[]>(() => {
 });
 
 const helpLabel = computed(() => {
-	const fieldName = inlineFields.value.length === 1 ? inlineFields.value[0].name : undefined;
+	const fieldName = helpFields.value.length === 1 ? helpFields.value[0].name : undefined;
 	return i18n.baseText(
 		fieldName === 'apiKey'
 			? 'instanceAi.setupPanel.helpFindApiKey'
@@ -772,17 +762,25 @@ onScopeDispose(() => {
 			</template>
 			<template #action-leading>
 				<N8nText v-if="useCredits && balanceLabel" step="xs">{{ balanceLabel }}</N8nText>
-				<N8nButton
+				<N8nTooltip
 					v-else-if="!useCredits"
-					variant="ghost"
-					size="small"
-					:class="$style.help"
-					:disabled="helpDisabled || busy"
-					@click="askForHelp"
+					as-child
+					:disabled="!helpDisabled"
+					:content="i18n.baseText('instanceAi.setupPanel.helpUnavailableWhileBuilding')"
 				>
-					<N8nIcon icon="sparkles" size="small" />
-					{{ helpLabel }}
-				</N8nButton>
+					<span :tabindex="helpDisabled ? 0 : undefined">
+						<N8nButton
+							variant="ghost"
+							size="small"
+							:class="$style.help"
+							:disabled="helpDisabled || busy"
+							@click="askForHelp"
+						>
+							<N8nIcon icon="sparkles" size="small" />
+							{{ helpLabel }}
+						</N8nButton>
+					</span>
+				</N8nTooltip>
 			</template>
 			<N8nText v-if="needsAuthorization" size="small">{{ value }}</N8nText>
 			<template
@@ -814,7 +812,7 @@ onScopeDispose(() => {
 					v-else
 					compact
 					:credential-type="item.credentialType"
-					:credential-properties="inlineFields"
+					:credential-properties="form.credentialProperties.value"
 					:credential-data="form.credentialData.value"
 					:documentation-url="documentationUrl"
 					:show-validation-warnings="form.showValidationWarning.value"

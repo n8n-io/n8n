@@ -186,6 +186,7 @@ export function useSetupPanelState(options: {
 
 	return {
 		credentialsAvailable: derivation.credentialsAvailable,
+		isCheckingOAuthCredentials: derivation.isCheckingOAuthCredentials,
 		isRefreshingWorkflow: derivation.isRefreshingWorkflow,
 		rows,
 		rowSource,

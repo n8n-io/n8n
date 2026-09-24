@@ -634,8 +634,10 @@ describe('useWorkflowSetupItems', () => {
 			hydrateWorkflow([]);
 			const state = useWorkflowSetupItems(() => WORKFLOW_ID);
 			expect(state.isCredentialConfigured(credential)).toBe(false);
+			expect(state.isCheckingOAuthCredentials.value).toBe(true);
 			await flushPromises();
 			expect(state.isCredentialConfigured(credential)).toBe(connected);
+			expect(state.isCheckingOAuthCredentials.value).toBe(false);
 		},
 	);
 
@@ -661,6 +663,7 @@ describe('useWorkflowSetupItems', () => {
 		};
 		credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({ extends: ['oAuth2Api'] });
+		vi.mocked(credentialsStore.hasUsableCredentialsForScope).mockReturnValue(true);
 		const read = Promise.withResolvers<ICredentialsDecryptedResponse | ICredentialsResponse>();
 		credentialsStore.getCredentialData.mockReturnValue(read.promise);
 		workflowsListStore.fetchWorkflow.mockResolvedValue(
@@ -681,6 +684,8 @@ describe('useWorkflowSetupItems', () => {
 			nodeBindings: [{ nodeName: 'Gmail' }],
 		});
 		expect(state.isItemDone(item)).toBe(false);
+		expect(state.credentialsAvailable.value).toBe(true);
+		expect(state.isCheckingOAuthCredentials.value).toBe(true);
 		if (scenario === 'read-error') read.reject(new Error('Request failed'));
 		else
 			read.resolve({
@@ -696,6 +701,7 @@ describe('useWorkflowSetupItems', () => {
 			});
 		await flushPromises();
 		expect(state.isItemDone(item)).toBe(!['disconnected', 'read-error'].includes(scenario));
+		expect(state.isCheckingOAuthCredentials.value).toBe(false);
 	});
 
 	it('does not treat a legacy credential name as a saved binding', () => {
