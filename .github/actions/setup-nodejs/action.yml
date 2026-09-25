@@ -47,6 +47,10 @@ runs:
           echo 'GIT_CONFIG_KEY_0=safe.directory'
           echo "GIT_CONFIG_VALUE_0=$GITHUB_WORKSPACE"
         } >> "$GITHUB_ENV"
+        mkdir -p "$HOME/.cache"
+        if [ ! -e "$HOME/.cache/ms-playwright" ]; then
+          ln -s /ms-playwright "$HOME/.cache/ms-playwright"
+        fi
 
     # An empty key makes the builder use a local, uncached one. The job stays
     # green and loses the cache. Fail here instead.

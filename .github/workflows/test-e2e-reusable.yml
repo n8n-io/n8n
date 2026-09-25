@@ -69,7 +69,7 @@ on:
         type: boolean
 
 env:
-  NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
+  NODE_OPTIONS: ${{ inputs.use-toolchain-pilot && (contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144 --dns-result-order=ipv4first' || '--dns-result-order=ipv4first') || (contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '') }}
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
   # docker-artifact loads the image locally as n8nio/n8n:local; unused in local mode.
   TEST_IMAGE_N8N: 'n8nio/n8n:local'
