@@ -1,10 +1,10 @@
 # Isolated workflow suggestions
 
-This module stores finished proposed fixes for human review. It does not save or publish workflows.
+These internal Instance AI services store proposed workflow changes for human review. They do not save or publish workflows.
 
-A suggestion is separate from the workflow's saved editor draft. The Assistant edits files in its workspace during an investigation. This module stores a suggestion only after that work is complete.
+A suggestion is separate from the workflow's saved editor draft. The Assistant edits files in its workspace during an investigation. The service stores valid proposed changes when the investigation ends. Both Fix ready and Needs attention results can reference a suggestion. A suggestion alone does not mean a fix is ready to apply.
 
-Enable it with `N8N_ENABLED_MODULES=workflow-suggestions`. Add it to the existing list if other optional modules are enabled. It is disabled by default. It requires no Enterprise license.
+The existing `instance-ai` module registers these services, the read endpoint, and cleanup. It is enabled by default and requires no Enterprise license. There is no separate suggestion module. Disabling the Assistant in settings does not hide saved suggestions or stop their cleanup. Self-healing configuration and opt-in belong to INS-1481; this storage does not start investigations.
 
 ## Internal operations
 
@@ -12,10 +12,10 @@ Use `WorkflowSuggestionService` from trusted backend code.
 
 1. Call `captureBaseline(workflowId, backgroundUserId)` when the investigation starts. It returns the original snapshot, owner project, version IDs, and checksum. It does not insert a suggestion.
 2. Keep this baseline with the investigation. The model must not choose or change it. Edit a separate candidate in the Assistant workspace.
-3. Call `prepareSuggestion(baseline, { graph, explanation, errorContext })` when the investigation finishes with a valid fix. It checks permissions and validates the final graph. `graph` accepts only nodes and connections. The prepared value stays in backend memory.
+3. Call `prepareSuggestion(baseline, { graph, explanation, errorContext })` when the investigation ends with valid proposed changes. It checks permissions and validates the final graph. `graph` accepts only nodes and connections. The prepared value stays in backend memory.
 4. Immediately call `createSuggestion(prepared, ctx)` inside the completion transaction. It rechecks the original baseline and creates a pending suggestion with submission activity. Use only the value returned by `prepareSuggestion`, never model output or a stored validation result.
 
-Pass the investigation's transaction context as `ctx` to save its report, result, and completion with the suggestion. INS-1480 owns that transaction and its completed-state check. This module does not coordinate investigation retries. Failed or interrupted investigations save a report without a suggestion.
+Pass the investigation's transaction context as `ctx` to save its report, result, and completion with the suggestion. INS-1480 owns investigations, outcomes, handoff reports, usage, and completion retries inside Instance AI. A result without valid graph changes has no suggestion.
 
 The service checks structure, credential rules, node groups, and workflow-save policies. It records configuration diagnostics and execution verification as `not_run`. INS-1479 adds tools that compile and validate workspace candidates without saving the actual workflow. M2 must validate its final result before it accepts Fix ready.
 
@@ -25,7 +25,7 @@ The tests under `__tests__` include a sample fix against a published workflow. T
 
 `GET /projects/:projectId/workflow-suggestions/:suggestionId` returns a proposal and its activity. The caller must be an enabled user with current workflow read and edit access. Publish access is not required. The route checks both the proposal's original project and the workflow's current owner project.
 
-The response includes the original snapshot and the proposed snapshot. The stored content does not change after creation.
+The response includes the original snapshot and the proposed snapshot. The stored content does not change after creation. The shared inbox lists investigation results through a self-healing source. INS-1517 owns that integration. Self-healing owns result details and actions, including the optional suggestion diff. Needs attention offers Continue in chat and Dismiss; it does not offer Apply.
 
 ## Storage and cleanup
 

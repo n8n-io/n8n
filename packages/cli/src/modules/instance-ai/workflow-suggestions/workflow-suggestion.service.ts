@@ -54,7 +54,7 @@ export class WorkflowSuggestionService {
 	) {}
 
 	private requireEnabled() {
-		if (!this.modules.isActive('workflow-suggestions'))
+		if (!this.modules.isActive('instance-ai'))
 			throw new NotFoundError('Workflow suggestions are not enabled.');
 	}
 

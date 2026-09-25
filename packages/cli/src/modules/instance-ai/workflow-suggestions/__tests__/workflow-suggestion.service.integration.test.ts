@@ -26,7 +26,7 @@ let service: WorkflowSuggestionService;
 let suggestions: WorkflowSuggestionRepository;
 
 beforeAll(async () => {
-	await testModules.loadModules(['workflow-suggestions']);
+	await testModules.loadModules(['instance-ai']);
 	await testDb.init();
 	suggestions = Container.get(WorkflowSuggestionRepository);
 	service = new WorkflowSuggestionService(

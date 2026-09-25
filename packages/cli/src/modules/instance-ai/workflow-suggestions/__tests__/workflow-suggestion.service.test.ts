@@ -309,9 +309,9 @@ it('rejects review from a different project or after ownership changes', async (
 	await expect(service.getProposal(user, 'project', suggestion.id)).rejects.toThrow('not found');
 });
 
-it('blocks operations when the module is disabled', async () => {
+it('blocks operations when the Instance AI module is disabled', async () => {
 	const prepared = await service.prepareSuggestion(baseline, { graph, explanation: 'Fix' });
-	modules.isActive.mockReturnValue(false);
+	modules.isActive.mockImplementation((moduleName) => moduleName !== 'instance-ai');
 	await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow('not enabled');
 	await expect(service.prepareSuggestion(baseline, { graph, explanation: 'Fix' })).rejects.toThrow(
 		'not enabled',

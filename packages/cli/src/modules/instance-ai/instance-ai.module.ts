@@ -30,6 +30,7 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
+		await import('./workflow-suggestions/workflow-suggestions.controller.js');
 
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.
@@ -55,12 +56,15 @@ export class InstanceAiModule implements ModuleInterface {
 
 	async systemTasks() {
 		const { InstanceAiConfig } = await import('@n8n/config');
-		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [];
+		const { WorkflowSuggestionCleanupTask } = await import(
+			'./workflow-suggestions/workflow-suggestion-cleanup.task.js'
+		);
+		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [WorkflowSuggestionCleanupTask];
 
 		const { InstanceAiCheckpointPruningTask } = await import(
 			'./instance-ai-checkpoint-pruning.task.js'
 		);
-		return [InstanceAiCheckpointPruningTask];
+		return [WorkflowSuggestionCleanupTask, InstanceAiCheckpointPruningTask];
 	}
 
 	async settings() {
@@ -117,6 +121,12 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventLogEntry } = await import(
 			'./entities/instance-ai-event-log-entry.entity.js'
 		);
+		const { WorkflowSuggestion } = await import(
+			'./workflow-suggestions/database/workflow-suggestion.entity.js'
+		);
+		const { WorkflowSuggestionActivityEntity } = await import(
+			'./workflow-suggestions/database/workflow-suggestion-activity.entity.js'
+		);
 
 		return [
 			InstanceAiThread,
@@ -131,6 +141,8 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiMcpRegistryConnection,
 			InstanceAiThreadGrant,
 			InstanceAiEventLogEntry,
+			WorkflowSuggestion,
+			WorkflowSuggestionActivityEntity,
 		];
 	}
 

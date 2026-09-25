@@ -57,7 +57,7 @@ const saveProposal = async () =>
 	});
 
 beforeAll(async () => {
-	await testModules.loadModules(['workflow-suggestions']);
+	await testModules.loadModules(['instance-ai']);
 	await testDb.init();
 	suggestions = Container.get(WorkflowSuggestionRepository);
 	tx = Container.get(TransactionRunner);
