@@ -9050,7 +9050,7 @@
 	"promotions.modal.incoming.confirm.message": "Apply overwrites every team project on this instance to match the source, and deletes projects and content that are not in the package.",
 	"promotions.modal.incoming.confirm.confirmButtonText": "Apply",
 	"promotions.modal.incoming.confirmSelected.title": "Apply the selected workflows?",
-	"promotions.modal.incoming.confirmSelected.message": "Only the selected workflows are applied to this project. Everything else is left as is.",
+	"promotions.modal.incoming.confirmSelected.message": "This applies only the selected workflows to this project. It does not change or remove anything else.",
 	"promotions.modal.incoming.confirmSelected.confirmButtonText": "Apply",
 	"promotions.modal.incoming.applied.title": "Changes applied",
 	"promotions.modal.incoming.applied.message": "{created} created, {updated} updated, {archived} archived, {deleted} deleted.",
