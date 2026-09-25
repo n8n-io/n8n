@@ -15,3 +15,111 @@
     }
   }
 }
+
+packages/@n8n/engine/src/execution/__tests__/execution-start.integration.test.ts
+  s_9aca2e09ff6b67::t_7a27780dbef59e 23,78
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_9aca2e09ff6b67::t_7d4e6f88b774bf 44-45
+  s_794845deccc20b::t_cd754a091a395e 1,25,52-53,56,72-75,78
+  s_9aca2e09ff6b67::t_81c4baaea16543 6,22-24,42-43,46-51,54-55,58,76-77
+packages/@n8n/engine/src/response-channel/__tests__/in-memory-response-pair.test.ts
+  s_9aca2e09ff6b67::t_beca356d5b1175 1-6,8-64
+  s_9aca2e09ff6b67::t_f7d141d5c84ff3 7
+packages/@n8n/engine/src/index.ts
+  s_9aca2e09ff6b67::t_209c4205ed53be 38-40,42,47-48
+  s_71c6da2ee47cd3::t_613cff5051c1db 37,41,43-46,51
+  s_4c46dcfe1ba789::t_eed36ddb86f263 49-50
+packages/@n8n/engine/src/response-channel/execution-response-receiver.ts
+  s_9aca2e09ff6b67::t_410a8660d7214f 4,6-7,9,14-15,22-23,33
+packages/@n8n/engine/src/response-channel/index.ts
+  s_9aca2e09ff6b67::t_f7d141d5c84ff3 5
+  s_9aca2e09ff6b67::t_410a8660d7214f 1-2,6-7
+  s_71c6da2ee47cd3::t_d67313882bd806 3
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  s_9a2a7a8eef9b2d::t_e1065e26610b01 9,23,80,85
+  s_9aca2e09ff6b67::t_7d4e6f88b774bf 15
+  s_9aca2e09ff6b67::t_ee284d9fea9248 79,81-84
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_9aca2e09ff6b67::t_7a27780dbef59e 15,490
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_9aca2e09ff6b67::t_3dcdb251f0e175 9-10
+  s_71c6da2ee47cd3::t_d67313882bd806 1-3,11-14,17,20,22,25
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 4-5,7-8,15-16,18-19,21,23-24,26
+  s_719e037cee4d57::t_4893d08f7d8961 6
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_4c46dcfe1ba789::t_16f6ec4d91ae85 11,37
+  s_bfdc3c9bc21b40::t_3d0737ff1431aa 110-111
+  s_4c46dcfe1ba789::t_f9dae768d9a165 22-23,57,64-67
+  s_71c6da2ee47cd3::t_11151294bf63cb 1-3,20-21,24,26-29,34-35,39-43,49-52,56,63,68,79,84,90-91,103,112-113,117
+  s_9aca2e09ff6b67::t_3dcdb251f0e175 25,75-76,83,85,88-89,95-96,98
+  s_4c46dcfe1ba789::t_9317a33118b923 36,47-48,62
+  s_bd2476b2677534::t_16413e0e77bad9 18,116
+  s_4c46dcfe1ba789::t_08563fce175542 30-32,38,53-55,69-74,86-87,115
+  s_9aca2e09ff6b67::t_81c4baaea16543 7,33,44-46,59-61
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 80-82
+packages/@n8n/engine/src/response-channel/in-memory-response-pair.ts
+  s_9aca2e09ff6b67::t_f7d141d5c84ff3 3,6-7,9,11-12,14-20,22-33,35-43
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_9aca2e09ff6b67::t_4b8d3c32c79062 152,160,171,177,201,218,230,238,246,270,278,287,298,305,316,331,341,368,383
+  s_9aca2e09ff6b67::t_d7d5d02f4025f1 3,106-107
+  s_794845deccc20b::t_cd754a091a395e 108,153-154
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-receiver.test.ts
+  s_9aca2e09ff6b67::t_beca356d5b1175 4,6,15,18,25-28,32-38,40-43,45,47,49,52-54,56,58-59,64-67,71,74-77,79,81
+packages/@n8n/engine/src/response-channel/response-frame.ts
+  s_9aca2e09ff6b67::t_f28b1aae77e0ef 4,12
+  s_9aca2e09ff6b67::t_410a8660d7214f 1,5-10,17-18,22-24
+  s_9aca2e09ff6b67::t_a669646ac07781 14-15
+packages/@n8n/engine/src/runtime/__tests__/create-engine-runtime.test.ts
+  s_9aca2e09ff6b67::t_7a27780dbef59e 9,18,25,70,89,104
+packages/@n8n/engine/src/response-channel/execution-response-sender.ts
+  s_9aca2e09ff6b67::t_410a8660d7214f 1-15
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_9aca2e09ff6b67::t_c694134ec46d84 491,499,519,527,549,557
+  s_9aca2e09ff6b67::t_7a27780dbef59e 6,131-133,143,153,159
+  s_794845deccc20b::t_cd754a091a395e 134-135,500-511,515-518,528-540,550-552
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_9aca2e09ff6b67::t_7a27780dbef59e 21,84
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_9aca2e09ff6b67::t_3dcdb251f0e175 19
+  s_719e037cee4d57::t_d73bc028dc08bb 94-97,99-101,106
+  s_794845deccc20b::t_9bbbf1f363a95f 131
+  s_29ea1cc2a1dbf5::t_c87e077050280b 132-134,136-137,158
+  s_4c46dcfe1ba789::t_a519961dfa21ce 5-7,74-75,80,85-86
+  s_9aca2e09ff6b67::t_d2e6bc1a9a6aa4 3,15-16,22,26-27,33-34,60,64-65,67,76,78,105,118,129,141,163,174
+  s_bd2476b2677534::t_3d0654ed5c9186 66,72,81-83,91-92
+  s_4c46dcfe1ba789::t_ab1cf56a8e54a1 4,61-63,69-70,119,122
+  s_4c46dcfe1ba789::t_533d342b8bac27 20,23-25,48-50,130
+  s_71c6da2ee47cd3::t_d405134f94920e 1-2,8-14,17-18,21,28,30-32,35-47,51-59,71,87,89-90,104,107-115,117,120-121,123-126,128
+packages/@n8n/engine/src/serve.ts
+  s_9aca2e09ff6b67::t_209c4205ed53be 8,37
+  s_794845deccc20b::t_cd754a091a395e 35-36
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_9aca2e09ff6b67::t_209c4205ed53be 23,35-36,38,74,101
+  s_71c6da2ee47cd3::t_613cff5051c1db 34,37
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_9aca2e09ff6b67::t_81c4baaea16543 4,62,66,95,108
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_719e037cee4d57::t_0f7522dcd91215 2101-2102
+  s_794845deccc20b::t_9bbbf1f363a95f 2047,2054-2055,2058-2059,2061,2064,2105-2106,2108,2111,2122-2123,2125,2128-2129,2132-2133,2135-2137,2140-2141,2147-2148,2151-2152,2155,2158-2159,2161-2162
+  s_4c46dcfe1ba789::t_7dd7b48c8328c2 62,2043,2046,2051
+  s_4c46dcfe1ba789::t_e3cd4f920bebf0 2098-2099
+  s_4c46dcfe1ba789::t_1eddd524b8cecb 2112,2115-2119,2134,2157
+  s_6df29c531634b9::t_5260d4751675a4 2163
+  s_a3125dfe40640a::t_98f95192499fa6 2060,2062-2063,2065,2100,2103-2104,2107,2109-2110,2113-2114,2120-2121,2124,2126-2127,2130-2131,2138-2139,2142-2146,2149-2150,2153-2154,2156,2160
+  s_9aca2e09ff6b67::t_3dcdb251f0e175 1951
+  s_9aca2e09ff6b67::t_d7d5d02f4025f1 6,2045,2048-2050
+packages/@n8n/node-engine-compatibility/src/__tests__/acceptance-fixtures.ts
+  s_794845deccc20b::t_cd754a091a395e 327
+  s_9aca2e09ff6b67::t_7a27780dbef59e 11-12,328
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-sender.test.ts
+  s_9aca2e09ff6b67::t_beca356d5b1175 1-36
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_794845deccc20b::t_cd754a091a395e 2-8,14,47,52,63,74,77-81,91,165-169,201,205-229,231-244
+  s_9aca2e09ff6b67::t_209c4205ed53be 10,39,230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1b330160197290606115abd34c214bdfa6ebce1a",
+  "prompts": {}
+}
