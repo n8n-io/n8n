@@ -316,6 +316,9 @@ function openSettingsFor(nodeType: INodeTypeDescription) {
 		},
 		existingNames,
 		async (configuredNode: INode) => {
+			// The policy can finish loading while the settings view is open.
+			if (isNodeItemRestricted(configuredNode.type)) return;
+
 			try {
 				await chatStore.addConfiguredTool(configuredNode);
 			} catch (error) {
