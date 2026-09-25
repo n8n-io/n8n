@@ -1328,28 +1328,14 @@ describe('invokeWebhook', () => {
 });
 
 describe('handleImmediateWebhookResponse', () => {
-	it('handles a no-response result and continues with workflow data', () => {
+	it.each([
+		{ name: 'continues with workflow data', workflowData: [[{ json: {} }]], shouldContinue: true },
+		{ name: 'stops without workflow data', workflowData: undefined, shouldContinue: false },
+	])('reports a no-response result once and $name', ({ workflowData, shouldContinue }) => {
 		const responseCallback = vi.fn();
 
 		const result = handleImmediateWebhookResponse({
-			webhookResultData: { noWebhookResponse: true, workflowData: [[{ json: {} }]] },
-			didSendResponse: false,
-			responseCode: 200,
-			responseCallback,
-		});
-
-		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
-		expect(result).toEqual({
-			didSendResponse: true,
-			shouldContinueWorkflowExecution: true,
-		});
-	});
-
-	it('handles a no-response result and stops without workflow data', () => {
-		const responseCallback = vi.fn();
-
-		const result = handleImmediateWebhookResponse({
-			webhookResultData: { noWebhookResponse: true },
+			webhookResultData: { noWebhookResponse: true, workflowData },
 			didSendResponse: false,
 			responseCode: 200,
 			responseCallback,
@@ -1359,26 +1345,36 @@ describe('handleImmediateWebhookResponse', () => {
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
 		expect(result).toEqual({
 			didSendResponse: true,
-			shouldContinueWorkflowExecution: false,
+			shouldContinueWorkflowExecution: shouldContinue,
 		});
 	});
 
-	it('does not send another response when a response was already sent', () => {
-		const responseCallback = vi.fn();
+	it.each([
+		{ name: 'the default response', webhookResultData: {}, shouldContinue: false },
+		{
+			name: 'a no-response result',
+			webhookResultData: { noWebhookResponse: true, workflowData: [[{ json: {} }]] },
+			shouldContinue: true,
+		},
+	])(
+		'does not call back for $name when a response was already sent',
+		({ webhookResultData, shouldContinue }) => {
+			const responseCallback = vi.fn();
 
-		const result = handleImmediateWebhookResponse({
-			webhookResultData: {},
-			didSendResponse: true,
-			responseCode: 200,
-			responseCallback,
-		});
+			const result = handleImmediateWebhookResponse({
+				webhookResultData,
+				didSendResponse: true,
+				responseCode: 200,
+				responseCallback,
+			});
 
-		expect(responseCallback).not.toHaveBeenCalled();
-		expect(result).toEqual({
-			didSendResponse: true,
-			shouldContinueWorkflowExecution: false,
-		});
-	});
+			expect(responseCallback).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				didSendResponse: true,
+				shouldContinueWorkflowExecution: shouldContinue,
+			});
+		},
+	);
 
 	it.each([
 		{
@@ -1396,7 +1392,7 @@ describe('handleImmediateWebhookResponse', () => {
 			webhookResultData: { webhookResponse: null },
 			expectedData: null,
 		},
-	])('handles $name and stops execution', ({ webhookResultData, expectedData }) => {
+	])('sends $name and stops execution', ({ webhookResultData, expectedData }) => {
 		const responseCallback = vi.fn();
 
 		const result = handleImmediateWebhookResponse({
@@ -2235,7 +2231,10 @@ describe('executeWebhook response-mode callback contract', () => {
 	 * One case per self-responding mode, so the next mode that forgets is caught
 	 * here rather than in production memory.
 	 */
-	const startWebhook = async (responseMode: string) => {
+	const startWebhook = async (
+		responseMode: string,
+		webhookResult: IWebhookResponseData = { workflowData: [[{ json: {} }]] },
+	) => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 			mock<IWorkflowExecuteAdditionalData>({
 				// A real string: the formPage branch builds a URL from it.
@@ -2245,7 +2244,7 @@ describe('executeWebhook response-mode callback contract', () => {
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
-		webhookService.runWebhook.mockResolvedValue({ workflowData: [[{ json: {} }]] });
+		webhookService.runWebhook.mockResolvedValue(webhookResult);
 		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
 		activeExecutions.getPostExecutePromise.mockReturnValue(
 			createDeferredPromise<IRun | undefined>().promise,
@@ -2302,6 +2301,16 @@ describe('executeWebhook response-mode callback contract', () => {
 
 	it('invokes the response callback exactly once in formPage mode', async () => {
 		const { responseCallback } = await startWebhook('formPage');
+
+		expect(responseCallback).toHaveBeenCalledTimes(1);
+		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	it('invokes the response callback exactly once when the node answered itself in onReceived mode', async () => {
+		const { responseCallback } = await startWebhook('onReceived', {
+			noWebhookResponse: true,
+			workflowData: [[{ json: {} }]],
+		});
 
 		expect(responseCallback).toHaveBeenCalledTimes(1);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
