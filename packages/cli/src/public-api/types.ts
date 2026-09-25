@@ -1,8 +1,6 @@
 import type {
 	AddDataTableColumnDto,
 	AddDataTableRowsDto,
-	PublicApiCreateDataTableDto,
-	UpdateDataTableDto,
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -45,6 +43,20 @@ export declare namespace PackageRequest {
 		{},
 		{},
 		{ projectId?: string; folderId?: string },
+		Record<string, never>
+	>;
+
+	type ImportSelection = AuthenticatedRequest<
+		{},
+		{},
+		{
+			selectedProjectId?: string;
+			// Multipart text fields carrying JSON-string arrays; parsed by the DTO.
+			selectedWorkflowIds?: string;
+			deletedWorkflowIds?: string;
+			workflowConflictPolicy?: string;
+			workflowIdPolicy?: string;
+		},
 		Record<string, never>
 	>;
 }
@@ -115,27 +127,6 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type List = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-		}
-	>;
-
-	type Create = AuthenticatedRequest<{}, {}, PublicApiCreateDataTableDto, {}>;
-
-	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
-
-	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
 	type GetRows = AuthenticatedRequest<
 		{ dataTableId: string },
 		{},

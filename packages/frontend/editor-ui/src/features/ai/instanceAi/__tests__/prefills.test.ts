@@ -68,6 +68,11 @@ describe('the prefill_type property on the message event', () => {
 		action_source: 'assistant_page',
 		prefill_id: null,
 		prompt_modified: false,
+		mention_count: 0,
+		workflow_mention_count: 0,
+		node_mention_count: 0,
+		group_mention_count: 0,
+		attachment_count: 0,
 	};
 
 	it.each([...INSTANCE_AI_PREFILL_TYPES, INSTANCE_AI_PREFILL_TYPE_FALLBACK].map((t) => [t]))(

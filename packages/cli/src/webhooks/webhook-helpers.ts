@@ -128,6 +128,11 @@ interface WebhookExecutionDataChanges {
 	};
 }
 
+interface WebhookContinuationResult {
+	didSendResponse: boolean;
+	shouldContinueWorkflowExecution: boolean;
+}
+
 const deferCleanupUntilStreamEnds = (
 	stream: Readable,
 	res: express.Response,
@@ -631,6 +636,50 @@ export async function invokeWebhook({
 }
 
 /**
+ * Sends the immediate webhook response unless a response was already sent. When the
+ * node answered the request itself (`noWebhookResponse`), it only reports that to the
+ * callback. Reports whether the workflow must run.
+ */
+export function handleImmediateWebhookResponse({
+	webhookResultData,
+	didSendResponse,
+	responseCode,
+	responseCallback,
+}: {
+	webhookResultData: IWebhookResponseData;
+	didSendResponse: boolean;
+	responseCode: number;
+	responseCallback: (
+		error: Error | null,
+		data: IWebhookResponseCallbackData | WebhookResponse,
+	) => void;
+}): WebhookContinuationResult {
+	if (webhookResultData.noWebhookResponse === true && !didSendResponse) {
+		responseCallback(null, { noWebhookResponse: true });
+		didSendResponse = true;
+	}
+
+	if (webhookResultData.workflowData !== undefined) {
+		return { didSendResponse, shouldContinueWorkflowExecution: true };
+	}
+
+	if (!didSendResponse) {
+		// Only `undefined` selects the default message. A node can respond with `null`,
+		// which `??` would wrongly replace.
+		responseCallback(null, {
+			data:
+				webhookResultData.webhookResponse !== undefined
+					? (webhookResultData.webhookResponse as IDataObject | IDataObject[])
+					: { message: 'Webhook call received' },
+			responseCode,
+		});
+		didSendResponse = true;
+	}
+
+	return { didSendResponse, shouldContinueWorkflowExecution: false };
+}
+
+/**
  * Reconciles a pre-seeded execution stack (identity/context trigger flows) with the
  * webhook node's real output. No-op unless the start node seeded execution data.
  *
@@ -852,16 +901,11 @@ export async function executeWebhook(
 		return toWebhookUser(user);
 	};
 
-	additionalData.beginN8nOAuth2Flow = async (
-		resourceUrl: string,
-		metadata?: Record<string, string>,
-	) => await Container.get(OAuth2FlowProxy).begin(resourceUrl, metadata);
-
-	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
-		await Container.get(OAuth2FlowProxy).complete(code, state);
-
-	additionalData.refreshN8nOAuth2Flow = async (refreshToken: string, resourceUrl: string) =>
-		await Container.get(OAuth2FlowProxy).refreshVirtualClientToken(refreshToken, resourceUrl);
+	const oauth2FlowProxy = Container.get(OAuth2FlowProxy);
+	additionalData.beginN8nOAuth2Flow = oauth2FlowProxy.begin.bind(oauth2FlowProxy);
+	additionalData.completeN8nOAuth2Flow = oauth2FlowProxy.complete.bind(oauth2FlowProxy);
+	additionalData.refreshN8nOAuth2Flow =
+		oauth2FlowProxy.refreshVirtualClientToken.bind(oauth2FlowProxy);
 
 	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
 	// request, instead of resolving the resource a second time.
@@ -1050,43 +1094,17 @@ export async function executeWebhook(
 			responseHeaders.applyToResponse(res);
 		}
 
-		if (webhookResultData.noWebhookResponse === true && !didSendResponse) {
-			// The response got already send
-			responseCallback(null, {
-				noWebhookResponse: true,
-			});
-			didSendResponse = true;
-		}
+		const immediateResponse = handleImmediateWebhookResponse({
+			webhookResultData,
+			didSendResponse,
+			responseCode,
+			responseCallback,
+		});
+		didSendResponse = immediateResponse.didSendResponse;
+		if (!immediateResponse.shouldContinueWorkflowExecution) return;
 
-		if (webhookResultData.workflowData === undefined) {
-			// Workflow should not run
-			if (webhookResultData.webhookResponse !== undefined) {
-				// Data to respond with is given
-				if (!didSendResponse) {
-					responseCallback(null, {
-						data: webhookResultData.webhookResponse as IDataObject | IDataObject[],
-						responseCode,
-					});
-					didSendResponse = true;
-				}
-			} else {
-				// Send default response
-
-				if (!didSendResponse) {
-					responseCallback(null, {
-						data: {
-							message: 'Webhook call received',
-						},
-						responseCode,
-					});
-					didSendResponse = true;
-				}
-			}
-			return;
-		}
-
-		// The node's output is the only place a file shows up, so this cannot run with
-		// the checks above.
+		// Engine v2 cannot receive files yet. A file exists only in the node's output,
+		// so this check runs after the node, unlike `engineV2Webhooks.assertSupported()`.
 		if (routesToEngineV2) engineV2Webhooks.assertPayloadSupported(webhookResultData);
 
 		// Reactive credential-status gate. Runs only once we know the workflow will
@@ -1201,7 +1219,7 @@ export async function executeWebhook(
 		// the run and the listener agree on it.
 		if (routesToEngineV2 && responseMode !== 'onReceived') {
 			const engineExecutionId = createExecutionIdV2();
-			pendingEngineV2Response = Container.get(EngineV2WebhookResponder).waitForResponse(
+			pendingEngineV2Response = await Container.get(EngineV2WebhookResponder).waitForResponse(
 				engineExecutionId,
 				responseMode === 'responseNode',
 			);

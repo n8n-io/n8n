@@ -94,15 +94,16 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			data-test-id="canvas-node-agent-chips-overflow"
 		>
 			<template #activator>
-				<span :class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]">
-					<AgentChipButton :aria-busy="isOverflowActive">
-						{{
-							i18n.baseText('agentNode.card.moreChips', {
-								interpolate: { count: overflowChips.length },
-							})
-						}}
-					</AgentChipButton>
-				</span>
+				<AgentChipButton
+					:aria-busy="isOverflowActive"
+					:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
+				>
+					{{
+						i18n.baseText('agentNode.card.moreChips', {
+							interpolate: { count: overflowChips.length },
+						})
+					}}
+				</AgentChipButton>
 			</template>
 		</N8nActionDropdown>
 	</div>
@@ -141,8 +142,24 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	@include styles.status-animated-after;
 	@include styles.status-running-animation;
 
+	// This matches the mixin's 3px inset and keeps the gradient outside the button face.
+	padding: 3px;
 	border-radius: inherit;
+	z-index: 0;
+	-webkit-mask:
+		linear-gradient(#fff 0 0) content-box,
+		linear-gradient(#fff 0 0);
+	mask:
+		linear-gradient(#fff 0 0) content-box,
+		linear-gradient(#fff 0 0);
+	-webkit-mask-composite: xor;
+	mask-composite: exclude;
 	pointer-events: none;
+}
+
+.running > * {
+	position: relative;
+	z-index: 1;
 }
 
 @include styles.status-animation-definitions;

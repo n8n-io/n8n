@@ -1,5 +1,5 @@
 import { ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { Telemetry } from '@/telemetry';
@@ -11,10 +11,7 @@ import { Telemetry } from '@/telemetry';
 export class TelemetryPulseTask implements SystemTask {
 	readonly name = 'telemetry-pulse';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: 6 * Time.hours.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(6 * Time.hours.toSeconds);
 
 	/** The packet carries instance-wide counters, so a repeat over-reports them. */
 	readonly effects: SystemTaskEffects = 'non-idempotent';

@@ -82,6 +82,16 @@ export class TestEntryComposer {
 		await this.n8n.canvas.getCanvasNodes().first().waitFor({ state: 'visible' });
 	}
 
+	async fromInstanceAi() {
+		await this.n8n.navigate.toInstanceAi();
+		await this.n8n.instanceAi.getChatInput().waitFor({ state: 'visible', timeout: 30_000 });
+	}
+
+	async fromInstanceAiThread(threadId: string) {
+		await this.n8n.instanceAi.gotoThread(threadId);
+		await this.n8n.instanceAi.getChatInput().waitFor({ state: 'visible', timeout: 30_000 });
+	}
+
 	/**
 	 * Start UI test on a new page created by an action
 	 * @param action - The action that will create a new page

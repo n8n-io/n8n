@@ -296,6 +296,7 @@ defineExpose({
 						:disabled="disabled || isStreaming"
 						icon="paperclip"
 						icon-size="large"
+						:aria-label="i18n.baseText('chatInputBase.button.attach')"
 						data-test-id="chat-input-attach-button"
 						@click.stop="handleAttach"
 					/>
@@ -311,6 +312,7 @@ defineExpose({
 						:icon="speechInput.isListening.value ? 'square' : 'mic'"
 						:class="{ [$style.recording]: speechInput.isListening.value }"
 						icon-size="large"
+						:aria-label="i18n.baseText('chatInputBase.button.dictate')"
 						data-test-id="chat-input-voice-button"
 						@click.stop="handleMic"
 					/>

@@ -747,14 +747,12 @@ describe('AgentCapabilitiesSection', () => {
 			},
 		]);
 
-		// Reka's DropdownMenuTrigger — not the read-only chip inside it — is what
-		// actually gates opening the menu, so assert its own disabled state.
 		const trigger = wrapper.find('[aria-haspopup="menu"]');
-		expect(trigger.attributes('disabled')).toBe('false');
+		expect(trigger.element).toBeEnabled();
 
 		await wrapper.setProps({ disabled: true });
 
-		expect(wrapper.find('[aria-haspopup="menu"]').attributes('disabled')).toBe('true');
+		expect(wrapper.find('[aria-haspopup="menu"]').element).toBeDisabled();
 	});
 
 	describe('validation issues', () => {

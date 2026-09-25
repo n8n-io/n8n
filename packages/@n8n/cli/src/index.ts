@@ -36,6 +36,7 @@ import ProjectRemoveMember from './commands/project/remove-member';
 import ProjectUpdate from './commands/project/update';
 import PromotionConnectionAddProject from './commands/promotion-connection/add-project';
 import PromotionConnectionApply from './commands/promotion-connection/apply';
+import PromotionConnectionApplyContinue from './commands/promotion-connection/apply-continue';
 import PromotionConnectionClone from './commands/promotion-connection/clone';
 import PromotionConnectionCreate from './commands/promotion-connection/create';
 import PromotionConnectionDelete from './commands/promotion-connection/delete';
@@ -123,6 +124,7 @@ export const commands = {
 	'promotion-connection:promote': PromotionConnectionPromote,
 	'promotion-connection:promote-selection': PromotionConnectionPromoteSelection,
 	'promotion-connection:apply': PromotionConnectionApply,
+	'promotion-connection:apply-continue': PromotionConnectionApplyContinue,
 
 	'credential:list': CredentialList,
 	'credential:get': CredentialGet,

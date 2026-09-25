@@ -84,7 +84,7 @@ export const postgres: Service<PostgresResult> = {
 				'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;',
 			]);
 
-			if (ctx?.config.engine) await createEngineDatabase(container);
+			if (ctx?.config.engine === 'in-process') await createEngineDatabase(container);
 
 			return {
 				container,

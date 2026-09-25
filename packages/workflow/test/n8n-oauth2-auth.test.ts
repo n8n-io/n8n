@@ -3,22 +3,30 @@ import { mock } from 'vitest-mock-extended';
 
 import { REDACTED, redactedHeaders } from '../src/auth-redaction';
 import type { IWebhookFunctions, N8nOAuth2ValidationResult } from '../src/interfaces';
-import { n8nOAuth2Auth } from '../src/n8n-oauth2-auth';
+import type { N8nOAuth2BrowserFlowMode } from '../src/n8n-oauth2-auth';
+import { n8nOAuth2Auth, resolveOAuthClientMode } from '../src/n8n-oauth2-auth';
 
 const WEBHOOK_URL = 'https://n8n.example.com/webhook/protected-path';
 const USER = { id: 'u1', email: 'u@example.com', firstName: 'U', lastName: 'One' };
+
+const AUTHORIZE_URL = 'https://n8n.example.com/oauth/authorize?client_id=…&state=s1';
 
 const buildContext = (opts: {
 	authorization?: string;
 	otherHeaders?: Record<string, string>;
 	validation?: N8nOAuth2ValidationResult;
 	webhookUrl?: string | undefined;
+	method?: string;
+	originalUrl?: string;
+	query?: Record<string, string>;
 }) => {
 	const response = mock<Response>();
 	response.writeHead.mockReturnValue(response);
 	response.end.mockReturnValue(response);
 	response.status.mockReturnValue(response);
 	response.send.mockReturnValue(response);
+	response.cookie.mockReturnValue(response);
+	response.clearCookie.mockReturnValue(response);
 
 	const context = mock<IWebhookFunctions>();
 	context.getWebhookResourceUrl.mockReturnValue(
@@ -26,13 +34,18 @@ const buildContext = (opts: {
 	);
 	context.getResponseObject.mockReturnValue(response);
 	const request = {
+		method: opts.method ?? 'GET',
+		protocol: 'https',
 		headers: {
 			...(opts.authorization ? { authorization: opts.authorization } : {}),
 			...opts.otherHeaders,
 		} as Record<string, string>,
+		query: opts.query ?? {},
+		originalUrl: opts.originalUrl ?? '/webhook/protected-path',
 	};
 	context.getRequestObject.mockReturnValue(request as never);
 	context.validateN8nOAuth2Token.mockResolvedValue(opts.validation ?? { valid: true, user: USER });
+	context.beginN8nOAuth2Flow.mockResolvedValue(AUTHORIZE_URL);
 
 	return { context, response, request, validateN8nOAuth2Token: context.validateN8nOAuth2Token };
 };
@@ -164,5 +177,96 @@ describe('n8nOAuth2Auth', () => {
 		await expect(n8nOAuth2Auth(context, { realm: 'n8n Webhook' })).rejects.toThrow(
 			'Webhook URL is not available',
 		);
+	});
+
+	describe('browser flow', () => {
+		// Only the dispatch is tested here: which modes enter the flow and with what
+		// `force`. The navigation heuristics live on `n8nBrowserOAuth2Flow` and are
+		// covered there.
+		it.each<[string, N8nOAuth2BrowserFlowMode | undefined]>([
+			['bearer', 'bearer'],
+			['omitted (e.g. the MCP trigger)', undefined],
+		])(
+			'never enters the flow for a browser navigation when browserFlow is %s',
+			async (_label, browserFlow) => {
+				const { context, response } = buildContext({ otherHeaders: { accept: 'text/html' } });
+
+				const result = await n8nOAuth2Auth(context, {
+					realm: 'n8n Webhook',
+					method: 'GET',
+					browserFlow,
+				});
+
+				expect(result).toBe('handled');
+				expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+				expect(response.writeHead).toHaveBeenCalledWith(401, {
+					'WWW-Authenticate': expect.stringContaining('realm="n8n Webhook"'),
+				});
+			},
+		);
+
+		it('forces the flow on a plain tokenless GET under browser mode, without any browser signal', async () => {
+			const { context, response } = buildContext({ otherHeaders: { accept: 'application/json' } });
+
+			const result = await n8nOAuth2Auth(context, {
+				realm: 'n8n Webhook',
+				method: 'GET',
+				browserFlow: 'browser',
+			});
+
+			expect(result).toBe('handled');
+			expect(response.writeHead).toHaveBeenCalledWith(302, { Location: AUTHORIZE_URL });
+		});
+
+		it('resolves ok from the one-hop cookie once the browser flow completes', async () => {
+			const { context, response, request } = buildContext({
+				otherHeaders: { cookie: 'n8n-webhook-oauth=cookie-token; theme=dark', accept: 'text/html' },
+			});
+			context.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: USER });
+
+			const result = await n8nOAuth2Auth(context, {
+				realm: 'n8n Webhook',
+				method: 'GET',
+				browserFlow: 'auto',
+			});
+
+			expect(result).toEqual({
+				status: 'ok',
+				token: 'cookie-token',
+				resource: `${WEBHOOK_URL}?method=GET`,
+				user: USER,
+			});
+			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith(
+				'cookie-token',
+				`${WEBHOOK_URL}?method=GET`,
+			);
+			// The cookie carried the access token: it is cleared in the browser, stripped
+			// from the request, and the header is recorded as consumed.
+			expect(response.clearCookie).toHaveBeenCalledWith(
+				'n8n-webhook-oauth',
+				expect.objectContaining({ path: '/webhook/protected-path' }),
+			);
+			expect(request.headers.cookie).toBe('theme=dark');
+			expect(redactedHeaders(request)).toEqual({ cookie: REDACTED, accept: 'text/html' });
+		});
+	});
+});
+
+describe('resolveOAuthClientMode', () => {
+	it('returns the explicit mode regardless of node version', () => {
+		expect(resolveOAuthClientMode('bearer', 1)).toBe('bearer');
+		expect(resolveOAuthClientMode('bearer', 2.2)).toBe('bearer');
+		expect(resolveOAuthClientMode('browser', 1)).toBe('browser');
+		expect(resolveOAuthClientMode('auto', 1)).toBe('auto');
+	});
+
+	it('defaults an unset mode to bearer below the version threshold, preserving prior behavior for workflows saved before the option existed', () => {
+		expect(resolveOAuthClientMode(undefined, 1)).toBe('bearer');
+		expect(resolveOAuthClientMode(undefined, 2.1)).toBe('bearer');
+	});
+
+	it('defaults an unset mode to auto at or above the version threshold', () => {
+		expect(resolveOAuthClientMode(undefined, 2.2)).toBe('auto');
+		expect(resolveOAuthClientMode(undefined, 3)).toBe('auto');
 	});
 });

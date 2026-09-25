@@ -22,6 +22,8 @@ export const A11Y_BUCKETS = {
 	'node-creator': '[data-test-id="node-creator"]',
 	sidebar: '#side-menu',
 	modal: '[role="dialog"]',
+	'instance-ai':
+		':is([data-test-id="instance-ai-container"], [data-test-id="instance-ai-mention-menu-content"])',
 } as const satisfies Record<string, string | undefined>;
 
 export type A11yBucket = keyof typeof A11Y_BUCKETS;

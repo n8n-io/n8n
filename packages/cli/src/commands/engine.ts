@@ -1,6 +1,7 @@
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { ExecutionResponseSender } from '@n8n/engine';
 import { ErrorReporter } from 'n8n-core';
 import { Expression, UserError } from 'n8n-workflow';
 
@@ -27,6 +28,8 @@ export class Engine extends BaseCommand {
 
 	private runtime?: EngineV2Runtime;
 
+	private responseSender?: ExecutionResponseSender;
+
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
 		// crash path reports through it.
@@ -39,9 +42,15 @@ export class Engine extends BaseCommand {
 
 		await super.init();
 
+		// The control plane runs in another process, so responses travel over Redis.
+		const { createRedisExecutionResponseSender } = await import(
+			'@/modules/engine-v2/response-channel/redis-execution-response-channel.js'
+		);
+		this.responseSender = await createRedisExecutionResponseSender(this.logger.scoped('engine-v2'));
+
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
-		await this.runtime.init();
+		await this.runtime.init(this.responseSender);
 
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
@@ -61,7 +70,12 @@ export class Engine extends BaseCommand {
 		this.logger.info('Stopping engine v2 data plane...');
 
 		try {
-			await this.runtime?.shutdown();
+			try {
+				await this.runtime?.shutdown();
+			} finally {
+				// After the engine, so a final response still has somewhere to go.
+				await this.responseSender?.stop();
+			}
 			await Expression.disposeExpressionEngine();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down the engine.', error);

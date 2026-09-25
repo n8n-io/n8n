@@ -20,11 +20,16 @@ export async function setupOAuth2Authentication(
 		const credential =
 			await this.getCredentials<AzureEntraCognitiveServicesOAuth2ApiCredential>(credentialName);
 		// Mints tokens for the inference audience (the default).
-		const entraTokenCredential = new N8nOAuth2TokenCredential(this.getNode(), credential);
+		const entraTokenCredential = new N8nOAuth2TokenCredential(
+			this.getNode(),
+			credential,
+			undefined,
+			this.helpers.getSecureEgressFilter(),
+		);
 		const deploymentDetails = await entraTokenCredential.getDeploymentDetails();
 
-		// Use getBearerTokenProvider to create the function LangChain expects
-		// Pass the required scope for Azure Cognitive Services
+		// getBearerTokenProvider caches the token across calls. It requires a scope, but the
+		// audience comes from the credential above; the v1.0 endpoint reads `resource`, not `scope`.
 		const azureADTokenProvider = getBearerTokenProvider(entraTokenCredential, AZURE_OPENAI_SCOPE);
 
 		this.logger.debug('Successfully created Azure AD Token Provider.');
