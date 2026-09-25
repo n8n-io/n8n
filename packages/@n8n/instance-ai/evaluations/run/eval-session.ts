@@ -211,6 +211,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 					buildTrace?: BuildResult['buildTrace'];
 					timeoutMs: number;
 					testCaseName?: string;
+					seedContext?: ScenarioSeedContext;
 				}) =>
 					await executeAgentScenario(
 						lane.client,
@@ -222,6 +223,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						execArgs.testCaseName,
 						execArgs.buildTrace,
 						args.outputDir,
+						execArgs.seedContext,
 					),
 			),
 		};

@@ -1606,6 +1606,9 @@ describe('InstanceAiController', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: 'Keep replies brief.',
+					scope: 'user' as const,
+					userId: USER_ID,
+					projectId: null,
 				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(preferenceCardService.edit).not.toHaveBeenCalled();
@@ -1619,6 +1622,9 @@ describe('InstanceAiController', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: 'Keep replies brief.',
+					scope: 'user' as const,
+					userId: USER_ID,
+					projectId: null,
 				}),
 			).rejects.toThrow(NotFoundError);
 			expect(preferenceCardService.edit).not.toHaveBeenCalled();
@@ -1626,7 +1632,14 @@ describe('InstanceAiController', () => {
 
 		it('edit checks thread access, then returns the preference with the published fact', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = { runId: 'run-1', toolCallId: 'tc-1', content: 'Keep replies brief.' };
+			const payload = {
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				content: 'Keep replies brief.',
+				scope: 'user' as const,
+				userId: USER_ID,
+				projectId: null,
+			};
 			const editedEvent: InstanceAiPreferenceCardEvent = {
 				...undoneEvent,
 				payload: { ...undoneEvent.payload, state: 'edited', content: 'Keep replies brief.' },

@@ -80,7 +80,7 @@ export interface StackConfig {
 	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
 	webhooks?: number;
 	postgres?: boolean;
-	/** Runs engine 2.0. Needs `postgres: true`, one main, no workers, no webhook procs. */
+	/** Runs engine v2. Needs `postgres: true`, one main, no workers, no webhook procs. */
 	engine?: EngineMode;
 	env?: Record<string, string>;
 	projectName?: string;

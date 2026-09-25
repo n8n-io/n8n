@@ -198,16 +198,3 @@ function sameSeedTableShape(
 		JSON.stringify({ columns: b.columns, rows: b.rows })
 	);
 }
-
-/** Agent scenarios don't seed data-table rows (tables exist but stay empty) — shared warning for both orchestration paths. */
-export function warnAgentSeedDataTablesIgnored(
-	logger: EvalLogger,
-	scenarioName: string,
-	seedDataTables: unknown[] | undefined,
-): void {
-	if ((seedDataTables?.length ?? 0) > 0) {
-		logger.warn(
-			`    [${scenarioName}] seedDataTables are not seeded on the agent execution path — tables exist but stay empty`,
-		);
-	}
-}

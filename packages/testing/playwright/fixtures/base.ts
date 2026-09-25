@@ -52,7 +52,7 @@ type TestFixtures = {
 	 *  unless COVERAGE_ENABLED. */
 	backendCoverage: undefined;
 	containerRequirement: undefined;
-	/** Internal auto fixture: sorts a test into its engine 2.0 parity bucket by tag. */
+	/** Internal auto fixture: sorts a test into its engine v2 parity bucket by tag. */
 	engineParity: undefined;
 };
 
@@ -108,7 +108,7 @@ export const test = base.extend<
 	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
 	capability: [undefined, { scope: 'worker', option: true }],
 
-	// Rejects an unknown @engine:* tag anywhere; only an engine 2.0 stack skips or
+	// Rejects an unknown @engine:* tag anywhere; only an engine v2 stack skips or
 	// expects failure. See fixtures/engine-parity.ts for the tags.
 	engineParity: [
 		async ({ n8nStackConfig }, use, testInfo) => {

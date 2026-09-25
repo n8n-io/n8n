@@ -35,21 +35,25 @@ describe('preference card API', () => {
 		expect(result).toEqual(response);
 	});
 
-	it('editPreferenceCard posts the new text with the run and tool call to the edit endpoint', async () => {
+	it('editPreferenceCard posts the new text and the scope with the run and tool call to the edit endpoint', async () => {
 		const response = { preference: { id: 'pref-1' }, event: { type: 'preference-card' } };
 		makeRestApiRequestSpy.mockResolvedValue(response);
 
-		const result = await editPreferenceCard(context, 'thread-1', 'pref-1', {
+		const body = {
 			runId: 'run-1',
 			toolCallId: 'tc-1',
 			content: 'Keep replies brief.',
-		});
+			scope: 'user' as const,
+			projectId: null,
+			userId: 'user-1',
+		};
+		const result = await editPreferenceCard(context, 'thread-1', 'pref-1', body);
 
 		expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 			context,
 			'POST',
 			'/instance-ai/threads/thread-1/preferences/pref-1/edit',
-			{ runId: 'run-1', toolCallId: 'tc-1', content: 'Keep replies brief.' },
+			body,
 		);
 		expect(result).toEqual(response);
 	});

@@ -3,6 +3,8 @@
  * decorator metadata is registered before PublicApiControllerRegistry /
  * scope-parity / discover run.
  */
+import './community-packages.public.controller';
+import './credential-type-policies.public.controller';
 import './credentials.public.controller';
 import './discover.public.controller';
 import './evaluations.public.controller';

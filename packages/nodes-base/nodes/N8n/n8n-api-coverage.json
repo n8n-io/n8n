@@ -286,6 +286,9 @@
 		"POST /promotions/connections/{promotionConnectionId}/promote": {
 			"status": "gap"
 		},
+		"POST /promotions/projects/{projectId}/promote": {
+			"status": "gap"
+		},
 		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
 			"status": "gap"
 		},
@@ -470,6 +473,36 @@
 			"status": "gap"
 		},
 		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/instance": {
+			"status": "gap"
+		},
+		"PUT /credential-type-policies/instance": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"PUT /credential-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/policies": {
+			"status": "gap"
+		},
+		"POST /credential-type-policies/policies": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /credential-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"DELETE /credential-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /credential-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		}
 	}

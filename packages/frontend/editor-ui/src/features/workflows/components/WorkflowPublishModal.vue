@@ -137,7 +137,7 @@ function findManagedOpenAiCredentialId(
 ): string | undefined {
 	return Object.keys(usedCredentials).find((credentialId) => {
 		const credential = credentialsStore.state.credentials[credentialId];
-		return credential.isManaged && credential.type === OPEN_AI_API_CREDENTIAL_TYPE;
+		return credential?.isManaged && credential.type === OPEN_AI_API_CREDENTIAL_TYPE;
 	});
 }
 

@@ -29,6 +29,8 @@ tags:
     description: Operations about community packages
   - name: Credential
     description: Operations about credentials
+  - name: CredentialTypePolicy
+    description: Operations about credential type availability policies
   - name: DataTable
     description: Operations about data tables and their rows
   - name: Discover

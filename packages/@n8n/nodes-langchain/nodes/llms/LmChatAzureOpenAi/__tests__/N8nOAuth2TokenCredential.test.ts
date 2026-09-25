@@ -3,6 +3,7 @@ import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { N8nOAuth2TokenCredential } from '../credentials/N8nOAuth2TokenCredential';
+import { AZURE_AI_FOUNDRY_AUDIENCE, AZURE_OPENAI_INFERENCE_AUDIENCE } from '../types';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 
 const { MockClientOAuth2 } = vi.hoisted(() => {
@@ -90,6 +91,32 @@ describe('N8nOAuth2TokenCredential', () => {
 				expect.objectContaining({
 					clientId: mockCredential.clientId,
 					clientSecret: mockCredential.clientSecret,
+				}),
+			);
+		});
+
+		it('requests the cognitiveservices audience by default', async () => {
+			await credential.getToken();
+
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: `${AZURE_OPENAI_INFERENCE_AUDIENCE}/` },
+				}),
+			);
+		});
+
+		it('requests the audience passed to the constructor, when one is given', async () => {
+			credential = new N8nOAuth2TokenCredential(
+				mockNode,
+				mockCredential,
+				AZURE_AI_FOUNDRY_AUDIENCE,
+			);
+
+			await credential.getToken();
+
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: `${AZURE_AI_FOUNDRY_AUDIENCE}/` },
 				}),
 			);
 		});

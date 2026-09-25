@@ -240,7 +240,7 @@ export function getProjects(): Project[] {
 			);
 		}
 
-		// Engine 2.0 parity: the same e2e specs against a main that routes every
+		// Engine v2 parity: the same e2e specs against a main that routes every
 		// workflow to the new engine. Opt-in by tag while the engine matures: any
 		// `@engine:*` tag selects the spec, and the parity fixture then runs, skips
 		// or expects failure by bucket. Drop the grep once the suite is triaged.

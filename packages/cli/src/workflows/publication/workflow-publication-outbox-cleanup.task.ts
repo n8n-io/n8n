@@ -21,10 +21,13 @@ export class WorkflowPublicationOutboxCleanupTask implements SystemTask {
 
 	readonly placement: SystemTaskPlacement = {
 		scope: 'cluster',
-		durable: false,
+		durable: true,
 		/** A new leader enqueues one terminal row per active workflow, so a backlog is waiting. */
 		runOnTakeover: true,
 	};
+
+	/** Only the in-memory timer, which runs whenever the task does not run durably, honors this. */
+	readonly retryDelaySeconds = 30;
 
 	constructor(
 		private readonly workflowsConfig: WorkflowsConfig,
