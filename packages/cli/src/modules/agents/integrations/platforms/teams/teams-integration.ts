@@ -1,4 +1,4 @@
-import type { RichCardComponentType } from '@n8n/api-types';
+import type { AgentIntegrationConfig, RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -11,16 +11,34 @@ import {
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
 } from '../../agent-chat-integration';
 import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTeamsAdapter } from '../../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
+import { startTypingIndicator } from '../typing-indicator';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
 
 const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
+
+/** Interval picked to match Discord's; Teams does not document the expiry. */
+const TEAMS_TYPING_REFRESH_MS = 8000;
+
+export const BUFFERED_ONLY_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * Above the SDK's retry ceiling, not just above a healthy round trip. Teams
+ * throttles streaming to a request a second and the SDK flushes twice that, so
+ * a 429 is ordinary and the SDK retries five times over 7.5s of backoff before
+ * it gives up. Giving up sooner posts the reply here while the stream goes on
+ * to deliver it too, and the user reads it twice.
+ */
+const TEAMS_STREAMING_POST_TIMEOUT_MS = 45_000;
 
 /**
  * A tenant ID is a GUID or a verified domain. The value reaches the Teams SDK,
@@ -93,7 +111,26 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	readonly deleteActionMessageBeforeResume = false;
 
-	readonly disableStreaming = true;
+	/**
+	 * Teams streams natively in 1:1 chats only, so the decision is made for each
+	 * conversation in `createBridgeExecutionContext` rather than here.
+	 */
+	readonly disableStreaming = false;
+
+	readonly streamingPostTimeoutMs: number = TEAMS_STREAMING_POST_TIMEOUT_MS;
+
+	/**
+	 * Teams keeps one open stream per inbound activity and the adapter never
+	 * closes it, so a second run refills the first bubble — which sits above any
+	 * card posted in between.
+	 */
+	readonly singleStreamedRunPerTurn = true;
+
+	/**
+	 * A stall can be a passing throttle rather than a tenant that refuses
+	 * streaming, so entries expire and the connection is tried again.
+	 */
+	private readonly bufferedOnlyUntil = new Map<string, number>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -138,6 +175,63 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
 		return expandSelectsToButtons(components);
+	}
+
+	onStreamingPostStalled(integration: AgentIntegrationConfig): void {
+		this.bufferedOnlyUntil.set(integration.credentialId, Date.now() + BUFFERED_ONLY_TTL_MS);
+		this.logger.warn('[TeamsIntegration] Streaming paused for this connection after a stall', {
+			credentialId: integration.credentialId,
+			retryInMs: BUFFERED_ONLY_TTL_MS,
+		});
+	}
+
+	private streamingPaused(credentialId: string): boolean {
+		const until = this.bufferedOnlyUntil.get(credentialId);
+		if (until === undefined) return false;
+		if (until > Date.now()) return true;
+		this.bufferedOnlyUntil.delete(credentialId);
+		return false;
+	}
+
+	/**
+	 * A group chat or channel posts one buffered message rather than
+	 * post-and-edit, which Discord and Telegram rejected for edit rate limits and
+	 * half-formed intermediate Markdown.
+	 */
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		const streamable = params.thread.isDM && !this.streamingPaused(params.integration.credentialId);
+		return {
+			platformAgentContext: {},
+			forceBuffered: !streamable,
+			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
+		};
+	}
+
+	/** A card action arrives as an invoke activity, which carries no streamer. */
+	async createResumeExecutionContext(params: {
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return {
+			forceBuffered: true,
+			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
+		};
+	}
+
+	private startTyping(
+		thread: BridgeMessageContextParams['thread'],
+		logger: BridgeMessageContextParams['logger'],
+		agentId: string,
+	) {
+		return startTypingIndicator(thread, {
+			logger,
+			agentId,
+			platform: 'Microsoft Teams',
+			refreshMs: TEAMS_TYPING_REFRESH_MS,
+		});
 	}
 
 	formatActionDecisionMessage({

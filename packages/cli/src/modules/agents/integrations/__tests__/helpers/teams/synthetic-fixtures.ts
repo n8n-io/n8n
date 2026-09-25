@@ -13,6 +13,7 @@ export const TEAMS_TENANT_ID = '99999999-8888-7777-6666-555555555555';
 export const TEAMS_SERVICE_URL = 'https://smba.trafficmanager.net/amer';
 export const TEAMS_DM_CONVERSATION_ID = 'a:1dm_conversation_alice';
 export const TEAMS_USER_ID = '29:alice-teams-id';
+export const TEAMS_CHANNEL_CONVERSATION_ID = '19:channel_deploys@thread.tacv2';
 const TEAMS_USER_AAD_ID = 'aad-alice';
 
 export interface TeamsActivityFixture extends Record<string, unknown> {
@@ -54,6 +55,32 @@ export const dmMessage: TeamsActivityFixture = baseActivity({
 export const dmFollowUp: TeamsActivityFixture = baseActivity({
 	id: 'activity-dm-2',
 	text: 'follow up',
+});
+
+/**
+ * A channel @-mention. Without RSC permissions Teams only delivers a mention in
+ * a channel, so the mention entity is what makes this reach the agent at all.
+ */
+export const channelMention: TeamsActivityFixture = baseActivity({
+	id: 'activity-channel-1',
+	text: '<at>n8n Agent</at> hello agent',
+	conversation: {
+		id: TEAMS_CHANNEL_CONVERSATION_ID,
+		conversationType: 'channel',
+		tenantId: TEAMS_TENANT_ID,
+		isGroup: true,
+	},
+	entities: [
+		{
+			type: 'mention',
+			mentioned: { id: `28:${TEAMS_APP_ID}`, name: 'n8n Agent' },
+			text: '<at>n8n Agent</at>',
+		},
+	],
+	channelData: {
+		tenant: { id: TEAMS_TENANT_ID },
+		channel: { id: TEAMS_CHANNEL_CONVERSATION_ID },
+	},
 });
 
 /** A message the bot itself authored — must never trigger the agent. */

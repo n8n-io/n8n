@@ -14,6 +14,13 @@ type ToolResultChunk = Extract<StreamChunk, { type: 'tool-result' }>;
 
 export type SuspensionHandlingResult = 'posted' | 'skipped' | 'failed';
 
+/**
+ * A post that rejected counts as settled: its handler has already told the user,
+ * and the platform may have rendered part of the reply, so the text must not be
+ * posted again either way. Only a post that never settles is 'stalled'.
+ */
+type StreamingPostOutcome = 'settled' | 'stalled';
+
 interface AgentChatStreamConsumerOptions {
 	disableStreaming: boolean;
 	logger: Logger;
@@ -37,6 +44,11 @@ interface AgentChatStreamConsumerOptions {
 	 * tools returning a `silent` field must not mute the reply.
 	 */
 	isIntegrationActionTool?: (toolName: string) => boolean;
+	/** Unset waits indefinitely. See `AgentChatIntegration` for when to set it. */
+	streamingPostTimeoutMs?: number;
+	/** Text after the first streamed run is buffered and posted on its own. */
+	singleStreamedRunPerTurn?: boolean;
+	onStreamingPostStalled?: () => void;
 }
 
 interface ConsumeStreamOptions {
@@ -103,6 +115,25 @@ export class AgentChatStreamConsumer {
 			end: null,
 		};
 		let streamingPost: Promise<unknown> | null = null;
+		/** Text the platform is not yet known to have rendered. */
+		let pendingText = '';
+		let streamingStopped = false;
+		/** Only a platform that can stop streaming mid-turn re-reads the text. */
+		const retainText =
+			this.options.streamingPostTimeoutMs !== undefined ||
+			this.options.singleStreamedRunPerTurn === true;
+		/**
+		 * A post's rejection handler cannot be detached, so it reads this to stay
+		 * quiet once the turn has recovered without it — an error posted then
+		 * would land after the reply the user already has.
+		 */
+		let streamingPostAbandoned = false;
+		/**
+		 * Recorded before the handler's first await, so the deadline can still see
+		 * a rejection whose error reply is in flight. Without it a slow error reply
+		 * outlives the deadline and the turn posts the text on top of it.
+		 */
+		let streamingPostRejected = false;
 
 		const createTextIterable = (): AsyncIterable<string> => {
 			const queue: string[] = [];
@@ -149,11 +180,19 @@ export class AgentChatStreamConsumer {
 
 		const startStreamingPost = () => {
 			const iterable = createTextIterable();
+			streamingPostAbandoned = false;
+			streamingPostRejected = false;
 			streamingPost = thread.post(iterable).catch(async (postError: unknown) => {
+				streamingPostRejected = true;
+				const message = postError instanceof Error ? postError.message : String(postError);
+				if (streamingPostAbandoned) {
+					this.options.logger.debug('[AgentChatBridge] Abandoned streaming post failed', {
+						error: message,
+					});
+					return;
+				}
 				await this.options.postErrorToThread(thread, postError);
-				this.options.logger.error('[AgentChatBridge] Streaming post failed', {
-					error: postError instanceof Error ? postError.message : String(postError),
-				});
+				this.options.logger.error('[AgentChatBridge] Streaming post failed', { error: message });
 			});
 		};
 
@@ -164,13 +203,29 @@ export class AgentChatStreamConsumer {
 				textStream.yield = null;
 			}
 			if (streamingPost) {
-				await streamingPost;
+				const post = streamingPost;
 				streamingPost = null;
+				if (this.options.singleStreamedRunPerTurn) streamingStopped = true;
+				const outcome = await this.awaitStreamingPost(post, thread);
+				// A rejection that outran the deadline is not a stall: its error reply
+				// owns the turn, and the platform may have rendered part of the text.
+				if (outcome === 'stalled' && !streamingPostRejected) {
+					streamingPostAbandoned = true;
+					// Re-opening a stream the platform never acknowledged stalls again.
+					streamingStopped = true;
+					this.options.onStreamingPostStalled?.();
+				} else {
+					pendingText = '';
+				}
 			}
+			const text = pendingText;
+			pendingText = '';
+			if (text.trim()) await this.postBufferedText(thread, text);
 		};
 
 		// Don't start streaming post eagerly — wait for first text delta
 		const ensureStreamingPost = () => {
+			if (streamingStopped) return;
 			if (!streamingPost) startStreamingPost();
 		};
 		const responseLifecycle = this.createResponseLifecycle({
@@ -187,6 +242,7 @@ export class AgentChatStreamConsumer {
 						if (responseState.suppressText) break;
 						const { delta } = chunk;
 						await responseLifecycle.startStreamingResponse();
+						if (retainText) pendingText += delta;
 						textStream.yield?.(delta);
 						if (delta.trim()) responseState.hasVisibleResponse = true;
 						break;
@@ -213,7 +269,12 @@ export class AgentChatStreamConsumer {
 						break;
 					case 'tool-result':
 						this.noteToolResult(chunk, responseState);
-						if (this.isSilentOutcome(chunk)) responseState.suppressText = true;
+						if (this.isSilentOutcome(chunk)) {
+							responseState.suppressText = true;
+							// Streamed text is already on the platform, but text still
+							// pending is not, so the silence can be honored for it.
+							pendingText = '';
+						}
 						break;
 					default:
 						// Ignore non-user-visible chunks (reasoning, finish,
@@ -224,6 +285,65 @@ export class AgentChatStreamConsumer {
 			await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
 		} finally {
 			await responseLifecycle.finish();
+		}
+	}
+
+	/**
+	 * An adapter can wait on its own acknowledgement with no deadline and swallow
+	 * the rejection that would end that wait, hanging the turn.
+	 *
+	 * The deadline is anchored to the end of the text stream, not its start: the
+	 * post promise is the only signal this layer gets, and it does not settle
+	 * until the stream ends even on a healthy run.
+	 */
+	private async awaitStreamingPost(
+		post: Promise<unknown>,
+		thread: Thread<unknown, unknown>,
+	): Promise<StreamingPostOutcome> {
+		const timeoutMs = this.options.streamingPostTimeoutMs;
+		if (timeoutMs === undefined || timeoutMs <= 0) {
+			await post;
+			return 'settled';
+		}
+
+		let timer: NodeJS.Timeout | undefined;
+		try {
+			const settled = await Promise.race([
+				post.then(() => true),
+				new Promise<boolean>((resolve) => {
+					timer = setTimeout(() => resolve(false), timeoutMs);
+					timer.unref();
+				}),
+			]);
+			if (settled) return 'settled';
+		} finally {
+			clearTimeout(timer);
+		}
+
+		this.options.logger.warn(
+			'[AgentChatBridge] Streaming post did not settle, posting buffered instead',
+			{ threadId: thread.id, timeoutMs },
+		);
+		return 'stalled';
+	}
+
+	/**
+	 * `{ markdown }` matches what Chat SDK's streaming path sends, so the adapter
+	 * applies its markdown parse mode. A raw string renders as plain text.
+	 */
+	private async postBufferedText(
+		thread: Thread<unknown, unknown>,
+		text: string,
+		throwOnDeliveryError = false,
+	): Promise<void> {
+		try {
+			await thread.post({ markdown: text });
+		} catch (postError: unknown) {
+			this.options.logger.error('[AgentChatBridge] Buffered post failed', {
+				error: postError instanceof Error ? postError.message : String(postError),
+			});
+			if (throwOnDeliveryError) throw postError;
+			await this.options.postErrorToThread(thread, postError);
 		}
 	}
 
@@ -329,21 +449,8 @@ export class AgentChatStreamConsumer {
 			const text = buffer;
 			buffer = '';
 			if (!text.trim()) return;
-			try {
-				await responseLifecycle.startDiscreteResponse();
-				// Chat SDK's streaming path wraps accumulated deltas as `{ markdown }`
-				// so the platform adapter applies its markdown parse-mode (Telegram:
-				// sendMessage with parse_mode=Markdown). A raw string bypasses that
-				// and renders as plain text, so we post the buffered message the same
-				// shape the streaming path uses under the hood.
-				await thread.post({ markdown: text });
-			} catch (postError: unknown) {
-				this.options.logger.error('[AgentChatBridge] Buffered post failed', {
-					error: postError instanceof Error ? postError.message : String(postError),
-				});
-				if (options.throwOnDeliveryError) throw postError;
-				await this.options.postErrorToThread(thread, postError);
-			}
+			await responseLifecycle.startDiscreteResponse();
+			await this.postBufferedText(thread, text, options.throwOnDeliveryError);
 			responseState.hasVisibleResponse = true;
 		};
 

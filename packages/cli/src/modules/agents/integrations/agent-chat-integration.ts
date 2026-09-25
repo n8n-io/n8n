@@ -258,6 +258,21 @@ export abstract class AgentChatIntegration {
 	readonly disableStreaming: boolean = false;
 
 	/**
+	 * Give up on a streaming post this long after the text stream ended and post
+	 * the text as an ordinary message. Undefined waits indefinitely, which hangs
+	 * the turn on an adapter that waits for its own acknowledgement without a
+	 * deadline and swallows the rejection that would end that wait.
+	 */
+	readonly streamingPostTimeoutMs?: number;
+
+	/**
+	 * True when the platform renders only one streamed run per inbound turn, so
+	 * text following a card is posted buffered rather than streamed into the
+	 * message that preceded the card.
+	 */
+	readonly singleStreamedRunPerTurn: boolean = false;
+
+	/**
 	 * True when this integration is an internal channel (e.g. the in-app n8n
 	 * chat) that must not appear in the public integrations catalog or the
 	 * add-trigger UI.
@@ -296,6 +311,9 @@ export abstract class AgentChatIntegration {
 
 	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;
+
+	/** Lets the platform stop streaming a connection whose post was abandoned. */
+	onStreamingPostStalled?(integration: AgentIntegrationConfig): void;
 
 	/**
 	 * Handle a webhook request that arrives before an integration is connected

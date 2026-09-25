@@ -1,4 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -42,6 +43,8 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	latestThreadId: () => string | undefined;
 	lastPost: () => ReplayApiCall | undefined;
 	lastEdit: () => ReplayApiCall | undefined;
+	/** Every activity the adapter attempted, in order, refused ones included. */
+	activities: () => ReplayApiCall[];
 	lastPostedMessageId: () => string | undefined;
 }
 
@@ -89,7 +92,34 @@ function buildBotFrameworkSigner() {
 	};
 }
 
-function installTeamsApiStub(jwks: object, accessToken: string) {
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+
+export interface TeamsStreamingFailure {
+	status: number;
+	message: string;
+	/** Streaming activities to let through before the failure starts. */
+	afterChunks?: number;
+}
+
+/** The `streaminfo` entity that ties an activity to an open Teams stream. */
+export function streamInfo(body: Record<string, unknown>): Record<string, unknown> | undefined {
+	const entities = body.entities;
+	if (!Array.isArray(entities)) return undefined;
+	return entities.find((entity) => isRecord(entity) && entity.type === 'streaminfo') as
+		| Record<string, unknown>
+		| undefined;
+}
+
+/** True for the `typing` activities that carry a stream, not a plain indicator. */
+function isStreamingActivity(body: Record<string, unknown>): boolean {
+	return streamInfo(body) !== undefined;
+}
+
+function installTeamsApiStub(
+	jwks: object,
+	accessToken: string,
+	failStreamingWith?: TeamsStreamingFailure,
+) {
 	const apiCalls: ReplayApiCall[] = [];
 	const serviceUrl = new URL(TEAMS_SERVICE_URL);
 
@@ -107,15 +137,24 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 
 	// Recorded as `sendActivity` so `lastPost()` reads like the other platforms'.
 	let nextMessageId = 1000;
+	let streamingActivitiesAllowed = failStreamingWith?.afterChunks ?? 0;
 	const postedMessageIds: string[] = [];
 	nock(serviceUrl.origin)
 		.persist()
 		.post(/\/v3\/conversations\/.+\/activities.*/)
 		.reply(function (_uri, body) {
-			apiCalls.push({
-				method: 'sendActivity',
-				body: (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>,
-			});
+			const activity = (typeof body === 'object' && body !== null ? body : {}) as Record<
+				string,
+				unknown
+			>;
+			apiCalls.push({ method: 'sendActivity', body: activity });
+			if (failStreamingWith && isStreamingActivity(activity)) {
+				if (streamingActivitiesAllowed > 0) {
+					streamingActivitiesAllowed -= 1;
+				} else {
+					return [failStreamingWith.status, { error: { message: failStreamingWith.message } }];
+				}
+			}
 			const id = `message-${nextMessageId++}`;
 			postedMessageIds.push(id);
 			return [200, { id }];
@@ -136,10 +175,16 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 }
 
 export async function createTeamsReplayContext(
-	options: { stream?: StreamChunk[] } = {},
+	options: {
+		stream?: StreamChunk[];
+		/** Reject streaming activities, as a tenant without streaming does. */
+		failStreamingWith?: TeamsStreamingFailure;
+		/** Shorten the stalled-stream deadline so a test does not wait for it. */
+		streamingPostTimeoutMs?: number;
+	} = {},
 ): Promise<TeamsReplayContext> {
 	const signer = createBotFrameworkSigner();
-	const stub = installTeamsApiStub(signer.jwks, signer.accessToken());
+	const stub = installTeamsApiStub(signer.jwks, signer.accessToken(), options.failStreamingWith);
 
 	// Dynamic imports — the chat packages are ESM-only. Production routes through
 	// esm-loader to dodge the CJS transform; vitest loads ESM natively.
@@ -159,9 +204,16 @@ export async function createTeamsReplayContext(
 		state: createMemoryState(),
 	});
 
+	const integrationImpl = new TeamsIntegration(mock<BackendLogger>(), mock<AgentRepository>());
+	if (options.streamingPostTimeoutMs !== undefined) {
+		// Checked, unlike Object.assign: renaming the field breaks this line.
+		(integrationImpl as Mutable<TeamsIntegration>).streamingPostTimeoutMs =
+			options.streamingPostTimeoutMs;
+	}
+
 	const setup = createReplayContextSetup({
 		chat: chat as never,
-		integrationImpl: new TeamsIntegration(mock<BackendLogger>(), mock<AgentRepository>()),
+		integrationImpl,
 		integration: { type: 'teams', credentialId: 'cred-teams', settings: undefined },
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,
@@ -196,6 +248,7 @@ export async function createTeamsReplayContext(
 		latestThreadId: setup.latestThreadId,
 		lastPost: () => lastCall('sendActivity'),
 		lastEdit: () => lastCall('updateActivity'),
+		activities: () => stub.apiCalls.filter((call) => call.method === 'sendActivity'),
 		lastPostedMessageId: () => stub.postedMessageIds.at(-1),
 		shutdown: async () => {
 			stub.restore();
