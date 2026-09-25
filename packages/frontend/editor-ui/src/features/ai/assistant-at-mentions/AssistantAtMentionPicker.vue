@@ -447,7 +447,7 @@ defineExpose({ handleExternalKeydown, getOpenMetrics });
 			/>
 			<N8nIcon
 				v-else-if="item.data?.item.kind === 'group'"
-				icon="layers"
+				icon="group"
 				size="large"
 				:class="ui.class"
 			/>

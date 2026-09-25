@@ -12,7 +12,7 @@ const props = defineProps<{
 	breadcrumbs?: readonly string[];
 	nodeType?: INodeTypeDescription | null;
 	testid: string;
-	icon?: 'layers';
+	icon?: 'layers' | 'group';
 	removable?: boolean;
 	expanded?: boolean | null;
 }>();

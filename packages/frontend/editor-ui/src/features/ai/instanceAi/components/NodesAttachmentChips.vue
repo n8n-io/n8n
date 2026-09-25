@@ -64,7 +64,8 @@ interface ChipVM {
 	label: string;
 	/** Tooltip path: the owning workflow, then the label. */
 	breadcrumbs: string[];
-	icon?: 'layers';
+	/** `group` marks a canvas group; `layers` a plain stack of nodes. */
+	icon?: 'layers' | 'group';
 	nodeType?: INodeTypeDescription | null;
 	setIndex: number;
 	nodeIndex?: number;
@@ -96,7 +97,7 @@ const chips = computed<ChipVM[]>(() => {
 				testid: 'nodes-chip-group',
 				label,
 				breadcrumbs: toBreadcrumbs(label),
-				icon: 'layers',
+				icon: 'group',
 				setIndex,
 			};
 		}
