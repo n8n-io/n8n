@@ -14,6 +14,7 @@ export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
 export type * from './node-type-availability';
+export type * from './credential-type-availability';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -153,6 +154,8 @@ export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
 	credentialTypeNameParamSchema,
+	credentialTypePolicyIdParamSchema,
+	credentialTypePolicyScopeIdParamSchema,
 	executionIdParamSchema,
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
@@ -351,11 +354,6 @@ export {
 } from './schemas/secrets-provider.schema';
 
 export {
-	communityPackageResponseSchema,
-	type CommunityPackageResponse,
-} from './schemas/community-package.schema';
-
-export {
 	publicApiCredentialResponseSchema,
 	type PublicApiCredentialResponse,
 } from './schemas/credential-response.schema';
@@ -488,6 +486,8 @@ export {
 	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
+	MAX_INSTANCE_AI_NODES_PER_SET,
 	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
@@ -526,6 +526,7 @@ export type {
 	InstanceAiPromptConfiguration,
 	InstanceAiPrefillType,
 	InstanceAiPrefillTypeReported,
+	InstanceAiPrefillPayload,
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
@@ -847,6 +848,10 @@ export {
 	type ProxyContext,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export {
+	GROUPS_WITH_TRIGGERS_FLAG,
+	GROUPS_WITH_MANY_BOUNDARIES_FLAG,
+} from './constants/canvas-feature-flags';
 export {
 	MOONSHOTAI_KIMI_K3_MODEL_ID,
 	MOONSHOTAI_KIMI_K3_MODEL_NAME,

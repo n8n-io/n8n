@@ -251,7 +251,7 @@ describe('GET /executions/:id', () => {
 		await testServer.authAgentFor(owner).get('/executions/not-an-id').expect(400);
 	});
 
-	describe('engine 2.0 executions', () => {
+	describe('engine v2 executions', () => {
 		const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 		const startExecution = vi.fn();
 		const getExecution = vi.fn();
@@ -414,7 +414,7 @@ describe('PATCH /executions/:id', () => {
 			.expect(400);
 	});
 
-	test('reports annotating an engine 2.0 execution as not implemented', async () => {
+	test('reports annotating an engine v2 execution as not implemented', async () => {
 		await createWorkflow({}, owner);
 
 		await testServer
@@ -424,7 +424,7 @@ describe('PATCH /executions/:id', () => {
 			.expect(501);
 	});
 
-	test('reports an engine 2.0 execution as not found when no workflow is accessible', async () => {
+	test('reports an engine v2 execution as not found when no workflow is accessible', async () => {
 		await testServer
 			.authAgentFor(member)
 			.patch('/executions/01a038ae-c4a8-7799-8a3e-e3c2ca055cfa')

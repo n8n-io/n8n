@@ -1,3 +1,5 @@
+import type { CreateProjectPublicDto, CreatedProjectPublicDto } from '@n8n/api-types';
+import { request, type PublicApiContext } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
@@ -110,3 +112,10 @@ export const deleteProjectMember = async (
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/users/${userId}`);
 };
+
+export async function createPublicProject(
+	context: PublicApiContext,
+	data: CreateProjectPublicDto,
+): Promise<CreatedProjectPublicDto> {
+	return await request({ method: 'POST', baseURL: context.baseUrl, endpoint: '/projects', data });
+}

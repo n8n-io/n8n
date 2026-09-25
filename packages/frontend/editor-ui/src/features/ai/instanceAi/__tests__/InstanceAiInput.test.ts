@@ -241,6 +241,7 @@ const DirectSubmitHarness = defineComponent({
 								suggestionId: 'score-my-leads',
 								suggestionKind: 'quick_example',
 								position: 1,
+								suggestionCatalogVersion: 'agent-templates-v1',
 								prefillType: 'suggestion_catalog',
 							}),
 					},
@@ -523,6 +524,7 @@ describe('InstanceAiInput', () => {
 				promptModified: false,
 			},
 			expect.any(Number),
+			expect.any(Function),
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -767,6 +769,22 @@ describe('InstanceAiInput', () => {
 	// composer was already empty and `resetDraftComposer` does not change it --
 	// the watcher never fires. Anything the user types next must not inherit the
 	// pre-fill that was just sent.
+	it('attributes a direct suggestion submit to the payload catalog, not the home-screen catalog', async () => {
+		telemetryTrack.mockClear();
+		const { getByTestId } = renderDirectSubmitHarness();
+
+		await userEvent.click(getByTestId('harness-direct-submit'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'Instance AI prompt suggestion submitted',
+			expect.objectContaining({
+				suggestion_catalog_version: 'agent-templates-v1',
+				suggestion_id: 'score-my-leads',
+				position: 1,
+			}),
+		);
+	});
+
 	it('does not attribute a later typed message to a directly submitted suggestion', async () => {
 		const { emitted, getByRole, getByTestId } = renderDirectSubmitHarness();
 
@@ -819,6 +837,7 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -1015,6 +1034,7 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
 			],
 		]);
 	});
@@ -1057,6 +1077,7 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
 			],
 		]);
 	});

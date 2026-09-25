@@ -473,6 +473,7 @@ export class AgentRuntime {
 					: undefined,
 				...mergedExecOptions,
 			};
+			this.updateState({ persistence: resumeOptions.persistence });
 			await options.onResumeClaimed?.();
 
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
@@ -884,7 +885,7 @@ export class AgentRuntime {
 						abortScope.isAborted ? 'Run aborted' : 'Parent run failed before suspension',
 					);
 					try {
-						await this.runState.cancel(this.runId);
+						await this.runState.cancel(this.runId, this.getState());
 					} catch {
 						// Preserve the failure that interrupted suspension finalization.
 					}
@@ -1233,7 +1234,7 @@ export class AgentRuntime {
 	/** Clean up stored state for a run when it finishes without re-suspending. */
 	private async cleanupRun(): Promise<void> {
 		try {
-			await this.runState.complete(this.runId);
+			await this.runState.complete(this.runId, this.getState());
 		} catch (error) {
 			logger.warn('Failed to clean up agent run checkpoint', { runId: this.runId, error });
 			return;

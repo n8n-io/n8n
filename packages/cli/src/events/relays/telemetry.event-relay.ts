@@ -41,10 +41,14 @@ import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
-import { packageResolverFor } from '@/modules/type-availability-policies/package-resolver';
+import {
+	packageResolverFor,
+	policedTypeFor,
+} from '@/modules/type-availability-policies/package-resolver';
 import {
 	partitionTypesByAction,
 	type PackageResolver,
+	type PolicedType,
 } from '@/modules/type-availability-policies/policy-evaluator';
 import type {
 	PolicyAction,
@@ -122,13 +126,13 @@ const MAX_LISTED_POLICY_TYPES = 100;
 function summarizeTypeAvailability(
 	rules: readonly PolicyRule[],
 	defaultAction: PolicyAction,
-	typeNames: readonly string[],
+	types: readonly PolicedType[],
 	resolvePackage: PackageResolver,
 ) {
-	const partition = partitionTypesByAction(rules, defaultAction, typeNames, resolvePackage);
+	const partition = partitionTypesByAction(rules, defaultAction, types, resolvePackage);
 
 	return {
-		evaluated_type_count: typeNames.length,
+		evaluated_type_count: types.length,
 		blocked_type_count: partition.deny.length,
 		allowed_type_count: partition.allow.length,
 		delegated_type_count: partition.delegate.length,
@@ -563,6 +567,7 @@ export class TelemetryEventRelay extends EventRelay {
 			kind === CREDENTIAL_TYPES_KIND
 				? Object.keys(this.loadNodesAndCredentials.knownCredentials)
 				: Object.keys(this.nodeTypes.getKnownTypes());
+		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes));
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
 
 		this.telemetry.track(
@@ -576,7 +581,7 @@ export class TelemetryEventRelay extends EventRelay {
 				is_first_write: before === null,
 				...countRuleActions(rulesAfter),
 				...countSelectorKinds(rulesAfter),
-				...summarizeTypeAvailability(rulesAfter, after.defaultAction, typeNames, resolvePackage),
+				...summarizeTypeAvailability(rulesAfter, after.defaultAction, types, resolvePackage),
 				previous_rule_count: rulesBefore?.length ?? null,
 				shadow_warning_count: warningCount,
 				version: after.version,

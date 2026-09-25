@@ -46,7 +46,8 @@ create an 8-core Codespace by default.
   terminal's own text selection, hold **Shift** and drag.
 - **Reattach** by running the same session command from any machine.
 - Each named session gets its own worktree (`/workspaces/wt-<name>`, branch
-  `session/<name>`), so parallel agents never touch each other's tree. Builds
+  `session/<name>`), so parallel agents never touch each other's tree. A new
+  branch starts from the latest `origin/master`. Builds
   in fresh worktrees are cache-hits via a shared turbo cache.
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~10 s: the
@@ -72,8 +73,8 @@ OpenCode server, repository, tools, and builds run in the Codespace. Browser
 mode opens the remote web interface through a local connection.
 
 ```bash
-pnpm session:opencode fix-flaky              # resume the saved conversation
-pnpm session:opencode fix-flaky --web        # open that conversation in a browser
+pnpm session:opencode fix-flaky              # resume that workspace's latest conversation
+pnpm session:opencode fix-flaky --web        # open it in a browser
 pnpm session:opencode fix-flaky --new        # start a new conversation in that worktree
 pnpm session:opencode --web --port 4100      # override the default browser port
 pnpm session:opencode --help
@@ -84,8 +85,11 @@ For the TUI, install the same OpenCode version as the remote server. The
 for new images:
 
 ```bash
-pnpm add --global opencode-ai@<version>
+npm install -g opencode-ai@<version>
 ```
+
+Use npm, not pnpm. The package gets its binary from a `postinstall` script.
+pnpm does not run that script by default.
 
 The launcher checks both versions. It reports a mismatch with both version
 numbers before it opens the TUI. An existing Codespace can have a different
@@ -98,11 +102,12 @@ post-start command installs. The local harness setup above is not required for
 these commands.
 
 The command prepares the worktree, starts or reuses one server, opens an SSH
-tunnel, and connects the client. Each workspace name has a saved conversation
-ID on the Codespace. TUI and browser modes open the same saved conversation.
-`--new` replaces that saved ID. It preserves the worktree and the old conversation.
-If you switch conversations inside a client, the next launcher run still opens
-the ID saved for that workspace name.
+tunnel, and connects the client. Each workspace opens its own conversation: the
+most recently updated one in that worktree. A conversation moves to the front
+when it receives a message. Switching to a conversation without sending a
+message does not move it. Switching to another workspace's conversation does
+not change what this workspace opens next. `--new` starts a new conversation
+instead. It preserves the worktree and the old conversation.
 
 - **Exit the TUI** with `/exit` or its quit shortcut. The launcher closes its
   tunnel. The remote server stays running.
@@ -110,7 +115,8 @@ the ID saved for that workspace name.
   the browser tab does not close the tunnel. Keep the launcher running while
   you use the browser.
 - **Reconnect** with the same command after a network interruption. After a
-  Codespace stop, the command restarts the server and opens the saved conversation.
+  Codespace stop, the command restarts the server and opens the workspace's
+  most recently updated conversation.
   A stop terminates running tools. It does not resume interrupted commands.
 - **Browser mode uses local port 4096 by default.** Use `--port` to override it.
   TUI mode selects an available port unless you specify one.
@@ -129,14 +135,15 @@ your laptop can access the local browser proxy while it runs. Do not forward
 this proxy or the OpenCode server port to other machines.
 
 The server enables only OpenRouter. It reads `OPENROUTER_API_KEY` when it starts.
-Browser mode opens the selected conversation directly.
+It enables OpenCode code mode by default to reduce the initial tool context.
+Browser mode opens the workspace's most recently updated conversation directly.
 The web UI stores opened projects in browser storage. If a new-session page
 shows **New project**, open `/workspaces/n8n` there once. Keep the same browser
 port when you reconnect to preserve this selection.
 
 The server runs in the detached tmux session `n8n-opencode-server`. Its log is
 `/workspaces/.n8n-opencode/server.log`. That directory also holds the server
-credentials and saved conversation IDs. It is readable only by its owner.
+credentials. It is readable only by its owner.
 An unhealthy server produces an error without stopping active work. Inspect
 the log through `pnpm session:shell`. To restart it after checking active work,
 run `tmux kill-session -t '=n8n-opencode-server'` in that shell. Then reconnect.
@@ -421,7 +428,7 @@ partial mapping breaks it.
 | Event | Running processes | Disk (checkout, worktrees, chat history) |
 |---|---|---|
 | Detach / close laptop / network drop | ✅ keep running | ✅ |
-| Stop, or idle timeout (default 30 min, max 4 h) | ❌ killed | ✅ |
+| Stop, or idle timeout (2 h for a codespace that `pnpm session` creates, max 4 h) | ❌ killed | ✅ |
 | Delete (`pnpm session rm`) | ❌ | ❌ (push your branches first) |
 
 After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run

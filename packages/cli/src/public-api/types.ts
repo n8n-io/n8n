@@ -6,7 +6,6 @@ import type {
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
-	UpdateSecurityPolicyDto,
 	PublicCreateDestination,
 	UpdateOidcConfigurationDto,
 	UpdateOtelSettingsDto,
@@ -52,6 +51,20 @@ export declare namespace PackageRequest {
 		{},
 		{},
 		{ projectId?: string; folderId?: string },
+		Record<string, never>
+	>;
+
+	type ImportSelection = AuthenticatedRequest<
+		{},
+		{},
+		{
+			selectedProjectId?: string;
+			// Multipart text fields carrying JSON-string arrays; parsed by the DTO.
+			selectedWorkflowIds?: string;
+			deletedWorkflowIds?: string;
+			workflowConflictPolicy?: string;
+			workflowIdPolicy?: string;
+		},
 		Record<string, never>
 	>;
 }
@@ -211,15 +224,6 @@ export declare namespace AuditRequest {
 		{},
 		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
 	>;
-}
-
-// ----------------------------------
-//        /settings/security-policy
-// ----------------------------------
-
-export declare namespace SecurityPolicyRequest {
-	type Get = AuthenticatedRequest;
-	type Update = AuthenticatedRequest<{}, {}, UpdateSecurityPolicyDto>;
 }
 
 export declare namespace LogStreamingRequest {

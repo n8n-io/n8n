@@ -29,6 +29,8 @@ tags:
     description: Operations about community packages
   - name: Credential
     description: Operations about credentials
+  - name: CredentialTypePolicy
+    description: Operations about credential type availability policies
   - name: DataTable
     description: Operations about data tables and their rows
   - name: Discover
@@ -83,8 +85,6 @@ paths:
     $ref: './handlers/ldap/spec/paths/settings.ldap.yml'
   /settings/ldap/sync:
     $ref: './handlers/ldap/spec/paths/settings.ldap.sync.yml'
-  /settings/security-policy:
-    $ref: './handlers/security-policy/spec/paths/security-policy.yml'
   /settings/otel:
     $ref: './handlers/otel/spec/paths/settings.otel.yml'
   /settings/otel/test-trace:
@@ -123,6 +123,8 @@ paths:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
   /n8n-packages/import:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import.yml'
+  /n8n-packages/import-selection:
+    $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import-selection.yml'
   /settings/log-streaming/event-types:
     $ref: './handlers/log-streaming/spec/paths/event-types.yml'
   /settings/log-streaming/destinations:

@@ -5,16 +5,16 @@ import type { IWorkflowSettings } from 'n8n-workflow';
 export const ENGINE_TAG_PREFIX = '@engine:';
 
 /**
- * Title tags that sort a spec into an engine 2.0 parity bucket. They only
- * matter under a stack that runs engine 2.0 (`engine-v2:e2e`); everywhere
+ * Title tags that sort a spec into an engine v2 parity bucket. They only
+ * matter under a stack that runs engine v2 (`engine-v2:e2e`); everywhere
  * else the spec runs as usual.
  */
 export const ENGINE_TAGS = {
 	/** Must pass on both engines. Runs there. */
 	supported: `${ENGINE_TAG_PREFIX}v2`,
-	/** Engine 2.0 will never support this behaviour. Skipped there. */
+	/** Engine v2 will never support this behaviour. Skipped there. */
 	unsupported: `${ENGINE_TAG_PREFIX}v1-only`,
-	/** Engine 2.0 will support this, but does not yet. Expected to fail there. */
+	/** Engine v2 will support this, but does not yet. Expected to fail there. */
 	pending: `${ENGINE_TAG_PREFIX}v2-pending`,
 } as const;
 
@@ -33,7 +33,7 @@ function assertKnownTags(tags: readonly string[]): void {
 		// it breaks on any rewording.
 		throw new Error(
 			// Stryker disable next-line StringLiteral
-			`Unknown engine 2.0 tag: ${unknown.join(', ')}. Use one of: ${known.join(', ')}.`,
+			`Unknown engine v2 tag: ${unknown.join(', ')}. Use one of: ${known.join(', ')}.`,
 		);
 	}
 }
@@ -55,11 +55,11 @@ export function engineParityDisposition(
 	if (!engine) return { action: 'run' };
 
 	if (tags.includes(ENGINE_TAGS.unsupported)) {
-		return { action: 'skip', reason: 'Engine 2.0 will never support this test' };
+		return { action: 'skip', reason: 'Engine v2 will never support this test' };
 	}
 
 	if (tags.includes(ENGINE_TAGS.pending)) {
-		return { action: 'expect-fail', reason: 'Engine 2.0 does not support this test yet' };
+		return { action: 'expect-fail', reason: 'Engine v2 does not support this test yet' };
 	}
 
 	return { action: 'run' };
@@ -67,7 +67,7 @@ export function engineParityDisposition(
 
 /**
  * Workflow settings every API-created workflow gets on this stack. A stack
- * that runs engine 2.0 routes every workflow to it, so the same spec proves
+ * that runs engine v2 routes every workflow to it, so the same spec proves
  * parity without changes.
  */
 export function workflowSettingsFor(config: N8NConfig): Partial<IWorkflowSettings> | undefined {
