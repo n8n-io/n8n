@@ -1,7 +1,9 @@
 import type {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ApplySelectionDto,
 	ContinueApplyPackageDto,
+	ContinueApplySelectionDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromoteRequest,
@@ -17,6 +19,9 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
+import { PackageDirectoryInventoryReader } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
@@ -37,6 +42,7 @@ import {
 	WorkflowVersionPolicy,
 	type ImportRequest,
 	type ImportResult,
+	type ImportSelection,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -105,6 +111,8 @@ export class PromotionsService {
 		private readonly projectService: ProjectService,
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly bindingPreflight: PromotionBindingPreflightService,
+		private readonly inventoryReader: PackageDirectoryInventoryReader,
+		private readonly packageImportConfig: PackageImportConfig,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -447,6 +455,146 @@ export class PromotionsService {
 		request: ContinueApplyPackageDto,
 	): Promise<ApplyPackageResultDto> {
 		return await this.applyFromSource(connectionId, actor, request.expectedSource);
+	}
+
+	async applyProjectSelection(
+		projectId: string,
+		actor: User,
+		request: ApplySelectionDto,
+	): Promise<ApplyPackageResultDto> {
+		return await this.applySelectionFromSource(
+			projectId,
+			actor,
+			request.workflowIds,
+			request.expectedSource,
+		);
+	}
+
+	async continueApplyProjectSelection(
+		projectId: string,
+		actor: User,
+		request: ContinueApplySelectionDto,
+	): Promise<ApplyPackageResultDto> {
+		return await this.applySelectionFromSource(
+			projectId,
+			actor,
+			request.workflowIds,
+			request.expectedSource,
+		);
+	}
+
+	private async classifyApplySelection(
+		packageFolder: string,
+		projectId: string,
+		workflowIds: string[],
+	): Promise<ImportSelection> {
+		if (new Set(workflowIds).size !== workflowIds.length) {
+			throw new BadRequestError('workflowIds contains duplicates');
+		}
+
+		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
+		const inventory = await this.inventoryReader.read(reader);
+		const branchWorkflowIds = new Set(
+			inventory.workflows
+				.filter((workflow) => workflow.projectId === projectId)
+				.map(({ id }) => id),
+		);
+		const ownerProjects =
+			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+
+		const selectedWorkflowIds: string[] = [];
+		const deletedWorkflowIds: string[] = [];
+		const invalidWorkflowIds: string[] = [];
+		for (const id of workflowIds) {
+			if (branchWorkflowIds.has(id)) {
+				selectedWorkflowIds.push(id);
+			} else if (ownerProjects.get(id)?.id === projectId) {
+				deletedWorkflowIds.push(id);
+			} else {
+				invalidWorkflowIds.push(id);
+			}
+		}
+
+		if (invalidWorkflowIds.length > 0) {
+			throw new BadRequestError(
+				`The following workflows are not in this project's branch or instance: ${invalidWorkflowIds.join(', ')}`,
+			);
+		}
+
+		return { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds };
+	}
+
+	private async applySelectionFromSource(
+		projectId: string,
+		actor: User,
+		workflowIds: string[],
+		expectedSource?: ApplySelectionDto['expectedSource'],
+	): Promise<ApplyPackageResultDto> {
+		const input = await this.resolver.resolveForProject(projectId, 'apply');
+		await this.assertCheckoutReady(input, 'applying');
+
+		const branchName = checkoutBranchName(input.config);
+		const paths = this.workingDirectory.paths(input.configId);
+		const { commitSha } = await this.gitService.refreshCheckout({
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+			paths,
+			branchName,
+			configId: input.configId,
+		});
+
+		const identity = {
+			connectionId: input.connectionId,
+			configId: input.configId,
+			git: { commitSha, branchName },
+		};
+		if (
+			expectedSource &&
+			(expectedSource.configId !== input.configId ||
+				expectedSource.branchName !== branchName ||
+				expectedSource.commitSha !== commitSha)
+		) {
+			return { status: 'source-changed', ...identity };
+		}
+
+		const packageFolder = path.join(paths.repositoryFolder, PACKAGE_SUBFOLDER);
+		if (!(await isDirectory(packageFolder))) {
+			throw new BadRequestError(
+				'The remote branch has no exported package to import. Promote to it first.',
+			);
+		}
+
+		const selection = await this.classifyApplySelection(packageFolder, projectId, workflowIds);
+		const preflight = await this.bindingPreflight.checkDirectory({
+			sourceDir: packageFolder,
+			selection: {
+				selectedProjectId: projectId,
+				selectedWorkflowIds: selection.selectedWorkflowIds,
+			},
+		});
+		if (
+			preflight.missingBindings.length > 0 ||
+			preflight.accessRequirements.length > 0 ||
+			preflight.conflicts.length > 0
+		) {
+			return { status: 'blocked', ...identity, preflight };
+		}
+
+		const result = await this.n8nPackagesService.importPackageSelectionFromDirectory(
+			{ user: actor },
+			{ sourceDir: packageFolder },
+			selection,
+		);
+
+		return {
+			status: 'applied',
+			...identity,
+			counts: this.toApplyCounts({
+				importResult: result,
+				projectReconciliation: { deletedProjectIds: [] },
+			}),
+			warnings: preflight.warnings,
+		};
 	}
 
 	private async applyFromSource(
