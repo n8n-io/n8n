@@ -441,6 +441,34 @@ describe('useWorkflowSaving', () => {
 	});
 
 	describe('saveAsNewWorkflow', () => {
+		it('strips empty groups when creating a duplicate with the feature disabled', async () => {
+			const workflow = getDuplicateTestWorkflow();
+			workflow.nodes = [
+				createTestNode({
+					id: 'anchor',
+					name: 'Empty group anchor',
+					type: 'n8n-nodes-base.noOp',
+					parameters: { emptyGroupAnchor: true },
+				}),
+			];
+			workflow.nodeGroups = [{ id: 'group', name: 'Group 2', nodeIds: ['anchor'] }];
+			const created = createTestWorkflow({ id: 'new-wf-id' });
+			const createNewWorkflowSpy = vi
+				.spyOn(workflowsStore, 'createNewWorkflow')
+				.mockResolvedValue(created);
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			await saveAsNewWorkflow({
+				name: workflow.name,
+				data: workflow,
+				stripEmptyCanvasGroups: true,
+			});
+
+			expect(createNewWorkflowSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ nodes: [], nodeGroups: undefined }),
+			);
+		});
+
 		it('syncs backend-seeded settings (e.g. availableInMCP) into the document after create', async () => {
 			const workflow = getDuplicateTestWorkflow();
 			const created = createTestWorkflow({
