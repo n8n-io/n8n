@@ -12,7 +12,7 @@ import { BaseCommand } from './base-command';
 @Command({
 	name: 'engine',
 	description:
-		'Starts the engine 2.0 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to report to and to resolve credentials from.',
+		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to report to and to resolve credentials from.',
 })
 export class Engine extends BaseCommand {
 	// The data plane has no control plane database. Its own database is the
@@ -34,7 +34,7 @@ export class Engine extends BaseCommand {
 		assertControlPlaneIsolated(process.env);
 		assertRemoteControlPlane(Container.get(EngineConfig));
 
-		this.logger.info('Starting engine 2.0 data plane...');
+		this.logger.info('Starting engine v2 data plane...');
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await super.init();
@@ -47,7 +47,7 @@ export class Engine extends BaseCommand {
 	}
 
 	async run() {
-		this.logger.info('Engine 2.0 data plane waiting for executions.');
+		this.logger.info('Engine v2 data plane waiting for executions.');
 
 		// Make sure that the process does not close
 		await new Promise(() => {});
@@ -58,7 +58,7 @@ export class Engine extends BaseCommand {
 	}
 
 	protected async stopProcess() {
-		this.logger.info('Stopping engine 2.0 data plane...');
+		this.logger.info('Stopping engine v2 data plane...');
 
 		try {
 			await this.runtime?.shutdown();

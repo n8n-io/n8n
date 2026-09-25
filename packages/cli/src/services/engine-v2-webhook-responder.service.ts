@@ -47,7 +47,7 @@ export class EngineV2WebhookResponder {
 	/** The host calls this once with the receiver for execution responses. */
 	useReceiver(receiver: ExecutionResponseReceiver): void {
 		if (this.receiver) {
-			throw new UnexpectedError('Engine 2.0 webhook response receiver is already set');
+			throw new UnexpectedError('Engine v2 webhook response receiver is already set');
 		}
 		this.receiver = receiver;
 	}
@@ -64,12 +64,12 @@ export class EngineV2WebhookResponder {
 	waitForResponse(executionId: ExecutionIdV2, acceptsResponse = false): PendingWebhookResponse {
 		const { receiver } = this;
 		if (!receiver) {
-			throw new UnexpectedError('Engine 2.0 cannot wait for a response without a receiver');
+			throw new UnexpectedError('Engine v2 cannot wait for a response without a receiver');
 		}
 
 		if (this.pendingWebhooks.size >= MAX_PENDING_WEBHOOKS) {
 			throw new OperationalError(
-				`Engine 2.0 already awaits ${MAX_PENDING_WEBHOOKS} webhook responses. Try again later.`,
+				`Engine v2 already awaits ${MAX_PENDING_WEBHOOKS} webhook responses. Try again later.`,
 			);
 		}
 
@@ -91,7 +91,7 @@ export class EngineV2WebhookResponder {
 		try {
 			this.route(received, response);
 		} catch (error) {
-			this.logger.error('Failed to relay an engine 2.0 response', {
+			this.logger.error('Failed to relay an engine v2 response', {
 				executionId: received.executionId,
 				type: received.type,
 				error,

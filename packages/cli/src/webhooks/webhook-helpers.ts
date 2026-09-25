@@ -1313,7 +1313,7 @@ export async function executeWebhook(
 				const outcome = await waiting.settled;
 				if (outcome.status === 'response') {
 					if (!isHttpFullResponse(outcome.response)) {
-						throw new UnexpectedError('Engine 2.0 produced an invalid webhook response');
+						throw new UnexpectedError('Engine v2 produced an invalid webhook response');
 					}
 
 					didSendResponse = true;
