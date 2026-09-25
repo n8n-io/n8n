@@ -1,6 +1,6 @@
 import type { JsonValue, StepExecutionRequest } from '@n8n/engine';
 import { encodeBufferBody, ExecutionLifecycleHooks } from 'n8n-core';
-import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type { IBinaryData, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
 import { toV1ExecuteMode } from './v1-adapters';
@@ -55,6 +55,8 @@ export function attachResponseHooks(
  *
  * A top-level Buffer body is base64-encoded into the envelope
  * which the control plane decodes, the same one Engine v1 queue mode uses.
+ * A top-level `{ binaryData }` body with an `id` is plain JSON: the bytes are
+ * in the binary data store, which the control plane reads with that id.
  * Nested Buffers and streams are not supported, as in Engine v1 queue mode.
  */
 function toJsonPayload(value: unknown): JsonValue {
@@ -62,17 +64,42 @@ function toJsonPayload(value: unknown): JsonValue {
 
 	if (!hasBody(value)) return value as JsonValue;
 
-	if (!Buffer.isBuffer(value.body)) {
-		assertCarriable(value.body);
-		return value as JsonValue;
+	if (Buffer.isBuffer(value.body)) {
+		// A shallow copy, so a host hook that runs after this one still sees the Buffer.
+		return encodeBufferBody({ ...value }) as JsonValue;
 	}
 
-	// A shallow copy, so a host hook that runs after this one still sees the Buffer.
-	return encodeBufferBody({ ...value }) as JsonValue;
+	if (isStoredBinaryReference(value.body)) return value as JsonValue;
+
+	assertCarriable(value.body);
+	return value as JsonValue;
 }
 
 function hasBody(value: unknown): value is { body: unknown } {
 	return typeof value === 'object' && value !== null && 'body' in value;
+}
+
+/**
+ * The body the Respond to Webhook node produces in a stored binary data mode.
+ * Without an `id` the bytes are inline in `data`, and the node produces a
+ * Buffer for that case instead, so a reference without `id` is refused. The
+ * control plane streams a reference only when its `id` is non-empty.
+ */
+function isStoredBinaryReference(body: unknown): body is { binaryData: IBinaryData } {
+	if (!hasBinaryData(body)) return false;
+
+	const { binaryData } = body;
+	return (
+		typeof binaryData === 'object' &&
+		binaryData !== null &&
+		'id' in binaryData &&
+		typeof binaryData.id === 'string' &&
+		binaryData.id.length > 0
+	);
+}
+
+function hasBinaryData(value: unknown): value is { binaryData: unknown } {
+	return typeof value === 'object' && value !== null && 'binaryData' in value;
 }
 
 function assertCarriable(value: unknown): void {
@@ -85,8 +112,10 @@ function assertCarriable(value: unknown): void {
 			throw new UserError('Engine v2 cannot stream a webhook response body yet.');
 		}
 
-		if ('binaryData' in value) {
-			throw new UserError('Engine v2 cannot send a binary webhook response yet.');
+		if (hasBinaryData(value)) {
+			throw new UserError(
+				'Engine v2 cannot send binary data that is not in the binary data store.',
+			);
 		}
 	}
 }
