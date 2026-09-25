@@ -42,6 +42,8 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	minimax: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// AlibabaCloudApi.credentials.ts → apiKey, url (hidden, region-derived bare host)
 	alibaba: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	// VolcengineApi.credentials.ts → apiKey, url (base URL)
+	volcengine: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 
 	// AzureOpenAiApi.credentials.ts            → apiKey, resourceName, apiVersion, endpoint, foundryEndpoint, endpointType
 	// AzureEntraCognitiveServicesOAuth2Api.credentials.ts → resourceName, apiVersion, endpoint, foundryEndpoint, endpointType
