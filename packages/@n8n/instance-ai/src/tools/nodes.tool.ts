@@ -111,7 +111,7 @@ const suggestedAction = z.object({
 			'Get curated node recommendations by category. Call first when the workflow fits a known category. ' +
 				'The curated list is a starting point, not the full set: also add any n8n Connect covered services ' +
 				'relevant to the category (they run on Gateway credits, no API key needed). Check coverage with ' +
-				'`nodes(action="list", gatewayCreditsOnly=true)` or `credentials(gatewayCreditsOnly=true)`.',
+				'`nodes(action="list", gatewayCreditsOnly=true)` or `credentials(action="search-types", gatewayCreditsOnly=true)`.',
 		),
 	categories: z
 		.array(z.string())
