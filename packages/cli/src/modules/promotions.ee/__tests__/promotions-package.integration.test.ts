@@ -293,7 +293,7 @@ async function snapshotApplyState() {
 	]);
 }
 
-async function prepareBindingApply() {
+async function prepareBindingApply(unselectedVariableName?: string) {
 	const remote = await createRemote();
 	const connection = await createInstanceConnection(remote.bareDir);
 	await service.clone(connection.id, 'promote');
@@ -329,10 +329,21 @@ async function prepareBindingApply() {
 		},
 		project,
 	);
+	const unselectedVariable = unselectedVariableName
+		? await createVariable(unselectedVariableName, 'unselected source value')
+		: undefined;
+	const unselectedWorkflow = unselectedVariable
+		? await buildWorkflowReferencingVariables({
+				name: 'Unselected workflow',
+				project,
+				variableNames: [unselectedVariable.key],
+			})
+		: undefined;
 	await service.promote(connection.id, owner, {
 		canExportVariableValues: true,
 		commitMessage: 'Export orders',
 	});
+	if (unselectedVariable) await Container.get(VariablesRepository).delete(unselectedVariable.id);
 	await Container.get(CredentialsRepository).delete(credential.id);
 	await Container.get(VariablesRepository).delete(variable.id);
 	await Container.get(VariablesService).updateCache();
@@ -343,7 +354,17 @@ async function prepareBindingApply() {
 		removedProject,
 	);
 	await createFolder(removedProject, { name: 'Target only folder' });
-	return { remote, connection, project, credential, variable, workflow, removedProject };
+	return {
+		remote,
+		connection,
+		project,
+		credential,
+		variable,
+		workflow,
+		removedProject,
+		unselectedWorkflow,
+		unselectedVariable,
+	};
 }
 
 async function inspectBranch(
@@ -1064,6 +1085,291 @@ describe('Promote and Apply', () => {
 		await expect(
 			readFile(path.join(inspectionDir, 'n8n-export', 'manifest.json')),
 		).rejects.toThrow();
+	});
+});
+
+describe('Apply a project selection', () => {
+	it('imports only the selected workflow and preserves unselected instance content', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', [
+			'Selected',
+			'Sibling',
+		]);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export orders',
+		});
+		const { dir } = await inspectBranch(remote.bareDir);
+		expect((await readBranchEntities(dir, 'workflow.json')).map(({ id }) => id).sort()).toEqual(
+			workflows.map(({ id }) => id).sort(),
+		);
+
+		const repository = Container.get(WorkflowRepository);
+		await repository.delete(workflows[0].id);
+		await repository.update(workflows[1].id, { name: 'Local sibling' });
+		const other = await setupProjectWithWorkflows('Target only', ['Other workflow']);
+		const siblingBefore = await repository.findOneByOrFail({ id: workflows[1].id });
+		const otherBefore = await repository.findOneByOrFail({ id: other.workflows[0].id });
+		const projectsBefore = await projectRepository.find({ order: { id: 'ASC' } });
+		const sharesBefore = await Container.get(SharedWorkflowRepository).find({
+			order: { workflowId: 'ASC', projectId: 'ASC' },
+		});
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [workflows[0].id],
+		});
+
+		expect(result).toMatchObject({
+			status: 'applied',
+			counts: {
+				projects: { created: 0, updated: 0, deleted: 0 },
+				workflows: { created: 1, updated: 0, archived: 0, deleted: 0 },
+			},
+		});
+		expect(await repository.findOneByOrFail({ id: workflows[0].id })).toMatchObject({
+			name: workflows[0].name,
+			isArchived: false,
+		});
+		expect(await repository.findOneByOrFail({ id: workflows[1].id })).toEqual(siblingBefore);
+		expect(await repository.findOneByOrFail({ id: other.workflows[0].id })).toEqual(otherBefore);
+		expect(await projectRepository.find({ order: { id: 'ASC' } })).toEqual(projectsBefore);
+		expect(await repository.count()).toBe(3);
+		const sharesAfter = await Container.get(SharedWorkflowRepository).find({
+			order: { workflowId: 'ASC', projectId: 'ASC' },
+		});
+		expect(sharesAfter.filter(({ workflowId }) => workflowId !== workflows[0].id)).toEqual(
+			sharesBefore,
+		);
+		expect(sharesAfter).toContainEqual(
+			expect.objectContaining({
+				workflowId: workflows[0].id,
+				projectId: project.id,
+				role: 'workflow:owner',
+			}),
+		);
+	});
+
+	it('archives a selected workflow absent from the branch and keeps its sibling', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Sibling']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export sibling',
+		});
+		const removed = await createWorkflow(
+			{ name: 'Target only', nodes: [], connections: {} },
+			project,
+		);
+		const repository = Container.get(WorkflowRepository);
+		const siblingBefore = await repository.findOneByOrFail({ id: workflows[0].id });
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [removed.id],
+		});
+
+		// The cherry-pick apply profile removes with `overwriteDeletionPolicy: 'archive'`, so a
+		// branch-absent selection is archived in place instead of being hard-deleted.
+		expect(result).toMatchObject({
+			status: 'applied',
+			counts: {
+				workflows: { created: 0, updated: 0, archived: 1, deleted: 0 },
+				projects: { deleted: 0 },
+			},
+		});
+		expect(await repository.findOneByOrFail({ id: removed.id })).toMatchObject({
+			isArchived: true,
+		});
+		expect(await repository.findOneByOrFail({ id: workflows[0].id })).toEqual(siblingBefore);
+		expect(await repository.count()).toBe(2);
+		expect(await projectRepository.findOneBy({ id: project.id })).not.toBeNull();
+	});
+
+	it('applies a name change to the same workflow in the same folder', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Renamed order']);
+		const folder = await createFolder(project, { name: 'Operations' });
+		const repository = Container.get(WorkflowRepository);
+		await repository.update(workflows[0].id, { parentFolder: folder });
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export renamed order',
+		});
+		await repository.update(workflows[0].id, { name: 'Original order' });
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [workflows[0].id],
+		});
+
+		expect(result).toMatchObject({
+			status: 'applied',
+			counts: { workflows: { created: 0, updated: 1 } },
+		});
+		expect(
+			await repository.findOneOrFail({
+				where: { id: workflows[0].id },
+				relations: { parentFolder: true },
+			}),
+		).toMatchObject({
+			id: workflows[0].id,
+			name: 'Renamed order',
+			parentFolder: { id: folder.id },
+		});
+		expect(await repository.count()).toBe(1);
+	});
+
+	it('rejects a selected workflow with a different folder placement before writes', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
+		const repository = Container.get(WorkflowRepository);
+		// The branch must carry a real (non-root) folder placement: the engine only checks for a clash
+		// when the branch workflow targets a folder, so promote the workflow from inside `branchFolder`.
+		const branchFolder = await createFolder(project, { name: 'Branch folder' });
+		await repository.update(workflows[0].id, { parentFolder: branchFolder });
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export foldered workflow',
+		});
+		// Move the same workflow to a different folder on the instance so the branch and instance
+		// disagree on its placement.
+		const localFolder = await createFolder(project, { name: 'Local folder' });
+		await repository.update(workflows[0].id, { parentFolder: localFolder });
+		const before = await snapshotApplyState();
+
+		// The diff over-labels any path change as `renamed`; a real reparent/move is refused rather than
+		// applied as a silent partial. The engine raises a 409 ConflictError (workflow-folder-conflict).
+		// 1168 adds no move support (out of scope; inherited from LIGO-1165).
+		await expect(
+			service.applyProjectSelection(project.id, owner, {
+				workflowIds: [workflows[0].id],
+			}),
+		).rejects.toMatchObject({
+			httpStatusCode: 409,
+			meta: {
+				issues: expect.arrayContaining([
+					expect.objectContaining({
+						type: 'workflow-folder-conflict',
+						sourceWorkflowId: workflows[0].id,
+						existingWorkflowId: workflows[0].id,
+						existingParentFolderId: localFolder.id,
+						targetFolderId: branchFolder.id,
+					}),
+				]),
+			},
+		});
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('continues after the selected bindings are created while unselected bindings stay missing', async () => {
+		const { project, workflow, credential, variable, unselectedWorkflow, unselectedVariable } =
+			await prepareBindingApply('UNSELECTED_URL');
+		assert(unselectedWorkflow);
+		assert(unselectedVariable);
+		const repository = Container.get(WorkflowRepository);
+		const unselectedBefore = await repository.findOneByOrFail({ id: unselectedWorkflow.id });
+		const before = await snapshotApplyState();
+
+		const blocked = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [workflow.id],
+		});
+		assert(blocked.status === 'blocked');
+		expect(blocked.preflight.missingBindings).toHaveLength(2);
+		expect(blocked.preflight.missingBindings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
+				expect.objectContaining({ kind: 'variable', name: variable.key }),
+			]),
+		);
+		expect(blocked.preflight.missingBindings).not.toContainEqual(
+			expect.objectContaining({ kind: 'variable', name: unselectedVariable.key }),
+		);
+		expect(
+			blocked.preflight.missingBindings.flatMap(({ consumers }) =>
+				consumers.flatMap(({ workflows }) => workflows.map(({ id }) => id)),
+			),
+		).toEqual([workflow.id, workflow.id]);
+		expect(await snapshotApplyState()).toEqual(before);
+
+		await testServer
+			.publicApiAgentFor(owner)
+			.post('/credentials')
+			.send({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				projectId: project.id,
+				data: { name: 'Authorization', value: 'target-secret' },
+			})
+			.expect(200);
+		const targetVariable = await createVariable(variable.key, 'target value');
+		const result = await service.continueApplyProjectSelection(project.id, owner, {
+			workflowIds: [workflow.id],
+			expectedSource: { configId: blocked.configId, ...blocked.git },
+		});
+
+		expect(result).toMatchObject({
+			status: 'applied',
+			counts: {
+				projects: { deleted: 0 },
+				workflows: { updated: 1, deleted: 0 },
+				credentials: { matched: 1 },
+			},
+		});
+		expect(await repository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+			name: workflow.name,
+			nodes: workflow.nodes,
+		});
+		expect(await repository.findOneByOrFail({ id: unselectedWorkflow.id })).toEqual(
+			unselectedBefore,
+		);
+		expect(
+			await Container.get(VariablesRepository).findOneBy({ key: unselectedVariable.key }),
+		).toBeNull();
+		expect(
+			await Container.get(VariablesRepository).findOneByOrFail({ id: targetVariable.id }),
+		).toMatchObject({ value: 'target value' });
+	});
+
+	it('returns source-changed for a stale commit without importing workflows', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		const checkout = await service.clone(connection.id, 'apply');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Branch name']);
+		const promoted = await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export orders',
+		});
+		await Container.get(WorkflowRepository).update(workflows[0].id, { name: 'Local name' });
+		const before = await snapshotApplyState();
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [workflows[0].id],
+			expectedSource: {
+				configId: checkout.configId,
+				branchName: 'main',
+				commitSha: '0'.repeat(40),
+			},
+		});
+
+		expect(result).toEqual({
+			status: 'source-changed',
+			connectionId: connection.id,
+			configId: checkout.configId,
+			git: promoted.git,
+		});
+		expect(await snapshotApplyState()).toEqual(before);
 	});
 });
 
