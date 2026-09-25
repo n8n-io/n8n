@@ -339,6 +339,15 @@ describe('GlobalConfig', () => {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
 			streamStateTtl: 300,
+			resultCards: {
+				enabled: true,
+				jevApiKey: '',
+				jevProvider: 'typesafe',
+				jevBaseUrl: '',
+				jevModel: '',
+				jevSendSamples: true,
+				jevFixtures: '',
+			},
 		},
 		instanceAi: {
 			model: 'anthropic/claude-opus-4-8',
