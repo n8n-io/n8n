@@ -733,7 +733,10 @@ function onCredentialSelected(
 	const selectedCredentials = findDisplayedCredential(credentialType, credentialId);
 	if (!selectedCredentials) return;
 	const selectedCredentialsType = props.showAll ? selectedCredentials.type : credentialType;
-	const oldCredentials = props.node.credentials?.[selectedCredentialsType] ?? null;
+	const oldCredentials: INodeCredentialsDetails | string | null =
+		props.node.credentials?.[selectedCredentialsType] ?? null;
+	const invalidCredentials =
+		typeof oldCredentials === 'string' ? { id: null, name: oldCredentials } : oldCredentials;
 
 	const newSelectedCredentials: INodeCredentialsDetails = {
 		id: selectedCredentials.id,
@@ -745,15 +748,15 @@ function onCredentialSelected(
 	// invalid credential — repairing it would sweep every other n8n-credits node.
 	if (
 		!props.standalone &&
-		!oldCredentials?.__aiGatewayManaged &&
-		(oldCredentials?.id === null ||
-			(oldCredentials?.id &&
-				!credentialsStore.getCredentialByIdAndType(oldCredentials.id, selectedCredentialsType)))
+		!invalidCredentials?.__aiGatewayManaged &&
+		(invalidCredentials?.id === null ||
+			(invalidCredentials?.id &&
+				!credentialsStore.getCredentialByIdAndType(invalidCredentials.id, selectedCredentialsType)))
 	) {
 		// update all nodes in the workflow with the same old/invalid credentials
 		workflowDocumentStore?.value?.replaceInvalidWorkflowCredentials({
 			credentials: newSelectedCredentials,
-			invalid: oldCredentials,
+			invalid: invalidCredentials,
 			type: selectedCredentialsType,
 		});
 		nodeHelpers.updateNodesCredentialsIssues();
@@ -761,7 +764,7 @@ function onCredentialSelected(
 			title: i18n.baseText('nodeCredentials.showMessage.title'),
 			message: i18n.baseText('nodeCredentials.showMessage.message', {
 				interpolate: {
-					oldCredentialName: oldCredentials.name,
+					oldCredentialName: invalidCredentials.name,
 					newCredentialName: newSelectedCredentials.name,
 				},
 			}),
