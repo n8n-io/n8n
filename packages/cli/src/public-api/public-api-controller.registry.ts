@@ -17,9 +17,11 @@ import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import { assertJsonContentType } from '@/public-api/public-api-media-type';
+import type { ValidatedParamArg } from '@/public-api/public-api-route-resolver';
 import {
 	apiKeyScopesSatisfy,
 	findBodyArg,
+	findValidatedParamArgs,
 	isRequestBodyRequired,
 	resolveRouteArgs,
 	resolveSuccessStatus,
@@ -128,6 +130,14 @@ export class PublicApiControllerRegistry {
 
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
 
+			// Path param validation must run before the scope checks, so that a malformed param always
+			// returns 400, rather than 404 or 403 depending on the caller's access.
+			const paramArgs = findValidatedParamArgs(resolvedArgs);
+
+			if (paramArgs.length) {
+				middlewares.push(this.createPathParamMiddleware(paramArgs));
+			}
+
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
 			}
@@ -220,6 +230,25 @@ export class PublicApiControllerRegistry {
 		return (_req, res, next) => {
 			if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
 				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	/**
+	 * Rejects a path param that breaks its `@Param` schema, ahead of the scope middlewares. The
+	 * handler parses the params again to bind its arguments; by then they are known to be valid.
+	 */
+	private createPathParamMiddleware(args: ValidatedParamArg[]): RequestHandler {
+		return (req, res, next) => {
+			try {
+				for (const { key, schema } of args) {
+					parsePathParam(key, schema, req.params);
+				}
+			} catch (error) {
+				sendPublicApiErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
 				return;
 			}
 
