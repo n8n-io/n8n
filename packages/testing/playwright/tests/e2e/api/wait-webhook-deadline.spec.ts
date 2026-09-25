@@ -12,7 +12,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should resume a webhook wait at its time limit without a request @engine:v2-pending', async ({
+		test('should resume a webhook wait at its time limit without a request @engine:v2', async ({
 			api,
 		}) => {
 			// On engine 1.0 the wait tracker polls once a minute, so the resume can take that long.

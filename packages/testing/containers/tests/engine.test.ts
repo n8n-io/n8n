@@ -6,6 +6,8 @@ import {
 	ENGINE_DATABASE,
 	engineContainerEnv,
 } from '../services/engine';
+import { redis } from '../services/redis';
+import type { StartContext } from '../services/types';
 
 const postgresEnv: Record<string, string> = {
 	DB_TYPE: 'postgresdb',
@@ -205,6 +207,16 @@ describe('engineContainerEnv', () => {
 		);
 	});
 
+	test('passes the Redis connection through for the response channel', () => {
+		const env = engineContainerEnv(
+			{ ...dedicatedEngineEnv, QUEUE_BULL_REDIS_HOST: 'redis', QUEUE_BULL_REDIS_PORT: '6379' },
+			engineOptions,
+		);
+
+		expect(env.QUEUE_BULL_REDIS_HOST).toBe('redis');
+		expect(env.QUEUE_BULL_REDIS_PORT).toBe('6379');
+	});
+
 	test('serves on the address the main dials and the stack probes, whatever the caller set', () => {
 		const env = engineContainerEnv(
 			{ ...dedicatedEngineEnv, N8N_ENGINE_HOST: '127.0.0.1', N8N_ENGINE_PORT: '4000' },
@@ -223,5 +235,18 @@ describe('assertEngineSupported', () => {
 		expect(() =>
 			assertEngineSupported({ engine: undefined, mains: 0, isQueueMode: true, usePostgres: false }),
 		).not.toThrow();
+	});
+});
+
+describe('redis service', () => {
+	const context = (config: StartContext['config'], isQueueMode = false) =>
+		({ config, isQueueMode }) as StartContext;
+
+	test('starts for a separate engine container, which answers over Redis', () => {
+		expect(redis.shouldStart?.(context({ engine: 'container' }))).toBe(true);
+	});
+
+	test('stays off for an in-process engine outside queue mode', () => {
+		expect(redis.shouldStart?.(context({ engine: 'in-process' }))).toBe(false);
 	});
 });
