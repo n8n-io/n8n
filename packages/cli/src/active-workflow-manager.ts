@@ -631,6 +631,9 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			// Carries no user: a registration outlives any number of republishes, so
+			// the publishing user is resolved at emit instead, next to the fresh
+			// workflow data the run actually uses.
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				workflowId: workflow.id,
 				workflowSettings: dbWorkflow.settings,

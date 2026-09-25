@@ -889,7 +889,8 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // nodeTypes
 				pollCursorService,
 				mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
-				mock(), // engineV2ActiveTriggers
+				mock(), // engineV2ActiveTriggers,
+				mock(), // workflowPublisherService
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
@@ -948,7 +949,7 @@ describe('ActiveWorkflowManager', () => {
 					workflowData,
 					node,
 					triggerData,
-					additionalData,
+					expect.objectContaining({ userId: undefined }),
 					mode,
 					undefined,
 					undefined,
@@ -991,7 +992,7 @@ describe('ActiveWorkflowManager', () => {
 					workflowData,
 					node,
 					triggerData,
-					additionalData,
+					expect.objectContaining({ userId: undefined }),
 					mode,
 					undefined,
 					'wf-1:node-1:1700000000000',
@@ -1336,7 +1337,7 @@ describe('ActiveWorkflowManager', () => {
 			realScheduledTaskManager = new ScheduledTaskManager(
 				mock<InstanceSettings>({ isLeader: true }),
 				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),
-				mock(),
+				mock(), // workflowPublisherService
 			);
 			realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
 				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),

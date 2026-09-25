@@ -47,6 +47,7 @@ import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 export type TriggerFailureHandler = (opts: {
@@ -85,6 +86,7 @@ export class TriggerExecutionContextFactory {
 		private readonly pollCursorService: PollCursorService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly engineV2ActiveTriggers: EngineV2ActiveTriggers,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -216,7 +218,7 @@ export class TriggerExecutionContextFactory {
 							freshWorkflowData,
 							node,
 							data,
-							additionalData,
+							await this.attributeToPublisher(additionalData, freshWorkflowData),
 							mode,
 							responsePromise,
 							deduplicationKey,
@@ -400,12 +402,17 @@ export class TriggerExecutionContextFactory {
 						}
 					}
 
+					const runAdditionalData = await this.attributeToPublisher(
+						additionalData,
+						freshWorkflowData,
+					);
+
 					if (cursor === null) {
 						return await this.workflowExecutionService.runWorkflow(
 							freshWorkflowData,
 							node,
 							data,
-							additionalData,
+							runAdditionalData,
 							mode,
 							responsePromise,
 						);
@@ -416,7 +423,7 @@ export class TriggerExecutionContextFactory {
 								freshWorkflowData,
 								node,
 								data,
-								additionalData,
+								runAdditionalData,
 								mode,
 								cursor,
 								responsePromise,
@@ -426,7 +433,7 @@ export class TriggerExecutionContextFactory {
 								freshWorkflowData,
 								node,
 								data,
-								additionalData,
+								runAdditionalData,
 								mode,
 								cursor,
 								responsePromise,
@@ -518,6 +525,8 @@ export class TriggerExecutionContextFactory {
 			settings: workflowData.settings,
 		});
 
+		// Carries no user: the emit attributes the run to the publisher of the
+		// version it resolves, which may be newer than this one.
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflowData.id,
 			workflowSettings: workflowData.settings,
@@ -539,6 +548,34 @@ export class TriggerExecutionContextFactory {
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');
 
 		return { workflow, pollFunctions };
+	}
+
+	/**
+	 * A triggered run has nobody to be, so it is attributed to whoever published
+	 * the version it runs.
+	 *
+	 * Read here rather than when the trigger was registered: a registration
+	 * outlives republishes — `resolveWorkflowData` re-reads the published version
+	 * at every emit precisely so a republish needs no deactivate/reactivate — and
+	 * a publisher deleted since then must leave the run unattributed.
+	 *
+	 * Keyed on `versionId`, the version whose nodes are about to run, rather than
+	 * the workflow row's `activeVersionId`, which already names the next version
+	 * while publication is still applying. On the pre-publication-service path
+	 * `versionId` is the draft pointer instead; it matches no activation, so the
+	 * lookup falls back to the latest one, which is the live version's publisher.
+	 */
+	private async attributeToPublisher(
+		additionalData: IWorkflowExecuteAdditionalData,
+		workflowData: IWorkflowBase,
+	): Promise<IWorkflowExecuteAdditionalData> {
+		return {
+			...additionalData,
+			userId: await this.workflowPublisherService.findPublisherUserId(
+				workflowData.id,
+				workflowData.versionId,
+			),
+		};
 	}
 
 	executeErrorWorkflow(
