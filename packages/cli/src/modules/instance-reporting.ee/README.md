@@ -21,16 +21,16 @@ day with no executions is reported as `0`, so a gap in the series always means
 "not reported", never "nothing ran".
 
 The first report works the same way: it carries a `daily` point for every day
-since the first `insights` data. It carries no past `cumulative` values, since
-those are unknown. Only days with an exact daily value are sent. `insights`
-folds days older than about 180 days into weekly totals, so those days are
-never reported. [RETRIES.md](./RETRIES.md#type-2-missed-day-backfill) gives the
-exact rules.
+from the first `insights` data to yesterday. It carries no past `cumulative`
+values, since those are unknown. Days before the first `insights` data are not
+sent. `insights` folds days older than about 180 days into weekly totals, so
+those days are never sent. Inside the sent range, a day without data is `0`.
+[RETRIES.md](./RETRIES.md#type-2-missed-day-backfill) gives the exact rules.
 
 Known limits:
 
-- If `insights` was disabled for a time before reporting was turned on, those
-  days read as days without executions.
+- If `insights` was disabled for a time between its first data and the first
+  report, those days are sent as `0`.
 - After this instance's database is restored from a backup, the days since the
   backup are sent again, as `0` or as a lower value. Consumers of the receiver's
   export must use the highest value for each instance, metric and day.

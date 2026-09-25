@@ -95,11 +95,15 @@ Scope: no `pending` row is the newest, but one or more calendar days have no
 - The first report is no special case. It backfills the history that `insights`
   holds instead of sending yesterday alone.
 - A report carries at most `MAX_REPORT_DAYS` (730, the `insights` pruning cap).
-  Older days are dropped and logged. This keeps a report far below the
-  receiver's size limit, so it can never be rejected with `413` again and again.
+  Older days are dropped and logged. 730 daily points come to less than 70 KB,
+  so a full report stays far below the receiver's size limit. If the receiver
+  still rejects a report with `413`, the row is skipped. The next report
+  carries the same days, so the receiver can reject it again.
 - `collectDataPoints()` reads the whole window from `insights` in one query,
   bucketed by UTC day. `InsightsService.getInsightsByTime()` is not used,
-  because it buckets a range of more than 30 days by week.
+  because it buckets a range of more than 30 days by week. The read does not
+  apply the license's `insights` history limit. Only the `insights` dashboard
+  applies that limit.
 - The next report creates one new row. It carries one `daily` point for every
   missed day and one `cumulative` point. The cumulative point is a fresh
   lifetime total, not one per missed day.
