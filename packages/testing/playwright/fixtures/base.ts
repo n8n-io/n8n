@@ -278,7 +278,6 @@ export const test = base.extend<
 		}
 		await use(n8nInstance);
 	},
-	},
 
 	api: async ({ backendUrl, n8nStackConfig }, use, testInfo) => {
 		const context = await request.newContext({ baseURL: backendUrl });
