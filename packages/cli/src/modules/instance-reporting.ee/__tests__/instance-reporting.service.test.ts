@@ -434,6 +434,27 @@ describe('InstanceReportingService', () => {
 			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
 		});
 
+		test.each([400, 413])(
+			'gives up on the report at once on %i, since a resend carries the same payload',
+			async (statusCode) => {
+				const { service, reportRepository, http } = makeHarness();
+				vi.mocked(http.request).mockResolvedValue({ statusCode, body: '', headers: {} });
+
+				await expect(service.sendReport()).resolves.toBeUndefined();
+
+				expect(reportRepository.markSkipped).toHaveBeenCalledWith(BATCH_ID);
+			},
+		);
+
+		test.each([401, 500, 503])('keeps the report pending for a retry on %i', async (statusCode) => {
+			const { service, reportRepository, http } = makeHarness();
+			vi.mocked(http.request).mockResolvedValue({ statusCode, body: '', headers: {} });
+
+			await expect(service.sendReport()).rejects.toThrow();
+
+			expect(reportRepository.markSkipped).not.toHaveBeenCalled();
+		});
+
 		test('reuses the same batchId when an undelivered report is retried', async () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockRejectedValueOnce(new Error('Network error'));

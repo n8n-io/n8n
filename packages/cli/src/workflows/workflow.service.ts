@@ -31,6 +31,7 @@ import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
+import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -130,6 +131,7 @@ export class WorkflowService {
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
+		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 	) {}
 
 	async getMany(
@@ -518,6 +520,11 @@ export class WorkflowService {
 				nodes: workflowUpdateData.nodes,
 				connections: workflowUpdateData.connections,
 			});
+			// Only a workflow with groups needs the flags.
+			const rules = workflowUpdateData.nodeGroups?.length
+				? await this.nodeGroupRulesFlagGate.getEnabledRules(user)
+				: {};
+
 			WorkflowHelpers.validateWorkflowNodeGroups(
 				{
 					nodes: workflowUpdateData.nodes,
@@ -525,6 +532,7 @@ export class WorkflowService {
 					connections: workflowUpdateData.connections,
 				},
 				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+				rules,
 			);
 		}
 

@@ -164,7 +164,7 @@ describe('POST /ai-preferences', () => {
 
 		const edit = await memberAgent
 			.patch(`/ai-preferences/${b.body.data.id}`)
-			.send({ content: 'Rule A.', scope: 'user' });
+			.send({ content: 'Rule A.', scope: 'user', userId: member.id });
 		expect(edit.statusCode).toBe(409);
 
 		await repository().delete({ userId: member.id });
@@ -607,7 +607,7 @@ describe('PATCH /ai-preferences/:id', () => {
 
 		const response = await memberAgent
 			.patch(`/ai-preferences/${row.id}`)
-			.send({ content: 'New', scope: 'user' });
+			.send({ content: 'New', scope: 'user', userId: member.id });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.content).toBe('New');
@@ -617,13 +617,13 @@ describe('PATCH /ai-preferences/:id', () => {
 	test('keeps the surface that created the row, whatever the edit says', async () => {
 		const created = await memberAgent
 			.post('/ai-preferences')
-			.send({ content: 'From settings.', scope: 'user' });
+			.send({ content: 'From settings.', scope: 'user', userId: member.id });
 
 		// A body carrying a surface is ignored on an edit as it is on a create, so an
 		// assistant edit of a person's row never relabels it.
 		const response = await memberAgent
 			.patch(`/ai-preferences/${created.body.data.id}`)
-			.send({ content: 'Edited.', scope: 'user', source: 'aia' });
+			.send({ content: 'Edited.', scope: 'user', userId: member.id, source: 'aia' });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.source).toBe('ui');
@@ -662,7 +662,7 @@ describe('PATCH /ai-preferences/:id', () => {
 
 		const response = await memberAgent
 			.patch(`/ai-preferences/${row.id}`)
-			.send({ content: 'Marketing', scope: 'user' });
+			.send({ content: 'Marketing', scope: 'user', userId: member.id });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toMatchObject({ userId: member.id, projectId: null });
@@ -724,16 +724,41 @@ describe('PATCH /ai-preferences/:id', () => {
 		});
 	});
 
-	test("moves another user's preference to the admin when no user is named", async () => {
-		// The owner is explicit on the wire. A request without one means the caller.
+	test("refuses an edit of another user's row that does not name the user", async () => {
+		// An edit names its target. Without an owner the old code moved the row to the
+		// caller, so an admin could take a member's row by leaving one field out.
 		const row = await seed({ content: 'Theirs', userId: member.id });
 
 		const response = await adminAgent
 			.patch(`/ai-preferences/${row.id}`)
 			.send({ content: 'Theirs', scope: 'user' });
 
-		expect(response.statusCode).toBe(200);
-		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(admin.id);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An edit of a user preference must name the user');
+		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(member.id);
+	});
+
+	test('refuses an edit of the caller own row that does not name the user', async () => {
+		const row = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'Changed', scope: 'user' });
+
+		expect(response.statusCode).toBe(400);
+		expect((await repository().findOneByOrFail({ id: row.id })).content).toBe('Mine');
+	});
+
+	test("refuses a member who names another user's row as the target", async () => {
+		// Review focus 1: naming the owner is not the same as owning the right to edit them.
+		const row = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'Mine', scope: 'user', userId: outsider.id });
+
+		expect(response.statusCode).toBe(403);
+		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(member.id);
 	});
 
 	test('refuses a move into a project the caller may only read, even with update rights on the row', async () => {
