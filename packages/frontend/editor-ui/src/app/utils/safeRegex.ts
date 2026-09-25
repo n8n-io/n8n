@@ -1,4 +1,4 @@
-import type { RegexEngineAsync } from 'n8n-workflow';
+import type { RegexEngineAsync, RegexExecArray } from 'n8n-workflow';
 
 const REGEX_TIMEOUT_MS = 250;
 const REGEX_TIMEOUT_ERROR_MESSAGE = 'Regular expression execution timed out';
@@ -22,7 +22,7 @@ type RegexResponse = {
 
 let requestId = 0;
 
-function isRegExpMatch(value: unknown): value is RegExpMatchArray {
+function isRegExpMatch(value: unknown): value is RegexExecArray {
 	return (
 		Array.isArray(value) &&
 		typeof Reflect.get(value, 'index') === 'number' &&
@@ -30,20 +30,22 @@ function isRegExpMatch(value: unknown): value is RegExpMatchArray {
 	);
 }
 
-function isRegExpMatchOrNull(value: unknown): value is RegExpExecArray | null {
+function isRegExpMatchOrNull(value: unknown): value is RegexExecArray | null {
 	return value === null || isRegExpMatch(value);
 }
 
-function isRegExpMatchArray(value: unknown): value is RegExpMatchArray[] {
+function isRegExpMatchArray(value: unknown): value is RegexExecArray[] {
 	return Array.isArray(value) && value.every(isRegExpMatch);
 }
 
-function isStringArray(value: unknown): value is string[] {
-	return Array.isArray(value) && value.every((item) => typeof item === 'string');
+function isSplitResultArray(value: unknown): value is Array<string | undefined> {
+	return (
+		Array.isArray(value) && value.every((item) => item === undefined || typeof item === 'string')
+	);
 }
 
 export class WorkerRegexEngine implements RegexEngineAsync {
-	async exec(pattern: string, input: string, flags?: string): Promise<RegExpExecArray | null> {
+	async exec(pattern: string, input: string, flags?: string): Promise<RegexExecArray | null> {
 		const result = await this.execute('exec', pattern, input, flags);
 		if (!isRegExpMatchOrNull(result)) throw new Error('Unexpected regex execution result');
 		return result;
@@ -66,15 +68,15 @@ export class WorkerRegexEngine implements RegexEngineAsync {
 		return result;
 	}
 
-	async matchAll(pattern: string, input: string, flags?: string): Promise<RegExpMatchArray[]> {
+	async matchAll(pattern: string, input: string, flags?: string): Promise<RegexExecArray[]> {
 		const result = await this.execute('matchAll', pattern, input, flags);
 		if (!isRegExpMatchArray(result)) throw new Error('Unexpected regex execution result');
 		return result;
 	}
 
-	async split(pattern: string, input: string, flags?: string): Promise<string[]> {
+	async split(pattern: string, input: string, flags?: string): Promise<Array<string | undefined>> {
 		const result = await this.execute('split', pattern, input, flags);
-		if (!isStringArray(result)) throw new Error('Unexpected regex execution result');
+		if (!isSplitResultArray(result)) throw new Error('Unexpected regex execution result');
 		return result;
 	}
 

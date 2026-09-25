@@ -24,6 +24,7 @@ import {
 	NodeOperationError,
 	safeInternalRegex,
 	setSafeObjectProperty,
+	UserError,
 } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
@@ -1120,7 +1121,13 @@ export function extractDatabaseMentionRLC(blockValues: IDataObject[]) {
 					if (typeof txt.database === 'object' && txt.database.__rl) {
 						if (txt.database.__regex) {
 							const extracted = safeInternalRegex.exec(txt.database.__regex, txt.database.value);
-							txt.database = extracted![1];
+							const databaseId = extracted?.[1];
+							if (databaseId === undefined) {
+								throw new UserError(
+									`Could not extract the database ID from "${txt.database.value}"`,
+								);
+							}
+							txt.database = databaseId;
 						} else {
 							txt.database = txt.database.value;
 						}
