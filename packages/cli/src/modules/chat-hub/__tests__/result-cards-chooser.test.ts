@@ -96,6 +96,54 @@ describe('ResultCardChooser', () => {
 		expect(client.decide.mock.calls[0][0]).toMatchObject({ node: { name: 'n' } });
 	});
 
+	it('shares one in-flight Jev call between concurrent candidates with the same schema hash', async () => {
+		let resolveDecision!: (value: { answers: JevAnswers; latencyMs: number }) => void;
+		client.decide.mockReturnValue(
+			new Promise((resolve) => {
+				resolveDecision = resolve;
+			}),
+		);
+		const chooser = new ResultCardChooser(logger, config, factory);
+		const first = candidate(noulQuestion, 'same0001');
+		const second = candidate(noulQuestion, 'same0001');
+
+		const pending = Promise.all([chooser.choose(first), chooser.choose(second)]);
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(client.decide).toHaveBeenCalledTimes(1);
+
+		resolveDecision({ answers, latencyMs: 30 });
+		const [firstCard, secondCard] = await pending;
+
+		expect(firstCard).toMatchObject({ title: 'chosen' });
+		expect(secondCard).toMatchObject({ title: 'chosen' });
+		expect(first.apply).toHaveBeenCalledWith(answers);
+		expect(second.apply).toHaveBeenCalledWith(answers);
+		expect(client.decide).toHaveBeenCalledTimes(1);
+
+		expect(await chooser.choose(candidate(noulQuestion, 'same0001'))).toMatchObject({
+			title: 'chosen',
+		});
+		expect(client.decide).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not keep a failed or empty in-flight lookup around for later callers', async () => {
+		client.decide.mockRejectedValueOnce(new Error('jev down'));
+		client.decide.mockResolvedValueOnce(undefined);
+		client.decide.mockResolvedValueOnce({ answers, latencyMs: 10 });
+		const chooser = new ResultCardChooser(logger, config, factory);
+
+		expect(await chooser.choose(candidate(noulQuestion, 'retry001'))).toMatchObject({
+			title: 'default',
+		});
+		expect(await chooser.choose(candidate(noulQuestion, 'retry001'))).toMatchObject({
+			title: 'default',
+		});
+		expect(await chooser.choose(candidate(noulQuestion, 'retry001'))).toMatchObject({
+			title: 'chosen',
+		});
+		expect(client.decide).toHaveBeenCalledTimes(3);
+	});
+
 	it('passes the sample setting to buildState and the config to the client factory', async () => {
 		config.resultCards.jevSendSamples = false;
 		client.decide.mockResolvedValue({ answers, latencyMs: 10 });

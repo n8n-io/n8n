@@ -59,6 +59,13 @@ export class AnswerCache {
 export class ResultCardChooser {
 	private readonly cache = new AnswerCache(CACHE_MAX, CACHE_TTL_MS);
 
+	/**
+	 * Lookups currently in flight, keyed by `schemaHash`. Candidates that share a
+	 * data shape and miss the cache at the same time wait on the same fixture/Jev
+	 * lookup instead of each paying for their own Jev call.
+	 */
+	private readonly pending = new Map<string, Promise<JevAnswers | undefined>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly config: ChatHubConfig,
@@ -91,6 +98,16 @@ export class ResultCardChooser {
 		const cached = this.cache.get(key);
 		if (cached) return cached;
 
+		const inFlight = this.pending.get(key);
+		if (inFlight) return await inFlight;
+
+		const lookup = this.lookupAnswers(candidate).finally(() => this.pending.delete(key));
+		this.pending.set(key, lookup);
+		return await lookup;
+	}
+
+	private async lookupAnswers(candidate: CandidateSet): Promise<JevAnswers | undefined> {
+		const key = candidate.schemaHash;
 		const fixture = await this.readFixture(key);
 		if (fixture) {
 			this.cache.set(key, fixture);
