@@ -65,7 +65,9 @@ import {
 	summarizeWorkflowStructure,
 } from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
+import { nodeOutputsForRegeneration } from './workflows/workflow-declared-outputs';
 import {
+	findWorkflowSourceFileBindingsForWorkflow,
 	refreshWorkflowSourceFileBindingFromSave,
 	refreshWorkflowSourceFileBindingFromWorkflow,
 } from './workflows/workflow-file-bindings';
@@ -808,7 +810,7 @@ async function handleGetAsCode(
 	input: Extract<Input, { action: 'get-as-code' }>,
 ) {
 	const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
-	const toCode = (json: WorkflowJSON): string => {
+	const toCode = (json: WorkflowJSON, nodeOutputs?: Record<string, unknown[]>): string => {
 		// Emit node ids: this code is edited and built back into the same saved workflow,
 		// and carrying the ids through is what keeps node identity stable. Positions stay
 		// out: build-workflow restores the saved layout by id, so a position in the file
@@ -817,6 +819,7 @@ async function handleGetAsCode(
 			workflow: json,
 			includeNodeIds: true,
 			includePositions: false,
+			...(nodeOutputs ? { nodeOutputs } : {}),
 		});
 		// The file must build as-is, so it carries the import line codegen omits.
 		const importLine = buildImports(body);
@@ -841,7 +844,18 @@ async function handleGetAsCode(
 		}
 
 		const { json, saved } = await readConsistentWorkflowSnapshot(context, input.workflowId);
-		const code = toCode(json);
+		// The saved workflow carries no verification `output` fixtures; the last build
+		// kept them on the binding. Re-emit them so a regenerated file verifies the
+		// same way the built one did instead of attempting live calls.
+		const priorBindings = await findWorkflowSourceFileBindingsForWorkflow(
+			context,
+			input.workflowId,
+		);
+		const nodeOutputs = nodeOutputsForRegeneration(
+			priorBindings.map((binding) => binding.declaredOutputFixtures),
+			json.nodes,
+		);
+		const code = toCode(json, nodeOutputs);
 		const nodeCount = json.nodes?.length ?? 0;
 		const base = { workflowId: input.workflowId, name: json.name, nodeCount };
 

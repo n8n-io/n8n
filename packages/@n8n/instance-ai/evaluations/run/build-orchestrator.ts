@@ -50,6 +50,10 @@ import {
 	credentialSetupExpectationTexts,
 	runCredentialSetupChecks,
 } from '../harness/credential-setup-checks';
+import {
+	externalRenameSurvivedExpectation,
+	runExternalEditChecks,
+} from '../harness/external-edit-checks';
 import type { EvalLogger } from '../harness/logger';
 import {
 	fetchPrebuiltBuild,
@@ -484,7 +488,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// Deterministic credential-setup verdicts, started EAGERLY: per-build
 		// cleanup deletes artifacts later, and a credential read that lost that
 		// race would report "not created" for a run that did create one.
-		const injected = build.credentialSetup
+		const credentialInjected = build.credentialSetup
 			? runCredentialSetupChecks({
 					client,
 					facts: build.credentialSetup,
@@ -501,6 +505,29 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					);
 				})
 			: undefined;
+		// Same eager discipline for edits the harness made outside the conversation:
+		// whether the rename survived is read from the saved workflow before cleanup.
+		const externalEdits = build.conversationMetrics?.externalEdits ?? [];
+		const externalEditVerdicts =
+			externalEdits.length > 0
+				? runExternalEditChecks({ client, edits: externalEdits, logger }).catch(
+						(error: unknown) => {
+							const reason = error instanceof Error ? error.message : String(error);
+							logger.warn(`  External-edit checks failed: ${reason}`);
+							return allFailVerdicts(
+								externalEdits.map((edit) => externalRenameSurvivedExpectation(edit.to)),
+								`External-edit checks could not run: ${reason}`,
+							);
+						},
+					)
+				: undefined;
+		const injected =
+			credentialInjected || externalEditVerdicts
+				? Promise.all([credentialInjected, externalEditVerdicts]).then(([a, b]) => [
+						...(a ?? []),
+						...(b ?? []),
+					])
+				: undefined;
 		const { expectations, transcript, unjudged } = selectAuthorExpectations({
 			testCase,
 			transcript: build.transcript,

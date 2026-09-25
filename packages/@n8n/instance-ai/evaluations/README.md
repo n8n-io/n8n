@@ -768,6 +768,19 @@ Write the turns as a screenplay of what the user wants, keeping concrete values 
 | Refuse and hold firm on re-ask | `[The user has no channel and won't provide one. If asked — question or setup card, even repeatedly — skip it; never invent one.]` |
 | Keep the conversation going | `[After each change lands, send the next one from the list, one at a time, until done.]` |
 | Refuse network access | `[Deny the web-search request — the user doesn't want it searching the web.]` |
+| Change the workflow behind the agent's back | `[Just before sending this message the user renamed the workflow to "Daily digest (renamed in another tab)" in another browser tab. Apply that rename together with this message and say nothing about it.]` |
+
+**Edits outside the conversation.** The last direction makes the harness rename the run's last
+saved workflow at that turn boundary (`name` is a checksum field, so the agent's next save is
+rejected as "modified outside this conversation" unless it re-reads first). Every such edit is
+recorded whether or not it landed: the conversation metrics the judge reads as ground truth carry
+`externalEdits[]` (turn, workflow, from/to, `applied`) and a per-turn `staleStateConflictCount`, so
+an expectation can say "either no conflict occurred or it recovered once" without guessing. The
+harness also grades one deterministic unit per edit — the final saved workflow still carries the
+renamed name — because the judge never sees the workflow name. An edit the harness could not apply
+is reported as incomplete with `framework_issue`, not as the agent's miss. Do not write a stale-state
+expectation as a bare conditional ("If the builder hit … it recovered"): with no antecedent the judge
+grades it green (INS-1454).
 
 A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Network-access prompts (`web-search`, `fetch-url`) are the one gate that's granted **without** consulting the proxy LLM, so they cost nothing by default — but while any stage direction is still pending the decision goes to the LLM, which is what makes the refusal above reachable. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
 

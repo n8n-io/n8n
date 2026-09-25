@@ -102,4 +102,53 @@ describe('workflows get-as-code integration', () => {
 			workflowChecksum: 'checksum-current',
 		});
 	});
+
+	it('re-emits the verification output the last build declared for unchanged nodes', async () => {
+		const files = new Map<string, string>();
+		const context = makeContext(makeManagedWorkflow(), files);
+		const filePath = 'src/workflows/managed.workflow.ts';
+		await saveWorkflowSourceFileBinding(context, {
+			filePath,
+			workflowId: 'wf-managed',
+			workflowVersionId: 'v-stale',
+			workflowChecksum: 'checksum-stale',
+			declaredOutputFixtures: {
+				Slack: { nodeType: 'n8n-nodes-base.slack', items: [{ ok: true, ts: '1.2' }] },
+				// A node that no longer exists in the saved workflow is not re-emitted.
+				Gone: { nodeType: 'n8n-nodes-base.set', items: [{ x: 1 }] },
+			},
+		});
+		const tool = createWorkflowsTool(context);
+
+		const result = await executeTool<GetAsCodeResult>(tool, {
+			action: 'get-as-code',
+			workflowId: 'wf-managed',
+		});
+
+		expect(result.error).toBeUndefined();
+		expect(result.code).toContain("output: [{ ok: true, ts: '1.2' }]");
+		expect(result.code).not.toContain('x: 1');
+		expect(files.get(filePath)).toBe(result.code);
+	});
+
+	it('emits no output when the node changed type since the fixture was declared', async () => {
+		const files = new Map<string, string>();
+		const context = makeContext(makeManagedWorkflow(), files);
+		await saveWorkflowSourceFileBinding(context, {
+			filePath: 'src/workflows/managed.workflow.ts',
+			workflowId: 'wf-managed',
+			declaredOutputFixtures: {
+				Slack: { nodeType: 'n8n-nodes-base.httpRequest', items: [{ ok: true }] },
+			},
+		});
+		const tool = createWorkflowsTool(context);
+
+		const result = await executeTool<GetAsCodeResult>(tool, {
+			action: 'get-as-code',
+			workflowId: 'wf-managed',
+		});
+
+		expect(result.error).toBeUndefined();
+		expect(result.code).not.toContain('output:');
+	});
 });
