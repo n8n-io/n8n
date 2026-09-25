@@ -731,6 +731,140 @@ describe('VaultProvider', () => {
 	});
 
 	describe('token refresh', () => {
+		const appRoleSettings = {
+			...vaultSettings,
+			settings: {
+				...vaultSettings.settings,
+				authMethod: 'appRole',
+				roleId: 'test-role',
+				secretId: 'test-secret',
+				kvMountPath: 'secret/',
+				kvVersion: '2',
+			},
+		};
+
+		function batchTokenLookupResponse(id: string, expireTime: string) {
+			return {
+				data: {
+					...tokenLookupResponse().data,
+					id,
+					path: 'auth/approle/login',
+					type: 'batch',
+					creation_ttl: 1800,
+					ttl: 1800,
+					expire_time: expireTime,
+				},
+			};
+		}
+
+		it('authenticates with AppRole and reads secrets using a batch token', async () => {
+			const token = batchTokenLookupResponse(
+				'batch-token',
+				new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+			);
+			const { provider, httpRequest } = await initProvider(
+				[
+					{
+						method: 'POST',
+						pathname: '/v1/auth/approle/login',
+						body: { auth: { client_token: 'batch-token' } },
+					},
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: token },
+					{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: ['app'] } } },
+					{
+						method: 'GET',
+						pathname: '/v1/secret/data/app',
+						body: kvV2SecretResponse({ value: 'available' }),
+					},
+				],
+				appRoleSettings,
+			);
+			try {
+				await provider.connect();
+				await provider.update();
+
+				expect(provider.state).toBe('connected');
+				expect(provider.getSecret('secret')).toEqual({ app: { value: 'available' } });
+				expect(httpRequest.mock.calls[0][0]).toMatchObject({
+					method: 'POST',
+					body: { role_id: 'test-role', secret_id: 'test-secret' },
+				});
+				expect(httpRequest.mock.calls.at(-1)?.[0].headers).toMatchObject({
+					'X-Vault-Token': 'batch-token',
+				});
+			} finally {
+				await provider.disconnect();
+			}
+		});
+
+		it('reauthenticates with AppRole when a batch token expires', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-09-24T10:43:51Z'));
+			const expiresAt = Date.now() + 30 * 60 * 1000;
+			let replacementTokenIssued = false;
+			const firstToken = batchTokenLookupResponse('batch-token', new Date(expiresAt).toISOString());
+			const nextToken = batchTokenLookupResponse(
+				'replacement-token',
+				new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+			);
+			const { provider, httpRequest } = await initProvider(
+				[
+					{
+						method: 'POST',
+						pathname: '/v1/auth/approle/login',
+						body: { auth: { client_token: 'batch-token' } },
+					},
+					{
+						method: 'POST',
+						pathname: '/v1/auth/approle/login',
+						get body() {
+							replacementTokenIssued = true;
+							return { auth: { client_token: 'replacement-token' } };
+						},
+					},
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: firstToken },
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: firstToken },
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: nextToken },
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: nextToken },
+					{
+						method: 'GET',
+						pathname: '/v1/secret/metadata/',
+						get status() {
+							return Date.now() >= expiresAt && !replacementTokenIssued ? 403 : 200;
+						},
+						body: { data: { keys: ['app'] } },
+					},
+					{
+						method: 'GET',
+						pathname: '/v1/secret/data/app',
+						body: kvV2SecretResponse({ value: 'available' }),
+					},
+				],
+				appRoleSettings,
+			);
+			try {
+				await provider.connect();
+				await provider.update();
+				expect(provider.getSecret('secret')).toEqual({ app: { value: 'available' } });
+
+				// LIGO-1209: An AppRole batch token needs a new login when its TTL ends.
+				await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
+				await provider.update();
+
+				const loginCalls = httpRequest.mock.calls.filter(
+					([options]) => options.url === `${VAULT_URL}auth/approle/login`,
+				);
+				expect(loginCalls).toHaveLength(2);
+				expect(httpRequest.mock.calls.at(-1)?.[0].headers).toMatchObject({
+					'X-Vault-Token': 'replacement-token',
+				});
+				expect(provider.getSecret('secret')).toEqual({ app: { value: 'available' } });
+			} finally {
+				await provider.disconnect();
+				vi.useRealTimers();
+			}
+		});
+
 		it('keeps one renewal timer across reconnects and drops it once the token is not renewable', async () => {
 			const renewable = {
 				data: {
