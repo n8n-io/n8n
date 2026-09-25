@@ -49,6 +49,47 @@ export function createWorkflowMentionSourceProvider(options: {
 	const recentWorkflowsStore = useRecentWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 
+	function toMentionItems(workflows: readonly IWorkflowDb[]): AssistantMentionItem[] {
+		return workflows
+			.slice(0, MAX_MENTION_RESULTS)
+			.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
+	}
+
+	/**
+	 * Recently opened workflows of the project, without the excluded ones. A failed
+	 * lookup yields no workflows instead of an error, so the project backfill can
+	 * still fill the section.
+	 */
+	async function resolveRecentWorkflows(
+		projectId: string,
+		excludedWorkflowIds: readonly string[],
+	): Promise<IWorkflowDb[]> {
+		try {
+			return await recentWorkflowsStore.resolveRecentWorkflows(projectId, excludedWorkflowIds);
+		} catch {
+			return [];
+		}
+	}
+
+	/** The most recently updated workflows of the project that are not excluded. */
+	async function backfillProjectWorkflows(
+		projectId: string,
+		excludedIds: ReadonlySet<string>,
+	): Promise<IWorkflowDb[]> {
+		const workflows = await workflowsListStore.searchWorkflows({
+			projectId,
+			isArchived: false,
+			select: ['id', 'name', 'updatedAt'],
+			options: {
+				take: Math.min(MAX_MENTION_RESULTS + excludedIds.size, MAX_WORKFLOW_BROWSE_CANDIDATES),
+				skip: 0,
+				sortBy: 'updatedAt:desc',
+				includeScopes: false,
+			},
+		});
+		return workflows.filter(({ id }) => !excludedIds.has(id));
+	}
+
 	return {
 		id: 'workflows',
 		async browse() {
@@ -56,41 +97,18 @@ export function createWorkflowMentionSourceProvider(options: {
 			if (!projectId) return [];
 
 			const artifactWorkflowIds = toValue(options.artifactWorkflowIds);
-			let recentWorkflows: IWorkflowDb[] = [];
-			try {
-				recentWorkflows = await recentWorkflowsStore.resolveRecentWorkflows(
-					projectId,
-					artifactWorkflowIds,
-				);
-			} catch {
-				// A failed recent lookup must not hide the section. The project backfill
-				// below can still fill it.
-			}
-			if (recentWorkflows.length >= MAX_MENTION_RESULTS) {
-				return recentWorkflows.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
-			}
+			const recentWorkflows = await resolveRecentWorkflows(projectId, artifactWorkflowIds);
+			if (recentWorkflows.length >= MAX_MENTION_RESULTS) return toMentionItems(recentWorkflows);
 
 			const excludedIds = new Set([...artifactWorkflowIds, ...recentWorkflows.map(({ id }) => id)]);
 			try {
-				const backfillWorkflows = await workflowsListStore.searchWorkflows({
-					projectId,
-					isArchived: false,
-					select: ['id', 'name', 'updatedAt'],
-					options: {
-						take: Math.min(MAX_MENTION_RESULTS + excludedIds.size, MAX_WORKFLOW_BROWSE_CANDIDATES),
-						skip: 0,
-						sortBy: 'updatedAt:desc',
-						includeScopes: false,
-					},
-				});
-				return [...recentWorkflows, ...backfillWorkflows.filter(({ id }) => !excludedIds.has(id))]
-					.slice(0, MAX_MENTION_RESULTS)
-					.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
+				const backfillWorkflows = await backfillProjectWorkflows(projectId, excludedIds);
+				return toMentionItems([...recentWorkflows, ...backfillWorkflows]);
 			} catch (error) {
 				// Prefer partial results over an error. Surface the failure only when there
 				// is nothing to show, so an empty state never hides a failed request.
 				if (recentWorkflows.length === 0) throw error;
-				return recentWorkflows.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
+				return toMentionItems(recentWorkflows);
 			}
 		},
 		async search(query) {
@@ -110,7 +128,7 @@ export function createWorkflowMentionSourceProvider(options: {
 					includeScopes: false,
 				},
 			});
-			return workflows.map((workflow) => buildWorkflowMentionItem(workflow, 'workflows'));
+			return toMentionItems(workflows);
 		},
 	};
 }
