@@ -1,7 +1,7 @@
 import type { LucideIconMeta } from './lucideIconData';
 import type { DisplayEmojiEntry, DisplayEmojiSection, IconSection } from './useIconPickerSearch';
 
-const DEFAULT_COLUMNS = 10;
+const DEFAULT_COLUMNS = 12;
 
 type IconSectionRowBase = {
 	sectionKey: string;

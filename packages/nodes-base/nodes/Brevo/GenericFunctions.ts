@@ -131,7 +131,11 @@ export namespace BrevoNode {
 		}
 
 		function validateEmailStrings(input: ValidEmailFields): ValidatedEmail {
-			const composer = new MailComposer({ ...input });
+			const composer = new MailComposer({
+				...input,
+				disableFileAccess: true,
+				disableUrlAccess: true,
+			});
 			const addressFields = composer.compile().getAddresses();
 
 			const fieldFetcher = new Map<string, () => Email[] | Email>([

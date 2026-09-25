@@ -1,3 +1,4 @@
+import { NATIVE_NODE_PREFERENCE } from '@n8n/workflow-sdk/prompts/node-selection';
 import { jsonParse } from 'n8n-workflow';
 
 import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
@@ -98,14 +99,29 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/open-ai-output-shape.md`),
 		).toContain('# OpenAI node output shape');
 		expect(
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/anthropic-output-shape.md`),
+		).toContain('# Anthropic node output shape');
+		expect(
 			bundle.files.get(
 				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-builder-guardrails.md`,
 			),
 		).toContain('# Workflow Builder Guardrails');
 
-		expect(
-			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`),
-		).toContain('# Workflow SDK language reference');
+		const sdkLanguageReference = bundle.files.get(
+			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`,
+		);
+		expect(sdkLanguageReference).toContain('# Workflow SDK language reference');
+		// The Code-node-to-native-node mapping table rides along in the same file.
+		expect(sdkLanguageReference).toContain('## Native node mappings');
+		expect(sdkLanguageReference).toContain(NATIVE_NODE_PREFERENCE);
+
+		// Rules only: the when-to-group guidance already lives in the skill's
+		// always-loaded "## Node Groups" section, so it is not repeated here.
+		const nodeGroupsReference = bundle.files.get(
+			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/node-groups.md`,
+		);
+		expect(nodeGroupsReference).toContain('## Node groups');
+		expect(nodeGroupsReference).not.toContain('## Grouping');
 
 		const rootIndex = jsonParse<{
 			bestPractices: { indexFile: string; entries: Array<{ id: string }> };
@@ -128,12 +144,20 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 				file: 'reference/open-ai-output-shape.md',
 			}),
 			expect.objectContaining({
+				id: 'anthropic-output-shape',
+				file: 'reference/anthropic-output-shape.md',
+			}),
+			expect.objectContaining({
 				id: 'workflow-builder-guardrails',
 				file: 'reference/workflow-builder-guardrails.md',
 			}),
 			expect.objectContaining({
 				id: 'workflow-sdk-language',
 				file: 'reference/workflow-sdk-language.md',
+			}),
+			expect.objectContaining({
+				id: 'node-groups',
+				file: 'reference/node-groups.md',
 			}),
 		]);
 		expect(rootIndex.bestPractices.entries.some((entry) => entry.id === 'scheduling')).toBe(true);

@@ -278,6 +278,36 @@ describe('NodeTypes', () => {
 		loadNodesAndCredentials.loaded.nodes = {};
 	});
 
+	describe('resolveBaseName', () => {
+		it('resolves a synthetic Tool variant to the node it was generated from', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNodeTool')).toEqual({
+				baseName: 'n8n-nodes-base.testNode',
+				isSyntheticTool: true,
+			});
+		});
+
+		it('resolves a synthetic HitlTool variant to the node it was generated from', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.hitlNodeHitlTool')).toEqual({
+				baseName: 'n8n-nodes-base.hitlNode',
+				isSyntheticTool: true,
+			});
+		});
+
+		it('leaves a real on-disk node whose name ends in Tool as it is', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.realTool')).toEqual({
+				baseName: 'n8n-nodes-base.realTool',
+				isSyntheticTool: false,
+			});
+		});
+
+		it('leaves a name without a tool suffix as it is', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNode')).toEqual({
+				baseName: 'n8n-nodes-base.testNode',
+				isSyntheticTool: false,
+			});
+		});
+	});
+
 	describe('getByName', () => {
 		it('should return node type when it exists', () => {
 			const result = nodeTypes.getByName('n8n-nodes-base.nonVersioned');
@@ -478,11 +508,18 @@ describe('NodeTypes', () => {
 	});
 
 	describe('getWithSourcePath', () => {
-		it('should return description and source path for existing node', () => {
+		it('should return description and the resolved source path for existing node', () => {
+			const resolvedPath = '/nodes-base/dist/nodes/NonVersioned/NonVersioned.node.js';
+			loadNodesAndCredentials.resolveNodeSourcePath.mockReturnValueOnce(resolvedPath);
+
 			const result = nodeTypes.getWithSourcePath('n8n-nodes-base.nonVersioned', 1);
+
 			expect(result).toHaveProperty('description');
-			expect(result).toHaveProperty('sourcePath');
-			expect(result.sourcePath).toBe(nonVersionedNode.sourcePath);
+			expect(result.sourcePath).toBe(resolvedPath);
+			expect(loadNodesAndCredentials.resolveNodeSourcePath).toHaveBeenCalledWith(
+				'n8n-nodes-base.nonVersioned',
+				nonVersionedNode.sourcePath,
+			);
 		});
 
 		it('should throw error for non-existent node', () => {

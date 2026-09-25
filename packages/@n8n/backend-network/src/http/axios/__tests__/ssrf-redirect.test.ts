@@ -1,8 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
+import dns from 'node:dns';
+import type { LookupFunction } from 'node:net';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge } from '../../../ssrf';
-import { makeSsrfBridge } from '../../../ssrf/__tests__/mock-ssrf-bridge';
+import { makeSsrfBridge, useCleanProxyEnv } from '../../../ssrf/__tests__/mock-ssrf-bridge';
 import { executeLegacyRequest } from '../../legacy-request';
 import { type LocalServer, startServer } from '../../local-server';
 import { configureGlobalAxiosDefaults } from '../config';
@@ -15,8 +17,6 @@ import { httpRequest } from '../request';
 // while `NO_PROXY` keeps the loopback connection direct (no real proxy needed).
 
 configureGlobalAxiosDefaults();
-
-const PROXY_ENV_KEYS = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY'] as const;
 
 async function startRedirectServer(): Promise<LocalServer> {
 	let serverUrl = '';
@@ -67,13 +67,11 @@ function makeBridge(blockedPath: string): { bridge: SsrfBridge; error: Error } {
 }
 
 describe('httpRequest manual redirect following with SSRF + proxy', () => {
+	useCleanProxyEnv();
+
 	let server: LocalServer;
-	const savedEnv: Record<string, string | undefined> = {};
 
 	beforeEach(async () => {
-		for (const key of PROXY_ENV_KEYS) {
-			savedEnv[key] = process.env[key];
-		}
 		// A proxy is configured (engages the manual follower), but loopback is
 		// exempt so the request connects directly to the local server.
 		process.env.HTTP_PROXY = 'http://127.0.0.1:1';
@@ -84,13 +82,6 @@ describe('httpRequest manual redirect following with SSRF + proxy', () => {
 	});
 
 	afterEach(async () => {
-		for (const key of PROXY_ENV_KEYS) {
-			if (savedEnv[key] === undefined) {
-				delete process.env[key];
-			} else {
-				process.env[key] = savedEnv[key];
-			}
-		}
 		await server.close();
 	});
 
@@ -215,6 +206,177 @@ describe('httpRequest manual redirect following with SSRF + proxy', () => {
 
 			expect(body).toBe('reached:/internal');
 			expect(server.captured).toEqual(['/start', '/internal']);
+		});
+	});
+
+	describe('proxy host validation across redirect hops', () => {
+		let proxyServer: LocalServer;
+		const START_URL = 'http://redirect-target.invalid/start';
+		const INTERNAL_URL = 'http://redirect-target.invalid/internal';
+
+		beforeEach(async () => {
+			proxyServer = await startServer((req, res) => {
+				if (req.url === START_URL) {
+					res.writeHead(302, { Location: INTERNAL_URL });
+					res.end();
+					return;
+				}
+				res.writeHead(200, { 'content-type': 'text/plain' });
+				res.end('reached:proxied');
+			});
+		});
+
+		afterEach(async () => {
+			await proxyServer.close();
+		});
+
+		const proxyConfig = () => ({
+			host: 'localhost',
+			port: Number(new URL(proxyServer.url).port),
+			protocol: 'http',
+		});
+
+		it('follows the redirect through a proxy the policy allows', async () => {
+			const bridge = makeSsrfBridge({
+				createSecureLookup: () => dns.lookup as unknown as LookupFunction,
+			});
+
+			const response = await httpRequest(
+				{ method: 'GET', url: START_URL, proxy: proxyConfig() },
+				bridge,
+			);
+
+			expect(response).toBe('reached:proxied');
+			expect(proxyServer.captured).toEqual([START_URL, INTERNAL_URL]);
+		});
+
+		it('blocks the redirect hop when the proxy host is no longer allowed', async () => {
+			const denied = new Error(
+				'The request was blocked because it resolves to a restricted IP address',
+			);
+			const lookup = ((hostname: string, options: dns.LookupOptions, onResult: unknown) => {
+				if (proxyServer.captured.length > 0) {
+					(onResult as (error: Error | null, address?: unknown, family?: number) => void)(
+						denied,
+						options.all ? [] : '',
+						undefined,
+					);
+					return;
+				}
+				dns.lookup(hostname, options, onResult as never);
+			}) as unknown as LookupFunction;
+			const bridge = makeSsrfBridge({ createSecureLookup: () => lookup });
+
+			await expect(
+				httpRequest({ method: 'GET', url: START_URL, proxy: proxyConfig() }, bridge),
+			).rejects.toThrow(denied.message);
+
+			expect(proxyServer.captured).toEqual([START_URL]);
+		});
+	});
+
+	describe('proxy host validation before the request is sent', () => {
+		let proxyServer: LocalServer;
+		const TARGET_URL = 'http://proxied-target.invalid/x';
+
+		beforeEach(async () => {
+			proxyServer = await startServer((_req, res) => {
+				res.writeHead(200, { 'content-type': 'text/plain' });
+				res.end('reached:proxied');
+			});
+		});
+
+		afterEach(async () => {
+			await proxyServer.close();
+		});
+
+		const proxyUrl = () => `http://localhost:${new URL(proxyServer.url).port}`;
+
+		const proxyConfig = () => ({
+			host: 'localhost',
+			port: Number(new URL(proxyServer.url).port),
+			protocol: 'http',
+		});
+
+		function bridgeDenying(hostname: string, error: Error): SsrfBridge {
+			return makeSsrfBridge({
+				createSecureLookup: () => dns.lookup as unknown as LookupFunction,
+				validateUrl: vi.fn(async (url: string | URL) => {
+					const host = typeof url === 'string' ? new URL(url).hostname : url.hostname;
+					return await Promise.resolve(
+						host === hostname
+							? { ok: false as const, error }
+							: { ok: true as const, result: undefined },
+					);
+				}),
+			});
+		}
+
+		const requestPaths = [
+			[
+				'httpRequest',
+				async (bridge: SsrfBridge) =>
+					await httpRequest({ method: 'GET', url: TARGET_URL, proxy: proxyConfig() }, bridge),
+			],
+			[
+				'executeLegacyRequest',
+				async (bridge: SsrfBridge) =>
+					await executeLegacyRequest(
+						{ uri: TARGET_URL, proxy: proxyUrl() },
+						bridge,
+						mock<Logger>(),
+					),
+			],
+		] as const;
+
+		it.each(requestPaths)(
+			'blocks %s when the policy denies the proxy host',
+			async (_name, send) => {
+				const error = new Error('The proxy host is not permitted by policy');
+
+				await expect(send(bridgeDenying('localhost', error))).rejects.toBe(error);
+
+				expect(proxyServer.captured).toEqual([]);
+			},
+		);
+
+		it.each(requestPaths)('sends %s when the policy allows the proxy host', async (_name, send) => {
+			const bridge = bridgeDenying('never-matches.invalid', new Error('unused'));
+
+			expect(await send(bridge)).toBe('reached:proxied');
+
+			expect(bridge.validateUrl).toHaveBeenCalledWith(
+				expect.objectContaining({ hostname: 'localhost' }),
+			);
+		});
+
+		it('reports the target URL denial before checking the proxy host', async () => {
+			const targetError = new Error('The target host is not permitted by policy');
+			const bridge = makeSsrfBridge({
+				createSecureLookup: () => dns.lookup as unknown as LookupFunction,
+				validateUrl: vi.fn(async (url: string | URL) => {
+					const host = typeof url === 'string' ? new URL(url).hostname : url.hostname;
+					return await Promise.resolve({
+						ok: false as const,
+						error: host === 'localhost' ? new Error('proxy denied') : targetError,
+					});
+				}),
+			});
+
+			await expect(
+				httpRequest({ method: 'GET', url: TARGET_URL, proxy: proxyConfig() }, bridge),
+			).rejects.toBe(targetError);
+		});
+
+		it('sends the request through the proxy when SSRF protection is disabled', async () => {
+			const response = await httpRequest({
+				method: 'GET',
+				url: TARGET_URL,
+				proxy: proxyConfig(),
+			});
+
+			expect(response).toBe('reached:proxied');
+			expect(proxyServer.captured).toEqual([TARGET_URL]);
 		});
 	});
 

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>n8n Browser Use</title>
+		<style>
+			/* Action popups size to content — fix the viewport so the app's
+			   popup-mode media query (≤550px) applies and fills the window */
+			html {
+				width: 500px;
+				height: 600px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module" src="main.ts"></script>
+	</body>
+</html>

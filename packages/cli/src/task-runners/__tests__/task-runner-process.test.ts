@@ -9,7 +9,7 @@ import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task
 import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 
 import { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
-import { restartRetryDelay } from '../task-runner-process-base';
+import { restartRetryDelay, RUNNER_EXIT_GRACE_MS } from '../task-runner-process-base';
 
 // Source imports `spawn` from `node:child_process` as an ESM binding, so mutating
 // `require('child_process').spawn` does not intercept it — mock the module instead.
@@ -98,6 +98,44 @@ describe('TaskRunnerProcess', () => {
 		});
 	});
 
+	describe('stop', () => {
+		let child: ChildProcess;
+
+		beforeEach(async () => {
+			vi.useFakeTimers();
+			taskRunnerProcess = new JsTaskRunnerProcess(logger, runnerConfig, authService, mock());
+			authService.createGrantToken.mockResolvedValue('grantToken');
+			child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should not force-kill a runner that exits within the grace period', async () => {
+			const stopPromise = taskRunnerProcess.stop();
+			await vi.advanceTimersByTimeAsync(0); // let stop() send the graceful kill
+			child.emit('exit', 0);
+			await stopPromise;
+			await vi.advanceTimersByTimeAsync(RUNNER_EXIT_GRACE_MS); // no late force-kill
+
+			expect(child.kill).toHaveBeenCalledTimes(1);
+			expect(child.kill).not.toHaveBeenCalledWith('SIGKILL');
+		});
+
+		it('should force-kill a runner that does not exit within the grace period', async () => {
+			const stopPromise = taskRunnerProcess.stop();
+			await vi.advanceTimersByTimeAsync(RUNNER_EXIT_GRACE_MS);
+
+			expect(child.kill).toHaveBeenCalledWith('SIGKILL');
+
+			child.emit('exit', 0);
+			await stopPromise;
+		});
+	});
+
 	describe('start', () => {
 		beforeEach(() => {
 			taskRunnerProcess = new JsTaskRunnerProcess(logger, runnerConfig, authService, mock());
@@ -159,6 +197,15 @@ describe('TaskRunnerProcess', () => {
 
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(Object.getPrototypeOf(options.env)).toBeNull();
+		});
+
+		it('should bind the assigned runner ID to the grant token', async () => {
+			authService.createGrantToken.mockResolvedValue('grantToken');
+
+			await taskRunnerProcess.start();
+
+			const { env } = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(authService.createGrantToken).toHaveBeenCalledWith(env!.N8N_RUNNERS_ID);
 		});
 
 		it('should not inherit env keys from Object.prototype', async () => {
@@ -479,22 +526,28 @@ describe('TaskRunnerProcess', () => {
 			'runner:unresponsive',
 		] as const;
 
-		const report = (event: (typeof RESTART_EVENTS)[number], taskTypes: string[]) => {
-			runnerLifecycleEvents.emit(event, { runnerId: 'runner1', taskTypes });
+		/** ID the runner in the nth spawned process was told to identify as. */
+		const assignedRunnerId = (spawnIndex: number) => {
+			const { env } = spawnMock.mock.calls[spawnIndex][2] as SpawnOptions;
+			return env!.N8N_RUNNERS_ID as string;
 		};
 
-		const reportUnresponsive = (taskTypes: string[]) => {
-			report('runner:unresponsive', taskTypes);
+		const report = (event: (typeof RESTART_EVENTS)[number], runnerId: string) => {
+			runnerLifecycleEvents.emit(event, { runnerId });
+		};
+
+		const reportUnresponsive = (runnerId: string) => {
+			report('runner:unresponsive', runnerId);
 		};
 
 		it.each(RESTART_EVENTS)(
-			'should force-kill and relaunch on %s for a runner of its own task type',
+			'should force-kill and relaunch on %s the runner it spawned',
 			async (event) => {
 				const child = createChildProcess(42);
 				spawnMock.mockReturnValue(child);
 				await taskRunnerProcess.start();
 
-				report(event, ['javascript']);
+				report(event, assignedRunnerId(0));
 
 				// a runner with a blocked event loop never exits on its own
 				expect(child.kill).toHaveBeenCalledWith('SIGKILL');
@@ -512,7 +565,7 @@ describe('TaskRunnerProcess', () => {
 			await taskRunnerProcess.start();
 
 			const stopPromise = taskRunnerProcess.stop();
-			reportUnresponsive(['javascript']);
+			reportUnresponsive(assignedRunnerId(0));
 
 			expect(child.kill).not.toHaveBeenCalledWith('SIGKILL');
 
@@ -523,15 +576,31 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock).toHaveBeenCalledTimes(1);
 		});
 
-		it.each(RESTART_EVENTS)('should ignore %s for a runner of another task type', async (event) => {
+		it.each(RESTART_EVENTS)('should ignore %s for another runner', async (event) => {
 			const child = createChildProcess(42);
 			spawnMock.mockReturnValue(child);
 			await taskRunnerProcess.start();
 
-			report(event, ['python']);
+			report(event, 'someone-elses-runner');
 
 			expect(child.kill).not.toHaveBeenCalled();
 			expect(spawnMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('should ignore a report for the runner it replaced', async () => {
+			const replaced = createChildProcess(42);
+			const relaunched = createChildProcess(43);
+			spawnMock.mockReturnValueOnce(replaced).mockReturnValueOnce(relaunched);
+			await taskRunnerProcess.start();
+			const replacedRunnerId = assignedRunnerId(0);
+
+			replaced.emit('exit', null);
+			await vi.advanceTimersByTimeAsync(0);
+
+			reportUnresponsive(replacedRunnerId);
+
+			expect(relaunched.kill).not.toHaveBeenCalled();
+			expect(assignedRunnerId(1)).not.toBe(replacedRunnerId);
 		});
 	});
 

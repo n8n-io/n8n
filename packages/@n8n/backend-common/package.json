@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-common",
-  "version": "1.34.0",
+  "version": "1.41.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -9,8 +9,8 @@
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -34,16 +34,18 @@
     "n8n-workflow": "workspace:*",
     "stream-json": "catalog:",
     "picocolors": "catalog:",
-    "reflect-metadata": "catalog:",
     "winston": "3.14.2",
     "yargs-parser": "21.1.1"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/stream-json": "1.7.8",
     "@types/yargs-parser": "21.0.0",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",

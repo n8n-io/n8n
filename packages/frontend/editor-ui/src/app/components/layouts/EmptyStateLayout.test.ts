@@ -7,13 +7,12 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import userEvent from '@testing-library/user-event';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 
 const surfaceMcpEmptyState = vi.hoisted(() => ({
 	showTile: false,
-	showReminder: false,
 }));
 const trackClickedNewAgent = vi.hoisted(() => vi.fn());
 
@@ -35,7 +34,6 @@ vi.mock('@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyS
 	return {
 		useSurfaceMcpEmptyState: vi.fn(() => ({
 			showTile: computed(() => surfaceMcpEmptyState.showTile),
-			showReminder: computed(() => surfaceMcpEmptyState.showReminder),
 		})),
 	};
 });
@@ -52,9 +50,6 @@ const renderComponent = createComponentRenderer(EmptyStateLayout, {
 		stubs: {
 			SurfaceMcpEmptyStateTile: {
 				template: '<div data-test-id="mcp-onboarding-card" />',
-			},
-			SurfaceMcpEmptyStateReminder: {
-				template: '<div data-test-id="mcp-onboarding-reminder" />',
 			},
 		},
 	},
@@ -103,7 +98,6 @@ describe('EmptyStateLayout', () => {
 			return moduleName === 'agents';
 		});
 		surfaceMcpEmptyState.showTile = false;
-		surfaceMcpEmptyState.showReminder = false;
 	});
 
 	afterEach(() => {
@@ -124,14 +118,12 @@ describe('EmptyStateLayout', () => {
 			expect(getByTestId('new-workflow-card')).toBeInTheDocument();
 		});
 
-		it('renders Surface MCP empty-state insertion components when enabled', () => {
+		it('renders the Surface MCP empty-state tile when enabled', () => {
 			surfaceMcpEmptyState.showTile = true;
-			surfaceMcpEmptyState.showReminder = true;
 
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('mcp-onboarding-card')).toBeInTheDocument();
-			expect(getByTestId('mcp-onboarding-reminder')).toBeInTheDocument();
 		});
 
 		it('should render ready-to-run card when user can claim OpenAI credits and MCP tile is hidden', () => {

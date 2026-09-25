@@ -7,7 +7,7 @@ import { EnterpriseEditionFeature } from '@/app/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import type {
@@ -189,6 +189,7 @@ function goToUpgrade() {
 				:placeholder="sharingSelectPlaceholder"
 				:can-share-globally="canShareGlobally"
 				:is-shared-globally="isSharedGlobally"
+				:teleported="false"
 				@update:share-with-all-users="emit('update:shareWithAllUsers', $event)"
 			/>
 		</div>

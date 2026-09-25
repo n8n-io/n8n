@@ -495,7 +495,7 @@ export class GatewayClient {
 		const { session, confirmResourceAccess, config } = this.options;
 
 		for (const resource of resources) {
-			const rule = session.check(resource.toolGroup, resource.resource);
+			const rule = session.check(resource.toolGroup, resource.resource, resource.kind);
 
 			if (rule === 'deny') {
 				throw new Error(

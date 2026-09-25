@@ -21,7 +21,7 @@ CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "
 | createdById | varchar |  | true |  | [user](user.md) |  |
 | decision | varchar(50) | 'pending' | false |  |  |  |
 | description | TEXT |  | true |  |  |  |
-| id | varchar(36) |  | false | [workflow_review_request_authors](workflow_review_request_authors.md) [workflow_review_request_reviewers](workflow_review_request_reviewers.md) [workflow_review_request_workflow](workflow_review_request_workflow.md) |  |  |
+| id | varchar(36) |  | false | [workflow_review_activity](workflow_review_activity.md) [workflow_review_request_authors](workflow_review_request_authors.md) [workflow_review_request_reviewers](workflow_review_request_reviewers.md) [workflow_review_request_workflow](workflow_review_request_workflow.md) |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | state | varchar(16) | 'open' | false |  |  |  |
 | title | varchar(255) |  | false |  |  |  |
@@ -55,6 +55,7 @@ erDiagram
 
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_activity" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_authors" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_reviewers" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_workflow" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -92,6 +93,15 @@ erDiagram
   TEXT settings
   datetime_3_ updatedAt
 }
+"workflow_review_activity" {
+  datetime_3_ createdAt
+  varchar createdById FK
+  TEXT data
+  INTEGER id
+  varchar_64_ type
+  INTEGER typeVersion
+  varchar_36_ workflowReviewRequestId FK
+}
 "workflow_review_request_authors" {
   varchar userId PK
   varchar_36_ workflowReviewRequestId PK
@@ -101,6 +111,7 @@ erDiagram
   varchar_36_ workflowReviewRequestId PK
 }
 "workflow_review_request_workflow" {
+  varchar_36_ baselineVersionId FK
   varchar_36_ id PK
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

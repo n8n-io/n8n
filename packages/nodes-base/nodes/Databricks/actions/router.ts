@@ -4,6 +4,8 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import * as databricksSql from './databricksSql/DatabricksSql.resource';
 import * as files from './files/Files.resource';
 import * as genie from './genie/Genie.resource';
+import { makePermissionErrorLegible, permissionHintFor } from './helpers';
+import * as job from './job/Job.resource';
 import * as modelServing from './modelServing/ModelServing.resource';
 import * as unityCatalog from './unityCatalog/UnityCatalog.resource';
 import * as vectorSearch from './vectorSearch/VectorSearch.resource';
@@ -12,6 +14,7 @@ type ResourceMap =
 	| typeof databricksSql
 	| typeof files
 	| typeof genie
+	| typeof job
 	| typeof modelServing
 	| typeof unityCatalog
 	| typeof vectorSearch;
@@ -34,6 +37,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			break;
 		case 'genie':
 			resourceModule = genie;
+			break;
+		case 'job':
+			resourceModule = job;
 			break;
 		case 'modelServing':
 			resourceModule = modelServing;
@@ -67,6 +73,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			const result = await operationModule.execute.call(this, i);
 			returnData.push(...result);
 		} catch (error) {
+			makePermissionErrorLegible(error, permissionHintFor(resource, operation));
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: (error as Error).message }, pairedItem: { item: i } });
 				continue;

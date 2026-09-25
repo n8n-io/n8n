@@ -1,5 +1,5 @@
 {
-	"description": "RLY-200: the user asks for an agent with web-search and cloud-browser capabilities but names no specific tool, has only an OpenAI credential stored, and n8n credits (AI Gateway) covers scraping/browser service nodes on the instance. The build should reach for the covered nodes so those tools run with no extra API key, rather than defaulting to service nodes that need the user's own key (the observed failure picked SerpApi + Airtop, forcing a setup detour). Build-only: agent-tool nodes are supplyData-only and can't be executed standalone (known harness limitation), so correctness is carried in outcome/process expectations. PREREQUISITES TO RUN: an AI-Gateway-licensed instance connected to a gateway config that covers the scraping/browser nodes AND has those community nodes installed (e.g. @mendable/n8n-nodes-firecrawl.firecrawl, n8n-nodes-browserbase.browserbase); a stock eval instance lacks them and will red on node-availability, not on the behaviour under test. NOT YET CALIBRATED against a real build.",
+	"description": "RLY-200: the user asks for an agent with web-search and cloud-browser capabilities but names no specific tool, has only an OpenAI credential stored, and Gateway credits (AI Gateway) covers scraping/browser service nodes on the instance. The build should reach for the covered nodes so those tools run with no extra API key, rather than defaulting to service nodes that need the user's own key (the observed failure picked SerpApi + Airtop, forcing a setup detour). Build-only: agent-tool nodes are supplyData-only and can't be executed standalone (known harness limitation), so correctness is carried in outcome/process expectations. PREREQUISITES TO RUN: an AI-Gateway-licensed instance connected to a gateway config that covers the scraping/browser nodes AND has those community nodes installed (e.g. @mendable/n8n-nodes-firecrawl.firecrawl, n8n-nodes-browserbase.browserbase); a stock eval instance lacks them and will red on node-availability, not on the behaviour under test. NOT YET CALIBRATED against a real build.",
 	"conversation": [
 		{
 			"role": "user",
@@ -20,13 +20,13 @@
 	],
 	"datasets": ["ai-gateway"],
 	"processExpectations": [
-		"The agent did not ask the user to provide an API key or set up a credential for the web-search or cloud-browser tools, and did not route them to credential setup — n8n credits covers those service nodes on this instance, so it treated them as connected.",
-		"The agent did not just take the first suggested or top-ranked service node for web search / cloud browser; when the user had no stored credential for a comparable tool, it preferred the n8n-credits-covered node over an alternative that would require the user's own API key."
+		"The agent did not ask the user to provide an API key or set up a credential for the web-search or cloud-browser tools, and did not route them to credential setup — Gateway credits cover those service nodes on this instance, so it treated them as connected.",
+		"The agent did not just take the first suggested or top-ranked service node for web search / cloud browser; when the user had no stored credential for a comparable tool, it preferred the Gateway-credits-covered node over an alternative that would require the user's own API key."
 	],
 	"outcomeExpectations": [
 		"The workflow is an AI agent (chat-triggered) wired to a chat model, with at least one web-search tool and one cloud-browser tool attached as agent tools.",
-		"The web-search tool is a node covered by n8n credits — its credential entry has `id: null` and `__aiGatewayManaged: true` (the managed option) — rather than a service that requires the user's own API key.",
-		"The cloud-browser tool is a node covered by n8n credits — its credential entry has `id: null` and `__aiGatewayManaged: true` — rather than a service that requires the user's own API key.",
+		"The web-search tool is a node covered by Gateway credits — its credential entry has `id: null` and `__aiGatewayManaged: true` (the managed option) — rather than a service that requires the user's own API key.",
+		"The cloud-browser tool is a node covered by Gateway credits — its credential entry has `id: null` and `__aiGatewayManaged: true` — rather than a service that requires the user's own API key.",
 		"The chat model is an OpenAI-family node using the stored OpenAI credential the user already has (the user named no model, and OpenAI is the only provider they have configured)."
 	]
 }

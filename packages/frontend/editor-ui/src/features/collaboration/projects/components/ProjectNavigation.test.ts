@@ -1,12 +1,18 @@
+import { nextTick } from 'vue';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
+import { waitFor } from '@testing-library/vue';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createProjectListItem, createTestProject } from '../__tests__/utils';
 import ProjectsNavigation from './ProjectNavigation.vue';
 import { useProjectsStore } from '../projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
+import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -59,6 +65,22 @@ const renderComponent = createComponentRenderer(ProjectsNavigation, {
 	},
 });
 
+// A router that can sit on a chat route; the default renderer only knows `home`.
+const threadRouter = createRouter({
+	history: createMemoryHistory(),
+	routes: [
+		{ path: '/', name: 'home', component: { template: '<div>Home</div>' } },
+		{
+			path: '/instance-ai/:threadId',
+			name: INSTANCE_AI_THREAD_VIEW,
+			component: { template: '<div>Thread</div>' },
+		},
+	],
+});
+const renderOnThreadRoute = createComponentRenderer(ProjectsNavigation, {
+	global: { plugins: [threadRouter] },
+});
+
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
@@ -68,12 +90,43 @@ const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team
 
 describe('ProjectsNavigation', () => {
 	beforeEach(() => {
+		vi.stubGlobal('localStorage', {
+			getItem: vi.fn().mockReturnValue(null),
+			setItem: vi.fn(),
+		});
 		createTestingPinia();
 
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
 		usersStore = mockedStore(useUsersStore);
 	});
+
+	function configureInstanceAi(setupCompleted: boolean) {
+		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+		settingsStore.moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				mcpConnectionsAvailable: true,
+				localGatewayDisabled: false,
+				browserUseEnabled: true,
+				proxyEnabled: false,
+				cloudManaged: false,
+				setupCompleted,
+				sandboxEnabled: true,
+				workflowBuilderAvailable: true,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
+	}
+
+	function configureInstanceAiScopes({ canManage }: { canManage: boolean }) {
+		vi.mocked(useRBACStore().hasScope).mockImplementation((scope) => {
+			if (scope === 'instanceAi:manage') return canManage;
+			if (scope === 'instanceAi:message') return true;
+			return false;
+		});
+	}
 
 	it('should not throw an error', () => {
 		projectsStore.teamProjectsLimit = -1;
@@ -84,6 +137,29 @@ describe('ProjectsNavigation', () => {
 				},
 			});
 		}).not.toThrow();
+	});
+
+	it('should reload the projects after a package was applied', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		renderComponent({ props: { collapsed: false } });
+		// The listener registers once the users are fetched.
+		await waitFor(() => expect(usersStore.fetchUsers).toHaveBeenCalled());
+		await nextTick();
+
+		promotionEventBus.emit('applied', { projectId: 'project-1' });
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalled());
+	});
+
+	it('should reload the projects after a package removed one', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		renderComponent({ props: { collapsed: false } });
+		await waitFor(() => expect(usersStore.fetchUsers).toHaveBeenCalled());
+		await nextTick();
+
+		promotionEventBus.emit('projectRemoved', { projectId: 'project-1' });
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalled());
 	});
 
 	it('should show "Projects" title and Personal project when the feature is enabled', async () => {
@@ -103,22 +179,10 @@ describe('ProjectsNavigation', () => {
 		expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
 	});
 
-	it('should show Instance AI above Home when enabled', () => {
+	it('should show Instance AI above Home for a member after setup is complete', () => {
 		projectsStore.teamProjectsLimit = -1;
-		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-		settingsStore.moduleSettings = {
-			'instance-ai': {
-				enabled: true,
-				localGatewayDisabled: false,
-				browserUseEnabled: true,
-				proxyEnabled: false,
-				cloudManaged: false,
-				sandboxEnabled: true,
-				workflowBuilderAvailable: true,
-				sandboxUnavailableReason: null,
-				runDebugEnabled: false,
-			},
-		};
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(true);
 
 		const { getByTestId } = renderComponent({
 			props: {
@@ -131,6 +195,45 @@ describe('ProjectsNavigation', () => {
 				getByTestId('project-home-menu-item'),
 			) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('should keep the open chat listed when it is older than the five most recent', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(true);
+		const instanceAiStore = mockedStore(useInstanceAiStore);
+		instanceAiStore.threads = Array.from({ length: 7 }, (_, index) => ({
+			id: `thread-${index}`,
+			title: `Chat ${index}`,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		}));
+		await threadRouter.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: 'thread-6' } });
+
+		const { getByTestId } = renderOnThreadRoute({ props: { collapsed: false } });
+
+		const chats = getByTestId('instance-ai-sidebar-chats').textContent ?? '';
+		expect(chats.match(/Chat \d/g)).toEqual(['Chat 0', 'Chat 1', 'Chat 2', 'Chat 3', 'Chat 6']);
+	});
+
+	it('should hide Instance AI from a member until setup is complete', () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(false);
+
+		const { queryByTestId } = renderComponent({ props: { collapsed: false } });
+
+		expect(queryByTestId('project-instance-ai-menu-item')).toBeNull();
+	});
+
+	it('should show Instance AI to an admin before setup is complete', () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: true });
+		configureInstanceAi(false);
+
+		const { getByTestId } = renderComponent({ props: { collapsed: false } });
+
+		expect(getByTestId('project-instance-ai-menu-item')).toBeVisible();
 	});
 
 	it('should not show "Projects" title when the menu is collapsed', async () => {

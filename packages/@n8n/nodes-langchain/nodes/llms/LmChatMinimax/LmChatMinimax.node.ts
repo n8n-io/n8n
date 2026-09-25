@@ -13,7 +13,11 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
 import type { OpenAICompatibleCredential } from '../../../types/types';
+import { minimaxTextModelOptions } from '../../vendors/MiniMax/helpers/modelOptions';
+import { modelSearch } from '../../vendors/MiniMax/methods/listSearch';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
 export class LmChatMinimax implements INodeType {
@@ -23,7 +27,8 @@ export class LmChatMinimax implements INodeType {
 		name: 'lmChatMinimax',
 		icon: 'file:minimax.svg',
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.2,
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'MiniMax Chat Model',
@@ -66,19 +71,62 @@ export class LmChatMinimax implements INodeType {
 				type: 'options',
 				description:
 					'The model which will generate the completion. <a href="https://platform.minimax.io/docs/api-reference/text-openai-api">Learn more</a>.',
-				options: [
-					{ name: 'MiniMax-M2', value: 'MiniMax-M2' },
-					{ name: 'MiniMax-M2.1', value: 'MiniMax-M2.1' },
-					{ name: 'MiniMax-M2.1-Highspeed', value: 'MiniMax-M2.1-highspeed' },
-					{ name: 'MiniMax-M2.5', value: 'MiniMax-M2.5' },
-					{ name: 'MiniMax-M2.5-Highspeed', value: 'MiniMax-M2.5-highspeed' },
-					{ name: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
-					{ name: 'MiniMax-M2.7-Highspeed', value: 'MiniMax-M2.7-highspeed' },
-				],
+				options: minimaxTextModelOptions.v1,
 				default: 'MiniMax-M2.7',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				description:
+					'The model which will generate the completion. <a href="https://platform.minimax.io/docs/api-reference/text-openai-api">Learn more</a>.',
+				options: minimaxTextModelOptions.v1_1,
+				default: 'MiniMax-M3',
 				builderHint: {
 					propertyHint:
-						'Default to the latest MiniMax-M2.x flagship (MiniMax-M2.7). Avoid MiniMax-M2 and earlier.',
+						"Choose a model from this node version's supported options. " + MODEL_SELECTION_HINT,
+				},
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'MiniMax-M3' },
+				builderHint: { propertyHint: MODEL_SELECTION_HINT },
+				required: true,
+				description:
+					'The model which will generate the completion. <a href="https://platform.minimax.io/docs/api-reference/text-openai-api">Learn more</a>.',
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'modelSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'e.g. MiniMax-M3',
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
 				},
 			},
 			{
@@ -142,10 +190,16 @@ export class LmChatMinimax implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: { modelSearch },
+	};
+
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<OpenAICompatibleCredential>('minimaxApi');
 
-		const modelName = this.getNodeParameter('model', itemIndex) as string;
+		const modelName = this.getNodeParameter('model', itemIndex, '', {
+			extractValue: true,
+		}) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			hideThinking?: boolean;
@@ -162,10 +216,14 @@ export class LmChatMinimax implements INodeType {
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					credentials.url,
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 		};
 

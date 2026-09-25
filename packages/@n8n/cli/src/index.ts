@@ -26,6 +26,7 @@ import Login from './commands/login';
 import Logout from './commands/logout';
 import PackageExport from './commands/package/export';
 import PackageImport from './commands/package/import';
+import PackageImportSelection from './commands/package/import-selection';
 import ProjectAddMember from './commands/project/add-member';
 import ProjectCreate from './commands/project/create';
 import ProjectDelete from './commands/project/delete';
@@ -34,6 +35,28 @@ import ProjectList from './commands/project/list';
 import ProjectMembers from './commands/project/members';
 import ProjectRemoveMember from './commands/project/remove-member';
 import ProjectUpdate from './commands/project/update';
+import PromotionConnectionAddProject from './commands/promotion-connection/add-project';
+import PromotionConnectionApply from './commands/promotion-connection/apply';
+import PromotionConnectionApplyContinue from './commands/promotion-connection/apply-continue';
+import PromotionConnectionClone from './commands/promotion-connection/clone';
+import PromotionConnectionCreate from './commands/promotion-connection/create';
+import PromotionConnectionDelete from './commands/promotion-connection/delete';
+import PromotionConnectionDeleteConfig from './commands/promotion-connection/delete-config';
+import PromotionConnectionDisconnect from './commands/promotion-connection/disconnect';
+import PromotionConnectionGet from './commands/promotion-connection/get';
+import PromotionConnectionList from './commands/promotion-connection/list';
+import PromotionConnectionListChanges from './commands/promotion-connection/list-changes';
+import PromotionConnectionListProjects from './commands/promotion-connection/list-projects';
+import PromotionConnectionPromote from './commands/promotion-connection/promote';
+import PromotionConnectionPromoteSelection from './commands/promotion-connection/promote-selection';
+import PromotionConnectionRemoveProject from './commands/promotion-connection/remove-project';
+import PromotionConnectionSetConfig from './commands/promotion-connection/set-config';
+import PromotionConnectionUpdate from './commands/promotion-connection/update';
+import PromotionProviderCreate from './commands/promotion-provider/create';
+import PromotionProviderDelete from './commands/promotion-provider/delete';
+import PromotionProviderGet from './commands/promotion-provider/get';
+import PromotionProviderList from './commands/promotion-provider/list';
+import PromotionProviderUpdate from './commands/promotion-provider/update';
 import SkillInstall from './commands/skill/install';
 import SourceControlPull from './commands/source-control/pull';
 import TagCreate from './commands/tag/create';
@@ -80,6 +103,30 @@ export const commands = {
 	'execution:stop': ExecutionStop,
 	'execution:delete': ExecutionDelete,
 
+	'promotion-provider:list': PromotionProviderList,
+	'promotion-provider:get': PromotionProviderGet,
+	'promotion-provider:create': PromotionProviderCreate,
+	'promotion-provider:update': PromotionProviderUpdate,
+	'promotion-provider:delete': PromotionProviderDelete,
+
+	'promotion-connection:list': PromotionConnectionList,
+	'promotion-connection:get': PromotionConnectionGet,
+	'promotion-connection:create': PromotionConnectionCreate,
+	'promotion-connection:update': PromotionConnectionUpdate,
+	'promotion-connection:delete': PromotionConnectionDelete,
+	'promotion-connection:set-config': PromotionConnectionSetConfig,
+	'promotion-connection:delete-config': PromotionConnectionDeleteConfig,
+	'promotion-connection:clone': PromotionConnectionClone,
+	'promotion-connection:disconnect': PromotionConnectionDisconnect,
+	'promotion-connection:list-projects': PromotionConnectionListProjects,
+	'promotion-connection:list-changes': PromotionConnectionListChanges,
+	'promotion-connection:add-project': PromotionConnectionAddProject,
+	'promotion-connection:remove-project': PromotionConnectionRemoveProject,
+	'promotion-connection:promote': PromotionConnectionPromote,
+	'promotion-connection:promote-selection': PromotionConnectionPromoteSelection,
+	'promotion-connection:apply': PromotionConnectionApply,
+	'promotion-connection:apply-continue': PromotionConnectionApplyContinue,
+
 	'credential:list': CredentialList,
 	'credential:get': CredentialGet,
 	'credential:schema': CredentialSchema,
@@ -125,6 +172,7 @@ export const commands = {
 
 	'package:export': PackageExport,
 	'package:import': PackageImport,
+	'package:import-selection': PackageImportSelection,
 
 	audit: Audit,
 };

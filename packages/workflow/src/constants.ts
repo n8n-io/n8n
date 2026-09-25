@@ -5,6 +5,23 @@ export const ALPHABET = [DIGITS, UPPERCASE_LETTERS, LOWERCASE_LETTERS].join('');
 
 export const BINARY_ENCODING = 'base64';
 export const WAIT_INDEFINITELY = new Date('3000-01-01T00:00:00.000Z');
+// A parent parked on a sub-execution gets its own sentinel so the waiting-executions sweep can select those rows by equality.
+export const WAIT_FOR_SUB_EXECUTION = new Date('2999-12-31T00:00:00.000Z');
+
+/**
+ * The longest wait that sleeps in the process instead of suspending the execution.
+ * `WaitTracker` polls every 60 seconds, so it can need a full minute to see a new row.
+ * A suspended wait shorter than that resumes late. The 5 extra seconds cover the delay
+ * until the row is written. `ExecutionRepository.getWaitingExecutions` must keep
+ * selecting rows further out than one poll interval. Change this number only with
+ * those two.
+ */
+export const MAX_IN_PROCESS_WAIT_MS = 65_000;
+
+export function isIndefiniteWait(waitTill: Date): boolean {
+	const time = waitTill.getTime();
+	return time === WAIT_INDEFINITELY.getTime() || time === WAIT_FOR_SUB_EXECUTION.getTime();
+}
 
 export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'] as const;
 
@@ -31,6 +48,13 @@ export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
+// Fields the Evaluation Trigger adds to its output alongside dataset columns,
+// regardless of source (Data table or Google Sheets). `row_id` and the Data
+// table system columns (id/createdAt/updatedAt) are NOT here — those are only
+// added by the Data table source, so callers needing that distinction should
+// combine this with `DATA_TABLE_SYSTEM_COLUMNS` (from './data-table.types')
+// and `row_id` themselves, only when they know the trigger's source.
+export const EVALUATION_TRIGGER_METADATA_FIELDS = ['row_number', '_rowsLeft'] as const;
 export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
@@ -108,6 +132,8 @@ export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolW
 export const RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 export const HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
+/** Trailing segment of the path a Chat trigger registers its webhooks under: `{webhookId}/chat`. */
+export const CHAT_TRIGGER_PATH_SUFFIX = 'chat';
 export const CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const CHAT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTool';
 export const MEMORY_MANAGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryManager';
@@ -123,13 +149,13 @@ export const ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.aliba
 export const MOONSHOT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.moonshot';
 export const MINIMAX_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.minimax';
 
-// Trigger types that execute with a manual-user identity. Used to gate
-// features (like private credentials) that depend on per-user runtime state.
+// Trigger types that always run with the manually-executing n8n user's identity.
+// Chat and MCP triggers are deliberately not listed: they only establish an
+// identity in specific configurations (Chat Hub availability, n8n OAuth2), which
+// `classifyTriggerIdentity` checks parameter-by-parameter (IAM-1238).
 export const MANUAL_TRIGGER_NODE_TYPES: readonly string[] = [
 	MANUAL_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	MCP_TRIGGER_NODE_TYPE,
 ];
 
 export const AI_VENDOR_NODE_TYPES = [

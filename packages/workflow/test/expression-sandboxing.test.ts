@@ -10,13 +10,7 @@ import {
 	ExpressionError,
 	ExpressionWithStatementError,
 } from '../src/errors';
-import {
-	DollarSignValidator,
-	ThisSanitizer,
-	PrototypeSanitizer,
-	sanitizer,
-	DOLLAR_SIGN_ERROR,
-} from '../src/expression-sandboxing';
+import { expressionSandboxHooks, sanitizer, DOLLAR_SIGN_ERROR } from '../src/expression-sandboxing';
 
 const tournament = new Tournament(
 	(e) => {
@@ -24,10 +18,7 @@ const tournament = new Tournament(
 	},
 	undefined,
 	undefined,
-	{
-		before: [ThisSanitizer],
-		after: [PrototypeSanitizer, DollarSignValidator],
-	},
+	expressionSandboxHooks,
 );
 
 const errorRegex = /^Cannot access ".*" due to security concerns$/;
@@ -477,6 +468,15 @@ describe('PrototypeSanitizer', () => {
 			}).toThrowError(ExpressionClassExtensionError);
 		});
 
+		it('should not allow class extending Buffer', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends Buffer {} return Z.allocUnsafe(32).length; })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrow(ExpressionClassExtensionError);
+		});
+
 		it('should allow class extending safe classes', () => {
 			expect(() => {
 				tournament.execute(
@@ -647,98 +647,179 @@ describe('PrototypeSanitizer', () => {
 		});
 	});
 
-	describe('Spread-based global access', () => {
-		it('should not allow spreading process', () => {
+	describe('Spread of host globals', () => {
+		it.each([
+			'process',
+			'global',
+			'globalThis',
+			'Buffer',
+			'console',
+			'Error',
+			'crypto',
+			'navigator',
+			'performance',
+			'Intl',
+			'Atomics',
+			'URL',
+			'TextEncoder',
+			'TextDecoder',
+			'fetch',
+			'Headers',
+			'Request',
+			'Response',
+			'Blob',
+			'File',
+			'FormData',
+			'AbortController',
+			'Event',
+			'EventTarget',
+			'MessageChannel',
+			'SharedArrayBuffer',
+			'ReadableStream',
+			'WritableStream',
+			'WeakRef',
+			'FinalizationRegistry',
+			'AggregateError',
+		])('should not expose the host %s through a spread', (name) => {
+			expect(tournament.execute(`{{ ({...${name}}) }}`, { __sanitize: sanitizer })).toEqual({});
+		});
+
+		it.each([
+			['nested spread', '{{ ({...({...process})}) }}'],
+			['spread inside an arrow function', '{{ (() => ({...process}))() }}'],
+			['spread among other spreads', '{{ ({...{}, ...process}) }}'],
+		])('should not expose a host global through a %s', (_, expression) => {
+			expect(tournament.execute(expression, { __sanitize: sanitizer })).toEqual({});
+		});
+
+		it.each([
+			['process.env', '{{ typeof ({...process}).env }}'],
+			['process.pid', '{{ typeof ({...process}).pid }}'],
+			['Buffer.allocUnsafe', '{{ typeof ({...Buffer}).allocUnsafe }}'],
+			['console.log', '{{ typeof ({...console}).log }}'],
+		])('should not expose the host %s through a spread', (_, expression) => {
+			expect(tournament.execute(expression, { __sanitize: sanitizer })).toBe('undefined');
+		});
+
+		it.each([
+			['an array literal', '{{ [...process] }}'],
+			['call arguments', '{{ ((a) => a)(...process) }}'],
+		])('should not iterate the host process in %s', (_, expression) => {
+			expect(() => tournament.execute(expression, { __sanitize: sanitizer })).toThrow(
+				/is not iterable/,
+			);
+		});
+
+		it('should not hand out a reference to a host function', () => {
 			expect(() => {
-				tournament.execute('{{ ((g) => g.getBuiltinModule)(({...process})) }}', {
+				tournament.execute('{{ ({...console}).log.toString() }}', { __sanitize: sanitizer });
+			}).toThrow(/Cannot read properties of undefined/);
+		});
+
+		it('should not write to a host function', () => {
+			expect(() => {
+				tournament.execute('{{ Object.assign(({...console}).log, {written: 1}).name }}', {
 					__sanitize: sanitizer,
+					Object,
 				});
-			}).toThrowError(/due to security concerns/);
+			}).toThrow(/Cannot convert undefined or null to object/);
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			expect((console.log as any).written).toBeUndefined();
 		});
 
-		it('should not allow spreading process in object literal', () => {
-			expect(() => {
-				tournament.execute('{{ ({...process}) }}', { __sanitize: sanitizer });
-			}).toThrowError(/Cannot spread "process" due to security concerns/);
+		it.each([
+			['an array literal', '{{ [...arguments][0] }}'],
+			['an object literal', '{{ ({...arguments}) }}'],
+			['a function body', '{{ (() => [...arguments][0])() }}'],
+		])("should not expose the evaluator's own arguments in %s", (_, expression) => {
+			expect(() => tournament.execute(expression, { __sanitize: sanitizer })).toThrow(errorRegex);
 		});
 
-		it('should not allow spreading process in array', () => {
-			expect(() => {
-				tournament.execute('{{ [...process] }}', { __sanitize: sanitizer });
-			}).toThrowError(/Cannot spread "process" due to security concerns/);
-		});
-
-		it('should not allow spreading global', () => {
-			expect(() => {
-				tournament.execute('{{ ({...global}) }}', { __sanitize: sanitizer });
-			}).toThrowError(/Cannot spread "global" due to security concerns/);
-		});
-
-		it('should not allow spreading Buffer', () => {
-			expect(() => {
-				tournament.execute('{{ ({...Buffer}) }}', { __sanitize: sanitizer });
-			}).toThrowError(/Cannot spread "Buffer" due to security concerns/);
-		});
-
-		it('should not allow the exact RCE PoC payload', () => {
+		it('should not reach a built-in module through a spread', () => {
 			expect(() => {
 				tournament.execute(
 					"{{ ((g) => g.getBuiltinModule('child_process').execSync('id').toString())({...process}) }}",
 					{ __sanitize: sanitizer },
 				);
-			}).toThrowError(/due to security concerns/);
+			}).toThrow(errorRegex);
 		});
 
-		it('should not allow spreading process in function call arguments', () => {
-			expect(() => {
-				tournament.execute('{{ ((a, b) => a)(...process) }}', { __sanitize: sanitizer });
-			}).toThrowError(/Cannot spread "process" due to security concerns/);
-		});
-
-		it('should not allow spreading process inside arrow function', () => {
-			expect(() => {
-				tournament.execute('{{ (() => ({...process}))() }}', { __sanitize: sanitizer });
-			}).toThrowError(/Cannot spread "process" due to security concerns/);
-		});
-
-		it('should not allow spreading process in nested spread', () => {
-			expect(() => {
-				tournament.execute('{{ ({...({...process})}) }}', { __sanitize: sanitizer });
-			}).toThrowError(/Cannot spread "process" due to security concerns/);
-		});
-
-		it('should not allow spreading process in template expression', () => {
-			expect(() => {
-				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-				tournament.execute('{{ `${JSON.stringify({...process})}` }}', {
-					__sanitize: sanitizer,
-				});
-			}).toThrow();
-		});
-
-		it('should not allow spreading process among other spreads', () => {
-			expect(() => {
-				tournament.execute('{{ ({...{a:1}, ...process}) }}', { __sanitize: sanitizer });
-			}).toThrowError(/Cannot spread "process" due to security concerns/);
-		});
-
-		it('should resolve spread from data context process, not the real one', () => {
-			const result = tournament.execute('{{ ({...process}).safe }}', {
+		it('should not expose the host process through a template expression', () => {
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			const result = tournament.execute('{{ `${JSON.stringify({...process})}` }}', {
 				__sanitize: sanitizer,
-				process: { safe: true },
+				JSON,
 			});
-			expect(result).toBe(true);
+			expect(result).toBe('{}');
 		});
 
-		it('should not expose real process.version via spread', () => {
-			const result = tournament.execute('{{ typeof ({...process}).version }}', {
+		it('should not expose the host process as a computed key', () => {
+			const result = tournament.execute('{{ Object.keys({[process]: 1})[0] }}', {
 				__sanitize: sanitizer,
-				process: {},
+				Object,
 			});
 			expect(result).toBe('undefined');
 		});
 
-		it('should use data context pid via spread, not real pid', () => {
+		/**
+		 * `Buffer` is additionally named in `blockedBaseClasses`, so these use a
+		 * global that is not, to show that containment comes from the polyfill
+		 * rather than from that list.
+		 */
+		it.each([
+			['Error', '{{ (() => { class X extends Error {} return X.captureStackTrace; })() }}'],
+			['Array', '{{ (() => { class X extends Array {} return X.from; })() }}'],
+		])('should not expose the host %s as a base class', (_, expression) => {
+			expect(() => tournament.execute(expression, { __sanitize: sanitizer })).toThrow(
+				/is not a constructor or null/,
+			);
+		});
+
+		it('should not expose the host process as a switch case', () => {
+			const result = tournament.execute(
+				'{{ (() => { switch (1) { case process: return "host"; } return "safe"; })() }}',
+				{ __sanitize: sanitizer },
+			);
+			expect(result).toBe('safe');
+		});
+	});
+
+	describe('Spread of data context values', () => {
+		it('should spread an object from the data context', () => {
+			const result = tournament.execute('{{ ({...$json}).greeting }}', {
+				__sanitize: sanitizer,
+				$json: { greeting: 'hello' },
+			});
+			expect(result).toBe('hello');
+		});
+
+		it('should merge a spread data context object with additional properties', () => {
+			const result = tournament.execute('{{ JSON.stringify({...$json, b: 2}) }}', {
+				__sanitize: sanitizer,
+				$json: { a: 1 },
+				JSON,
+			});
+			expect(result).toBe('{"a":1,"b":2}');
+		});
+
+		it('should spread an array from the data context', () => {
+			const result = tournament.execute('{{ [...$arr].length }}', {
+				__sanitize: sanitizer,
+				$arr: [1, 2, 3],
+			});
+			expect(result).toBe(3);
+		});
+
+		it('should spread a data context value into call arguments', () => {
+			const result = tournament.execute('{{ Math.max(...$arr) }}', {
+				__sanitize: sanitizer,
+				$arr: [1, 5, 3],
+			});
+			expect(result).toBe(5);
+		});
+
+		it('should prefer a data context value over the host global of the same name', () => {
 			const result = tournament.execute('{{ ({...process}).pid }}', {
 				__sanitize: sanitizer,
 				process: { pid: -1 },
@@ -746,42 +827,42 @@ describe('PrototypeSanitizer', () => {
 			expect(result).toBe(-1);
 		});
 
-		it('should use data context when spread is wrapped in arrow function', () => {
-			const result = tournament.execute('{{ ((g) => g.pid)({...process}) }}', {
-				__sanitize: sanitizer,
-				process: { pid: -1 },
-			});
-			expect(result).toBe(-1);
+		it.each([
+			['const', '{{ (() => { const process = { a: 1 }; return {...process}.a; })() }}'],
+			['function scope', '{{ (function(){ const Buffer = { a: 1 }; return {...Buffer}.a; })() }}'],
+			['parameter', '{{ ((process) => ({...process}).a)({ a: 1 }) }}'],
+		])('should spread a local variable declared in %s scope', (_, expression) => {
+			expect(tournament.execute(expression, { __sanitize: sanitizer })).toBe(1);
 		});
 
-		it('should not give access to real process.exit via spread', () => {
-			const result = tournament.execute('{{ typeof ({...process}).exit }}', {
+		it('should resolve a computed key from the data context', () => {
+			const result = tournament.execute('{{ ({[$key]: 1}).dynamic }}', {
 				__sanitize: sanitizer,
-				process: {},
+				$key: 'dynamic',
 			});
-			expect(result).not.toBe('function');
+			expect(result).toBe(1);
 		});
 
-		it('should not give access to real process.env via spread', () => {
-			const result = tournament.execute('{{ typeof ({...process}).env }}', {
-				__sanitize: sanitizer,
-				process: {},
-			});
-			expect(result).not.toBe('object');
-		});
-
-		it('should not give access to getBuiltinModule via spread', () => {
-			let result: unknown;
-			try {
-				result = tournament.execute('{{ typeof ({...process}).getBuiltinModule }}', {
-					__sanitize: sanitizer,
-					process: {},
-				});
-			} catch {
-				// Blocked by PrototypeSanitizer — also a valid outcome
-				return;
+		it('should resolve a base class from the data context', () => {
+			class Base {
+				greet() {
+					return 'hello';
+				}
 			}
-			expect(result).not.toBe('function');
+
+			const result = tournament.execute(
+				'{{ (() => { class X extends Base {} return new X().greet(); })() }}',
+				{ __sanitize: sanitizer, Base },
+			);
+			expect(result).toBe('hello');
+		});
+
+		it('should resolve a switch case from the data context', () => {
+			const result = tournament.execute(
+				'{{ (() => { switch ($key) { case $key: return "matched"; } return "unmatched"; })() }}',
+				{ __sanitize: sanitizer, $key: 'a' },
+			);
+			expect(result).toBe('matched');
 		});
 	});
 

@@ -20,8 +20,6 @@ const asyncExec = promisify(exec);
 export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 	protected readonly name = 'runner:py';
 
-	protected readonly taskType = 'python';
-
 	constructor(
 		logger: Logger,
 		runnerConfig: TaskRunnersConfig,
@@ -31,7 +29,7 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		super('task-runner-py', logger, runnerConfig, authService, runnerLifecycleEvents);
 	}
 
-	startProcess(grantToken: string, taskBrokerUri: string) {
+	startProcess(grantToken: string, taskBrokerUri: string, runnerId: string) {
 		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
 		const venvPath = PyTaskRunnerProcess.getVenvPath();
 
@@ -43,6 +41,7 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 				HOME: process.env.HOME ?? process.env.USERPROFILE,
 
 				// runner
+				N8N_RUNNERS_ID: runnerId,
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
 				N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 				N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
@@ -89,7 +88,8 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		return null;
 	}
 
-	private static getVenvPath() {
+	/** Public so tests can decide synchronously whether the runner can be started. */
+	static getVenvPath() {
 		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
 		const isWindows = process.platform === 'win32';
 		const venvBin = isWindows ? 'Scripts' : 'bin';

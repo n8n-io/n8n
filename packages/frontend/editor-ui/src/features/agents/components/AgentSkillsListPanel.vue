@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import {
 	N8nButton,
 	N8nIcon,
@@ -27,6 +27,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const headerId = useId();
 
 const totalCount = computed(() => props.skills.length);
 </script>
@@ -39,6 +40,7 @@ const totalCount = computed(() => props.skills.length);
 	>
 		<AgentPanelHeader
 			:class="$style.header"
+			:header-id="headerId"
 			:title="i18n.baseText('agents.builder.skills.title')"
 			:description="
 				i18n.baseText('agents.builder.skills.count', {
@@ -49,7 +51,6 @@ const totalCount = computed(() => props.skills.length);
 		>
 			<template #actions>
 				<N8nButton
-					type="primary"
 					size="small"
 					:disabled="props.disabled"
 					data-testid="agent-skills-add"

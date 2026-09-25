@@ -1,7 +1,7 @@
 {
   "name": "@n8n/node-engine-compatibility",
-  "version": "0.2.0",
-  "description": "Adapts v1 nodes and workflows to the Engine 2.0 execution model",
+  "version": "0.9.0",
+  "description": "Adapts v1 nodes and workflows to the Engine v2 execution model",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -13,6 +13,7 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests",
     "test:dev": "vitest --watch",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "watch": "tsc -p tsconfig.build.json --watch"
   },
   "main": "dist/index.js",
@@ -28,8 +29,12 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@testcontainers/postgresql": "catalog:",
+    "@types/supertest": "^6.0.3",
     "n8n-nodes-base": "workspace:*",
+    "supertest": "^7.1.1",
     "typescript": "catalog:typescript",
+    "uuid": "catalog:",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

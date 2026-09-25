@@ -1,0 +1,63 @@
+{
+	"name": "Databricks Files Download Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "files",
+				"operation": "downloadFile",
+				"volumePath": "main.default.my_volume",
+				"filePath": "data/logo.png"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "files-download-001",
+			"name": "Download File",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Download File": [
+			{
+				"json": {
+					"fileName": "logo.png",
+					"size": 6,
+					"contentType": "image/png",
+					"catalog": "main",
+					"schema": "default",
+					"volume": "my_volume",
+					"filePath": "data/logo.png"
+				},
+				"binary": {
+					"data": {
+						"data": "iVBOR//+",
+						"mimeType": "image/png",
+						"fileName": "logo.png"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [[{ "node": "Download File", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

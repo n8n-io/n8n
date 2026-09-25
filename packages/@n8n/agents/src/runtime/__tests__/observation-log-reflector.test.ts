@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type * as AiImport from 'ai';
 
 import type { ObservationLogEntry } from '../../types/sdk/observation-log';
@@ -6,7 +7,6 @@ import { InMemoryMemory } from '../memory/memory-store';
 import {
 	buildObservationLogReflectorPrompt,
 	createObservationLogReflectFn,
-	DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
 } from '../memory/observation-log-defaults';
 import {
@@ -15,6 +15,7 @@ import {
 	renderObservationLogForReflection,
 	runObservationLogReflector,
 } from '../memory/observation-log-reflector';
+import { renderObservationLog } from '../memory/observation-log-renderer';
 
 type GenerateTextCall = Record<string, unknown>;
 type GenerateTextResult = {
@@ -54,12 +55,189 @@ describe('observation-log reflector defaults', () => {
 		mockGenerateText.mockReset();
 	});
 
-	it('keeps default policy and threshold configuration in the SDK', () => {
-		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(12_000);
-		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain('Return JSON with two arrays');
-		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain(
-			'CRITICAL. Facts, decisions, identities, commitments',
+	it('keeps the default reflector threshold in the SDK', () => {
+		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(60_000);
+	});
+
+	it('maps model references back to stored entries and keeps the merged result visible', async () => {
+		const store = new InMemoryMemory();
+		const workflowId = 'cc8f2bf2-9261-4f3b-a54e-82136b35582e';
+		const [noise, context, stale, oldDecision, newDecision] =
+			await store.appendObservationLogEntries([
+				{
+					observationScopeId: 'thread-1',
+					marker: 'info',
+					text: 'Old progress.',
+					tokenCount: 2,
+					createdAt: new Date('2026-05-12T13:00:00Z'),
+				},
+				{
+					observationScopeId: 'thread-1',
+					marker: 'info',
+					text: `Workflow ${workflowId} receives orders.`,
+					tokenCount: 4,
+					createdAt: new Date('2026-05-12T14:00:00Z'),
+				},
+				{
+					observationScopeId: 'thread-1',
+					marker: 'info',
+					text: 'Repeated acknowledgment.',
+					tokenCount: 2,
+					createdAt: new Date('2026-05-12T14:01:00Z'),
+				},
+				{
+					observationScopeId: 'thread-1',
+					marker: 'critical',
+					text: 'Postgres was the target.',
+					tokenCount: 2,
+					createdAt: new Date('2026-05-12T14:02:00Z'),
+				},
+				{
+					observationScopeId: 'thread-1',
+					marker: 'critical',
+					text: 'SQLite is the new target.',
+					tokenCount: 2,
+					createdAt: new Date('2026-05-12T14:04:00Z'),
+				},
+			]);
+		const [child] = await store.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'completion',
+				text: 'Target review finished; migration is pending.',
+				parentId: oldDecision.id,
+				tokenCount: 1,
+				createdAt: new Date('2026-05-12T14:03:00Z'),
+			},
+		]);
+		const mergedText = `Workflow ${workflowId} now targets SQLite instead of Postgres; migration is pending.`;
+		mockGenerateText.mockResolvedValue({
+			text: JSON.stringify({
+				drop: ['3'],
+				merge: [{ supersedes: ['4', '6'], marker: 'CRITICAL', text: mergedText, parentId: '2' }],
+			}),
+		});
+
+		const result = await runObservationLogReflector({
+			memory: store,
+			observationScopeId: 'thread-1',
+			reflectorThresholdTokens: 1,
+			reflect: createObservationLogReflectFn('openai/gpt-4o-mini'),
+			tokenCounter: async () => await Promise.resolve(2),
+			now: new Date('2026-05-12T15:00:00Z'),
+		});
+
+		const request = mockGenerateText.mock.calls[0][0].prompt;
+		expect(request).toContain(
+			`[2] INFO 2026-05-12T14:00:00.000Z Workflow ${workflowId} receives orders.`,
 		);
+		expect(request).toContain('  * [5] COMPLETION 2026-05-12T14:03:00.000Z Target review finished');
+		for (const source of [noise, context, stale, oldDecision, child, newDecision]) {
+			expect(request).not.toContain(source.id);
+		}
+		expect(result).toMatchObject({
+			status: 'ran',
+			result: {
+				droppedIds: [stale.id],
+				supersededIds: [oldDecision.id, child.id, newDecision.id],
+			},
+		});
+		const active = await store.getActiveObservationLog({ observationScopeId: 'thread-1' });
+		expect(active).toEqual([
+			expect.objectContaining({ id: noise.id }),
+			expect.objectContaining({ id: context.id }),
+			expect.objectContaining({
+				marker: 'critical',
+				text: mergedText,
+				parentId: context.id,
+				tokenCount: 2,
+			}),
+		]);
+		const rendered = renderObservationLog(active, { renderTokenBudget: 6 });
+		expect(rendered).toContain(context.text);
+		expect(rendered).toContain(mergedText);
+		expect(rendered).not.toContain(noise.text);
+	});
+
+	it.each([
+		['drop', '{"drop":["1","9"],"merge":[]}'],
+		[
+			'supersedes',
+			'{"drop":["1"],"merge":[{"supersedes":["9"],"marker":"IMPORTANT","text":"Replacement"}]}',
+		],
+		[
+			'parentId',
+			'{"drop":[],"merge":[{"supersedes":["1"],"marker":"IMPORTANT","text":"Replacement","parentId":"9"}]}',
+		],
+		['invalid JSON', 'not JSON'],
+	])('leaves the log unchanged for an invalid %s response', async (_field, output) => {
+		const store = new InMemoryMemory();
+		const before = await store.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'Keep this fact.',
+				tokenCount: 2,
+			},
+		]);
+		mockGenerateText.mockResolvedValue({ text: output });
+
+		await expect(
+			runObservationLogReflector({
+				memory: store,
+				observationScopeId: 'thread-1',
+				reflectorThresholdTokens: 1,
+				reflect: createObservationLogReflectFn('openai/gpt-4o-mini'),
+			}),
+		).rejects.toThrow();
+		await expect(store.getObservationLog({ observationScopeId: 'thread-1' })).resolves.toEqual(
+			before,
+		);
+	});
+
+	it('keeps deterministic reference maps separate across overlapping calls', async () => {
+		const firstResponse = createDeferredPromise<GenerateTextResult>();
+		const secondResponse = createDeferredPromise<GenerateTextResult>();
+		mockGenerateText
+			.mockReturnValueOnce(firstResponse.promise)
+			.mockReturnValueOnce(secondResponse.promise);
+		const reflect = createObservationLogReflectFn('openai/gpt-4o-mini');
+		const first = observation({ id: 'first' });
+		const later = observation({ id: 'later', createdAt: new Date('2026-05-12T14:31:00Z') });
+		const inactive = observation({
+			id: 'inactive',
+			status: 'superseded',
+			createdAt: new Date('2026-05-12T14:29:00Z'),
+		});
+		const second = observation({ id: 'second', observationScopeId: 'thread-2' });
+		const firstEntries = [later, inactive, first];
+		const input = {
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T15:00:00Z'),
+			activeObservationLog: firstEntries,
+			renderedObservationLog: renderObservationLogForReflection(firstEntries),
+			tokenCount: 2,
+			tokenBudget: 1,
+		};
+
+		const firstCall = reflect(input);
+		const secondCall = reflect({
+			...input,
+			observationScopeId: 'thread-2',
+			activeObservationLog: [second],
+			renderedObservationLog: renderObservationLogForReflection([second]),
+		});
+		await vi.waitFor(() => expect(mockGenerateText).toHaveBeenCalledTimes(2));
+		secondResponse.resolve({ text: '{"drop":["1"],"merge":[]}' });
+		expect(parseObservationLogReflectionJson(await secondCall)).toEqual({
+			drop: [second.id],
+			merge: [],
+		});
+		firstResponse.resolve({ text: '{"drop":["1"],"merge":[]}' });
+		expect(parseObservationLogReflectionJson(await firstCall)).toEqual({
+			drop: [first.id],
+			merge: [],
+		});
 	});
 
 	it('builds the default reflector prompt from active log and token budget', () => {
@@ -376,6 +554,10 @@ describe('runObservationLogReflector', () => {
 			observationScopeId: 'thread-1',
 			reflectorThresholdTokens: 10,
 			now: new Date('2026-05-12T15:00:00.000Z'),
+			tokenCounter: async (text) => {
+				expect(text).toBe('User compared old plan A and old plan B.');
+				return await Promise.resolve(6);
+			},
 			reflect: async (input) => {
 				expect(input.renderedObservationLog).toContain(`[${stale.id}] INFO`);
 				return await Promise.resolve(
@@ -404,6 +586,7 @@ describe('runObservationLogReflector', () => {
 						marker: 'important',
 						text: 'User compared old plan A and old plan B.',
 						createdAt: new Date('2026-05-12T15:00:00.000Z'),
+						tokenCount: 6,
 					}),
 				],
 			},
@@ -420,6 +603,9 @@ describe('runObservationLogReflector', () => {
 				expect.objectContaining({ id: oldB.id, status: 'superseded' }),
 			]),
 		);
+		await expect(
+			store.getObservationLog({ observationScopeId: 'thread-1', status: 'active' }),
+		).resolves.toMatchObject([{ tokenCount: 6 }]);
 	});
 
 	it('warns but still applies reflection output that remains over budget', async () => {

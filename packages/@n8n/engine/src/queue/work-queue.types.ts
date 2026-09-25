@@ -13,17 +13,18 @@ export interface ExecutionEnqueuedEvent {
 }
 
 /**
- * A step has finished, successfully or not. Carries ids only, like
- * `step:ready` — the consumer reads the step row for the outcome.
+ * A step has reached a terminal state — completed, failed, or skipped.
+ * Carries ids only, like `step:ready` — the consumer reads the step row
+ * for the outcome.
  */
-export interface StepCompletedEvent {
-	type: 'step:completed';
+export interface StepSettledEvent {
+	type: 'step:settled';
 	executionId: string;
 	stepId: string;
 }
 
 /** Messages consumed by the orchestration worker. */
-export type OrchestrationMessage = ExecutionEnqueuedEvent | StepCompletedEvent;
+export type OrchestrationMessage = ExecutionEnqueuedEvent | StepSettledEvent;
 
 export interface StepReadyEvent {
 	type: 'step:ready';

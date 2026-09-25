@@ -1,13 +1,29 @@
-import type { ListAgentsQueryDto } from '@n8n/api-types';
+import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	IsNull,
+	Not,
+	Repository,
+	type EntityManager,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
+
+export interface AgentListResult {
+	count: number;
+	data: Agent[];
+}
 
 export type AgentSummary = Pick<
 	Agent,
 	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
 >;
+
+/** The only columns an integration mutation reads or writes. */
+export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
 
 export type AgentSummaryFilters = {
 	query?: string;
@@ -75,7 +91,7 @@ export class AgentRepository extends Repository<Agent> {
 		projectIds: string[] | null,
 		options: ListAgentsQueryDto,
 		{ withProject = false }: { withProject?: boolean } = {},
-	): Promise<{ count: number; data: Agent[] }> {
+	): Promise<AgentListResult> {
 		if (projectIds?.length === 0) return { count: 0, data: [] };
 
 		const query = this.createQueryBuilder('agent').leftJoinAndSelect(
@@ -159,6 +175,33 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
+	async findDependencyIndexAgentIdsBatch(
+		afterId: string | null,
+		batchSize: number,
+	): Promise<Array<Pick<Agent, 'id'>>> {
+		const query = this.createQueryBuilder('agent')
+			.select(['agent.id'])
+			.orderBy('agent.id', 'ASC')
+			.take(batchSize);
+
+		if (afterId !== null) {
+			query.where('agent.id > :afterId', { afterId });
+		}
+
+		return await query.getMany();
+	}
+
+	async findSummariesByIds(
+		ids: string[],
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'projectId'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			select: ['id', 'name', 'projectId'],
+			where: { id: In(ids) },
+		});
+	}
+
 	async findByIdInProjects(id: string, projectIds: string[]): Promise<Agent | null> {
 		if (projectIds.length === 0) return null;
 		return await this.findOne({
@@ -170,6 +213,15 @@ export class AgentRepository extends Repository<Agent> {
 	/** Ownership check only — skips `findByIdAndProjectId`'s `activeVersion` load. */
 	async existsByIdAndProjectId(id: string, projectId: string): Promise<boolean> {
 		return await this.exists({ where: { id, projectId } });
+	}
+
+	/** Lightweight project-id lookup — avoids loading the full agent config. */
+	async getProjectIdById(id: string): Promise<string | null> {
+		const result = await this.findOne({
+			select: ['projectId'],
+			where: { id },
+		});
+		return result?.projectId ?? null;
 	}
 
 	async findByIdsAndProjectId(
@@ -221,10 +273,108 @@ export class AgentRepository extends Repository<Agent> {
 		return (result.affected ?? 0) > 0;
 	}
 
+	/**
+	 * Reads just the columns an integration mutation needs, so its write derives
+	 * from the current row rather than a possibly-stale request-scoped entity.
+	 */
+	async findIntegrationState(id: string): Promise<AgentIntegrationState | null> {
+		return await this.findOne({
+			select: ['integrations', 'versionId', 'activeVersionId'],
+			where: { id },
+		});
+	}
+
+	/**
+	 * Compare-and-set the two columns an integration mutation owns, so a channel
+	 * change can never revert a concurrent publish or config write. Returns false
+	 * when another writer got there first; the caller can re-read and reapply,
+	 * because its input is a delta rather than a whole array.
+	 *
+	 * `activeVersionId` is guarded but never written: publishing leaves `versionId`
+	 * untouched, so without it in the `WHERE` a publish landing after the read
+	 * would let the write through and the caller would act on stale publication
+	 * state.
+	 */
+	async updateIntegrations(
+		id: string,
+		integrations: AgentIntegrationConfig[],
+		expected: Pick<AgentIntegrationState, 'versionId' | 'activeVersionId'>,
+		versionId: string | null,
+	): Promise<boolean> {
+		const result = await this.update(
+			{
+				id,
+				versionId: expected.versionId ?? IsNull(),
+				activeVersionId: expected.activeVersionId ?? IsNull(),
+			},
+			{ integrations, versionId },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
 	async findPublished(): Promise<Agent[]> {
 		return await this.createQueryBuilder('agent')
 			.innerJoinAndSelect('agent.activeVersion', 'activeVersion')
 			.getMany();
+	}
+
+	/** The ids of all agents with a published version. Loads no version rows. */
+	async findPublishedAgentIds(): Promise<string[]> {
+		const rows = await this.find({
+			where: { activeVersionId: Not(IsNull()) },
+			select: ['id'],
+		});
+		return rows.map((row) => row.id);
+	}
+
+	/**
+	 * The published version id of an agent, or `null` when the agent is missing
+	 * or unpublished. Loads no version row, so callers that only need the id do
+	 * not pay for the version's JSON columns.
+	 */
+	async findActiveVersionId(agentId: string): Promise<string | null> {
+		const row = await this.findOne({
+			where: { id: agentId },
+			select: ['id', 'activeVersionId'],
+		});
+		return row?.activeVersionId ?? null;
+	}
+
+	/** The ids, from the given list, that belong to an agent with a published version. */
+	async findPublishedIds(agentIds: string[]): Promise<Set<string>> {
+		if (agentIds.length === 0) return new Set();
+
+		const rows = await this.find({
+			where: { id: In(agentIds), activeVersionId: Not(IsNull()) },
+			select: ['id'],
+		});
+		return new Set(rows.map((row) => row.id));
+	}
+
+	/**
+	 * Finds agents whose `integrations` JSON column contains an entry matching the
+	 * given `type` + `credentialId`, anywhere on the instance, excluding
+	 * `excludeAgentId`.
+	 *
+	 * Instance-wide, unlike `findByIntegrationCredential`: a vendor app such as an
+	 * Entra or Slack registration is bound to one bot at the vendor, so an agent
+	 * in another project breaks a setup just as surely as one in this project.
+	 *
+	 * Reads only the columns the predicate and the caller need, so an instance
+	 * with large agent configurations does not transfer and parse all of them.
+	 */
+	async findByIntegrationCredentialAnyProject(
+		type: string,
+		credentialId: string,
+		excludeAgentId: string,
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'integrations'>>> {
+		const agents = await this.find({ select: ['id', 'name', 'integrations'] });
+		return agents.filter(
+			(agent) =>
+				agent.id !== excludeAgentId &&
+				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+		);
 	}
 
 	/**
@@ -251,5 +401,70 @@ export class AgentRepository extends Repository<Agent> {
 				agent.id !== excludeAgentId &&
 				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
 		);
+	}
+
+	/**
+	 * Atomically advances publication state only when the row's `revision` still
+	 * matches the value the caller observed at load — the optimistic revision
+	 * fence for publish/unpublish. Writes only the publication-owned columns
+	 * (`activeVersionId`, `versionId`) and bumps `revision`, so a concurrent
+	 * draft edit (autosave) that bumped `revision` in between makes this affect
+	 * zero rows instead of clobbering the newer draft. Returns whether this
+	 * caller won the fence.
+	 */
+	async setActiveVersionFenced(
+		id: string,
+		expectedRevision: number,
+		next: { activeVersionId: string | null; versionId: string },
+		trx?: EntityManager,
+	): Promise<boolean> {
+		const result = await (trx ?? this)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				activeVersionId: next.activeVersionId,
+				versionId: next.versionId,
+				revision: () => 'revision + 1',
+			})
+			.where('id = :id AND revision = :expected', { id, expected: expectedRevision })
+			.execute();
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Persists a draft edit behind the same optimistic revision fence as
+	 * publish/unpublish. Writes only the draft-owned columns and bumps
+	 * `revision` in SQL, so it can neither clobber `activeVersionId` written by
+	 * a concurrent publish nor mask that publish by writing a stale in-memory
+	 * revision over the row. On a win the in-memory entity's `revision` and
+	 * `updatedAt` are synced to what was written. Returns whether this caller
+	 * won the fence.
+	 */
+	async saveDraftFenced(agent: Agent, trx?: EntityManager): Promise<boolean> {
+		const expectedRevision = agent.revision;
+		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
+		// so the in-memory entity can report the exact persisted timestamp.
+		const updatedAt = new Date();
+		const result = await (trx ?? this)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				name: agent.name,
+				schema: agent.schema,
+				integrations: agent.integrations,
+				tools: agent.tools,
+				skills: agent.skills,
+				versionId: agent.versionId,
+				updatedAt,
+				revision: () => 'revision + 1',
+			})
+			.where('id = :id AND revision = :expected', { id: agent.id, expected: expectedRevision })
+			.execute();
+		const won = (result.affected ?? 0) > 0;
+		if (won) {
+			agent.revision = expectedRevision + 1;
+			agent.updatedAt = updatedAt;
+		}
+		return won;
 	}
 }

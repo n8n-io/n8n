@@ -10,7 +10,7 @@ describe('getMcpClientCatalog', () => {
 		expect(catalog.map((group) => group.id)).toEqual(['cli', 'web', 'ide']);
 		expect(catalog.map((group) => group.clients.map((client) => client.id))).toEqual([
 			['claude-code', 'codex', 'gemini-cli'],
-			['claude-ai', 'chatgpt'],
+			['claude-ai', 'chatgpt', 'mistral-vibe'],
 			['cursor', 'vscode', 'windsurf'],
 		]);
 	});
@@ -40,12 +40,16 @@ describe('getMcpClientCatalog', () => {
 		});
 	});
 
-	it('should give web connector URLs as https and every CLI an install command', () => {
+	it('should prefill the server URL in the Mistral Vibe connector template link', () => {
+		const vibe = clients.find((client) => client.id === 'mistral-vibe');
+		const params = new URL(vibe!.addUrl!).searchParams;
+		expect(params.get('template')).toBe('n8n');
+		expect(params.get('server_url')).toBe(SERVER_URL);
+	});
+
+	it('should give every web client a connector URL and every CLI an install command', () => {
 		const web = catalog.find((group) => group.id === 'web')!;
-		// A one-click connector URL is optional per web client, but when present it must be https.
-		for (const client of web.clients) {
-			if (client.addUrl) expect(client.addUrl).toMatch(/^https:\/\//);
-		}
+		for (const client of web.clients) expect(client.addUrl).toMatch(/^https:\/\//);
 
 		const cli = catalog.find((group) => group.id === 'cli')!;
 		for (const client of cli.clients) {

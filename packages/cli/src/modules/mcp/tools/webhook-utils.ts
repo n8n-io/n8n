@@ -18,6 +18,7 @@ import {
 	hasJwtSecretDecryptedData,
 } from '../mcp.typeguards';
 import type { MCPTriggersMap } from '../mcp.types';
+import { getExecuteWorkflowCallExample } from './workflow-inputs';
 
 export type WebhookEndpoints = {
 	webhook: string;
@@ -138,8 +139,7 @@ export const getTriggerDetails = async (
 
 const getScheduleTriggerDetails = (scheduleTriggers: INode[]): string => {
 	const header = 'Schedule trigger(s):\n\n';
-	const footer =
-		'\n\nScheduled workflows can be executed directly through MCP clients and do not require external inputs.';
+	const footer = `\n\nScheduled workflows do not take inputs. To execute a specific schedule trigger, pass triggerNodeName only: ${getExecuteWorkflowCallExample(SCHEDULE_TRIGGER_NODE_TYPE)}.`;
 	const triggers = scheduleTriggers
 		.map(
 			(node, index) => `
@@ -153,14 +153,13 @@ const getScheduleTriggerDetails = (scheduleTriggers: INode[]): string => {
 
 const getFormTriggerDetails = (formTriggers: INode[]): string => {
 	const header = 'Form trigger(s):\n\n';
-	const footer =
-		'\n\nUse the following input format when directly executing this workflow using any of the form triggers: { inputs { formData: Array<{ FIELD_NAME: VALUE }> } }';
+	const footer = `\n\nTo execute a form trigger, pass triggerNodeName and inputs: ${getExecuteWorkflowCallExample(FORM_TRIGGER_NODE_TYPE)}.`;
 	const triggers = formTriggers
 		.map(
 			(node, index) => `
 				<trigger ${index + 1}>
 				\t - Node name: ${node.name}
-				\t - Form fields: ${JSON.stringify(node.parameters.formFields ?? 'N/A')}
+				\t - Form fields: ${JSON.stringify(node.parameters?.formFields ?? 'N/A')}
 				</trigger ${index + 1}>`,
 		)
 		.join('\n\n');
@@ -169,8 +168,7 @@ const getFormTriggerDetails = (formTriggers: INode[]): string => {
 
 const getChatTriggerDetails = (chatTriggers: INode[]): string => {
 	const header = 'Chat trigger(s):\n\n';
-	const footer =
-		'\n\nUse the following input format when directly executing this workflow using any of the chat triggers: { inputs { chatInput: <CHAT_MESSAGE_HERE> } }';
+	const footer = `\n\nTo execute a chat trigger, pass triggerNodeName and inputs: ${getExecuteWorkflowCallExample(CHAT_TRIGGER_NODE_TYPE)}.`;
 	const triggers = chatTriggers
 		.map(
 			(node, index) => `
@@ -226,10 +224,13 @@ const collectWebhookNodeDetails = async (
 	workflowId: string,
 	testBaseUrl: string = baseUrl,
 ): Promise<WebhookNodeDetails> => {
-	const pathParam = typeof node.parameters.path === 'string' ? node.parameters.path : '';
+	// Drafts can be persisted with nodes that have no `parameters` key at all
+	// (the REST write paths accept them), so every access must be guarded even
+	// though INode types the field as required.
+	const pathParam = typeof node.parameters?.path === 'string' ? node.parameters.path : '';
 	const isFullPath = resolveIsFullPath(nodeTypes, node);
 	const httpMethod =
-		typeof node.parameters.httpMethod === 'string' ? node.parameters.httpMethod : 'GET';
+		typeof node.parameters?.httpMethod === 'string' ? node.parameters.httpMethod : 'GET';
 
 	return {
 		nodeName: node.name,
@@ -258,7 +259,8 @@ const formatWebhookDetails = (details: WebhookNodeDetails[]): string => {
 	const triggers = details
 		.map((detail, index) => formatTriggerDescription(detail, index))
 		.join('\n\n');
-	return header + triggers;
+	const footer = `\n\nTo execute a webhook trigger, pass triggerNodeName and inputs: ${getExecuteWorkflowCallExample(WEBHOOK_NODE_TYPE)}.`;
+	return header + triggers + footer;
 };
 
 const formatTriggerDescription = (detail: WebhookNodeDetails, index: number): string => `
@@ -293,7 +295,9 @@ const resolveCredentialRequirement = async (
 	credentialsService: CredentialsService,
 ): Promise<WebhookCredentialRequirement> => {
 	const authType =
-		typeof node.parameters.authentication === 'string' ? node.parameters.authentication : undefined;
+		typeof node.parameters?.authentication === 'string'
+			? node.parameters.authentication
+			: undefined;
 
 	switch (authType) {
 		case 'basicAuth':
@@ -354,7 +358,7 @@ const getJWTAuthVariant = async (
 
 const getResponseModeDescription = (node: INode): string => {
 	const responseMode =
-		typeof node.parameters.responseMode === 'string' ? node.parameters.responseMode : undefined;
+		typeof node.parameters?.responseMode === 'string' ? node.parameters.responseMode : undefined;
 
 	if (responseMode === 'responseNode') {
 		return 'Webhook is configured to respond using "Respond to Webhook" node.';
@@ -362,7 +366,7 @@ const getResponseModeDescription = (node: INode): string => {
 
 	if (responseMode === 'lastNode') {
 		const responseData =
-			typeof node.parameters.responseData === 'string' ? node.parameters.responseData : undefined;
+			typeof node.parameters?.responseData === 'string' ? node.parameters.responseData : undefined;
 		const base = 'Webhook is configured to respond when the last node is executed. ';
 		switch (responseData) {
 			case 'allEntries':

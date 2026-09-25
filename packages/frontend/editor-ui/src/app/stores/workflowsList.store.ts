@@ -41,7 +41,8 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	);
 
 	// Methods - Getters
-	function getWorkflowById(id: string): IWorkflowDb {
+	// Returns undefined for a workflow that was never paged into the cache.
+	function getWorkflowById(id: string): IWorkflowDb | undefined {
 		return workflowsById.value[id];
 	}
 
@@ -185,23 +186,30 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 
 	async function searchWorkflows({
 		projectId,
+		ids,
 		query,
 		nodeTypes,
 		tags,
 		select,
 		isArchived,
 		triggerNodeTypes,
+		options,
 	}: {
 		projectId?: string;
+		ids?: string[];
 		query?: string;
 		nodeTypes?: string[];
 		tags?: string[];
 		select?: string[];
 		isArchived?: boolean;
 		triggerNodeTypes?: string[];
+		options?: workflowsApi.GetWorkflowsOptions;
 	}): Promise<IWorkflowDb[]> {
+		if (ids?.length === 0) return [];
+
 		const filter = {
 			projectId,
+			ids,
 			query,
 			nodeTypes,
 			tags,
@@ -217,7 +225,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
 			hasFilter ? filter : undefined,
-			undefined,
+			options,
 			select,
 		);
 		return workflows;

@@ -1,10 +1,39 @@
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { createPrivateKey } from 'crypto';
 import pick from 'lodash/pick';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { INode, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type snowflake from 'snowflake-sdk';
 
 import { routeBinaryProperties } from '@utils/binary';
+
+function stripLeadingComments(sqlText: string) {
+	let trimmedSql = sqlText.trim();
+
+	while (
+		trimmedSql.startsWith('--') ||
+		trimmedSql.startsWith('//') ||
+		trimmedSql.startsWith('/*')
+	) {
+		if (trimmedSql.startsWith('--') || trimmedSql.startsWith('//')) {
+			const endOfComment = trimmedSql.search(/[\r\n]/);
+			if (endOfComment === -1) return '';
+			trimmedSql = trimmedSql.slice(endOfComment + 1).trim();
+			continue;
+		}
+
+		const endOfComment = trimmedSql.indexOf('*/');
+		if (endOfComment === -1) return trimmedSql;
+		trimmedSql = trimmedSql.slice(endOfComment + 2).trim();
+	}
+
+	return trimmedSql;
+}
+
+export const isFileTransferQuery = (sqlText: string) => {
+	const command = stripLeadingComments(sqlText).slice(0, 3).toUpperCase();
+	return command === 'GET' || command === 'PUT';
+};
 
 const commonConnectionFields = [
 	'account',
@@ -129,8 +158,22 @@ export function escapeSnowflakeObjectIdentifier(identifier: string): string {
 	return parts.map(escapeSnowflakeIdentifier).join('.');
 }
 
-export async function execute(conn: snowflake.Connection, sqlText: string, binds: snowflake.Binds) {
-	return await new Promise<any[] | undefined>((resolve, reject) => {
+export async function execute(
+	conn: snowflake.Connection,
+	sqlText: string,
+	binds: snowflake.Binds,
+	node: INode,
+	itemIndex?: number,
+) {
+	if (isFileTransferQuery(sqlText)) {
+		throw new NodeOperationError(
+			node,
+			"Local file access isn't allowed. Remove PUT or GET file operations from the query and try again.",
+			{ itemIndex },
+		);
+	}
+
+	return await new Promise<unknown[] | undefined>((resolve, reject) => {
 		conn.execute({
 			sqlText,
 			binds,

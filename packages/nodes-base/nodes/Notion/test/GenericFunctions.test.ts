@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
@@ -13,6 +14,7 @@ import {
 } from '../shared/constants';
 import { NotionTrigger } from '../NotionTrigger.node';
 import {
+	extractDatabaseMentionRLC,
 	extractPageId,
 	formatBlocks,
 	getPageId,
@@ -22,6 +24,7 @@ import {
 } from '../shared/GenericFunctions';
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
+import { wordFrom } from '@test/text-families';
 import type { Mock } from 'vitest';
 
 const collectNotionUrlExpressions = (value: unknown): string[] => {
@@ -255,6 +258,43 @@ describe('Test Notion resource locator generated URLs', () => {
 		expect(urlExpressions).not.toContain(
 			'=https://www.notion.(?:so|com)/{{$value.replace(/-/g, "")}}',
 		);
+	});
+});
+
+describe('Test Notion, extractDatabaseMentionRLC', () => {
+	it('extracts database IDs with resource-locator regex metadata', () => {
+		const blockValues: Array<{
+			richText: boolean;
+			text: {
+				text: Array<{
+					textType: string;
+					mentionType: string;
+					database: string | { __rl: boolean; mode: string; value: string; __regex: string };
+				}>;
+			};
+		}> = [
+			{
+				richText: true,
+				text: {
+					text: [
+						{
+							textType: 'mention',
+							mentionType: 'database',
+							database: {
+								__rl: true,
+								mode: 'url',
+								value: 'https://www.notion.com/workspace/database-3ab5bc794647496dac48feca926813fd',
+								__regex: '([0-9a-f]{32})$',
+							},
+						},
+					],
+				},
+			},
+		];
+
+		extractDatabaseMentionRLC(blockValues);
+
+		expect(blockValues[0].text.text[0].database).toBe('3ab5bc794647496dac48feca926813fd');
 	});
 });
 
@@ -565,6 +605,15 @@ describe('Test Notion, simplifyObjects', () => {
 		},
 	});
 
+	const keyFor = (propertyName: string, nodeVersion: number, text = 'x') => {
+		const [result] = simplifyObjects(
+			[page({ [propertyName]: richText(text) })],
+			false,
+			nodeVersion,
+		);
+		return Object.keys(result).find((key) => result[key] === text);
+	};
+
 	describe('v3 keeps change-case v5 Unicode-aware keys', () => {
 		it('preserves non-ASCII characters in simplified property keys', () => {
 			const result = simplifyObjects([page({ Prénom: richText('Jean') })], false, 3);
@@ -583,6 +632,14 @@ describe('Test Notion, simplifyObjects', () => {
 			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 3);
 
 			expect(result[0]).toHaveProperty(expectedKey, 'x');
+		});
+
+		it('keeps any accented word as its key', () => {
+			fc.assert(
+				fc.property(wordFrom('latin-accented'), (name) => {
+					expect(keyFor(name, 3)).toBe(`property_${name}`);
+				}),
+			);
 		});
 	});
 
@@ -624,6 +681,14 @@ describe('Test Notion, simplifyObjects', () => {
 			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 2);
 
 			expect(result[0]).toHaveProperty(expectedKey, 'x');
+		});
+
+		it('folds any accented word to an ASCII key', () => {
+			fc.assert(
+				fc.property(wordFrom('latin-accented'), (name) => {
+					expect(keyFor(name, 2)).toMatch(/^property_[a-z_]*$/);
+				}),
+			);
 		});
 	});
 });

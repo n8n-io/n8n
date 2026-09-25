@@ -54,6 +54,7 @@ type OidcRuntimeConfig = Pick<
 	| 'prompt'
 	| 'authenticationContextClassReference'
 	| 'additionalScopes'
+	| 'emailVerifiedRequired'
 	| 'rpInitiatedLogoutEnabled'
 > & {
 	discoveryEndpoint: URL;
@@ -130,11 +131,18 @@ export class OidcService {
 		};
 	}
 
-	generateState(testMode = false) {
+	/**
+	 * The signed state also carries the in-app destination the user asked for
+	 * before the login, so the callback can send them there instead of `/`.
+	 */
+	generateState(testMode = false, redirectUrl?: string) {
 		const state = `n8n_state:${randomUUID()}`;
 		const payload: Record<string, unknown> = { state };
 		if (testMode) {
 			payload.testMode = true;
+		}
+		if (redirectUrl && redirectUrl !== '/') {
+			payload.redirectUrl = redirectUrl;
 		}
 		return {
 			signed: this.jwtService.sign(payload, { expiresIn: '15m' }),
@@ -142,13 +150,15 @@ export class OidcService {
 		};
 	}
 
-	verifyState(signedState: string): { state: string; testMode?: boolean } {
+	verifyState(signedState: string): { state: string; testMode?: boolean; redirectUrl?: string } {
 		let state: string;
 		let testMode: boolean | undefined;
+		let redirectUrl: unknown;
 		try {
 			const decodedState = this.jwtService.verify(signedState);
 			state = decodedState?.state;
 			testMode = decodedState?.testMode;
+			redirectUrl = decodedState?.redirectUrl;
 		} catch (error) {
 			this.logger.error('Failed to verify state', { error });
 			throw new BadRequestError('Invalid state');
@@ -174,7 +184,11 @@ export class OidcService {
 			this.logger.error('Provided state is not formatted correctly');
 			throw new BadRequestError('Invalid state');
 		}
-		return { state, testMode };
+		return {
+			state,
+			testMode,
+			...(typeof redirectUrl === 'string' && { redirectUrl }),
+		};
 	}
 
 	generateNonce() {
@@ -218,11 +232,20 @@ export class OidcService {
 		return nonce;
 	}
 
-	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+	assertOidcLoginEnabled(): void {
+		if (!this.oidcConfig.loginEnabled || !isOidcCurrentAuthenticationMethod()) {
+			throw new ForbiddenError('OIDC login is not enabled');
+		}
+	}
+
+	async generateLoginUrl(
+		redirectUrl?: string,
+	): Promise<{ url: URL; state: string; nonce: string }> {
+		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
-		const state = this.generateState();
+		const state = this.generateState(false, redirectUrl);
 		const nonce = this.generateNonce();
 
 		const prompt = this.oidcConfig.prompt;
@@ -266,6 +289,7 @@ export class OidcService {
 		storedState: string,
 		storedNonce: string,
 	): Promise<{ user: User; idToken?: string }> {
+		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
@@ -315,10 +339,7 @@ export class OidcService {
 			throw new BadRequestError('Invalid email format');
 		}
 
-		await this.assertProvisioningLoginAllowed(
-			claims as Record<string, unknown>,
-			userInfo as Record<string, unknown>,
-		);
+		await this.assertProvisioningLoginAllowed(claims, userInfo);
 
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
@@ -330,11 +351,7 @@ export class OidcService {
 		});
 
 		if (openidUser) {
-			await this.applySsoProvisioning(
-				openidUser.user,
-				claims as Record<string, unknown>,
-				userInfo as Record<string, unknown>,
-			);
+			await this.applySsoProvisioning(openidUser.user, claims, userInfo);
 
 			return { user: openidUser.user, idToken: tokens.id_token };
 		}
@@ -345,6 +362,10 @@ export class OidcService {
 		});
 
 		if (foundUser) {
+			// Linking to an existing account uses the email as the key, so only do it
+			// when the IdP says the email is verified.
+			this.assertEmailVerified(userInfo.email_verified);
+
 			this.logger.debug(
 				`OIDC login: User with email ${userInfo.email} already exists, linking OIDC identity.`,
 			);
@@ -356,11 +377,7 @@ export class OidcService {
 			});
 
 			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(
-				foundUser,
-				claims as Record<string, unknown>,
-				userInfo as Record<string, unknown>,
-			);
+			await this.applySsoProvisioning(foundUser, claims, userInfo);
 
 			return { user: foundUser, idToken: tokens.id_token };
 		}
@@ -389,11 +406,7 @@ export class OidcService {
 			return newUser;
 		});
 
-		await this.applySsoProvisioning(
-			user,
-			claims as Record<string, unknown>,
-			userInfo as Record<string, unknown>,
-		);
+		await this.applySsoProvisioning(user, claims, userInfo);
 
 		return { user, idToken: tokens.id_token };
 	}
@@ -449,6 +462,19 @@ export class OidcService {
 			id_token_hint: idToken,
 			post_logout_redirect_uri: `${this.urlService.getInstanceBaseUrl()}/signin`,
 		});
+	}
+
+	/**
+	 * Throws if the email is not verified. By default only an explicit `false` is
+	 * rejected; `emailVerifiedRequired` also rejects an absent claim.
+	 */
+	private assertEmailVerified(emailVerified: unknown): void {
+		const isVerified = emailVerified === true || emailVerified === 'true';
+		const isExplicitlyUnverified = emailVerified === false || emailVerified === 'false';
+
+		if (isExplicitlyUnverified || (this.oidcConfig.emailVerifiedRequired && !isVerified)) {
+			throw new BadRequestError('Email address is not verified by the identity provider');
+		}
 	}
 
 	async generateTestLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
@@ -783,7 +809,7 @@ export class OidcService {
 				// token/userinfo endpoints reached with the same `customFetch`) is
 				// admin-configured and may legitimately point at an internal IdP, so enabling
 				// SSRF protection here would block valid internal setups
-				ssrf: 'disabled',
+				useDefaultSsrfPolicy: 'unsafe',
 				// `proxy` defaults = `'env'`
 			})
 			.asCustomFetch() as unknown as openidClientTypes.CustomFetch;

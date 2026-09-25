@@ -18,7 +18,7 @@ import MCPOnboardingClientSetup from './MCPOnboardingClientSetup.vue';
 import MCPOnboardingCopyBlock from './MCPOnboardingCopyBlock.vue';
 import type { MCPOnboardingClient, MCPOnboardingClientOption } from './types';
 
-type MCPOnboardingSurface = 'tile' | 'first_open_modal' | 'workflow_card';
+type MCPOnboardingSurface = 'tile' | 'workflow_card';
 type MCPOnboardingPromptClient = Exclude<MCPOnboardingClient, 'chatgpt'>;
 type MCPOnboardingCopiedParameter = 'agent-prompt' | 'server-url' | 'chatgpt-app-name';
 type MCPOnboardingSetupType = 'prompt' | 'chatgpt_custom_app';
@@ -186,10 +186,6 @@ async function handleToggleMcpAccess() {
 
 function handleModalClosed() {
 	if (!enabledDuringThisOpen.value && !mcpStore.mcpAccessEnabled) {
-		if (surface.value === 'first_open_modal') {
-			experimentStore.dismissFirstOpenModal();
-		}
-
 		experimentStore.trackDismissed(surface.value, {
 			activeClient: activeClient.value,
 			enabledDuringThisOpen: enabledDuringThisOpen.value,
@@ -454,7 +450,7 @@ onBeforeUnmount(() => {
 						>
 							{{
 								i18n.baseText(
-									'experiments.surfaceMcpToNewCloudUsers.onboarding.intro.settingsLink' as BaseTextKey,
+									'experiments.surfaceMcpToNewCloudUsers.onboarding.footer.settingsLink',
 								)
 							}}
 						</N8nLink>

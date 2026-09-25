@@ -20,15 +20,16 @@ import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
+import { importPackageRequest } from './fixtures/import-request';
 import type { ImportPackageRequest } from '../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../spec/requirements.schema';
 import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 import {
 	buildEntityPackageBuffer,
 	dataTableRequirement,
 	serializedDataTable,
 	serializedWorkflowWithDataTable,
+	type PackageWorkflow,
 } from './fixtures/package-fixtures';
 import { buildWorkflowReferencingDataTables } from './utils/test-builders';
 import { streamToBuffer } from './utils/tar-support';
@@ -63,33 +64,19 @@ type ImportParams = { user: User; projectId: string; packageBuffer: Buffer } & P
 >;
 
 async function importPackage(params: ImportParams) {
-	return await service.importPackage({
-		credentialMatchingMode: 'id-only',
-		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: 'fail',
-		workflowPublishingPolicy: 'preserve-published-state',
-		workflowIdPolicy: 'new',
-		missingNodeTypeMode: 'fail',
-		folderConflictPolicy: 'merge',
-		dataTableMatchingMode: 'by-id',
-		dataTableMissingMode: 'create',
-		dataTableSchemaConflictPolicy: 'keep-existing',
-		variableMissingMode: 'do-nothing',
-		variableParentPolicy: 'project',
-		tagMissingMode: 'create',
-		tagConflictPolicy: 'skip',
-		...params,
-	});
+	return await service.importPackage(
+		importPackageRequest({ variableParentPolicy: 'project', ...params }),
+	);
 }
 
 /** A package holding `tables` plus one workflow per table referencing it. */
 async function buildDataTablePackage(
 	tables: SerializedDataTable[],
 	options: {
-		workflows?: SerializedWorkflow[];
+		workflows?: PackageWorkflow[];
 		requirements?: PackageDataTableRequirement[];
 	} = {},
-): Promise<{ packageBuffer: Buffer; workflows: SerializedWorkflow[] }> {
+): Promise<{ packageBuffer: Buffer; workflows: PackageWorkflow[] }> {
 	const workflows =
 		options.workflows ??
 		tables.map((table, index) =>

@@ -1,10 +1,13 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from './agent-runtime';
+import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
-import type { AgentPersistenceOptions, ExecutionOptions, ModelConfig } from '../../types/sdk/agent';
+import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
+import { getModelIdString } from '../../utils/model';
 import { isZodSchema } from '../../utils/zod';
 import {
 	createRecallMemoryTool,
@@ -13,6 +16,11 @@ import {
 	isEpisodicMemoryEnabled,
 	RECALL_MEMORY_TOOL_NAME,
 } from '../memory/episodic-memory';
+import {
+	createFlagMemoryTool,
+	FLAG_MEMORY_TOOL_NAME,
+	resolveEpisodicMemoryCapture,
+} from '../memory/episodic-memory-capture';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
@@ -20,7 +28,7 @@ import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prom
 import {
 	getProviderQuirks,
 	PROVIDER_QUIRKS,
-	providerIdFromModelId,
+	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
@@ -31,27 +39,13 @@ function wrapBuiltInRules(fragments: string[]): string | undefined {
 	return `<built_in_rules>\n${fragments.map((f) => `- ${f}`).join('\n')}\n</built_in_rules>`;
 }
 
-/** Resolve a model config to its canonical `provider/model` id string. */
-export function getModelIdString(model: ModelConfig): string {
-	if (typeof model === 'string') return model;
-	if ('id' in model && typeof model.id === 'string') return model.id;
-	if ('modelId' in model && typeof model.modelId === 'string') {
-		const rawProvider = 'provider' in model ? String(model.provider) : 'unknown';
-		// AI SDK providers stamp a dotted sub-namespace (e.g. 'anthropic.messages',
-		// 'openai.chat'); strip it so the id matches the canonical 'provider/model'
-		// the billing rate table is keyed on.
-		const provider = rawProvider.split('.')[0];
-		return `${provider}/${model.modelId}`;
-	}
-	return 'unknown';
-}
-
 export interface StaticLoopContext {
 	model: LanguageModel;
 	aiProviderTools: ReturnType<typeof toAiSdkProviderTools>;
 	reasoning: AgentRuntimeConfig['reasoning'];
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
+	maxOutputTokens?: number;
 }
 
 /**
@@ -101,6 +95,7 @@ export class RuntimeContextBuilder {
 			reasoning: this.config.reasoning,
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
+			maxOutputTokens: execOptions?.maxOutputTokens ?? resolveDefaultMaxOutputTokens(this.modelId),
 		};
 	}
 
@@ -109,8 +104,9 @@ export class RuntimeContextBuilder {
 		aiProviderTools: ReturnType<typeof toAiSdkProviderTools>,
 		persistence?: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
 	) {
-		const allUserTools = this.getCurrentTools(persistence, executionCounter);
+		const allUserTools = this.getCurrentTools(persistence, executionCounter, list);
 		const aiTools = toAiSdkTools(allUserTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
@@ -143,6 +139,7 @@ export class RuntimeContextBuilder {
 	getCurrentTools(
 		persistence?: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
 	): BuiltTool[] {
 		const baseTools = this.config.tools ?? [];
 		const tools = [
@@ -156,7 +153,9 @@ export class RuntimeContextBuilder {
 		];
 
 		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
-		return recallTool ? [...tools, recallTool] : tools;
+		const toolsWithRecall = recallTool ? [...tools, recallTool] : tools;
+		const flagTool = this.createFlagMemoryToolForRun(persistence, toolsWithRecall, list);
+		return flagTool ? [...toolsWithRecall, flagTool] : toolsWithRecall;
 	}
 
 	hydrateDeferredToolsFromList(list: AgentMessageList): void {
@@ -222,6 +221,27 @@ export class RuntimeContextBuilder {
 		});
 	}
 
+	private createFlagMemoryToolForRun(
+		persistence: AgentPersistenceOptions | undefined,
+		existingTools: BuiltTool[],
+		list?: AgentMessageList,
+	): BuiltTool | undefined {
+		if (!persistence || !list) return undefined;
+		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
+		if (!capture) return undefined;
+		if (existingTools.some((tool) => tool.name === FLAG_MEMORY_TOOL_NAME)) {
+			throw new Error(
+				`Tool name "${FLAG_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
+			);
+		}
+		return createFlagMemoryTool({
+			memory: capture.memory,
+			scope: capture.scope,
+			persistence,
+			list,
+		});
+	}
+
 	/**
 	 * Merge tool-attached `systemInstruction` fragments into the agent's
 	 * configured instructions, split by stability:
@@ -257,6 +277,17 @@ export class RuntimeContextBuilder {
 			);
 		}
 
+		// Define the untrusted-data boundary ahead of the first wrapped result.
+		// Goes in the cached block unless the only untrusted tools were loaded
+		// mid-conversation, mirroring the fragment split above.
+		const untrustedTools = tools.filter((tool) => tool.outputTrust === 'untrusted');
+		if (untrustedTools.length > 0) {
+			const target = untrustedTools.some((tool) => !loadedToolNames.has(tool.name))
+				? stableFragments
+				: volatileFragments;
+			target.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
+		}
+
 		const userInstructions = this.config.instructions;
 		const stableBlock = wrapBuiltInRules(stableFragments);
 		const instructions = stableBlock
@@ -271,17 +302,12 @@ export class RuntimeContextBuilder {
 		};
 	}
 
-	/** Build the providerOptions object for thinking/reasoning config. */
+	/** Build the providerOptions object for provider-specific thinking config. */
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
-		const quirks = getProviderQuirks(providerIdFromModelId(this.modelId));
+		if (!this.config.thinking) return undefined;
 
-		if (this.config.thinking) {
-			return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
-		}
-		if (this.config.reasoning) {
-			return quirks.reasoningToProviderOptions?.(this.config.reasoning, this.modelId);
-		}
-		return undefined;
+		const quirks = getProviderQuirks(getProviderPrefix(this.modelId));
+		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
 	}
 
 	/**
@@ -297,8 +323,6 @@ export class RuntimeContextBuilder {
 			agentName: this.config.name,
 			instructions: this.config.instructions,
 		});
-		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions) as
-			| Record<string, Record<string, unknown>>
-			| undefined;
+		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions);
 	}
 }

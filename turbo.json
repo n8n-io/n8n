@@ -26,6 +26,29 @@
 			"outputs": ["dist/**"],
 			"env": ["RELEASE"]
 		},
+		// Both emit declarations only under `RELEASE`, so `RELEASE` has to be part of the cache
+		// key. Without it a cached non-release `dist`, which has no `.d.ts`, would be restored
+		// onto a release build and ship a package with no types.
+		"@n8n/design-system#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
+		"@n8n/design-system#build:unchecked": {
+			"dependsOn": ["^build:unchecked"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
+		"@n8n/chat#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
+		"@n8n/chat#build:unchecked": {
+			"dependsOn": ["^build:unchecked"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
 		"typecheck": {
 			"dependsOn": ["^build"]
 		},
@@ -33,6 +56,58 @@
 		"format:check": {},
 		"lint": {
 			"dependsOn": ["^build", "@n8n/eslint-config#build"]
+		},
+		// Oxlint packages run Oxlint instead of ESLint, so
+		// they need the oxlint layer built, not the ESLint one.
+		"@n8n/ai-node-sdk#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/backend-common#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/backend-services#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/client-oauth2#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/computer-use#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/config#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/crdt#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/decorators#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/di#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/errors#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/imap#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/local-gateway#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/scheduler#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/syslog-client#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"n8n#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		// The n8n-nodes-base lint script also validates load-options methods
+		// against dist/methods/*.json, which only its own build emits.
+		"n8n-nodes-base#lint": {
+			"dependsOn": ["^build", "build", "@n8n/eslint-config#build"]
 		},
 		"lint:fix": {},
 		"lint:styles": {

@@ -1,5 +1,11 @@
-import { RoutingNode } from 'n8n-core';
+import { OutboundHttp } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
+import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
+import type { ExecuteContext } from 'n8n-core';
 import type {
+	ICredentialsHelper,
+	ICredentialTestFunctions,
 	ICredentialType,
 	INode,
 	INodeType,
@@ -39,6 +45,17 @@ describe('CredentialsTester', () => {
 		vi.clearAllMocks();
 	});
 
+	function mockRoutingNodeResult(outcome: { reject?: unknown; resolve?: unknown }) {
+		// Regular function — RoutingNode is instantiated with `new`.
+		(RoutingNode as unknown as Mock).mockImplementation(function () {
+			return {
+				runNode: outcome.reject
+					? vi.fn().mockRejectedValue(outcome.reject)
+					: vi.fn().mockResolvedValue(outcome.resolve ?? [[{ json: {} }]]),
+			};
+		});
+	}
+
 	it('should find the OAuth2 credential test for a generic OAuth2 API credential', () => {
 		credentialTypes.getByName.mockReturnValue(mock<ICredentialType>({ test: undefined }));
 		credentialTypes.getSupportedNodes.mockReturnValue(['oAuth2Api']);
@@ -54,6 +71,48 @@ describe('CredentialsTester', () => {
 		if (typeof testFn !== 'function') expect.fail();
 
 		expect(testFn.name).toBe('oauth2CredTest');
+	});
+
+	it('should keep resolving supported nodes past one the registry cannot load', () => {
+		credentialTypes.getByName.mockReturnValue(mock<ICredentialType>({ test: undefined }));
+		// `graphqlTool` is a synthetic tool variant appended to `supportedNodes` by
+		// tool generation; `getByName` does not fabricate those, so it throws.
+		credentialTypes.getSupportedNodes.mockReturnValue(['graphqlTool', 'graphql']);
+		credentialTypes.getParentTypes.mockReturnValue([]);
+		const testRequest = { request: { url: '/me' } };
+		nodeTypes.getByName.mockImplementation((nodeName: string) => {
+			if (nodeName === 'graphqlTool') {
+				throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'graphqlTool');
+			}
+			return mock<INodeType>({
+				description: { credentials: [{ name: 'httpHeaderAuth', testedBy: testRequest }] },
+			});
+		});
+
+		const testFn = credentialsTester.getCredentialTestFunction('httpHeaderAuth');
+
+		expect(testFn).toEqual(expect.objectContaining({ testRequest }));
+	});
+
+	it('should report no testing function when every supported node fails to load', async () => {
+		credentialTypes.getByName.mockReturnValue(mock<ICredentialType>({ test: undefined }));
+		credentialTypes.getSupportedNodes.mockReturnValue(['graphqlTool']);
+		credentialTypes.getParentTypes.mockReturnValue([]);
+		nodeTypes.getByName.mockImplementation(() => {
+			throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'graphqlTool');
+		});
+
+		const result = await credentialsTester.testCredentials('user-1', 'httpHeaderAuth', {
+			id: 'cred-1',
+			name: 'Header Auth account',
+			type: 'httpHeaderAuth',
+			data: {},
+		});
+
+		expect(result).toEqual({
+			status: 'Error',
+			message: 'No testing function found for this credential.',
+		});
 	});
 
 	describe('testCredentials', () => {
@@ -161,6 +220,37 @@ describe('CredentialsTester', () => {
 			expect(redactedMessage.message).toBe('Test failed for apiKey *****key');
 		});
 
+		// A node-defined credential test function may issue an outbound request to
+		// a credential-supplied host. `testCredentials` must hand it a context whose
+		// legacy `this.helpers.request` helper routes through the default (safe)
+		// `OutboundHttp.requests()` client, so the test honours the same egress
+		// policy as node execution.
+		it('routes a function-based credential test through the default safe client', async () => {
+			const requestLegacy = vi.fn().mockResolvedValue('ok');
+			const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ requestLegacy }));
+			Container.set(OutboundHttp, mock<OutboundHttp>({ requests }));
+
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			mockTestFunction.mockImplementation(async function (this: ICredentialTestFunctions) {
+				await this.helpers.request({ uri: 'http://internal-service.local/api' });
+				return { status: 'OK', message: 'ok' };
+			});
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({ baseUrl: 'http://host' });
+
+			await credentialsTester.testCredentials('user-id', 'testCredentials', {
+				id: 'credential-id',
+				name: 'credential-name',
+				type: 'oAuth2Api',
+				data: { baseUrl: 'http://host' },
+			});
+
+			expect(mockTestFunction).toHaveBeenCalled();
+			expect(requests).toHaveBeenCalledWith();
+		});
+
 		it('should keep function-based tests working with the real routing engine untouched', async () => {
 			mockTestFunction.mockResolvedValue({ status: 'OK', message: 'fine' });
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({});
@@ -213,6 +303,65 @@ describe('CredentialsTester', () => {
 			expect(redactedMessage.status).toBe('Error');
 			expect(redactedMessage.message).toBe('Test failed for apiKey se');
 		});
+
+		it('hands the routing engine a credentials helper that resolves the posted OAuth2 data, not the stored credential', async () => {
+			const posted = { grantType: 'clientCredentials', clientId: 'id', clientSecret: 'posted' };
+			const stored = { grantType: 'clientCredentials', clientId: 'id', clientSecret: 'stored' };
+			credentialTypes.getByName.mockReturnValue({
+				test: { request: { url: 'https://example.test/me' } },
+			} as unknown as ICredentialType);
+			credentialsHelper.applyDefaultsAndOverwrites.mockImplementation(async (_base, data) => data);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { name: 'n8n-nodes-base.noOp', version: 1, properties: [] },
+				}),
+			);
+			const storedGetDecrypted = vi.fn().mockResolvedValue(stored);
+			const storedHelper = {
+				getDecrypted: storedGetDecrypted,
+				getParentTypes: vi.fn().mockReturnValue([]),
+			} as unknown as ICredentialsHelper;
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({
+				credentialsHelper: storedHelper,
+			} as unknown as IWorkflowExecuteAdditionalData);
+			mockRoutingNodeResult({ resolve: [[{ json: {} }]] });
+
+			const result = await credentialsTester.testCredentials('user-id', 'databricksOAuth2Api', {
+				id: 'credential-id',
+				name: 'Databricks',
+				type: 'databricksOAuth2Api',
+				data: posted,
+			});
+
+			expect(result).toEqual({ status: 'OK', message: 'Connection successful!' });
+			const ctx = (RoutingNode as unknown as Mock).mock.calls[0][0] as ExecuteContext;
+			await expect(
+				ctx.additionalData.credentialsHelper.getDecrypted(
+					ctx.additionalData,
+					{ id: 'credential-id', name: 'Databricks' },
+					'databricksOAuth2Api',
+					'internal',
+				),
+			).resolves.toEqual(posted);
+			expect(storedGetDecrypted).not.toHaveBeenCalled();
+			// the refresh race check reads raw and must still see the stored token
+			await expect(
+				ctx.additionalData.credentialsHelper.getDecrypted(
+					ctx.additionalData,
+					{ id: 'credential-id', name: 'Databricks' },
+					'databricksOAuth2Api',
+					'internal',
+					undefined,
+					true,
+				),
+			).resolves.toEqual(stored);
+			expect(storedGetDecrypted).toHaveBeenCalledTimes(1);
+			// shared singleton not mutated
+			expect(storedHelper.getDecrypted).toBe(storedGetDecrypted);
+			// everything else delegates to the real helper
+			ctx.additionalData.credentialsHelper.getParentTypes('databricksOAuth2Api');
+			expect(storedHelper.getParentTypes).toHaveBeenCalledWith('databricksOAuth2Api');
+		});
 	});
 
 	describe('probeCredentialAuth', () => {
@@ -224,17 +373,6 @@ describe('CredentialsTester', () => {
 			data: { name: 'Authorization', value: 'Key abc' },
 		});
 
-		function mockRoutingNodeResult(outcome: { reject?: unknown; resolve?: unknown }) {
-			// Regular function — RoutingNode is instantiated with `new`.
-			(RoutingNode as unknown as Mock).mockImplementation(function () {
-				return {
-					runNode: outcome.reject
-						? vi.fn().mockRejectedValue(outcome.reject)
-						: vi.fn().mockResolvedValue(outcome.resolve ?? [[{ json: {} }]]),
-				};
-			});
-		}
-
 		function httpError(status: number) {
 			const error = new Error(`Request failed with status code ${status}`);
 			(error as Error & { cause: unknown }).cause = {
@@ -244,9 +382,9 @@ describe('CredentialsTester', () => {
 		}
 
 		beforeEach(() => {
-			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-				{} as IWorkflowExecuteAdditionalData,
-			);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({
+				credentialsHelper: {},
+			} as unknown as IWorkflowExecuteAdditionalData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockImplementation(async (_base, data) => data);
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({
@@ -269,10 +407,30 @@ describe('CredentialsTester', () => {
 			// Some services answer 2xx regardless of the credential, so the green
 			// verdict states what happened instead of claiming verification.
 			expect(result.message).toBe(AUTH_PROBE_ACCEPTED_MESSAGE);
+			expect(result.outcome).toBe('accepted');
 			const nodeTypeArg = (RoutingNode as unknown as Mock).mock.calls[0][1] as INodeType;
 			expect(nodeTypeArg.description.properties[0].routing?.request).toEqual({
 				url: targetUrl,
 				method: 'GET',
+			});
+		});
+
+		it('pins the probe request to the target host', async () => {
+			mockRoutingNodeResult({ resolve: [[{ json: {} }]] });
+
+			await credentialsTester.probeCredentialAuth(
+				'user-id',
+				'httpHeaderAuth',
+				credentials(),
+				targetUrl,
+				{ allowedDomains: 'fal.run' },
+			);
+
+			const nodeTypeArg = (RoutingNode as unknown as Mock).mock.calls[0][1] as INodeType;
+			expect(nodeTypeArg.description.properties[0].routing?.request).toEqual({
+				url: targetUrl,
+				method: 'GET',
+				allowedDomains: 'fal.run',
 			});
 		});
 
@@ -288,6 +446,7 @@ describe('CredentialsTester', () => {
 
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('401');
+			expect(result.outcome).toBe('rejected');
 		});
 
 		it('reports a non-auth error response as unverifiable instead of success', async () => {
@@ -303,6 +462,7 @@ describe('CredentialsTester', () => {
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('405');
 			expect(result.message).toContain('could not be verified');
+			expect(result.outcome).toBe('unverified');
 		});
 
 		it('accepts a declared service-specific status code instead of rejecting on it', async () => {
@@ -317,6 +477,7 @@ describe('CredentialsTester', () => {
 			);
 
 			expect(result.status).toBe('OK');
+			expect(result.outcome).toBe('accepted');
 		});
 
 		// The routing engine wraps HTTP failures in NodeApiError: the status is
@@ -352,6 +513,7 @@ describe('CredentialsTester', () => {
 
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('401');
+			expect(result.outcome).toBe('rejected');
 		});
 
 		it('reports a NodeApiError-wrapped non-auth status as unverifiable', async () => {
@@ -366,6 +528,7 @@ describe('CredentialsTester', () => {
 
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('405');
+			expect(result.outcome).toBe('unverified');
 		});
 
 		it('accepts a declared code on the NodeApiError shape too', async () => {
@@ -380,6 +543,7 @@ describe('CredentialsTester', () => {
 			);
 
 			expect(result.status).toBe('OK');
+			expect(result.outcome).toBe('accepted');
 		});
 
 		it('reports an unreachable service as unverifiable rather than success', async () => {
@@ -396,6 +560,7 @@ describe('CredentialsTester', () => {
 
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('Could not reach');
+			expect(result.outcome).toBe('unverified');
 		});
 
 		it('preserves credential configuration errors', async () => {
@@ -413,6 +578,7 @@ describe('CredentialsTester', () => {
 			expect(result).toEqual({
 				status: 'Error',
 				message: 'No value set for placeholder {{api_key}}',
+				outcome: 'unverified',
 			});
 		});
 	});

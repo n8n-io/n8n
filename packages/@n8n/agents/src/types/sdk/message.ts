@@ -133,11 +133,30 @@ export type ContentToolCall = ContentMetadata & {
 	input: JSONValue;
 
 	providerExecuted?: boolean;
+
+	/**
+	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
+	 * skill body can re-anchor to this result on a later turn instead of falling
+	 * back to the system prompt. Metadata only — never sent to the model.
+	 */
+	activatedSkillIds?: string[];
 } & (
-		| { state: 'pending' }
+		| { state: 'pending'; suspension?: ToolCallSuspensionInfo }
 		| { state: 'resolved'; output: JSONValue; canceled?: boolean }
 		| { state: 'rejected'; error: string }
 	);
+
+/**
+ * Present on a pending block when the call suspended for user confirmation
+ * (HITL). Records what was asked of the user, so a later history load can
+ * settle an abandoned confirmation with an explanation instead of silently
+ * dropping the call.
+ */
+export interface ToolCallSuspensionInfo {
+	/** Human-readable confirmation message shown to the user (e.g. the approval card text). */
+	message?: string;
+	requestId?: string;
+}
 
 export type ContentInvalidToolCall = ContentMetadata & {
 	type: 'invalid-tool-call';
@@ -168,6 +187,18 @@ export type ContentProvider = ContentMetadata & {
 	value: Record<string, unknown>;
 };
 
+/**
+ * Provenance for messages that were not authored by the user or the model,
+ * e.g. produced from a tool result via `toMessage`. Consumers that build
+ * derived transcripts (like the observation log observer) use this to keep
+ * tool-sourced content inside untrusted-data boundaries. Never sent to the
+ * model — `toAiMessages` only reads `role`/`content`.
+ */
+export interface MessageOrigin {
+	kind: 'tool';
+	toolName: string;
+}
+
 // LLM message that can be passed to the LLM
 export interface Message {
 	id?: string;
@@ -176,6 +207,7 @@ export interface Message {
 	content: MessageContent[];
 	name?: string;
 	providerOptions?: ProviderOptions;
+	origin?: MessageOrigin;
 }
 
 export interface AgentMessageBase {

@@ -256,6 +256,50 @@ describe('EvaluationConfigValidator', () => {
 			expect(errors.find((e) => e.code === 'AMBIGUOUS_ENTRY_NODE')).toBeUndefined();
 		});
 
+		it('does not emit when a pre-existing Evaluation Trigger converges with the real trigger (TRUST-407)', async () => {
+			const wf: IWorkflowBase = {
+				...makeWorkflow(),
+				nodes: [
+					makeNode({ name: 'RealTrigger', type: 'n8n-nodes-base.manualTrigger' }),
+					makeNode({ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' }),
+					makeNode({ name: 'Start' }),
+					makeNode({ name: 'End' }),
+				],
+				connections: {
+					RealTrigger: { main: [[{ node: 'Start', type: 'main', index: 0 }]] },
+					EvalTrigger: { main: [[{ node: 'Start', type: 'main', index: 0 }]] },
+					Start: { main: [[{ node: 'End', type: 'main', index: 0 }]] },
+				},
+			};
+			const errors = await validator.validate({
+				workflow: wf,
+				config: makeConfig(),
+				user: makeUser(),
+			});
+			expect(errors.find((e) => e.code === 'AMBIGUOUS_ENTRY_NODE')).toBeUndefined();
+		});
+
+		it("does not emit when the entry's sole parent is a pre-existing Evaluation Trigger (TRUST-407)", async () => {
+			const wf: IWorkflowBase = {
+				...makeWorkflow(),
+				nodes: [
+					makeNode({ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' }),
+					makeNode({ name: 'Start' }),
+					makeNode({ name: 'End' }),
+				],
+				connections: {
+					EvalTrigger: { main: [[{ node: 'Start', type: 'main', index: 0 }]] },
+					Start: { main: [[{ node: 'End', type: 'main', index: 0 }]] },
+				},
+			};
+			const errors = await validator.validate({
+				workflow: wf,
+				config: makeConfig(),
+				user: makeUser(),
+			});
+			expect(errors.find((e) => e.code === 'AMBIGUOUS_ENTRY_NODE')).toBeUndefined();
+		});
+
 		it('does not emit when entry has zero parents (entry is a trigger)', async () => {
 			const wf: IWorkflowBase = {
 				...makeWorkflow(),

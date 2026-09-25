@@ -216,6 +216,85 @@ describe('toolsAgentExecute', () => {
 		await expect(toolsAgentExecute.call(mockContext)).rejects.toThrow('Test error');
 	});
 
+	it('should surface a useful message when a tool throws a plain Error("Error") with continueOnFail', async () => {
+		const mockNode = mock<INode>();
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		const mockTools = [mock<Tool>()];
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'text') return 'test input';
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		mockContext.continueOnFail.mockReturnValue(true);
+
+		const mockExecutor = {
+			invoke: vi.fn().mockRejectedValue(new Error('Error')),
+		};
+
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(result[0][0].json.error).not.toBe('Error');
+		expect(result[0][0].json.error).toBe('Agent execution failed');
+	});
+
+	it('should throw a NodeOperationError with a useful message when a tool throws Error("Error") without continueOnFail', async () => {
+		const mockNode = mock<INode>();
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		const mockTools = [mock<Tool>()];
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'text') return 'test input';
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		mockContext.continueOnFail.mockReturnValue(false);
+
+		const mockExecutor = {
+			invoke: vi.fn().mockRejectedValue(new Error('Error')),
+		};
+
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		await expect(toolsAgentExecute.call(mockContext)).rejects.toThrow('Agent execution failed');
+	});
+
 	it('should pass tracing metadata to tracing config', async () => {
 		const mockNode = mock<INode>();
 		mockContext.getNode.mockReturnValue(mockNode);

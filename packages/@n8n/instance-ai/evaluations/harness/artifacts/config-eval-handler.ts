@@ -21,7 +21,7 @@ export const configEvalHandler: ArtifactHandler<ConfigEvalArtifact> = {
 		const configs = await client.getWorkflowEvaluationConfigs(workflowId);
 		const dtConfig = configs.find((c) => c.datasetSource === 'data_table');
 		let dataTable: ConfigEvalArtifact['dataTable'];
-		if (dtConfig && dtConfig.datasetSource === 'data_table') {
+		if (dtConfig?.datasetSource === 'data_table') {
 			// re-check narrows the discriminated union -- .find() alone doesn't
 			const projectId = await client.getPersonalProjectId();
 			const dataTableId = dtConfig.datasetRef.dataTableId;

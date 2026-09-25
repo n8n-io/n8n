@@ -7,6 +7,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
@@ -17,10 +18,9 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nSettingsLayout,
-	N8nTag,
 	N8nText,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -67,7 +67,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.name'),
 			key: 'name',
-			width: 200,
+			width: 240,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.status'),
@@ -76,26 +76,27 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 				row.active
 					? i18n.baseText('settings.migrationReport.detail.table.active')
 					: i18n.baseText('settings.migrationReport.detail.table.deactivated'),
-			width: 40,
+			width: 120,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
 			key: 'issues',
+			width: 240,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.numberOfExecutions'),
 			key: 'numberOfExecutions',
-			width: 40,
+			width: 160,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastExecuted'),
 			key: 'lastExecutedAt',
-			width: 40,
+			width: 120,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.lastUpdated'),
 			key: 'lastUpdatedAt',
-			width: 40,
+			width: 120,
 		},
 	];
 
@@ -257,14 +258,13 @@ const sortedWorkflows = computed(() => {
 				>
 					{{ state.ruleTitle }}
 					<SeverityTag :severity="state.ruleSeverity" />
-					<N8nTag
-						:text="
+					<N8nBadge>
+						{{
 							i18n.baseText('settings.migrationReport.detail.affectedTag', {
 								interpolate: { count: String(state.affectedWorkflows.length) },
 							})
-						"
-						:clickable="false"
-					/>
+						}}
+					</N8nBadge>
 				</N8nText>
 				<N8nText tag="p" color="text-base">
 					{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
@@ -372,7 +372,6 @@ const sortedWorkflows = computed(() => {
 				<N8nButton
 					v-else
 					size="small"
-					type="secondary"
 					:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
 					data-test-id="migrate-workflow-button"
 					@click.stop="openMigrateModal(item)"

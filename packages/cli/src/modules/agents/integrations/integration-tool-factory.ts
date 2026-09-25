@@ -1,4 +1,9 @@
-import { Tool, type InterruptibleToolContext } from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	APPROVAL_SUSPEND_SCHEMA,
+	Tool,
+	type InterruptibleToolContext,
+} from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -16,11 +21,12 @@ import {
 	executeActionToolBatch,
 	executeActionToolOperation,
 	executeContextToolOperation,
+	INTEGRATION_ACTION_RESUME_SCHEMA,
 } from './integration-tool-execution';
+import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
 	buildActionInputSchema,
 	buildContextInputSchema,
-	type RawActionToolInput,
 	type RawContextToolInput,
 	toSingleActionOperation,
 	toSingleContextOperation,
@@ -48,14 +54,19 @@ export interface IntegrationToolCapabilities {
 
 // Suspend payload is intentionally looser than tool input: the action name has
 // already been validated by the generated action schema before suspension.
-const actionSuspendSchema = z.object({
+const integrationActionSuspendSchema = z.object({
 	type: z.literal('integration_action'),
 	action: z.string(),
 	integrationConnectionId: z.string(),
 	messageContext: z.unknown(),
 });
 
-const actionResumeSchema = z.record(z.string(), z.unknown());
+/**
+ * The tool suspends for two unrelated reasons: an interactive card waiting on a
+ * user response, and an action held for approval. The approval branch reuses the
+ * SDK payload so the chat bridge renders its Approve/Deny card unchanged.
+ */
+const actionSuspendSchema = z.union([integrationActionSuspendSchema, APPROVAL_SUSPEND_SCHEMA]);
 
 export function getIntegrationToolConnectionDescriptors(
 	integrations: AgentIntegrationConfig[],
@@ -94,6 +105,7 @@ export function getIntegrationToolConnectionDescriptors(
 			actionToolDefinitions,
 			contextToolGuidance: capabilities?.contextToolGuidance,
 			actionToolGuidance: capabilities?.actionToolGuidance,
+			...(integration.approval ? { approval: integration.approval } : {}),
 		};
 	});
 }
@@ -106,10 +118,9 @@ export function buildIntegrationConnectionId(integration: IntegrationToolConnect
 
 export function createIntegrationContextTool(params: {
 	descriptor: IntegrationToolConnectionDescriptor;
-	messageContextStore: IntegrationMessageContextStore;
 	queryExecutor: IntegrationContextQueryExecutor;
 }) {
-	const { descriptor, messageContextStore, queryExecutor } = params;
+	const { descriptor, queryExecutor } = params;
 
 	return new Tool(descriptor.contextToolName)
 		.description(buildContextToolDescription(descriptor))
@@ -125,7 +136,6 @@ export function createIntegrationContextTool(params: {
 							result: await executeContextToolOperation({
 								operation,
 								descriptor,
-								messageContextStore,
 								queryExecutor,
 								persistence: ctx.persistence,
 							}),
@@ -139,7 +149,6 @@ export function createIntegrationContextTool(params: {
 			return await executeContextToolOperation({
 				operation: toSingleContextOperation(toolInput),
 				descriptor,
-				messageContextStore,
 				queryExecutor,
 				persistence: ctx.persistence,
 			});
@@ -157,14 +166,28 @@ export function createIntegrationActionTool(params: {
 		.description(buildActionToolDescription(descriptor))
 		.input(buildActionInputSchema(descriptor.actionToolDefinitions))
 		.suspend(actionSuspendSchema)
-		.resume(actionResumeSchema)
+		.resume(INTEGRATION_ACTION_RESUME_SCHEMA)
 		.handler(async (input, ctx) => {
-			if (ctx.resumeData) {
+			const interruptCtx = ctx as InterruptibleToolContext;
+			const approvalDecision = readApprovalDecision(interruptCtx);
+
+			// A card resume carries the user's answer straight back to the model. An
+			// approval resume is a decision about work that has not run yet, so it
+			// either falls through to execution below or stops here.
+			if (approvalDecision === undefined && ctx.resumeData) {
 				return ctx.resumeData;
 			}
+			if (approvalDecision?.approved === false) {
+				return {
+					ok: false,
+					error: {
+						code: INTEGRATION_ERROR_CODES.ACTION_DECLINED,
+						message: `The action "${approvalDecision.action}" was not approved.`,
+					},
+				};
+			}
 
-			const interruptCtx = ctx as InterruptibleToolContext;
-			const toolInput = input as RawActionToolInput;
+			const toolInput = input;
 
 			if (toolInput.actions !== undefined) {
 				return await executeActionToolBatch({
@@ -184,8 +207,28 @@ export function createIntegrationActionTool(params: {
 				ctx,
 				interruptCtx,
 				allowSuspend: true,
+				...(approvalDecision ? { approvedAction: approvalDecision.action } : {}),
 			});
 		});
+}
+
+/**
+ * The decision a user made on an approval card, or undefined when this is not
+ * an approval resume. `suspendPayload` is what the tool suspended with, so it
+ * tells the two suspend reasons apart without guessing from the resume shape.
+ */
+function readApprovalDecision(
+	ctx: InterruptibleToolContext,
+): { action: string; approved: boolean } | undefined {
+	const payload = APPROVAL_SUSPEND_SCHEMA.safeParse(ctx.suspendPayload);
+	if (!payload.success) return undefined;
+
+	const resume = APPROVAL_RESUME_SCHEMA.safeParse(ctx.resumeData);
+	return {
+		action: payload.data.toolName,
+		// An unreadable resume payload is not consent.
+		approved: resume.success && resume.data.approved,
+	};
 }
 
 function getContextToolDefinitions(

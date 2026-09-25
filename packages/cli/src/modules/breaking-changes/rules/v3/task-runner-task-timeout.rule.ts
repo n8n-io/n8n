@@ -1,5 +1,6 @@
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -24,7 +25,7 @@ export class TaskRunnerTaskTimeoutRule implements IBreakingChangeInstanceRule {
 
 	async detect(): Promise<InstanceDetectionReport> {
 		if (process.env.N8N_RUNNERS_TASK_TIMEOUT !== undefined) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

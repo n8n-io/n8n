@@ -1,0 +1,70 @@
+name: Hide outdated cubic review comments
+
+# Every time cubic re-reviews a PR (e.g. after a new commit) it posts a brand new
+# "left a comment" review summary instead of updating the previous one, which
+# clutters the PR timeline. This workflow minimizes (hides) all but the most
+# recent cubic-dev-ai review comment on a PR, so only the latest summary is
+# visible by default. Hidden comments are collapsed, not deleted -- anyone can
+# still expand them.
+
+# Runs on `pull_request` (not `pull_request_target`) so it never executes with
+# elevated permissions against untrusted fork code. The tradeoff: GitHub only
+# grants a write-capable token to `pull_request` runs when the PR's head repo
+# is this same repo, so the job below is skipped for PRs from forks -- outdated
+# cubic comments on external-contributor PRs won't be minimized.
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  hide-old-cubic-reviews:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Minimize previous cubic-dev-ai review comments
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner,
+              repo,
+              pull_number,
+              per_page: 100,
+            });
+
+            // Only touch cubic's own reviews that actually have a comment body.
+            const cubicReviews = reviews
+              .filter(
+                (r) =>
+                  r.user &&
+                  r.user.login === 'cubic-dev-ai[bot]' &&
+                  r.body &&
+                  r.body.trim().length > 0
+              )
+              .sort((a, b) => new Date(a.submitted_at) - new Date(b.submitted_at));
+
+            // Keep the newest review visible, hide everything older.
+            const toHide = cubicReviews.slice(0, -1);
+
+            for (const review of toHide) {
+              try {
+                await github.graphql(
+                  `mutation($id: ID!) {
+                    minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) {
+                      minimizedComment { isMinimized }
+                    }
+                  }`,
+                  { id: review.node_id }
+                );
+                console.log(`Minimized cubic review ${review.id}`);
+              } catch (err) {
+                console.log(`Could not minimize review ${review.id}: ${err.message}`);
+              }
+            }

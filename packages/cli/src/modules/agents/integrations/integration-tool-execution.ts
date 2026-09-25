@@ -1,9 +1,23 @@
-import type { InterruptibleToolContext, ToolContext } from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	type InterruptibleToolContext,
+	type ToolContext,
+} from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
-import type { z } from 'zod';
+import { z } from 'zod';
 
-import { messageSchema, type IntegrationCardComponent } from './integration-tool-definitions';
+import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
+import {
+	actionNeedsApproval,
+	messageSchema,
+	type IntegrationCardComponent,
+} from './integration-tool-definitions';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
+import {
+	isIntegrationMessageContext,
+	readIntegrationMessageContext,
+	replaceIntegrationMessageContext,
+} from './integration-message-context';
 import type {
 	IntegrationAction,
 	IntegrationActionExecutor,
@@ -16,14 +30,16 @@ import type {
 } from './integration-tool-types';
 import type { RawActionToolOperation, RawContextToolOperation } from './integration-tool-schema';
 
+/** Resume shape for the action tool, including a follow-up interactive card. */
+export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
+
 export async function executeContextToolOperation(params: {
 	operation: RawContextToolOperation;
 	descriptor: IntegrationToolConnectionDescriptor;
-	messageContextStore: IntegrationMessageContextStore;
 	queryExecutor: IntegrationContextQueryExecutor;
 	persistence: ToolContext['persistence'];
 }): Promise<unknown> {
-	const { operation, descriptor, messageContextStore, queryExecutor, persistence } = params;
+	const { operation, descriptor, queryExecutor, persistence } = params;
 
 	if (isCurrentContextQuery(operation.query)) {
 		if (!persistence) {
@@ -35,7 +51,7 @@ export async function executeContextToolOperation(params: {
 				},
 			};
 		}
-		const context = await messageContextStore.getLatest(persistence.threadId);
+		const context = readIntegrationMessageContext(persistence);
 		if (!context || context.integrationConnectionId !== descriptor.integrationConnectionId) {
 			if (operation.query === 'get_current_message_context') {
 				return { ok: true, context: null };
@@ -109,14 +125,10 @@ export async function executeActionToolBatch(params: {
 	ctx: ToolContext;
 }): Promise<unknown> {
 	const { operations, descriptor, messageContextStore, actionExecutor, ctx } = params;
-	let currentMessageContext =
-		ctx.persistence !== undefined
-			? await getOptionalCurrentContext({
-					descriptor,
-					messageContextStore,
-					threadId: ctx.persistence.threadId,
-				})
-			: undefined;
+	let currentMessageContext = getOptionalCurrentContext({
+		descriptor,
+		persistence: ctx.persistence,
+	});
 
 	const results: Array<{ action: IntegrationAction; result: unknown }> = [];
 	for (const operation of operations) {
@@ -148,6 +160,8 @@ export async function executeActionToolOperation(params: {
 	interruptCtx?: InterruptibleToolContext;
 	currentMessageContext?: IntegrationMessageContext;
 	allowSuspend: boolean;
+	/** Action the user just approved, so the gate below lets it through once. */
+	approvedAction?: string;
 }): Promise<unknown> {
 	const {
 		operation,
@@ -157,6 +171,7 @@ export async function executeActionToolOperation(params: {
 		ctx,
 		interruptCtx,
 		allowSuspend,
+		approvedAction,
 	} = params;
 	const persistence = ctx.persistence;
 	const message = parseMessage(operation.input.message);
@@ -174,25 +189,47 @@ export async function executeActionToolOperation(params: {
 		};
 	}
 
+	const needsApproval =
+		operation.action !== approvedAction &&
+		actionNeedsApproval(descriptor.approval, operation.action);
+
+	if (needsApproval) {
+		// A batch cannot suspend, so a gated action inside one has to be refused
+		// rather than run — otherwise batching would be a way around the gate.
+		if (!allowSuspend || !interruptCtx) {
+			return {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.ACTION_NEEDS_APPROVAL,
+					message: `The action "${operation.action}" needs approval, which cannot be asked for here. Send that action on its own.`,
+				},
+			};
+		}
+
+		return await interruptCtx.suspend(
+			{
+				type: 'approval',
+				toolName: operation.action,
+				displayName: describeActionForApproval(operation),
+				args: actionInput,
+			},
+			// The card's buttons are shaped from this schema, so the decision comes
+			// back as `{ approved }` rather than the tool's own resume shape.
+			{ resumeSchema: APPROVAL_RESUME_SCHEMA },
+		);
+	}
+
 	let currentMessageContext = params.currentMessageContext;
 	if (operation.action === 'respond') {
 		if (!currentMessageContext) {
-			const contextResult = await getRespondContext({
-				descriptor,
-				messageContextStore,
-				persistence,
-			});
+			const contextResult = getRespondContext({ descriptor, persistence });
 			if (!contextResult.ok) {
 				return contextResult;
 			}
 			currentMessageContext = contextResult.context;
 		}
 	} else if (!currentMessageContext && persistence) {
-		currentMessageContext = await getOptionalCurrentContext({
-			descriptor,
-			messageContextStore,
-			threadId: persistence.threadId,
-		});
+		currentMessageContext = getOptionalCurrentContext({ descriptor, persistence });
 	}
 
 	const result = await actionExecutor.execute({
@@ -215,17 +252,51 @@ export async function executeActionToolOperation(params: {
 			persistence.resourceId,
 			messageContext,
 		);
+		replaceIntegrationMessageContext(persistence, messageContext);
+		// Task-run sends bind the outbound thread so inbound replies continue
+		// that task session. Chat mentions stay on their own thread.
+		// respond/edit/reaction operate on existing threads and do not bind.
+		if (
+			(operation.action === 'send_dm' || operation.action === 'send_channel_message') &&
+			descriptor.agentId &&
+			messageContext.target.threadId &&
+			isTaskRunMemoryResourceId(persistence.resourceId)
+		) {
+			await messageContextStore.bindSession(
+				`${descriptor.agentId}:${messageContext.target.threadId}`,
+				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+			);
+		}
 		actionResult = { ...result, messageContext };
 	}
 
 	if (!awaitsResponse) return actionResult;
 
-	return await interruptCtx?.suspend({
-		type: 'integration_action',
-		action: operation.action,
-		integrationConnectionId: descriptor.integrationConnectionId,
-		messageContext: actionResult.messageContext,
-	});
+	return await interruptCtx?.suspend(
+		{
+			type: 'integration_action',
+			action: operation.action,
+			integrationConnectionId: descriptor.integrationConnectionId,
+			messageContext: actionResult.messageContext,
+		},
+		// An approval resume leaves APPROVAL_RESUME_SCHEMA on this tool call. Name
+		// the action-tool schema here so a follow-up card is not still expecting
+		// `{ approved }`.
+		{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
+	);
+}
+
+/**
+ * Label for the approval card. The card only shows this line, so it has to name
+ * the destination — approving a bare `send_channel_message` tells the user
+ * nothing about where the message goes.
+ */
+function describeActionForApproval(operation: RawActionToolOperation): string {
+	const { channelId, userId, messageId, issueId } = operation.input;
+	const target = [channelId, userId, messageId, issueId].find(
+		(value) => typeof value === 'string' && value.length > 0,
+	);
+	return target ? `${operation.action} → ${String(target)}` : operation.action;
 }
 
 function isCurrentContextQuery(query: IntegrationContextQuery): boolean {
@@ -267,22 +338,25 @@ function withPreviousSubject(
 ): IntegrationMessageContext {
 	if (!previousContext) return context;
 	if (context.integrationConnectionId !== previousContext.integrationConnectionId) return context;
+	const replyExpectation = context.replyExpectation ?? previousContext.replyExpectation;
+	const replyTarget =
+		context.replyTarget ??
+		previousContext.replyTarget ??
+		(replyExpectation ? previousContext.target : undefined);
+	const replyMessageId =
+		context.replyMessageId ??
+		previousContext.replyMessageId ??
+		(replyExpectation ? previousContext.messageId : undefined);
+
 	return {
 		...context,
 		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
 		...(!context.agentUserId && previousContext.agentUserId
 			? { agentUserId: previousContext.agentUserId }
 			: {}),
-		// The turn's reply policy comes from the inbound message, not from what
-		// the agent sent — keep it through same-thread context rebuilds so
-		// `do_not_respond` stays available after e.g. a card respond. A rebuild
-		// targeting a different thread (send_dm/send_channel_message) drops it:
-		// the streamed reply does not go there, so its delivery rules don't apply.
-		...(!context.replyExpectation &&
-		previousContext.replyExpectation &&
-		context.target.threadId === previousContext.target.threadId
-			? { replyExpectation: previousContext.replyExpectation }
-			: {}),
+		...(replyExpectation ? { replyExpectation } : {}),
+		...(replyTarget ? { replyTarget } : {}),
+		...(replyMessageId ? { replyMessageId } : {}),
 	};
 }
 
@@ -292,42 +366,23 @@ function extractSuccessfulMessageContext(result: unknown): IntegrationMessageCon
 	return isIntegrationMessageContext(messageContext) ? messageContext : undefined;
 }
 
-function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
-	return (
-		isRecord(value) &&
-		typeof value.integrationConnectionId === 'string' &&
-		typeof value.platform === 'string' &&
-		isRecord(value.target) &&
-		(value.agentUserId === undefined || typeof value.agentUserId === 'string') &&
-		typeof value.updatedAt === 'string'
-	);
-}
-
-async function getOptionalCurrentContext(params: {
+function getOptionalCurrentContext(params: {
 	descriptor: IntegrationToolConnectionDescriptor;
-	messageContextStore: IntegrationMessageContextStore;
-	threadId: string;
-}): Promise<IntegrationMessageContext | undefined> {
-	try {
-		const context = await params.messageContextStore.getLatest(params.threadId);
-		if (context?.integrationConnectionId !== params.descriptor.integrationConnectionId) {
-			return undefined;
-		}
-		return context;
-	} catch {
-		return undefined;
-	}
-}
-
-async function getRespondContext(params: {
-	descriptor: IntegrationToolConnectionDescriptor;
-	messageContextStore: IntegrationMessageContextStore;
 	persistence: ToolContext['persistence'];
-}): Promise<
+}): IntegrationMessageContext | undefined {
+	const context = readIntegrationMessageContext(params.persistence);
+	return context?.integrationConnectionId === params.descriptor.integrationConnectionId
+		? context
+		: undefined;
+}
+
+function getRespondContext(params: {
+	descriptor: IntegrationToolConnectionDescriptor;
+	persistence: ToolContext['persistence'];
+}):
 	| { ok: true; context: IntegrationMessageContext }
-	| { ok: false; error: { code: string; message: string } }
-> {
-	const { descriptor, messageContextStore, persistence } = params;
+	| { ok: false; error: { code: string; message: string } } {
+	const { descriptor, persistence } = params;
 	if (!persistence) {
 		return {
 			ok: false,
@@ -338,7 +393,7 @@ async function getRespondContext(params: {
 		};
 	}
 
-	const context = await messageContextStore.getLatest(persistence.threadId);
+	const context = readIntegrationMessageContext(persistence);
 	if (!context) {
 		return {
 			ok: false,

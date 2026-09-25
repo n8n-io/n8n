@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system';
+import { computed } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -12,6 +13,10 @@ const props = withDefaults(
 		invalid?: boolean;
 		/** Human-readable reasons behind `invalid`, shown in a tooltip on the warning icon. */
 		invalidReasons?: string[];
+		/** Marks the chip as usable in preview but blocking publish (e.g. an unpublished workflow). */
+		warning?: boolean;
+		/** Human-readable reasons behind `warning`; ignored while `invalid` is set. */
+		warningReasons?: string[];
 		clickable?: boolean;
 	}>(),
 	{
@@ -20,9 +25,13 @@ const props = withDefaults(
 		active: false,
 		invalid: false,
 		invalidReasons: () => [],
+		warning: false,
+		warningReasons: () => [],
 		clickable: true,
 	},
 );
+
+const reasons = computed(() => (props.invalid ? props.invalidReasons : props.warningReasons));
 
 defineSlots<{
 	icon?: () => unknown;
@@ -43,6 +52,7 @@ const emit = defineEmits<{
 			{
 				[$style.active]: props.active,
 				[$style.invalid]: props.invalid,
+				[$style.warning]: props.warning && !props.invalid,
 				[$style.nonClickable]: !props.clickable,
 			},
 		]"
@@ -62,15 +72,19 @@ const emit = defineEmits<{
 		<N8nText size="small" color="text-dark" :class="$style.text">
 			<slot />
 		</N8nText>
-		<N8nTooltip v-if="props.invalid" :disabled="props.invalidReasons.length === 0" placement="top">
+		<N8nTooltip
+			v-if="props.invalid || props.warning"
+			:disabled="reasons.length === 0"
+			placement="top"
+		>
 			<N8nIcon
 				icon="triangle-alert"
 				:size="14"
-				:class="$style.invalidIcon"
-				data-testid="agent-chip-invalid-icon"
+				:class="[$style.alertIcon, { [$style.warningIcon]: !props.invalid }]"
+				:data-testid="props.invalid ? 'agent-chip-invalid-icon' : 'agent-chip-warning-icon'"
 			/>
 			<template #content>
-				<div v-for="reason in props.invalidReasons" :key="reason">{{ reason }}</div>
+				<div v-for="reason in reasons" :key="reason">{{ reason }}</div>
 			</template>
 		</N8nTooltip>
 	</button>
@@ -109,8 +123,16 @@ const emit = defineEmits<{
 	border-color: var(--canvas-node--border-color--error, var(--color--danger));
 }
 
-.invalidIcon {
+.warning {
+	border-color: var(--color--warning);
+}
+
+.alertIcon {
 	flex-shrink: 0;
+}
+
+.warningIcon {
+	color: var(--color--warning);
 }
 
 .nonClickable {

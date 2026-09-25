@@ -1,6 +1,8 @@
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AiConfig } from '@n8n/config';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
@@ -8,15 +10,29 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import type { Telemetry } from '@/telemetry';
 
-import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
+import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../agent-sandbox-principal';
+import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
 import type { Agent } from '../entities/agent.entity';
+import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
+import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import type { ToolRegistry } from '../tool-registry';
+import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
+
+const aiConfigMock = mock<AiConfig>();
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -75,8 +91,12 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 	return {
 		agent: {
 			name: 'Runtime Agent',
-			stream: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
-			resume: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
+			stream: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
+			resume: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
 			structuredOutput: vi.fn(),
 			close: vi.fn(),
 		} as unknown as RuntimeAgent & {
@@ -85,6 +105,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 			structuredOutput: Mock;
 		},
 		toolRegistry: mock<ToolRegistry>(),
+		mcpServerAttributions: new Map<string, string>(),
 		projectId,
 		agentId,
 		telemetryConfiguration: {
@@ -101,22 +122,42 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const executionService = mock<AgentExecutionService>();
+	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 	const telemetry = mock<Telemetry>();
 	const credentialsService = mock<CredentialsService>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
 	const agentRunTracingService = mock<AgentRunTracingService>();
+	const executionLevelTracer = mock<ExecutionLevelTracer>();
+	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
+	const integrationMessageContextService = mock<IntegrationMessageContextService>();
+	integrationMessageContextService.getLatest.mockResolvedValue(null);
 
-	executionService.recordMessage.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockResolvedValue('execution-1');
+	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
+	executionLevelTracer.getActiveContext.mockReturnValue(undefined);
+	// The inline path lists project credentials to pass owned types into the
+	// gateway reconcile — default to none so unrelated tests don't need to.
+	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 
 	const service = new AgentWorkflowExecutionService(
 		mockLogger(),
 		agentRepository,
-		executionService,
+		new AgentTurnExecutionService(
+			mockLogger(),
+			executionService,
+			mock<AgentChatExecutionService>(),
+			mock<AgentMessageQueueService>(),
+		),
 		telemetry,
 		credentialsService,
 		reconstructionService,
 		agentRunTracingService,
+		executionLevelTracer,
+		nodeToolAiGatewayService,
+		aiConfigMock,
+		integrationMessageContextService,
 	);
 
 	return {
@@ -126,6 +167,9 @@ function makeService() {
 		telemetry,
 		reconstructionService,
 		agentRunTracingService,
+		executionLevelTracer,
+		nodeToolAiGatewayService,
+		integrationMessageContextService,
 	};
 }
 
@@ -142,7 +186,16 @@ describe('AgentWorkflowExecutionService', () => {
 			executionService,
 			telemetry,
 			agentRunTracingService,
+			integrationMessageContextService,
 		} = makeService();
+		const messageContext: IntegrationMessageContext = {
+			integrationConnectionId: 'slack:credential-1',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:channel-1:message-1' },
+			interactingUserId: 'platform-user-1',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		};
+		integrationMessageContextService.getLatest.mockResolvedValue(messageContext);
 		const runtime = makeRuntime([
 			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: { id: 1 } },
 			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'lookup', output: { ok: true } },
@@ -151,6 +204,8 @@ describe('AgentWorkflowExecutionService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		executionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 
 		const result = await service.executeForWorkflow(
 			agentId,
@@ -167,9 +222,14 @@ describe('AgentWorkflowExecutionService', () => {
 				// resourceId is the memory store's read scope: it must be stable
 				// across executions (NOT the execution id) or a reused session id
 				// would never see its prior messages.
-				persistence: { resourceId: 'thread-1', threadId: 'thread-1' },
+				persistence: {
+					resourceId: 'thread-1',
+					threadId: 'thread-1',
+					hostMetadata: { n8nIntegrationMessageContext: messageContext },
+				},
 			}),
 		);
+		expect(integrationMessageContextService.getLatest).toHaveBeenCalledExactlyOnceWith('thread-1');
 		expect(result).toEqual(
 			expect.objectContaining({
 				response: '',
@@ -188,7 +248,16 @@ describe('AgentWorkflowExecutionService', () => {
 			run_type: 'production',
 			message_count: 1,
 		});
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.recordTimelineSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId,
+				agentId,
+				threadId: 'thread-1',
+				executionId: 'agent-execution-1',
+			}),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
 			expect.objectContaining({
 				telemetry: expect.objectContaining({
 					runType: 'production',
@@ -198,6 +267,9 @@ describe('AgentWorkflowExecutionService', () => {
 				}),
 			}),
 		);
+		const startedAt = executionService.startExecutionRecording.mock.calls[0][1];
+		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
+		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({
 				agentId,
@@ -208,6 +280,205 @@ describe('AgentWorkflowExecutionService', () => {
 				executionId: 'execution-1',
 			}),
 		);
+	});
+
+	it('uses the execution-scoped workspace principal', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = makeRuntime();
+		const principalHash = hashAgentSandboxPrincipal({
+			type: 'workflow-execution',
+			workflowId: 'workflow-1',
+			executionId: 'execution-1',
+		});
+		const sandboxScope = { principalHash };
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'wf:workflow-1:execution-1-0',
+			projectId,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			sandboxScope,
+		);
+
+		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0][7]).toBe(principalHash);
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'hello',
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					hostMetadata: {
+						...encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+						n8nIntegrationMessageContext: null,
+					},
+				}),
+			}),
+		);
+	});
+
+	it.each(['stream', 'context'] as const)('records workflow %s setup failures', async (step) => {
+		const {
+			service,
+			agentRepository,
+			reconstructionService,
+			executionService,
+			integrationMessageContextService,
+		} = makeService();
+		const runtime = makeRuntime();
+		const principalHash = hashAgentSandboxPrincipal({
+			type: 'workflow-execution',
+			workflowId: 'workflow-1',
+			executionId: 'execution-1',
+		});
+		const error = new Error(`${step} setup failed`);
+		if (step === 'stream') runtime.agent.stream.mockRejectedValue(error);
+		else integrationMessageContextService.getLatest.mockRejectedValue(error);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecutionRecording.mockResolvedValue('fallback-execution-1');
+
+		await expect(
+			service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ principalHash },
+			),
+		).rejects.toThrow(error.message);
+
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'fallback-execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({ error: error.message, finishReason: 'error' }),
+			}),
+		);
+	});
+
+	it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
+		'reports required persistence failures from %s',
+		async (recordingOperation) => {
+			const { service, agentRepository, reconstructionService, executionService } = makeService();
+			const runtime = makeRuntime([
+				{ type: 'text-delta', id: 'text-1', delta: 'answer' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			const cause = new Error('recording unavailable');
+			executionService[recordingOperation].mockRejectedValue(cause);
+			const creationFailed = recordingOperation === 'startExecutionRecording';
+
+			await expect(
+				service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+			).rejects.toMatchObject({
+				phase: creationFailed ? 'create' : 'finalize',
+				executionStarted: !creationFailed,
+				cause,
+				...(!creationFailed ? { executionId: 'execution-1' } : {}),
+			});
+			expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
+			if (creationFailed) {
+				expect(runtime.agent.stream).not.toHaveBeenCalled();
+				expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it('records a workflow initialization failure without invoking the SDK', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockRejectedValue(
+			new Error('runtime setup failed'),
+		);
+
+		await expect(
+			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+		).rejects.toThrow('runtime setup failed');
+
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					error: 'Failed to compile agent: runtime setup failed',
+					finishReason: 'error',
+				}),
+			}),
+		);
+	});
+
+	it.each(['successful', 'unsuccessful'])(
+		'keeps existing-session intent through agent lookup when compilation is %s',
+		async (compilation) => {
+			const { service, agentRepository, reconstructionService, executionService } = makeService();
+			const lookupStarted = createDeferredPromise();
+			const agentLookup = createDeferredPromise<Agent>();
+			const runtime = makeRuntime();
+			const cause = new UserError('Session not found');
+			executionService.getSessionMode.mockResolvedValue('existing');
+			agentRepository.findByIdAndProjectId.mockImplementation(async () => {
+				lookupStarted.resolve();
+				return await agentLookup.promise;
+			});
+			executionService.startExecutionRecording.mockImplementation(async ({ sessionMode }) => {
+				if (sessionMode === 'existing') throw cause;
+				return 'execution-1';
+			});
+			if (compilation === 'successful') {
+				reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			} else {
+				reconstructionService.reconstructFromAgentEntity.mockRejectedValue(
+					new Error('runtime setup failed'),
+				);
+			}
+
+			const execution = service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+			);
+			await lookupStarted.promise;
+			// Deletion finishes while the agent lookup is pending.
+			executionService.getSessionMode.mockResolvedValue('new');
+			agentLookup.resolve(makeAgent());
+
+			await expect(execution).rejects.toMatchObject({ phase: 'create', cause });
+			expect(runtime.agent.stream).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+		},
+	);
+
+	it('records a null input for a tool-result with no matching tool-call', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = makeRuntime([
+			{ type: 'tool-result', toolCallId: 'tc-orphan', toolName: 'lookup', output: { ok: true } },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		const result = await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'thread-1',
+			projectId,
+		);
+
+		expect(result.toolCalls).toEqual([{ toolName: 'lookup', input: null, result: { ok: true } }]);
 	});
 
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {
@@ -246,6 +517,109 @@ describe('AgentWorkflowExecutionService', () => {
 			'hello',
 			expect.objectContaining({ telemetry: fakeTelemetry }),
 		);
+	});
+
+	describe('OTel context nesting', () => {
+		it('looks up the active context for the calling node so the agent run nests under it', async () => {
+			const { service, agentRepository, reconstructionService, executionLevelTracer } =
+				makeService();
+			const runtime = makeRuntime();
+			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				workflowId: 'wf-1',
+				workflowName: 'My workflow',
+				callingNodeName: 'Message an Agent',
+				callingNodeId: 'node-1',
+				inputData: [],
+				inputDataScope: 'item',
+				nodes: [],
+				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+			};
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				workflowContext,
+			);
+
+			expect(executionLevelTracer.getActiveContext).toHaveBeenCalledWith(
+				'execution-1',
+				'Message an Agent',
+			);
+		});
+
+		it('runs the agent stream inside the node span context when one is active', async () => {
+			const otelApi = await import('@opentelemetry/api');
+			const { service, agentRepository, reconstructionService, executionLevelTracer } =
+				makeService();
+			const runtime = makeRuntime();
+			const fakeContext = {} as ReturnType<(typeof otelApi.context)['active']>;
+			executionLevelTracer.getActiveContext.mockReturnValue(fakeContext);
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+			const withSpy = vi.spyOn(otelApi.context, 'with');
+			try {
+				await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+				expect(withSpy).toHaveBeenCalledWith(fakeContext, expect.any(Function));
+				expect(runtime.agent.stream).toHaveBeenCalled();
+			} finally {
+				withSpy.mockRestore();
+			}
+		});
+
+		it('runs the agent stream unwrapped when no node span context is active', async () => {
+			const otelApi = await import('@opentelemetry/api');
+			const { service, agentRepository, reconstructionService, executionLevelTracer } =
+				makeService();
+			const runtime = makeRuntime();
+			executionLevelTracer.getActiveContext.mockReturnValue(undefined);
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+			const withSpy = vi.spyOn(otelApi.context, 'with');
+			try {
+				await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+				expect(withSpy).not.toHaveBeenCalled();
+				expect(runtime.agent.stream).toHaveBeenCalled();
+			} finally {
+				withSpy.mockRestore();
+			}
+		});
+
+		it('skips the context lookup entirely when no executionId is available', async () => {
+			const otelApi = await import('@opentelemetry/api');
+			const { service, agentRepository, reconstructionService, executionLevelTracer } =
+				makeService();
+			const runtime = makeRuntime();
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+			const withSpy = vi.spyOn(otelApi.context, 'with');
+			try {
+				await service.executeForWorkflow(agentId, 'hello', '', 'thread-1', projectId);
+
+				expect(executionLevelTracer.getActiveContext).not.toHaveBeenCalled();
+				expect(withSpy).not.toHaveBeenCalled();
+				expect(runtime.agent.stream).toHaveBeenCalled();
+			} finally {
+				withSpy.mockRestore();
+			}
+		});
 	});
 
 	it('applies per-call structured output schema and improves empty-output errors', async () => {
@@ -407,6 +781,7 @@ describe('AgentWorkflowExecutionService', () => {
 				executionService,
 				telemetry,
 				agentRunTracingService,
+				integrationMessageContextService,
 			} = makeService();
 			const runtime = makeRuntime([
 				{ type: 'text-start', id: 'text-1' },
@@ -426,6 +801,7 @@ describe('AgentWorkflowExecutionService', () => {
 				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
 			};
 			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
+			const streamObserver = vi.fn<WorkflowAgentStreamObserver>().mockResolvedValue(undefined);
 
 			const result = await service.executeInlineForWorkflow(
 				inlinePayload,
@@ -437,6 +813,7 @@ describe('AgentWorkflowExecutionService', () => {
 				'production',
 				undefined,
 				workflowContext,
+				streamObserver,
 			);
 
 			// No entity lookup — the embedded config is the source of truth.
@@ -465,16 +842,26 @@ describe('AgentWorkflowExecutionService', () => {
 			);
 
 			expect(result.response).toBe('answer');
+			expect(streamObserver.mock.calls.map(([event]) => event)).toEqual([
+				{ type: 'response-begin' },
+				{ type: 'response-delta', delta: 'answer' },
+				{ type: 'response-end' },
+			]);
 			// Inline runs have no persisted session.
 			expect(result.session).toBeNull();
-			expect(executionService.recordMessage).not.toHaveBeenCalled();
+			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+			expect(integrationMessageContextService.getLatest).not.toHaveBeenCalled();
 
 			// Thread-scoped persistence: stable across executions, so a reused
 			// session id continues the same conversation.
 			expect(runtime.agent.stream).toHaveBeenCalledWith(
 				'hello',
 				expect.objectContaining({
-					persistence: { resourceId: 'thread-1', threadId: 'thread-1' },
+					persistence: {
+						resourceId: 'thread-1',
+						threadId: 'thread-1',
+						hostMetadata: { n8nIntegrationMessageContext: null },
+					},
 				}),
 			);
 
@@ -497,6 +884,73 @@ describe('AgentWorkflowExecutionService', () => {
 					nodeId: 'node-1',
 				}),
 			);
+		});
+
+		it('re-validates inbound managed markers against gateway eligibility before running', async () => {
+			const { service, reconstructionService, nodeToolAiGatewayService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
+
+			// The inline config comes straight from a workflow node parameter, so a
+			// forged managed marker for an uncovered node must not survive to the
+			// executor. Simulate the gate stripping an ineligible marker and assert
+			// the stripped config — not the forged one — is what actually runs.
+			nodeToolAiGatewayService.assignManagedCredentials.mockImplementation(async (tools) => {
+				const node = tools?.[0];
+				if (node?.type === 'node') delete node.node.credentials?.httpBasicAuth;
+			});
+
+			const payloadWithForgedMarker = {
+				config: {
+					name: 'Inline Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'cred-1',
+					instructions: 'Help users',
+					tools: [
+						{
+							type: 'node' as const,
+							name: 'Fetch',
+							description: 'Fetch a URL',
+							node: {
+								nodeType: 'n8n-nodes-base.httpRequestTool',
+								nodeTypeVersion: 1,
+								nodeParameters: { url: 'https://example.com' },
+								credentials: {
+									httpBasicAuth: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+								},
+							},
+						},
+					],
+				},
+			};
+
+			await service.executeInlineForWorkflow(
+				payloadWithForgedMarker,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				userId,
+				'production',
+				undefined,
+				{
+					workflowId: 'wf-1',
+					callingNodeName: 'Message an Agent',
+					hasCallerSessionId: false,
+					nodes: [],
+					runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+				},
+			);
+
+			expect(nodeToolAiGatewayService.assignManagedCredentials).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ type: 'node' })]),
+				expect.any(Set),
+			);
+			const [source] = reconstructionService.reconstructFromResolvedSource.mock.calls[0];
+			const nodeTool = source.config.tools?.[0];
+			expect(nodeTool?.type).toBe('node');
+			expect(nodeTool?.type === 'node' && nodeTool.node.credentials?.httpBasicAuth).toBeUndefined();
 		});
 
 		it('injects no memory when the caller supplied no session id (nothing to continue)', async () => {
@@ -724,25 +1178,71 @@ describe('AgentWorkflowExecutionService', () => {
 		it('tracks a failed inline turn before rethrowing a stream reader error', async () => {
 			const { service, reconstructionService, telemetry } = makeService();
 			const runtime = makeRuntime();
+			const streamObserver = vi.fn<WorkflowAgentStreamObserver>().mockResolvedValue(undefined);
 			runtime.agent.stream.mockResolvedValue({
 				stream: makeFailingStream(new Error('reader failed while consuming stream')),
 			});
 			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
 
-			await expect(
-				service.executeInlineForWorkflow(
-					inlinePayload,
-					'hello',
-					'execution-1',
-					'thread-1',
-					projectId,
-				),
-			).rejects.toThrow('reader failed while consuming stream');
+			const execution = service.executeInlineForWorkflow(
+				inlinePayload,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				streamObserver,
+			);
+			await expect(execution).rejects.toMatchObject({
+				message: 'reader failed while consuming stream',
+				description: 'reader failed while consuming stream',
+			});
+			expect(streamObserver.mock.calls.map(([event]) => event)).toEqual([
+				{ type: 'response-begin' },
+				{ type: 'response-delta', delta: 'partial answer' },
+			]);
 
 			// Telemetry fires even for failed runs — the rethrow happens after.
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({ agent_type: 'inline', turn_status: 'failed' }),
 			);
+		});
+
+		it('exposes a runtime stream error through the engine-owned error chunk', async () => {
+			const { service, reconstructionService } = makeService();
+			const runtime = makeRuntime([
+				{ type: 'text-start', id: 'text-1' },
+				{ type: 'text-delta', id: 'text-1', delta: 'partial answer' },
+				{ type: 'error', error: new Error('runtime stream failed') },
+				{ type: 'finish', finishReason: 'error' },
+			]);
+			const streamObserver = vi.fn<WorkflowAgentStreamObserver>().mockResolvedValue(undefined);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			const execution = service.executeInlineForWorkflow(
+				inlinePayload,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				streamObserver,
+			);
+
+			await expect(execution).rejects.toMatchObject({
+				message: 'Agent execution failed: runtime stream failed',
+				description: 'Agent execution failed: runtime stream failed',
+			});
+			expect(streamObserver.mock.calls.map(([event]) => event)).toEqual([
+				{ type: 'response-begin' },
+				{ type: 'response-delta', delta: 'partial answer' },
+			]);
 		});
 
 		it('surfaces inline compile failures as an OperationalError', async () => {
@@ -841,7 +1341,8 @@ describe('AgentWorkflowExecutionService', () => {
 		await expect(execution).rejects.toThrow(OperationalError);
 		await expect(execution).rejects.toThrow("Couldn't get structured output matching the schema");
 		await expect(execution).rejects.not.toThrow('Check the stream');
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				record: expect.objectContaining({
 					error: expect.stringContaining("Couldn't get structured output matching the schema"),

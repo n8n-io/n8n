@@ -2,10 +2,12 @@
 import { useClipboard } from '@vueuse/core';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
 import type { InputSize } from '../../types/input';
-import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
+import N8nTooltip from '../N8nTooltip';
 
 interface CopyInputProps {
 	/** Full value written to the clipboard. */
@@ -29,18 +31,17 @@ defineOptions({ name: 'N8nCopyInput' });
 const props = withDefaults(defineProps<CopyInputProps>(), {
 	displayValue: undefined,
 	size: 'large',
-	copyLabel: 'Copy',
-	copiedLabel: 'Copied to clipboard',
+	copyLabel: undefined,
+	copiedLabel: undefined,
 	feedbackDurationMs: 2000,
 });
 
+const { t } = useI18n();
+
 const emit = defineEmits<{
-	/** Emitted after the value has been written to the clipboard. */
 	copy: [value: string];
 }>();
 
-// legacy: falls back to document.execCommand on insecure origins (plain-http
-// self-hosted instances), where navigator.clipboard is unavailable.
 const clipboard = useClipboard({ legacy: true });
 
 const showCopiedFeedback = ref(false);
@@ -70,47 +71,48 @@ const buttonSize = computed(() => {
 			return 'medium';
 	}
 });
+
+const copyButtonLabel = computed(() =>
+	showCopiedFeedback.value
+		? (props.copiedLabel ?? t('generic.copiedToClipboard'))
+		: (props.copyLabel ?? t('generic.copy')),
+);
 </script>
 
 <template>
 	<N8nInput :model-value="displayValue ?? value" :size="size" readonly :class="$style.copyInput">
 		<template #append>
-			<N8nButton
-				variant="ghost"
-				:size="buttonSize"
-				icon-only
-				:aria-label="showCopiedFeedback ? copiedLabel : copyLabel"
-				data-test-id="copy-input-button"
-				@click="onCopyClick"
-			>
-				<template #icon>
-					<span :class="$style.iconSwap">
-						<Transition
-							:enter-active-class="$style.swapEnterActive"
-							:leave-active-class="$style.swapLeaveActive"
-						>
-							<N8nIcon v-if="showCopiedFeedback" key="check" icon="check" :size="buttonSize" />
-							<N8nIcon v-else key="copy" icon="copy" :size="buttonSize" />
-						</Transition>
-					</span>
-				</template>
-			</N8nButton>
+			<N8nTooltip :content="copyButtonLabel">
+				<N8nIconButton
+					variant="ghost"
+					:size="buttonSize"
+					icon="copy"
+					:aria-label="copyButtonLabel"
+					data-test-id="copy-input-button"
+					:class="$style.button"
+					@click="onCopyClick"
+				>
+					<template #icon>
+						<span :class="$style.iconSwap">
+							<Transition
+								:enter-active-class="$style.swapEnterActive"
+								:leave-active-class="$style.swapLeaveActive"
+							>
+								<N8nIcon v-if="showCopiedFeedback" key="check" icon="check" :size="buttonSize" />
+								<N8nIcon v-else key="copy" icon="copy" :size="buttonSize" />
+							</Transition>
+						</span>
+					</template>
+				</N8nIconButton>
+			</N8nTooltip>
 		</template>
 	</N8nInput>
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/focus';
 @use '../../css/mixins/motion';
 
-/*
- * One continuous bordered field (the instance-settings copy-field pattern):
- * border, radius and background move onto the input CONTAINER (with overflow
- * hidden so the append segment is clipped by the outer radius), the wrapper
- * drops its own border so it doesn't double up, and the append becomes a
- * transparent, full-height button segment separated from the value by a single
- * border-left divider. Focus indication is unaffected — the design system
- * draws it with outline, not box-shadow.
- */
 .copyInput {
 	gap: 0;
 	border-radius: var(--input--radius);
@@ -118,17 +120,33 @@ const buttonSize = computed(() => {
 	box-shadow: inset var(--input--border--shadow);
 	overflow: hidden;
 
+	&:focus-within {
+		@include focus.focus-ring;
+		box-shadow: inset var(--input--border--shadow--focus);
+	}
+
 	:global(.n8n-input__wrapper) {
-		box-shadow: none;
 		background-color: transparent;
+
+		&,
+		&:hover:not(.disabled):not(:focus-within),
+		&:focus-within {
+			box-shadow: none;
+		}
 	}
 
 	:global(.n8n-input__wrapper) + span {
 		background-color: transparent;
-		border-left: var(--border);
+		border-left: var(--border-width) var(--border-style) var(--input--border-color);
 		margin: 0;
 		padding: 0;
 	}
+}
+
+.button {
+	/** Overrides radius so that hover state doesnt leave gaps in left corners **/
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 }
 
 /*

@@ -1,13 +1,11 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 const LAZY_RUNTIME_IMPORT_MESSAGE =
 	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the idle-memory guardrail.';
 
 const restrictedLazyRuntimeImports = [
 	'@daytona/sdk',
-	'@joplin/turndown-plugin-gfm',
-	'@mozilla/readability',
 	'csv-parse/sync',
 	'linkedom',
 	'pdf-parse',
@@ -20,7 +18,7 @@ const restrictedLazyRuntimeImports = [
 }));
 
 export default defineConfig(
-	baseConfig,
+	backendConfig,
 	{
 		ignores: [
 			'scripts/**/*.cjs',
@@ -28,6 +26,8 @@ export default defineConfig(
 			// Local eval scratch output — never linted, never committed.
 			'.data/**',
 			'evaluations/.data/**',
+			'evaluations/.output/**',
+			'.output/**',
 			// Deep-imports ai-workflow-builder.ee's evaluations source, so it sits outside
 			// evaluations/tsconfig.json (see its exclude) and the eslint project service.
 			'evaluations/cli/pairwise.ts',
@@ -69,6 +69,19 @@ export default defineConfig(
 		},
 	},
 	{
+		// The eval harness is dev-only tooling: tsconfig.build.json compiles
+		// `src/**` only and `files` ships `dist/**`, so nothing under evaluations/
+		// reaches an installed n8n. Its dev-only imports (playwright-core for the
+		// credential-setup browser lane) therefore belong in devDependencies, and
+		// the default rule — which treats every non-test file as production —
+		// would otherwise force them into `dependencies` and ship them to every
+		// install. Same arrangement as @n8n/ai-workflow-builder.ee's evaluations.
+		files: ['evaluations/**/*.ts'],
+		rules: {
+			'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
+		},
+	},
+	{
 		files: ['evaluations/computer-use/report-html.ts'],
 		rules: {
 			// Large template literal + inline CSS: type-aware `no-unsafe-*` rules
@@ -78,6 +91,21 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-member-access': 'off',
 			'@typescript-eslint/no-unsafe-argument': 'off',
 			'@typescript-eslint/no-unsafe-call': 'off',
+		},
+	},
+	{
+		// Debt: the base layer enforces kebab-case filenames and this package has
+		// 6 files that predate it. Rename them, then delete this block.
+		rules: {
+			'unicorn/filename-case': 'off',
+		},
+	},
+	{
+		files: ['evaluations/clients/n8n-client.ts'],
+		// An evaluation harness that talks to a local instance it started
+		// itself, so the guarded client buys nothing here.
+		rules: {
+			'n8n-local-rules/no-uncentralized-http': 'off',
 		},
 	},
 );

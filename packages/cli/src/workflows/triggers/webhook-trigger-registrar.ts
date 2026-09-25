@@ -69,6 +69,24 @@ export class WebhookTriggerRegistrar {
 	}
 
 	/**
+	 * The webhook triggers of a single node. Lets a caller isolate one node's
+	 * expression-evaluation failure instead of losing every node's webhooks to
+	 * the wholesale {@link getWebhookTriggers}. Same isolate note as there.
+	 */
+	getNodeWebhookTriggers(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): IWebhookData[] {
+		return this.webhookService.getNodeWebhooks(
+			workflow,
+			node,
+			additionalData,
+			/* ignoreRestartWebhooks */ true,
+		);
+	}
+
+	/**
 	 * Register one workflow-defined webhook in storage and with third-party services.
 	 */
 	async register({ workflow, webhookData, mode, activation }: WebhookTriggerRegistrationOptions) {
@@ -223,14 +241,15 @@ export class WebhookTriggerRegistrar {
 	private buildNormalizedWebhook(workflow: Workflow, webhookData: IWebhookData): WebhookEntity {
 		const node = workflow.getNode(webhookData.node) as INode;
 
-		const webhook = this.webhookService.createWebhook({
-			workflowId: webhookData.workflowId,
-			webhookPath: webhookData.path,
-			node: node.name,
-			method: webhookData.httpMethod,
-		});
-
-		this.normalizeWebhookPath(webhook, node.webhookId);
+		const webhook = this.webhookService.createWebhook(
+			{
+				workflowId: webhookData.workflowId,
+				webhookPath: webhookData.path,
+				node: node.name,
+				method: webhookData.httpMethod,
+			},
+			node.webhookId,
+		);
 
 		return webhook;
 	}
@@ -252,23 +271,6 @@ export class WebhookTriggerRegistrar {
 			this.logger.error(
 				`Could not remove webhook "${webhookData.node}" of workflow "${workflow.id}" because of error: "${error.message}"`,
 			);
-		}
-	}
-
-	private normalizeWebhookPath(webhook: WebhookEntity, nodeWebhookId?: string) {
-		webhook.webhookPath = webhook.webhookPath.trim();
-		if (webhook.webhookPath.startsWith('/')) {
-			webhook.webhookPath = webhook.webhookPath.slice(1);
-		}
-		if (webhook.webhookPath.endsWith('/')) {
-			webhook.webhookPath = webhook.webhookPath.slice(0, -1);
-		}
-		if (
-			(webhook.webhookPath.startsWith(':') || webhook.webhookPath.includes('/:')) &&
-			nodeWebhookId
-		) {
-			webhook.webhookId = nodeWebhookId;
-			webhook.pathLength = webhook.webhookPath.split('/').length;
 		}
 	}
 }

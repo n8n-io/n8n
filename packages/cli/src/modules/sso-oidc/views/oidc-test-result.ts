@@ -30,13 +30,28 @@ function renderClaimsSection(label: string, payload: Record<string, unknown>): s
 	</div>`;
 }
 
-export function renderOidcTestSuccess({
-	claims,
-	userInfo,
-}: {
-	claims: Record<string, unknown>;
-	userInfo: Record<string, unknown>;
-}): string {
+/**
+ * The click handler lives in a script that carries the response's Content-Security-Policy
+ * nonce. An event-handler attribute such as `onclick` cannot carry a nonce, so a policy
+ * with `script-src` always refuses it.
+ */
+function renderCloseButton(cspNonce: string): string {
+	return `<button id="close-window">You can close this window now</button>
+	<script nonce="${escapeHtml(cspNonce)}">
+		document.getElementById('close-window').addEventListener('click', () => window.close());
+	</script>`;
+}
+
+export function renderOidcTestSuccess(
+	{
+		claims,
+		userInfo,
+	}: {
+		claims: Record<string, unknown>;
+		userInfo: Record<string, unknown>;
+	},
+	cspNonce: string,
+): string {
 	const email = escapeHtml(userInfo.email);
 	const firstName = escapeHtml(userInfo.given_name);
 	const lastName = escapeHtml(userInfo.family_name);
@@ -48,7 +63,7 @@ export function renderOidcTestSuccess({
 <body>
 <div style="text-align:center">
 	<h1>OIDC Connection Test was successful</h1>
-	<button onclick="window.close()">You can close this window now</button>
+	${renderCloseButton(cspNonce)}
 	<p></p>
 	<h2>Here are the attributes returned by your OIDC provider:</h2>
 	<ul>
@@ -68,7 +83,7 @@ export function renderOidcTestSuccess({
 </html>`;
 }
 
-export function renderOidcTestFailure(error: unknown): string {
+export function renderOidcTestFailure(error: unknown, cspNonce: string): string {
 	const message = escapeHtml(error instanceof Error ? error.message : String(error));
 
 	return `<!DOCTYPE html>
@@ -78,7 +93,7 @@ export function renderOidcTestFailure(error: unknown): string {
 <div style="text-align:center">
 	<h1>OIDC Connection Test failed</h1>
 	<h2>${message}</h2>
-	<button onclick="window.close()">You can close this window now</button>
+	${renderCloseButton(cspNonce)}
 </div>
 </body>
 </html>`;

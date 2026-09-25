@@ -2,11 +2,12 @@ import type { ListAgentsQueryDto, UpdateAgentsMcpAvailabilityDto } from '@n8n/ap
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
 import type { Agent } from './entities/agent.entity';
-import { AgentRepository } from './repositories/agent.repository';
+import { AgentRepository, type AgentListResult } from './repositories/agent.repository';
 
 const BULK_CHUNK_SIZE = 500;
 
@@ -28,16 +29,14 @@ export class AgentMcpAccessService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	/**
 	 * Paginated list of agents in projects where the user holds `agent:update`.
 	 * Defaults to agents that are not yet available to MCP.
 	 */
-	async getAgents(
-		user: User,
-		options: ListAgentsQueryDto,
-	): Promise<{ count: number; data: Agent[] }> {
+	async getAgents(user: User, options: ListAgentsQueryDto): Promise<AgentListResult> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:update']);
 		return await this.agentRepository.findByProjectIdsPaginated(
 			projectIds,
@@ -55,6 +54,7 @@ export class AgentMcpAccessService {
 	async bulkSetAvailableInMCP(
 		user: User,
 		dto: UpdateAgentsMcpAvailabilityDto,
+		pushRef: string | undefined,
 	): Promise<BulkSetAvailableInMCPResult> {
 		const targets = [dto.agentIds, dto.projectId, dto.allAgents].filter(
 			(target) => target !== undefined,
@@ -78,6 +78,20 @@ export class AgentMcpAccessService {
 		const toUpdate = accessible.filter((agent) => agent.availableInMCP !== dto.availableInMCP);
 
 		const agentIds = toUpdate.map((agent) => agent.id);
+
+		// Refuse the whole bulk if any target agent is locked by another client.
+		// A partial update would silently leave some agents in the old state.
+		// One cache round-trip per chunk; the candidates already came from the
+		// repository, so no per-agent project check is needed.
+		for (let start = 0; start < agentIds.length; start += BULK_CHUNK_SIZE) {
+			await this.collaborationService.validateAgentWriteLocks(
+				user.id,
+				pushRef,
+				agentIds.slice(start, start + BULK_CHUNK_SIZE),
+				'toggle MCP availability for',
+			);
+		}
+
 		for (let start = 0; start < agentIds.length; start += BULK_CHUNK_SIZE) {
 			await this.agentRepository.setAvailableInMCP(
 				agentIds.slice(start, start + BULK_CHUNK_SIZE),

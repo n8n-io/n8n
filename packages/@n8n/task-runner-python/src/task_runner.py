@@ -76,7 +76,7 @@ class TaskRunner:
         self,
         config: TaskRunnerConfig,
     ):
-        self.runner_id = nanoid()
+        self.runner_id = config.runner_id or nanoid()
         self.name = RUNNER_NAME
         self.config = config
 

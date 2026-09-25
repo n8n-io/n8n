@@ -41,7 +41,7 @@
 			}
 		]
 	},
-	"alias": ["Join", "Concatenate", "Wait"],
+	"alias": ["Join", "Concatenate", "Wait", "Append", "Combine"],
 	"subcategories": {
 		"Core Nodes": ["Flow", "Data Transformation"]
 	}

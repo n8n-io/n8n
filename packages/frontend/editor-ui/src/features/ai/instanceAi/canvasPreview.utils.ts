@@ -6,6 +6,12 @@ export interface ExecutionResult {
 	status: 'success' | 'error';
 	/** ISO timestamp from the run-workflow tool result. Used to detect stale executions. */
 	finishedAt?: string;
+	/**
+	 * Nodes whose output in this execution was simulated (fabricated fixture
+	 * data) during n8n Assistant verification. Used to label that data in the
+	 * editor and guard against pinning it as if it were real.
+	 */
+	simulatedNodeNames?: string[];
 }
 
 /**
@@ -111,6 +117,7 @@ export interface AgentBuilderTarget {
 	/** The builder sub-agent node id (`agent-builder:<targetAgentId>`). */
 	agentId: string;
 	targetAgentId: string;
+	activity?: InstanceAiAgentNode['activity'];
 }
 
 /**
@@ -132,7 +139,11 @@ export function getLatestAgentBuilderTarget(
 			child.targetResource?.type === 'agent' &&
 			typeof child.targetResource.id === 'string'
 		) {
-			return { agentId: child.agentId, targetAgentId: child.targetResource.id };
+			return {
+				agentId: child.agentId,
+				targetAgentId: child.targetResource.id,
+				activity: child.activity,
+			};
 		}
 	}
 	return undefined;
@@ -231,15 +242,31 @@ const WORKFLOW_LOCKING_TOOLS = new Set([
  *      whole build window: read file → edit → submit-workflow → verify).
  *   3. An in-flight workflow-affecting tool call targeting the workflow — the
  *      build/setup/verify tools, `executions.run`, or a `workflows` update /
- *      restore-version / setup action. Read-only `workflows` actions (get-json,
- *      get, list, …) don't lock.
+ *      restore-version / setup action. Read-only `workflows` actions (including
+ *      historical get-json events, get, list, …) don't lock.
  */
-export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
+export function isAgentEditingWorkflow(
+	node: InstanceAiAgentNode,
+	workflowId: string,
+	announcement = node.latestSetupAnnouncement,
+): boolean {
+	const announcedBuild =
+		announcement?.workflowId === workflowId &&
+		node.toolCalls.some(
+			(call) =>
+				call.isLoading &&
+				call.toolName === 'build-workflow' &&
+				!call.args?.workflowId &&
+				announcement.agentId === node.agentId &&
+				call.startedAt &&
+				announcement.timestamp >= call.startedAt,
+		);
 	if (
 		node.status === 'active' &&
 		(getLatestBuildResult(node)?.workflowId === workflowId ||
 			getLatestWorkflowSetupResult(node)?.workflowId === workflowId ||
-			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId)
+			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId ||
+			announcedBuild)
 	) {
 		return true;
 	}
@@ -271,7 +298,7 @@ export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: st
 	}
 
 	for (const child of node.children) {
-		if (isAgentEditingWorkflow(child, workflowId)) return true;
+		if (isAgentEditingWorkflow(child, workflowId, announcement)) return true;
 	}
 	return false;
 }
@@ -476,12 +503,18 @@ function matchAgentArtifactToolCall(
 	if (tc.toolName !== 'build-agent') return undefined;
 
 	const result = tc.result as Record<string, unknown>;
-	const args = tc.args as Record<string, unknown> | undefined;
-
-	if (result.ok === true && typeof args?.name === 'string') {
+	if (result.agentChange === 'created') {
 		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
 	}
-	if (result.configUpdated === true) {
+	if (result.agentChange === 'updated') {
+		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
+	}
+	// Keep old stored threads working until all results include agentChange.
+	const args = tc.args as Record<string, unknown> | undefined;
+	if (result.agentChange === undefined && result.ok === true && typeof args?.name === 'string') {
+		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
+	}
+	if (result.agentChange === undefined && result.configUpdated === true) {
 		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
 	}
 	return undefined;
@@ -561,16 +594,28 @@ function collectExecutionResults(node: InstanceAiAgentNode, results: Map<string,
 			'status' in result &&
 			(result.status === 'success' || result.status === 'error')
 		) {
+			const simulatedNodeNames = getSimulatedNodeNames(result);
 			results.set(args.workflowId, {
 				executionId: result.executionId,
 				status: result.status,
 				...('finishedAt' in result && typeof result.finishedAt === 'string'
 					? { finishedAt: result.finishedAt }
 					: {}),
+				...(simulatedNodeNames.length > 0 ? { simulatedNodeNames } : {}),
 			});
 		}
 	}
 	for (const child of node.children) {
 		collectExecutionResults(child, results);
 	}
+}
+
+/** Simulated node names from a verify-built-workflow result (`simulatedNodes: [{nodeName, reason}]`). */
+function getSimulatedNodeNames(result: object): string[] {
+	if (!('simulatedNodes' in result) || !Array.isArray(result.simulatedNodes)) return [];
+	return result.simulatedNodes
+		.map((entry) =>
+			isRecord(entry) && typeof entry.nodeName === 'string' ? entry.nodeName : undefined,
+		)
+		.filter((name): name is string => name !== undefined);
 }

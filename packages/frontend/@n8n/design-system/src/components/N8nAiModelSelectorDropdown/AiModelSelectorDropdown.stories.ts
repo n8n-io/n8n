@@ -57,7 +57,7 @@ function getProviderLogoStyle(logoUrl: string) {
 }
 
 const meta = {
-	title: 'AI/AiModelSelectorDropdown',
+	title: 'Areas/Assistant/AiModelSelectorDropdown',
 	component: N8nAiModelSelectorDropdown,
 	parameters: {
 		docs: {

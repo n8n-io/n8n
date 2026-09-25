@@ -1,0 +1,51 @@
+operationId: createRole
+tags:
+  - Role
+summary: Create a custom role
+description: Creates a custom role. Set `roleType` to `global` for an instance-wide role or `project` for a project role.
+x-required-scope: role:manage,role:manageProject
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          displayName:
+            type: string
+            minLength: 2
+            maxLength: 100
+          description:
+            type: string
+            maxLength: 500
+          roleType:
+            type: string
+            enum:
+              - project
+              - global
+          scopes:
+            type: array
+            items:
+              type: string
+        required:
+          - displayName
+          - roleType
+          - scopes
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/rolePublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

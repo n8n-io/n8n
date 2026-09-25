@@ -10,6 +10,7 @@ import {
 	buildImportPackageBuffer,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	WIRE_VERSION_ID,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { Telemetry } from '@/telemetry';
@@ -101,11 +102,13 @@ async function buildImportPackage(
 				},
 			],
 			connections: {},
-			versionId: 'wire-version-id',
 			parentFolderId: null,
-			isPublished: false,
 			isArchived: false,
 		}),
+	);
+	writer.writeFile(
+		`workflows/${wfId}/workflow-metadata.json`,
+		JSON.stringify({ versionId: WIRE_VERSION_ID, publishedVersionId: null }),
 	);
 
 	if (variable) {
@@ -242,10 +245,13 @@ describe('POST /n8n-packages/import', () => {
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					isArchived: false,
 					publishing: { state: 'unchanged' },
 					status: 'created',
 				},
 			],
+			removedWorkflows: [],
+			removedFolders: [],
 			folders: [],
 			projects: [],
 			bindings: {
@@ -256,11 +262,16 @@ describe('POST /n8n-packages/import', () => {
 				matched: [],
 				stubbed: [],
 			},
+			dataTables: {
+				matched: 0,
+				created: 0,
+			},
 			variables: {
 				matched: [],
 				missing: [],
 				created: [],
 				stubbed: [],
+				updated: [],
 			},
 			tags: {
 				matched: [],
@@ -291,6 +302,7 @@ describe('POST /n8n-packages/import', () => {
 			missing: [],
 			created: ['API_URL'],
 			stubbed: [],
+			updated: [],
 		});
 		const created = await getVariableByKey('API_URL');
 		expect(created).toMatchObject({ value: 'https://packaged.example.com' });
@@ -313,6 +325,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
 			.field('variableMissingMode', 'create-with-value')
+			.field('variableConflictPolicy', 'overwrite')
 			.field('variableParentPolicy', 'project')
 			.field('tagMissingMode', 'do-nothing')
 			.field('tagConflictPolicy', 'fail')
@@ -412,7 +425,7 @@ describe('POST /n8n-packages/import', () => {
 					id: 'wf-unknown-node',
 					name: 'Unknown Node Type',
 					// Published in the source, so a publish-intent policy would publish it.
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: [
 						{
 							id: 'unknown-node',

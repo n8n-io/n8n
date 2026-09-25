@@ -42,7 +42,7 @@ describe('LmChatMinimax', () => {
 		});
 		ctx.getNode = vi.fn().mockReturnValue(nodeDef);
 		ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-			if (paramName === 'model') return 'MiniMax-M2.7';
+			if (paramName === 'model') return 'MiniMax-M3';
 			if (paramName === 'options') return {};
 			return undefined;
 		});
@@ -66,7 +66,8 @@ describe('LmChatMinimax', () => {
 				displayName: 'MiniMax Chat Model',
 				name: 'lmChatMinimax',
 				group: ['transform'],
-				version: [1],
+				version: [1, 1.1, 1.2],
+				defaultVersion: 1.2,
 			});
 		});
 
@@ -77,6 +78,51 @@ describe('LmChatMinimax', () => {
 		it('should output ai_languageModel', () => {
 			expect(node.description.outputs).toEqual(['ai_languageModel']);
 			expect(node.description.outputNames).toEqual(['Model']);
+		});
+
+		it('should preserve the M2.7 default for version 1 and use M3 for version 1.1', () => {
+			const legacyModelProperty = node.description.properties.find(
+				(property) => property?.name === 'model' && property.default === 'MiniMax-M2.7',
+			);
+			const staticModelProperty = node.description.properties.find(
+				(property) => property?.name === 'model' && property.default === 'MiniMax-M3',
+			);
+
+			expect(legacyModelProperty).toMatchObject({
+				default: 'MiniMax-M2.7',
+				displayOptions: { show: { '@version': [1] } },
+			});
+			expect(legacyModelProperty?.options).not.toContainEqual({
+				name: 'MiniMax-M3',
+				value: 'MiniMax-M3',
+			});
+			expect(staticModelProperty).toMatchObject({
+				default: 'MiniMax-M3',
+				options: expect.arrayContaining([{ name: 'MiniMax-M3', value: 'MiniMax-M3' }]),
+				displayOptions: { show: { '@version': [1.1] } },
+			});
+		});
+
+		it('should use a searchable resourceLocator for version 1.2 and later', () => {
+			const currentModelProperty = node.description.properties.find(
+				(property) => property?.name === 'model' && property.type === 'resourceLocator',
+			);
+
+			expect(currentModelProperty).toMatchObject({
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'MiniMax-M3' },
+				modes: expect.arrayContaining([
+					expect.objectContaining({
+						name: 'list',
+						typeOptions: { searchListMethod: 'modelSearch', searchable: true },
+					}),
+				]),
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
+			});
+		});
+
+		it('should expose modelSearch via listSearch methods', () => {
+			expect(node.methods?.listSearch).toHaveProperty('modelSearch');
 		});
 	});
 
@@ -90,7 +136,7 @@ describe('LmChatMinimax', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					apiKey: 'test-minimax-key',
-					model: 'MiniMax-M2.7',
+					model: 'MiniMax-M3',
 					maxRetries: 2,
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					onFailedAttempt: expect.any(Function),
@@ -171,6 +217,7 @@ describe('LmChatMinimax', () => {
 					headersTimeout: undefined,
 					bodyTimeout: undefined,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 
@@ -190,6 +237,7 @@ describe('LmChatMinimax', () => {
 					headersTimeout: 120000,
 					bodyTimeout: 120000,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 	});

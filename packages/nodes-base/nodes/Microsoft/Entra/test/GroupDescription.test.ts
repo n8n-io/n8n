@@ -1,7 +1,13 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
 
-import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
+import {
+	entraGroupGuid,
+	entraWorkflow,
+	expectNoGraphRequests,
+	microsoftEntraApiResponse,
+	microsoftEntraNodeResponse,
+} from './mocks';
 
 describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
@@ -745,5 +751,22 @@ describe('Microsoft Entra Node', () => {
 		for (const testData of tests) {
 			testHarness.setupTest(testData);
 		}
+	});
+
+	describe('Rejected group IDs', () => {
+		expectNoGraphRequests();
+
+		testHarness.setupTest({
+			description: 'should reject a group ID containing a slash',
+			input: {
+				workflowData: entraWorkflow({
+					resource: 'group',
+					operation: 'get',
+					group: { __rl: true, mode: 'id', value: `${entraGroupGuid}/members` },
+					output: 'raw',
+				}),
+			},
+			output: { nodeData: {}, error: 'The group ID is invalid' },
+		});
 	});
 });

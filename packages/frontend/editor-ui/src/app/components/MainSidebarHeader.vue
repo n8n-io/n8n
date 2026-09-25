@@ -16,7 +16,7 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 defineProps<{
 	isCollapsed: boolean;
@@ -161,6 +161,7 @@ const {
 			</template>
 		</N8nNavigationDropdown>
 		<KeyboardShortcutTooltip
+			v-if="!settingsStore.isCanvasOnly"
 			:placement="isCollapsed ? 'right' : 'bottom'"
 			:show-after="500"
 			:label="i18n.baseText('nodeView.openCommandBar')"

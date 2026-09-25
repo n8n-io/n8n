@@ -6,13 +6,14 @@ import {
 } from '../communityNodes.constants';
 import { useToast } from '@n8n/composables/useToast';
 import { useCommunityNodesStore } from '../communityNodes.store';
+import { findVettedCommunityNodeAttributes, isNodesApiVersionError } from '../communityNodes.utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computed, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import semver from 'semver';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -180,24 +181,27 @@ const onUpdate = async () => {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.communityNodes.messages.update.error.title'));
+		toast.showError(
+			error,
+			i18n.baseText(
+				isNodesApiVersionError(error)
+					? 'settings.communityNodes.messages.update.error.incompatible.title'
+					: 'settings.communityNodes.messages.update.error.title',
+			),
+		);
 	} finally {
 		loading.value = false;
 		modalBus.emit('close');
 	}
 };
 
-async function fetchPackageInfo(packageName: string) {
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	const nodeType = nodeTypesStore.visibleNodeTypes.find((nodeType) =>
-		nodeType.name.includes(packageName),
+async function fetchPackageInfo() {
+	const nodeTypes = communityStorePackage.value?.installedNodes.map((node) => node.type) ?? [];
+	const communityNodeAttributes = await findVettedCommunityNodeAttributes(
+		nodeTypes,
+		nodeTypesStore.getCommunityNodeAttributes,
 	);
-
-	if (nodeType) {
-		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name);
-
-		nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
-	}
+	nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
 }
 
 function setIsVerifiedLatestPackage() {
@@ -225,7 +229,7 @@ const onClick = async () => {
 
 onMounted(async () => {
 	if (props.activePackageName) {
-		await fetchPackageInfo(props.activePackageName);
+		await fetchPackageInfo();
 	}
 
 	if (communityStorePackage.value?.installedNodes.length) {

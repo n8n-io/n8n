@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { computed, onScopeDispose, provide, ref, watch } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
+import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -20,6 +22,7 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
+import { useInstanceAiCredentialHelp } from '../../composables/useInstanceAiCredentialHelp';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 
@@ -53,6 +56,36 @@ const selectedCredentials = computed<INodeUi['credentials']>(() => {
 		: undefined;
 
 	return cred ? { [type]: { id: cred.id, name: cred.name } } : {};
+});
+
+const hasTemplatedHint = computed(
+	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE && !!props.section.setupHint,
+);
+
+// Templated Custom Auth is one type shared by every service, so NodeCredentials'
+// most-recent-from-store auto-select could silently pick another service's key —
+// selection must come from the user or a freshly created credential.
+const isTemplatedType = computed(
+	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+);
+
+// Ask-AI opens a NEW help thread in a new tab: this thread's run is suspended
+// on the setup card, so appending here would derail it.
+const instanceAiCredentialHelpFactory = useInstanceAiCredentialHelp({
+	source: 'credential_edit',
+	projectId: () => ctx.projectId.value,
+	serviceName: () => deriveServiceName(props.section.setupHint),
+});
+const instanceAiCredentialHelp = computed(() => instanceAiCredentialHelpFactory());
+
+// The type-derived selector label would read "Credential for Templated Custom
+// Auth" — name the service from the recipe instead ("fal.ai API Key credentials").
+const credentialsFieldLabel = computed(() => {
+	if (!hasTemplatedHint.value) return undefined;
+	const name = deriveServiceName(props.section.setupHint);
+	return name
+		? i18n.baseText('instanceAi.credential.fieldLabel', { interpolate: { name } })
+		: undefined;
 });
 
 const targetNodeNames = computed(() =>
@@ -201,9 +234,14 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:node="displayNode"
 			:override-cred-type="credentialType"
 			:project-id="ctx.projectId.value"
+			:workflow-id="ctx.workflowId.value"
 			standalone
 			hide-issues
-			hide-ask-assistant
+			:instance-ai-credential-help="instanceAiCredentialHelp"
+			:skip-auto-select="isTemplatedType || section.preferNewCredential === true"
+			:prefer-new-credential="section.preferNewCredential === true"
+			:credential-setup-hint="section.setupHint"
+			:credentials-field-label="credentialsFieldLabel"
 			@credential-selected="onCredentialSelected"
 		>
 			<template v-if="section.credentialTargetNodes.length > 1" #label-postfix>

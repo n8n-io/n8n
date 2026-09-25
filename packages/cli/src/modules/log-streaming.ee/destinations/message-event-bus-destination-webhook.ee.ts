@@ -415,7 +415,7 @@ export class MessageEventBusDestinationWebhook
 
 		try {
 			const requestResponse = await this.outboundHttp
-				.requests({ ssrf: 'disabled' }) // The destination URL is admin-configured, so SSRF protection is disabled.
+				.requests({ useDefaultSsrfPolicy: 'unsafe' }) // The destination URL is admin-configured, so SSRF protection is disabled.
 				.request(request);
 			if (requestResponse) {
 				if (this.responseCodeMustMatch) {

@@ -1,8 +1,9 @@
 import { createPinia } from 'pinia';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { waitAllPromises, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import SettingsPersonalView from './SettingsPersonalView.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { confirmPasswordEventBus } from '../auth.eventBus';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
@@ -73,6 +74,55 @@ describe('SettingsPersonalView', () => {
 
 		expect(getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email')).toBeEnabled();
 		expect(getByTestId('change-password-link')).toBeInTheDocument();
+	});
+
+	describe('when saving basic info', () => {
+		it('should save a name-only change through updateUserName', async () => {
+			const updateUserNameSpy = vi
+				.spyOn(usersStore, 'updateUserName')
+				.mockResolvedValue({ id: '1', isPending: false });
+			const requestEmailChangeSpy = vi.spyOn(usersStore, 'requestEmailChange');
+
+			const { getByTestId, getAllByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const firstNameInput = getAllByRole('textbox')[0];
+			await fireEvent.update(firstNameInput, 'Jane');
+			await waitAllPromises();
+
+			getByTestId('save-settings-button').click();
+			await waitAllPromises();
+
+			expect(updateUserNameSpy).toHaveBeenCalledWith({ firstName: 'Jane', lastName: 'Doe' });
+			expect(requestEmailChangeSpy).not.toHaveBeenCalled();
+		});
+
+		it('should route an email change through requestEmailChange, not updateUser', async () => {
+			const requestEmailChangeSpy = vi
+				.spyOn(usersStore, 'requestEmailChange')
+				.mockResolvedValue({ status: 'confirmation-sent' });
+			const updateUserSpy = vi.spyOn(usersStore, 'updateUser');
+
+			const { getByTestId, getAllByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const emailInput = getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email')!;
+			await fireEvent.update(emailInput, 'new@example.com');
+			await waitAllPromises();
+
+			getByTestId('save-settings-button').click();
+			await waitAllPromises();
+
+			// The password modal collects the current password; simulate confirming it.
+			confirmPasswordEventBus.emit('close', { currentPassword: 'secret' });
+			await waitAllPromises();
+
+			expect(requestEmailChangeSpy).toHaveBeenCalledWith({
+				email: 'new@example.com',
+				currentPassword: 'secret',
+			});
+			expect(updateUserSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('when changing theme', () => {

@@ -1,6 +1,6 @@
 import RefParser from '@apidevtools/json-schema-ref-parser';
+import type { DiscoverDataPublic } from '@n8n/api-types';
 import type { ApiKeyScopeRequirement } from '@n8n/decorators';
-import type { ApiKeyScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 
@@ -12,6 +12,7 @@ import {
 	scopesInRequirement,
 	toOpenApiPathTemplate,
 } from '../../../public-api-route-resolver';
+import { buildRequestBodyJsonSchema } from '../../openapi-gen/decorator-routes';
 import { extractScopeFromEovHandlerChain } from '../../shared/public-api-scope-lookup';
 
 import '../../controllers';
@@ -35,19 +36,6 @@ interface EndpointEntry {
 interface ResourceInfo {
 	operations: string[];
 	endpoints: EndpointEntry[];
-}
-
-interface FilterInfo {
-	description: string;
-	example?: string;
-	values?: string[];
-}
-
-export interface DiscoverResponse {
-	scopes: ApiKeyScope[];
-	resources: Record<string, ResourceInfo>;
-	filters: Record<string, FilterInfo>;
-	specUrl: string;
 }
 
 export interface DiscoverOptions {
@@ -151,13 +139,14 @@ function buildDecoratorEndpoints(): EndpointInfo[] {
 		operationId: route.handlerName,
 		tag: route.tags?.[0] ?? 'Other',
 		scope: route.apiKeyScope ?? null,
+		requestSchema: buildRequestBodyJsonSchema(route),
 	}));
 }
 
 export async function buildDiscoverResponse(
-	callerScopes: ApiKeyScope[],
+	callerScopes: readonly string[],
 	options?: DiscoverOptions,
-): Promise<DiscoverResponse> {
+): Promise<DiscoverDataPublic> {
 	const allEndpoints = await parseEndpointsFromSpec();
 	const includeSchemas = options?.includeSchemas === true;
 
@@ -238,7 +227,7 @@ export async function buildDiscoverResponse(
 	const allOperations = [...new Set(Object.values(resources).flatMap((r) => r.operations))];
 
 	return {
-		scopes: callerScopes,
+		scopes: [...callerScopes],
 		resources: filteredResources,
 		filters: {
 			resource: {
