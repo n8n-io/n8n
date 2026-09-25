@@ -387,17 +387,18 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 	});
 
-	it('does not track a duplicate selection as newly staged context', async () => {
-		const { getByTestId } = renderMentionsInput();
+	it('tracks a duplicate pick as a selection without staging it twice', async () => {
+		const { getByTestId, emitted } = renderMentionsInput();
 
 		await userEvent.click(getByTestId('mention-picker-select'));
 		await userEvent.click(getByTestId('mention-picker-select'));
 
+		expect(emitted()['mention-reference-added']).toHaveLength(1);
 		expect(
 			telemetryTrack.mock.calls.filter(
 				([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			),
-		).toHaveLength(1);
+		).toHaveLength(2);
 	});
 
 	it('keeps mention context on failed send and releases it after an accepted send', async () => {

@@ -124,8 +124,9 @@ function handleRemoveKeydown(event: KeyboardEvent): void {
 		opacity: 0;
 	}
 
-	.resourceChip:hover,
-	.resourceChip:focus-visible,
+	// Scoped to removable chips: a static chip has no X to swap in for its icon.
+	.resourceChip:has(.remove):hover,
+	.resourceChip:has(.remove):focus-visible,
 	.resourceChip:has(.remove:focus-visible) {
 		.remove {
 			opacity: 1;

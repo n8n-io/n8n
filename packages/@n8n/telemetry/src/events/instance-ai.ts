@@ -544,7 +544,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_SELECTED_AI_ASSISTANT_MENTION: {
 		name: 'User selected AI Assistant mention',
 		description:
-			'The user selected a workflow, node, or canvas group from the n8n Assistant mention picker. The event contains interaction metadata but no resource names or IDs.',
+			'The user selected a workflow, node, or canvas group from the n8n Assistant mention picker. A pick of a mention that is already staged also counts, so every open ends in this event or in "User dismissed AI Assistant mention picker". The event contains interaction metadata but no resource names or IDs.',
 		properties: z.object({
 			thread_id: assistantMentionThreadId,
 			kind: assistantMentionKind,
