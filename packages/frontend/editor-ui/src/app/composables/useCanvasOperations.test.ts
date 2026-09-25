@@ -6121,6 +6121,68 @@ describe('useCanvasOperations', () => {
 			connections: {},
 		};
 
+		it.each(['paste', 'file', 'url'] as const)(
+			'strips empty groups before importing from %s when the feature is disabled',
+			async (source) => {
+				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+				const nodeTypesStore = useNodeTypesStore();
+				nodeTypesStore.nodeTypes = {
+					[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+					[NO_OP_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: NO_OP_NODE_TYPE }) },
+				};
+
+				const sourceNode = createTestNode({
+					id: 'source',
+					name: 'Source',
+					type: SET_NODE_TYPE,
+				});
+				const anchorNode = createTestNode({
+					id: 'anchor',
+					name: 'Empty group anchor',
+					type: NO_OP_NODE_TYPE,
+					parameters: { emptyGroupAnchor: true },
+				});
+				const targetNode = createTestNode({
+					id: 'target',
+					name: 'Target',
+					type: SET_NODE_TYPE,
+				});
+				const workflowDataWithEmptyGroup = {
+					nodes: [sourceNode, anchorNode, targetNode],
+					connections: {
+						[sourceNode.name]: {
+							main: [[{ node: anchorNode.name, type: 'main', index: 0 }]],
+						},
+						[anchorNode.name]: {
+							main: [[{ node: targetNode.name, type: 'main', index: 0 }]],
+						},
+					},
+					nodeGroups: [{ id: 'group', name: 'Group 2', nodeIds: [anchorNode.id] }],
+				};
+
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+					(nodes, connections) => createTestWorkflowObject({ nodes, connections }),
+				);
+
+				const canvasOperations = useCanvasOperations();
+				const result = await canvasOperations.importWorkflowData(
+					workflowDataWithEmptyGroup,
+					source,
+					{ regenerateIds: false, trackEvents: false },
+				);
+
+				expect(result.nodes?.map((node) => node.name)).toEqual(['Source', 'Target']);
+				expect(result.nodes?.some((node) => node.parameters?.emptyGroupAnchor === true)).toBe(
+					false,
+				);
+				expect(result.nodeGroups).toBeUndefined();
+				expect(result.connections).toEqual({
+					Source: { main: [[{ node: 'Target', type: 'main', index: 0 }]] },
+				});
+				expect(workflowDocumentStoreInstance.createGroup).not.toHaveBeenCalled();
+			},
+		);
+
 		it('should auto-select a credential for an imported node and toast its name', async () => {
 			const toast = useToast();
 			const nodeTypesStore = useNodeTypesStore();
@@ -7122,6 +7184,44 @@ describe('useCanvasOperations', () => {
 			expect(duplicatedNodeIds.length).toBe(2);
 			expect(duplicatedNodeIds).not.toContain('1');
 			expect(duplicatedNodeIds).not.toContain('2');
+		});
+
+		it('should not duplicate empty groups when the feature is disabled', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+				[NO_OP_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: NO_OP_NODE_TYPE }) },
+			};
+
+			const regularNode = createTestNode({
+				id: 'regular',
+				name: 'Regular',
+				type: SET_NODE_TYPE,
+			});
+			const anchorNode = createTestNode({
+				id: 'anchor',
+				name: 'Empty group anchor',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const nodes = [regularNode, anchorNode];
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			vi.spyOn(workflowDocumentStoreInstance, 'allGroups', 'get').mockReturnValue([
+				{ id: 'group', name: 'Group 2', nodeIds: [anchorNode.id] },
+			]);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const duplicatedNodeIds = await canvasOperations.duplicateNodes(nodes.map((node) => node.id));
+
+			expect(duplicatedNodeIds).toHaveLength(1);
+			expect(workflowDocumentStoreInstance.createGroup).not.toHaveBeenCalled();
 		});
 
 		it('should show max node type error when duplicating nodes that exceed maxNodes limit', async () => {

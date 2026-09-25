@@ -3147,6 +3147,10 @@ export function useCanvasOperations() {
 			return {};
 		}
 
+		if (!emptyCanvasGroupsEnabled.value) {
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData);
+		}
+
 		// Filter out nodes with missing type to prevent crashes
 		if (workflowData.nodes) {
 			const invalidNodes = workflowData.nodes.filter((node) => !node.type);
