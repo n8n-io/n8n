@@ -36,6 +36,10 @@ Known limits:
 - After this instance's database is restored from a backup, the days since the
   backup are sent again, as `0` or as a lower value. Consumers of the receiver's
   export must use the highest value for each instance, metric and day.
+  `insights` stores no row for a day without executions, so a day lost in the
+  restore looks the same as a day when nothing ran. If `insights` stored an
+  explicit `0` for each day it ran, the lost days could be left out, and only
+  the backup day would be sent again.
 
 **A day is reported once, and 201 is what decides it.** The receiver answers 201
 only once it has saved the report, so anything else means nothing was saved and
