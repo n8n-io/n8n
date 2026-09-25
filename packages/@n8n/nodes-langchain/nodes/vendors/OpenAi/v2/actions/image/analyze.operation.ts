@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ResponseInputImage } from 'openai/resources/responses/responses';
 import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
@@ -195,6 +195,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = (await apiRequest.call(this, 'POST', '/responses', {
 		body,
 	})) as ChatResponse;
+
+	if (response.usage) {
+		accumulateTokenUsage(this, response.usage.input_tokens, response.usage.output_tokens);
+	}
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 
