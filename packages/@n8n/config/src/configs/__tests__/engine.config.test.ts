@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { MockInstance } from 'vitest';
 
-import { EngineConfig } from '../src/index';
+import { EngineConfig } from '../engine.config';
 
 describe('EngineConfig', () => {
 	const originalEnv = process.env;
@@ -57,5 +57,22 @@ describe('EngineConfig', () => {
 		process.env.N8N_ENGINE_CONTROL_PLANE_BASE_URL = 'http://cp.internal:5678';
 
 		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('http://cp.internal:5678');
+	});
+
+	it('should host the data plane in-process by default', () => {
+		expect(Container.get(EngineConfig).mode).toBe('in-process');
+	});
+
+	it('should read the remote mode', () => {
+		process.env.N8N_ENGINE_MODE = 'remote';
+
+		expect(Container.get(EngineConfig).mode).toBe('remote');
+	});
+
+	it('should reject an unknown mode and fall back to in-process', () => {
+		process.env.N8N_ENGINE_MODE = 'sidecar';
+
+		expect(Container.get(EngineConfig).mode).toBe('in-process');
+		expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining('N8N_ENGINE_MODE'));
 	});
 });

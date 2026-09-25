@@ -251,6 +251,54 @@ describe('cancelRun', () => {
 	});
 });
 
+describe('transient workflow references', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+	});
+
+	it('keeps draft artifacts thread-scoped and removes the final reference', async () => {
+		const registry = createRuntimeRegistry();
+		const first = registry.getOrCreateRuntime('thread-1');
+		const second = registry.getOrCreateRuntime('thread-2');
+		first.upsertTransientWorkflowReference({
+			referenceId: 'draft-1',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		});
+		first.upsertTransientWorkflowReference({
+			referenceId: 'draft-2',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		});
+		await nextTick();
+
+		expect(first.producedArtifacts.get('wf-1')?.name).toBe('Orders');
+		expect(second.producedArtifacts.has('wf-1')).toBe(false);
+
+		first.removeTransientWorkflowReference('draft-1');
+		await nextTick();
+		expect(first.producedArtifacts.has('wf-1')).toBe(true);
+
+		first.removeTransientWorkflowReference('draft-2');
+		await nextTick();
+		expect(first.producedArtifacts.has('wf-1')).toBe(false);
+	});
+
+	it('clears transient references when the runtime resets', async () => {
+		const runtime = createRuntimeRegistry().getOrCreateRuntime('thread-1');
+		runtime.upsertTransientWorkflowReference({
+			referenceId: 'draft-1',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		});
+		runtime.resetState();
+		await nextTick();
+
+		expect(runtime.transientWorkflowReferences.size).toBe(0);
+		expect(runtime.producedArtifacts.has('wf-1')).toBe(false);
+	});
+});
+
 const mockFetchThreadMessages = vi.mocked(fetchThreadMessages);
 const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);
 const mockEnsureThread = vi.mocked(ensureThread);

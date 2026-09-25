@@ -6,6 +6,7 @@ import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
+	noopExecutionResponseSender,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
@@ -25,7 +26,7 @@ import { EngineCredentialsClient } from './engine-credentials-client';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 
 /**
- * Runs the engine 2.0 data plane inside the n8n process.
+ * Runs the engine v2 data plane inside the n8n process.
  *
  * This is the integrated-mode composition root. It chooses the adapters the
  * engine needs — the data plane `DataSource`, the admittance policy, the v1 step
@@ -60,7 +61,7 @@ export class EngineV2Runtime {
 		this.logger = this.logger.scoped('engine-v2');
 	}
 
-	async init(responseSender: ExecutionResponseSender): Promise<void> {
+	async init(responseSender: ExecutionResponseSender = noopExecutionResponseSender): Promise<void> {
 		try {
 			await this.initDb();
 
@@ -71,7 +72,7 @@ export class EngineV2Runtime {
 			// A half-started engine holds a connection and its worker loops, and the
 			// host has no handle to it, so roll back before surfacing the failure.
 			await this.shutdown().catch((teardownError) => {
-				this.logger.error('Failed to roll back after Engine 2.0 could not start', {
+				this.logger.error('Failed to roll back after Engine v2 could not start', {
 					teardownError,
 				});
 			});
@@ -94,7 +95,7 @@ export class EngineV2Runtime {
 	}
 
 	private initEngine(responseSender: ExecutionResponseSender): void {
-		assert(this.dataSource, 'Engine 2.0 cannot start without a data source');
+		assert(this.dataSource, 'Engine v2 cannot start without a data source');
 
 		const stopping = new AbortController();
 		this.stopping = stopping;
@@ -141,7 +142,7 @@ export class EngineV2Runtime {
 		const { host, port } = this.engineConfig;
 
 		this.server = await new Promise<Server>((resolve, reject) => {
-			assert(this.engine, 'Engine 2.0 cannot start without an engine runtime');
+			assert(this.engine, 'Engine v2 cannot start without an engine runtime');
 
 			const listener = this.engine.app.listen(port, host);
 			listener.once('listening', () => resolve(listener));
@@ -150,7 +151,7 @@ export class EngineV2Runtime {
 
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
-		this.logger.info(`Engine 2.0 listening on http://${shownHost}:${port}`);
+		this.logger.info(`Engine v2 listening on http://${shownHost}:${port}`);
 	}
 
 	/**
@@ -174,7 +175,7 @@ export class EngineV2Runtime {
 		}
 
 		if (errors.length > 0) {
-			throw new AggregateError(errors, 'Engine 2.0 could not release every resource');
+			throw new AggregateError(errors, 'Engine v2 could not release every resource');
 		}
 	}
 

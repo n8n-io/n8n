@@ -5190,7 +5190,7 @@ describe('POST /workflows/:workflowId/run', () => {
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.message).toBe(
-				'Engine 2.0 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+				'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
 			);
 			expect(startExecution).not.toHaveBeenCalled();
 		});

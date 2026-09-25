@@ -1,5 +1,5 @@
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
@@ -12,10 +12,7 @@ import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 export class AgentCheckpointPruningTask implements SystemTask {
 	readonly name = 'agent-checkpoint-pruning';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: Time.hours.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(Time.hours.toSeconds);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 

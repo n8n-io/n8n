@@ -22,7 +22,7 @@ describe('a Buffer webhook response through the response channel', () => {
 	const bytes = Buffer.from([0x00, 0xff, 0x10, 0x80]);
 	const headers = { 'content-type': 'image/png', 'content-length': bytes.length };
 
-	const buildPath = () => {
+	const buildPath = async () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
@@ -34,7 +34,7 @@ describe('a Buffer webhook response through the response channel', () => {
 		responder.useReceiver(receiver);
 
 		const executionId = createExecutionIdV2();
-		const pending = responder.waitForResponse(executionId, true);
+		const pending = await responder.waitForResponse(executionId, true);
 
 		const additionalData = {} as IWorkflowExecuteAdditionalData;
 		attachResponseHooks(additionalData, {
@@ -53,7 +53,7 @@ describe('a Buffer webhook response through the response channel', () => {
 	};
 
 	it('delivers the original bytes, headers and status code to the control plane', async () => {
-		const { additionalData, pending } = buildPath();
+		const { additionalData, pending } = await buildPath();
 
 		await additionalData.hooks?.runHook('sendResponse', [
 			{ body: Buffer.from(bytes), headers, statusCode: 201 },
@@ -69,7 +69,7 @@ describe('a Buffer webhook response through the response channel', () => {
 	});
 
 	it('delivers a JSON body as before', async () => {
-		const { additionalData, pending } = buildPath();
+		const { additionalData, pending } = await buildPath();
 
 		await additionalData.hooks?.runHook('sendResponse', [
 			{ body: { ok: true }, headers: {}, statusCode: 200 },

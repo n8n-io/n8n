@@ -263,7 +263,7 @@ export class WorkflowExecutionService {
 	}
 
 	/**
-	 * Starts a polled execution on engine 2.0, then advances the cursor.
+	 * Starts a polled execution on engine v2, then advances the cursor.
 	 *
 	 * The v2 path keeps no control-plane execution row, so the cursor cannot
 	 * commit in the same transaction as the run the way {@link runPolledWorkflow}

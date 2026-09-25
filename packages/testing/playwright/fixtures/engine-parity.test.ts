@@ -16,12 +16,12 @@ describe('ENGINE_TAGS', () => {
 });
 
 describe('workflowSettingsFor', () => {
-	test('returns no defaults for a stack without engine 2.0', () => {
+	test('returns no defaults for a stack without engine v2', () => {
 		expect(workflowSettingsFor({ postgres: true })).toBeUndefined();
 	});
 
-	test('opts every workflow into engine 2.0 when the stack runs it', () => {
-		expect(workflowSettingsFor({ postgres: true, engine: 'in-process' })).toEqual({
+	test('opts every workflow into engine v2 when the stack runs it', () => {
+		expect(workflowSettingsFor({ postgres: true, engine: 'container' })).toEqual({
 			engineType: 'v2',
 		});
 	});
@@ -34,32 +34,32 @@ describe('engineParityDisposition', () => {
 		}
 	});
 
-	test('runs an untagged test on engine 2.0', () => {
-		expect(engineParityDisposition(['@auth:owner'], 'in-process')).toEqual({ action: 'run' });
+	test('runs an untagged test on engine v2', () => {
+		expect(engineParityDisposition(['@auth:owner'], 'container')).toEqual({ action: 'run' });
 	});
 
-	test('runs a test tagged as supported on engine 2.0', () => {
-		expect(engineParityDisposition([ENGINE_TAGS.supported], 'in-process')).toEqual({
+	test('runs a test tagged as supported on engine v2', () => {
+		expect(engineParityDisposition([ENGINE_TAGS.supported], 'container')).toEqual({
 			action: 'run',
 		});
 	});
 
-	test('skips a test that engine 2.0 will never support', () => {
-		expect(engineParityDisposition([ENGINE_TAGS.unsupported], 'in-process')).toMatchObject({
+	test('skips a test that engine v2 will never support', () => {
+		expect(engineParityDisposition([ENGINE_TAGS.unsupported], 'container')).toMatchObject({
 			action: 'skip',
 			reason: expect.stringContaining('never'),
 		});
 	});
 
-	test('expects a test that engine 2.0 does not support yet to fail', () => {
-		expect(engineParityDisposition([ENGINE_TAGS.pending], 'in-process')).toMatchObject({
+	test('expects a test that engine v2 does not support yet to fail', () => {
+		expect(engineParityDisposition([ENGINE_TAGS.pending], 'container')).toMatchObject({
 			action: 'expect-fail',
 			reason: expect.stringContaining('yet'),
 		});
 	});
 
 	test('rejects a misspelled engine tag instead of treating it as supported', () => {
-		expect(() => engineParityDisposition(['@engine:v2-pendign'], 'in-process')).toThrow(
+		expect(() => engineParityDisposition(['@engine:v2-pendign'], 'container')).toThrow(
 			/@engine:v2-pendign/,
 		);
 	});

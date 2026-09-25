@@ -198,6 +198,10 @@ async function confirmRename(threadId: string) {
 	if (!title || title === history.value.threads.find((t) => t.id === threadId)?.title) return;
 	try {
 		await store.renameThread(threadId, title);
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('instanceAi.threads.renameSuccess'),
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.threads.renameError'));
 	}

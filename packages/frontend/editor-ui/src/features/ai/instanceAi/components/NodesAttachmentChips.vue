@@ -391,7 +391,7 @@ const totalNodeCount = computed(() =>
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 }
 
 .chipAnchor {
