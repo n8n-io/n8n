@@ -16,6 +16,12 @@ type BlockingIssue =
 	| { type: 'project-conflict'; sourceProjectId: string; name: string }
 	| { type: 'workflow-removal-forbidden'; workflowId: string; name: string; projectId: string }
 	| {
+			type: 'workflow-removal-conflict';
+			sourceWorkflowId: string;
+			workflowId: string;
+			projectId: string;
+	  }
+	| {
 			type: 'workflow-archive-forbidden';
 			sourceWorkflowId: string;
 			existingWorkflowId: string;
@@ -69,6 +75,9 @@ function formatIssue(issue: unknown): string {
 	}
 	if (it.type === 'workflow-removal-forbidden') {
 		return `workflow "${it.name}" (${it.workflowId}) in project ${it.projectId} is not in the package and would be removed, but you lack permission to remove it`;
+	}
+	if (it.type === 'workflow-removal-conflict') {
+		return `Workflow ${it.workflowId} (source ${it.sourceWorkflowId}) in project ${it.projectId} is selected for both import and deletion. Remove it from one selection.`;
 	}
 	if (it.type === 'workflow-archive-forbidden') {
 		return `workflow "${it.name}" (${it.existingWorkflowId}) in project ${it.projectId} must be ${it.transition}d to match the package, but you lack permission to do so`;

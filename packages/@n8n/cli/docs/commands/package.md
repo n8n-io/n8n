@@ -119,3 +119,40 @@ issues. Examples:
 
 Under the default `--credential-missing-mode=create-stub`, missing credentials
 are stubbed instead of blocking the import.
+
+## `package import-selection`
+
+Import a chosen subset of workflows from a `.n8np` archive. Only the workflows in
+`--selected-workflow-ids` are imported, and only the workflows in
+`--deleted-workflow-ids` are removed; all other content is left untouched. The
+selection is scoped to one source project (`--selected-project-id`); the selected
+workflows are written into the instance project whose ID matches that source
+project, which is created if it does not yet exist, so there is no separate target
+option. The locked cherry-pick policies (folders are merged, tags are skipped) are
+fixed and cannot be changed.
+
+An imported workflow's destination ID must not appear in `--deleted-workflow-ids`.
+The command rejects this overlap before any writes, including with the `skip`
+policy. It checks the destination ID even if the workflow is absent or archived.
+
+```bash
+n8n-cli package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1>,<id2>
+n8n-cli package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1> --deleted-workflow-ids=<id3>
+```
+
+| Flag | Description |
+|------|-------------|
+| `--file` | Path to the `.n8np` package file. (required) |
+| `--selected-project-id` | Source project ID the selection is scoped to. Only this project is touched. (required) |
+| `--selected-workflow-ids` | Source workflow IDs to import. Comma-separate them, or repeat the flag. Only these workflows are imported. |
+| `--deleted-workflow-ids` | Target workflow IDs to delete. Comma-separate them, or repeat the flag. Only these workflows are removed; already-gone or already-archived IDs are ignored. |
+| `--workflow-conflict-policy` | What to do when a workflow already exists by source ID: `new-version` (default), `fail`, or `skip`. |
+| `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
+
+Requires the API key to hold:
+
+- `workflow:import` — always
+- `workflow:delete` — when `--deleted-workflow-ids` is used
+
+When the import is blocked, the command exits non-zero and lists the blocking
+issues.
