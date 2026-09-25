@@ -20,11 +20,13 @@ import {
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
+	type UnauthenticatedWebhookContext,
+	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
 import { componentTextToString, type SuspendComponent } from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
-import { deriveWhatsAppVerifyToken } from '../integration-helpers';
+import { deriveWhatsAppVerifyToken, stringValue } from '../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
@@ -152,6 +154,33 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		await this.assertStartupPreconditions(ctx);
+	}
+
+	/**
+	 * Answer Meta's webhook verification handshake (`hub.mode` / `hub.verify_token`
+	 * / `hub.challenge`) before a credential is connected. The verify token is
+	 * derivable from the agent ID alone (see `deriveVerifyToken`), so unlike a
+	 * live conversation there is nothing here that needs a credential — the same
+	 * reasoning Slack's `url_verification` handling already relies on.
+	 *
+	 * Once a credential *is* connected, the real adapter answers this handshake
+	 * itself (its own `handleWebhook` branches on `request.method === 'GET'`), so
+	 * this only ever fires for the pre-connection case.
+	 */
+	handleUnauthenticatedWebhook(
+		context: UnauthenticatedWebhookContext,
+	): UnauthenticatedWebhookResponse | undefined {
+		if (context.method !== 'GET') return undefined;
+
+		const mode = stringValue(context.query['hub.mode']);
+		const token = stringValue(context.query['hub.verify_token']);
+		const challenge = stringValue(context.query['hub.challenge']);
+		if (mode !== 'subscribe' || !token || !challenge) return undefined;
+
+		if (token !== this.deriveVerifyToken(context.agentId)) {
+			return { status: 403, body: 'Forbidden', raw: true };
+		}
+		return { status: 200, body: challenge, raw: true };
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

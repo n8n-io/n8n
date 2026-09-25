@@ -182,12 +182,23 @@ export class AgentIntegrationsController {
 
 		if (!webhookHandler) {
 			// Allow platforms to respond to setup-time webhooks (e.g. Slack's
-			// `url_verification` challenge) before credentials are configured,
-			// so the user doesn't have to come back and re-verify URLs after
-			// connecting the credential.
-			const earlyResponse = integration?.handleUnauthenticatedWebhook?.(req.body);
+			// `url_verification` challenge, WhatsApp's Meta app handshake) before
+			// credentials are configured, so the user doesn't have to come back
+			// and re-verify URLs after connecting the credential.
+			const earlyResponse = integration?.handleUnauthenticatedWebhook?.({
+				agentId,
+				method: req.method,
+				query: req.query as Record<string, string | string[] | undefined>,
+				headers: req.headers,
+				body: req.body,
+			});
 			if (earlyResponse) {
-				res.status(earlyResponse.status).json(earlyResponse.body);
+				res.status(earlyResponse.status);
+				if (earlyResponse.raw) {
+					res.send(String(earlyResponse.body));
+				} else {
+					res.json(earlyResponse.body);
+				}
 				return;
 			}
 			res.status(404).json({ error: `No active ${platform} integration for agent "${agentId}"` });

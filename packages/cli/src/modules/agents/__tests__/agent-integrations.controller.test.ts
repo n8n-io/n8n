@@ -416,6 +416,58 @@ describe('AgentIntegrationsController integration management', () => {
 		expect(res.status).toHaveBeenCalledWith(404);
 	});
 
+	it('sends a raw-text response for an unauthenticated webhook handshake without a live connection', async () => {
+		// WhatsApp's verification handshake expects the raw hub.challenge value
+		// back verbatim — JSON-encoding it would wrap it in quotes, which Meta
+		// treats as a mismatch (see `UnauthenticatedWebhookResponse.raw`).
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getWebhookHandler.mockReturnValue(undefined);
+		const handleUnauthenticatedWebhook = vi
+			.fn()
+			.mockReturnValue({ status: 200, body: 'the-challenge', raw: true });
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({ handleUnauthenticatedWebhook } as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+			send: vi.fn(),
+		};
+
+		await controller.handleWebhookVerification(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'whatsapp' },
+				headers: { host: 'localhost' },
+				method: 'GET',
+				protocol: 'https',
+				originalUrl:
+					'/rest/projects/project-1/agents/v2/agent-1/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=abc&hub.challenge=the-challenge',
+				query: {
+					'hub.mode': 'subscribe',
+					'hub.verify_token': 'abc',
+					'hub.challenge': 'the-challenge',
+				},
+				body: {},
+			} as never,
+			res as never,
+		);
+
+		expect(handleUnauthenticatedWebhook).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			method: 'GET',
+			query: {
+				'hub.mode': 'subscribe',
+				'hub.verify_token': 'abc',
+				'hub.challenge': 'the-challenge',
+			},
+			headers: { host: 'localhost' },
+			body: {},
+		});
+		expect(res.status).toHaveBeenCalledWith(200);
+		expect(res.send).toHaveBeenCalledWith('the-challenge');
+		expect(res.json).not.toHaveBeenCalled();
+	});
+
 	it('does not look up a handler when the platform reports no match', async () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
