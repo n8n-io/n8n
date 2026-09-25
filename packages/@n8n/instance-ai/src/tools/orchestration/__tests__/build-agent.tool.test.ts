@@ -825,7 +825,7 @@ describe('build-agent tool', () => {
 			});
 			vi.mocked(delegate.streamBuild).mockResolvedValue(
 				fakeStream(
-					[toolCallChunk('call-1', 'read_config'), toolResultChunk('call-1')],
+					[toolCallChunk('call-1', 'agent-context'), toolResultChunk('call-1')],
 					'Here is the config.',
 				),
 			);

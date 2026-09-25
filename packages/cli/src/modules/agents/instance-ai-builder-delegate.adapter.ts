@@ -239,7 +239,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 				return {
 					config,
 					skills: await this.agentSkills.listSkills(agentId, projectId),
-					// The same hash `read_config` hands the model, so consumers can dedupe.
+					// The same hash `agent-context` hands the model, so consumers can dedupe.
 					configHash: getAgentConfigHash(config),
 				};
 			},

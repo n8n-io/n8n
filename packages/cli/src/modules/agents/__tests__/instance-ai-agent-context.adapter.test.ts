@@ -2,9 +2,12 @@ import type { User } from '@n8n/db';
 import type { AgentTaskDto } from '@n8n/api-types';
 import { beforeEach, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { UserError } from 'n8n-workflow';
 
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentExecutionService, ThreadListItem } from '../agent-execution.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -23,6 +26,8 @@ function makeService() {
 	const agentSkillsService = mock<AgentSkillsService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentExecutionService = mock<AgentExecutionService>();
+	const agentIntegrationService = mock<AgentIntegrationPersistenceService>();
+	const attachableWorkflowsService = mock<AttachableWorkflowsService>();
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentsToolsService = mock<AgentsToolsService>();
 	const service = new InstanceAiAgentContextAdapterService(
@@ -30,8 +35,8 @@ function makeService() {
 		agentSkillsService,
 		agentTaskService,
 		agentExecutionService,
-		mock<AgentIntegrationPersistenceService>(),
-		mock<AttachableWorkflowsService>(),
+		agentIntegrationService,
+		attachableWorkflowsService,
 		mcpRegistryService,
 		agentsToolsService,
 	);
@@ -41,6 +46,8 @@ function makeService() {
 		agentSkillsService,
 		agentTaskService,
 		agentExecutionService,
+		agentIntegrationService,
+		attachableWorkflowsService,
 		mcpRegistryService,
 		agentsToolsService,
 	};
@@ -78,6 +85,8 @@ describe('InstanceAiAgentContextAdapterService', () => {
 		expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'project-1');
 		expect(result).toMatchObject({
 			configState: 'current-draft',
+			config: { name: 'Support Agent', model: '', instructions: 'Help users.' },
+			configHash: expect.stringMatching(/^[a-f0-9]{64}$/),
 			agent: {
 				id: 'agent-1',
 				published: true,
@@ -85,6 +94,81 @@ describe('InstanceAiAgentContextAdapterService', () => {
 				activeVersionId: 'published-1',
 			},
 		});
+	});
+
+	it('lists agents in the bound project', async () => {
+		const { service, agentsService } = makeService();
+		agentsService.findByProjectId.mockResolvedValue([
+			agent,
+			{ ...agent, id: 'agent-2', name: 'Research Agent', activeVersionId: null },
+		]);
+
+		const result = await service.createReader(user, 'project-1').lookup({ type: 'agents' });
+
+		expect(agentsService.findByProjectId).toHaveBeenCalledWith('project-1');
+		expect(result).toEqual({
+			agents: [
+				{
+					agentId: 'agent-1',
+					name: 'Support Agent',
+					published: true,
+					updatedAt: '2026-09-17T10:00:00.000Z',
+				},
+				{
+					agentId: 'agent-2',
+					name: 'Research Agent',
+					published: false,
+					updatedAt: '2026-09-17T10:00:00.000Z',
+				},
+			],
+		});
+	});
+
+	it('lists chat channels and searches callable integrations', async () => {
+		const { service, agentIntegrationService, mcpRegistryService, agentsToolsService } =
+			makeService();
+		const channels = [
+			{
+				type: 'linear',
+				label: 'Linear',
+				icon: 'linear',
+				credentialTypes: ['linearOAuth2Api'],
+				capabilities: ['Receive Linear issue/comment events'],
+				useIntegrationWhen: ['The agent receives Linear issue comments'],
+				useNodeToolWhen: ['The agent creates Linear tickets'],
+			},
+		];
+		agentIntegrationService.listChatIntegrations.mockReturnValue(channels);
+		mcpRegistryService.search.mockResolvedValue([]);
+		agentsToolsService.searchAgentToolNodes.mockResolvedValue({
+			results: '',
+			queriesWithNoResults: ['linear'],
+		});
+		const reader = service.createReader(user, 'project-1');
+
+		expect(await reader.lookup({ type: 'integrations' })).toEqual({ channels });
+		expect(await reader.lookup({ type: 'integrations', queries: ['linear'] })).toEqual({
+			kind: 'node',
+			results: '',
+			queriesWithNoResults: ['linear'],
+		});
+		expect(mcpRegistryService.search).toHaveBeenCalledWith(['linear']);
+	});
+
+	it('lists attachable workflows using the search term', async () => {
+		const { service, attachableWorkflowsService } = makeService();
+		const workflows = [
+			{ id: 'wf-1', name: 'Billing follow-up', published: true, triggerType: 'executeWorkflow' },
+		];
+		attachableWorkflowsService.list.mockResolvedValue(workflows);
+
+		const result = await service.createReader(user, 'project-1').lookup({
+			type: 'attachable-workflows',
+			searchTerm: 'billing',
+		});
+
+		expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, 'project-1', 'billing');
+		expect(result).toEqual({ workflows });
 	});
 
 	it('lists configurable fields without an Agent id', async () => {
@@ -129,6 +213,23 @@ describe('InstanceAiAgentContextAdapterService', () => {
 				],
 			},
 		});
+	});
+
+	it.each([
+		['missing', new NotFoundError('Skill not found')],
+		['inaccessible', new ForbiddenError('Skill is not accessible')],
+	])('returns an actionable error for skill access (%s)', async (_kind, error) => {
+		const { service, agentsService, agentSkillsService } = makeService();
+		agentsService.findById.mockResolvedValue(agent);
+		agentSkillsService.getSkill.mockRejectedValue(error);
+
+		const lookup = service.createReader(user, 'project-1').lookup({
+			type: 'skill',
+			agentId: 'agent-1',
+			skillId: 'unknown',
+		});
+		await expect(lookup).rejects.toBeInstanceOf(UserError);
+		await expect(lookup).rejects.toThrow(error.message);
 	});
 
 	it('reads task enabled state from the current Agent config', async () => {

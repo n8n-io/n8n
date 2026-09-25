@@ -41,7 +41,7 @@ During an initial build:
   where to complete it in the agent panel (channels: the channel chip opens
   the setup modal), plus the offer to do it here in chat.
 - Resolve checklist items in later turns as the user answers or completes
-  them in the panel — call \`read_config\` first, since the user may have
+  them in the panel — call \`agent-context({ type: "config" })\` first, since the user may have
   already fixed an item there.
 
 Only a missing overall goal may stop a build: if the request is so vague that

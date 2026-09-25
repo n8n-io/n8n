@@ -9,9 +9,10 @@ import type {
 } from '@n8n/instance-ai';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	AgentExecutionService,
@@ -92,9 +93,16 @@ export class InstanceAiAgentContextAdapterService {
 			lookup: async (input) => {
 				canReadAgents ??= userHasScopes(user, ['agent:read'], false, { projectId });
 				if (!(await canReadAgents)) {
-					throw new ForbiddenError("You don't have permission to read Agents in this project.");
+					throw new UserError("You don't have permission to read Agents in this project.");
 				}
-				return await this.lookup(user, projectId, input);
+				try {
+					return await this.lookup(user, projectId, input);
+				} catch (error) {
+					if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+						throw new UserError(error.message);
+					}
+					throw error;
+				}
 			},
 		};
 	}

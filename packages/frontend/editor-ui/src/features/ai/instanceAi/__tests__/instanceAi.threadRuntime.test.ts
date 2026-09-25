@@ -17,6 +17,7 @@ import { USER_TYPED_MESSAGE } from '../prefills';
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
+	getAgentBuilderTargetsFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	type ThreadRuntime,
@@ -3202,6 +3203,23 @@ describe('getAgentBuilderTargetFromThreadMetadata', () => {
 				instanceAiAgentBuilderTarget: { projectId: 'proj-1', name: 'Support Bot' },
 			}),
 		).toBeUndefined();
+	});
+});
+
+describe('getAgentBuilderTargetsFromThreadMetadata', () => {
+	test('reads all valid targets from the persisted registry', () => {
+		expect(
+			getAgentBuilderTargetsFromThreadMetadata({
+				instanceAiAgentBuilderTargets: {
+					first: { agentId: 'agent-1', projectId: 'project-1', ref: 'first' },
+					second: { agentId: 'agent-2', projectId: 'project-2' },
+					invalid: { agentId: 'agent-3' },
+				},
+			}),
+		).toEqual([
+			{ agentId: 'agent-1', projectId: 'project-1' },
+			{ agentId: 'agent-2', projectId: 'project-2' },
+		]);
 	});
 });
 

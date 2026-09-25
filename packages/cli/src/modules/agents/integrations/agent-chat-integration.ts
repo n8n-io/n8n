@@ -195,7 +195,7 @@ export abstract class AgentChatIntegration {
 	abstract readonly displayIcon: string;
 
 	/**
-	 * Builder-facing guidance returned by `list_integration_types`.
+	 * Builder-facing guidance returned by `agent-context` integrations.
 	 * This helps the builder choose between connecting the agent to a chat
 	 * integration and adding a regular node/workflow tool for the same product.
 	 */

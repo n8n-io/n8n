@@ -65,6 +65,7 @@ import { buildThreadArtifactsContext } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
@@ -189,6 +190,22 @@ export function getAgentBuilderTargetFromThreadMetadata(
 		projectId: target.projectId,
 		...(typeof target.name === 'string' ? { name: target.name } : {}),
 	};
+}
+
+export function getAgentBuilderTargetsFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const registry = metadata?.[INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY];
+	if (!isRecord(registry)) return [];
+	return Object.values(registry).flatMap((value) => {
+		if (
+			!isRecord(value) ||
+			typeof value.agentId !== 'string' ||
+			typeof value.projectId !== 'string'
+		)
+			return [];
+		return [{ agentId: value.agentId, projectId: value.projectId }];
+	});
 }
 
 export function getPendingAgentTargetFromThreadMetadata(
@@ -574,6 +591,7 @@ export function createThreadRuntime(
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
 		() => pendingWorkflowAttachment.value ?? undefined,
+		() => getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =

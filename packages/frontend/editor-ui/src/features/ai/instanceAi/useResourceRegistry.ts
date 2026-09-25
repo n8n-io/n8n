@@ -330,7 +330,7 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	if (target.type === 'agent') {
 		// New events report the target before the result is known. Only the
 		// build-agent result can confirm that this Agent changed.
-		if (node.activity !== undefined && !existing) return;
+		if (node.activity !== undefined && (!existing || existing.pending)) return;
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
 		if (entry) recordProduced(col, entry);
 		return;
@@ -502,6 +502,7 @@ export function useResourceRegistry(
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
 	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined,
+	agentBuilderTargets?: () => AgentBuilderTargetMetadata[],
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -527,6 +528,12 @@ export function useResourceRegistry(
 			}
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
+			for (const target of agentBuilderTargets?.() ?? []) {
+				const existing = col.produced.get(target.agentId);
+				if (existing?.type === 'agent' && !existing.pending) {
+					recordProduced(col, { ...existing, projectId: target.projectId }, { linkable: false });
+				}
+			}
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
 

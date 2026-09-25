@@ -60,7 +60,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `research` | 2 |
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
-| `agent-context` | 12 lookup types |
+| `agent-context` | 13 lookup types |
 | `build-workflow`, `ask-user`, `parse-file`, `searchModels` | single-purpose |
 
 ## Orchestration Tools
@@ -1369,7 +1369,7 @@ Read-only access to Agent context in the conversation's bound project. The host
 registers the tool only when the user has `agent:read` scope. Both the Assistant
 and Agent Builder use this tool.
 
-The `type` field selects one lookup. Supported values are `agents`, `config`,
+The `type` field selects one lookup. Supported values are `agents`, `config-schema`, `config`,
 `skills`, `skill`, `tasks`, `custom-tools`, `custom-tool`, `sessions`, `session`,
 `capabilities`, `integrations`, and `attachable-workflows`. Detailed lookups
 return one body at a time. Session lookup supports status, origin, date, and
