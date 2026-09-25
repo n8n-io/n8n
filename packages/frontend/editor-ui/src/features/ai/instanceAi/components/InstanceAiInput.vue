@@ -73,6 +73,8 @@ type ActivePrefill = InstanceAiPrefillPayload;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
+/** The keyCode browsers send while an IME composes text, such as Japanese, Chinese or Korean. */
+const IME_COMPOSITION_KEYCODE = 229;
 
 const props = withDefaults(
 	defineProps<{
@@ -660,7 +662,7 @@ function handleComposerKeydown(event: KeyboardEvent): void {
 	if (!mentionMenuOpen.value) return;
 	const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
 	const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
-	const isComposing = event.isComposing || event.keyCode === 229;
+	const isComposing = event.isComposing || event.keyCode === IME_COMPOSITION_KEYCODE;
 	if (handled || event.key !== 'Enter' || hasModifier || isComposing) return;
 
 	event.preventDefault();
