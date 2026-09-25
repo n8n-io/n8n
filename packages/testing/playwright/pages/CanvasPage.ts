@@ -57,6 +57,10 @@ export class CanvasPage extends BasePage {
 		return this.nodeByName(nodeName).getByTestId('node-issues');
 	}
 
+	nodeRestrictedBadge(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('node-restricted');
+	}
+
 	nodeToolbar(nodeName: string): Locator {
 		return this.nodeByName(nodeName).getByTestId('canvas-node-toolbar');
 	}
