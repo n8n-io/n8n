@@ -1,0 +1,91 @@
+{
+	"name": "Cal.com booking getMany",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "1a1c4f3e-0000-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-560, 780]
+		},
+		{
+			"parameters": {
+				"resource": "booking",
+				"operation": "getMany",
+				"returnAll": true,
+				"filters": {
+					"status": "upcoming"
+				}
+			},
+			"id": "1a1c4f3e-0000-4000-8000-000000000002",
+			"name": "Cal.com",
+			"type": "n8n-nodes-base.cal",
+			"typeVersion": 1,
+			"position": [-320, 780],
+			"credentials": {
+				"calApi": {
+					"id": "1",
+					"name": "Cal account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "1a1c4f3e-0000-4000-8000-000000000003",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [-80, 780]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"uid": "bkg_1"
+				}
+			},
+			{
+				"json": {
+					"uid": "bkg_2"
+				}
+			},
+			{
+				"json": {
+					"uid": "bkg_3"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Cal.com",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Cal.com": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "1a1c4f3e-0000-4000-8000-0000000000ff",
+	"id": "CalBookingGetMany",
+	"meta": {},
+	"tags": []
+}
