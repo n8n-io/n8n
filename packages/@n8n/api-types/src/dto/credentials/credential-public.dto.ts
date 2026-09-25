@@ -135,7 +135,8 @@ export class CredentialSchemaPublicDto extends Z.class(
 			example: { apiKey: { type: 'string' }, domain: { type: 'string' } },
 		}),
 		required: z.array(z.string()).openapi({
-			description: 'Names of the fields that are required for this credential type.',
+			description:
+				'Names of the fields that a request must include. A field with a default value is not listed.',
 			example: ['apiKey', 'domain'],
 		}),
 		allOf: z.array(z.unknown()).optional(),

@@ -255,6 +255,14 @@ describe('DiscordIntegration', () => {
 		expect(optional.statusHandle).toBeUndefined();
 		expect(startTyping).not.toHaveBeenCalled();
 
+		const queued = await integration.createBridgeExecutionContext({
+			...params,
+			replyExpectation: 'required',
+			startStatus: false,
+		} as never);
+		expect(queued.statusHandle).toBeUndefined();
+		expect(startTyping).not.toHaveBeenCalled();
+
 		const required = await integration.createBridgeExecutionContext({
 			...params,
 			replyExpectation: 'required',

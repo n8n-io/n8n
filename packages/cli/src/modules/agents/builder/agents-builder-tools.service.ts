@@ -43,7 +43,9 @@ import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -100,6 +102,15 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 	message:
 		'Agent config changed since you last read it. Call read_config, then retry using the config and configHash it returns.',
 };
+
+const AGENT_LOCKED_BY_EDITOR_ERROR: ConfigValidationError = {
+	path: '(root)',
+	message:
+		'The agent is being edited by a user in the n8n builder right now, so it cannot be modified. ' +
+		'Stop editing and tell the user to finish or close their editing session, then retry.',
+};
+
+type EditorLockFailure = { ok: false; errors: ConfigValidationError[] };
 
 const STALE_SKILL_ERROR_MESSAGE =
 	'Skill changed since you last read it. Call read_skill, then retry using the skill and skillHash it returns.';
@@ -311,6 +322,7 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	/**
@@ -337,6 +349,24 @@ export class AgentsBuilderToolsService {
 				return result;
 			},
 		};
+	}
+
+	/**
+	 * Returns a `{ ok: false, errors }` tool result while a user holds the
+	 * agent's builder write lock, or null when the agent can be modified.
+	 * Every mutating tool returns this shape on failure, so the model gets one
+	 * consistent signal to stop and ask the user to close their editing session.
+	 */
+	private async getEditorLockFailure(agentId: string): Promise<EditorLockFailure | null> {
+		try {
+			await this.collaborationService.ensureAgentEditable(agentId);
+			return null;
+		} catch (error) {
+			if (error instanceof LockedError) {
+				return { ok: false, errors: [AGENT_LOCKED_BY_EDITOR_ERROR] };
+			}
+			throw error;
+		}
 	}
 
 	getTools(
@@ -669,6 +699,8 @@ export class AgentsBuilderToolsService {
 						],
 					};
 				}
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
 				try {
 					await this.agentPublishService.unpublishAgent(agentId, projectId, user, 'builder');
 					return { ok: true, agentId, activeVersionId: null };
@@ -709,6 +741,8 @@ export class AgentsBuilderToolsService {
 						errors: [{ message: 'You do not have permission to publish agents in this project.' }],
 					};
 				}
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
 				try {
 					const { agent } = await this.agentPublishService.publishAgent(
 						agentId,
@@ -783,8 +817,9 @@ export class AgentsBuilderToolsService {
 					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
 					'read_config again before any later inspection or mutation — or ' +
 					'{ ok: false, stage, errors } on failure. ' +
-					'stage is "parse", "stale", "patch", or "schema". On stage: "stale", call read_config and retry ' +
-					'once using its fresh config and configHash.',
+					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "stale", call read_config and retry ' +
+					'once using its fresh config and configHash. On stage: "locked", stop and tell the user to close ' +
+					'their editing session in the n8n builder.',
 			)
 			.input(
 				z.object({
@@ -984,6 +1019,8 @@ export class AgentsBuilderToolsService {
 				}) => {
 					// Each task is already validated against `.input()` (agentTaskSchema
 					// shapes) by the tool runtime before the handler runs.
+					const editorLock = await this.getEditorLockFailure(agentId);
+					if (editorLock) return editorLock;
 					let created: Awaited<ReturnType<AgentTaskService['createTasks']>>;
 					try {
 						// Adds a `{ type:'task', id, enabled }` ref per task to the agent config
@@ -1020,6 +1057,8 @@ export class AgentsBuilderToolsService {
 			)
 			.input(updateTaskInputSchema)
 			.handler(async ({ taskId, updates }: UpdateTaskInput) => {
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
 				try {
 					const updated = await this.agentTaskService.update(agentId, projectId, taskId, updates, {
 						user,
@@ -1088,6 +1127,8 @@ export class AgentsBuilderToolsService {
 			)
 			.input(updateSkillInputSchema)
 			.handler(async ({ skillId, baseSkillHash, updates }: UpdateSkillInput) => {
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
 				const { allowedTools, references, ...requiredUpdates } = updates;
 				const normalizedUpdates = {
 					...requiredUpdates,
@@ -1231,6 +1272,8 @@ export class AgentsBuilderToolsService {
 			.handler(async ({ skills }: { skills: CreateSkillInput[] }) => {
 				// Each skill is already validated against `.input()` (agentSkillSchema
 				// shapes) by the tool runtime before the handler runs.
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
 				try {
 					const created = await this.agentSkillsService.createSkills(agentId, projectId, skills, {
 						user,
@@ -1270,6 +1313,8 @@ export class AgentsBuilderToolsService {
 				}),
 			)
 			.handler(async ({ code }: { code: string }, ctx) => {
+				const editorLock = await this.getEditorLockFailure(agentId);
+				if (editorLock) return editorLock;
 				try {
 					const descriptor = await this.secureRuntime.describeToolSecurely(code);
 					const built = await this.agentCustomToolsService.buildCustomTool(
@@ -1314,6 +1359,11 @@ export class AgentsBuilderToolsService {
 		credentialId: string,
 		user: User,
 	): Promise<{ applied: boolean }> {
+		// verify_mcp_server still reports a successful verification; the
+		// credential just is not written while a user is editing the agent.
+		if (await this.getEditorLockFailure(agentId)) {
+			return { applied: false };
+		}
 		const snapshot = await this.getConfigSnapshot(agentId, projectId);
 		const config = snapshot.config;
 		const servers = config?.mcpServers;
@@ -1425,6 +1475,8 @@ export class AgentsBuilderToolsService {
 		json: string,
 		baseConfigHash: string | null,
 	) {
+		const editorLock = await this.getEditorLockFailure(agentId);
+		if (editorLock) return editorLock;
 		const parsed = tryParseConfigJson(json);
 		if (!parsed.ok) return { ok: false, errors: parsed.errors };
 		const fresh = await this.getFreshConfigSnapshot(agentId, projectId, baseConfigHash);
@@ -1447,6 +1499,8 @@ export class AgentsBuilderToolsService {
 		operations: string,
 		baseConfigHash: string | null,
 	) {
+		const editorLock = await this.getEditorLockFailure(agentId);
+		if (editorLock) return { ...editorLock, stage: 'locked' };
 		const parsed = tryParseConfigJson(operations);
 		if (!parsed.ok) return { ok: false, stage: 'parse', errors: parsed.errors };
 		const fresh = await this.getFreshConfigSnapshot(agentId, projectId, baseConfigHash);
