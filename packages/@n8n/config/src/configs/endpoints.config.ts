@@ -231,6 +231,6 @@ export class EndpointsConfig {
 	health: string = '/healthz';
 
 	/** Milliseconds the editor waits for a health check response before showing offline status. */
-	@Env('N8N_HEALTH_CHECK_TIMEOUT_MS', positiveIntSchema.max(2_147_483_647))
-	healthCheckTimeoutMs: number = 5000;
+	@Env('N8N_FRONTEND_HEALTH_CHECK_TIMEOUT_MS', positiveIntSchema.max(2_147_483_647))
+	frontendHealthCheckTimeoutMs: number = 5000;
 }
