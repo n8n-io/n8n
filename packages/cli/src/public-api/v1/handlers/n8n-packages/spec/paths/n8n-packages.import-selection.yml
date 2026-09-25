@@ -20,7 +20,8 @@ post:
     target-project field. `selectedWorkflowIds` are source ids within that project; ids that belong
     to another project are dropped. `deletedWorkflowIds` are destination ids in the same project; an
     already-archived or absent id is a tolerated no-op, and a delete needs the `workflow:delete`
-    scope.
+    scope. A delete id must not match the destination id of a selected workflow, including
+    when `workflowConflictPolicy=skip`. This overlap returns a 409 before any writes.
 
     The package must be a project package (a workflow package is rejected with a 400). The
     cherry-pick conflict policies (folder, tag, project, and deletion mode) are fixed and are not
@@ -58,7 +59,8 @@ post:
               description: >
                 Optional JSON-encoded array of destination workflow ids to remove from the scoped
                 project, e.g. `["wf-3"]`. Removal happens even under the additive profile. An
-                already-archived or absent id is a no-op. Needs the `workflow:delete` scope.
+                already-archived or absent id is a no-op unless it is also a selected destination.
+                Must not contain a selected workflow's destination id. Needs the `workflow:delete` scope.
             workflowConflictPolicy:
               type: string
               enum:
@@ -92,7 +94,8 @@ post:
     '409':
       description: >
         Import blocked by at least one conflict among the issues — for example a workflow source-id
-        conflict under `workflowConflictPolicy=fail`.
+        conflict under `workflowConflictPolicy=fail`, or a selected destination also named for
+        deletion (`workflow-removal-conflict`).
       content:
         application/json:
           schema:

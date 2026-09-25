@@ -564,6 +564,7 @@ export type BlockingIssue =
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
+	| ({ type: 'workflow-removal-conflict' } & WorkflowRemovalConflict)
 	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
 	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
@@ -592,6 +593,13 @@ export type BlockingIssue =
 export interface WorkflowRemovalFailure {
 	workflowId: string;
 	name: string;
+	projectId: string;
+}
+
+/** A selected workflow also named for explicit removal. */
+export interface WorkflowRemovalConflict {
+	sourceWorkflowId: string;
+	workflowId: string;
 	projectId: string;
 }
 

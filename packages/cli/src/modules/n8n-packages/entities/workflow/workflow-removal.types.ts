@@ -4,6 +4,7 @@ import type {
 	OverwriteDeletionPolicy,
 	PackageImportSource,
 	WorkflowRemovalFailure,
+	WorkflowRemovalConflict,
 } from '../../n8n-packages.types';
 
 /** What the package accounts for in one project scope, against which the target is reconciled. */
@@ -39,6 +40,7 @@ export interface RemovableWorkflow {
 export interface WorkflowRemovalPlan {
 	removals: RemovableWorkflow[];
 	failures: WorkflowRemovalFailure[];
+	conflicts: WorkflowRemovalConflict[];
 	deletionPolicy: OverwriteDeletionPolicy;
 	/**
 	 * Folders still holding a workflow once the removals above are done, so folder reconciliation

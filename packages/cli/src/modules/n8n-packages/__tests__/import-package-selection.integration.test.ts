@@ -7,7 +7,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { ProjectRepository, WorkflowRepository } from '@n8n/db';
+import { ProjectRepository, WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -16,6 +16,7 @@ import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -399,6 +400,120 @@ describe('importPackageSelectionFromDirectory', () => {
 	});
 
 	describe('explicit deletes', () => {
+		it('rejects a selected create before creating the project or workflows', async () => {
+			await expect(
+				importSelection(await packageDir(twoWorkflowPackage), {
+					selectedProjectId: 'P1',
+					selectedWorkflowIds: ['WFA', 'WFB'],
+					deletedWorkflowIds: ['WFA'],
+				}),
+			).rejects.toMatchObject({
+				constructor: ConflictError,
+				meta: {
+					issues: [
+						{
+							type: 'workflow-removal-conflict',
+							sourceWorkflowId: 'WFA',
+							workflowId: 'WFA',
+							projectId: 'P1',
+						},
+					],
+				},
+			});
+
+			expect(await findProject('P1')).toBeNull();
+			expect(await findWorkflow('WFA')).toBeNull();
+			expect(await findWorkflow('WFB')).toBeNull();
+		});
+
+		it.each([
+			{ isArchived: false, workflowConflictPolicy: 'new-version', workflowIdPolicy: 'source' },
+			{ isArchived: true, workflowConflictPolicy: 'new-version', workflowIdPolicy: 'source' },
+			{ isArchived: false, workflowConflictPolicy: 'skip', workflowIdPolicy: 'source' },
+			{ isArchived: false, workflowConflictPolicy: 'new-version', workflowIdPolicy: 'new' },
+		] as const)(
+			'rejects an overlap with archived=$isArchived, conflict=$workflowConflictPolicy, ids=$workflowIdPolicy',
+			async ({ isArchived, workflowConflictPolicy, workflowIdPolicy }) => {
+				const sourceDir = await packageDir(twoWorkflowPackage);
+				const seeded = await importSelection(
+					sourceDir,
+					{ selectedProjectId: 'P1', selectedWorkflowIds: ['WFA'] },
+					{ workflowIdPolicy },
+				);
+				const workflowId = seeded.workflows[0].localId;
+				if (workflowIdPolicy === 'new') expect(workflowId).not.toBe('WFA');
+				await Container.get(WorkflowRepository).update(workflowId, { isArchived });
+				const before = await findWorkflow(workflowId);
+				const historyBefore = await Container.get(WorkflowHistoryRepository).countBy({
+					workflowId,
+				});
+				const projectBefore = await findProject('P1');
+
+				await expect(
+					importSelection(
+						sourceDir,
+						{
+							selectedProjectId: 'P1',
+							selectedWorkflowIds: ['WFA', 'WFB'],
+							deletedWorkflowIds: [workflowId],
+						},
+						{ workflowConflictPolicy },
+					),
+				).rejects.toMatchObject({
+					constructor: ConflictError,
+					meta: {
+						issues: [
+							{
+								type: 'workflow-removal-conflict',
+								sourceWorkflowId: 'WFA',
+								workflowId,
+								projectId: 'P1',
+							},
+						],
+					},
+				});
+
+				expect(await findWorkflow(workflowId)).toEqual(before);
+				expect(await Container.get(WorkflowHistoryRepository).countBy({ workflowId })).toBe(
+					historyBefore,
+				);
+				expect(await findWorkflow('WFB')).toBeNull();
+				expect(await findProject('P1')).toEqual(projectBefore);
+			},
+		);
+
+		it('allows deletion of a workflow that is only referenced by the selection', async () => {
+			await seedBothWorkflows();
+			const parent = serializedWorkflow({
+				id: 'WFA',
+				name: 'Parent',
+				nodes: [executeWorkflowNode('WFB')],
+			});
+			const sub = serializedWorkflow({ id: 'WFB', name: 'Sub' });
+			const sourceDir = await packageDir({
+				projects: twoWorkflowPackage.projects,
+				workflows: [{ target: 'projects/p1/workflows/wfa', workflow: parent }],
+				manifestExtras: {
+					requirements: { workflows: workflowRequirementsFromWorkflows([parent, sub]) },
+				},
+			});
+
+			const result = await importSelection(sourceDir, {
+				selectedProjectId: 'P1',
+				selectedWorkflowIds: ['WFA'],
+				deletedWorkflowIds: ['WFB'],
+			});
+
+			expect(result.workflows).toEqual([
+				expect.objectContaining({ sourceWorkflowId: 'WFA', status: 'updated' }),
+			]);
+			expect(result.removedWorkflows).toEqual([
+				expect.objectContaining({ workflowId: 'WFB', deletion: 'archived' }),
+			]);
+			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
+			expect(subWorkflowRefOf((await findWorkflow('WFA'))!)).toBe('WFB');
+		});
+
 		/** Seeds the destination project P1 with both WFA and WFB by importing them. */
 		async function seedBothWorkflows() {
 			await importSelection(await packageDir(twoWorkflowPackage), {

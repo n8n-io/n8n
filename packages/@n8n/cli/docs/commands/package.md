@@ -131,6 +131,10 @@ project, which is created if it does not yet exist, so there is no separate targ
 option. The locked cherry-pick policies (folders are merged, tags are skipped) are
 fixed and cannot be changed.
 
+An imported workflow's destination ID must not appear in `--deleted-workflow-ids`.
+The command rejects this overlap before any writes, including with the `skip`
+policy. It checks the destination ID even if the workflow is absent or archived.
+
 ```bash
 n8n-cli package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1>,<id2>
 n8n-cli package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1> --deleted-workflow-ids=<id3>

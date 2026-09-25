@@ -428,6 +428,9 @@ export class ImportOrchestrator {
 			...removalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'workflow-removal-forbidden', ...failure }),
 			),
+			...removalPlan.conflicts.map(
+				(conflict): BlockingIssue => ({ type: 'workflow-removal-conflict', ...conflict }),
+			),
 			...folderRemovalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'folder-removal-forbidden', ...failure }),
 			),

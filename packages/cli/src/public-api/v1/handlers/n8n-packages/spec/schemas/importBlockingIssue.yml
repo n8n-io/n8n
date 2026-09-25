@@ -1,6 +1,27 @@
 oneOf:
   - type: object
     description: >
+      A selected workflow resolves to a destination id in `deletedWorkflowIds`.
+      The import stops before any writes, including when the conflict policy is `skip`.
+    required:
+      - type
+      - sourceWorkflowId
+      - workflowId
+      - projectId
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-removal-conflict
+      sourceWorkflowId:
+        type: string
+      workflowId:
+        type: string
+        description: The destination id of the selected workflow.
+      projectId:
+        type: string
+  - type: object
+    description: >
       A workflow whose source id already matches one in the target project, under
       the `fail` conflict policy.
     required:

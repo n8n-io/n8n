@@ -5,7 +5,7 @@ import {
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { WorkflowRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -70,6 +70,29 @@ beforeEach(async () => {
 });
 
 describe('POST /n8n-packages/import-selection', () => {
+	it('returns 409 before writing a workflow selected for import and deletion', async () => {
+		const project = await createTeamProject('Target', owner);
+		const tarBuffer = await buildProjectPackage(project.id);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', project.id)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA', 'WFB']))
+			.field('deletedWorkflowIds', JSON.stringify(['WFA']))
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.issues).toEqual([
+			{
+				type: 'workflow-removal-conflict',
+				sourceWorkflowId: 'WFA',
+				workflowId: 'WFA',
+				projectId: project.id,
+			},
+		]);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+
 	it('imports only the selected subset into the target project', async () => {
 		const project = await createTeamProject('Target', owner);
 		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');

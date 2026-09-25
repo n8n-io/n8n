@@ -208,6 +208,7 @@ describe('WorkflowRemover.plan', () => {
 		expect(plan).toEqual({
 			removals: [],
 			failures: [],
+			conflicts: [],
 			deletionPolicy: 'archive',
 			occupiedFolderIds: [],
 		});
@@ -216,6 +217,54 @@ describe('WorkflowRemover.plan', () => {
 });
 
 describe('WorkflowRemover.planExplicitDeletes', () => {
+	it.each(['create', 'update', 'skip'] as const)(
+		'reports a conflict for a selected %s target',
+		async (action) => {
+			const item =
+				action === 'create'
+					? mock<Extract<WorkflowPlanItem, { action: 'create' }>>({
+							action,
+							decidedId: 'target',
+							sourceWorkflowId: 'source',
+						})
+					: mock<Extract<WorkflowPlanItem, { action: 'update' | 'skip' }>>({
+							action,
+							existing: mock<WorkflowEntity>({ id: 'target' }),
+							sourceWorkflowId: 'source',
+						});
+			const { remover } = makeRemover([]);
+
+			const plan = await remover.plan(context, {
+				workflowItems: [item],
+				packageFolderIds: [],
+				folderConflictPolicy: 'merge',
+				deletionPolicy: 'archive',
+				explicitDeleteIds: ['target', 'target'],
+			});
+
+			expect(plan.conflicts).toEqual([
+				{ sourceWorkflowId: 'source', workflowId: 'target', projectId: 'proj-1' },
+			]);
+			expect(plan.removals).toEqual([]);
+		},
+	);
+
+	it('allows an explicit delete of a referenced workflow that is not selected', async () => {
+		const { remover } = makeRemover([{ id: 'sub', name: 'Sub', parentFolderId: null }]);
+
+		const plan = await remover.plan(context, {
+			workflowItems: [created('parent')],
+			subWorkflowRequirementIds: ['sub'],
+			packageFolderIds: [],
+			folderConflictPolicy: 'merge',
+			deletionPolicy: 'archive',
+			explicitDeleteIds: ['sub'],
+		});
+
+		expect(plan.removals).toEqual([{ id: 'sub', name: 'Sub', parentFolderId: null }]);
+		expect(plan.conflicts).toEqual([]);
+	});
+
 	it('removes an explicitly named workflow even under merge', async () => {
 		const { remover, workflowFinderService } = makeRemover([
 			{ id: 'target', name: 'Target', parentFolderId: 'F1' },
@@ -299,6 +348,7 @@ describe('WorkflowRemover.apply', () => {
 	const planWith = (deletionPolicy: OverwriteDeletionPolicy): WorkflowRemovalPlan => ({
 		removals: [{ id: 'stale', name: 'Stale', parentFolderId: 'F1' }],
 		failures: [],
+		conflicts: [],
 		deletionPolicy,
 		occupiedFolderIds: [],
 	});
@@ -353,6 +403,7 @@ describe('WorkflowRemover.apply', () => {
 		const summaries = await remover.apply(context, {
 			removals: [],
 			failures: [],
+			conflicts: [],
 			deletionPolicy: 'hard-delete',
 			occupiedFolderIds: [],
 		});

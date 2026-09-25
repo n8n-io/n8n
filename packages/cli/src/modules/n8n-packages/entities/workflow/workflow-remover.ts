@@ -33,6 +33,7 @@ export class WorkflowRemover {
 		const nothingToRemove = {
 			removals: [],
 			failures: [],
+			conflicts: [],
 			deletionPolicy: request.deletionPolicy,
 			occupiedFolderIds: [],
 		};
@@ -76,6 +77,7 @@ export class WorkflowRemover {
 
 		return {
 			removals,
+			conflicts: [],
 			failures: candidates
 				.filter(({ id }) => !removable.has(id))
 				.map(({ id, name }) => ({ workflowId: id, name, projectId: context.projectId })),
@@ -87,8 +89,8 @@ export class WorkflowRemover {
 	/**
 	 * Plans the removal of an explicit, caller-named set of DESTINATION workflows (cherry-pick). It
 	 * reuses the reconcile path's permission check and archive/hard-delete apply, but skips its
-	 * reconcile-by-absence logic entirely: only the named ids go. An id that is absent from the project
-	 * or already archived is a tolerated no-op; a named id the caller may not delete becomes a failure
+	 * reconcile-by-absence logic entirely: only the named ids go. A selected target becomes a conflict.
+	 * Other absent or archived ids are no-ops; a named id the caller may not delete becomes a failure
 	 * (surfaced as the existing `workflow-removal-forbidden` blocking issue). No reverse-reference
 	 * guard — deleting a workflow another one references is allowed, leaving a broken-but-preserved ref.
 	 */
@@ -97,6 +99,23 @@ export class WorkflowRemover {
 		request: WorkflowRemovalRequest,
 	): Promise<WorkflowRemovalPlan> {
 		const requested = new Set(request.explicitDeleteIds);
+		// Check planned target ids before reading placements so absent and archived targets count too.
+		const conflicts = request.workflowItems
+			.filter((item) => requested.has(targetIdOf(item)))
+			.map((item) => ({
+				sourceWorkflowId: item.sourceWorkflowId,
+				workflowId: targetIdOf(item),
+				projectId: context.projectId,
+			}));
+		if (conflicts.length > 0) {
+			return {
+				removals: [],
+				failures: [],
+				conflicts,
+				deletionPolicy: request.deletionPolicy,
+				occupiedFolderIds: [],
+			};
+		}
 
 		// Confined to the scoped project: an id naming a workflow elsewhere is simply not found here.
 		// Archived rows load so an already-archived id reads as gone rather than a candidate.
@@ -109,6 +128,7 @@ export class WorkflowRemover {
 			return {
 				removals: [],
 				failures: [],
+				conflicts: [],
 				deletionPolicy: request.deletionPolicy,
 				occupiedFolderIds: [],
 			};
@@ -124,6 +144,7 @@ export class WorkflowRemover {
 			removals: targets
 				.filter(({ id }) => authorized.has(id))
 				.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId })),
+			conflicts: [],
 			failures: targets
 				.filter(({ id }) => !authorized.has(id))
 				.map(({ id, name }) => ({ workflowId: id, name, projectId: context.projectId })),
