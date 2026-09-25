@@ -175,6 +175,10 @@ export {
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from './schemas/public-api-path-params.schema';
+export {
+	publicApiUploadedFileSchema,
+	type PublicApiUploadedFile,
+} from './schemas/public-api-uploaded-file.schema';
 export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,

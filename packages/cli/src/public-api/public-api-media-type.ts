@@ -1,6 +1,6 @@
-import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
+import type { BodyMediaType } from '@n8n/decorators';
 
-const JSON_MEDIA_TYPE = 'application/json';
+import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
 
 /**
  * The media type, plus the string the legacy validator reports: lower-cased, parameters sorted by
@@ -30,11 +30,16 @@ function readMediaType(header: string): { mediaType: string; reported: string } 
 }
 
 /**
- * The legacy validator accepted only JSON. It reported a header that names no media type — absent,
- * empty, or whitespace — as the literal `undefined`, and rejected it only when the body was
- * required. Migrated routes keep both behaviours and the messages that came with them.
+ * The legacy validator accepted only one media type per route (JSON, or multipart for an upload
+ * route). It reported a header that names no media type — absent, empty, or whitespace — as the
+ * literal `undefined`, and rejected it only when the body was required. Migrated routes keep both
+ * behaviours and the messages that came with them, for either expected media type.
  */
-export function assertJsonContentType(header: string | undefined, bodyRequired: boolean): void {
+export function assertRequestContentType(
+	header: string | undefined,
+	expectedMediaType: BodyMediaType,
+	bodyRequired: boolean,
+): void {
 	const { mediaType, reported } = readMediaType(header ?? '');
 
 	if (mediaType === '') {
@@ -42,7 +47,7 @@ export function assertJsonContentType(header: string | undefined, bodyRequired: 
 		return;
 	}
 
-	if (mediaType !== JSON_MEDIA_TYPE) {
+	if (mediaType !== expectedMediaType) {
 		throw new UnsupportedMediaTypeError(`unsupported media type ${reported}`);
 	}
 }

@@ -148,6 +148,12 @@ not templates.
   — never extend them).
 - For complex legacy-only, multipart, or non-standard endpoints, study the
   nearest existing handler first.
+- A multipart or binary legacy route migrates with `@Body({ mediaType:
+  'multipart/form-data', uploadLimits })` and `@ApiResponse(status, { binaryMediaType,
+  headers })` (see the decorator table in [SKILL.md](SKILL.md#declaring-a-controller)).
+  `createMultipartBodyMiddleware` (`public-api-multipart.ts`) reproduces
+  express-openapi-validator's multer error mapping (status and message), so a
+  migrated upload route keeps its contract.
 - Keep each field in its original position when you extract a request shape shared
   by two routes, and destructure out the ones a route doesn't take. The generator
   emits properties in shape order, so a moved field rewrites the `*.generated.yml`

@@ -106,6 +106,76 @@ describe('Args Decorators', () => {
 		});
 	});
 
+	describe('@Body media type', () => {
+		it('defaults to no mediaType for the bare form', () => {
+			class TestController {
+				testMethod(@Body _body: unknown) {}
+			}
+
+			const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
+				TestController as Controller,
+				'testMethod',
+			);
+
+			expect(routeMetadata.args[0]).toEqual({ type: 'body' });
+			expect(routeMetadata.args[0]).not.toHaveProperty('mediaType');
+		});
+
+		it('defaults to no mediaType for the empty factory form', () => {
+			class TestController {
+				testMethod(@Body() _body: unknown) {}
+			}
+
+			const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
+				TestController as Controller,
+				'testMethod',
+			);
+
+			expect(routeMetadata.args[0]).toEqual({ type: 'body' });
+		});
+
+		it('sets mediaType and uploadLimits for a multipart body', () => {
+			const uploadLimits = () => ({ fileSize: 1024, files: 1 });
+
+			class TestController {
+				testMethod(@Body({ mediaType: 'multipart/form-data', uploadLimits }) _body: unknown) {}
+			}
+
+			const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
+				TestController as Controller,
+				'testMethod',
+			);
+
+			expect(routeMetadata.args[0]).toEqual({
+				type: 'body',
+				mediaType: 'multipart/form-data',
+				uploadLimits,
+			});
+		});
+
+		it('combines multipart mediaType with required', () => {
+			const uploadLimits = () => ({});
+
+			class TestController {
+				testMethod(
+					@Body({ required: true, mediaType: 'multipart/form-data', uploadLimits }) _body: unknown,
+				) {}
+			}
+
+			const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
+				TestController as Controller,
+				'testMethod',
+			);
+
+			expect(routeMetadata.args[0]).toEqual({
+				type: 'body',
+				required: true,
+				mediaType: 'multipart/form-data',
+				uploadLimits,
+			});
+		});
+	});
+
 	it('should work with all decorators combined', () => {
 		class TestController {
 			testMethod(@Body _body: unknown, @Query _query: unknown, @Param('id') _id: string) {}

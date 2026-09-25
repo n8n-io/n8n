@@ -7,6 +7,7 @@ import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decor
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
+import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 import type { ZodTypeAny } from 'zod';
 
@@ -16,7 +17,8 @@ import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
-import { assertJsonContentType } from '@/public-api/public-api-media-type';
+import { assertRequestContentType } from '@/public-api/public-api-media-type';
+import { createMultipartBodyMiddleware, filesByFieldName } from '@/public-api/public-api-multipart';
 import {
 	apiKeyScopesSatisfy,
 	findBodyArg,
@@ -86,9 +88,14 @@ export class PublicApiControllerRegistry {
 			const bodyArg = findBodyArg(resolvedArgs);
 			const bodyDto = bodyArg?.dto;
 			const bodyRequired = bodyDto ? (bodyArg?.required ?? isRequestBodyRequired(bodyDto)) : false;
+			const isMultipartBody = bodyArg?.mediaType === 'multipart/form-data';
+			const binaryMediaType = route.successResponse?.binaryMediaType;
 
 			const handler = async (req: Request, res: Response) => {
-				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
+				// A multipart body's content type is asserted by a middleware before this handler runs.
+				if (bodyDto && !isMultipartBody) {
+					assertRequestContentType(req.headers['content-type'], 'application/json', bodyRequired);
+				}
 
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
@@ -96,17 +103,37 @@ export class PublicApiControllerRegistry {
 						args.push(
 							arg.schema ? parsePathParam(arg.key, arg.schema, req.params) : req.params[arg.key],
 						);
+						continue;
+					}
+
+					// A multipart body merges its text fields with its uploaded files; a file wins over a
+					// text field sharing its name.
+					const parseInput =
+						arg.type === 'body' && arg.mediaType === 'multipart/form-data'
+							? { ...req.body, ...filesByFieldName(req.files) }
+							: req[arg.type];
+
+					const output = arg.dto.safeParse(parseInput);
+					if (output.success) {
+						args.push(output.data);
 					} else {
-						const output = arg.dto.safeParse(req[arg.type]);
-						if (output.success) {
-							args.push(output.data);
-						} else {
-							throw new BadRequestError(formatValidationError(arg.type, output.error));
-						}
+						throw new BadRequestError(formatValidationError(arg.type, output.error));
 					}
 				}
 
 				const result = await controller[handlerName](...args);
+
+				if (binaryMediaType !== undefined) {
+					// The handler must write a binary response itself; not doing so is a bug, not a client
+					// error, hence the 500 rather than an empty success response.
+					if (!res.headersSent) {
+						throw new UnexpectedError(
+							`Public API route ${controllerClass.name}.${handlerName} declares a binary response ` +
+								'(binaryMediaType) but returned without sending one',
+						);
+					}
+					return;
+				}
 
 				if (res.headersSent) return;
 
@@ -146,6 +173,30 @@ export class PublicApiControllerRegistry {
 
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
 
+			if (isMultipartBody) {
+				const uploadLimits = bodyArg?.uploadLimits;
+				if (!uploadLimits) {
+					throw new UnexpectedError(
+						`Public API route ${controllerClass.name}.${handlerName} declares a multipart @Body ` +
+							'with no uploadLimits',
+					);
+				}
+
+				const assertMultipartContentType: RequestHandler = (req, _res, next) => {
+					assertRequestContentType(
+						req.headers['content-type'],
+						'multipart/form-data',
+						bodyRequired,
+					);
+					next();
+				};
+
+				middlewares.push(
+					this.wrapPublicApiMiddleware(assertMultipartContentType),
+					this.wrapPublicApiMiddleware(createMultipartBodyMiddleware(uploadLimits())),
+				);
+			}
+
 			const finalHandler: RequestHandler = async (req, res, next) => {
 				try {
 					await handler(req, res);
@@ -163,6 +214,32 @@ export class PublicApiControllerRegistry {
 
 			controllerRouter[route.method](route.path, ...middlewares, finalHandler);
 		}
+	}
+
+	/**
+	 * Runs `middleware`, sending any error it throws or passes to `next` through
+	 * `sendPublicApiErrorResponse` directly - the same way `finalHandler` converts a handler error -
+	 * instead of forwarding it to Express's own error-handling chain.
+	 */
+	private wrapPublicApiMiddleware(middleware: RequestHandler): RequestHandler {
+		return (req, res, next) => {
+			const sendErrorOrContinue = (error?: unknown) => {
+				if (error) {
+					sendPublicApiErrorResponse(
+						res,
+						error instanceof Error ? error : new Error(String(error)),
+					);
+					return;
+				}
+				next();
+			};
+
+			try {
+				void middleware(req, res, sendErrorOrContinue);
+			} catch (error) {
+				sendErrorOrContinue(error);
+			}
+		};
 	}
 
 	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {

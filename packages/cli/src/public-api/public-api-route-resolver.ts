@@ -1,12 +1,15 @@
 import type { ZodClass } from '@n8n/api-types';
 import type {
 	ApiKeyScopeRequirement,
+	ApiResponseOptions,
 	Arg,
+	BodyMediaType,
 	Controller,
 	DeprecationInfo,
 	ErrorResponse,
 	HandlerName,
 	Method,
+	MultipartUploadLimits,
 	ResponseDtoClass,
 	SuccessStatus,
 } from '@n8n/decorators';
@@ -30,7 +33,15 @@ export type HttpMethod = (typeof HTTP_METHODS)[number];
 
 export type ResolvedRouteArg =
 	| { type: 'param'; key: string; schema?: ZodTypeAny }
-	| { type: 'body'; dto: ZodClass; required?: boolean }
+	| {
+			type: 'body';
+			dto: ZodClass;
+			required?: boolean;
+			/** Resolved from `@Body`'s `mediaType`; defaults to `application/json` when unset. */
+			mediaType: BodyMediaType;
+			/** Set only for a multipart body. */
+			uploadLimits?: () => MultipartUploadLimits;
+	  }
 	| { type: 'query'; dto: ZodClass };
 
 export function isDtoArg(
@@ -59,10 +70,14 @@ export interface ResolvedPublicApiRoute {
 	requestBodyDto?: ZodClass;
 	/** Explicit `@Body({ required })` override; falls back to `isRequestBodyRequired` when unset. */
 	requestBodyRequired?: boolean;
+	/** Set only when the route has a request body; resolved default is `application/json`. */
+	requestBodyMediaType?: BodyMediaType;
 	requestQueryDto?: ZodClass;
 	responseDto?: ResponseDtoClass;
 	/** Success status declared via `@ApiResponse` - always present, see `resolveSuccessStatus`. */
 	successStatus: SuccessStatus;
+	/** Extra `@ApiResponse` options: custom description, response headers, or a binary body. */
+	successResponse?: ApiResponseOptions;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	summary?: string;
 	description?: string;
@@ -127,6 +142,8 @@ export function resolveRouteArgs(
 				type: 'body',
 				dto: paramType,
 				...(arg.required !== undefined && { required: arg.required }),
+				mediaType: arg.mediaType ?? 'application/json',
+				...(arg.uploadLimits !== undefined && { uploadLimits: arg.uploadLimits }),
 			});
 			continue;
 		}
@@ -265,9 +282,11 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				args,
 				requestBodyDto,
 				requestBodyRequired,
+				...(requestBodyArg && { requestBodyMediaType: requestBodyArg.mediaType }),
 				requestQueryDto,
 				responseDto: route.responseDto,
 				successStatus: resolveSuccessStatus(controllerClass.name, handlerName, route.successStatus),
+				...(route.successResponse && { successResponse: route.successResponse }),
 				apiKeyScope: route.apiKeyScope,
 				summary: route.summary,
 				description: route.description,

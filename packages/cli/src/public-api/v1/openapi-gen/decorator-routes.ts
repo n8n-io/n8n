@@ -159,11 +159,12 @@ function buildRequestBody(
 	if (!route.requestBodyDto) return undefined;
 
 	const required = route.requestBodyRequired ?? isRequestBodyRequired(route.requestBodyDto);
+	const mediaType = route.requestBodyMediaType ?? 'application/json';
 
 	return {
 		...(required ? { required: true } : {}),
 		content: {
-			'application/json': {
+			[mediaType]: {
 				schema: route.requestBodyDto.schema,
 			},
 		},
@@ -178,7 +179,9 @@ function buildRequestBody(
 export function buildRequestBodyJsonSchema(
 	route: ResolvedPublicApiRoute,
 ): Record<string, unknown> | undefined {
-	if (!route.requestBodyDto) return undefined;
+	// Legacy /discover only ever reported an `application/json` request body - a multipart route
+	// has no requestSchema there today, so this keeps parity rather than starting to report one.
+	if (!route.requestBodyDto || route.requestBodyMediaType !== 'application/json') return undefined;
 
 	const registry = new OpenAPIRegistry();
 	registry.register(REQUEST_BODY_COMPONENT, route.requestBodyDto.schema);
@@ -196,22 +199,45 @@ export function buildRequestBodyJsonSchema(
  * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
  * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`.
  */
+/** `successResponse.headers` values are plain strings; render each as a bare `type: string` header. */
+function buildResponseHeaders(
+	headers: NonNullable<NonNullable<ResolvedPublicApiRoute['successResponse']>['headers']>,
+): Record<string, { description: string; schema: { type: 'string' } }> {
+	const result: Record<string, { description: string; schema: { type: 'string' } }> = {};
+	for (const [name, { description }] of Object.entries(headers)) {
+		result[name] = { description, schema: { type: 'string' } };
+	}
+	return result;
+}
+
 function buildResponses(
 	route: ResolvedPublicApiRoute,
 	resolveSchema: SchemaResolver,
 ): RouteConfig['responses'] {
+	const { successResponse } = route;
+	const binaryMediaType = successResponse?.binaryMediaType;
+
 	const responses: RouteConfig['responses'] = {
 		[route.successStatus]: {
-			description: 'Operation successful.',
-			...(route.responseDto && hasNamedSchema(route.responseDto)
+			description: successResponse?.description ?? 'Operation successful.',
+			...(successResponse?.headers
+				? { headers: buildResponseHeaders(successResponse.headers) }
+				: {}),
+			...(binaryMediaType !== undefined
 				? {
 						content: {
-							'application/json': {
-								schema: resolveSchema(route.responseDto, route.responseDto.schema),
-							},
+							[binaryMediaType]: { schema: { type: 'string', format: 'binary' } },
 						},
 					}
-				: {}),
+				: route.responseDto && hasNamedSchema(route.responseDto)
+					? {
+							content: {
+								'application/json': {
+									schema: resolveSchema(route.responseDto, route.responseDto.schema),
+								},
+							},
+						}
+					: {}),
 		},
 	};
 
