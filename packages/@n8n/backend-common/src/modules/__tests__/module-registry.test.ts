@@ -88,6 +88,7 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
+			'inbound-auth-core',
 		]);
 	});
 
@@ -126,6 +127,7 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
+			'inbound-auth-core',
 			'type-availability-policies',
 		]);
 	});
