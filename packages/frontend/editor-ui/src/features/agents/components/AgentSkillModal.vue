@@ -43,9 +43,21 @@ const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
+function getDefaultSkillName(): string {
+	const baseName = i18n.baseText('agents.builder.skills.defaultName' as BaseTextKey);
+	const existingNames = new Set(
+		(props.data.existingSkillNames ?? []).map((name) => name.trim().toLowerCase()),
+	);
+	if (!existingNames.has(baseName.toLowerCase())) return baseName;
+
+	let suffix = 2;
+	while (existingNames.has(`${baseName} ${suffix}`.toLowerCase())) suffix += 1;
+	return `${baseName} ${suffix}`;
+}
+
 const skill = ref<AgentSkill>(
 	normalizeSkill({
-		name: props.data.skill?.name ?? '',
+		name: props.data.skill?.name ?? getDefaultSkillName(),
 		description: props.data.skill?.description ?? '',
 		instructions: props.data.skill?.instructions ?? '',
 		...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
@@ -114,7 +126,10 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 const visibleErrors = computed(() =>
 	submitted.value || openedWithMissingContent.value ? validationErrors.value : {},
 );
-const canSave = computed(() => formIsValid.value);
+const visibleNameError = computed(() =>
+	submitted.value ? (validationErrors.value.name ?? '') : '',
+);
+const canSave = computed(() => formIsValid.value && !validationErrors.value.name);
 
 function onSkillUploaded(importedSkill: AgentSkill) {
 	skill.value = normalizeSkill(importedSkill);
@@ -124,7 +139,7 @@ function onSkillUploaded(importedSkill: AgentSkill) {
 }
 
 function onBack() {
-	skill.value = { name: '', description: '', instructions: '' };
+	skill.value = { name: getDefaultSkillName(), description: '', instructions: '' };
 	selectedPath.value = SKILL_FILE;
 	submitted.value = false;
 	formIsValid.value = false;
@@ -226,7 +241,11 @@ function onRemove() {
 <template>
 	<AgentModal
 		:open="modalOpen"
-		:title="i18n.baseText(isEditing ? 'agents.builder.skills.edit' : 'agents.builder.skills.add')"
+		:title="step === 'upload' ? i18n.baseText('agents.builder.skills.add') : skill.name"
+		:title-placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
+		:title-max-length="128"
+		:title-error="visibleNameError"
+		:editable-title="step !== 'upload'"
 		:show-back="step === 'manual'"
 		:show-footer="step !== 'upload'"
 		:busy="isImporting"
@@ -234,6 +253,7 @@ function onRemove() {
 		body-flush
 		data-testid="agent-skill-modal"
 		@update:open="!$event && closeModal()"
+		@update:title="onSkillUpdate({ name: $event })"
 		@back="onBack"
 	>
 		<N8nCallout
@@ -264,7 +284,6 @@ function onRemove() {
 				<AgentSkillViewer
 					:skill="skill"
 					:available-tools="props.data.availableTools ?? []"
-					:existing-skill-names="props.data.existingSkillNames ?? []"
 					:selected-path="selectedPath"
 					:errors="visibleErrors"
 					:show-validation-warnings="submitted || openedWithMissingContent"

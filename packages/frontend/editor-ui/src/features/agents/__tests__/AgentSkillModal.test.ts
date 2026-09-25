@@ -16,7 +16,9 @@ import { AgentModalTestStub } from './utils/AgentModalTestStub';
 configure({ testIdAttribute: 'data-testid' });
 
 vi.mock('@n8n/i18n', () => {
-	const i18n = { baseText: (key: string) => key };
+	const i18n = {
+		baseText: (key: string) => (key === 'agents.builder.skills.defaultName' ? 'New skill' : key),
+	};
 	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
 });
 
@@ -136,7 +138,7 @@ describe('AgentSkillModal', () => {
 		expect(
 			container.querySelector('[data-testid="agent-skill-missing-content-callout"]'),
 		).toBeInTheDocument();
-		expect(container.querySelector('h2')).toHaveTextContent('agents.builder.skills.edit');
+		expect(getTitleInput(container)).toHaveValue('ghost');
 		expect(container.querySelector('[data-testid="agent-modal-back"]')).not.toBeInTheDocument();
 		expect(container.querySelector('[data-testid="agent-skill-upload"]')).not.toBeInTheDocument();
 
@@ -150,26 +152,75 @@ describe('AgentSkillModal', () => {
 	});
 
 	it('starts with upload and discards manual changes on Back', async () => {
-		const { getByTestId, queryByTestId } = renderModal();
+		const { container, getByTestId, queryByTestId } = renderModal();
 
 		expect(getByTestId('agent-skill-upload')).toBeInTheDocument();
 		expect(queryByTestId('agent-skill-viewer')).not.toBeInTheDocument();
 		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+		expect(container.querySelector('h2')).toHaveTextContent('agents.builder.skills.add');
+		expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
 
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
-		const nameInput = getByTestId('agent-skill-name-input').querySelector('input')!;
-		expect(nameInput).toHaveValue('');
-		await fireEvent.update(nameInput, 'Draft skill');
+		expect(getTitleInput(container)).toHaveValue('New skill');
+		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
+		await fireEvent.update(getTitleInput(container), 'Draft skill');
 		await fireEvent.click(getByTestId('agent-skill-add-reference'));
 		await fireEvent.update(getByTestId('agent-skill-reference-editor'), 'Draft reference');
 		await fireEvent.click(getByTestId('agent-modal-back'));
 
 		expect(getByTestId('agent-skill-upload')).toBeInTheDocument();
+		expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
-		expect(getByTestId('agent-skill-name-input').querySelector('input')).toHaveValue('');
+		expect(getTitleInput(container)).toHaveValue('New skill');
 		expect(
 			queryByTestId('agent-skill-reference-nav-item-references-reference-md'),
 		).not.toBeInTheDocument();
+	});
+
+	it('generates a unique title for a new manual skill', async () => {
+		const { container, getByTestId } = renderModal({
+			existingSkillNames: ['new skill', 'New skill 2'],
+		});
+
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+
+		expect(getTitleInput(container)).toHaveValue('New skill 3');
+	});
+
+	it('shows name errors beside the title after Save', async () => {
+		const onConfirm = vi.fn();
+		const { container, getByTestId, queryByTestId } = renderModal({
+			onConfirm,
+			skillId: 'skill-1',
+			skill: { name: 'Research', description: 'Use for research', instructions: 'Research' },
+			existingSkillNames: ['Other skill'],
+		});
+
+		await fireEvent.update(getTitleInput(container), ' other SKILL ');
+		expect(queryByTestId('agent-modal-title-error')).not.toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(getByTestId('agent-modal-title-error')).toHaveTextContent(
+			'agents.builder.skills.validation.nameDuplicate',
+		);
+		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
+
+		await fireEvent.update(getTitleInput(container), '   ');
+		expect(getByTestId('agent-modal-title-error')).toHaveTextContent(
+			'agents.builder.skills.validation.nameRequired',
+		);
+
+		await fireEvent.update(getTitleInput(container), 'Updated skill');
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+		expect(onConfirm).toHaveBeenCalledWith({
+			id: 'skill-1',
+			skill: {
+				name: 'Updated skill',
+				description: 'Use for research',
+				instructions: 'Research',
+			},
+		});
 	});
 
 	it('explains why overlong instructions cannot be saved', async () => {
@@ -273,6 +324,7 @@ describe('AgentSkillModal', () => {
 			target: { files: [file] },
 		});
 		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
+		expect(getByTestId('agent-modal-title-input')).toHaveValue('Research');
 
 		expect(trackImportedSkill).toHaveBeenCalledWith({
 			agentId: 'a1',
@@ -303,10 +355,7 @@ describe('AgentSkillModal', () => {
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 		expect(onConfirm).not.toHaveBeenCalled();
 
-		await fireEvent.update(
-			getByTestId('agent-skill-name-input').querySelector('input')!,
-			' Research ',
-		);
+		await fireEvent.update(getByTestId('agent-modal-title-input'), ' Research ');
 		await fireEvent.update(
 			getByTestId('agent-skill-description-input').querySelector('input')!,
 			'Use for research',
@@ -335,6 +384,14 @@ describe('AgentSkillModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 });
+
+function getTitleInput(container: Element): HTMLInputElement {
+	const input = container.querySelector<HTMLInputElement>(
+		'[data-testid="agent-modal-title-input"]',
+	);
+	if (!input) throw new Error('Expected an editable skill title');
+	return input;
+}
 
 function makeReferences(count: number) {
 	return Array.from({ length: count }, (_, index) => ({

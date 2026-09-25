@@ -39,19 +39,12 @@ const props = withDefaults(
 		availableTools?: AgentSkillAllowedToolOption[];
 		disabled?: boolean;
 		errors?: Partial<Record<keyof AgentSkill, string>>;
-		/**
-		 * Names of the agent's other skills — a name colliding with one of them
-		 * (case-insensitively, trimmed) fails the name field's validation, since
-		 * skill names must be unique per agent.
-		 */
-		existingSkillNames?: string[];
 		selectedPath?: string;
 		showValidationWarnings?: boolean;
 	}>(),
 	{
 		availableTools: () => [],
 		disabled: false,
-		existingSkillNames: () => [],
 		selectedPath: SKILL_FILE,
 		showValidationWarnings: false,
 	},
@@ -64,7 +57,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const name = ref(props.skill.name);
 const description = ref(props.skill.description);
 const referenceFileName = ref('');
 const addToolDialogOpen = ref(false);
@@ -73,33 +65,6 @@ const formValidation = reactive({
 	referenceName: true,
 });
 
-const nameValidationRules: Array<Rule | RuleGroup> = [
-	{ name: 'MAX_LENGTH', config: { maximum: 128 } },
-	{ name: 'uniqueSkillName' },
-];
-const normalizedExistingSkillNames = computed(
-	() => new Set(props.existingSkillNames.map((name) => name.trim().toLowerCase())),
-);
-const nameIsValid = computed(() => {
-	const value = name.value.trim();
-	return (
-		value.length > 0 &&
-		value.length <= 128 &&
-		!normalizedExistingSkillNames.value.has(value.toLowerCase())
-	);
-});
-const nameValidators: Record<string, IValidator> = {
-	uniqueSkillName: {
-		validate: (value: Validatable) =>
-			normalizedExistingSkillNames.value.has(
-				String(value ?? '')
-					.trim()
-					.toLowerCase(),
-			)
-				? { messageKey: 'agents.builder.skills.validation.nameDuplicate' }
-				: false,
-	},
-};
 const descriptionValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'MAX_LENGTH', config: { maximum: 512 } },
 ];
@@ -157,7 +122,6 @@ const referencesValid = computed(
 );
 const formIsValid = computed(
 	() =>
-		nameIsValid.value &&
 		formValidation.description &&
 		(!selectedReference.value || formValidation.referenceName) &&
 		instructionsValid.value &&
@@ -222,12 +186,6 @@ const referencesError = computed(() => {
 	if (referencesValid.value) return '';
 	return i18n.baseText('agents.builder.skills.references.invalidSummary');
 });
-
-function onNameInput(value: string | number | boolean | null | undefined) {
-	const next = typeof value === 'string' ? value : String(value ?? '');
-	name.value = next;
-	emit('update:skill', { name: next });
-}
 
 function onDescriptionInput(value: string | number | boolean | null | undefined) {
 	const next = typeof value === 'string' ? value : String(value ?? '');
@@ -334,13 +292,6 @@ function normalizeReferenceFileName(value: string): string {
 }
 
 watch(
-	() => props.skill.name,
-	(value) => {
-		if (value !== name.value) name.value = value;
-	},
-);
-
-watch(
 	() => props.skill.description,
 	(value) => {
 		if (value !== description.value) description.value = value;
@@ -366,24 +317,6 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 			<N8nText v-if="props.errors?.references && !referencesError" size="small" color="danger">{{
 				props.errors.references
 			}}</N8nText>
-
-			<div :class="$style.field">
-				<N8nFormInput
-					:model-value="name"
-					:label="i18n.baseText('agents.builder.skills.name.label')"
-					name="skill-name"
-					required
-					focus-initially
-					label-size="small"
-					:placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
-					:disabled="props.disabled"
-					:show-validation-warnings="props.showValidationWarnings"
-					:validation-rules="nameValidationRules"
-					:validators="nameValidators"
-					data-testid="agent-skill-name-input"
-					@update:model-value="onNameInput"
-				/>
-			</div>
 
 			<div :class="$style.field">
 				<N8nFormInput

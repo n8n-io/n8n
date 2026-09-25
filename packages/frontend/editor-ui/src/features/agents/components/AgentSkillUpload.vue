@@ -115,17 +115,16 @@ function onDrop(files: File[] | null, event: DragEvent) {
 		<div :class="$style.manual">
 			<N8nText size="small" color="text-base">
 				{{ i18n.baseText('agents.builder.skills.import.manualPrompt') }}
+				<button
+					type="button"
+					:class="$style.manualButton"
+					:disabled="busy"
+					data-testid="agent-skill-add-manually"
+					@click="emit('add-manually')"
+				>
+					{{ i18n.baseText('agents.builder.skills.import.addManually') }}
+				</button>
 			</N8nText>
-			<N8nButton
-				variant="ghost"
-				size="small"
-				:class="$style.manualButton"
-				:disabled="busy"
-				data-testid="agent-skill-add-manually"
-				@click="emit('add-manually')"
-			>
-				{{ i18n.baseText('agents.builder.skills.import.addManually') }}
-			</N8nButton>
 		</div>
 		<input
 			ref="skillFileInput"
@@ -193,8 +192,7 @@ function onDrop(files: File[] | null, event: DragEvent) {
 	line-height: var(--line-height--xl);
 }
 
-.actions,
-.manual {
+.actions {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -202,9 +200,27 @@ function onDrop(files: File[] | null, event: DragEvent) {
 	gap: var(--spacing--2xs);
 }
 
+.manual {
+	text-align: center;
+}
+
 .manualButton {
+	appearance: none;
+	border: 0;
+	background: transparent;
 	padding: 0;
+	font: inherit;
+	color: inherit;
 	text-decoration: underline;
+	cursor: pointer;
+
+	&:hover:not(:disabled) {
+		color: var(--text-color);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+	}
 }
 
 @media (max-width: 480px) {

@@ -8362,6 +8362,7 @@
 	"agents.builder.skills.add": "Add skill",
 	"agents.builder.skills.edit": "Edit skill",
 	"agents.builder.skills.save": "Save skill",
+	"agents.builder.skills.defaultName": "New skill",
 	"agents.builder.skills.empty": "No skills applied yet.",
 	"agents.builder.skills.instructions": "Instructions",
 	"agents.builder.skills.name.label": "Name",
