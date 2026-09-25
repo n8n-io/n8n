@@ -49,7 +49,13 @@ describe('MCP tool errors', () => {
 	it.each([new Error('failed'), 'failed'])(
 		'tracks a failure and rethrows the same value',
 		(error) => {
-			expect(() => trackAndRethrowToolError(telemetry, payload, error)).toThrow(error);
+			let thrown: unknown;
+			try {
+				trackAndRethrowToolError(telemetry, payload, error);
+			} catch (caught) {
+				thrown = caught;
+			}
+			expect(thrown).toBe(error);
 			expect(payload.results).toEqual({ success: false, error: 'failed' });
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(USER_CALLED_MCP_TOOL_EVENT, payload);
 		},
