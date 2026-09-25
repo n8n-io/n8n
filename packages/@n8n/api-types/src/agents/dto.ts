@@ -8,7 +8,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
-import { AgentApprovalSchema } from './agent-integration.schema';
+import { AgentApprovalSchema, AgentTeamsSettingsSchema } from './agent-integration.schema';
 import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
 import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
@@ -286,6 +286,16 @@ export class AgentConnectIntegrationDto extends Z.class({
 	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
 	/** Channel actions that need approval before they run. */
 	approval: AgentApprovalSchema.optional(),
+}) {}
+
+/**
+ * The package is downloaded in the setup before the channel is connected, so
+ * the settings it must reflect exist only in the open form. Without them the
+ * first zip would ship the defaults whatever the user chose.
+ */
+export class AgentTeamsPackageDto extends Z.class({
+	credentialId: z.string().min(1).optional(),
+	settings: AgentTeamsSettingsSchema.optional(),
 }) {}
 
 export class AgentDisconnectIntegrationDto extends Z.class({
