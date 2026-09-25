@@ -7,20 +7,13 @@ import {
 	type ExecutionStore,
 	type NewExecutionRecord,
 } from '../execution/execution-store';
-import type { ExecutionStatus } from '../execution/execution.types';
+import { LIVE_EXECUTION_STATUSES, type ExecutionStatus } from '../execution/execution.types';
 
 /**
  * Insert payload accepted by the repository. Derived from the method rather than
  * imported: TypeORM's `QueryDeepPartialEntity` has no root export.
  */
 type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
-
-/**
- * The statuses of an execution that started and has not ended. `queued` also
- * moves on, so it is not this set. The SQL in `refreshLiveStatus` and
- * `isLiveExecutionStatus` repeat this list. Change all three together.
- */
-const LIVE_STATUSES: ExecutionStatus[] = ['running', 'waiting'];
 
 /** TypeORM-backed `ExecutionStore` adapter. */
 export class TypeOrmExecutionStore implements ExecutionStore {
@@ -58,7 +51,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	async finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean> {
 		// A waiting execution can end too: a failure elsewhere cancels its waits.
 		const result = await this.repo.update(
-			{ id, status: In(LIVE_STATUSES) },
+			{ id, status: In([...LIVE_EXECUTION_STATUSES]) },
 			{ status, finishedAt: new Date() },
 		);
 		return result.affected === 1;

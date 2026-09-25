@@ -13,9 +13,14 @@ export type ExecutionStatus =
 	| 'failed'
 	| 'cancelled';
 
-/** Started and not ended. `queued` is not live: it has no step rows yet. */
+/**
+ * Started and not ended. `queued` is not live: it has no step rows yet. The SQL
+ * in `TypeOrmExecutionStore.refreshLiveStatus` repeats this list.
+ */
+export const LIVE_EXECUTION_STATUSES = ['running', 'waiting'] as const;
+
 export function isLiveExecutionStatus(status: ExecutionStatus): boolean {
-	return status === 'running' || status === 'waiting';
+	return (LIVE_EXECUTION_STATUSES as readonly ExecutionStatus[]).includes(status);
 }
 
 /** How an execution was initiated. */
