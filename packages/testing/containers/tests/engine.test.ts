@@ -217,8 +217,8 @@ describe('engineContainerEnv', () => {
 
 describe('assertEngineSupported', () => {
 	// `createN8NStack` calls this for every stack, so the no-op keeps the stacks
-	// that do not run engine 2.0 starting at all.
-	test('accepts any stack that does not run engine 2.0', () => {
+	// that do not run engine v2 starting at all.
+	test('accepts any stack that does not run engine v2', () => {
 		expect(() =>
 			assertEngineSupported({ engine: undefined, mains: 0, isQueueMode: true, usePostgres: false }),
 		).not.toThrow();

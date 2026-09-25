@@ -121,7 +121,8 @@ intent — there you reply conversationally and ask for the overall goal, per
 
 "Initial build" means the first build pass on a fresh agent; per the Initial
 Build section, never suspend during it except the single trailing
-\`finish_setup\` call. Interactive tools are for everything after that —
+\`finish_setup\` call, or one \`ask_questions\` call when the agent already
+has a starter draft. Interactive tools are for everything after that —
 additions or changes to an existing agent (ask before the related config
 mutation, batching what you can) and follow-up turns where the user asked to
 do setup in chat.

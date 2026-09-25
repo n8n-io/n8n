@@ -81,7 +81,7 @@ export interface StackConfig {
 	webhooks?: number;
 	postgres?: boolean;
 	/**
-	 * Runs engine 2.0. `container` starts a data plane container next to the
+	 * Runs engine v2. `container` starts a data plane container next to the
 	 * main; `in-process` hosts it in the main. Needs Postgres (`postgres: true`
 	 * or a service that brings it), one main, no workers, no webhook procs.
 	 */

@@ -95,6 +95,7 @@ async function startServer({ stateDir, mainDirectory, workspaces }) {
 			`export TURBO_CACHE_DIR=${quote(join(workspaces, '.turbo-cache'))}`,
 			`[ -d "$TURBO_CACHE_DIR" ] || cp -r ${quote(join(mainDirectory, '.turbo/cache'))} "$TURBO_CACHE_DIR" 2>/dev/null || mkdir -p "$TURBO_CACHE_DIR"`,
 			`export OPENCODE_SERVER_USERNAME=opencode OPENCODE_SERVER_PASSWORD=${quote(server.password)}`,
+			'export OPENCODE_EXPERIMENTAL_CODE_MODE=true',
 			`export OPENCODE_CONFIG_CONTENT=${quote(
 				JSON.stringify({
 					enabled_providers: ['openrouter'],

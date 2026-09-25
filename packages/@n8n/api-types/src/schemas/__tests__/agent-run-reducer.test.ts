@@ -1191,6 +1191,109 @@ describe('agent-run-reducer', () => {
 			});
 		});
 
+		it('keeps the scope and project an edit fact names, through a later undo', () => {
+			// Review focus 3: a move to the instance must survive a reload and a later undo.
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies short.',
+					scope: 'instance',
+					projectId: null,
+				},
+			});
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'edited',
+				content: 'Keep replies short.',
+				scope: 'instance',
+				projectId: null,
+			});
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+			});
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'undone',
+				content: 'Keep replies short.',
+				scope: 'instance',
+				projectId: null,
+			});
+		});
+
+		it('names a project on a move into one', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies short.',
+					scope: 'project',
+					projectId: 'p-1',
+				},
+			});
+
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'edited',
+				content: 'Keep replies short.',
+				scope: 'project',
+				projectId: 'p-1',
+			});
+		});
+
+		it('clears the project when a later edit moves the row out of it', () => {
+			// The `??` the other fields use is wrong here: `null` must beat the last project.
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies short.',
+					scope: 'project',
+					projectId: 'p-1',
+				},
+			});
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies short.',
+					scope: 'user',
+					projectId: null,
+				},
+			});
+
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'edited',
+				content: 'Keep replies short.',
+				scope: 'user',
+				projectId: null,
+			});
+		});
+
 		it('ignores a card fact for an unknown tool call', () => {
 			const state = stateWithRun('run-1', 'root');
 

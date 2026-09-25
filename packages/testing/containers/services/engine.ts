@@ -1,5 +1,5 @@
 /**
- * How the stack runs engine 2.0.
+ * How the stack runs engine v2.
  *
  * `in-process` enables the `engine-v2` backend module, so the data plane runs
  * inside the main container. `container` starts a separate `n8n engine`
@@ -50,7 +50,7 @@ function mainHostname(projectName: string): string {
 }
 
 /**
- * Refuses a stack that engine 2.0 cannot run on. `createN8NStack` calls this
+ * Refuses a stack that engine v2 cannot run on. `createN8NStack` calls this
  * before it starts a container, so the run fails in a second instead of after
  * a Postgres boot. No-op when `engine` is unset.
  */
@@ -63,16 +63,16 @@ export function assertEngineSupported({
 	if (!engine) return;
 
 	if (isQueueMode) {
-		throw new Error('Engine 2.0 does not support queue mode: use a single main and no workers');
+		throw new Error('Engine v2 does not support queue mode: use a single main and no workers');
 	}
 
 	// The engine reports to a main; without one it would be started as "main 1".
 	if (mains !== 1) {
-		throw new Error(`Engine 2.0 needs exactly one main: got mains: ${mains}`);
+		throw new Error(`Engine v2 needs exactly one main: got mains: ${mains}`);
 	}
 
 	if (!usePostgres) {
-		throw new Error('Engine 2.0 needs Postgres: set `postgres: true` on the stack config');
+		throw new Error('Engine v2 needs Postgres: set `postgres: true` on the stack config');
 	}
 }
 
@@ -87,7 +87,7 @@ function resolveEngineDatabaseUrl(env: Record<string, string>): string {
 	// the URL as the literal `undefined` and fail at engine boot.
 	const missing = CONNECTION_KEYS.filter((key) => !env[key]);
 	if (missing.length > 0) {
-		throw new Error(`Engine 2.0 needs the Postgres connection env: missing ${missing.join(', ')}`);
+		throw new Error(`Engine v2 needs the Postgres connection env: missing ${missing.join(', ')}`);
 	}
 
 	const user = encodeURIComponent(env.DB_POSTGRESDB_USER);
@@ -96,7 +96,7 @@ function resolveEngineDatabaseUrl(env: Record<string, string>): string {
 }
 
 /**
- * Adds the env that turns on engine 2.0 to the main's environment in place.
+ * Adds the env that turns on engine v2 to the main's environment in place.
  *
  * Reads the `DB_POSTGRESDB_*` values the Postgres service already contributed,
  * so the caller never handles credentials. No-op when `engine` is unset.

@@ -20,6 +20,9 @@ export class EngineConfig {
 	 * another process hosts it (`n8n engine`), and this main runs only the
 	 * control plane side. Remote mode needs `N8N_ENGINE_BASE_URL` and
 	 * `N8N_ENGINE_AUTH_SECRET`.
+	 *
+	 * The mode also sets how execution responses reach the control plane:
+	 * in memory for `in-process`, and over Redis for `remote`.
 	 */
 	@Env('N8N_ENGINE_MODE', engineModeSchema)
 	mode: EngineMode = 'in-process';

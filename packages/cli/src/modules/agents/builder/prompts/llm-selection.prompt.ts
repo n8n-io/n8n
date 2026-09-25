@@ -24,7 +24,9 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 ### Rules
 
 - Do not enable \`config.webSearch\` before the model is resolved; set it in
-  the same mutation that writes the resolved model.
+  the same mutation that writes the resolved model. If \`config.webSearch\` is
+  already enabled, leave it enabled unless the user asked to turn it off.
+  An unresolved model is not a reason to disable it.
 - Only OpenAI and Anthropic models support native web search. Use native web
   search by default for those providers only, and only for
   fresh agents or agents with no existing \`config.webSearch\`. Persist

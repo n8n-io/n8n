@@ -10,11 +10,19 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 
-import { VIEWS } from '@/app/constants';
+import { aiPreferenceTargetOf } from '@n8n/api-types';
 
+import { VIEWS } from '@/app/constants';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useContextStore } from '@/features/settings/context/context.store';
+
+import { useThread } from '../instanceAi.store';
 import { resolvePreferenceCard, resolvePreferenceRejection } from '../preferenceCard.utils';
+import { preferenceScopeLabel } from '../preferenceScope.utils';
 import PreferenceEditModal from './PreferenceEditModal.vue';
 
 const props = defineProps<{
@@ -25,12 +33,64 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 const card = computed(() => resolvePreferenceCard(props.toolCall));
 // A refused write renders too, so the person does not depend on the assistant's account.
 const rejection = computed(() => resolvePreferenceRejection(props.toolCall));
 // The call ended before it answered, so the row may or may not exist.
 const isUnconfirmed = computed(() => rejection.value?.reason === 'interrupted');
+
+const projectsStore = useProjectsStore();
+const contextStore = useContextStore();
+const thread = useThread();
+
+/**
+ * The card's fact says where its own last write put the row. A move made on the settings
+ * page or over MCP never reaches that fact, so the row itself is read here and wins. An
+ * unresolved id leaves the fact in place: it is the newest thing this card knows.
+ */
+watch(
+	() => card.value?.preferenceId,
+	(preferenceId) => {
+		if (preferenceId) void contextStore.resolveRows([preferenceId]);
+	},
+	{ immediate: true },
+);
+
+const liveTarget = computed(() => {
+	const preferenceId = card.value?.preferenceId;
+	if (!preferenceId) return null;
+	const row = contextStore.rowById.get(preferenceId);
+	return row ? aiPreferenceTargetOf(row) : null;
+});
+
+/** Where the row is, and who owns it: the row when it is known, else the card's fact. */
+const target = computed(() => {
+	if (!card.value) return null;
+	const live = liveTarget.value;
+	if (!live) {
+		const { scope, projectId, userId } = card.value;
+		return { scope, projectId, userId };
+	}
+	return {
+		scope: live.scope,
+		projectId: live.scope === 'project' ? live.projectId : null,
+		userId: live.scope === 'user' ? live.userId : null,
+	};
+});
+
+const scopeLabel = computed(() =>
+	target.value
+		? preferenceScopeLabel(
+				i18n,
+				target.value.scope,
+				target.value.projectId,
+				projectsStore.myProjects,
+				thread.projectId,
+			)
+		: '',
+);
 const isRemoved = computed(() => card.value?.state === 'undone');
 // Only the latest turn may correct a preference, and a removed one has nothing to correct.
 const isEditable = computed(() => card.value !== null && !props.readOnly && !isRemoved.value);
@@ -66,6 +126,25 @@ watch(
 );
 
 const modalOpen = ref(false);
+
+// Seen, not offered: `Preference confirmation shown` already fired with the write, and a write
+// whose card never reaches the screen still counts there. Only the latest turn reports, so
+// reopening an old thread does not report the same card again.
+const reportedSeen = ref(false);
+watch(
+	[card, () => props.readOnly],
+	([value, readOnly]) => {
+		if (reportedSeen.value || !value || readOnly) return;
+		reportedSeen.value = true;
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD, {
+			// What the card shows, which is the row when it is known. Reporting the fact would
+			// name a scope the person on the screen is not looking at.
+			scope_type: target.value?.scope ?? value.scope,
+			state: value.state,
+		});
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -110,10 +189,10 @@ const modalOpen = ref(false);
 
 				<div v-else :class="$style.scope">
 					<N8nIcon icon="layers" size="small" />
-					<N8nText size="small" color="text-light">
+					<N8nText size="small" color="text-light" data-test-id="instance-ai-preference-card-scope">
 						{{
 							i18n.baseText('instanceAi.preferenceCard.appliesTo', {
-								interpolate: { scope: i18n.baseText('settings.context.preferences.scope.user') },
+								interpolate: { scope: scopeLabel },
 							})
 						}}
 					</N8nText>
@@ -144,10 +223,13 @@ const modalOpen = ref(false);
 		</N8nAnimatedCollapsibleContent>
 
 		<PreferenceEditModal
-			v-if="card && isEditable"
+			v-if="card && isEditable && target"
 			v-model:open="modalOpen"
 			:preference-id="card.preferenceId"
 			:content="card.content"
+			:scope="target.scope"
+			:project-id="target.projectId"
+			:user-id="target.userId"
 			:run-id="props.runId"
 			:tool-call-id="props.toolCall.toolCallId"
 		/>
