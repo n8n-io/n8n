@@ -64,6 +64,11 @@ are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
 
 ## Essential Commands
 
+For full-repo lint and typecheck, use `pnpm agent:lint` and
+`pnpm agent:typecheck`. They save full logs and return compact results.
+For focused tests, use `pnpm agent:test` or `pnpm agent:playwright`.
+Run each command with `--help` for its package, script, and file options.
+
 ### Fresh checkout / agent setup
 
 For a fresh checkout (cat-bot, a new hire, any agent verifying the repo
