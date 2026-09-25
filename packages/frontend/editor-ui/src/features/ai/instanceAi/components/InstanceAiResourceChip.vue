@@ -1,9 +1,15 @@
 <script lang="ts" setup>
-import { N8nIcon } from '@n8n/design-system';
-import { useTemplateRef } from 'vue';
+import { N8nIcon, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { computed, useTemplateRef } from 'vue';
+import AssistantMentionBreadcrumbs from '@/features/ai/assistant-at-mentions/AssistantMentionBreadcrumbs.vue';
+
+// The tooltip trigger is the chip root itself (`as-child`), which makes this
+// component's root a fragment. Attrs are bound to the chip root by hand.
+defineOptions({ inheritAttrs: false });
 
 const props = defineProps<{
 	label: string;
+	breadcrumbs?: readonly string[];
 	icon?: string;
 	trailingIcon?: string;
 	removable?: boolean;
@@ -15,6 +21,8 @@ const props = defineProps<{
 const emit = defineEmits<{ remove: [] }>();
 const rootRef = useTemplateRef<HTMLElement>('root');
 
+const tooltipSegments = computed(() => props.breadcrumbs ?? [props.label]);
+
 defineExpose({ focus: () => rootRef.value?.focus() });
 
 function handleRemoveKeydown(event: KeyboardEvent): void {
@@ -23,32 +31,40 @@ function handleRemoveKeydown(event: KeyboardEvent): void {
 </script>
 
 <template>
-	<div ref="root" :class="$style.resourceChip" :data-test-id="props.testId">
-		<span v-if="props.removable || $slots.icon || props.icon" :class="$style.leading">
-			<slot name="icon">
-				<N8nIcon v-if="props.icon" :icon="props.icon" size="small" />
-			</slot>
-		</span>
-		<span :class="$style.label" :title="props.label">{{ props.label }}</span>
-		<N8nIcon v-if="props.trailingIcon" :icon="props.trailingIcon" size="xsmall" />
-		<!-- Trailing on touch devices. On pointer devices it is layered over the
-		leading icon instead: icon at rest, X on hover (see the styles). -->
-		<button
-			v-if="props.removable"
-			type="button"
-			:class="$style.remove"
-			:title="props.removeLabel"
-			:aria-label="props.removeLabel"
-			:data-test-id="props.removeTestId"
-			@keydown="handleRemoveKeydown"
-			@click.stop="emit('remove')"
-		>
-			<N8nIcon icon="x" size="large" />
-		</button>
-	</div>
+	<N8nTooltip as-child :show-after="TOOLTIP_DELAY_MS" :content-class="$style.tooltip">
+		<div ref="root" v-bind="$attrs" :class="$style.resourceChip" :data-test-id="props.testId">
+			<span v-if="props.removable || $slots.icon || props.icon" :class="$style.leading">
+				<slot name="icon">
+					<N8nIcon v-if="props.icon" :icon="props.icon" size="small" />
+				</slot>
+			</span>
+			<span :class="$style.label">{{ props.label }}</span>
+			<N8nIcon v-if="props.trailingIcon" :icon="props.trailingIcon" size="xsmall" />
+			<!-- Always show `x` button on touch devices -->
+			<button
+				v-if="props.removable"
+				type="button"
+				:class="$style.remove"
+				:aria-label="props.removeLabel"
+				:data-test-id="props.removeTestId"
+				@keydown="handleRemoveKeydown"
+				@click.stop="emit('remove')"
+			>
+				<N8nIcon icon="x" size="large" />
+			</button>
+		</div>
+		<template #content>
+			<AssistantMentionBreadcrumbs :segments="tooltipSegments" wrap />
+		</template>
+	</N8nTooltip>
 </template>
 
 <style module lang="scss">
+:global(.n8n-tooltip).tooltip {
+	max-width: 320px;
+	--breadcrumbs--color--ancestor: var(--color--neutral-500);
+}
+
 .resourceChip {
 	position: relative;
 	display: inline-flex;

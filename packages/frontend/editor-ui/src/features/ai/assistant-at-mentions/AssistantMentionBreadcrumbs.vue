@@ -8,8 +8,13 @@ const props = withDefaults(
 		segments: readonly string[];
 		/** Set on the recursive parent chain so its last segment reads as context too. */
 		ancestor?: boolean;
+		/**
+		 * Flow the full path as wrapping text instead of trimming it to one line.
+		 * For surfaces that exist to show the whole path, like the chip tooltip.
+		 */
+		wrap?: boolean;
 	}>(),
-	{ ancestor: false },
+	{ ancestor: false, wrap: false },
 );
 
 const parents = computed(() => props.segments.slice(0, -1));
@@ -17,7 +22,7 @@ const current = computed(() => props.segments[props.segments.length - 1] ?? '');
 </script>
 
 <template>
-	<span :class="$style.breadcrumbs">
+	<span :class="[$style.breadcrumbs, { [$style.wrap]: wrap }]">
 		<span v-if="parents.length > 0" :class="$style.parents">
 			<AssistantMentionBreadcrumbs :segments="parents" ancestor />
 			<!-- Spaces are kept for the accessible name; the flex layout trims them. -->
@@ -34,6 +39,23 @@ const current = computed(() => props.segments[props.segments.length - 1] ?? '');
 .breadcrumbs {
 	display: flex;
 	min-width: 0;
+}
+
+// Wrap mode: everything, including the recursive ancestor rows, becomes inline
+// text so the path breaks across lines instead of trimming. The separator's
+// kept spaces provide the spacing here, so its flex-layout margin goes.
+.wrap,
+.wrap .breadcrumbs,
+.wrap .parents,
+.wrap .segment,
+.wrap .separator {
+	display: inline;
+	overflow: visible;
+	white-space: normal;
+}
+
+.wrap .separator {
+	margin: 0;
 }
 
 .parents {
@@ -59,6 +81,8 @@ const current = computed(() => props.segments[props.segments.length - 1] ?? '');
 }
 
 .breadcrumbAncestor {
-	color: var(--color--text--tint-1);
+	// Hook for containers on a dark surface (the chip tooltip) to keep ancestors
+	// readable yet dimmer than the current segment.
+	color: var(--breadcrumbs--color--ancestor, var(--color--text--tint-1));
 }
 </style>
