@@ -126,9 +126,7 @@ properties:
           description: Import outcome for this package workflow.
   removedWorkflows:
     type: array
-    description: >
-      Workflows the target had that the package does not, removed by
-      `folderConflictPolicy=overwrite`. Empty under every other policy.
+    description: Workflows removed from the target during this import.
     items:
       type: object
       required:
