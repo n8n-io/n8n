@@ -3,7 +3,11 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
-import { N8N_NODES_API_VERSION, type PublicInstalledPackage } from 'n8n-workflow';
+import {
+	N8N_NODES_API_VERSION,
+	parseNodesApiLevel,
+	type PublicInstalledPackage,
+} from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
@@ -51,6 +55,11 @@ const execMock: typeof execFile = ((...args) => {
 }) as typeof execFile;
 
 vi.mocked(execFile).mockImplementation(execMock);
+
+// One minor above whatever this runtime supports, so the guard tests state the
+// boundary instead of pinning the constant.
+const [supportedMajor, supportedMinor] = parseNodesApiLevel(N8N_NODES_API_VERSION)!;
+const oneMinorAboveSupported = `${supportedMajor}.${supportedMinor + 1}`;
 
 describe('CommunityPackagesService', () => {
 	const license = mock<License>();
@@ -661,7 +670,7 @@ describe('CommunityPackagesService', () => {
 			test('should reject the update when the package requires a newer node API version', async () => {
 				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
-				await expect(updateToIncompatible(N8N_NODES_API_VERSION + 1)).rejects.toThrow(
+				await expect(updateToIncompatible(oneMinorAboveSupported)).rejects.toThrow(
 					"This community node isn't compatible with your version of n8n. Update n8n to use it.",
 				);
 
@@ -673,7 +682,8 @@ describe('CommunityPackagesService', () => {
 			test('should reject the update when the declared node API version is malformed', async () => {
 				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
-				await expect(updateToIncompatible('3')).rejects.toThrow('invalid n8n node API version');
+				// A minor level must be a string: `3.10` as a number parses as `3.1`.
+				await expect(updateToIncompatible(3.1)).rejects.toThrow('invalid n8n node API version');
 
 				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
 				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
@@ -1424,7 +1434,8 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 			vi.mocked(readFile).mockResolvedValue(
-				JSON.stringify({ name: 'package-1', version: '1.0.0', n8n: { n8nNodesApiVersion: '3' } }),
+				// A minor level must be a string: `3.10` as a number parses as `3.1`.
+				JSON.stringify({ name: 'package-1', version: '1.0.0', n8n: { n8nNodesApiVersion: 3.1 } }),
 			);
 
 			await communityPackagesService.checkForMissingPackages();

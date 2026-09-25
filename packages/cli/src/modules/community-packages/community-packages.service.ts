@@ -311,7 +311,7 @@ export class CommunityPackagesService {
 				? `This community node declares an invalid n8n node API version (${JSON.stringify(check.declared)}). Install a version of the package with valid metadata or contact the package author.`
 				: "This community node isn't compatible with your version of n8n. Update n8n to use it.",
 			{
-				requiredNodesApiVersion: isMalformed ? null : Number(check.declared),
+				requiredNodesApiVersion: isMalformed ? null : String(check.declared),
 				supportedNodesApiVersion: N8N_NODES_API_VERSION,
 			},
 		);
