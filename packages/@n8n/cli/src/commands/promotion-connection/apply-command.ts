@@ -3,12 +3,18 @@ import type { ApplyPackageResult, PromotionBindingPreflight } from '../../client
 
 type ReportFlags = { quiet?: boolean; format?: string; json?: boolean; jq?: string };
 
+/** The Apply result that stopped for binding setup. */
+type BlockedResult = Extract<ApplyPackageResult, { status: 'blocked' }>;
+
+/** Builds the command that resumes a blocked Apply. Shapes differ per entry point. */
+type ContinueCommand = (result: BlockedResult) => string;
+
 /** Shared result handling for Apply and Continue, which return the same statuses. */
 export abstract class PromotionApplyCommand extends BaseCommand {
 	protected reportApplyResult(
 		result: ApplyPackageResult,
 		flags: ReportFlags,
-		connectionId: string,
+		continueCommand: ContinueCommand,
 	): void {
 		// `succeed()` ignores --jq, so JSON output for every status goes through `output()`.
 		if (this.isJsonMode(flags)) {
@@ -31,7 +37,7 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		if (!flags.quiet) {
 			this.logToStderr(
 				result.status === 'blocked'
-					? blockedMessage(result, result.preflight, connectionId)
+					? blockedMessage(result, result.preflight, continueCommand)
 					: sourceChangedMessage(result),
 			);
 		}
@@ -53,9 +59,9 @@ function sourceChangedMessage(result: ApplyPackageResult): string {
 }
 
 function blockedMessage(
-	result: ApplyPackageResult,
+	result: BlockedResult,
 	preflight: PromotionBindingPreflight,
-	connectionId: string,
+	continueCommand: ContinueCommand,
 ): string {
 	const bindings = (kind: 'credential' | 'variable') =>
 		preflight.missingBindings.filter((binding) => binding.kind === kind).length;
@@ -68,11 +74,35 @@ function blockedMessage(
 		`  Access requirements: ${preflight.accessRequirements.length}`,
 		`  Conflicts:           ${preflight.conflicts.length}`,
 		'Run with --json for the details. After you resolve them, run:',
-		`  n8n-cli promotion-connection apply-continue ${shellQuote(connectionId)}` +
-			` --expected-config-id=${shellQuote(result.configId)}` +
-			` --expected-branch=${shellQuote(result.git.branchName)}` +
-			` --expected-commit-sha=${shellQuote(result.git.commitSha)}`,
+		`  ${continueCommand(result)}`,
 	].join('\n');
+}
+
+/** The `--expected-*` flags that pin a Continue run to the source a blocked Apply reported. */
+function expectedSourceArgs(result: BlockedResult): string {
+	return (
+		` --expected-config-id=${shellQuote(result.configId)}` +
+		` --expected-branch=${shellQuote(result.git.branchName)}` +
+		` --expected-commit-sha=${shellQuote(result.git.commitSha)}`
+	);
+}
+
+/** The command that resumes a blocked whole-connection Apply. */
+export function connectionContinueCommand(connectionId: string): ContinueCommand {
+	return (result) =>
+		`n8n-cli promotion-connection apply-continue ${shellQuote(connectionId)}` +
+		expectedSourceArgs(result);
+}
+
+/** The command that resumes a blocked selection Apply. It resends the same workflow ids. */
+export function selectionContinueCommand(
+	projectId: string,
+	workflowIds: string[],
+): ContinueCommand {
+	return (result) =>
+		`n8n-cli promotion-connection apply-selection-continue ${shellQuote(projectId)}` +
+		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
+		expectedSourceArgs(result);
 }
 
 /** Branch names can contain shell metacharacters such as `;` and `$(`, so the shell must not interpret them. */

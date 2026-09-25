@@ -115,6 +115,38 @@ describe('N8nClient packages', () => {
 			expect(typeof init.body === 'string' ? JSON.parse(init.body) : init.body).toEqual(body);
 		});
 
+		it.each([
+			{
+				title: 'applies a selection with only the workflow ids by default',
+				send: async () => await client.applyProjectSelection('proj-1', ['wf-1', 'wf-2']),
+				path: 'apply',
+				body: { workflowIds: ['wf-1', 'wf-2'] },
+			},
+			{
+				title: 'pins the reviewed source when applying a selection',
+				send: async () => await client.applyProjectSelection('proj-1', ['wf-1'], expectedSource),
+				path: 'apply',
+				body: { workflowIds: ['wf-1'], expectedSource },
+			},
+			{
+				title: 'continues a selection apply against the reviewed source',
+				send: async () =>
+					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource),
+				path: 'apply/continue',
+				body: { workflowIds: ['wf-1'], expectedSource },
+			},
+		])('$title', async ({ send, path, body }) => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'source-changed' }));
+
+			await send();
+
+			expect(requestLines(fetchMock)).toEqual([
+				`POST https://n8n.example.com/api/v1/promotions/projects/proj-1/${path}`,
+			]);
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(JSON.parse(init.body as string)).toEqual(body);
+		});
+
 		describe('list changes', () => {
 			beforeEach(() => {
 				fetchMock.mockResolvedValue(jsonResponse(200, { commitSha: null, changes: [] }));
