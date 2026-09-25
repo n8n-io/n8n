@@ -2306,6 +2306,8 @@ function createWorkflowAdapterForTests(overrides?: {
 	// Mirrors `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES`, which defaults to true in
 	// production. Writes are blocked while it is off, so this harness defaults to on.
 	allowSendingParameterValues?: boolean;
+	// The effective value for the run, passed to `createContext`. Overrides the env value.
+	runAllowSendingParameterValues?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2479,6 +2481,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		projectId: boundProjectId,
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
 		setupPanelVariant: overrides?.setupPanelVariant,
+		allowSendingParameterValues: overrides?.runAllowSendingParameterValues,
 	});
 	const adapter = context.workflowService;
 
@@ -4133,6 +4136,65 @@ describe('createWorkflowAdapter', () => {
 			await expect(adapter.unarchive('wf-1')).rejects.toThrow(
 				'Cannot modify workflows on a protected instance',
 			);
+		});
+	});
+
+	describe('parameter values hidden for the run', () => {
+		const workflowWithParameters = {
+			id: 'wf-1',
+			name: 'Workflow',
+			nodes: [
+				{
+					id: 'http-id',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0],
+					parameters: { url: 'https://example.com' },
+				},
+			],
+			connections: {},
+			settings: {},
+		};
+
+		it('redacts parameters on reads when the run hides them', async () => {
+			const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests({
+				runAllowSendingParameterValues: false,
+			});
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(workflowWithParameters);
+
+			const result = await adapter.getAsWorkflowJSON('wf-1');
+
+			expect(result.nodes[0].parameters).toEqual({});
+		});
+
+		it('includes parameters on reads when the run allows them, even if the env value is off', async () => {
+			const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests({
+				allowSendingParameterValues: false,
+				runAllowSendingParameterValues: true,
+			});
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(workflowWithParameters);
+
+			const result = await adapter.getAsWorkflowJSON('wf-1');
+
+			expect(result.nodes[0].parameters).toEqual({ url: 'https://example.com' });
+		});
+
+		it('blocks workflow writes without writing when the run hides parameters', async () => {
+			const { adapter, mockWorkflowRepository, mockWorkflowService, mockWorkflowHistoryService } =
+				createWorkflowAdapterForTests({ runAllowSendingParameterValues: false });
+
+			await expect(adapter.createFromWorkflowJSON(minimalWorkflowJSON)).rejects.toThrow(UserError);
+			await expect(adapter.updateFromWorkflowJSON('wf-1', minimalWorkflowJSON)).rejects.toThrow(
+				UserError,
+			);
+			await expect(adapter.restoreVersion?.('wf-1', 'v-1')).rejects.toThrow(UserError);
+
+			expect(mockWorkflowRepository.save).not.toHaveBeenCalled();
+			expect(mockWorkflowRepository.createContent).not.toHaveBeenCalled();
+			expect(mockWorkflowRepository.runInTransaction).not.toHaveBeenCalled();
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+			expect(mockWorkflowHistoryService.getVersion).not.toHaveBeenCalled();
 		});
 	});
 

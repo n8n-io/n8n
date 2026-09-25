@@ -194,6 +194,72 @@ describe('materializeWorkflowSource', () => {
 		expect(writeFile).not.toHaveBeenCalled();
 	});
 
+	describe('parameterValuesIncluded', () => {
+		const filePath = 'src/workflows/w.workflow.ts';
+		const saved = { versionId: 'v1', checksum: 'c1' };
+		const materialize = async (context: InstanceAiContext) =>
+			await materializeWorkflowSource(context, {
+				workflowId: 'wf1',
+				name: 'W',
+				code: CODE_V1,
+				saved,
+			});
+
+		it('records false when parameter values are hidden', async () => {
+			const context = createContext(new Map());
+			context.allowSendingParameterValues = false;
+
+			await materialize(context);
+
+			await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+				parameterValuesIncluded: false,
+			});
+		});
+
+		it('updates the binding of a current file to true after values are allowed', async () => {
+			const context = createContext(new Map());
+			context.allowSendingParameterValues = false;
+			await materialize(context);
+
+			context.allowSendingParameterValues = true;
+			const result = await materialize(context);
+
+			expect(result.status).toBe('current');
+			await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+				parameterValuesIncluded: true,
+			});
+		});
+
+		it('does not rewrite the binding of a current file when the value is unchanged', async () => {
+			// Bindings persist through thread metadata, so count the patches.
+			let metadata: Record<string, unknown> = {};
+			const patchThread = vi.fn(
+				async (args: {
+					update: (current: { metadata: Record<string, unknown> }) => {
+						metadata?: Record<string, unknown>;
+					} | null;
+				}) => {
+					metadata = args.update({ metadata })?.metadata ?? metadata;
+					return await Promise.resolve({ id: 'thread-1', metadata });
+				},
+			);
+			const context = createContext(new Map());
+			context.threadId = 'thread-1';
+			context.threadMemory = {
+				getThread: async () => await Promise.resolve({ id: 'thread-1', metadata }),
+				patchThread,
+			};
+			context.allowSendingParameterValues = false;
+			await materialize(context);
+			expect(patchThread).toHaveBeenCalledTimes(1);
+
+			const result = await materialize(context);
+
+			expect(result.status).toBe('current');
+			expect(patchThread).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	it('regenerates the file when the saved workflow changed and the file has no local edits', async () => {
 		const files = new Map<string, string>();
 		const context = createContext(files);

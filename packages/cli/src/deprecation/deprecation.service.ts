@@ -149,7 +149,7 @@ export class DeprecationService {
 			message:
 				'This variable is deprecated and will be removed in v4. While it is set to `false`, n8n Assistant cannot create or edit workflows.',
 			checkValue: (value?: string) =>
-				value !== undefined && !['true', '1'].includes(value.toLowerCase()),
+				value !== undefined && ['false', '0'].includes(value.toLowerCase()),
 		},
 		{
 			envVar: 'EXECUTIONS_PROCESS',

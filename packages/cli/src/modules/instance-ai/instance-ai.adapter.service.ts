@@ -1068,7 +1068,7 @@ export class InstanceAiAdapterService {
 		 */
 		const assertParameterValuesAvailable = () => {
 			if (redactParameters) {
-				throw new Error(
+				throw new UserError(
 					'Cannot create or edit workflows while parameter values are hidden from n8n Assistant. An instance owner or admin can turn on "Send actual data values" in Settings > AI usage.',
 				);
 			}

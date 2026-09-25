@@ -80,6 +80,7 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		ai: { allowSendingParameterValues: true },
 		aiAssistant: { baseUrl: '' },
 		aiGateway: { enabled: false },
 		queue: { workerPool: { enabled: false } },
@@ -832,6 +833,31 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('ai.allowSendingParameterValues setting', () => {
+		afterEach(() => {
+			globalConfig.ai.allowSendingParameterValues = true;
+		});
+
+		it('should use the effective value from AiUsageService', async () => {
+			const { service } = createMockService();
+			aiUsageService.isParameterValueSharingAllowed.mockResolvedValueOnce(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowSendingParameterValues).toBe(false);
+		});
+
+		it('should fall back to the env value when the stored value cannot be read', async () => {
+			const { service } = createMockService();
+			globalConfig.ai.allowSendingParameterValues = false;
+			aiUsageService.isParameterValueSharingAllowed.mockRejectedValueOnce(new Error('DB error'));
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowSendingParameterValues).toBe(false);
 		});
 	});
 

@@ -1349,7 +1349,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
-		service.aiUsageService = { isParameterValueSharingAllowed: vi.fn(async () => true) };
+		// Vary the sharing setting across rows. It does not depend on the build mode.
+		const allowSendingParameterValues = !enabled;
+		service.aiUsageService = {
+			isParameterValueSharingAllowed: vi.fn(async () => allowSendingParameterValues),
+		};
 		service.creditService = {
 			claimRunUsage: vi.fn(),
 			ensureQuotaLockApplied: vi.fn(async () => {}),
@@ -1379,6 +1383,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ folderExplorationEnabled: true }),
+		);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ allowSendingParameterValues }),
 		);
 	});
 });
