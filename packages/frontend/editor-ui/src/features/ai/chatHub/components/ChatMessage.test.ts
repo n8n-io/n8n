@@ -207,4 +207,66 @@ describe('ChatMessage', () => {
 			expect(container.textContent).not.toContain('[^missing]');
 		});
 	});
+
+	it('renders a complete card chunk and skips an incomplete one', () => {
+		const card = {
+			type: 'metric' as const,
+			title: 'Leads this week',
+			value: '12',
+			label: 'new leads',
+		};
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
+			content: [
+				{ type: 'text', content: 'Here you go.' },
+				{ type: 'card', content: '<command:card>{', card: null, isIncomplete: true },
+				{ type: 'card', content: JSON.stringify(card), card, isIncomplete: false },
+			],
+		});
+
+		const { getAllByTestId, getByText } = renderComponent({
+			props: {
+				message,
+				compact: false,
+				isEditing: false,
+				hasSessionStreaming: false,
+				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+			},
+			pinia,
+		});
+
+		expect(getByText('Here you go.')).toBeInTheDocument();
+		expect(getAllByTestId('result-card')).toHaveLength(1);
+		expect(getByText('Leads this week')).toBeInTheDocument();
+	});
+
+	it('keeps a successful message visible when its only content is a complete card', () => {
+		const card = {
+			type: 'metric' as const,
+			title: 'Leads this week',
+			value: '12',
+			label: 'new leads',
+		};
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
+			status: 'success',
+			content: [{ type: 'card', content: JSON.stringify(card), card, isIncomplete: false }],
+		});
+
+		const { getByTestId } = renderComponent({
+			props: {
+				message,
+				compact: false,
+				isEditing: false,
+				hasSessionStreaming: false,
+				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+			},
+			pinia,
+		});
+
+		expect(getByTestId(`chat-message-${message.id}`)).toBeInTheDocument();
+		expect(getByTestId('result-card')).toBeInTheDocument();
+	});
 });

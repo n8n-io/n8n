@@ -123,6 +123,10 @@ const messageChunks = computed(() =>
 			return [chunk];
 		}
 
+		if (chunk.type === 'card') {
+			return chunk.isIncomplete || !chunk.card ? [] : [chunk];
+		}
+
 		if (chunk.type === 'artifact-create' || chunk.type === 'artifact-edit') {
 			const prev = arr[index - 1];
 			return prev?.type === chunk.type && prev.command.title === chunk.command.title ? [] : [chunk]; // dedupe command
@@ -191,7 +195,9 @@ const hideMessage = computed(() => {
 	return (
 		message.status === 'success' &&
 		text.value === '' &&
-		!message.content.some((c) => c.type === 'with-buttons')
+		!message.content.some(
+			(c) => c.type === 'with-buttons' || (c.type === 'card' && !c.isIncomplete && c.card !== null),
+		)
 	);
 });
 
@@ -423,6 +429,7 @@ onBeforeMount(() => {
 							ref="markdownChunk"
 							:key="index"
 							:source="chunk"
+							:message="message"
 							:is-buttons-disabled="message.status !== 'waiting'"
 							@open-artifact="emit('openArtifact', $event)"
 						/>

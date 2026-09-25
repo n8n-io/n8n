@@ -3,15 +3,20 @@ import VueMarkdown from 'vue-markdown-render';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
 import { ref } from 'vue';
 import type { ChatMessageContentChunk } from '@n8n/api-types';
+import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
 import ChatButtons from './ChatButtons.vue';
+import ChatResultCard from './ChatResultCard.vue';
 
 const {
 	source,
+	message = undefined,
 	singlePre = false,
 	isButtonsDisabled = false,
 	footnoteStyle = 'pill',
 } = defineProps<{
 	source: ChatMessageContentChunk;
+	/** Needed only for `card` chunks (icon, footer and execution link) */
+	message?: ChatMessage;
 	singlePre?: boolean;
 	isButtonsDisabled?: boolean;
 	footnoteStyle?: 'pill' | 'normal';
@@ -77,6 +82,12 @@ defineExpose({
 		/>
 		<ChatButtons :buttons="source.buttons" :is-disabled="isButtonsDisabled" />
 	</div>
+	<ChatResultCard
+		v-else-if="source.type === 'card' && !source.isIncomplete && source.card && message"
+		:card="source.card"
+		:message="message"
+	/>
+	<div v-else-if="source.type === 'card'" />
 	<div v-else-if="source.type === 'hidden'" />
 	<button
 		v-else-if="source.type === 'artifact-edit' && !source.isIncomplete"
