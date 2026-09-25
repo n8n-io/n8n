@@ -6,6 +6,18 @@ import { isSafeObjectProperty, jsonParse, NodeOperationError } from 'n8n-workflo
 type NodeContext = { getNode: () => INode };
 
 /**
+ * `isRecord` accepts any non-array object, a Date or a class instance included. An expression can
+ * resolve to either, and neither has enumerable own keys, so the merge would add nothing and the
+ * field would silently do nothing. Only an object literal carries model parameters.
+ */
+function isObjectLiteral(value: unknown): value is Record<string, unknown> {
+	if (!isRecord(value)) return false;
+
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
+}
+
+/**
  * Reads the Extra Body field of a model node.
  *
  * Shared so every model node rejects the same shapes with the same wording. The result is meant
@@ -32,7 +44,7 @@ export function parseExtraBody(
 		}
 	}
 
-	if (!isRecord(extraBody)) {
+	if (!isObjectLiteral(extraBody)) {
 		throw new NodeOperationError(
 			ctx.getNode(),
 			'The value in the "Extra Body" field must be a JSON object',
