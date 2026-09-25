@@ -24,7 +24,7 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			description:
 				'The AI Transform node is deprecated. Its generated code runs as a Code node instead.',
 			category: BreakingChangeCategory.workflow,
-			impact: 'capabilityRemoved',
+			impact: 'executionsFail',
 		};
 	}
 

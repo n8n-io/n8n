@@ -22,7 +22,7 @@ export class PreExecuteErrorCreatesExecutionRule implements IBreakingChangeInsta
 			description:
 				'The N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION environment variable is removed. A throw from workflow.preExecute never creates an execution record.',
 			category: BreakingChangeCategory.instance,
-			impact: 'behaviorChanges',
+			impact: 'capabilityRemoved',
 		};
 	}
 
