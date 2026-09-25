@@ -1,3 +1,11 @@
+## [1.123.82](https://github.com/n8n-io/n8n/compare/n8n@1.123.81...n8n@1.123.82) (2026-09-25)
+
+
+### Bug Fixes
+
+* bump adm-zip to 0.6.1 ([de771f0](https://github.com/n8n-io/n8n/commit/de771f0aa433ea66820d4cc02e8a426d7e7573df))
+
+
 ## [1.123.81](https://github.com/n8n-io/n8n/compare/n8n@1.123.80...n8n@1.123.81) (2026-09-17)
 
 
