@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
 	N8nActionDropdown,
@@ -32,6 +32,7 @@ useDocumentTitle().set(i18n.baseText('instanceAi.sidebar.chatHistory'));
 const { history, search, listRef, sentinelRef, loadMore } = useInstanceAiThreadHistory();
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
+const renameInput = ref<HTMLInputElement | null>(null);
 
 const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	{ id: 'rename', label: i18n.baseText('instanceAi.sidebar.renameThread'), icon: 'pencil' },
@@ -41,13 +42,15 @@ const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 function startRename(thread: InstanceAiThreadSummary) {
 	editingThreadId.value = thread.id;
 	editingTitle.value = thread.title;
+	// Focus once here: a function ref runs on every render and re-selects the text on each key.
+	void nextTick(() => {
+		renameInput.value?.focus();
+		renameInput.value?.select();
+	});
 }
 
-function focusRenameInput(el: unknown) {
-	if (el instanceof HTMLInputElement) {
-		el.focus();
-		el.select();
-	}
+function setRenameInput(element: unknown) {
+	renameInput.value = element instanceof HTMLInputElement ? element : null;
 }
 
 async function confirmRename(thread: InstanceAiThreadSummary) {
@@ -111,7 +114,7 @@ async function handleThreadAction(action: string, thread: InstanceAiThreadSummar
 				>
 					<input
 						v-if="editingThreadId === thread.id"
-						:ref="focusRenameInput"
+						:ref="setRenameInput"
 						v-model="editingTitle"
 						:class="$style.renameInput"
 						type="text"
