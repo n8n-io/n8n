@@ -218,7 +218,9 @@ describe('Community packages (Public API)', () => {
 				.send({ name: mockPackageName() });
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('already installed');
+			expect(response.body).toStrictEqual({
+				message: `Package "${parsedNpmPackageName.packageName}" is already installed`,
+			});
 		});
 
 		it('should return 200 when package is installed successfully', async () => {
@@ -403,6 +405,26 @@ describe('Community packages (Public API)', () => {
 			expect(response.status).toBe(404);
 			expect(response.body.message).toBeDefined();
 		});
+
+		it('should pass a decoded scoped package name to the parser', async () => {
+			const name = '@author/n8n-nodes-foo';
+			const pkg = mockPackage({ packageName: name });
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				packageName: name,
+				rawString: name,
+				scope: '@author',
+			});
+			communityPackagesService.findInstalledPackage.mockResolvedValue(pkg);
+			communityPackagesService.updatePackage.mockResolvedValue(pkg);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/community-packages/${encodeURIComponent(name)}`)
+				.send({});
+
+			expect(response.status).toBe(200);
+			expect(communityPackagesService.parseNpmPackageName).toHaveBeenCalledWith(name);
+		});
 	});
 
 	describe('DELETE /community-packages/:name', () => {
@@ -467,6 +489,23 @@ describe('Community packages (Public API)', () => {
 
 			expect(response.status).toBe(204);
 			expect(communityPackagesService.removePackage).toHaveBeenCalledTimes(1);
+		});
+
+		it('should pass a decoded scoped package name to the parser', async () => {
+			const name = '@author/n8n-nodes-foo';
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				packageName: name,
+				rawString: name,
+				scope: '@author',
+			});
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/community-packages/${encodeURIComponent(name)}`);
+
+			expect(response.status).toBe(404);
+			expect(communityPackagesService.parseNpmPackageName).toHaveBeenCalledWith(name);
 		});
 	});
 });
