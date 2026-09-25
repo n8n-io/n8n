@@ -46,6 +46,8 @@ const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
 const assistantMentionTriggerSource = z.enum(['typed', 'button']);
+/** Cap on the query text the empty-search event carries; the emitter cuts to it after redaction. */
+export const ASSISTANT_MENTION_QUERY_TEXT_MAX_LENGTH = 100;
 // The composer has no thread on the empty view until the first send, so every
 // mention event carries an explicit null there rather than omitting the column.
 const assistantMentionThreadId = z
@@ -511,7 +513,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_DISMISSED_AI_ASSISTANT_MENTION_PICKER: {
 		name: 'User dismissed AI Assistant mention picker',
 		description:
-			'The n8n Assistant mention picker closed without a selection. The list properties describe what was on screen at that moment: a search with result_count 0 is a resource the user could not find, a non-zero ambiguous_result_count is a list the user could not tell apart. Carries interaction metadata but no query text or resource names.',
+			'The n8n Assistant mention picker closed without a selection. The list properties describe what was on screen at that moment: a search with result_count 0 is a resource the user could not find, a non-zero ambiguous_result_count is a list the user could not tell apart. Carries interaction metadata but no query text or resource names; the query text of an empty search is on "User searched AI Assistant mentions without results".',
 		properties: z.object({
 			thread_id: assistantMentionThreadId,
 			source: assistantMentionTriggerSource,
@@ -541,6 +543,34 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe('How many times the user opened a workflow or group sub-menu during this open'),
 		}),
 	},
+	USER_SEARCHED_AI_ASSISTANT_MENTIONS_WITHOUT_RESULTS: {
+		name: 'User searched AI Assistant mentions without results',
+		description:
+			'The n8n Assistant mention picker showed its empty state for a search query the user let settle for about a second, or closed the picker on. Fires once per distinct settled query within one picker open, so typing straight through a prefix chain like "S", "Sl", "Slack" reports "Slack" once. The one mention event that carries the query text, to learn what users try to mention and cannot.',
+		properties: z.object({
+			thread_id: assistantMentionThreadId,
+			source: assistantMentionTriggerSource,
+			query: z
+				.string()
+				.describe(
+					'The search text as typed, trimmed, with secrets and PII redacted and cut to 100 characters',
+				),
+			query_length: z.number().int().nonnegative().describe('Length of the full, uncut query'),
+			matched_node_type: z
+				.string()
+				.nullable()
+				.describe(
+					'Node type whose display name equals the query, e.g. n8n-nodes-base.slack for "slack"; null otherwise. A match means the user was likely reaching for a service or node type rather than a node they had named',
+				),
+			artifact_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe(
+					'Workflow tabs open in the thread at the time. Nodes and groups are only searchable inside these, so 0 means no node search could have matched',
+				),
+		}),
+	},
 	USER_SELECTED_AI_ASSISTANT_MENTION: {
 		name: 'User selected AI Assistant mention',
 		description:
@@ -557,6 +587,12 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe('One-based position in the current search list, browse section, or submenu'),
 			query_length: z.number().int().nonnegative(),
 			already_artifact: z.boolean(),
+			artifact_origin: z
+				.enum(['built', 'attached', 'mentioned'])
+				.nullable()
+				.describe(
+					"How the mentioned workflow first became a tab in the thread, or null when already_artifact is false. 'built' is the assistant creating or editing it, 'attached' is a message or the editor hand-off attaching it, 'mentioned' is an earlier pick in this picker. Known for the current session only: after a reload an earlier mention reads as 'attached', because both reach the thread as a workflow attachment. A node or group pick with 'mentioned' is the two-step journey",
+				),
 		}),
 	},
 	USER_REMOVED_AI_ASSISTANT_MENTION: {

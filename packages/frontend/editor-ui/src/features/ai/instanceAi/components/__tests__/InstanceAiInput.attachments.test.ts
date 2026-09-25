@@ -9,8 +9,10 @@ import InstanceAiInput from '../InstanceAiInput.vue';
 import AttachmentPreview from '../AttachmentPreview.vue';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AssistantMentionSelection } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 const telemetryTrack = vi.hoisted(() => vi.fn());
 
@@ -237,9 +239,13 @@ const MentionPickerStub = defineComponent({
 		modelValue: { type: Boolean, default: false },
 		query: { type: String, default: '' },
 	},
-	emits: ['select', 'update:modelValue'],
+	emits: ['select', 'update:modelValue', 'empty-search'],
 	setup(props, { emit, expose }) {
-		expose({ getOpenMetrics: () => stubOpenMetrics, handleExternalKeydown: () => false });
+		expose({
+			getOpenMetrics: () => stubOpenMetrics,
+			handleExternalKeydown: () => false,
+			flushEmptySearch: () => {},
+		});
 		return () =>
 			h('div', { 'data-test-id': 'mention-picker-stub', 'data-query': props.query }, [
 				h(
@@ -266,6 +272,14 @@ const MentionPickerStub = defineComponent({
 					},
 					'Dismiss',
 				),
+				h(
+					'button',
+					{
+						'data-test-id': 'mention-picker-empty-search',
+						onClick: () => emit('empty-search', 'Slack'),
+					},
+					'Report empty search',
+				),
 			]);
 	},
 });
@@ -275,7 +289,7 @@ const renderMentionsInput = createComponentRenderer(InstanceAiInput, {
 		...defaultProps(),
 		mentionsEnabled: true,
 		mentionProjectId: 'project-1',
-		mentionArtifacts: [{ id: 'w1', name: 'Orders' }],
+		mentionArtifacts: [{ id: 'w1', name: 'Orders', origin: 'built' }],
 	},
 	global: { stubs: { AssistantAtMentionPicker: MentionPickerStub } },
 });
@@ -314,6 +328,29 @@ describe('InstanceAiInput — mention attachments', () => {
 				result_count: 4,
 				ambiguous_result_count: 2,
 				submenu_open_count: 1,
+			},
+		);
+	});
+
+	it('tracks an empty search with the redacted query, its node type match and the tab count', async () => {
+		useNodeTypesStore().setNodeTypes([
+			// A plain object: a mock proxy answers `hidden` with a truthy function.
+			{ name: 'n8n-nodes-base.slack', displayName: 'Slack', version: 1 } as INodeTypeDescription,
+		]);
+		const { getByRole, getByTestId } = renderMentionsInput();
+		await userEvent.type(getByRole('textbox'), '@sla');
+
+		await userEvent.click(getByTestId('mention-picker-empty-search'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SEARCHED_AI_ASSISTANT_MENTIONS_WITHOUT_RESULTS,
+			{
+				thread_id: 'thread-1',
+				source: 'typed',
+				query: 'Slack',
+				query_length: 5,
+				matched_node_type: 'n8n-nodes-base.slack',
+				artifact_count: 1,
 			},
 		);
 	});
@@ -383,6 +420,7 @@ describe('InstanceAiInput — mention attachments', () => {
 				result_position: 1,
 				query_length: 0,
 				already_artifact: true,
+				artifact_origin: 'built',
 			},
 		);
 	});
@@ -470,6 +508,7 @@ describe('InstanceAiInput — mention attachments', () => {
 				result_position: 2,
 				query_length: 3,
 				already_artifact: false,
+				artifact_origin: null,
 			},
 		);
 	});
