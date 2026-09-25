@@ -710,6 +710,14 @@ while the build reports a successful commit. Every job therefore shares the
 `n8n-io/n8n` key, which is the only disk that actually retains layers. Revisit
 once new-disk retention works.
 
+`ci-seed-pnpm-sticky-disk.yml` fills the pilot pnpm store on a separate sticky
+disk. Dispatch it manually on `master` before rerunning the container pilot PR.
+The workflow mounts `/pnpm-sticky-store` under key
+`n8n-io-n8n-pnpm-pilot-linux-amd64-v11`, then installs the lockfile without
+lifecycle scripts. Blacksmith branch protection permits this default-branch
+dispatch to commit the store. Pull request jobs can read it, but cannot commit
+their changes. This workflow does not run during regular CI.
+
 ### run-workflow-script
 
 ```yaml
