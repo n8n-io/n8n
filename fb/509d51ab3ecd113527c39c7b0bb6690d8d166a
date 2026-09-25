@@ -1,0 +1,21 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/authentication.test.ts
+  s_b0f16ccd5dc71b::t_8f7196952e4a65 128-129,138,140-151,154-155
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  s_b0f16ccd5dc71b::t_fb87fcdbb4a89b 30-34,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fb509d51ab3ecd113527c39c7b0bb6690d8d166a",
+  "prompts": {},
+  "sessions": {
+    "s_b0f16ccd5dc71b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8748747f-47a5-4fba-b752-f57829fe0a55",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

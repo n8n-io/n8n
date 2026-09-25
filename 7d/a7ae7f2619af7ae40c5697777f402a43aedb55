@@ -1,0 +1,29 @@
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-config.test.ts
+  s_cc56bcf7ede5b6::t_0699f1b0286229 1-2
+  s_cc56bcf7ede5b6::t_a16db2fc08835b 347-352,356-364
+packages/@n8n/inbound-auth/tsconfig.json
+  s_cc56bcf7ede5b6::t_3dd27ec15e7934 10-13
+packages/@n8n/inbound-auth/package.json
+  s_cc56bcf7ede5b6::t_9864a43473e747 27
+packages/@n8n/inbound-auth/src/trusted-source-config.ts
+  s_cc56bcf7ede5b6::t_6e315f436c9e79 2
+  s_cc56bcf7ede5b6::t_7f7c63b8b24af1 287-295,301,303,308,315-317
+pnpm-lock.yaml
+  s_cc56bcf7ede5b6::t_1f5d9439ce61b3 2915-2917
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7da7ae7f2619af7ae40c5697777f402a43aedb55",
+  "prompts": {},
+  "sessions": {
+    "s_cc56bcf7ede5b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "691d260e-1149-4bf0-879e-d7786b3ef9ee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
