@@ -1,0 +1,25 @@
+packages/@n8n/cli/README.md
+  s_05d5af644e740b::t_7f219775e6d26c 66
+packages/@n8n/cli/docs/commands/package.md
+  s_05d5af644e740b::t_7f219775e6d26c 125-144,150-153,156-158,163-164,166,173-179
+packages/@n8n/cli/src/commands/package/import-selection.ts
+  s_05d5af644e740b::t_7f219775e6d26c 10,20,35
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_05d5af644e740b::t_e369a697560564 335-405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be61035c7a5cb5fea1a82de4214a14eadeffa801",
+  "prompts": {},
+  "sessions": {
+    "s_05d5af644e740b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d73c-24f8-7b72-a2ea-cd66a75489cb",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
