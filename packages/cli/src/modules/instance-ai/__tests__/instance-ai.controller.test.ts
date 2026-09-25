@@ -1123,6 +1123,7 @@ describe('InstanceAiController', () => {
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
+				expect.objectContaining({ id: USER_ID }),
 				expect.any(Map),
 				undefined,
 				expect.any(Map),
@@ -1166,6 +1167,7 @@ describe('InstanceAiController', () => {
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
+				expect.objectContaining({ id: USER_ID }),
 				idMap,
 				undefined,
 				expect.any(Map),
@@ -1185,6 +1187,7 @@ describe('InstanceAiController', () => {
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
+				expect.objectContaining({ id: USER_ID }),
 				expect.any(Map),
 				new Set(['cred-1', 'cred-2']),
 				expect.any(Map),
@@ -1295,6 +1298,7 @@ describe('InstanceAiController', () => {
 				expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 					[placedWorkflow],
 					'project-1',
+					expect.objectContaining({ id: USER_ID }),
 					expect.any(Map),
 					undefined,
 					folderIdMap,

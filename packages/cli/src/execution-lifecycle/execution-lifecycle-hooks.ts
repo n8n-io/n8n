@@ -51,10 +51,14 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 @Service()
 class ModulesHooksRegistry {
 	/**
-	 * `source` is not carried on `ExecutionLifecycleHooks`, so it is passed in
-	 * here to let module handlers tell agent-initiated runs from user ones.
+	 * `source` and `userId` are not carried on `ExecutionLifecycleHooks`, so they are passed in
+	 * here to let module handlers tell agent-initiated runs from user ones, and name the user.
 	 */
-	addHooks(hooks: ExecutionLifecycleHooks, source?: IWorkflowExecutionDataProcess['source']) {
+	addHooks(
+		hooks: ExecutionLifecycleHooks,
+		source?: IWorkflowExecutionDataProcess['source'],
+		userId?: string,
+	) {
 		const handlers = Container.get(LifecycleMetadata).getHandlers();
 
 		for (const { handlerClass, methodName, eventName } of handlers) {
@@ -118,6 +122,7 @@ class ModulesHooksRegistry {
 							workflowInstance,
 							executionData,
 							executionId: this.executionId,
+							userId,
 						};
 
 						return await instance[methodName].call(instance, context);
@@ -828,7 +833,7 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsStatistics(hooks);
 	hookFunctionsPreExecute(hooks);
 	hookFunctionsPostExecute(hooks);
-	Container.get(ModulesHooksRegistry).addHooks(hooks);
+	Container.get(ModulesHooksRegistry).addHooks(hooks, undefined, userId);
 	return hooks;
 }
 
@@ -877,7 +882,7 @@ export function getLifecycleHooksForScalingWorker(
 		hookFunctionsPush(hooks, optionalParameters, data.userId, data.source);
 	}
 
-	Container.get(ModulesHooksRegistry).addHooks(hooks, source);
+	Container.get(ModulesHooksRegistry).addHooks(hooks, source, data.userId);
 
 	return hooks;
 }
@@ -966,7 +971,7 @@ export function getLifecycleHooksForScalingMain(
 	hooks.handlers.nodeExecuteBefore = [];
 	hooks.handlers.nodeExecuteAfter = [];
 
-	Container.get(ModulesHooksRegistry).addHooks(hooks, source);
+	Container.get(ModulesHooksRegistry).addHooks(hooks, source, userId);
 
 	return hooks;
 }
@@ -1013,6 +1018,6 @@ export function getLifecycleHooksForRegularMain(
 	hookFunctionsStatistics(hooks, source);
 	hookFunctionsPreExecute(hooks, source);
 	hookFunctionsPostExecute(hooks);
-	Container.get(ModulesHooksRegistry).addHooks(hooks, source);
+	Container.get(ModulesHooksRegistry).addHooks(hooks, source, userId);
 	return hooks;
 }

@@ -55,9 +55,18 @@ describe('PolicyLifecycleHandler', () => {
 	it('enforces the workflow start point with the workflow and its owning project', async () => {
 		await handler.onWorkflowExecuteBefore(beforeContext());
 
-		expect(policyEnforcementService.enforceWorkflowStart).toHaveBeenCalledExactlyOnceWith({
-			workflow,
-			projectId: 'proj-1',
+		expect(policyEnforcementService.enforceWorkflowStart).toHaveBeenCalledExactlyOnceWith(
+			{ workflow, projectId: 'proj-1' },
+			{ kind: 'system', reason: 'execution' },
+		);
+	});
+
+	it('names the user who started a manual run', async () => {
+		await handler.onWorkflowExecuteBefore(beforeContext({ mode: 'manual', userId: 'user-1' }));
+
+		expect(policyEnforcementService.enforceWorkflowStart).toHaveBeenCalledWith(expect.anything(), {
+			kind: 'user',
+			user: { id: 'user-1' },
 		});
 	});
 
