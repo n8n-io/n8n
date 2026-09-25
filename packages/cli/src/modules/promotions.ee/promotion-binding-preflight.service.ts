@@ -54,9 +54,26 @@ export class PromotionBindingPreflightService {
 	/** The caller must enforce inspection permissions. Project access does not depend on user visibility. */
 	async checkDirectory({
 		sourceDir,
-	}: { sourceDir: string }): Promise<PromotionBindingPreflightResult> {
+		selection,
+	}: {
+		sourceDir: string;
+		selection?: { selectedProjectId: string; selectedWorkflowIds: string[] };
+	}): Promise<PromotionBindingPreflightResult> {
 		const reader = new DirectoryPackageReader(sourceDir, this.packageImportConfig);
-		const inventory = await this.inventoryReader.read(reader);
+		const packageInventory = await this.inventoryReader.read(reader);
+		const inventory = selection
+			? {
+					...packageInventory,
+					projects: packageInventory.projects.filter(
+						({ id }) => id === selection.selectedProjectId,
+					),
+					workflows: packageInventory.workflows.filter(
+						({ id, projectId }) =>
+							projectId === selection.selectedProjectId &&
+							selection.selectedWorkflowIds.includes(id),
+					),
+				}
+			: packageInventory;
 		const credentials = collectCredentialReferences(inventory);
 		const variables = collectVariableReferences(inventory, this.variableExtractor);
 		const projects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
