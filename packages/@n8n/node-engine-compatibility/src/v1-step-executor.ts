@@ -19,6 +19,7 @@ import {
 	InvalidWaitDateError,
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
+	UnendingWaitError,
 	UnsupportedStepTypeError,
 	UnsupportedWaitError,
 	VmExpressionEngineRequiredError,
@@ -50,9 +51,9 @@ import {
  * step emits that input at the deadline, not what the node returned before it
  * paused.
  *
- * A sentinel wait fails the step. Engine v2 has no resume route and no
- * sub-workflow steps yet. A declaration replaces each failure when its path
- * exists.
+ * A wait with no deadline declares no deadline, so only a resume request ends
+ * it. A wait for a sub-execution fails the step, because engine v2 has no
+ * sub-workflow steps yet.
  */
 function toStepResult(
 	context: DurableWaitExecuteContext,
@@ -61,10 +62,11 @@ function toStepResult(
 	const { waitTill } = context.runExecutionData;
 	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
-		throw new UnsupportedWaitError(context.getNode().name, 'a resume request');
+		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
+		return { wait: { resumeBinding: 'execution' } };
 	}
 	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
-		throw new UnsupportedWaitError(context.getNode().name, 'a sub-execution');
+		throw new UnsupportedWaitError(context.getNode().name);
 	}
 	// `toISOString` throws a bare RangeError on an invalid date.
 	if (Number.isNaN(waitTill.getTime())) {
