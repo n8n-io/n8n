@@ -3830,6 +3830,8 @@
 	"settings.chatHub.label.credential": "Credential",
 	"settings.promotions.title": "Environments v2",
 	"settings.promotions.description": "Connect this instance to another environment so your workflows can be promoted.",
+	"settings.promotions.instanceActions.title": "Promote & apply",
+	"settings.promotions.instanceActions.description": "Move all projects between this instance and your connected Git remote.",
 	"settings.promotions.promote.title": "Promote instance",
 	"settings.promotions.promote.description": "Push all projects on this instance to your connected Git remote.",
 	"settings.promotions.promote.button": "Promote",
