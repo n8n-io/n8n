@@ -2,13 +2,16 @@ import type { CreateCredentialDto } from '@n8n/api-types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import {
-	executionErrorOf,
+	availabilityInProjects,
+	findAvailability,
+	manualRunOutcome,
+	publishOutcome,
+	saveMovedNodes,
 	headerAuthCredential,
 	loadPostgresColumns,
 	POSTGRES_CREDENTIAL,
 	postgresCredential,
 	postgresWorkflow,
-	SCHEDULE_TRIGGER_NAME,
 	violationsOf,
 } from './policy-helpers';
 import { expect, test } from '../../../fixtures/base';
@@ -27,9 +30,18 @@ test.use({
 });
 
 async function findType(api: ApiHelpers, projectId: string, credentialType: string) {
-	const types = await api.credentialTypePolicies.getAvailability(projectId);
-	return types.find((entry) => entry.name === credentialType);
+	return await findAvailability(
+		async (id) => await api.credentialTypePolicies.getAvailability(id),
+		projectId,
+		credentialType,
+	);
 }
+
+const BLOCKED_POSTGRES = {
+	kind: 'credential-type-unavailable',
+	subject: POSTGRES_CREDENTIAL,
+	scope: 'instance',
+} as const;
 
 /** The editor route replaces the whole credential, so the payload carries no project. */
 function asUpdate({ name, type, data }: CreateCredentialDto): CreateCredentialDto {
@@ -144,46 +156,23 @@ test.describe(
 			});
 
 			test('should still save the workflow that uses it', async ({ api }) => {
-				const movedNodes = workflow.nodes.map((node) => ({
-					...node,
-					position: [node.position[0], node.position[1] + 100] as [number, number],
-				}));
-
-				const response = await api.workflows.updateRaw(workflow.id, workflow.versionId!, {
-					nodes: movedNodes,
-					connections: workflow.connections,
-				});
-
-				expect(response.status()).toBe(200);
+				expect(await saveMovedNodes(api, workflow)).toBe(200);
 			});
 
 			test('should refuse to publish the workflow', async ({ api }) => {
-				const response = await api.workflows.activateRaw(workflow.id, workflow.versionId!);
-
-				expect(response.status()).toBe(403);
-				expect(await violationsOf(response)).toEqual([
-					expect.objectContaining({
-						kind: 'credential-type-unavailable',
-						subject: POSTGRES_CREDENTIAL,
-						scope: 'instance',
-					}),
-				]);
+				expect(await publishOutcome(api, workflow)).toEqual({
+					status: 403,
+					violations: [expect.objectContaining(BLOCKED_POSTGRES)],
+				});
 			});
 
 			test('should fail a run of the workflow with the violation on the execution', async ({
 				api,
 			}) => {
-				const { executionId } = await api.workflows.runManually(workflow.id, SCHEDULE_TRIGGER_NAME);
-				const execution = await api.workflows.waitForExecutionById(executionId);
-
-				expect(execution.status).toBe('error');
-				expect(executionErrorOf(execution).violations).toEqual([
-					expect.objectContaining({
-						kind: 'credential-type-unavailable',
-						subject: POSTGRES_CREDENTIAL,
-						scope: 'instance',
-					}),
-				]);
+				expect(await manualRunOutcome(api, workflow)).toEqual({
+					status: 'error',
+					violations: [expect.objectContaining(BLOCKED_POSTGRES)],
+				});
 			});
 
 			test('should refuse to decrypt the credential for a node type that is allowed', async ({
@@ -213,12 +202,15 @@ test.describe(
 			});
 
 			test('should report the type unavailable in that project only', async ({ api }) => {
-				expect(await findType(api, narrowedProjectId, POSTGRES_CREDENTIAL)).toMatchObject({
-					available: false,
-					scope: 'project',
-				});
-				expect(await findType(api, otherProjectId, POSTGRES_CREDENTIAL)).toMatchObject({
-					available: true,
+				expect(
+					await availabilityInProjects(
+						async (projectId) => await api.credentialTypePolicies.getAvailability(projectId),
+						POSTGRES_CREDENTIAL,
+						{ narrowedProjectId, otherProjectId },
+					),
+				).toEqual({
+					narrowed: expect.objectContaining({ available: false, scope: 'project' }),
+					other: expect.objectContaining({ available: true }),
 				});
 			});
 

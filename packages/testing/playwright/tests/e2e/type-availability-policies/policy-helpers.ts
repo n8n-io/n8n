@@ -22,6 +22,11 @@ export interface PolicyViolation {
 	matchedRuleId?: string;
 }
 
+/** Reads a project's availability for one kind: node types or credential types. */
+type AvailabilityReader = (
+	projectId: string,
+) => Promise<Array<{ name: string; available: boolean; scope?: string }>>;
+
 function scheduleTrigger(): INode {
 	return {
 		id: nanoid(),
@@ -163,4 +168,50 @@ export async function loadPostgresColumns(
 		credentials: { postgres: credential },
 		projectId,
 	});
+}
+
+export async function findAvailability(
+	read: AvailabilityReader,
+	projectId: string,
+	typeName: string,
+) {
+	const types = await read(projectId);
+	return types.find((entry) => entry.name === typeName);
+}
+
+/** Availability of one type in two projects, for comparing a narrowed project with another. */
+export async function availabilityInProjects(
+	read: AvailabilityReader,
+	typeName: string,
+	{ narrowedProjectId, otherProjectId }: { narrowedProjectId: string; otherProjectId: string },
+) {
+	return {
+		narrowed: await findAvailability(read, narrowedProjectId, typeName),
+		other: await findAvailability(read, otherProjectId, typeName),
+	};
+}
+
+/** Saves a move of every node. A move adds no type, so it is grandfathered. */
+export async function saveMovedNodes(api: ApiHelpers, workflow: IWorkflowBase): Promise<number> {
+	const movedNodes = workflow.nodes.map((node) => ({
+		...node,
+		position: [node.position[0], node.position[1] + 100] as [number, number],
+	}));
+
+	const response = await api.workflows.updateRaw(workflow.id, workflow.versionId!, {
+		nodes: movedNodes,
+		connections: workflow.connections,
+	});
+	return response.status();
+}
+
+export async function publishOutcome(api: ApiHelpers, workflow: IWorkflowBase) {
+	const response = await api.workflows.activateRaw(workflow.id, workflow.versionId!);
+	return { status: response.status(), violations: await violationsOf(response) };
+}
+
+export async function manualRunOutcome(api: ApiHelpers, workflow: IWorkflowBase) {
+	const { executionId } = await api.workflows.runManually(workflow.id, SCHEDULE_TRIGGER_NAME);
+	const execution = await api.workflows.waitForExecutionById(executionId);
+	return { status: execution.status, violations: executionErrorOf(execution).violations };
 }
