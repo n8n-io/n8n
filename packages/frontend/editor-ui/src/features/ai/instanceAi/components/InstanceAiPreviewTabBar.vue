@@ -286,7 +286,6 @@ async function handleCopyLink(tab: ArtifactTab) {
 										interpolate: { name: tab.name },
 									})
 								"
-								:title="i18n.baseText('instanceAi.previewTabBar.close')"
 								data-test-id="instance-ai-tab-close"
 								@click.stop="emit('closeTab', tab.id)"
 							/>
@@ -506,7 +505,11 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 // Covers the end of the label with the tab background, so the tab keeps its width.
+// The hover background is translucent, so it is layered on the surface to hide the label.
 .closeSlot {
+	--close-slot--background:
+		linear-gradient(var(--tab--background), var(--tab--background)), var(--background--surface);
+
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -515,7 +518,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 	align-items: center;
 	padding-right: var(--spacing--4xs);
 	border-radius: 0 var(--radius--2xs) var(--radius--2xs) 0;
-	background-color: var(--tab--background);
+	background: var(--close-slot--background);
 	opacity: 0;
 	pointer-events: none;
 
@@ -526,7 +529,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 		right: 100%;
 		bottom: 0;
 		width: var(--spacing--sm);
-		background: linear-gradient(to left, var(--tab--background), transparent);
+		background: var(--close-slot--background);
+		mask-image: linear-gradient(to left, #000, #0000);
 	}
 }
 
