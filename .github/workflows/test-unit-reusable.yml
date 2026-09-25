@@ -40,6 +40,10 @@ jobs:
   unit-test-backend:
     name: Backend Unit Tests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    permissions:
+      contents: read
+      packages: read
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -53,6 +57,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' }}
 
       # Confluent publishes prebuilds up to Node 24 only.
       - name: Verify Kafka native binding installed
@@ -103,6 +108,10 @@ jobs:
   unit-test-cli:
     name: CLI Unit Tests (${{ matrix.shard }}/2)
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    permissions:
+      contents: read
+      packages: read
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     strategy:
       fail-fast: false
       matrix:
@@ -120,6 +129,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' }}
 
       - name: Test Unit (cli, scoped)
         run: pnpm turbo test:unit:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=100% --passWithNoTests
@@ -152,6 +162,10 @@ jobs:
   integration-test-backend:
     name: Backend Integration Tests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    permissions:
+      contents: read
+      packages: read
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -165,6 +179,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' }}
 
       # Only cli is wired into janitor integration scoping today, so the
       # turbo run filter excludes it from the bulk integration run. The sharded
@@ -207,6 +222,10 @@ jobs:
   integration-test-cli:
     name: CLI Integration Tests (${{ matrix.shard }}/2)
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    permissions:
+      contents: read
+      packages: read
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     strategy:
       fail-fast: false
       matrix:
@@ -224,6 +243,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' }}
 
       - name: Test Integration (cli, scoped)
         run: pnpm turbo test:integration:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50% --passWithNoTests
@@ -256,6 +276,10 @@ jobs:
   unit-test-nodes:
     name: Nodes Unit Tests
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    permissions:
+      contents: read
+      packages: read
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -269,6 +293,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' }}
 
       - name: Test Nodes
         run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize
@@ -301,6 +326,10 @@ jobs:
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/4)
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    permissions:
+      contents: read
+      packages: read
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     strategy:
       fail-fast: false
       matrix:
@@ -318,6 +347,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' }}
 
       - name: Test
         run: pnpm test:ci:frontend:changed --only --summarize -- --shard=${{ matrix.shard }}/4

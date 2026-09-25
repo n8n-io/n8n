@@ -24,6 +24,10 @@ jobs:
   integration:
     name: ${{ matrix.name }} Integration
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: read
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -39,6 +43,8 @@ jobs:
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
+        with:
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' }}
 
       - name: Pre-pull Test Container Images
         run: pnpm --filter n8n-containers exec tsx pull-test-images.ts || true
@@ -68,6 +74,10 @@ jobs:
     name: ${{ matrix.name }} Migrations
     if: inputs.run-migrations
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: read
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -82,6 +92,8 @@ jobs:
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
+        with:
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' }}
 
       - name: Pre-pull Test Container Images
         run: pnpm --filter n8n-containers exec tsx pull-test-images.ts || true

@@ -38,6 +38,16 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Trust workspace inside toolchain container
+      if: inputs.preinstalled-toolchain == 'true'
+      shell: bash
+      run: |
+        {
+          echo 'GIT_CONFIG_COUNT=1'
+          echo 'GIT_CONFIG_KEY_0=safe.directory'
+          echo "GIT_CONFIG_VALUE_0=$GITHUB_WORKSPACE"
+        } >> "$GITHUB_ENV"
+
     # An empty key makes the builder use a local, uncached one. The job stays
     # green and loses the cache. Fail here instead.
     - name: Verify Docker cache key is set

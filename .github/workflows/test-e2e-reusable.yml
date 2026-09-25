@@ -63,7 +63,7 @@ on:
         default: 'standard'
         type: string
       use-toolchain-pilot:
-        description: 'Use the CI toolchain image on shard 1.'
+        description: 'Use the CI toolchain image on all shards.'
         required: false
         default: false
         type: boolean
@@ -80,7 +80,7 @@ env:
 jobs:
   test:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
-    container: ${{ inputs.use-toolchain-pilot && matrix.shard == 1 && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
+    container: ${{ inputs.use-toolchain-pilot && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -91,12 +91,12 @@ jobs:
         include: ${{ fromJSON(inputs.pre-generated-matrix) }}
     name: Shard ${{ matrix.shard }}
     env:
-      # The image has the browser on shard 1. Other shards keep their absolute cache path.
-      PLAYWRIGHT_BROWSERS_PATH: ${{ inputs.use-toolchain-pilot && matrix.shard == 1 && '/ms-playwright' || format('{0}/packages/testing/playwright/.playwright-browsers', github.workspace) }}
+      # Use the image browser in pilot jobs and the package cache path otherwise.
+      PLAYWRIGHT_BROWSERS_PATH: ${{ inputs.use-toolchain-pilot && '/ms-playwright' || format('{0}/packages/testing/playwright/.playwright-browsers', github.workspace) }}
 
     steps:
       - name: Mark first pilot step
-        if: inputs.use-toolchain-pilot && matrix.shard == 1
+        if: inputs.use-toolchain-pilot
         run: |
           {
             echo "CI_FIRST_STEP=$(date +%s)"
@@ -114,18 +114,18 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
         with:
-          preinstalled-toolchain: ${{ inputs.use-toolchain-pilot && matrix.shard == 1 }}
+          preinstalled-toolchain: ${{ inputs.use-toolchain-pilot }}
         env:
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Install Browsers
-        if: ${{ !inputs.use-toolchain-pilot || matrix.shard != 1 }}
+        if: ${{ !inputs.use-toolchain-pilot }}
         run: pnpm turbo run install-browsers --filter=n8n-playwright
 
       - name: Verify pilot browser, Turbo cache and Docker
-        if: ${{ inputs.use-toolchain-pilot && matrix.shard == 1 }}
+        if: ${{ inputs.use-toolchain-pilot }}
         working-directory: packages/testing/playwright
         run: |
           node -e 'const { chromium } = require("@playwright/test"); const fs = require("node:fs"); const path = chromium.executablePath(); if (!path.startsWith(process.env.PLAYWRIGHT_BROWSERS_PATH + "/") || !fs.existsSync(path)) process.exit(1); console.log(path)'

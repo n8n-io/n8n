@@ -21,6 +21,11 @@ jobs:
   workflow-script-tests:
     name: Run tests for workflow scripts
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-slim' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    permissions:
+      contents: read
+      packages: read
+    # ubuntu-slim does not support job containers.
+    container: ${{ vars.RUNNER_PROVIDER != 'github' && github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -29,8 +34,9 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
+          preinstalled-toolchain: ${{ vars.RUNNER_PROVIDER != 'github' && github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' }}
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
+          install-command: ${{ vars.RUNNER_PROVIDER != 'github' && github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && 'pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ./.github/scripts --ignore-workspace' || format('pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir {0}/.github/scripts --ignore-workspace', github.workspace) }}
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Run tests

@@ -2,6 +2,12 @@ name: 'Test: E2E Performance'
 
 on:
   workflow_call:
+    inputs:
+      use-toolchain-pilot:
+        description: 'Use the CI toolchain image on PR E2E shards.'
+        required: false
+        default: false
+        type: boolean
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *' # Runs daily at midnight
@@ -22,6 +28,7 @@ jobs:
       pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
       currents-project-id: 'O9BJaN'
       artifact-prefix: performance
+      use-toolchain-pilot: ${{ inputs.use-toolchain-pilot }}
     secrets: inherit
 
   canvas-perf-sentinels:

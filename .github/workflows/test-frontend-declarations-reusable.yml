@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      packages: read
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     env:
       # Both vite configs read this as a flag. It is also part of the turbo cache key for these
       # two build tasks, so this misses the declaration-less `dist` that the CI build cached.
@@ -32,6 +34,7 @@ jobs:
       - name: Setup and build in release mode
         uses: ./.github/actions/setup-nodejs
         with:
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' }}
           build-command: pnpm turbo run build --filter=@n8n/design-system --filter=@n8n/chat
 
       - name: Verify the published frontend packages carry declarations
