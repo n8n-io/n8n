@@ -3,35 +3,39 @@
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 
-echo "== insights_by_period, by bucket size =="
+echo "== insights_by_period =="
 sql -header -column "
-	SELECT CASE periodUnit WHEN 0 THEN 'hour' WHEN 1 THEN 'day' WHEN 2 THEN 'week' END AS bucket,
+	SELECT CASE WHEN periodUnit = 2 THEN 'weekly totals' ELSE 'per day or finer' END AS rows_kind,
 	       COUNT(*) AS rows,
 	       MIN(date(periodStart)) AS oldest,
 	       MAX(date(periodStart)) AS newest
 	FROM insights_by_period
-	GROUP BY periodUnit
-	ORDER BY periodUnit DESC;"
+	GROUP BY periodUnit = 2
+	ORDER BY oldest;"
 echo "Raw rows not compacted yet: $(sql 'SELECT COUNT(*) FROM insights_raw;')"
 echo
 
-first_exact_day=$(sql "SELECT COALESCE(date(MAX(periodStart), '+7 days'), '(none)') FROM insights_by_period WHERE periodUnit = 2;")
-echo "== Expected first report =="
-echo "Newest weekly row + 7 days = first exact day: $first_exact_day"
+echo "== Expected first report: the last $REPORT_WINDOW_DAYS days, or from the first data if later =="
 sql -header -column "
-	WITH exact AS (
-		SELECT date(periodStart) AS day, SUM(value) AS executions
-		FROM insights_by_period
-		WHERE type IN (2, 3)
-		  AND periodUnit IN (0, 1)
-		  AND date(periodStart) >= COALESCE(
-		        (SELECT date(MAX(periodStart), '+7 days') FROM insights_by_period WHERE periodUnit = 2),
-		        '0000-00-00')
-		  AND date(periodStart) < date('now')
-		GROUP BY day
+	WITH bounds AS (
+		SELECT MIN(
+		         COALESCE(
+		           MAX(date('now', '-$REPORT_WINDOW_DAYS days'),
+		               (SELECT MIN(date(periodStart)) FROM insights_by_period)),
+		           date('now', '-1 day')),
+		         date('now', '-1 day')) AS first_day,
+		       date('now', '-1 day') AS last_day
+	),
+	window_rows AS (
+		SELECT date(periodStart) AS day, value
+		FROM insights_by_period, bounds
+		WHERE type IN (2, 3) AND date(periodStart) BETWEEN first_day AND last_day
 	)
-	SELECT COUNT(*) AS days_with_data, MIN(day) AS first_day, MAX(day) AS last_day,
-	       SUM(executions) AS executions
-	FROM exact;"
-echo "Days from first_day to yesterday without data are sent as 0."
-echo "cumulative = $(sql "SELECT SUM(rootCount) FROM workflow_statistics WHERE name IN ('production_success', 'production_error');")"
+	SELECT CAST(julianday(last_day) - julianday(first_day) + 1 AS INTEGER) AS days,
+	       first_day,
+	       last_day,
+	       (SELECT COALESCE(SUM(value), 0) FROM window_rows) AS executions,
+	       CAST(julianday(last_day) - julianday(first_day) + 1 AS INTEGER)
+	         - (SELECT COUNT(DISTINCT day) FROM window_rows) AS zero_days
+	FROM bounds;"
+echo "cumulative = $(sql "SELECT COALESCE(SUM(rootCount), 0) FROM workflow_statistics WHERE name IN ('production_success', 'production_error');")"

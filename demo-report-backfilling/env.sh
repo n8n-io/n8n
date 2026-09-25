@@ -23,6 +23,9 @@ export DEMO_LABEL="${DEMO_LABEL:-video-demo}"
 # day->week after 180 days), so the data looks like a real instance's.
 export N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES=1
 
+# A report reaches back one day less than the day->week compaction threshold.
+REPORT_WINDOW_DAYS=$(( ${N8N_INSIGHTS_COMPACTION_DAILY_TO_WEEKLY_THRESHOLD_DAYS:-180} - 1 ))
+
 export DEMO_WORKFLOW_ID="demoWorkflow0001"
 
 # The seeded history covers this many days before today.
