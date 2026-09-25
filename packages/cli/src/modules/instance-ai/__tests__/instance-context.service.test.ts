@@ -1370,6 +1370,7 @@ describe('InstanceContextService', () => {
 			});
 
 			expect(expansion).toBeNull();
+			expect(activityEventRepository.findByResource).not.toHaveBeenCalled();
 		});
 	});
 });
