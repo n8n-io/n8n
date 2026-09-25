@@ -1,3 +1,4 @@
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
 import { ScheduledJobOwnerRegistry } from '../../reconciliation/owner';
@@ -74,6 +75,53 @@ describe('createJobProvisioner', () => {
 			ref: 'scope-b',
 		});
 		expect(result).toEqual({ removed: 3 });
+	});
+
+	it('keeps the default seed window when an override is explicitly undefined', async () => {
+		const now = new Date('2026-01-01T00:00:00.000Z');
+		const tx = mock<ProvisionTransaction>();
+		tx.findExisting.mockResolvedValue([]);
+		tx.insert.mockResolvedValue([1]);
+		tx.readJobs.mockResolvedValue({
+			now,
+			jobs: [
+				{
+					id: 1,
+					taskType: 'test',
+					payload: {},
+					kind: 'interval',
+					cronExpression: null,
+					timezone: null,
+					intervalSeconds: 10,
+					fireAt: null,
+					recurrenceUnit: null,
+					recurrenceSize: null,
+					nextRunAt: new Date(now.getTime() + 10_000),
+					lastFiredAt: null,
+					maxAttempts: 1,
+					concurrencyLimit: null,
+					misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+					misfireGraceSeconds: 60,
+					ownerKey: 'owner-a',
+					enabled: true,
+				},
+			],
+		});
+		tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
+		tx.retireSuperseded.mockResolvedValue(0);
+		const runInProvision: RunInProvisionTransaction = async (work) => await work(tx);
+		const provisioner = createJobProvisioner({
+			provisionTransaction: vi.fn().mockReturnValue(runInProvision),
+			deprovisionTransaction: vi.fn(),
+			owners,
+			materializer: { windowSeconds: undefined },
+		});
+
+		await provisioner.provision({ owner: owner('thing-1') }, desired);
+
+		expect(tx.recordOccurrences).toHaveBeenCalledWith(
+			expect.arrayContaining([expect.objectContaining({ jobId: 1 })]),
+		);
 	});
 
 	describe('liveness resolver guardrail', () => {

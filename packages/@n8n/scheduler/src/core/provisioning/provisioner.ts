@@ -20,6 +20,7 @@ import {
 } from '../materializer';
 import type { ScheduledJobOwner } from '../materializer/owner-key';
 import type { ScheduledJobOwnerRegistry } from '../reconciliation/owner';
+import { withDefaults } from '../with-defaults';
 
 /** The one part of a scope the package reads itself: the owner its jobs carry. */
 export interface OwnedScope {
@@ -80,7 +81,7 @@ export function createJobProvisioner<PScope extends OwnedScope, DScope = PScope>
 	deps: JobProvisionerDeps<PScope, DScope>,
 ): JobProvisioner<PScope, DScope> {
 	const tracing = createProvisionerTracing(deps.tracer ?? noopTracer);
-	const materializerOptions = { ...DEFAULT_MATERIALIZER_OPTIONS, ...deps.materializer };
+	const materializerOptions = withDefaults(DEFAULT_MATERIALIZER_OPTIONS, deps.materializer);
 	return {
 		async provision(scope, desired) {
 			assertProvisionableOwner(deps.owners, scope.owner);
