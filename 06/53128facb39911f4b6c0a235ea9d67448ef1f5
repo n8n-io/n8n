@@ -1,0 +1,24 @@
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_088272d4812bff::t_15126f2ba395e7 263-271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0653128facb39911f4b6c0a235ea9d67448ef1f5",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_088272d4812bff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a800ddce-ab93-44ed-88ed-2e1a905df5e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
