@@ -64,19 +64,6 @@ export interface InstanceAiThreadStatus {
 }
 
 export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
-export type TestState = 'fresh' | 'reset' | 'signin-only';
-
-const AUTH_TAGS = {
-	ADMIN: '@auth:admin',
-	OWNER: '@auth:owner',
-	MEMBER: '@auth:member',
-	CHAT: '@auth:chat',
-	NONE: '@auth:none',
-} as const;
-
-const DB_TAGS = {
-	RESET: '@db:reset',
-} as const;
 
 export class ApiHelpers {
 	request: APIRequestContext;
@@ -127,80 +114,6 @@ export class ApiHelpers {
 
 		this.publicApi = new PublicApiHelper(this);
 	}
-
-	// ===== MAIN SETUP METHODS =====
-
-	/**
-	 * Setup test environment based on test tags
-	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
-	 * @param memberIndex - Which member to use (if auth role is 'member')
-	 *
-	 * Examples:
-	 * - ['@db:reset', '@auth:owner'] = reset DB + signin as owner
-	 * - ['@auth:admin'] = signin as admin (no reset)
-	 * - ['@auth:none'] = no signin (unauthenticated)
-	 */
-	async setupFromTags(tags: string[], memberIndex: number = 0): Promise<LoginResponseData | null> {
-		const shouldReset = this.shouldResetDatabase(tags);
-		const role = this.getRoleFromTags(tags);
-
-		if (shouldReset && role) {
-			// Reset + signin
-			await this.resetDatabase();
-			return await this.signin(role, memberIndex);
-		} else if (shouldReset) {
-			// Reset only, manual signin required
-			await this.resetDatabase();
-			return null;
-		} else if (role) {
-			// Signin only
-			return await this.signin(role, memberIndex);
-		}
-
-		// No setup required
-		return null;
-	}
-
-	/**
-	 * Check if database should be reset based on tags
-	 */
-	private shouldResetDatabase(tags: string[]): boolean {
-		const lowerTags = tags.map((tag) => tag.toLowerCase());
-		return lowerTags.includes(DB_TAGS.RESET.toLowerCase());
-	}
-
-	/**
-	 * Setup test environment based on desired state (programmatic approach)
-	 * @param state - 'fresh': new container, 'reset': reset DB + signin, 'signin-only': just signin
-	 * @param role - User role to sign in as
-	 * @param memberIndex - Which member to use (if role is 'member')
-	 */
-	async setupTest(
-		state: TestState,
-		role: UserRole = 'owner',
-		memberIndex: number = 0,
-	): Promise<LoginResponseData | null> {
-		switch (state) {
-			case 'fresh':
-				// For fresh docker container - just reset, no signin needed yet
-				await this.resetDatabase();
-				return null;
-
-			case 'reset':
-				// Reset database then sign in
-				await this.resetDatabase();
-				return await this.signin(role, memberIndex);
-
-			case 'signin-only':
-				// Just sign in without reset
-				return await this.signin(role, memberIndex);
-
-			default:
-				throw new TestError('Unknown test state');
-		}
-	}
-
-	// ===== CORE METHODS =====
 
 	async resetDatabase(): Promise<void> {
 		const response = await this.request.post('/rest/e2e/reset', {
@@ -847,23 +760,5 @@ export class ApiHelpers {
 			default:
 				throw new TestError(`Unknown role: ${role as string}`);
 		}
-	}
-
-	// ===== TAG PARSING METHODS =====
-
-	/**
-	 * Get the role from the tags
-	 * @param tags - Array of test tags (e.g., ['@auth:owner'])
-	 * @returns The role from the tags, or 'owner' if no role is found
-	 */
-	getRoleFromTags(tags: string[]): UserRole | null {
-		const lowerTags = tags.map((tag) => tag.toLowerCase());
-
-		if (lowerTags.includes(AUTH_TAGS.ADMIN.toLowerCase())) return 'admin';
-		if (lowerTags.includes(AUTH_TAGS.OWNER.toLowerCase())) return 'owner';
-		if (lowerTags.includes(AUTH_TAGS.MEMBER.toLowerCase())) return 'member';
-		if (lowerTags.includes(AUTH_TAGS.CHAT.toLowerCase())) return 'chat';
-		if (lowerTags.includes(AUTH_TAGS.NONE.toLowerCase())) return null;
-		return 'owner';
 	}
 }

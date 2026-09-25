@@ -1,6 +1,6 @@
 import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
 import { fixtures as currentsFixtures } from '@currents/playwright';
-import { test as base, expect, request } from '@playwright/test';
+import { test as base, expect, request, type Page } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
@@ -24,7 +24,7 @@ import {
 } from '../fixtures/quarantine';
 import { v8CoverageFixtures } from '../fixtures/v8-coverage';
 import { n8nPage } from '../pages/n8nPage';
-import { ApiHelpers } from '../services/api-helper';
+import { ApiHelpers, type UserRole } from '../services/api-helper';
 import { TestError, type TestRequirements } from '../Types';
 import { setupTestRequirements } from '../utils/requirements';
 import { getBackendUrl, getFrontendUrl } from '../utils/url-helper';
@@ -52,9 +52,24 @@ type TestFixtures = {
 	 *  unless COVERAGE_ENABLED. */
 	backendCoverage: undefined;
 	containerRequirement: undefined;
+	testSession: UserRole | null;
+	consoleErrorMonitor: unknown;
+	page: Page;
 	/** Internal auto fixture: sorts a test into its engine 2.0 parity bucket by tag. */
 	engineParity: undefined;
 };
+
+function authRoleFromTags(tags: string[]): UserRole | null {
+	const authTags = tags.filter((tag) => tag.toLowerCase().startsWith('@auth:'));
+	const roles = ['admin', 'owner', 'member', 'chat', 'none'] as const;
+	for (const role of roles) {
+		if (authTags.some((tag) => tag.toLowerCase() === `@auth:${role}`)) {
+			return role === 'none' ? null : role;
+		}
+	}
+	if (authTags.length) throw new TestError(`Unsupported authentication tag: ${authTags[0]}`);
+	return 'owner';
+}
 
 type WorkerFixtures = {
 	n8nUrl: string;
@@ -231,8 +246,11 @@ export const test = base.extend<
 				console.log('Resetting database for new container');
 				const apiContext = await request.newContext({ baseURL: n8nContainer.baseUrl });
 				const api = new ApiHelpers(apiContext);
-				await api.resetDatabase();
-				await apiContext.dispose();
+				try {
+					await api.resetDatabase();
+				} finally {
+					await apiContext.dispose();
+				}
 
 				// The reset endpoint only reaches the control plane database.
 				if (n8nStackConfig.engine) {
@@ -251,10 +269,32 @@ export const test = base.extend<
 		await use(frontendUrl);
 	},
 
-	n8n: async ({ context, backendUrl, frontendUrl, n8nStackConfig }, use, testInfo) => {
+	// Both API and UI consumers share the reset and role for this test.
+	testSession: async ({ dbSetup, backendUrl }, use, testInfo) => {
+		void dbSetup;
+		const role = authRoleFromTags(testInfo.tags);
+		if (testInfo.tags.some((tag) => tag.toLowerCase() === '@db:reset')) {
+			if (getBackendUrl() && process.env.RESET_E2E_DB !== 'true') {
+				throw new TestError('Database reset is not enabled for this target');
+			}
+			const context = await request.newContext({ baseURL: backendUrl });
+			try {
+				await new ApiHelpers(context).resetDatabase();
+			} finally {
+				await context.dispose();
+			}
+		}
+		await use(role);
+	},
+
+	page: async ({ page, consoleErrorMonitor }, use) => {
+		void consoleErrorMonitor;
+		await use(page);
+	},
+
+	n8n: async ({ page, context, backendUrl, frontendUrl, n8nStackConfig, testSession }, use) => {
 		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
 		await setupDefaultInterceptors(context);
-		const page = await context.newPage();
 
 		// Set debounce multiplier for E2E tests - 1 means normal timing (no change)
 		// Can be lowered (e.g. 0.5) to speed up tests, but avoid 0 as it causes race conditions
@@ -268,74 +308,62 @@ export const test = base.extend<
 			const apiContext = await request.newContext({ baseURL: backendUrl });
 			const api = new ApiHelpers(apiContext, apiOptions);
 
-			const n8nInstance = new n8nPage(page, api);
-			await n8nInstance.api.setupFromTags(testInfo.tags);
+			try {
+				const n8nInstance = new n8nPage(page, api);
+				if (testSession) await api.signin(testSession);
+				const apiCookies = await apiContext.storageState();
+				const authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
 
-			// Auth: no tag = owner, @auth:none = unauthenticated, @auth:member etc = specific role
-			const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
-			let apiCookies = await apiContext.storageState();
-			let authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
+				// Transfer auth cookie from API context (backend) to browser context (frontend)
+				if (authCookie) {
+					const backendUrlParsed = new URL(backendUrl);
+					const frontendUrlParsed = new URL(frontendUrl);
 
-			if (!hasAuthTag && !authCookie) {
-				await api.signin('owner');
-				apiCookies = await apiContext.storageState();
-				authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
-			}
-
-			// Transfer auth cookie from API context (backend) to browser context (frontend)
-			if (authCookie) {
-				const backendUrlParsed = new URL(backendUrl);
-				const frontendUrlParsed = new URL(frontendUrl);
-
-				if (backendUrlParsed.hostname === frontendUrlParsed.hostname) {
-					await context.addCookies([
-						{
-							...authCookie,
-							domain: frontendUrlParsed.hostname,
-							path: '/',
-							sameSite: 'Lax',
-						},
-					]);
-				} else {
-					await context.addCookies([
-						{
-							name: authCookie.name,
-							value: authCookie.value,
-							url: frontendUrl,
-							path: '/',
-							httpOnly: authCookie.httpOnly,
-							secure: authCookie.secure,
-							sameSite: 'Lax',
-						},
-					]);
+					if (backendUrlParsed.hostname === frontendUrlParsed.hostname) {
+						await context.addCookies([
+							{
+								...authCookie,
+								domain: frontendUrlParsed.hostname,
+								path: '/',
+								sameSite: 'Lax',
+							},
+						]);
+					} else {
+						await context.addCookies([
+							{
+								name: authCookie.name,
+								value: authCookie.value,
+								url: frontendUrl,
+								path: '/',
+								httpOnly: authCookie.httpOnly,
+								secure: authCookie.secure,
+								sameSite: 'Lax',
+							},
+						]);
+					}
 				}
+				await n8nInstance.start.withProjectFeatures();
+				await use(n8nInstance);
+			} finally {
+				await apiContext.dispose();
 			}
-			await n8nInstance.start.withProjectFeatures();
-			await use(n8nInstance);
-			await apiContext.dispose();
 		} else {
 			const n8nInstance = new n8nPage(page, new ApiHelpers(page.context().request, apiOptions));
-			await n8nInstance.api.setupFromTags(testInfo.tags);
+			if (testSession) await n8nInstance.api.signin(testSession);
 			await n8nInstance.start.withProjectFeatures();
 			await use(n8nInstance);
 		}
 	},
 
-	api: async ({ backendUrl, n8nStackConfig }, use, testInfo) => {
+	api: async ({ backendUrl, n8nStackConfig, testSession }, use) => {
 		const context = await request.newContext({ baseURL: backendUrl });
 		const api = new ApiHelpers(context, { workflowSettings: workflowSettingsFor(n8nStackConfig) });
-		await api.setupFromTags(testInfo.tags);
-
-		const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
-		const apiCookies = await context.storageState();
-		const authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
-
-		if (!hasAuthTag && !authCookie) {
-			await api.signin('owner');
+		try {
+			if (testSession) await api.signin(testSession);
+			await use(api);
+		} finally {
+			await context.dispose();
 		}
-
-		await use(api);
-		await context.dispose();
 	},
 
 	mainUrls: async ({ n8nContainer }, use) => {
@@ -343,7 +371,7 @@ export const test = base.extend<
 		await use(urls);
 	},
 
-	createApiForMain: async ({ n8nContainer, n8nStackConfig }, use, testInfo) => {
+	createApiForMain: async ({ n8nContainer, n8nStackConfig, testSession }, use) => {
 		const contexts: Array<{ dispose: () => Promise<void> }> = [];
 
 		const createApi = async (mainIndex: number): Promise<ApiHelpers> => {
@@ -361,15 +389,7 @@ export const test = base.extend<
 			const api = new ApiHelpers(context, {
 				workflowSettings: workflowSettingsFor(n8nStackConfig),
 			});
-			await api.setupFromTags(testInfo.tags.filter((tag) => tag.toLowerCase() !== '@db:reset'));
-
-			const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
-			const apiCookies = await context.storageState();
-			const authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
-
-			if (!hasAuthTag && !authCookie) {
-				await api.signin('owner');
-			}
+			if (testSession) await api.signin(testSession);
 
 			return api;
 		};
@@ -402,8 +422,8 @@ export type { A11yBucket, A11yCheckOptions, A11yViolation } from './a11y';
 /*
 Fixture Dependency Graph:
 Worker: capability + project.containerConfig → n8nStackConfig → n8nContainer → [backendUrl, frontendUrl, dbSetup]
-Test:   frontendUrl + dbSetup → baseURL → n8n (uses backendUrl for API calls)
-        backendUrl → api
+Test:   dbSetup + backendUrl → testSession → [api, n8n, createApiForMain]
+        frontendUrl + dbSetup → baseURL → context → consoleErrorMonitor → page → n8n
         n8nContainer → services
         n8n → a11y
 
