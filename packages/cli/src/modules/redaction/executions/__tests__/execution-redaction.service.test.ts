@@ -1,6 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import type { INode, IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 import { shouldRedactConsoleOutput } from 'n8n-workflow';
@@ -14,7 +13,6 @@ import type {
 	RedactableExecution,
 } from '@/executions/execution-redaction';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
-import { CacheService } from '@/services/cache/cache.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ExecutionRedactionService } from '../execution-redaction.service';
@@ -32,7 +30,6 @@ describe('ExecutionRedactionService', () => {
 	const eventService = mock<EventService>();
 	const fullItemRedactionStrategy = mockInstance(FullItemRedactionStrategy);
 	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
-	const cacheService = mockInstance(CacheService);
 
 	let service: ExecutionRedactionService;
 
@@ -55,17 +52,12 @@ describe('ExecutionRedactionService', () => {
 			eventService,
 			fullItemRedactionStrategy,
 			credentialsPermissionChecker,
-			cacheService,
 		);
 		// Default: user lacks execution:reveal scope
 		workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
 		fullItemRedactionStrategy.apply.mockResolvedValue(undefined);
 		// Default: viewer can use every credential
 		credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([]);
-		// Default: cache is always cold, so every test exercises the real DB-check
-		// path unless it explicitly sets up a cache hit.
-		cacheService.getMany.mockImplementation(async (keys: string[]) => keys.map(() => undefined));
-		cacheService.setMany.mockResolvedValue(undefined);
 		// Stand-in for the real extraction logic (covered by
 		// credentials-permission-checker.test.ts): the ids of enabled nodes'
 		// credentials, so fixtures built with `nodeWithCredential` behave as
@@ -1262,79 +1254,6 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
-		});
-
-		describe('caching', () => {
-			it('skips the DB call when a prior inaccessible verdict is cached', async () => {
-				cacheService.getMany.mockResolvedValue([true]);
-				const execution = makeExecution({
-					policy: 'none',
-					mode: 'manual',
-					nodes: [nodeWithCredential('cred-1')],
-				});
-
-				await service.processExecution(execution, { user: mockUser });
-
-				expect(
-					credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
-				).not.toHaveBeenCalled();
-				expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
-			});
-
-			it('skips the DB call when a prior accessible verdict is cached', async () => {
-				cacheService.getMany.mockResolvedValue([false]);
-				const execution = makeExecution({
-					policy: 'none',
-					mode: 'manual',
-					nodes: [nodeWithCredential('cred-1')],
-				});
-
-				await service.processExecution(execution, { user: mockUser });
-
-				expect(
-					credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
-				).not.toHaveBeenCalled();
-				expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
-			});
-
-			it('queries only the uncached credentials and caches the fresh verdicts', async () => {
-				cacheService.getMany.mockResolvedValue([false, undefined]);
-				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-					'cred-2',
-				]);
-				const execution = makeExecution({
-					policy: 'none',
-					mode: 'manual',
-					nodes: [
-						nodeWithCredential('cred-1', { id: 'node-1', name: 'CachedNode' }),
-						nodeWithCredential('cred-2', { id: 'node-2', name: 'UncachedNode' }),
-					],
-				});
-
-				await service.processExecution(execution, { user: mockUser });
-
-				expect(
-					credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
-				).toHaveBeenCalledWith(mockUser.id, ['cred-2'], { ignoreGlobalUseScope: true });
-				expect(cacheService.setMany).toHaveBeenCalledWith(
-					[[`credential-usability:${mockUser.id}:cred-2`, true]],
-					10 * Time.seconds.toMilliseconds,
-				);
-			});
-
-			it('scopes the cache key to the viewer, not just the credential', async () => {
-				const execution = makeExecution({
-					policy: 'none',
-					mode: 'manual',
-					nodes: [nodeWithCredential('cred-1')],
-				});
-
-				await service.processExecution(execution, { user: mockUser });
-
-				expect(cacheService.getMany).toHaveBeenCalledWith([
-					`credential-usability:${mockUser.id}:cred-1`,
-				]);
-			});
 		});
 	});
 });
