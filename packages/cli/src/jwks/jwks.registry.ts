@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import type { JWK } from 'jose';
+import { UnexpectedError } from 'n8n-workflow';
 
 /**
  * A source of public keys for the instance JWKS. Keys from different
@@ -22,7 +23,11 @@ export interface JwksProvider {
 export class JwksRegistry {
 	private readonly providers = new Map<string, JwksProvider>();
 
+	/** Throws on a duplicate `id`, so a provider's keys cannot drop out silently. */
 	register(provider: JwksProvider): void {
+		if (this.providers.has(provider.id)) {
+			throw new UnexpectedError(`JWKS provider "${provider.id}" is already registered`);
+		}
 		this.providers.set(provider.id, provider);
 	}
 

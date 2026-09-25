@@ -41,10 +41,9 @@ describe('OAuthJweModule', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		delete process.env.N8N_ENV_FEAT_OAUTH2_JWE;
 	});
 
-	test('sets the decrypt handler on the proxy without the env feature flag', async () => {
+	test('sets the decrypt handler on the proxy', async () => {
 		await setUp('main').init();
 
 		expect(proxy.setHandler).toHaveBeenCalledWith(decryptService);

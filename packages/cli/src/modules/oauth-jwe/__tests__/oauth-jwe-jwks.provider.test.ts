@@ -15,6 +15,16 @@ const validRsaJwk: JWK = {
 	e: 'AQAB',
 };
 
+const validEcJwk: JWK = {
+	kty: 'EC',
+	kid: 'row-ec',
+	use: 'enc',
+	alg: 'ECDH-ES',
+	crv: 'P-256',
+	x: 'x-coordinate',
+	y: 'y-coordinate',
+};
+
 describe('OAuthJweJwksProvider', () => {
 	const oauthJweKeyService = mockInstance(OAuthJweKeyService);
 	const logger = mockInstance(Logger);
@@ -29,6 +39,37 @@ describe('OAuthJweJwksProvider', () => {
 		oauthJweKeyService.getPublicJwks.mockResolvedValue([validRsaJwk]);
 
 		await expect(provider.getPublicJwks()).resolves.toEqual([validRsaJwk]);
+	});
+
+	test('returns a public EC JWK', async () => {
+		oauthJweKeyService.getPublicJwks.mockResolvedValue([validEcJwk]);
+
+		await expect(provider.getPublicJwks()).resolves.toEqual([validEcJwk]);
+	});
+
+	test('drops a signing key', async () => {
+		const signingJwk: JWK = { ...validRsaJwk, kid: 'row-sig', use: 'sig' };
+		oauthJweKeyService.getPublicJwks.mockResolvedValue([validRsaJwk, signingJwk]);
+
+		await expect(provider.getPublicJwks()).resolves.toEqual([validRsaJwk]);
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+	});
+
+	test('drops EC JWKs with private material or an unsupported algorithm', async () => {
+		const ecJwkWithPrivateMaterial: JWK = {
+			...validEcJwk,
+			kid: 'row-ec-leaky',
+			d: 'this-must-never-be-exposed',
+		};
+		const ecJwkWithUnsupportedAlg: JWK = { ...validEcJwk, kid: 'row-ec-bad-alg', alg: 'ES256' };
+		oauthJweKeyService.getPublicJwks.mockResolvedValue([
+			validEcJwk,
+			ecJwkWithPrivateMaterial,
+			ecJwkWithUnsupportedAlg,
+		]);
+
+		await expect(provider.getPublicJwks()).resolves.toEqual([validEcJwk]);
+		expect(logger.warn).toHaveBeenCalledTimes(2);
 	});
 
 	test('drops a JWK with an unsupported algorithm', async () => {

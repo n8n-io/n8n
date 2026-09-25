@@ -75,6 +75,25 @@ describe('JwksController', () => {
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 		});
 
+		test('drops an EC key with private material', async () => {
+			const ecJwkWithPrivateMaterial: JWK = {
+				kty: 'EC',
+				kid: 'ec-leaky',
+				use: 'enc',
+				alg: 'ECDH-ES',
+				crv: 'P-256',
+				x: 'x-coordinate',
+				y: 'y-coordinate',
+				d: 'this-must-never-be-exposed',
+			};
+			jwksRegistry.getPublicJwks.mockResolvedValue([encRsaJwk, ecJwkWithPrivateMaterial]);
+
+			await controller.getKeys(req, res);
+
+			expect(res.json).toHaveBeenCalledWith({ keys: [encRsaJwk] });
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+		});
+
 		test('accepts a signing key', async () => {
 			const sigRsaJwk: JWK = { ...encRsaJwk, kid: 'sig-1', use: 'sig', alg: 'RS256' };
 			jwksRegistry.getPublicJwks.mockResolvedValue([encRsaJwk, sigRsaJwk]);

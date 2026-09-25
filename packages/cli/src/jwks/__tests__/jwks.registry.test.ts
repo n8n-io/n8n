@@ -32,6 +32,15 @@ describe('JwksRegistry', () => {
 		await expect(registry.getPublicJwks()).resolves.toEqual([encKey, sigKey]);
 	});
 
+	test('rejects a second provider with the same id', () => {
+		const registry = new JwksRegistry();
+		registry.register(provider('enc', async () => [encKey]));
+
+		expect(() => registry.register(provider('enc', async () => [sigKey]))).toThrow(
+			'JWKS provider "enc" is already registered',
+		);
+	});
+
 	test('propagates a provider error to the caller', async () => {
 		const registry = new JwksRegistry();
 		registry.register(provider('enc', async () => [encKey]));
