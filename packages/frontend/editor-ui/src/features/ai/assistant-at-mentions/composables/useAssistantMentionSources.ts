@@ -162,6 +162,16 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 		);
 	}
 
+	function clearSearchResults(): void {
+		latestRequestGeneration++;
+		currentQuery = '';
+		currentMode = undefined;
+		isBrowsing.value = false;
+		isSearching.value = false;
+		searchItemsByProvider.clear();
+		searchResults.value = [];
+	}
+
 	function clearProviderError(providerId: MentionSourceProvider['id']): void {
 		if (!providerErrors.value.has(providerId)) return;
 		const nextErrors = new Map(providerErrors.value);
@@ -310,6 +320,7 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 		isSearching,
 		browse,
 		search,
+		clearSearchResults,
 		dispose,
 	};
 }

@@ -334,7 +334,7 @@ describe('useAssistantMentionSources', () => {
 		scope.stop();
 	});
 
-	it('invalidates an in-flight search when the query is cleared', async () => {
+	it('invalidates an in-flight search when results are cleared', async () => {
 		const response = deferred<AssistantMentionItem[]>();
 		const source: MentionSourceProvider = {
 			id: 'workflows',
@@ -348,11 +348,35 @@ describe('useAssistantMentionSources', () => {
 		});
 
 		const pending = sources.search('orders');
-		await sources.search('');
+		sources.clearSearchResults();
 		response.resolve([buildWorkflowMentionItem(makeWorkflow('old', 'Orders'), 'workflows')]);
 		await pending;
 
 		expect(sources.searchResults.value).toEqual([]);
+		scope.stop();
+	});
+
+	it('clears browsing state when an in-flight browse is invalidated', async () => {
+		const response = deferred<AssistantMentionItem[]>();
+		const source: MentionSourceProvider = {
+			id: 'artifacts',
+			browse: async () => await response.promise,
+			search: async () => [],
+		};
+		const scope = effectScope();
+		let sources!: ReturnType<typeof useAssistantMentionSources>;
+		scope.run(() => {
+			sources = useAssistantMentionSources([source]);
+		});
+
+		const pending = sources.browse();
+		expect(sources.isBrowsing.value).toBe(true);
+		sources.clearSearchResults();
+		expect(sources.isBrowsing.value).toBe(false);
+
+		response.resolve([]);
+		await pending;
+		expect(sources.isBrowsing.value).toBe(false);
 		scope.stop();
 	});
 

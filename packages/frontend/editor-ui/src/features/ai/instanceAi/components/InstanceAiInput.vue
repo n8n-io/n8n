@@ -14,6 +14,15 @@ import {
 	type InstanceAiAttachment,
 	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
+import AssistantAtMentionPicker from '@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue';
+import { useAssistantAtMentions } from '@/features/ai/assistant-at-mentions/composables/useAssistantAtMentions';
+import { useAssistantMentionAttachments } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAttachments';
+import type {
+	AssistantMentionArtifactReference,
+	AssistantMentionSelection,
+	WorkflowArtifactReference,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 import { instanceAiResponseNow } from '../instanceAi.responseTiming';
@@ -64,6 +73,8 @@ type ActivePrefill = InstanceAiPrefillPayload;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
+/** The keyCode browsers send while an IME composes text, such as Japanese, Chinese or Korean. */
+const IME_COMPOSITION_KEYCODE = 229;
 
 const props = withDefaults(
 	defineProps<{
@@ -90,6 +101,11 @@ const props = withDefaults(
 		submitLabel?: string;
 		submitActiveRequiresFocus?: boolean;
 		contextChip?: ContextChip | null;
+		mentionsEnabled?: boolean;
+		mentionProjectId?: string;
+		mentionArtifacts?: readonly WorkflowArtifactReference[];
+		mentionActiveWorkflowId?: string;
+		reservedAttachmentCount?: number;
 	}>(),
 	{
 		isStreaming: false,
@@ -105,6 +121,11 @@ const props = withDefaults(
 		submitLabel: undefined,
 		submitActiveRequiresFocus: false,
 		contextChip: null,
+		mentionsEnabled: false,
+		mentionProjectId: undefined,
+		mentionArtifacts: () => [],
+		mentionActiveWorkflowId: undefined,
+		reservedAttachmentCount: 0,
 	},
 );
 
@@ -119,10 +140,14 @@ const emit = defineEmits<{
 		restoreDraft: () => boolean,
 		authorship: InstanceAiMessageAuthorship,
 		responseStartedAtEpochMs: number,
+		acceptDraft: () => void,
 	];
 	stop: [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
+	'mention-reference-added': [reference: AssistantMentionArtifactReference];
+	'mention-reference-removed': [referenceId: string];
+	'mention-workflow-open': [workflowId: string];
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	// Fires when the composer goes between empty and non-empty so the split
 	// empty state can pause its cycling placeholders only once the user types
@@ -131,12 +156,16 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const attachedResources = ref<InstanceAiResourceAttachment[]>([]);
+const isPreparingSubmission = ref(false);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
+const mentionPickerRef = ref<InstanceType<typeof AssistantAtMentionPicker> | null>(null);
+const composerRef = ref<HTMLElement | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const previewPrompt = ref<string | null>(null);
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
@@ -189,9 +218,11 @@ function focus() {
 
 function appendText(text: string) {
 	inputText.value += text;
+	void mentions.handleTextChange(inputText.value, inputText.value.length);
 }
 
 function setText(text: string) {
+	mentions.close();
 	inputText.value = text;
 }
 
@@ -233,7 +264,9 @@ defineExpose({
 // A run suspended on a plan review is parked, not working: the user is meant to
 // type into it. Only a real in-flight submission blocks the composer then.
 const isBusy = computed(() =>
-	props.isAwaitingPlanReview ? props.isSubmitting : props.isStreaming || props.isSubmitting,
+	props.isAwaitingPlanReview
+		? props.isSubmitting
+		: props.isStreaming || props.isSubmitting || isPreparingSubmission.value,
 );
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
@@ -252,6 +285,51 @@ watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
+const shouldShowMentions = computed(
+	() => props.mentionsEnabled && Boolean(props.mentionProjectId) && !props.isAwaitingPlanReview,
+);
+const canUseMentions = computed(
+	() => shouldShowMentions.value && !isBusy.value && !isGatedBySetup.value,
+);
+const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
+const mentions = useAssistantAtMentions({
+	text: inputText,
+	enabled: canUseMentions,
+	getInputElement: () => inputElement.value ?? undefined,
+});
+const mentionMenuOpen = mentions.menuOpen;
+const mentionQuery = mentions.query;
+
+const mentionAttachments = useAssistantMentionAttachments({
+	files: attachedFiles,
+	resources: attachedResources,
+	projectId: () => props.mentionProjectId,
+	reservedAttachmentCount: () => props.reservedAttachmentCount,
+	onReferenceAdded: (reference) => emit('mention-reference-added', reference),
+	onReferenceRemoved: (referenceId) => emit('mention-reference-removed', referenceId),
+	onCleared: mentions.close,
+});
+
+async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
+	const result = mentionAttachments.select(selection);
+	if (result.status === 'limit') {
+		toast.showError(
+			new Error(i18n.baseText('instanceAi.mentions.attachmentLimitMessage')),
+			i18n.baseText('instanceAi.mentions.attachmentLimitTitle'),
+		);
+		return;
+	}
+
+	if (result.truncated) {
+		toast.showError(
+			new Error(i18n.baseText('instanceAi.nodeContext.truncated.message')),
+			i18n.baseText('instanceAi.nodeContext.truncated.title'),
+		);
+	}
+	emit('mention-workflow-open', selection.item.workflowId);
+	await mentions.replaceActiveRange(selection.item.label);
+}
+
 const canSubmit = computed(() =>
 	canSubmitMessage(
 		inputText.value.trim(),
@@ -337,9 +415,18 @@ function emitSubmittedMessage(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs: number,
+	acceptDraft: () => void,
 ) {
 	previewPrompt.value = null;
-	emit('submit', message, attachments, restoreDraft, authorship, responseStartedAtEpochMs);
+	emit(
+		'submit',
+		message,
+		attachments,
+		restoreDraft,
+		authorship,
+		responseStartedAtEpochMs,
+		acceptDraft,
+	);
 }
 
 /**
@@ -427,6 +514,11 @@ function submitComposerMessage(
 	attachments: InstanceAiAttachment[] | undefined,
 	prefill: ActivePrefill | null,
 	responseStartedAtEpochMs = instanceAiResponseNow(),
+	draftSnapshot?: {
+		files: File[];
+		resources: InstanceAiResourceAttachment[];
+		mentionReferenceIds: readonly string[];
+	},
 ) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
 		return;
@@ -446,6 +538,7 @@ function submitComposerMessage(
 			() => restorePlanFeedbackDraft(message),
 			USER_TYPED_MESSAGE,
 			responseStartedAtEpochMs,
+			() => {},
 		);
 		resetDraftComposer({ keepAttachments: true });
 		return;
@@ -453,14 +546,20 @@ function submitComposerMessage(
 
 	trackSelectedSuggestionSubmitted(message);
 
-	const submittedFiles = [...attachedFiles.value];
-	const submittedResources = [...attachedResources.value];
+	const submittedFiles = draftSnapshot?.files ?? [...attachedFiles.value];
+	const submittedResources = draftSnapshot?.resources ?? [...attachedResources.value];
+	const mentionSubmission = mentionAttachments.detachSubmission(draftSnapshot?.mentionReferenceIds);
 	emitSubmittedMessage(
 		message,
 		attachments,
-		() => restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill),
+		() => {
+			const restored = restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill);
+			mentionSubmission.restore();
+			return restored;
+		},
 		resolveAuthorship(message, prefill),
 		responseStartedAtEpochMs,
+		mentionSubmission.accept,
 	);
 	resetDraftComposer();
 }
@@ -489,6 +588,7 @@ async function handleSubmit() {
 	if (!canSubmitMessage(text, attachedFiles.value.length + attachedResources.value.length)) {
 		return;
 	}
+	mentions.close();
 	const responseStartedAtEpochMs = instanceAiResponseNow();
 
 	// Plan feedback carries no attachments, so skip encoding the staged files.
@@ -497,26 +597,36 @@ async function handleSubmit() {
 		return;
 	}
 
-	const fileAttachments: InstanceAiAttachment[] = attachedFiles.value.length
-		? (await Promise.all(attachedFiles.value.map(convertFileToBinaryData))).map((b) => ({
-				type: 'file' as const,
-				data: b.data,
-				mimeType: b.mimeType,
-				fileName: b.fileName ?? 'unnamed',
-			}))
-		: [];
-	const attachments = [...fileAttachments, ...attachedResources.value];
+	const submittedFiles = [...attachedFiles.value];
+	const submittedResources = [...attachedResources.value];
+	const mentionReferenceIds = mentionAttachments.snapshotSubmission();
+	isPreparingSubmission.value = true;
+	let fileAttachments: InstanceAiAttachment[];
+	try {
+		fileAttachments = submittedFiles.length
+			? (await Promise.all(submittedFiles.map(convertFileToBinaryData))).map((b) => ({
+					type: 'file' as const,
+					data: b.data,
+					mimeType: b.mimeType,
+					fileName: b.fileName ?? 'unnamed',
+				}))
+			: [];
+	} finally {
+		isPreparingSubmission.value = false;
+	}
+	const attachments = [...fileAttachments, ...submittedResources];
 
 	submitComposerMessage(
 		text,
 		attachments.length ? attachments : undefined,
 		prefill,
 		responseStartedAtEpochMs,
+		{ files: submittedFiles, resources: submittedResources, mentionReferenceIds },
 	);
 }
 
 function removeResource(index: number) {
-	attachedResources.value = attachedResources.value.filter((_, i) => i !== index);
+	mentionAttachments.removeResource(index);
 }
 
 watch(
@@ -533,6 +643,7 @@ watch(
 				);
 				if (existing) {
 					existing.sets = mergeNodeSets(existing.sets, attachment.sets);
+					existing.workflowName = attachment.workflowName ?? existing.workflowName;
 					continue;
 				}
 			}
@@ -543,7 +654,19 @@ watch(
 );
 
 function handleStop() {
+	mentions.close();
 	emit('stop');
+}
+
+function handleComposerKeydown(event: KeyboardEvent): void {
+	if (!mentionMenuOpen.value) return;
+	const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
+	const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
+	const isComposing = event.isComposing || event.keyCode === IME_COMPOSITION_KEYCODE;
+	if (handled || event.key !== 'Enter' || hasModifier || isComposing) return;
+
+	event.preventDefault();
+	event.stopPropagation();
 }
 
 function handleTabAutocomplete() {
@@ -672,15 +795,23 @@ const resizable = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.composer">
+	<div
+		ref="composerRef"
+		:class="$style.composer"
+		@keydown.capture="handleComposerKeydown"
+		@pointerdown.capture="mentions.saveSelection"
+		@click.capture="mentions.handleCaretMove"
+		@keyup.capture="mentions.handleCaretMove"
+		@select.capture="mentions.handleCaretMove"
+	>
 		<ChatInputBase
 			ref="chatInputRef"
-			v-model="inputText"
+			:model-value="inputText"
 			:class="$style.inputWrapper"
 			:placeholder="placeholder"
 			:is-streaming="props.isAwaitingPlanReview ? false : props.isStreaming"
 			:can-submit="canSubmit"
-			:disabled="isGatedBySetup"
+			:disabled="isGatedBySetup || isPreparingSubmission"
 			:autosize="resizable"
 			:button-label="props.submitLabel"
 			:active-requires-focus="props.submitActiveRequiresFocus"
@@ -689,6 +820,7 @@ const resizable = computed(() => {
 			:show-attach="!props.isAwaitingPlanReview"
 			:show-attach-button="false"
 			:attached-encoded-bytes="attachedEncodedBytes"
+			@update:model-value="mentions.handleTextChange"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
@@ -731,7 +863,7 @@ const resizable = computed(() => {
 						:attachment="attachment"
 						:is-removable="true"
 						@remove-resource="removeResource(index)"
-						@update:attachment="attachedResources[index] = $event"
+						@update:attachment="mentionAttachments.updateResource(index, $event)"
 					/>
 				</div>
 				<div v-if="attachedFiles.length > 0" :class="$style.attachments">
@@ -749,6 +881,21 @@ const resizable = computed(() => {
 					:disabled="isBusy || isGatedBySetup"
 					:thread-id="props.currentThreadId || undefined"
 					@attach-files="chatInputRef?.openFilePicker()"
+				/>
+			</template>
+			<template v-if="shouldShowMentions" #right-actions>
+				<AssistantAtMentionPicker
+					ref="mentionPickerRef"
+					v-model="mentionMenuOpen"
+					:query="mentionQuery"
+					:project-id="props.mentionProjectId"
+					:artifacts="props.mentionArtifacts"
+					:active-workflow-id="props.mentionActiveWorkflowId"
+					:input-element="inputElement"
+					:reference="composerRef"
+					:disabled="isBusy || isGatedBySetup"
+					@update:model-value="mentions.handleMenuOpenChange"
+					@select="handleMentionSelection"
 				/>
 			</template>
 		</ChatInputBase>

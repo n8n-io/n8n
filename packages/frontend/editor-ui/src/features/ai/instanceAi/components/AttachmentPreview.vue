@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { InstanceAiAttachment, InstanceAiNodesAttachment } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import NodesAttachmentChips from './NodesAttachmentChips.vue';
 
@@ -10,6 +11,7 @@ const props = defineProps<{
 	attachment?: InstanceAiAttachment;
 	isRemovable?: boolean;
 }>();
+const i18n = useI18n();
 
 const emit = defineEmits<{
 	remove: [file: File];
@@ -94,6 +96,17 @@ onBeforeUnmount(() => {
 		<N8nIcon icon="workflow" size="small" />
 		<span :class="$style.resourceName">{{ workflowAttachment.name ?? 'Workflow' }}</span>
 		<N8nIcon v-if="workflowAttachment.executionId" icon="play" size="xsmall" />
+		<N8nIconButton
+			v-if="isRemovable"
+			icon="x"
+			size="xsmall"
+			variant="ghost"
+			:class="$style.resourceRemove"
+			:title="i18n.baseText('instanceAi.mentions.removeWorkflow')"
+			:aria-label="i18n.baseText('instanceAi.mentions.removeWorkflow')"
+			data-test-id="attachment-preview-remove-resource"
+			@click.stop="emit('remove-resource')"
+		/>
 	</div>
 	<div
 		v-else-if="agentAttachment"
@@ -146,6 +159,11 @@ onBeforeUnmount(() => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.resourceRemove {
+	flex: 0 0 auto;
+	margin-right: calc(var(--spacing--4xs) * -1);
 }
 
 .thumbnailWrapper {

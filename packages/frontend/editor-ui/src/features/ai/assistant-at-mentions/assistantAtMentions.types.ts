@@ -1,4 +1,5 @@
 import type { Ref } from 'vue';
+import type { InstanceAiResourceAttachment } from '@n8n/api-types';
 
 export type AssistantMentionKind = 'workflow' | 'node' | 'group';
 
@@ -68,4 +69,16 @@ export interface WorkflowArtifactIndexEntry {
 	source?: 'active' | 'fetched';
 	index?: WorkflowArtifactIndex;
 	error?: unknown;
+}
+
+export interface AssistantMentionSelection {
+	item: AssistantMentionItem;
+	attachment: InstanceAiResourceAttachment;
+	truncated: boolean;
+}
+
+export interface AssistantMentionArtifactReference {
+	referenceId: string;
+	workflowId: string;
+	workflowName: string;
 }
