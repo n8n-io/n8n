@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import {
 	N8nButton,
 	N8nSettingsLayout,
@@ -13,17 +14,16 @@ import type { TableOptions } from '@n8n/design-system';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import {
 	LOADING_INDICATOR_TIMEOUT,
-	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
 	MCP_DOCS_PAGE_URL,
 	MCP_SETTINGS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
+import MCPConnectWorkflowsModal from '@/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.vue';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -31,9 +31,9 @@ const telemetry = useTelemetry();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const mcpStore = useMCPStore();
-const uiStore = useUIStore();
 
 const workflowsLoading = ref(false);
+const showConnectWorkflowsDialog = ref(false);
 const availableWorkflows = ref<McpWorkflow[]>([]);
 const availableWorkflowsTotal = ref(0);
 const workflowsTableState = ref<TableOptions>({
@@ -130,7 +130,7 @@ const onBulkRemoveWorkflowsMCPAccess = async (workflowIds: string[]) => {
 };
 
 const onUpdateDescription = (workflow: McpWorkflow) => {
-	uiStore.openModalWithData({
+	capabilityRegistry.use(capabilities.modalOpeners).openModalWithData({
 		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
 		data: {
 			workflowId: workflow.id,
@@ -150,12 +150,7 @@ const onUpdateDescription = (workflow: McpWorkflow) => {
 };
 
 const openConnectWorkflowsModal = () => {
-	uiStore.openModalWithData({
-		name: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
-		data: {
-			onEnableMcpAccess: onBulkEnableWorkflowsMCPAccess,
-		},
-	});
+	showConnectWorkflowsDialog.value = true;
 	telemetry.track('User clicked connect workflows from mcp settings');
 };
 
@@ -220,6 +215,10 @@ onMounted(async () => {
 				@refresh="fetchAvailableWorkflows"
 			/>
 		</div>
+		<MCPConnectWorkflowsModal
+			v-model:open="showConnectWorkflowsDialog"
+			:enable-mcp-access="onBulkEnableWorkflowsMCPAccess"
+		/>
 	</N8nSettingsLayout>
 </template>
 
