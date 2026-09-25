@@ -1,3 +1,5 @@
+import { OperationalError } from 'n8n-workflow';
+
 import {
 	buildTraceInfo,
 	defaultExperimentName,
@@ -160,6 +162,26 @@ describe('ensureExperiment', () => {
 		expect(await ensureExperiment(request, '/Shared/x')).toBe('999');
 		expect(createCalls).toBe(1);
 		expect(lookupCalls).toBe(2);
+	});
+
+	it('removes credential material from the workspace error text', async () => {
+		const token = ['dapi', '0123456789abcdef0123456789abcdef'].join('');
+		const { request } = workspace({
+			'/api/2.0/mlflow/experiments/get-by-name': {
+				status: 403,
+				body: {
+					error_code: 'PERMISSION_DENIED',
+					message: `rejected ${token} for https://adb-1.azuredatabricks.net/api?sig=secret`,
+				},
+			},
+		});
+
+		const error = await ensureExperiment(request, '/Shared/x').catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(OperationalError);
+		expect(String(error)).toContain('PERMISSION_DENIED');
+		expect(String(error)).not.toContain(token);
+		expect(String(error)).not.toContain('sig=secret');
 	});
 
 	it('fails clearly when no id comes back', async () => {
