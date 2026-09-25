@@ -709,13 +709,16 @@ describe('AgentChannelTeamsSetup', () => {
 			vi.mocked(checkTeamsCredential).mockImplementationOnce(
 				async () => await new Promise((resolve) => (release = resolve)),
 			);
-			const { getByTestId, rerender } = renderComponent({
+			const { getByTestId, queryByTestId, rerender } = renderComponent({
 				props: props({ modelValue: 'cred-1' }),
 			});
 			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalledTimes(1));
 
+			// Each flip reloads the setup state; flipping back shows the check again.
 			await rerender(props({ modelValue: 'cred-1', connected: true }));
-			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalledTimes(2));
+			await rerender(props({ modelValue: 'cred-1', connected: false }));
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalledTimes(3));
+			expect(getByTestId('teams-credential-checking')).toBeVisible();
 			release?.({ status: 'ok' });
 
 			await waitFor(() =>
@@ -724,7 +727,7 @@ describe('AgentChannelTeamsSetup', () => {
 					expect.objectContaining({ status: 'ok' }),
 				),
 			);
-			expect(() => getByTestId('teams-credential-checking')).toThrow();
+			await waitFor(() => expect(queryByTestId('teams-credential-checking')).toBeNull());
 		});
 
 		it('does not track an answer for a credential that is no longer selected', async () => {

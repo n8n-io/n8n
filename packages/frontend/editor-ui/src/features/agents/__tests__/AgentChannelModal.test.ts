@@ -1,6 +1,6 @@
-import { flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentApproval, ChatIntegrationDescriptor } from '@n8n/api-types';
 
 import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
@@ -284,6 +284,10 @@ function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 		},
 	});
 }
+
+// Every mount shares the module-level refs above, so a modal left mounted
+// would react to the next test's state changes.
+enableAutoUnmount(afterEach);
 
 describe('AgentChannelModal', () => {
 	beforeEach(() => {
@@ -770,6 +774,19 @@ describe('AgentChannelModal', () => {
 
 			await wrapper.get('[data-testid="setup-channel"]').trigger('click');
 
+			expect(mocks.trackStartedChannelSetup).toHaveBeenCalledWith(setupEvent);
+		});
+
+		it('waits for the catalog before tracking the start, since the view renders only then', async () => {
+			catalog.value = [];
+			mountModal();
+			await flushPromises();
+			expect(mocks.trackStartedChannelSetup).not.toHaveBeenCalled();
+
+			catalog.value = [exampleIntegration];
+			await flushPromises();
+
+			expect(mocks.trackStartedChannelSetup).toHaveBeenCalledOnce();
 			expect(mocks.trackStartedChannelSetup).toHaveBeenCalledWith(setupEvent);
 		});
 

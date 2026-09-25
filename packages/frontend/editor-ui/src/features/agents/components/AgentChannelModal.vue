@@ -102,6 +102,11 @@ const selectedChannelType = computed(() => {
 const isSetupMode = computed(() => currentView.value.endsWith('_setup'));
 const isEditMode = computed(() => currentView.value.endsWith('_edit'));
 
+const currentIntegration = computed(() => {
+	if (!selectedChannelType.value) return null;
+	return catalog.value?.find((i) => i.type === selectedChannelType.value) ?? null;
+});
+
 /** The channel whose setup view is on screen, so the close event fires once per start. */
 let trackedSetupType: string | null = null;
 
@@ -116,7 +121,9 @@ function endSetupTracking(completed: boolean) {
 }
 
 watch(
-	() => (props.open && isSetupMode.value ? selectedChannelType.value : null),
+	// The template renders the setup view only once the catalog knows the channel.
+	() =>
+		props.open && isSetupMode.value && currentIntegration.value ? selectedChannelType.value : null,
 	(channelType) => {
 		if (channelType === trackedSetupType) return;
 		endSetupTracking(false);
@@ -139,11 +146,6 @@ function trackSetupFailure(channelType: string, stage: 'persist' | 'before_save'
 		conflict: stage === 'connect' && (errorIsConflict.value[channelType] ?? false),
 	});
 }
-
-const currentIntegration = computed(() => {
-	if (!selectedChannelType.value) return null;
-	return catalog.value?.find((i) => i.type === selectedChannelType.value) ?? null;
-});
 
 const {
 	selectedCredentials,
