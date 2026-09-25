@@ -485,13 +485,6 @@ export class InstanceContextService {
 		if (!row) return null;
 
 		if (resolved.surface === 'mcp') {
-			// Both fields are checked, not just `category`. `ActivityEvent` documents that the two
-			// come apart as soon as an entry is about one kind of thing but points at another, and
-			// at that point a `category: 'workflow'` row could still name a credential.
-			const touchesCredential = row.category === 'credential' || row.resourceType === 'credential';
-			if (touchesCredential && !isCredentialVisible(row, resolved)) return null;
-
-			// The history below is about this same resource, so one check covers both.
 			const [visible] = await this.withoutWithheldWorkflows([row], resolved);
 			if (!visible) return null;
 		}
