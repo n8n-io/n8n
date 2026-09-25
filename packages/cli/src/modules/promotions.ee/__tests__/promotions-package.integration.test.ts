@@ -1373,6 +1373,185 @@ describe('Apply a project selection', () => {
 	});
 });
 
+describe('Apply a project selection over the public API', () => {
+	it('applies a selected workflow over the wire and preserves unselected content', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', [
+			'Selected',
+			'Sibling',
+		]);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export orders',
+		});
+		const repository = Container.get(WorkflowRepository);
+		await repository.delete(workflows[0].id);
+		await repository.update(workflows[1].id, { name: 'Local sibling' });
+		const siblingBefore = await repository.findOneByOrFail({ id: workflows[1].id });
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post(`/promotions/projects/${project.id}/apply`)
+			.send({ workflowIds: [workflows[0].id] });
+
+		expect(response.status, JSON.stringify(response.body)).toBe(200);
+		expect(response.body).toMatchObject({
+			status: 'applied',
+			counts: {
+				projects: { created: 0, updated: 0, deleted: 0 },
+				workflows: { created: 1, updated: 0, archived: 0, deleted: 0 },
+			},
+		});
+		expect(await repository.findOneByOrFail({ id: workflows[0].id })).toMatchObject({
+			name: workflows[0].name,
+			isArchived: false,
+		});
+		expect(await repository.findOneByOrFail({ id: workflows[1].id })).toEqual(siblingBefore);
+	});
+
+	it('returns blocked, then applies through Continue once the bindings exist', async () => {
+		const { project, workflow, credential, variable } = await prepareBindingApply();
+		const agent = testServer.publicApiAgentFor(owner);
+		const before = await snapshotApplyState();
+
+		const blocked = (
+			await agent
+				.post(`/promotions/projects/${project.id}/apply`)
+				.send({ workflowIds: [workflow.id] })
+				.expect(200)
+		).body;
+		expect(blocked.status).toBe('blocked');
+		expect(blocked.preflight.missingBindings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
+				expect.objectContaining({ kind: 'variable', name: variable.key }),
+			]),
+		);
+		expect(blocked).not.toHaveProperty('counts');
+		expect(await snapshotApplyState()).toEqual(before);
+
+		await agent
+			.post('/credentials')
+			.send({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				projectId: project.id,
+				data: { name: 'Authorization', value: 'target-secret' },
+			})
+			.expect(200);
+		await createVariable(variable.key, 'target value');
+
+		const result = (
+			await agent
+				.post(`/promotions/projects/${project.id}/apply/continue`)
+				.send({
+					workflowIds: [workflow.id],
+					expectedSource: { configId: blocked.configId, ...blocked.git },
+				})
+				.expect(200)
+		).body;
+		expect(result.status, JSON.stringify(result)).toBe('applied');
+		expect(result.counts.credentials).toMatchObject({ matched: 1 });
+		expect(
+			await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id }),
+		).toMatchObject({ name: workflow.name });
+	});
+
+	it('returns source-changed for a stale commit without importing', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		const checkout = await service.clone(connection.id, 'apply');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Branch name']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export orders',
+		});
+		await Container.get(WorkflowRepository).update(workflows[0].id, { name: 'Local name' });
+		const before = await snapshotApplyState();
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post(`/promotions/projects/${project.id}/apply`)
+			.send({
+				workflowIds: [workflows[0].id],
+				expectedSource: {
+					configId: checkout.configId,
+					branchName: 'main',
+					commitSha: '0'.repeat(40),
+				},
+			});
+
+		expect(response.status, JSON.stringify(response.body)).toBe(200);
+		expect(response.body).toMatchObject({
+			status: 'source-changed',
+			configId: checkout.configId,
+		});
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('rejects an empty, duplicate, or unknown selection with 400', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export orders',
+		});
+		const agent = testServer.publicApiAgentFor(owner);
+		const before = await snapshotApplyState();
+
+		// The DTO refuses an empty selection before any git work.
+		await agent
+			.post(`/promotions/projects/${project.id}/apply`)
+			.send({ workflowIds: [] })
+			.expect(400);
+		// The service refuses duplicate ids.
+		await agent
+			.post(`/promotions/projects/${project.id}/apply`)
+			.send({ workflowIds: [workflows[0].id, workflows[0].id] })
+			.expect(400);
+		// An id the project's branch and instance do not hold is refused.
+		await agent
+			.post(`/promotions/projects/${project.id}/apply`)
+			.send({ workflowIds: ['not-a-real-id'] })
+			.expect(400);
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('maps a folder-placement clash to 409 without importing', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
+		const repository = Container.get(WorkflowRepository);
+		const branchFolder = await createFolder(project, { name: 'Branch folder' });
+		await repository.update(workflows[0].id, { parentFolder: branchFolder });
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export foldered workflow',
+		});
+		const localFolder = await createFolder(project, { name: 'Local folder' });
+		await repository.update(workflows[0].id, { parentFolder: localFolder });
+		const before = await snapshotApplyState();
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post(`/promotions/projects/${project.id}/apply`)
+			.send({ workflowIds: [workflows[0].id] });
+
+		expect(response.status, JSON.stringify(response.body)).toBe(409);
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+});
+
 describe('Promote a project selection — branch effects', () => {
 	it('refuses a selection when the branch has no package yet', async () => {
 		const remote = await createRemote();
