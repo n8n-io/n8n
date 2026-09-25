@@ -58,6 +58,10 @@ export function compareConnections(prev: IConnections, next: IConnections): Conn
 			for (let sourceIndex = 0; sourceIndex < maxLength; sourceIndex++) {
 				const prevConnections = prevInputConnections[sourceIndex] ?? [];
 				const nextConnections = nextInputConnections[sourceIndex] ?? [];
+				const append = (target: typeof added, value: ConnectionEntry['value']) => {
+					target[nodeName] ||= {};
+					(target[nodeName][inputName] ||= []).push({ sourceIndex, value });
+				};
 
 				// Build maps for easier comparison
 				const prevMap = groupByValue(prevConnections);
@@ -67,13 +71,7 @@ export function compareConnections(prev: IConnections, next: IConnections): Conn
 				for (const [key, entries] of nextMap) {
 					const kept = prevMap.get(key)?.length ?? 0;
 					for (const value of entries.slice(kept)) {
-						if (!added[nodeName]) added[nodeName] = {};
-						if (!added[nodeName][inputName]) added[nodeName][inputName] = [];
-
-						added[nodeName][inputName].push({
-							sourceIndex,
-							value,
-						});
+						append(added, value);
 					}
 				}
 
@@ -81,13 +79,7 @@ export function compareConnections(prev: IConnections, next: IConnections): Conn
 				for (const [key, entries] of prevMap) {
 					const kept = nextMap.get(key)?.length ?? 0;
 					for (const value of entries.slice(kept)) {
-						if (!removed[nodeName]) removed[nodeName] = {};
-						if (!removed[nodeName][inputName]) removed[nodeName][inputName] = [];
-
-						removed[nodeName][inputName].push({
-							sourceIndex,
-							value,
-						});
+						append(removed, value);
 					}
 				}
 			}
