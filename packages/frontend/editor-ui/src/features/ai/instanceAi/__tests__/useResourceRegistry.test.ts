@@ -54,6 +54,7 @@ function setup(
 		| { type: 'workflow'; id: string; name?: string; executionId?: string }
 		| undefined,
 	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
+	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
@@ -64,6 +65,7 @@ function setup(
 		pendingAgentTarget,
 		pendingWorkflowAttachment,
 		transientWorkflowReferences,
+		agentBuilderTargets,
 	);
 	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
 }
@@ -691,6 +693,164 @@ describe('useResourceRegistry', () => {
 				name: 'Support Bot',
 			});
 			expect(resourceNameIndex.get('support bot')?.id).toBe('agent-1');
+		});
+
+		test('does not register an Agent after a read-only builder turn', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => [{ agentId: 'agent-1', projectId: 'project-1' }],
+			);
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								activity: 'exploring',
+								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentChange: 'none' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.has('agent-1')).toBe(false);
+		});
+
+		test('keeps a pending Agent unconfirmed until a build changes it', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+			const builder = makeAgentNode({
+				activity: 'exploring',
+				targetResource: { type: 'agent', id: 'agent-1', name: 'New agent' },
+			});
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'agent-1',
+							name: 'New agent',
+							projectId: 'project-1',
+							pending: true,
+						},
+					],
+				}),
+				makeMessage({ id: 'msg-2', agentTree: builder }),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.pending).toBe(true);
+			expect(linkableResourceNameIndex.has('new agent')).toBe(false);
+
+			messages.value[1].agentTree!.toolCalls.push(
+				makeToolCall({
+					toolName: 'build-agent',
+					result: { ok: true, agentId: 'agent-1', agentChange: 'none' },
+				}),
+			);
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.pending).toBe(true);
+			expect(linkableResourceNameIndex.has('new agent')).toBe(false);
+
+			messages.value[1].agentTree!.toolCalls.push(
+				makeToolCall({
+					toolCallId: 'tc-2',
+					toolName: 'build-agent',
+					result: { ok: true, agentId: 'agent-1', agentChange: 'created' },
+				}),
+			);
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.pending).toBeUndefined();
+			expect(linkableResourceNameIndex.get('new agent')?.id).toBe('agent-1');
+		});
+
+		test('keeps project links for two changed Agents after the thread reloads', async () => {
+			const { messages, producedArtifacts } = setup(
+				undefined,
+				() => ({ agentId: 'agent-2', projectId: 'project-1', name: 'Second Agent' }),
+				undefined,
+				undefined,
+				undefined,
+				() => [
+					{ agentId: 'agent-1', projectId: 'project-1' },
+					{ agentId: 'agent-2', projectId: 'project-1' },
+				],
+			);
+
+			messages.value = [
+				makeMessage({
+					id: 'msg-1',
+					agentTree: makeAgentNode({
+						activity: 'creating',
+						targetResource: {
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Draft name',
+						},
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: {
+									ok: true,
+									agentId: 'agent-1',
+									agentName: 'First Agent',
+									agentChange: 'created',
+								},
+							}),
+						],
+					}),
+				}),
+				makeMessage({
+					id: 'msg-2',
+					agentTree: makeAgentNode({
+						activity: 'editing',
+						targetResource: {
+							type: 'agent',
+							id: 'agent-2',
+							name: 'Old name',
+						},
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: {
+									ok: true,
+									agentId: 'agent-2',
+									agentName: 'Second Agent',
+									agentChange: 'updated',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'First Agent',
+				projectId: 'project-1',
+			});
+			expect(producedArtifacts.get('agent-2')).toMatchObject({
+				type: 'agent',
+				id: 'agent-2',
+				name: 'Second Agent',
+				projectId: 'project-1',
+			});
 		});
 
 		test('a later build-agent result without agentName does not regress a known name', async () => {

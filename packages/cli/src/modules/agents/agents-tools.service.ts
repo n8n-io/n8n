@@ -63,7 +63,7 @@ const searchNodesInputSchema = z.object({
 const nodeVersionSchema = z
 	.number()
 	.describe(
-		'Tool node type version from node discovery results (search_nodes or resolve_integration kind: "node")',
+		'Tool node type version from search_nodes or agent-context integration results with kind "node"',
 	);
 
 const getNodeTypesInputSchema = z.object({
@@ -82,7 +82,7 @@ const getNodeTypesInputSchema = z.object({
 		)
 		.min(1)
 		.describe(
-			'Tool node IDs from node discovery results (search_nodes or resolve_integration kind: "node"; e.g., ["n8n-nodes-base.gmailTool"])',
+			'Tool node IDs from search_nodes or agent-context integration results with kind "node"; e.g., ["n8n-nodes-base.gmailTool"]',
 		),
 });
 
@@ -142,7 +142,7 @@ export class AgentsToolsService {
 		return new Tool('get_node_types')
 			.description(
 				'Get detailed parameter schema for specific n8n nodes. Use the node IDs from node ' +
-					'discovery results (search_nodes or resolve_integration kind: "node"). Returns ' +
+					'discovery results (search_nodes or agent-context integrations with kind "node"). Returns ' +
 					'parameter definitions needed to configure a node for execution. Use the tool node ' +
 					'IDs from discovery, usually ending in Tool. You can optionally filter by ' +
 					'resource/operation/mode.',

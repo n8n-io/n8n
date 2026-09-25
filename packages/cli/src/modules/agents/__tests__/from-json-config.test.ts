@@ -323,7 +323,7 @@ describe('buildFromJson()', () => {
 		const instructions = agent.snapshot.instructions ?? '';
 		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'agent-context')).toBe(false);
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 

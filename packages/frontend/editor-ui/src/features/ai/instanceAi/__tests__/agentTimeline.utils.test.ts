@@ -88,6 +88,15 @@ describe('extractArtifacts', () => {
 		]);
 	});
 
+	test('does not return an unchanged Agent target as an artifact', () => {
+		const node = makeAgentNode({
+			agentChange: 'none',
+			targetResource: { id: 'agent-1', type: 'agent', name: 'SEO Auditor' },
+		});
+
+		expect(extractArtifacts(node)).toEqual([]);
+	});
+
 	test('falls back to subtitle when targetResource has no name', () => {
 		const node = makeAgentNode({
 			subtitle: 'Sub Title',
