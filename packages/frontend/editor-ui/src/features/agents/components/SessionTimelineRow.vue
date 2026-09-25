@@ -12,6 +12,7 @@ import SessionMessageItem from './timeline-items/SessionMessageItem.vue';
 const props = defineProps<{
 	item: TimelineItem;
 	selected: boolean;
+	searchQuery?: string;
 }>();
 
 const i18n = useI18n();
@@ -58,5 +59,5 @@ const timelineItemProps = computed(function getTimelineItemProps() {
 </script>
 
 <template>
-	<component :is="timelineItemComponent" v-bind="timelineItemProps" />
+	<component :is="timelineItemComponent" v-bind="timelineItemProps" :search-query="searchQuery" />
 </template>

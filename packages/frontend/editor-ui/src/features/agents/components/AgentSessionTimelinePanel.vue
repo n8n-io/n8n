@@ -13,14 +13,12 @@ import {
 	flattenExecutionsToTimelineItems,
 	computeIdleRanges,
 	chartBlockColor,
-	filteredTimelineItemIndexes,
 	isSubAgentTimelineItem,
 	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
-import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	EventKind,
 	FilterOption,
@@ -30,7 +28,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
+import { useDocumentVisibility } from '@vueuse/core';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
 const props = defineProps<{
@@ -50,8 +48,6 @@ const i18n = useI18n();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
-const activeElement = useActiveElement();
-const panel = useTemplateRef<HTMLElement>('panel');
 const documentVisibility = useDocumentVisibility();
 
 const projectId = computed(() => props.projectId);
@@ -182,86 +178,14 @@ const selectedItem = computed<TimelineItem | null>(() =>
 	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
 );
 
-const visibleItemIndexes = computed(() =>
-	filteredTimelineItemIndexes(items.value, selectedFilters.value, searchQuery.value, labelForKey),
-);
-
-function moveSelectedIndex(direction: 1 | -1) {
-	const indexes = visibleItemIndexes.value;
-	if (indexes.length === 0) return;
-
-	if (highlightedIndex.value === null || !indexes.includes(highlightedIndex.value)) {
-		highlightedIndex.value = direction === 1 ? indexes[0] : indexes[indexes.length - 1];
-		return;
-	}
-
-	const currentVisibleIndex = indexes.indexOf(highlightedIndex.value);
-	const nextVisibleIndex = currentVisibleIndex + direction;
-	if (nextVisibleIndex < 0 || nextVisibleIndex >= indexes.length) return;
-	highlightedIndex.value = indexes[nextVisibleIndex];
-}
-
-function moveSelectedIndexToBoundary(direction: 1 | -1) {
-	const indexes = visibleItemIndexes.value;
-	if (indexes.length === 0) return;
-	highlightedIndex.value = direction === 1 ? indexes[indexes.length - 1] : indexes[0];
-}
-
 function selectTimelineItem(index: number | null) {
 	selectedIndex.value = index;
 	highlightedIndex.value = index;
 }
 
-function shouldHandleShortcut() {
-	const element = activeElement.value;
-	if (!(element instanceof Element)) return false;
-
-	return panel.value?.contains(element) === true && !shouldIgnoreCanvasShortcut(element);
-}
-
 function timelineItemKey(item: TimelineItem): string {
 	return `${item.executionId}:${item.kind}:${item.toolCallId ?? item.timestamp}`;
 }
-
-function onKeyDown(event: KeyboardEvent) {
-	if (!shouldHandleShortcut()) return;
-
-	if (event.key === 'Escape') {
-		if (selectedIndex.value !== null || highlightedIndex.value !== null) {
-			event.preventDefault();
-			selectTimelineItem(null);
-		}
-		return;
-	}
-
-	if (event.key === 'ArrowDown') {
-		event.preventDefault();
-		if (event.metaKey) {
-			moveSelectedIndexToBoundary(1);
-		} else {
-			moveSelectedIndex(1);
-		}
-	} else if (event.key === 'ArrowUp') {
-		event.preventDefault();
-		if (event.metaKey) {
-			moveSelectedIndexToBoundary(-1);
-		} else {
-			moveSelectedIndex(-1);
-		}
-	}
-}
-
-useEventListener(document, 'keydown', onKeyDown);
-
-function onKeyUp(event: KeyboardEvent) {
-	if (!shouldHandleShortcut()) return;
-	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-	if (highlightedIndex.value === selectedIndex.value) return;
-	event.preventDefault();
-	selectTimelineItem(highlightedIndex.value);
-}
-
-useEventListener(document, 'keyup', onKeyUp);
 
 function loadThreadDetail() {
 	executions.value = [];
@@ -382,7 +306,7 @@ useKeybindings({
 </script>
 
 <template>
-	<div ref="panel" :class="$style.panel">
+	<div :class="$style.panel">
 		<div v-if="!loading" :class="$style.subHeader">
 			<N8nInput
 				ref="searchInput"

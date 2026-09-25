@@ -16,7 +16,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { TimelineItem } from '../../session-timeline.types';
 import { timelineItemErrorMessage } from '../../session-timeline.utils';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../../utils/toolDisplayName';
@@ -25,6 +25,7 @@ import SessionTimelinePill from '../SessionTimelinePill.vue';
 const props = defineProps<{
 	item: TimelineItem;
 	selected: boolean;
+	searchQuery?: string;
 }>();
 
 const i18n = useI18n();
@@ -75,11 +76,38 @@ function stringifyJson(value: unknown): string {
 	}
 	return JSON.stringify(value, null, 2) ?? String(value);
 }
+
+const isOpen = ref(false);
+
+const searchableText = computed(function getSearchableText(): string {
+	return [
+		label.value,
+		props.item.toolInput !== undefined ? stringifyJson(props.item.toolInput) : '',
+		props.item.toolOutput !== undefined ? stringifyJson(props.item.toolOutput) : '',
+	]
+		.join('\n')
+		.toLowerCase();
+});
+
+watch(
+	() => props.searchQuery,
+	function onSearchQueryChange(query) {
+		const normalized = query?.trim().toLowerCase();
+		if (normalized) {
+			if (searchableText.value.includes(normalized)) {
+				isOpen.value = true;
+			}
+			return;
+		}
+		isOpen.value = false;
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<div data-test-id="session-capability-item" :class="$style.step">
-		<CollapsibleRoot v-slot="{ open: isOpen }">
+		<CollapsibleRoot :open="isOpen" @update:open="isOpen = $event" v-slot="{ open: isExpanded }">
 			<div :class="$style.header">
 				<CollapsibleTrigger as-child>
 					<N8nAiActivityStepButton size="small">

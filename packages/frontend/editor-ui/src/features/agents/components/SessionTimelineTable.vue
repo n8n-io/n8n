@@ -173,7 +173,11 @@ onBeforeUnmount(() => {
 					role="row"
 					:aria-selected="props.selectedIndex === row.index"
 				>
-					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+					<SessionTimelineRow
+						:item="row.item"
+						:selected="props.selectedIndex === row.index"
+						:search-query="props.searchQuery"
+					/>
 					<div v-if="rowIndex < rows.length - 1" :class="$style.divider"><span></span></div>
 				</div>
 				<div
@@ -206,7 +210,11 @@ onBeforeUnmount(() => {
 					role="row"
 					:aria-selected="props.selectedIndex === row.index"
 				>
-					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+					<SessionTimelineRow
+						:item="row.item"
+						:selected="props.selectedIndex === row.index"
+						:search-query="props.searchQuery"
+					/>
 					<div v-if="rowIndex < rows.length - 1" :class="$style.divider"><span></span></div>
 				</div>
 				<div
