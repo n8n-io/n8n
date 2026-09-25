@@ -94,7 +94,9 @@ const STRING_METHODS = new Set([
 	'replace',
 	'replaceAll',
 ]);
+
 const NUMBER_METHODS = new Set(['toFixed', 'toPrecision', 'toString']);
+
 // Non-mutating methods only: the receiver is the live workflow data (the vm
 // engine evaluates a copy inside the isolate), so an in-place mutator like
 // sort()/reverse()/fill() would corrupt execution data as a side effect. Use
@@ -138,22 +140,28 @@ function parseLiteral(node: Record<string, unknown>): SimpleNode | null {
 	// Regex literals stay on the engine (backtracking blowup has no isolate
 	// timeout here).
 	if ('regex' in node && node.regex) return null;
+
 	const value = node.value;
-	if (
+	const isPrimitiveLiteral =
 		value === null ||
 		typeof value === 'string' ||
 		typeof value === 'number' ||
-		typeof value === 'boolean'
-	)
-		return { kind: 'literal', value };
-	return null;
+		typeof value === 'boolean';
+
+	if (!isPrimitiveLiteral) return null;
+
+	return { kind: 'literal', value };
 }
 
 function parseIdentifier(node: Record<string, unknown>): SimpleNode | null {
 	if (node.name === '$json' || node.name === '$parameter') {
 		return { kind: 'root', name: node.name };
 	}
-	if (node.name === 'undefined') return { kind: 'undefined' };
+
+	if (node.name === 'undefined') {
+		return { kind: 'undefined' };
+	}
+
 	return null;
 }
 
@@ -166,70 +174,117 @@ function parseIdentifier(node: Record<string, unknown>): SimpleNode | null {
 function parseMember(node: Record<string, unknown>): SimpleNode | null {
 	const object = parseSimple(node.object);
 	if (object === null) return null;
+
 	const property = node.property;
 	if (!isObj(property)) return null;
 
-	let key: string | number;
-	if (node.computed === true) {
-		if (property.type !== 'Literal') return null;
-		const value = property.value;
-		if (typeof value === 'number') key = value;
-		else if (typeof value === 'string' && isSafeObjectProperty(value)) key = value;
-		else return null;
-	} else {
-		if (
-			property.type !== 'Identifier' ||
-			typeof property.name !== 'string' ||
-			!isSafeObjectProperty(property.name)
-		)
-			return null;
-		key = property.name;
-	}
+	const key = node.computed === true ? parseComputedKey(property) : parseStaticKey(property);
+	if (key === null) return null;
 
 	return { kind: 'member', object, key, optional: node.optional === true };
+}
+
+// `a[0]` or `a['b']`: the key is a literal.
+function parseComputedKey(property: Record<string, unknown>): string | number | null {
+	if (property.type !== 'Literal') return null;
+
+	const value = property.value;
+
+	if (typeof value === 'number') {
+		return value;
+	}
+
+	if (typeof value === 'string' && isSafeObjectProperty(value)) {
+		return value;
+	}
+
+	return null;
+}
+
+// `a.b`: the key is an identifier.
+function parseStaticKey(property: Record<string, unknown>): string | null {
+	if (property.type !== 'Identifier') return null;
+
+	const name = property.name;
+	if (typeof name !== 'string' || !isSafeObjectProperty(name)) return null;
+
+	return name;
 }
 
 function parseCall(node: Record<string, unknown>): SimpleNode | null {
 	const callee = node.callee;
 	if (!isObj(callee) || callee.type !== 'MemberExpression' || callee.computed === true) return null;
+
 	const property = callee.property;
-	if (
-		!isObj(property) ||
-		property.type !== 'Identifier' ||
-		typeof property.name !== 'string' ||
-		!CALLABLE_METHODS.has(property.name)
-	)
-		return null;
+	if (!isObj(property) || property.type !== 'Identifier') return null;
+
+	const method = property.name;
+	if (typeof method !== 'string' || !CALLABLE_METHODS.has(method)) return null;
+
 	const receiver = parseSimple(callee.object);
 	if (receiver === null) return null;
+
 	if (!Array.isArray(node.arguments)) return null;
+
 	const args: SimpleNode[] = [];
 	for (const argument of node.arguments) {
 		const parsed = parseSimple(argument);
 		if (parsed === null) return null;
+
 		args.push(parsed);
 	}
+
 	// `a?.m()` marks the member optional, `a.m?.()` marks the call optional;
 	// both short-circuit on a missing receiver, so one flag carries both.
-	return {
-		kind: 'call',
-		receiver,
-		method: property.name,
-		args,
-		optional: node.optional === true || callee.optional === true,
-	};
+	const optional = node.optional === true || callee.optional === true;
+
+	return { kind: 'call', receiver, method, args, optional };
 }
 
 function parseBranches(node: Record<string, unknown>): SimpleNode | null {
 	const test = parseSimple(node.test);
 	const consequent = parseSimple(node.consequent);
 	const alternate = parseSimple(node.alternate);
+
 	if (test === null || consequent === null || alternate === null) return null;
+
 	return { kind: 'conditional', test, consequent, alternate };
+}
+
+function parseUnary(node: Record<string, unknown>): SimpleNode | null {
+	if (node.prefix !== true || !isOneOf(UNARY_OPS, node.operator)) return null;
+
+	const argument = parseSimple(node.argument);
+	if (argument === null) return null;
+
+	return { kind: 'unary', op: node.operator, argument };
+}
+
+function parseBinary(node: Record<string, unknown>): SimpleNode | null {
+	if (!isOneOf(BINARY_OPS, node.operator)) return null;
+
+	const left = parseSimple(node.left);
+	const right = parseSimple(node.right);
+
+	if (left === null || right === null) return null;
+
+	return { kind: 'binary', op: node.operator, left, right };
+}
+
+function parseLogical(node: Record<string, unknown>): SimpleNode | null {
+	if (!isOneOf(LOGICAL_OPS, node.operator)) return null;
+
+	const left = parseSimple(node.left);
+	const right = parseSimple(node.right);
+
+	if (left === null || right === null) return null;
+
+	return { kind: 'logical', op: node.operator, left, right };
 }
 
 function parseSimple(node: unknown): SimpleNode | null {
 	if (!isObj(node)) return null;
+
 	switch (node.type) {
 		case 'Literal':
 			return parseLiteral(node);
@@ -241,25 +296,12 @@ function parseSimple(node: unknown): SimpleNode | null {
 			// Optionality is carried per member/call node, so the wrapper is
 			// transparent in the grammar.
 			return parseSimple(node.expression);
-		case 'UnaryExpression': {
-			if (node.prefix !== true || !isOneOf(UNARY_OPS, node.operator)) return null;
-			const argument = parseSimple(node.argument);
-			return argument === null ? null : { kind: 'unary', op: node.operator, argument };
-		}
-		case 'BinaryExpression': {
-			if (!isOneOf(BINARY_OPS, node.operator)) return null;
-			const left = parseSimple(node.left);
-			const right = parseSimple(node.right);
-			if (left === null || right === null) return null;
-			return { kind: 'binary', op: node.operator, left, right };
-		}
-		case 'LogicalExpression': {
-			if (!isOneOf(LOGICAL_OPS, node.operator)) return null;
-			const left = parseSimple(node.left);
-			const right = parseSimple(node.right);
-			if (left === null || right === null) return null;
-			return { kind: 'logical', op: node.operator, left, right };
-		}
+		case 'UnaryExpression':
+			return parseUnary(node);
+		case 'BinaryExpression':
+			return parseBinary(node);
+		case 'LogicalExpression':
+			return parseLogical(node);
 		case 'ConditionalExpression':
 			return parseBranches(node);
 		case 'CallExpression':
@@ -298,12 +340,16 @@ const isIndexable = (value: unknown): value is Record<string | number, unknown> 
 const isPrimitive = (value: unknown): boolean =>
 	value === null || (typeof value !== 'object' && typeof value !== 'function');
 
+// Holes survive on the host and not across the bridge.
 const hasHoles = (array: unknown[]): boolean => Object.keys(array).length !== array.length;
 
 function bounded<T>(value: T): T {
-	if ((typeof value === 'string' || Array.isArray(value)) && value.length > MAX_RESULT_LENGTH) {
+	const isSizeable = typeof value === 'string' || Array.isArray(value);
+
+	if (isSizeable && value.length > MAX_RESULT_LENGTH) {
 		throw new EngineFallbackError();
 	}
+
 	return value;
 }
 
@@ -335,19 +381,76 @@ function evalMember(
 	data: IWorkflowDataProxyData,
 ): unknown {
 	const object = evalNode(node.object, data);
+
 	// Optionality is checked per node instead of short-circuiting the whole
 	// chain. Equivalent here because keys are static (no side effects to
 	// skip) and the chunk-level catch maps the resulting TypeError to the same
 	// observable value the engine produces.
-	if (node.optional && (object === null || object === undefined)) return undefined;
+	if (node.optional && (object === null || object === undefined)) {
+		return undefined;
+	}
+
 	if (!isIndexable(object)) {
 		throw new TypeError(`Cannot read properties of ${String(object)} (reading '${node.key}')`);
 	}
+
 	const value = object[node.key];
+
 	// Never surface functions or symbols: matches the VM bridge, whose transfer
 	// drops both. (The legacy engine returns them - a pre-existing engine
 	// divergence; we side with the isolated engines.)
-	return typeof value === 'function' || typeof value === 'symbol' ? undefined : value;
+	if (typeof value === 'function' || typeof value === 'symbol') {
+		return undefined;
+	}
+
+	return value;
+}
+
+// Parsing only proves the method name; the receiver's type is data. A
+// receiver whose type has no allowlist entry for the method could be
+// intercepted by extensions, so it hands the whole expression to the engine.
+function prototypeFor(receiver: unknown, method: string): object {
+	if (typeof receiver === 'string' && STRING_METHODS.has(method)) {
+		return String.prototype;
+	}
+
+	if (typeof receiver === 'number' && NUMBER_METHODS.has(method)) {
+		return Number.prototype;
+	}
+
+	if (Array.isArray(receiver) && ARRAY_METHODS.has(method)) {
+		return Array.prototype;
+	}
+
+	throw new EngineFallbackError();
+}
+
+// Arguments are primitives, plus dense arrays for concat. An object argument
+// could be a RegExp (a live pattern with no isolate timeout, and one the
+// engines never see as a regex), trigger a coercion hook, or compare by live
+// reference where the isolate compares copies (includes/indexOf).
+function isAllowedArgument(method: string, arg: unknown): boolean {
+	if (isPrimitive(arg)) return true;
+
+	return method === 'concat' && Array.isArray(arg) && !hasHoles(arg);
+}
+
+// The two amplifying methods can allocate far beyond MAX_RESULT_LENGTH before
+// bounded() gets to see the result. Bail on a cheap upper bound first.
+function preflightSize(receiver: unknown, method: string, args: unknown[]): void {
+	let upperBound = 0;
+
+	if (method === 'replaceAll' && typeof receiver === 'string') {
+		const replacement = String(args[1] ?? '');
+		upperBound = (receiver.length + 1) * (replacement.length + 1);
+	} else if (method === 'join' && Array.isArray(receiver)) {
+		const separator = String(args[0] ?? ',');
+		upperBound = receiver.length * separator.length;
+	}
+
+	if (upperBound > MAX_RESULT_LENGTH) {
+		throw new EngineFallbackError();
+	}
 }
 
 function evalCall(
@@ -356,46 +459,80 @@ function evalCall(
 ): unknown {
 	const receiver = evalNode(node.receiver, data);
 	const receiverMissing = receiver === null || receiver === undefined;
-	if (node.optional && receiverMissing) return undefined;
+
+	if (node.optional && receiverMissing) {
+		return undefined;
+	}
+
 	if (receiverMissing) {
 		throw new TypeError(`Cannot read properties of ${String(receiver)} (reading '${node.method}')`);
 	}
-	// Parsing only proves the method name; the receiver's type is data. A
-	// receiver whose type has no allowlist entry for the method could be
-	// intercepted by extensions, so hand the whole expression to the engine.
-	let proto: object;
-	if (typeof receiver === 'string' && STRING_METHODS.has(node.method)) proto = String.prototype;
-	else if (typeof receiver === 'number' && NUMBER_METHODS.has(node.method))
-		proto = Number.prototype;
-	else if (Array.isArray(receiver) && ARRAY_METHODS.has(node.method)) proto = Array.prototype;
-	else throw new EngineFallbackError();
+
+	if (Array.isArray(receiver) && hasHoles(receiver)) {
+		throw new EngineFallbackError();
+	}
+
+	const proto = prototypeFor(receiver, node.method);
 	const method: unknown = Reflect.get(proto, node.method);
-	if (typeof method !== 'function') throw new EngineFallbackError();
+	if (typeof method !== 'function') {
+		throw new EngineFallbackError();
+	}
+
 	const args = node.args.map((argument) => evalNode(argument, data));
-	// Arguments are primitives, plus arrays for concat. An object argument
-	// could be a RegExp (a live pattern with no isolate timeout, and one the
-	// engines never see as a regex), trigger a coercion hook, or compare by
-	// live reference where the isolate compares copies (includes/indexOf).
-	const argOk = (arg: unknown) =>
-		isPrimitive(arg) || (node.method === 'concat' && Array.isArray(arg) && !hasHoles(arg));
-	if (!args.every(argOk)) throw new EngineFallbackError();
-	// Holes survive here and not across the bridge, so a sparse receiver is the
-	// engine's.
-	if (Array.isArray(receiver) && hasHoles(receiver)) throw new EngineFallbackError();
+	if (!args.every((arg) => isAllowedArgument(node.method, arg))) {
+		throw new EngineFallbackError();
+	}
+
 	preflightSize(receiver, node.method, args);
+
 	return bounded(method.apply(receiver, args) as unknown);
 }
 
-// The two amplifying methods can allocate far beyond MAX_RESULT_LENGTH before
-// bounded() gets to see the result. Bail on a cheap upper bound first.
-function preflightSize(receiver: unknown, method: string, args: unknown[]): void {
-	let upperBound = 0;
-	if (method === 'replaceAll' && typeof receiver === 'string') {
-		upperBound = (receiver.length + 1) * (String(args[1] ?? '').length + 1);
-	} else if (method === 'join' && Array.isArray(receiver)) {
-		upperBound = receiver.length * String(args[0] ?? ',').length;
+function evalUnary(
+	node: Extract<SimpleNode, { kind: 'unary' }>,
+	data: IWorkflowDataProxyData,
+): unknown {
+	const argument = evalNode(node.argument, data);
+
+	if (node.op === '!') {
+		return !argument;
 	}
-	if (upperBound > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+
+	if (!isPrimitive(argument)) {
+		throw new EngineFallbackError();
+	}
+
+	return node.op === '-' ? -Number(argument) : Number(argument);
+}
+
+function evalBinary(
+	node: Extract<SimpleNode, { kind: 'binary' }>,
+	data: IWorkflowDataProxyData,
+): unknown {
+	const left = evalNode(node.left, data);
+	const right = evalNode(node.right, data);
+
+	if (!isPrimitive(left) || !isPrimitive(right)) {
+		throw new EngineFallbackError();
+	}
+
+	return binaryOps[node.op](left, right);
+}
+
+function evalLogical(
+	node: Extract<SimpleNode, { kind: 'logical' }>,
+	data: IWorkflowDataProxyData,
+): unknown {
+	const left = evalNode(node.left, data);
+
+	switch (node.op) {
+		case '&&':
+			return left ? evalNode(node.right, data) : left;
+		case '||':
+			return left ? left : evalNode(node.right, data);
+		case '??':
+			return left ?? evalNode(node.right, data);
+	}
 }
 
 function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
@@ -408,26 +545,12 @@ function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
 			return undefined;
 		case 'member':
 			return evalMember(node, data);
-		case 'unary': {
-			const argument = evalNode(node.argument, data);
-			if (node.op === '!') return !argument;
-			if (!isPrimitive(argument)) throw new EngineFallbackError();
-			if (node.op === '-') return -Number(argument);
-			return Number(argument);
-		}
-		case 'binary': {
-			const left = evalNode(node.left, data);
-			const right = evalNode(node.right, data);
-			if (!isPrimitive(left) || !isPrimitive(right)) throw new EngineFallbackError();
-			return binaryOps[node.op](left, right);
-		}
-		case 'logical': {
-			const left = evalNode(node.left, data);
-			if (node.op === '&&') return left ? evalNode(node.right, data) : left;
-			if (node.op === '||') return left ? left : evalNode(node.right, data);
-			// '??'
-			return left ?? evalNode(node.right, data);
-		}
+		case 'unary':
+			return evalUnary(node, data);
+		case 'binary':
+			return evalBinary(node, data);
+		case 'logical':
+			return evalLogical(node, data);
 		case 'conditional':
 			return evalNode(node.test, data)
 				? evalNode(node.consequent, data)
@@ -444,12 +567,13 @@ function evalChunk(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
 	try {
 		return evalNode(node, data);
 	} catch (error) {
-		if (
+		const rethrow =
 			error instanceof EngineFallbackError ||
 			error instanceof ExpressionError ||
-			error instanceof ExpressionExtensionError
-		)
-			throw error;
+			error instanceof ExpressionExtensionError;
+
+		if (rethrow) throw error;
+
 		return undefined;
 	}
 }
@@ -467,6 +591,24 @@ interface CompiledExpression {
 // expression the engine owns costs one parse here, not one per evaluation.
 const cache = new LruCache<string, CompiledExpression | null>(1024);
 
+// One code chunk of the split expression, or null when it is outside the
+// subset. A throw during the re-parse (parseSimple recurses per member, so a
+// deep enough chain overflows the stack) must always mean "declined", never
+// escape.
+function compileChunk(chunk: { parsed: { program: { body: unknown[] } } }): SimpleNode | null {
+	const body = chunk.parsed.program.body;
+	if (body.length !== 1) return null;
+
+	const statement = body[0];
+	if (!isObj(statement) || statement.type !== 'ExpressionStatement') return null;
+
+	try {
+		return parseSimple(statement.expression);
+	} catch {
+		return null;
+	}
+}
+
 function compile(expression: string): CompiledExpression | null {
 	let parsed;
 	try {
@@ -482,46 +624,33 @@ function compile(expression: string): CompiledExpression | null {
 			chunks.push(chunk);
 			continue;
 		}
-		const body: unknown[] = chunk.parsed.program.body;
-		if (body.length !== 1) return null;
-		const statement = body[0];
-		if (!isObj(statement) || statement.type !== 'ExpressionStatement') return null;
-		let node: SimpleNode | null;
-		try {
-			node = parseSimple(statement.expression);
-		} catch {
-			// parseSimple recurses per member; a chain deep enough to overflow
-			// the stack here is the engine's to evaluate. A throw during
-			// compilation must always mean "declined", never escape.
-			return null;
-		}
+
+		const node = compileChunk(chunk);
 		if (node === null) return null;
+
 		chunks.push({ type: 'code', node });
 	}
 
 	// Mirrors the branch condition in ExpressionBuilder.getExpressionCode.
-	const isWholeValue = !(
-		chunks.length > 2 ||
-		chunks[0].type !== 'text' ||
-		chunks[0].text !== '' ||
-		chunks.length === 1
-	);
+	const isWholeValue = chunks.length === 2 && chunks[0].type === 'text' && chunks[0].text === '';
 
 	return { chunks, isWholeValue };
+}
+
+function getCompiled(expression: string): CompiledExpression | null {
+	let compiled = cache.get(expression);
+
+	if (compiled === undefined) {
+		compiled = compile(expression);
+		cache.set(expression, compiled);
+	}
+
+	return compiled;
 }
 
 /** Does the expression (leading `=` stripped) fit the native subset? */
 export function isNativelyEvaluable(expression: string): boolean {
 	return getCompiled(expression) !== null;
-}
-
-function getCompiled(expression: string): CompiledExpression | null {
-	let compiled = cache.get(expression);
-	if (compiled === undefined) {
-		compiled = compile(expression);
-		cache.set(expression, compiled);
-	}
-	return compiled;
 }
 
 /**
@@ -538,9 +667,11 @@ export function evaluateNatively(
 	if (compiled === null) return { handled: false };
 
 	try {
-		return { handled: true, value: copyResult(evalCompiled(compiled, data)) };
+		const value = copyResult(evalCompiled(compiled, data));
+		return { handled: true, value };
 	} catch (error) {
 		if (error instanceof EngineFallbackError) return { handled: false };
+
 		throw error;
 	}
 }
@@ -551,7 +682,11 @@ export function evaluateNatively(
 // The `$parameter` root is a Proxy and cannot be cloned: the engine owns it.
 function copyResult(value: unknown): unknown {
 	if (!isObj(value)) return value;
-	if (Array.isArray(value) && hasHoles(value)) throw new EngineFallbackError();
+
+	if (Array.isArray(value) && hasHoles(value)) {
+		throw new EngineFallbackError();
+	}
+
 	try {
 		return structuredClone(value);
 	} catch {
@@ -572,15 +707,22 @@ function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData
 	for (const chunk of compiled.chunks) {
 		if (chunk.type === 'text') {
 			if (chunk.text !== '') parts.push(chunk.text);
-		} else {
-			const value = evalChunk(chunk.node, data);
-			// An object here would coerce through its toString on the host.
-			if (isObj(value)) throw new EngineFallbackError();
-			parts.push(value || value === 0 || value === false ? value : '');
+			continue;
 		}
+
+		const value = evalChunk(chunk.node, data);
+
+		// An object here would coerce through its toString on the host.
+		if (isObj(value)) {
+			throw new EngineFallbackError();
+		}
+
+		parts.push(value || value === 0 || value === false ? value : '');
 	}
+
 	// Single-chunk expressions (plain text, or a lone blank `{{}}`) return the
 	// part as-is; everything else joins to a string.
 	if (compiled.chunks.length < 2) return parts[0] ?? '';
+
 	return parts.join('');
 }
