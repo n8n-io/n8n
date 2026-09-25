@@ -2,6 +2,7 @@ import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { TimeSaved } from '../TimeSaved.node';
+import codex from '../TimeSaved.node.json';
 
 describe('TimeSaved node', () => {
 	function createExecuteFunctionsMock(options?: {
@@ -35,6 +36,13 @@ describe('TimeSaved node', () => {
 
 	it('should be defined', () => {
 		expect(TimeSaved).toBeDefined();
+	});
+
+	it('should link to the Track Time Saved core-node documentation', () => {
+		// NODE-6047: The Docs link must point to the page for this core node.
+		expect(codex.resources.primaryDocumentation[0].url).toBe(
+			'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.timesaved',
+		);
 	});
 
 	it('should expose minutesSaved as a whole number with correct typeOptions', () => {
