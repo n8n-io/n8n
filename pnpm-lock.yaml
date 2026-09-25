@@ -3571,6 +3571,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
+      '@oracle/langchain-oci':
+        specifier: 0.0.2
+        version: 0.0.2(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@oracle/langchain-oracledb':
         specifier: 0.2.0
         version: 0.2.0(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@langchain/textsplitters@1.0.1(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(oracledb@6.10.0)
@@ -3664,6 +3667,15 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      oci-common:
+        specifier: ^2.139.1
+        version: 2.141.0(encoding@0.1.13)
+      oci-generativeai:
+        specifier: ^2.139.1
+        version: 2.141.0(encoding@0.1.13)
+      oci-generativeaiinference:
+        specifier: ^2.139.1
+        version: 2.140.2(encoding@0.1.13)
       openai:
         specifier: 'catalog:'
         version: 6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76)
@@ -3701,6 +3713,9 @@ importers:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.76)
     devDependencies:
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../backend-network
       '@n8n/eslint-plugin-community-nodes':
         specifier: workspace:*
         version: link:../eslint-plugin-community-nodes
@@ -12093,6 +12108,12 @@ packages:
     resolution: {integrity: sha512-eSYWTm620tTk45EKSedaUL8MFYI8hW164hIXsgIHyxu3VobUB3fFCu5t0hQby6OoWRPsG1KkKUG2M5UadiLiVg==}
     engines: {node: '>=14'}
 
+  '@oracle/langchain-oci@0.0.2':
+    resolution: {integrity: sha512-gD/MAD1on0UCk6XINSU/tM8bXQV0M2LsULvOs3twk03gD++cuckPzWxrctD+X3BnFj5/h8Unhw5//7fWLHIE5Q==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@langchain/core': ^1.2.0
+
   '@oracle/langchain-oracledb@0.2.0':
     resolution: {integrity: sha512-vJQG+Gsm3dgRgfxIrsPsK0emjPpDmc+sEWb3mlNoaJDkf5u8yfvypi/77Bqaae+V+E9DXl3HrFx3t7wtCx22qw==}
     engines: {node: '>=18'}
@@ -14637,6 +14658,9 @@ packages:
   '@types/ioredis-mock@8.2.2':
     resolution: {integrity: sha512-bnbPHOjxy4TUDjRh61MMoK2QvDNZqrMDXJYrEDZP/HPFvBubR24CQ0DBi5lgWhLxG4lvVsXPRDXtZ03+JgonoQ==}
 
+  '@types/isomorphic-fetch@0.0.35':
+    resolution: {integrity: sha512-DaZNUvLDCAnCTjgwxgiL1eQdxIKEpNLOlTNtAgnZc50bG2copGhRrFN9/PxPBuJe+tZVLCbQ7ls0xveXVRPkvw==}
+
   '@types/jmespath@0.15.0':
     resolution: {integrity: sha512-uaht4XcYSq5ZrPriQW8C+g5DhptewRd1E84ph7L167sCyzLObz+U3JTpmYq/CNkvjNsz2mtyQoHPNEYQYTzWmg==}
 
@@ -14660,6 +14684,9 @@ packages:
 
   '@types/jsonwebtoken@9.0.10':
     resolution: {integrity: sha512-asx5hIG9Qmf/1oStypjanR7iKTv0gXQ1Ov/jfrX6kS/EO0OFni8orbmGCn0672NHR3kXHwpAwR+B368ZGN/2rA==}
+
+  '@types/jsonwebtoken@9.0.3':
+    resolution: {integrity: sha512-b0jGiOgHtZ2jqdPgPnP6WLCXZk1T8p06A/vPGzUvxpFGgKMbjXJDjC5m52ErqBnIuWZFgGoIJyRdeG5AyreJjA==}
 
   '@types/k6@0.52.0':
     resolution: {integrity: sha512-yaw2wg61nKQtToDML+nngzgXVjZ6wNA4R0Q3jKDTeadG5EqfZgis5a1Q2hwY7kjuGuXmu8eM6gHg3tgnOj4vNw==}
@@ -14760,6 +14787,9 @@ packages:
   '@types/nodemailer@8.0.1':
     resolution: {integrity: sha512-PxpaInm8V1JQDd4j0ds5HfvWQk8JupS1C0Picb96QJsrrRDjBH+DlK7L4ZdNSqNULhiZRQHc40nLVShaGxXAMw==}
 
+  '@types/opossum@4.1.1':
+    resolution: {integrity: sha512-9TMnd8AWRVtnZMqBbbzceQoJdafErgUViogFaQ3eetsbeLtiFFZ695mepNaLtlfJi4uRP3GmHfe3CJ2DZKaxYA==}
+
   '@types/oracledb@6.10.3':
     resolution: {integrity: sha512-8SCGQF/VSiXnifVFTajmRNtjHUDTNxkd9SrBrvG2A/80uwLVee5xmv/juH4hnDNTfU9qxfd6HR4Mfmg2nC3RVw==}
 
@@ -14852,6 +14882,9 @@ packages:
 
   '@types/ssh2@1.15.0':
     resolution: {integrity: sha512-YcT8jP5F8NzWeevWvcyrrLB3zcneVjzYY9ZDSMAMboI+2zR1qYWFhwsyOFVzT7Jorn67vqxC0FRiw8YyG9P1ww==}
+
+  '@types/sshpk@1.10.3':
+    resolution: {integrity: sha512-cru1waDhHZnZuB18E6Dgf2UXf8U93mdOEDcKYe5jTri+fpucidSs7DLmGICpLxN+95aYkwtgeyny9fBFzQVdmA==}
 
   '@types/sshpk@1.17.4':
     resolution: {integrity: sha512-5gI/7eJn6wmkuIuFY8JZJ1g5b30H9K5U5vKrvOuYu+hoZLb2xcVEgxhYZ2Vhbs0w/ACyzyfkJq0hQtBfSCugjw==}
@@ -17817,6 +17850,9 @@ packages:
   es6-promise@3.3.1:
     resolution: {integrity: sha512-SOp9Phqvqn7jtEUxPWdWfWoLmyt2VaJ6MpvP9Comy1MceMXqE6bxvaTu4iaxpYYPzhny28Lc+M87/c2cPK6lDg==}
 
+  es6-promise@4.2.6:
+    resolution: {integrity: sha512-aRVgGdnmW2OiySVPUC9e6m+plolMAJKjZnQlCwNSuK5yQ0JN61DZSO1X1Ufd1foqWRAlig0rhduTCHe7sVtK5Q==}
+
   es6-symbol@3.1.4:
     resolution: {integrity: sha512-U9bFFjX8tFiATgtkJ1zg25+KviIXpgRvRHS8sau3GfhVzThRQrOeksPeT0BWW2MNZs1OEWJ1DPXOQMn0KKRkvg==}
     engines: {node: '>=0.12'}
@@ -18180,6 +18216,10 @@ packages:
     resolution: {integrity: sha512-GDhU9ntwuKyGXdZBUgTIe+vXnWj0fppUEtMDL0+idd5Sta8TGpHssn/eusA9mrPr9qNDym6SxAYZjNvCn/9RBg==}
     engines: {node: '>= 10.17.0'}
     hasBin: true
+
+  extsprintf@1.3.0:
+    resolution: {integrity: sha512-11Ndz7Nv+mvAC1j0ktTa7fAb0vLyGGX+rMHNBYQviQDGU0Hw7lhctJANqbPhu9nV9/izT/IntTgZ7Im/9LJs9g==}
+    engines: {'0': node >=0.6.0}
 
   extsprintf@1.4.1:
     resolution: {integrity: sha512-Wrk35e8ydCKDj/ArClo1VrPVmN8zph5V4AtHwIuHhvMXsKf73UT3BOD+azBIW+3wOJ4FhEH7zyaJCFvChjYvMA==}
@@ -18906,6 +18946,10 @@ packages:
     resolution: {integrity: sha512-7mz/721AbnJwIVbnaSv1Cz3Am0ZLT/UBwkC92VlxhXv/k/BBQfM2fXElQNC27BVGr0uwUpplYPQM9LnaBMR5NQ==}
     engines: {node: '>=8.0.0'}
 
+  http-signature@1.3.1:
+    resolution: {integrity: sha512-Y29YKEc8MQsjch/VzkUVJ+2MXd9WcR42fK5u36CZf4G8bXw2DXMTWuESiB0R6m59JAWxlPPw5/Fri/t/AyyueA==}
+    engines: {node: '>=0.10'}
+
   http2-client@1.3.5:
     resolution: {integrity: sha512-EC2utToWl4RKfs5zd36Mxq7nzHHBuomZboI0yYL6Y0RmBgT7Sgkq4rQ0ezFTYoIsSs7Tm9SJe+o2FcAg6GBhGA==}
 
@@ -19366,6 +19410,9 @@ packages:
     resolution: {integrity: sha512-nBCQ1hXEaYKYJ79wwfhaF44ITOJC30Hw0wPEsFeNsdD3hdeKK7FW1SGMQYBUA+qasvkqdOazI+iBuq0lcbN/aw==}
     engines: {node: '>=24.0.0'}
 
+  isomorphic-fetch@3.0.0:
+    resolution: {integrity: sha512-qvUtwJ3j6qwsF3jLxkZ72qCgjMysPzDfeV240JHiGZsANBYd+EEuu35v7dfrJ9Up0Ak07D7GGSkGhCHTqg/5wA==}
+
   isomorphic-ws@5.0.0:
     resolution: {integrity: sha512-muId7Zzn9ywDsyXgTIafTry2sV3nySZeUDe6YedVd1Hvuuep5AsIlqK+XefWpYTyJG5e503F2xIuT2lcU6rCSw==}
     peerDependencies:
@@ -19590,6 +19637,10 @@ packages:
   jsonwebtoken@9.0.3:
     resolution: {integrity: sha512-MT/xP0CrubFRNLNKvxJ2BYfy53Zkm++5bX9dtuPbqAeQpTVe0MQTFhao8+Cp//EmJp244xt6Drw/GVEGCUj40g==}
     engines: {node: '>=12', npm: '>=6'}
+
+  jsprim@1.4.2:
+    resolution: {integrity: sha512-P2bSOMAc/ciLz6DzgjVlGJP9+BrJWu5UDGK70C2iweC5QBIeFf0ZXRvGjEj2uYgrY2MkAAhsSWHDWlFtEroZWw==}
+    engines: {node: '>=0.6.0'}
 
   jssha@3.3.1:
     resolution: {integrity: sha512-VCMZj12FCFMQYcFLPRm/0lOBbLi8uM2BhXPTqw3U4YAfs4AZfiApOoBLoN8cQE60Z50m1MYMTQVCfgF/KaCVhQ==}
@@ -21231,6 +21282,18 @@ packages:
     resolution: {integrity: sha512-9miFgM2OFba7hB+pRgvtV84pYTBaoTHohvmIgiRt6dRIzbwEOIaNaP+dIlGs2fNFoB0SeISs0Jz5WFVRid6Xyg==}
     engines: {node: '>=12.20.0'}
 
+  oci-common@2.140.2:
+    resolution: {integrity: sha512-bPKnH3VO4wBqsLNlqMB0uUUVmtMGLSfPbBJTUoIIZ1LS5FnKvj+1bG8/Hh+ceDarafuhiATG9SvbDDQU72t2EQ==}
+
+  oci-common@2.141.0:
+    resolution: {integrity: sha512-GlJh8gy4hkX5hk5W0dqlLkyP6S5LsVSS5vhOktcSoq37rwGnbvrJO9C1luxEzUEZOn46A5KRH9RlYR6wJQlJEw==}
+
+  oci-generativeai@2.141.0:
+    resolution: {integrity: sha512-n+vW/tdCGzvRfSYexXjnOXeMkCk0mmV2gMwNx6oT3V0IKcHg4ASNF6x1QkIpKPQsJsEO8ps+zLcM5EoJ7isZjg==}
+
+  oci-generativeaiinference@2.140.2:
+    resolution: {integrity: sha512-XzEVlBwdzIFsR9fm+bJylOj7/8RbTKgf2Obyg7LdBcwbvv8JBk3PxHZsNNkhLmM4r1U7Pr1+qdOFuXFw9GlE7A==}
+
   ohash@2.0.11:
     resolution: {integrity: sha512-RdR9FQrFwNBNXAr4GixM8YaRZRJ5PUWbKYbE5eOsrwAjJW0q2REGcf79oYPsLyskQCZG1PLN+S/K1V00joZAoQ==}
 
@@ -21305,6 +21368,10 @@ packages:
 
   openid-client@6.8.4:
     resolution: {integrity: sha512-QSw0BA08piujetEwfZsHoTrDpMEha7GDZDicQqVwX4u0ChCjefvjDB++TZ8BTg76UpwhzIQgdvvfgfl3HpCSAw==}
+
+  opossum@5.0.1:
+    resolution: {integrity: sha512-iUDUQmFl3RanaBVLMDTZ6WtXj/Hk84pwJ5JWoJaQd1lXGifdApHhszI3biZvdBDdpTERCmB6x+7+uNvzhzVZIg==}
+    engines: {node: '>= 10'}
 
   option@0.2.4:
     resolution: {integrity: sha512-pkEqbDyl8ou5cpq+VsnQbe/WlEy5qS7xPzMS1U55OCG9KPvwFD46zDbxQIj3egJSFc3D+XhYOPUzz49zQAVy7A==}
@@ -24214,6 +24281,10 @@ packages:
     peerDependencies:
       react: '>= 16.4.0'
       react-dom: '>= 16.4.0'
+
+  verror@1.10.0:
+    resolution: {integrity: sha512-ZZKSmDAEFOijERBLkmYfJ+vmk3w+7hOLYDNkRCuRuMJGEmqYNCNLyBBFwWKVMhfwaEF3WOd0Zlw86U/WC/+nYw==}
+    engines: {'0': node >=0.6.0}
 
   verror@1.10.1:
     resolution: {integrity: sha512-veufcmxri4e3XSrT0xwfUR7kguIkaxBeosDg00yDWhk49wdwkSUrvvsm7nc75e1PUyvIeZj6nS8VQRYz2/S4Xg==}
@@ -30932,6 +31003,14 @@ snapshots:
 
   '@opentelemetry/semantic-conventions@1.43.0': {}
 
+  '@oracle/langchain-oci@0.0.2(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)':
+    dependencies:
+      '@langchain/core': 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      oci-common: 2.141.0(encoding@0.1.13)
+      oci-generativeaiinference: 2.140.2(encoding@0.1.13)
+    transitivePeerDependencies:
+      - encoding
+
   '@oracle/langchain-oracledb@0.2.0(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@langchain/textsplitters@1.0.1(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(oracledb@6.10.0)':
     dependencies:
       '@langchain/core': 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -33342,6 +33421,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@types/isomorphic-fetch@0.0.35': {}
+
   '@types/jmespath@0.15.0': {}
 
   '@types/js-nacl@1.3.0': {}
@@ -33363,6 +33444,10 @@ snapshots:
   '@types/jsonwebtoken@9.0.10':
     dependencies:
       '@types/ms': 2.1.0
+      '@types/node': 20.19.41
+
+  '@types/jsonwebtoken@9.0.3':
+    dependencies:
       '@types/node': 20.19.41
 
   '@types/k6@0.52.0': {}
@@ -33463,6 +33548,10 @@ snapshots:
       undici-types: 6.21.0
 
   '@types/nodemailer@8.0.1':
+    dependencies:
+      '@types/node': 20.19.41
+
+  '@types/opossum@4.1.1':
     dependencies:
       '@types/node': 20.19.41
 
@@ -33583,6 +33672,10 @@ snapshots:
       '@types/ssh2-streams': 0.1.12
 
   '@types/ssh2@1.15.0':
+    dependencies:
+      '@types/node': 20.19.41
+
+  '@types/sshpk@1.10.3':
     dependencies:
       '@types/node': 20.19.41
 
@@ -35976,8 +36069,7 @@ snapshots:
 
   core-js@3.49.0: {}
 
-  core-util-is@1.0.2:
-    optional: true
+  core-util-is@1.0.2: {}
 
   core-util-is@1.0.3: {}
 
@@ -37047,6 +37139,8 @@ snapshots:
 
   es6-promise@3.3.1: {}
 
+  es6-promise@4.2.6: {}
+
   es6-symbol@3.1.4:
     dependencies:
       d: 1.0.2
@@ -37685,8 +37779,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  extsprintf@1.4.1:
-    optional: true
+  extsprintf@1.3.0: {}
+
+  extsprintf@1.4.1: {}
 
   fake-indexeddb@6.0.0: {}
 
@@ -38576,6 +38671,12 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
+  http-signature@1.3.1:
+    dependencies:
+      assert-plus: 1.0.0
+      jsprim: 1.4.2
+      sshpk: 1.18.0
+
   http2-client@1.3.5: {}
 
   http2-wrapper@1.0.3:
@@ -39030,6 +39131,13 @@ snapshots:
     dependencies:
       node-gyp-build: 4.8.4
 
+  isomorphic-fetch@3.0.0(encoding@0.1.13):
+    dependencies:
+      node-fetch: 2.7.0(encoding@0.1.13)
+      whatwg-fetch: 3.6.20
+    transitivePeerDependencies:
+      - encoding
+
   isomorphic-ws@5.0.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
     dependencies:
       ws: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -39277,6 +39385,13 @@ snapshots:
       lodash.once: 4.1.1
       ms: 2.1.3
       semver: 7.7.3
+
+  jsprim@1.4.2:
+    dependencies:
+      assert-plus: 1.0.0
+      extsprintf: 1.3.0
+      json-schema: 0.4.0
+      verror: 1.10.0
 
   jssha@3.3.1: {}
 
@@ -41336,6 +41451,57 @@ snapshots:
 
   obug@2.1.3: {}
 
+  oci-common@2.140.2(encoding@0.1.13):
+    dependencies:
+      '@types/isomorphic-fetch': 0.0.35
+      '@types/jsonwebtoken': 9.0.3
+      '@types/opossum': 4.1.1
+      '@types/sshpk': 1.10.3
+      '@types/uuid': 8.3.4
+      es6-promise: 4.2.6
+      http-signature: 1.3.1
+      isomorphic-fetch: 3.0.0(encoding@0.1.13)
+      jsonwebtoken: 9.0.3
+      jssha: 3.3.1
+      opossum: 5.0.1
+      sshpk: 1.18.0
+      uuid: 13.0.1
+    transitivePeerDependencies:
+      - encoding
+
+  oci-common@2.141.0(encoding@0.1.13):
+    dependencies:
+      '@types/isomorphic-fetch': 0.0.35
+      '@types/jsonwebtoken': 9.0.3
+      '@types/opossum': 4.1.1
+      '@types/sshpk': 1.10.3
+      '@types/uuid': 8.3.4
+      es6-promise: 4.2.6
+      http-signature: 1.3.1
+      isomorphic-fetch: 3.0.0(encoding@0.1.13)
+      jsonwebtoken: 9.0.3
+      jssha: 3.3.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+      opossum: 5.0.1
+      sshpk: 1.18.0
+      uuid: 13.0.1
+    transitivePeerDependencies:
+      - encoding
+
+  oci-generativeai@2.141.0(encoding@0.1.13):
+    dependencies:
+      oci-common: 2.141.0(encoding@0.1.13)
+      opossum: 5.0.1
+    transitivePeerDependencies:
+      - encoding
+
+  oci-generativeaiinference@2.140.2(encoding@0.1.13):
+    dependencies:
+      oci-common: 2.140.2(encoding@0.1.13)
+      opossum: 5.0.1
+    transitivePeerDependencies:
+      - encoding
+
   ohash@2.0.11: {}
 
   ollama@0.6.3:
@@ -41402,6 +41568,8 @@ snapshots:
     dependencies:
       jose: 6.2.9
       oauth4webapi: 3.8.6
+
+  opossum@5.0.1: {}
 
   option@0.2.4: {}
 
@@ -45074,6 +45242,12 @@ snapshots:
     dependencies:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
+
+  verror@1.10.0:
+    dependencies:
+      assert-plus: 1.0.0
+      core-util-is: 1.0.2
+      extsprintf: 1.4.1
 
   verror@1.10.1:
     dependencies:
