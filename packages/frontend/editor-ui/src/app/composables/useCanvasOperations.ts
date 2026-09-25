@@ -757,7 +757,11 @@ export function useCanvasOperations() {
 
 	function deleteNodes(
 		ids: string[],
-		{ trackHistory = true, trackBulk = true, deleteWholeGroupIds = [] } = {},
+		{
+			trackHistory = true,
+			trackBulk = true,
+			deleteWholeGroupIds = [],
+		}: { trackHistory?: boolean; trackBulk?: boolean; deleteWholeGroupIds?: string[] } = {},
 	) {
 		const deleteWholeGroupIdSet = new Set(deleteWholeGroupIds);
 

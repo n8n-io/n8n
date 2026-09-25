@@ -826,7 +826,12 @@ const groupDrag = useCanvasNodeGroupDrag({
 
 // Groups select as one unit: title bar and member selection stay in sync,
 // and a fully selected group surfaces the selection instead of its members.
-const { fullySelectedGroupMemberIds, selectedElementCount, selectionBoxBounds } =
+const {
+	fullySelectedGroupMemberIds,
+	selectedElementCount,
+	selectionBoxBounds,
+	explicitlySelectedGroupIds,
+} =
 	useCanvasNodeGroupSelection({
 		canvasId: props.id,
 		isEnabled: () => props.showNodeGroups,
@@ -1158,6 +1163,11 @@ function onDeleteSelection() {
 		const deleteWholeGroupIds = selectedNodesAndGroups.value
 			.filter(isCanvasGroupNode)
 			.map((node) => parseCanvasGroupNodeId(node.id))
+			.filter(
+				(groupId) =>
+					groupId &&
+					(selectedNodeIds.value.length === 0 || explicitlySelectedGroupIds.value.has(groupId)),
+			)
 			.filter(isPresent);
 		emit('delete:nodes', ids, deleteWholeGroupIds);
 	}
@@ -1667,6 +1677,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 				selectedNodesAndGroups.value
 					.filter(isCanvasGroupNode)
 					.map((node) => parseCanvasGroupNodeId(node.id))
+					.filter((groupId) => groupId && explicitlySelectedGroupIds.value.has(groupId))
 					.filter(isPresent),
 			);
 			if (groupId) deleteWholeGroupIds.add(groupId);
