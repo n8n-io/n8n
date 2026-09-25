@@ -410,4 +410,86 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			expect(first).not.toBe(second);
 		});
 	});
+
+	describe('handleUnauthenticatedWebhook', () => {
+		// createWhatsAppIntegration() wires a fixed 'test-encryption-key', so the
+		// expected token for 'agent-1' is derivable the same way the real
+		// verify-token endpoint derives it.
+		const expectedToken = deriveWhatsAppVerifyToken('test-encryption-key', 'agent-1');
+
+		it("answers Meta's handshake with the raw challenge when the token matches", () => {
+			const integration = createWhatsAppIntegration();
+
+			const result = integration.handleUnauthenticatedWebhook({
+				agentId: 'agent-1',
+				method: 'GET',
+				query: {
+					'hub.mode': 'subscribe',
+					'hub.verify_token': expectedToken,
+					'hub.challenge': '12345',
+				},
+				headers: {},
+				body: undefined,
+			});
+
+			expect(result).toEqual({ status: 200, body: '12345', raw: true });
+		});
+
+		it('rejects the handshake when the verify token does not match', () => {
+			const integration = createWhatsAppIntegration();
+
+			const result = integration.handleUnauthenticatedWebhook({
+				agentId: 'agent-1',
+				method: 'GET',
+				query: {
+					'hub.mode': 'subscribe',
+					'hub.verify_token': 'wrong-token',
+					'hub.challenge': '12345',
+				},
+				headers: {},
+				body: undefined,
+			});
+
+			expect(result).toEqual({ status: 403, body: 'Forbidden', raw: true });
+		});
+
+		it('falls through for a non-GET request', () => {
+			const integration = createWhatsAppIntegration();
+
+			const result = integration.handleUnauthenticatedWebhook({
+				agentId: 'agent-1',
+				method: 'POST',
+				query: {
+					'hub.mode': 'subscribe',
+					'hub.verify_token': expectedToken,
+					'hub.challenge': '12345',
+				},
+				headers: {},
+				body: {},
+			});
+
+			expect(result).toBeUndefined();
+		});
+
+		it.each([
+			[
+				'wrong mode',
+				{ 'hub.mode': 'unsubscribe', 'hub.verify_token': expectedToken, 'hub.challenge': '12345' },
+			],
+			['missing verify_token', { 'hub.mode': 'subscribe', 'hub.challenge': '12345' }],
+			['missing challenge', { 'hub.mode': 'subscribe', 'hub.verify_token': expectedToken }],
+		])('falls through when the request is not a real handshake (%s)', (_label, query) => {
+			const integration = createWhatsAppIntegration();
+
+			const result = integration.handleUnauthenticatedWebhook({
+				agentId: 'agent-1',
+				method: 'GET',
+				query,
+				headers: {},
+				body: undefined,
+			});
+
+			expect(result).toBeUndefined();
+		});
+	});
 });

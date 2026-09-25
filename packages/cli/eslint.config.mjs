@@ -45,8 +45,7 @@ export default defineConfig(
 		rules: {
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
-			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a
-			// violation. `no-unsealed-workflow-entity-write` (on for every package via the plugin) has none.
+			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a violation.
 			'n8n-local-rules/no-guardrail-disable': [
 				'error',
 				{
@@ -67,6 +66,10 @@ export default defineConfig(
 						{
 							rule: 'no-unsealed-workflow-entity-write',
 							message: 'Route the write through a token-gated `WorkflowRepository` method.',
+						},
+						{
+							rule: 'no-unsealed-credentials-entity-write',
+							message: 'Route the write through a token-gated `CredentialsRepository` method.',
 						},
 					],
 				},
@@ -130,18 +133,6 @@ export default defineConfig(
 		},
 	},
 	{
-		// Ratchet allowlist: handlers/services still reaching a repository directly, pending
-		// migration to the `@PublicApiController` + service pattern (API-70). NEVER add to this
-		// list — a new violation must fail CI. Entries are removed as each file migrates.
-		files: [
-			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
-			'./src/public-api/v1/handlers/data-tables/data-tables.service.ts',
-		],
-		rules: {
-			'n8n-local-rules/no-repository-in-public-api-handler': 'off',
-		},
-	},
-	{
 		// Ratchet allowlist: legacy `export =` handler tuples pending migration to
 		// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
 		// must fail CI. Entries are removed as each handler becomes a controller.
@@ -150,20 +141,14 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/community-packages/community-packages.handler.ts',
 			'./src/public-api/v1/handlers/credentials/credentials.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts',
-			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
-			'./src/public-api/v1/handlers/discover/discover.handler.ts',
 			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
-			'./src/public-api/v1/handlers/folders/folders.handler.ts',
-			'./src/public-api/v1/handlers/insights/insights.handler.ts',
 			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 			'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 			'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
 			'./src/public-api/v1/handlers/otel/otel.handler.ts',
-			'./src/public-api/v1/handlers/security-policy/security-policy.handler.ts',
 			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
 			'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
-			'./src/public-api/v1/handlers/users/users.handler.ee.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 		],
 		rules: {
@@ -241,7 +226,6 @@ export default defineConfig(
 		// NEVER add to this list — a new leak must fail CI. Entries are removed as each file migrates.
 		files: [
 			// credentials/
-			'./src/credentials-helper.ts',
 			'./src/credentials/credential-connection-status-provider.interface.ts',
 			'./src/credentials/credential-connection-status-proxy.ts',
 			'./src/credentials/credential-dependency.service.ts',
@@ -332,7 +316,6 @@ export default defineConfig(
 			'./src/executions/execution-data/db-store.ts',
 			'./src/executions/execution-persistence.ts',
 			'./src/executions/execution-recovery.service.ts',
-			'./src/executions/execution.service.ts',
 			'./src/instance-settings-loader/loaders/log-streaming.instance-settings-loader.ts',
 			'./src/modules/agents/agents.service.ts',
 			'./src/modules/chat-hub/chat-hub-agent.service.ts',

@@ -24,6 +24,7 @@ import {
 	createWaitingExecution,
 	getAllExecutions,
 } from './shared/db/executions';
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createMember, createOwner } from './shared/db/users';
 import { setupTestServer } from './shared/utils';
 
@@ -86,6 +87,33 @@ describe('GET /executions', () => {
 		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
 
 		expect(response.body.data.count).toBe(1);
+	});
+
+	test('project viewers can list executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createWorkflow({}, teamProject);
+		await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
+
+		expect(response.body.data.count).toBe(1);
+	});
+
+	test('a custom project role without execution:read cannot list executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
+			roleType: 'project',
+		});
+		await linkUserToProject(member, teamProject, role.slug);
+
+		const workflow = await createWorkflow({}, teamProject);
+		await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
+
+		expect(response.body.data.count).toBe(0);
 	});
 
 	test('should return a scopes array for each execution', async () => {
@@ -223,7 +251,7 @@ describe('GET /executions/:id', () => {
 		await testServer.authAgentFor(owner).get('/executions/not-an-id').expect(400);
 	});
 
-	describe('engine 2.0 executions', () => {
+	describe('engine v2 executions', () => {
 		const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 		const startExecution = vi.fn();
 		const getExecution = vi.fn();
@@ -255,6 +283,7 @@ describe('GET /executions/:id', () => {
 			workflowId,
 			status: 'completed',
 			mode: 'manual',
+			hostMode: 'manual',
 			graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [] },
 			workflow: ranWorkflow(workflowId),
 			createdAt: '2026-08-25T10:00:00.000Z',
@@ -385,7 +414,7 @@ describe('PATCH /executions/:id', () => {
 			.expect(400);
 	});
 
-	test('reports annotating an engine 2.0 execution as not implemented', async () => {
+	test('reports annotating an engine v2 execution as not implemented', async () => {
 		await createWorkflow({}, owner);
 
 		await testServer
@@ -395,7 +424,7 @@ describe('PATCH /executions/:id', () => {
 			.expect(501);
 	});
 
-	test('reports an engine 2.0 execution as not found when no workflow is accessible', async () => {
+	test('reports an engine v2 execution as not found when no workflow is accessible', async () => {
 		await testServer
 			.authAgentFor(member)
 			.patch('/executions/01a038ae-c4a8-7799-8a3e-e3c2ca055cfa')
@@ -423,6 +452,74 @@ describe('POST /executions/delete', () => {
 		const executions = await getAllExecutions();
 
 		expect(executions).toHaveLength(0);
+	});
+
+	test('project editors can delete executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+
+		await testServer
+			.authAgentFor(member)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(200);
+
+		expect(await getAllExecutions()).toHaveLength(0);
+	});
+
+	test('project viewers cannot delete executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+
+		await testServer
+			.authAgentFor(member)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(404);
+
+		expect(await getAllExecutions()).toHaveLength(1);
+	});
+
+	test('a custom project role needs execution:delete to delete executions, workflow:execute is not enough', async () => {
+		const teamProject = await createTeamProject();
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+		const baseScopes = [
+			'workflow:read',
+			'workflow:list',
+			'workflow:execute',
+			'execution:read',
+			'execution:list',
+		];
+
+		const withoutDelete = await createCustomRoleWithScopeSlugs(baseScopes, {
+			roleType: 'project',
+		});
+		await linkUserToProject(member, teamProject, withoutDelete.slug);
+
+		await testServer
+			.authAgentFor(member)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(404);
+		expect(await getAllExecutions()).toHaveLength(1);
+
+		const withDelete = await createCustomRoleWithScopeSlugs([...baseScopes, 'execution:delete'], {
+			roleType: 'project',
+		});
+		const otherMember = await createMember();
+		await linkUserToProject(otherMember, teamProject, withDelete.slug);
+
+		await testServer
+			.authAgentFor(otherMember)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(200);
+		expect(await getAllExecutions()).toHaveLength(0);
 	});
 
 	test('should hard-delete executions older than `deleteBefore`', async () => {

@@ -3,11 +3,14 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { LRUCache } from 'lru-cache';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { TypeAvailabilityPolicyAttachmentRepository } from './database/repositories/type-availability-policy-attachment.repository';
@@ -15,6 +18,7 @@ import { TypeAvailabilityPolicyScopeRepository } from './database/repositories/t
 import { TypeAvailabilityPolicyRepository } from './database/repositories/type-availability-policy.repository';
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
+import { isPackageInstalled, packageResolverFor, policedTypeFor } from './package-resolver';
 import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
 import type {
 	PolicyAction,
@@ -33,12 +37,42 @@ import { lintRulesForShadowing, type ShadowWarning } from './policy-shadow-lint'
 const UNCONFIGURED_VERSION = 0;
 
 /**
- * A backstop, not the staleness control — every write drops the entry it changed. Kept short
- * because a delete is not guaranteed to land: it can fail after the commit, it cannot reach a
- * process that was given its own cache with `N8N_CACHE_BACKEND=memory`, and a fill that began
- * before the commit can write the old value back after it. This bounds all three.
+ * A backstop, not the staleness control — every write drops the entry it changed, and a read
+ * that raced that delete never publishes what it fetched. What is left for the TTL to heal is
+ * operator-level: a process given its own cache with `N8N_CACHE_BACKEND=memory`, a delete that
+ * failed after its write committed, and a row edited outside this service.
  */
-const SCOPE_CACHE_TTL_MS = 30 * Time.seconds.toMilliseconds;
+const SCOPE_CACHE_TTL_MS = 10 * Time.minutes.toMilliseconds;
+
+/**
+ * How long one process reuses its own read of a scope, whether that read is still running or
+ * has already finished. Short because it is the one staleness window a policy write cannot
+ * close from another process: the process that wrote drops its own reads at once.
+ */
+const LOCAL_READ_TTL_MS = 1 * Time.seconds.toMilliseconds;
+
+/**
+ * Caps the reads one process holds. Each one resolves to a whole rule list and the key space is
+ * `kind` x projects, so an instance with many projects would otherwise keep every project's
+ * policy in memory for ever.
+ *
+ * Exported so the test that fills the cap derives its fixture from it rather than repeating the
+ * number, which would stop testing the cap the moment this changed.
+ */
+export const LOCAL_READ_MAX_ENTRIES = 512;
+
+/**
+ * How long after an invalidation the same keys are dropped a second time.
+ *
+ * A read that hit the database before a write committed can `set` the pre-commit snapshot back
+ * after the write's delete. `invalidations` catches that on the process that wrote, but a read
+ * on another process is invisible to it and `CacheService` has no compare-and-set to build on.
+ *
+ * This delay is therefore also the bound `canPublish` holds a read to: a read that finishes
+ * within it cannot outlive this second delete, so resurrection is impossible rather than
+ * unlikely.
+ */
+const INVALIDATION_REPEAT_DELAY_MS = 1 * Time.seconds.toMilliseconds;
 
 /**
  * How long one cache call gets before the decision gives up on it and reads the database.
@@ -168,6 +202,33 @@ function assertNoDelegateAtProjectScope(
 	}
 }
 
+/**
+ * A `package` rule that names a package this instance never loaded can never match anything —
+ * worse than not supporting the rule at all, since it looks like it works. Checked at every
+ * write so a policy is never saved with one.
+ */
+function assertPackagesInstalled(
+	rules: readonly PolicyRule[],
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+): void {
+	const missing = new Set<string>();
+
+	for (const rule of rules) {
+		if (
+			rule.selector.kind === 'package' &&
+			!isPackageInstalled(loadNodesAndCredentials, rule.selector.value)
+		) {
+			missing.add(rule.selector.value);
+		}
+	}
+
+	if (missing.size > 0) {
+		throw new UserError(
+			`Package rule names a package that is not installed: ${[...missing].join(', ')}`,
+		);
+	}
+}
+
 /** Mirrors the DTO-level check in `ReplaceAttachmentsDto`, as a defensive service-level guard. */
 function assertNoDuplicateAttachmentSlots(attachments: readonly AttachmentInput[]): void {
 	const seenPolicyIds = new Set<string>();
@@ -203,10 +264,36 @@ export class TypeAvailabilityPolicyService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly eventService: EventService,
 		private readonly cacheService: CacheService,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('policy');
 	}
+
+	/**
+	 * This process's own read of each scope, held for `LOCAL_READ_TTL_MS` from when it started
+	 * — the promise, not the value, so that callers who arrive while it is still running share
+	 * it too. Coalescing and memoizing are then the same thing at two different moments.
+	 *
+	 * An `LRUCache` for the cap, so the scope nobody has read for longest is the one dropped.
+	 * The window stays here rather than using the cache's own `ttl`, which is measured with
+	 * `performance.now()` — a clock a test cannot freeze.
+	 */
+	private readonly localReads = new LRUCache<
+		string,
+		{ read: Promise<EffectivePolicy>; expiresAt: number }
+	>({ max: LOCAL_READ_MAX_ENTRIES });
+
+	/**
+	 * Counts invalidations on this process, so a read can notice one that overtook it. Deliberately
+	 * not per scope: a read that raced a write to any scope simply does not publish, which costs
+	 * one extra read of an unrelated scope and keeps this to one number that cannot grow.
+	 */
+	private invalidations = 0;
+
+	/** Pending repeat deletes, so `resetLocalCaches` leaves nothing running behind it. */
+	private readonly repeatDeletes = new Set<NodeJS.Timeout>();
 
 	/**
 	 * Never creates a scope row on read — an unconfigured scope reports allow-all with
@@ -345,7 +432,12 @@ export class TypeAvailabilityPolicyService {
 		rules: readonly PolicyRule[],
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
-		const warnings = lintRulesForShadowing(rules);
+		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
+		const warnings = lintRulesForShadowing(
+			rules,
+			packageResolverFor(kind, this.loadNodesAndCredentials),
+			policedTypeFor(kind, this.nodeTypes),
+		);
 
 		const policy = await this.policyRepository.createPolicy({ kind, rules, updatedBy }, {});
 
@@ -378,7 +470,12 @@ export class TypeAvailabilityPolicyService {
 		expectedVersion: number,
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
-		const warnings = lintRulesForShadowing(rules);
+		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
+		const warnings = lintRulesForShadowing(
+			rules,
+			packageResolverFor(kind, this.loadNodesAndCredentials),
+			policedTypeFor(kind, this.nodeTypes),
+		);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			let invalidated: PolicyScopeKey[] = [];
@@ -519,6 +616,11 @@ export class TypeAvailabilityPolicyService {
 	 * `getEffectivePolicy`/`setDefaultAction` call, and a scope row is shared by both instance
 	 * and project scope, so this stays reusable without resolving `(kind, projectId)` again.
 	 *
+	 * `kind` scopes that lookup the same way `getPolicyDocument` scopes its own id lookup: a
+	 * caller authorized for one kind (e.g. `credentialTypePolicy:manage`, not
+	 * `nodeTypePolicy:manage`) must not reach a scope of a different kind by id, even with an
+	 * empty or same-kind-only attachment list that `assertAttachableToScope` would not catch.
+	 *
 	 * No `expectedVersion` check: the real `ReplaceAttachmentsDto` from IAM-1328 carries no
 	 * version field (unlike `PutInstancePolicyDto`), so this endpoint is last-write-wins. The
 	 * write still runs in one transaction with the scope's version bump, so a concurrent
@@ -529,6 +631,7 @@ export class TypeAvailabilityPolicyService {
 	 * policies), the same scope → policy order every other write path uses.
 	 */
 	async replaceAttachments(
+		kind: string,
 		scopeId: string,
 		attachments: readonly AttachmentInput[],
 		updatedBy: string,
@@ -536,7 +639,7 @@ export class TypeAvailabilityPolicyService {
 		assertNoDuplicateAttachmentSlots(attachments);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeById(scopeId, ctx, true);
+			const scope = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx, true);
 			if (!scope) {
 				throw new NotFoundError(`Policy scope not found: ${scopeId}`);
 			}
@@ -621,8 +724,13 @@ export class TypeAvailabilityPolicyService {
 		warnings: readonly ShadowWarning[];
 	}> {
 		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
+		assertPackagesInstalled(input.rules, this.loadNodesAndCredentials);
 
-		const warnings = lintRulesForShadowing(input.rules);
+		const warnings = lintRulesForShadowing(
+			input.rules,
+			packageResolverFor(kind, this.loadNodesAndCredentials),
+			policedTypeFor(kind, this.nodeTypes),
+		);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
@@ -829,7 +937,12 @@ export class TypeAvailabilityPolicyService {
 	): Promise<ComposedVerdict> {
 		const { instance, project } = await this.readComposedScopes(kind, projectId);
 
-		return evaluateComposedType(instance, project, typeName);
+		return evaluateComposedType(
+			instance,
+			project,
+			policedTypeFor(kind, this.nodeTypes)(typeName),
+			packageResolverFor(kind, this.loadNodesAndCredentials),
+		);
 	}
 
 	/**
@@ -862,11 +975,13 @@ export class TypeAvailabilityPolicyService {
 		typeNames: readonly string[],
 	): Promise<ComposedTypeEvaluation> {
 		const { instance, project } = await this.readComposedScopes(kind, projectId);
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+		const policedType = policedTypeFor(kind, this.nodeTypes);
 
 		return {
 			verdicts: typeNames.map((name) => ({
 				name,
-				...evaluateComposedType(instance, project, name),
+				...evaluateComposedType(instance, project, policedType(name), resolvePackage),
 			})),
 			versions: [
 				{ scope: 'instance', version: instance.version },
@@ -904,19 +1019,51 @@ export class TypeAvailabilityPolicyService {
 	/**
 	 * Read-through cache in front of `getEffectivePolicy`, for the evaluation paths only.
 	 *
-	 * Enforcement runs this for every execution and every sub-execution under a 250 ms
-	 * deadline it fails closed on, so the point is to stop a slow database failing runs, not
-	 * to save queries. The instance scope is one entry shared by every project, so a project's
-	 * sub-executions hit it too.
+	 * Enforcement runs this for every execution, every sub-execution and every credential
+	 * decryption, under a 250 ms deadline it fails closed on — so the first job is to stop a
+	 * slow database failing runs. The instance scope is one entry shared by every project, so a
+	 * project's sub-executions hit it too.
 	 *
 	 * A cache that fails or hangs falls through to the database rather than propagating: the
 	 * caller blocks on a throw, and a lost Redis must not start failing executions.
+	 *
+	 * Reads on one scope are shared for a second, so a burst of decisions on a cold entry
+	 * costs one read and a warm decision costs no round trip at all.
 	 */
 	private async readEffectivePolicyCached(
 		kind: string,
 		projectId: string | null,
 	): Promise<EffectivePolicy> {
 		const key = scopeCacheKey(kind, projectId);
+
+		const shared = this.localReads.get(key);
+		if (shared && shared.expiresAt > Date.now()) return await shared.read;
+
+		const read = this.readScope(kind, projectId, key);
+
+		// A failed read must not be the answer for the rest of the window. `peek` so that checking
+		// does not itself count as use, and only drop it while it is still the current one, or a
+		// slow failure evicts the read that replaced it.
+		read.catch(() => {
+			if (this.localReads.peek(key)?.read === read) this.localReads.delete(key);
+		});
+
+		this.localReads.set(key, { read, expiresAt: Date.now() + LOCAL_READ_TTL_MS });
+
+		return await read;
+	}
+
+	/**
+	 * One read of the shared cache, falling back to the database, for however many callers end
+	 * up sharing it.
+	 */
+	private async readScope(
+		kind: string,
+		projectId: string | null,
+		key: string,
+	): Promise<EffectivePolicy> {
+		const startedAt = Date.now();
+		const invalidations = this.invalidations;
 
 		try {
 			const cached = await withCacheTimeout(this.cacheService.get<EffectivePolicy>(key));
@@ -926,6 +1073,8 @@ export class TypeAvailabilityPolicyService {
 		}
 
 		const effective = await this.getEffectivePolicy(kind, projectId);
+
+		if (!this.canPublish(invalidations, startedAt)) return effective;
 
 		try {
 			// An unconfigured scope is cached as its allow-all object, never as an absent
@@ -939,6 +1088,34 @@ export class TypeAvailabilityPolicyService {
 	}
 
 	/**
+	 * Whether a read may write what it fetched to the shared cache. Either way the caller is
+	 * served — this decides only what the rest of the cluster sees.
+	 *
+	 * Two reads must stay unpublished. One an invalidation overtook, whose snapshot is already
+	 * old. And one slower than `INVALIDATION_REPEAT_DELAY_MS`, because its write could land
+	 * after both deletes of a write it raced on another process, which no counter here can see.
+	 */
+	private canPublish(invalidations: number, startedAt: number): boolean {
+		if (this.invalidations !== invalidations) return false;
+
+		return Date.now() - startedAt < INVALIDATION_REPEAT_DELAY_MS;
+	}
+
+	/**
+	 * Drops every in-process read, for a test that wrote behind the service — truncating the
+	 * policy tables, or seeding a row through a repository.
+	 */
+	resetLocalCaches(): void {
+		this.localReads.clear();
+
+		// Bumped, not zeroed: a read already in flight must not publish a pre-reset snapshot.
+		this.invalidations += 1;
+
+		for (const repeat of this.repeatDeletes) clearTimeout(repeat);
+		this.repeatDeletes.clear();
+	}
+
+	/**
 	 * Drops the cached entry for every scope a write changed.
 	 *
 	 * Runs after the transaction commits, never inside it — a reader racing in before the
@@ -948,14 +1125,34 @@ export class TypeAvailabilityPolicyService {
 	 * and failing the response would report a success as an error — so the entry can survive,
 	 * and the TTL is what bounds it.
 	 *
-	 * Bounded like the reads, because a disconnected ioredis queues the delete instead of
-	 * rejecting it: unbounded, that hangs the response to a write that already committed.
+	 * The keys are dropped a second time after `INVALIDATION_REPEAT_DELAY_MS`, to catch a read
+	 * on another process that resurrects the entry it fetched before this write committed.
 	 */
 	private async invalidateScopes(keys: readonly PolicyScopeKey[]): Promise<void> {
 		if (keys.length === 0) return;
 
 		const cacheKeys = keys.map(({ kind, projectId }) => scopeCacheKey(kind, projectId));
 
+		this.invalidations += 1;
+		for (const key of cacheKeys) this.localReads.delete(key);
+
+		await this.dropCacheKeys(cacheKeys);
+
+		// Not awaited: the write has committed and its response must not wait on a delete.
+		const repeat = setTimeout(async () => {
+			this.repeatDeletes.delete(repeat);
+			await this.dropCacheKeys(cacheKeys);
+		}, INVALIDATION_REPEAT_DELAY_MS);
+
+		repeat.unref();
+		this.repeatDeletes.add(repeat);
+	}
+
+	/**
+	 * Bounded like the reads, because a disconnected ioredis queues the delete instead of
+	 * rejecting it: unbounded, that hangs the response to a write that already committed.
+	 */
+	private async dropCacheKeys(cacheKeys: string[]): Promise<void> {
 		try {
 			await withCacheTimeout(this.cacheService.deleteMany(cacheKeys));
 		} catch (error) {

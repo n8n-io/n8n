@@ -52,6 +52,7 @@ const props = withDefaults(
 		agentId: string;
 		mode?: 'panel' | 'inline';
 		continueSessionId?: string;
+		newSession?: boolean;
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
@@ -65,6 +66,7 @@ const props = withDefaults(
 		visible: true,
 		mode: 'panel',
 		continueSessionId: undefined,
+		newSession: false,
 		canEditAgent: true,
 		canSendToAssistant: false,
 		beforeSend: undefined,
@@ -77,6 +79,7 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'session-created': [sessionId: string];
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
@@ -98,6 +101,7 @@ const {
 	loadHistory,
 	sendMessage,
 	stopGenerating,
+	detachStream,
 	resume,
 	cancelAndSteer,
 	dismissFatalError,
@@ -106,11 +110,13 @@ const {
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
 	continueSessionId: toRef(props, 'continueSessionId'),
+	newSession: toRef(props, 'newSession'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) {
 			emit('continue-loaded', { sessionId: props.continueSessionId, count });
 		}
 	},
+	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 });
 
 const { jobs: backgroundJobs } = useAgentBackgroundJobs({
@@ -326,6 +332,10 @@ const inputText = computed<string>({
 });
 const isPreparingToSend = ref(false);
 let disposed = false;
+let queuedExternalMessage: string | undefined;
+let submittingQueuedExternalMessage = false;
+
+type SubmitResult = 'sent' | 'busy' | 'rejected';
 
 const RUNTIME_ISSUE_PATH_PREFIXES = [
 	{ prefix: 'tools.', key: 'agents.chat.misconfigured.missing.tools' },
@@ -391,6 +401,13 @@ const inputBlockedBySuspension = computed(
 		hasOpenWaitCard.value ||
 		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
 );
+const isSubmissionBlocked = computed(
+	() =>
+		isStreaming.value ||
+		isCancelling.value ||
+		isPreparingToSend.value ||
+		inputBlockedBySuspension.value,
+);
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets
 // the user clear the stale pulsing state without reloading the chat.
@@ -433,6 +450,9 @@ const chatPlaceholder = computed(() => {
 });
 
 watch(isStreaming, (v) => emit('update:streaming', v));
+watch(isSubmissionBlocked, (blocked) => {
+	if (!blocked) void submitQueuedExternalMessage();
+});
 watch(
 	() => props.visible,
 	(visible) => {
@@ -440,66 +460,73 @@ watch(
 	},
 );
 
-async function onSubmit() {
+function consumeQueuedExternalMessage(message: string) {
+	if (queuedExternalMessage !== message) return;
+	queuedExternalMessage = undefined;
+	emit('initial-consumed');
+}
+
+async function onSubmit(): Promise<SubmitResult> {
 	const text = inputText.value.trim();
-	const files = attachedFiles.value;
-	if (
-		(!text && files.length === 0) ||
-		isStreaming.value ||
-		isCancelling.value ||
-		isPreparingToSend.value ||
-		inputBlockedBySuspension.value
-	) {
-		return;
-	}
+	const files = [...attachedFiles.value];
+	if (!text && files.length === 0) return 'rejected';
+	if (isSubmissionBlocked.value) return 'busy';
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	const isCurrentTarget = () =>
+		!disposed &&
+		props.projectId === target.projectId &&
+		props.agentId === target.agentId &&
+		props.continueSessionId === target.continueSessionId;
 
 	if (hasOpenInteractiveQuestion.value) {
-		if (!text) return;
-		inputText.value = '';
-		await cancelAndSteer(text);
-		return;
+		if (!text) return 'rejected';
+		const result = await cancelAndSteer(text, () => {
+			if (!isCurrentTarget()) return;
+			if (inputText.value.trim() === text) inputText.value = '';
+			consumeQueuedExternalMessage(text);
+		});
+		if (isCurrentTarget()) consumeQueuedExternalMessage(text);
+		return result === 'busy' ? 'busy' : 'sent';
 	}
 
 	isPreparingToSend.value = true;
 	try {
-		const target = {
-			projectId: props.projectId,
-			agentId: props.agentId,
-			continueSessionId: props.continueSessionId,
-		};
-		const isCurrentTarget = () =>
-			!disposed &&
-			props.projectId === target.projectId &&
-			props.agentId === target.agentId &&
-			props.continueSessionId === target.continueSessionId;
 		try {
 			await props.beforeSend?.();
 		} catch {
-			return;
+			return 'rejected';
 		}
-		if (!isCurrentTarget()) return;
+		if (!isCurrentTarget()) return 'rejected';
 
 		const fingerprint = await buildAgentConfigFingerprint(
 			props.agentConfig,
 			props.connectedTriggers,
 		);
-		if (!isCurrentTarget()) return;
+		if (!isCurrentTarget()) return 'rejected';
 		// Keep the draft if a local resume or cancellation started during preparation.
-		if (isStreaming.value || isCancelling.value) return;
+		if (isStreaming.value || isCancelling.value) return 'busy';
 
-		inputText.value = '';
-		attachedFiles.value = [];
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
 			status: props.agentStatus,
 			agentConfig: fingerprint,
 		});
 
-		if (files.length > 0) {
-			await sendMessage(text, files);
-		} else {
-			await sendMessage(text);
-		}
+		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
+			if (!isCurrentTarget()) return;
+			if (inputText.value.trim() === text) inputText.value = '';
+			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
+			consumeQueuedExternalMessage(text);
+		});
+		isPreparingToSend.value = false;
+		const result = await sending;
+		if (isCurrentTarget()) consumeQueuedExternalMessage(text);
+		if (result === 'busy') return 'busy';
+		return 'sent';
 	} finally {
 		isPreparingToSend.value = false;
 	}
@@ -507,8 +534,31 @@ async function onSubmit() {
 
 function sendMessageFromOutside(message: string) {
 	if (inputBlockedBySuspension.value) return;
+	queuedExternalMessage = message;
 	inputText.value = message;
-	void onSubmit();
+	void submitQueuedExternalMessage();
+}
+
+async function submitQueuedExternalMessage() {
+	const message = queuedExternalMessage;
+	if (!message || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
+
+	submittingQueuedExternalMessage = true;
+	let result: SubmitResult = 'rejected';
+	try {
+		inputText.value = message;
+		result = await onSubmit();
+	} finally {
+		submittingQueuedExternalMessage = false;
+	}
+
+	if (result === 'rejected' && queuedExternalMessage === message) {
+		queuedExternalMessage = undefined;
+	}
+	if (queuedExternalMessage && !isSubmissionBlocked.value) {
+		await nextTick();
+		void submitQueuedExternalMessage();
+	}
 }
 
 function getConversationMarkdown(): string {
@@ -529,7 +579,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	disposed = true;
-	if (isStreaming.value) void stopGenerating();
+	detachStream();
 });
 </script>
 
@@ -616,12 +666,7 @@ onBeforeUnmount(() => {
 					!isPreparingToSend &&
 					(inputText.trim().length > 0 || attachedFiles.length > 0)
 				"
-				:disabled="
-					inputBlockedBySuspension ||
-					isCancelling ||
-					isPreparingToSend ||
-					(isStreaming && messagingState !== 'receiving')
-				"
+				:disabled="inputBlockedBySuspension || isPreparingToSend"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"

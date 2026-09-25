@@ -215,6 +215,16 @@ export interface StepExecutionResult extends ExecutionResult {
 	replayedNodeNames?: string[];
 	/** Execution the replayed run data came from. */
 	reusedFromExecutionId?: string;
+	/**
+	 * Nodes that can run the target, when it is a sub-node (a tool, a model, a
+	 * memory). The engine runs a sub-node from the node that owns it, so the
+	 * input came from that node's input, and `mockInput` fed that node.
+	 *
+	 * A tool wired to several agents lists them all: n8n runs the step through
+	 * one of them, and which one is the engine's choice, not this caller's.
+	 * A step run refuses a tool when one of its agents runs above another.
+	 */
+	ranThroughNodeNames?: string[];
 }
 
 export interface NodeOutputBranch {
@@ -230,15 +240,24 @@ export interface NodeOutputBranch {
 export interface NodeOutputResult {
 	nodeName: string;
 	/**
-	 * One entry per output of the node's last run, in output order. Multi-output
-	 * nodes (Filter, IF, Switch) keep each output separate, so their items are
-	 * never merged into one list.
+	 * One entry per output, in output order. Multi-output nodes (Filter, IF,
+	 * Switch) keep each output separate, so their items are never merged into
+	 * one list.
+	 *
+	 * A node in the main graph reports its last run. A sub-node (a model, a
+	 * memory, a tool) reports every run, because one run is one call its owner
+	 * made, and an item's label names the call it came from.
 	 */
 	outputs: NodeOutputBranch[];
 	/** Item count across all outputs. */
 	totalItems: number;
 	/** Page position over the items of all outputs, first output first. */
 	returned: { from: number; to: number };
+	/**
+	 * Runs the node recorded, when it recorded more than one. A sub-node's runs
+	 * are all read; a node in the main graph reports the last of them.
+	 */
+	totalRuns?: number;
 }
 
 export interface ResolvedExpressionFailure {
@@ -338,6 +357,7 @@ export interface CredentialSummary {
 	id: string;
 	name: string;
 	type: string;
+	description?: string | null;
 }
 
 export interface CredentialDetail extends CredentialSummary {
@@ -633,6 +653,9 @@ export interface InstanceAiExecutionService {
 	 * - neither option — run every ancestor that has no data yet, then the target.
 	 * - `mockInput` — supply the input and skip the ancestors entirely.
 	 *
+	 * A sub-node has no input of its own, so these options apply to the node that
+	 * runs it. A tool's own arguments come from `toolArguments` instead.
+	 *
 	 * The first two say something about the workflow, because the input is data
 	 * the workflow really produced. `mockInput` says something about the node
 	 * alone, which is what you want when isolating it — but a caller must not
@@ -652,6 +675,15 @@ export interface InstanceAiExecutionService {
 			 * Applied to each of the target's direct inputs.
 			 */
 			mockInput?: Array<Record<string, unknown>>;
+			/**
+			 * Arguments for a tool target — the values an agent would fill from its
+			 * `$fromAI` calls. A string for a tool that takes one free-text input.
+			 *
+			 * Required when the tool declares `$fromAI` arguments: the
+			 * implementation rejects the call rather than run the tool on empty ones.
+			 * A tool with no such arguments needs nothing here.
+			 */
+			toolArguments?: Record<string, unknown> | string;
 			/** Run a past version's graph instead of the current draft. */
 			versionId?: string;
 			timeout?: number;
@@ -1035,6 +1067,53 @@ export interface DataTableIdOptions {
 }
 
 export type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
+export type InstanceAiPreferenceWriteRejection =
+	| 'too_long'
+	| 'scope_full'
+	| 'duplicate'
+	| 'not_permitted'
+	| 'blocked_by_admin'
+	| 'failed';
+
+export interface InstanceAiSavedPreference {
+	id: string;
+	content: string;
+	/** The tool writes `user`. A later fact from the card can move the row, so the type is wide. */
+	scope: 'user' | 'project' | 'instance';
+	projectId?: string | null;
+	/** The owner of a user-scoped row. An edit from the card must name it. */
+	userId?: string | null;
+}
+
+/** A cap refusal always carries the cap and the measured value, so the model can fit under it. */
+export type InstanceAiPreferenceWriteRefusal =
+	| {
+			reason: 'too_long' | 'scope_full';
+			message: string;
+			/** Characters for `too_long`, rows for `scope_full`. */
+			limit: number;
+			/** The text length, or the rows already saved. */
+			actual: number;
+	  }
+	| {
+			reason: Exclude<InstanceAiPreferenceWriteRejection, 'too_long' | 'scope_full'>;
+			message: string;
+	  };
+
+export type InstanceAiPreferenceWriteResult =
+	| { ok: true; preference: InstanceAiSavedPreference }
+	| ({ ok: false } & InstanceAiPreferenceWriteRefusal);
+
+export interface InstanceAiPreferenceService {
+	create(input: { content: string; scope: 'user' }): Promise<InstanceAiPreferenceWriteResult>;
+	/** Record a rejection the tool decided before calling `create` (blocked, too long, blank). */
+	recordRejection(
+		reason: InstanceAiPreferenceWriteRejection,
+		textLength: number,
+		scope: 'user',
+	): void;
+}
 
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
@@ -1469,6 +1548,8 @@ export interface InstanceAiConversationHistoryReader {
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
+	/** Instance-wide gate for credential description output and guidance. */
+	credentialDescriptionsEnabled?: boolean;
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration
@@ -1509,6 +1590,9 @@ export interface InstanceAiContext {
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
 	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
 	activityService?: InstanceAiActivityService;
+	/** Present only when saved preferences are enabled for this user; its
+	 *  absence hides the `save_user_preference` tool. */
+	aiPreferenceService?: InstanceAiPreferenceService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

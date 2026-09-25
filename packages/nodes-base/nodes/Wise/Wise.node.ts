@@ -185,7 +185,7 @@ export class Wise implements INodeType {
 						//      account: getBalances
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#borderless-accounts-get-account-balance
+						// https://docs.wise.com/api-reference/legacy/balance
 
 						const qs = {
 							profileId: this.getNodeParameter('profileId', i),
@@ -197,7 +197,7 @@ export class Wise implements INodeType {
 						//      account: getCurrencies
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#borderless-accounts-get-available-currencies
+						// https://docs.wise.com/api-reference/legacy/multi-currency-account
 
 						responseData = await wiseApiRequest.call(
 							this,
@@ -209,7 +209,7 @@ export class Wise implements INodeType {
 						//      account: getStatement
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#borderless-accounts-get-account-statement
+						// https://docs.wise.com/api-reference/legacy/balance-statement
 
 						const profileId = this.getNodeParameter('profileId', i);
 						const borderlessAccountId = this.getNodeParameter('borderlessAccountId', i);
@@ -271,7 +271,7 @@ export class Wise implements INodeType {
 						//       exchangeRate: get
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#exchange-rates-list
+						// https://docs.wise.com/api-reference/legacy/rate/rateget
 
 						const qs = {
 							source: this.getNodeParameter('source', i),
@@ -311,7 +311,7 @@ export class Wise implements INodeType {
 						//          profile: get
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#user-profiles-get-by-id
+						// https://docs.wise.com/api-reference/legacy/profile
 
 						const profileId = this.getNodeParameter('profileId', i);
 						responseData = await wiseApiRequest.call(this, 'GET', `v1/profiles/${profileId}`);
@@ -320,7 +320,7 @@ export class Wise implements INodeType {
 						//         profile: getAll
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#user-profiles-list
+						// https://docs.wise.com/api-reference/legacy/profile
 
 						responseData = await wiseApiRequest.call(this, 'GET', 'v1/profiles');
 					}
@@ -334,7 +334,7 @@ export class Wise implements INodeType {
 						//       recipient: getAll
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#recipient-accounts-list
+						// https://docs.wise.com/api-reference/legacy/recipient/recipientlistv1
 
 						responseData = await wiseApiRequest.call(this, 'GET', 'v1/accounts');
 
@@ -355,7 +355,7 @@ export class Wise implements INodeType {
 						//          quote: create
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#quotes-create
+						// https://docs.wise.com/api-reference/legacy/quote
 
 						const body = {
 							profile: this.getNodeParameter('profileId', i),
@@ -377,7 +377,7 @@ export class Wise implements INodeType {
 						//          quote: get
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#quotes-get-by-id
+						// https://docs.wise.com/api-reference/legacy/quote
 
 						const quoteId = this.getNodeParameter('quoteId', i);
 						responseData = await wiseApiRequest.call(this, 'GET', `v2/quotes/${quoteId}`);
@@ -392,7 +392,7 @@ export class Wise implements INodeType {
 						//         transfer: create
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#transfers-create
+						// https://docs.wise.com/api-reference/legacy/standard-transfer/transfercreate
 
 						const body = {
 							quoteUuid: this.getNodeParameter('quoteId', i),
@@ -414,7 +414,7 @@ export class Wise implements INodeType {
 						//        transfer: delete
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#transfers-cancel
+						// https://docs.wise.com/api-reference/legacy/transfer/transfercancel
 
 						const transferId = this.getNodeParameter('transferId', i);
 						responseData = await wiseApiRequest.call(
@@ -427,7 +427,7 @@ export class Wise implements INodeType {
 						//        transfer: execute
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#transfers-fund
+						// https://docs.wise.com/api-reference/legacy/transfer/transferfund
 
 						const profileId = this.getNodeParameter('profileId', i);
 						const transferId = this.getNodeParameter('transferId', i) as string;
@@ -467,7 +467,7 @@ export class Wise implements INodeType {
 						const downloadReceipt = this.getNodeParameter('downloadReceipt', i) as boolean;
 
 						if (downloadReceipt) {
-							// https://api-docs.transferwise.com/#transfers-get-receipt-pdf
+							// https://docs.wise.com/api-reference/legacy/transfer/transferreceiptget
 
 							const data = await wiseApiRequest.call(
 								this,
@@ -488,7 +488,7 @@ export class Wise implements INodeType {
 							responseData = items;
 							binaryOutput = true;
 						} else {
-							// https://api-docs.transferwise.com/#transfers-get-by-id
+							// https://docs.wise.com/api-reference/legacy/transfer/transferget
 
 							responseData = await wiseApiRequest.call(this, 'GET', `v1/transfers/${transferId}`);
 						}
@@ -497,7 +497,7 @@ export class Wise implements INodeType {
 						//        transfer: getAll
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#transfers-list
+						// https://docs.wise.com/api-reference/legacy/standard-transfer/transferlist
 
 						const qs = {
 							profile: this.getNodeParameter('profileId', i),

@@ -83,7 +83,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		});
 
 		try {
-			// TODO(CAT-4078): an engine 2.0 run writes no execution row, so the unique
+			// TODO(CAT-4078): an engine v2 run writes no execution row, so the unique
 			// index that turns a redelivered occurrence into a `DuplicateExecutionError`
 			// never applies and the redelivery starts a second run.
 			const executionId = await this.workflowExecutionService.runWorkflow(

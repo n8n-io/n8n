@@ -37,9 +37,12 @@ vi.mock('../eval/execution.service', () => ({
 }));
 
 import type {
+	AiPreferenceDto,
+	InstanceAiPreferenceCardEvent,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
@@ -91,6 +94,7 @@ import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
+import type { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.service';
 import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -139,6 +143,7 @@ describe('InstanceAiController', () => {
 
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
+	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -163,6 +168,7 @@ describe('InstanceAiController', () => {
 		projectService,
 		instanceAiErrorReporter,
 		publisher,
+		preferenceCardService,
 		globalConfig,
 	);
 
@@ -182,6 +188,7 @@ describe('InstanceAiController', () => {
 
 	describe('chat', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
+			observerThresholdTokens: undefined,
 			message: 'hello',
 			timeZone: 'Europe/Helsinki',
 			attachments: undefined,
@@ -211,11 +218,13 @@ describe('InstanceAiController', () => {
 				payload.promptVersion,
 				payload.computerUseChannels,
 				payload.threadArtifacts,
+				payload.observerThresholdTokens,
 			);
 		});
 
 		it('should forward thread artifacts to startRun', async () => {
 			const payloadWithArtifacts = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'Change this',
 				timeZone: 'UTC',
 				attachments: undefined,
@@ -242,7 +251,46 @@ describe('InstanceAiController', () => {
 				payloadWithArtifacts.promptVersion,
 				payloadWithArtifacts.computerUseChannels,
 				payloadWithArtifacts.threadArtifacts,
+				payloadWithArtifacts.observerThresholdTokens,
 			);
+		});
+
+		it('forwards the observer threshold override for a caller with the eval scope', async () => {
+			const evalPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'build',
+				attachments: undefined,
+				observerThresholdTokens: 1000,
+			});
+			const evalReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:eval' }] } },
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-7');
+
+			await controller.chat(evalReq, res, THREAD_ID, evalPayload);
+
+			const args = instanceAiService.startRun.mock.calls[0];
+			expect(args[args.length - 1]).toBe(1000);
+		});
+
+		it('rejects the observer threshold override from a caller without the eval scope', async () => {
+			// The override changes how often the observer runs, so it stays an eval-only knob.
+			const chatPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'build',
+				attachments: undefined,
+				observerThresholdTokens: 1000,
+			});
+			const chatReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:message' }] } },
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+
+			await expect(controller.chat(chatReq, res, THREAD_ID, chatPayload)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 
 		it('should allow new threads', async () => {
@@ -257,6 +305,7 @@ describe('InstanceAiController', () => {
 
 		it('should forward pushRef to startRun', async () => {
 			const payloadWithPushRef = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				pushRef: 'iframe-push-ref-123',
 				timeZone: 'UTC',
@@ -280,11 +329,13 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.promptVersion,
 				payloadWithPushRef.computerUseChannels,
 				payloadWithPushRef.threadArtifacts,
+				payloadWithPushRef.observerThresholdTokens,
 			);
 		});
 
 		it('should forward the build mode and prompt version to startRun', async () => {
 			const payloadWithMode = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				timeZone: 'UTC',
 				attachments: undefined,
@@ -309,11 +360,13 @@ describe('InstanceAiController', () => {
 				'progressive@1',
 				payloadWithMode.computerUseChannels,
 				payloadWithMode.threadArtifacts,
+				payloadWithMode.observerThresholdTokens,
 			);
 		});
 
 		it('should forward handoff context to startRun', async () => {
 			const payloadWithContext = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'How do I set up Gmail OAuth?',
 				context: {
 					source: 'credential-modal',
@@ -345,6 +398,7 @@ describe('InstanceAiController', () => {
 				payloadWithContext.promptVersion,
 				payloadWithContext.computerUseChannels,
 				payloadWithContext.threadArtifacts,
+				payloadWithContext.observerThresholdTokens,
 			);
 		});
 
@@ -376,6 +430,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const badPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see attached',
 				attachments: [
 					{ type: 'file', data: '', mimeType: 'application/zip', fileName: 'archive.zip' },
@@ -394,6 +449,7 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			instanceAiService.startRun.mockReturnValue('run-3');
 			const goodPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see attached',
 				attachments: [
 					{ type: 'file', data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
@@ -424,6 +480,7 @@ describe('InstanceAiController', () => {
 				},
 			];
 			const nodesPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'what do these nodes do?',
 				timeZone: 'UTC',
 			});
@@ -447,6 +504,7 @@ describe('InstanceAiController', () => {
 				nodesPayload.promptVersion,
 				nodesPayload.computerUseChannels,
 				nodesPayload.threadArtifacts,
+				nodesPayload.observerThresholdTokens,
 			);
 		});
 
@@ -454,6 +512,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const oversizedPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see screenshot',
 				attachments: [
 					{
@@ -477,6 +536,7 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const halfBudget = Math.floor(MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 2) + 1;
 			const payloadOverBudget = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'two screenshots',
 				attachments: [
 					{
@@ -983,6 +1043,47 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('getEvalThreadMemory', () => {
+		const memory: InstanceAiEvalThreadMemoryResponse = {
+			observations: [{ marker: 'critical', text: 'Posting via HTTP Request', tokenCount: 7 }],
+			cursor: { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' },
+		};
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('getEvalThreadMemory')).toEqual({
+				scope: 'instanceAi:eval',
+				globalOnly: true,
+			});
+		});
+
+		it('should return the memory of an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadMemory.mockResolvedValue(memory);
+
+			const result = await controller.getEvalThreadMemory(req, res, THREAD_ID);
+
+			expect(result).toEqual(memory);
+			expect(instanceAiService.getThreadMemory).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+		});
+
+		it("should reject another user's thread", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.getEvalThreadMemory(req, res, THREAD_ID)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(instanceAiService.getThreadMemory).not.toHaveBeenCalled();
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.getEvalThreadMemory(req, res, THREAD_ID)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
 	describe('restoreEvalThread', () => {
 		const seedMessages = [
 			{ id: 'm1', type: 'llm', role: 'user', content: [], createdAt: '2026-01-01T00:00:00.000Z' },
@@ -1434,6 +1535,131 @@ describe('InstanceAiController', () => {
 				'task-1',
 				'fix this',
 			);
+		});
+	});
+
+	describe('preference card routes', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('undoPreference')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+			expect(scopeOf('editPreference')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		const undoneEvent: InstanceAiPreferenceCardEvent = {
+			type: 'preference-card',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+		};
+
+		it('undo checks thread access, then returns the published fact', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			preferenceCardService.undo.mockResolvedValue(undoneEvent);
+			const payload = { runId: 'run-1', toolCallId: 'tc-1' };
+
+			const result = await controller.undoPreference(req, res, THREAD_ID, 'pref-1', payload);
+
+			expect(result).toEqual({ ok: true, event: undoneEvent });
+			expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+			expect(preferenceCardService.undo).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				'pref-1',
+				payload,
+			);
+		});
+
+		it('undo refuses a thread that belongs to another user before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.undoPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+				}),
+			).rejects.toThrow(ForbiddenError);
+			expect(preferenceCardService.undo).not.toHaveBeenCalled();
+		});
+
+		it('undo reports a missing thread before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.undoPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+				}),
+			).rejects.toThrow(NotFoundError);
+			expect(preferenceCardService.undo).not.toHaveBeenCalled();
+		});
+
+		it('edit refuses a thread that belongs to another user before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.editPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					content: 'Keep replies brief.',
+					scope: 'user' as const,
+					userId: USER_ID,
+					projectId: null,
+				}),
+			).rejects.toThrow(ForbiddenError);
+			expect(preferenceCardService.edit).not.toHaveBeenCalled();
+		});
+
+		it('edit reports a missing thread before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.editPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					content: 'Keep replies brief.',
+					scope: 'user' as const,
+					userId: USER_ID,
+					projectId: null,
+				}),
+			).rejects.toThrow(NotFoundError);
+			expect(preferenceCardService.edit).not.toHaveBeenCalled();
+		});
+
+		it('edit checks thread access, then returns the preference with the published fact', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const payload = {
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				content: 'Keep replies brief.',
+				scope: 'user' as const,
+				userId: USER_ID,
+				projectId: null,
+			};
+			const editedEvent: InstanceAiPreferenceCardEvent = {
+				...undoneEvent,
+				payload: { ...undoneEvent.payload, state: 'edited', content: 'Keep replies brief.' },
+			};
+			preferenceCardService.edit.mockResolvedValue({
+				preference: mock<AiPreferenceDto>({ id: 'pref-1', content: 'Keep replies brief.' }),
+				event: editedEvent,
+			});
+
+			const result = await controller.editPreference(req, res, THREAD_ID, 'pref-1', payload);
+
+			expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+			expect(preferenceCardService.edit).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				'pref-1',
+				payload,
+			);
+			expect(result.preference).toMatchObject({ id: 'pref-1' });
+			expect(result.event).toEqual(editedEvent);
 		});
 	});
 
@@ -1925,6 +2151,38 @@ describe('InstanceAiController', () => {
 			});
 		});
 
+		it('should carry the latest applied-preferences payload when a turn reported one', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			const appliedPreferences = {
+				preferences: [{ id: 'pref-1', scope: 'user' as const }],
+				renderedLength: 80,
+				injectedThisTurn: true as const,
+			};
+			eventLog.getLastAppliedPreferences.mockResolvedValue(appliedPreferences);
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(result).toMatchObject({ nextEventId: 42, appliedPreferences });
+			expect(eventLog.getLastAppliedPreferences).toHaveBeenCalledWith(THREAD_ID);
+		});
+
+		it('should omit appliedPreferences when no turn has reported any', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			eventLog.getLastAppliedPreferences.mockResolvedValue(undefined);
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(result).not.toHaveProperty('appliedPreferences');
+		});
+
 		it('should return raw messages when raw=true', async () => {
 			const rawResult = mock<InstanceAiThreadMessagesResponse>();
 			memoryService.getThreadMessages.mockResolvedValue(rawResult);
@@ -2414,6 +2672,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<ProjectService>(),
 		mock<InstanceAiErrorReporterService>(),
 		mock<Publisher>(),
+		mock<InstanceAiPreferenceCardService>(),
 		globalConfig,
 	);
 

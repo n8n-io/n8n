@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
 import type { ApplicableAiPreferences } from '@/services/ai-preference.service';
@@ -126,7 +127,7 @@ describe('get-user-preferences MCP tool', () => {
 			expect(text && 'text' in text ? text.text : '').toContain('- Keep replies short.');
 			expect(text && 'text' in text ? text.text : '').toContain('- Prefer HubSpot nodes.');
 			// The id travels with each item: an edit has to address a row, and the block
-			// the assistant is given carries text without ids (CONTEXT-137).
+			// the assistant is given carries text without ids.
 			expect(result.structuredContent).toEqual({
 				hasPreferences: true,
 				preferences: [
@@ -338,6 +339,52 @@ describe('get-user-preferences MCP tool', () => {
 			});
 		});
 
+		test('reports the read as its own registered event, apart from the turn event', async () => {
+			const { aiPreferenceService, telemetry } = createMocks({
+				instance: saved('Use British English.'),
+				user: [],
+				projects: [],
+			});
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await tool.handler({});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP,
+				{
+					count: 1,
+					scope_types: ['instance'],
+					rendered_length: expect.any(Number),
+					project_scoped: false,
+				},
+			);
+		});
+
+		test('reports a read of one project as project scoped, and an empty read as a zero', async () => {
+			const { aiPreferenceService, telemetry } = createMocks();
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await tool.handler({ projectId: 'p-1' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP,
+				{ count: 0, scope_types: [], rendered_length: 0, project_scoped: true },
+			);
+		});
+
+		test('reports no read when the read failed', async () => {
+			const { aiPreferenceService, telemetry } = createMocks();
+			aiPreferenceService.getApplicableAcrossProjects.mockRejectedValue(new Error('db down'));
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await tool.handler({});
+
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP,
+				expect.anything(),
+			);
+		});
+
 		test('reports nothing saved as a count of zero and no scopes', async () => {
 			const { aiPreferenceService, telemetry } = createMocks();
 			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
@@ -375,7 +422,7 @@ describe('get-user-preferences MCP tool', () => {
 			const renderedLength = rendered && 'text' in rendered ? rendered.text.length : 0;
 
 			// Two rows in one project must not report `project` twice, and the length is the
-			// text the caller was actually given: it reviews the caps (CONTEXT-137).
+			// text the caller was actually given: it reviews the caps.
 			expect(telemetry.track).toHaveBeenCalledWith(
 				USER_CALLED_MCP_TOOL_EVENT,
 				expect.objectContaining({

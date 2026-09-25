@@ -152,6 +152,44 @@ describe('AgentChannelWhatsAppSetup', () => {
 		});
 	});
 
+	describe('connecting on credential selection', () => {
+		// WhatsApp has no separate "connect" step (see module doc): picking a
+		// credential during setup is the whole action, so it must emit `connect`
+		// itself for the parent modal to actually persist and save the channel.
+		it('emits connect when a credential is selected during setup', async () => {
+			const { rerender, emitted } = renderComponent({
+				props: { ...baseProps, mode: 'setup', modelValue: '' },
+			});
+			await flushPromises();
+
+			await rerender({ ...baseProps, mode: 'setup', modelValue: 'whatsapp-credential-id' });
+
+			expect(emitted().connect).toHaveLength(1);
+		});
+
+		it('does not emit connect in edit mode', async () => {
+			const { rerender, emitted } = renderComponent({
+				props: { ...baseProps, mode: 'edit', modelValue: '' },
+			});
+			await flushPromises();
+
+			await rerender({ ...baseProps, mode: 'edit', modelValue: 'whatsapp-credential-id' });
+
+			expect(emitted().connect).toBeUndefined();
+		});
+
+		it('does not emit connect when the credential is cleared', async () => {
+			const { rerender, emitted } = renderComponent({
+				props: { ...baseProps, mode: 'setup', modelValue: 'whatsapp-credential-id' },
+			});
+			await flushPromises();
+
+			await rerender({ ...baseProps, mode: 'setup', modelValue: '' });
+
+			expect(emitted().connect).toBeUndefined();
+		});
+	});
+
 	describe('error message state', () => {
 		it('renders the error message without an edit link when no credential is selected', async () => {
 			const { getByText, queryByText } = renderComponent({

@@ -49,6 +49,7 @@ import {
 	removePreviewToken,
 	sortNodeCreateElements,
 	transformNodeType,
+	isNodeItemRestricted,
 } from '../nodeCreator.utils';
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
@@ -317,7 +318,9 @@ export const useActions = () => {
 	}
 
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
-		if (addedNodes.length === 0) {
+		// Every insert path ends here — click, Enter, drag, the "no results" links, actions mode —
+		// so this is where a restricted type is refused.
+		if (addedNodes.length === 0 || addedNodes.some((node) => isNodeItemRestricted(node.type))) {
 			return { nodes: [], connections: [] };
 		}
 

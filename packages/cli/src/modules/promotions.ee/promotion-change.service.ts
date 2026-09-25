@@ -33,7 +33,6 @@ import {
 } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
@@ -95,7 +94,7 @@ export class PromotionChangeService {
 		direction: PromotionDirection,
 		query: PromotionChangesQueryDto,
 	): Promise<PromotionChanges> {
-		await this.assertCanPreview(user, projectId, direction);
+		this.assertCanPreview(user, direction);
 		const branch = await this.promotionsService.readBranchPackage(projectId, direction);
 		// Apply reads the branch manifest before the export, so an empty branch fails without one.
 		const branchDesired =
@@ -121,15 +120,12 @@ export class PromotionChangeService {
 		return { commitSha: branch.commitSha, changes: applyQuery(rows, query) };
 	}
 
-	/** The preview exports the project, so both directions need the export scope on it. */
-	private async assertCanPreview(user: User, projectId: string, direction: PromotionDirection) {
-		if (
-			!hasGlobalScope(user, GIT_SCOPES[direction]) ||
-			!(await userHasScopes(user, ['project:export'], false, { projectId }))
-		) {
+	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */
+	private assertCanPreview(user: User, direction: PromotionDirection) {
+		if (!hasGlobalScope(user, GIT_SCOPES[direction])) {
 			const operation = direction === 'promote' ? 'push' : 'pull';
 			throw new ForbiddenError(
-				`Change preview requires project export and promotion ${operation} permissions. Ask an administrator for access.`,
+				`Change preview requires the promotion ${operation} permission. Ask an administrator for access.`,
 			);
 		}
 	}
@@ -195,10 +191,7 @@ export class PromotionChangeService {
 		);
 		const desiredWorkflowPaths = new Map(
 			desired.files
-				.filter(
-					({ type, fileName }) =>
-						type === 'workflow' && fileName === PACKAGE_ENTITY_LAYOUT.workflows.fileName,
-				)
+				.filter(({ type }) => type === 'workflow')
 				.map(({ entityId, path }) => [entityId, path]),
 		);
 		const archiveCheckPaths = [...changedIds].flatMap((id) => {

@@ -198,6 +198,10 @@ async function confirmRename(threadId: string) {
 	if (!title || title === history.value.threads.find((t) => t.id === threadId)?.title) return;
 	try {
 		await store.renameThread(threadId, title);
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('instanceAi.threads.renameSuccess'),
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.threads.renameError'));
 	}
@@ -316,7 +320,10 @@ function handleThreadAction(action: string, threadId: string) {
 		</template>
 
 		<template #footer>
-			<div :class="$style.footer">
+			<div
+				v-if="filteredThreads.length > 0 && (history.loading || history.error || navigate)"
+				:class="$style.footer"
+			>
 				<div
 					v-if="filteredThreads.length > 0 && history.loading"
 					:class="$style.status"
@@ -341,9 +348,9 @@ function handleThreadAction(action: string, threadId: string) {
 				<N8nButton
 					v-if="navigate"
 					variant="ghost"
-					size="xsmall"
-					:class="$style.viewAll"
+					icon="list"
 					data-test-id="instance-ai-view-all-threads"
+					:class="$style.viewAll"
 					@click="openAllThreads"
 				>
 					{{ i18n.baseText('instanceAi.threads.viewAll') }}
@@ -393,8 +400,9 @@ function handleThreadAction(action: string, threadId: string) {
 .footer {
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
+	justify-content: flex-start;
 	border-top: var(--border);
+	padding: var(--spacing--4xs);
 }
 
 .footer .status {
@@ -402,9 +410,8 @@ function handleThreadAction(action: string, threadId: string) {
 }
 
 .viewAll {
-	--button--color: var(--text-color--subtle);
-
-	margin: var(--spacing--4xs);
-	font-weight: var(--font-weight--regular);
+	flex: 1;
+	width: 100%;
+	justify-content: flex-start;
 }
 </style>

@@ -36,6 +36,7 @@ import ProjectRemoveMember from './commands/project/remove-member';
 import ProjectUpdate from './commands/project/update';
 import PromotionConnectionAddProject from './commands/promotion-connection/add-project';
 import PromotionConnectionApply from './commands/promotion-connection/apply';
+import PromotionConnectionApplyContinue from './commands/promotion-connection/apply-continue';
 import PromotionConnectionClone from './commands/promotion-connection/clone';
 import PromotionConnectionCreate from './commands/promotion-connection/create';
 import PromotionConnectionDelete from './commands/promotion-connection/delete';
@@ -43,8 +44,10 @@ import PromotionConnectionDeleteConfig from './commands/promotion-connection/del
 import PromotionConnectionDisconnect from './commands/promotion-connection/disconnect';
 import PromotionConnectionGet from './commands/promotion-connection/get';
 import PromotionConnectionList from './commands/promotion-connection/list';
+import PromotionConnectionListChanges from './commands/promotion-connection/list-changes';
 import PromotionConnectionListProjects from './commands/promotion-connection/list-projects';
 import PromotionConnectionPromote from './commands/promotion-connection/promote';
+import PromotionConnectionPromoteSelection from './commands/promotion-connection/promote-selection';
 import PromotionConnectionRemoveProject from './commands/promotion-connection/remove-project';
 import PromotionConnectionSetConfig from './commands/promotion-connection/set-config';
 import PromotionConnectionUpdate from './commands/promotion-connection/update';
@@ -115,10 +118,13 @@ export const commands = {
 	'promotion-connection:clone': PromotionConnectionClone,
 	'promotion-connection:disconnect': PromotionConnectionDisconnect,
 	'promotion-connection:list-projects': PromotionConnectionListProjects,
+	'promotion-connection:list-changes': PromotionConnectionListChanges,
 	'promotion-connection:add-project': PromotionConnectionAddProject,
 	'promotion-connection:remove-project': PromotionConnectionRemoveProject,
 	'promotion-connection:promote': PromotionConnectionPromote,
+	'promotion-connection:promote-selection': PromotionConnectionPromoteSelection,
 	'promotion-connection:apply': PromotionConnectionApply,
+	'promotion-connection:apply-continue': PromotionConnectionApplyContinue,
 
 	'credential:list': CredentialList,
 	'credential:get': CredentialGet,

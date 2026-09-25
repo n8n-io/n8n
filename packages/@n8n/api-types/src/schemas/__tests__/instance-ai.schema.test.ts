@@ -44,6 +44,7 @@ import {
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
 	parseDomainAccessGrants,
+	resolveInstanceAiPermissions,
 	WEB_SEARCH_GRANT_KEY,
 	workflowSetupNodeSchema,
 	type InstanceAiConfirmationInputType,
@@ -409,6 +410,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.mutateDataTableSchema).toBe('blocked');
 		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
+		expect(result.executeNode).toBe('blocked');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
@@ -428,11 +430,76 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.readFilesystem).toBe('always_allow');
 	});
 
+	it('blocks createPreference on a read-only branch like every other write', () => {
+		const result = applyBranchReadOnlyOverrides(DEFAULT_INSTANCE_AI_PERMISSIONS);
+		expect(result.createPreference).toBe('blocked');
+	});
+
 	it('should not mutate the original permissions object', () => {
 		const original = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
 		applyBranchReadOnlyOverrides(original);
 
 		expect(original.createWorkflow).toBe('require_approval');
+	});
+});
+
+describe('resolveInstanceAiPermissions', () => {
+	it('should fill missing keys from the defaults', () => {
+		const result = resolveInstanceAiPermissions({ createWorkflow: 'always_allow' });
+
+		expect(result.createWorkflow).toBe('always_allow');
+		expect(result.deleteWorkflow).toBe('require_approval');
+		expect(result.executeNode).toBe('require_approval');
+	});
+
+	it('should carry a blocked runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'blocked' });
+
+		expect(result.executeNode).toBe('blocked');
+	});
+
+	it('should not carry an always_allow runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'always_allow' });
+
+		expect(result.executeNode).toBe('require_approval');
+	});
+
+	it('should prefer an explicit executeNode over the runWorkflow fallback', () => {
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'blocked', executeNode: 'always_allow' })
+				.executeNode,
+		).toBe('always_allow');
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'always_allow', executeNode: 'blocked' })
+				.executeNode,
+		).toBe('blocked');
+	});
+
+	it('should not mutate the persisted permissions object', () => {
+		const persisted: Partial<InstanceAiPermissions> = { runWorkflow: 'blocked' };
+		resolveInstanceAiPermissions(persisted);
+
+		expect(persisted.executeNode).toBeUndefined();
+	});
+});
+
+describe('createPreference permission', () => {
+	it('defaults to always_allow, because the tool never pauses for approval', () => {
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.createPreference).toBe('always_allow');
+	});
+
+	it.each(['always_allow', 'blocked'] as const)('accepts %s from the settings API', (mode) => {
+		const parsed = InstanceAiAdminSettingsUpdateRequest.safeParse({
+			permissions: { createPreference: mode },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('refuses require_approval from the settings API', () => {
+		const parsed = InstanceAiAdminSettingsUpdateRequest.safeParse({
+			permissions: { createPreference: 'require_approval' },
+		});
+		expect(parsed.success).toBe(false);
 	});
 });
 
@@ -1117,6 +1184,20 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 	it('accepts a single set with one loose node and no optional fields', () => {
 		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment());
 		expect(result.success).toBe(true);
+	});
+
+	it('accepts optional parent workflow display metadata', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({ workflowName: 'Orders' }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects parent workflow display metadata over 255 characters', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({ workflowName: 'a'.repeat(256) }),
+		);
+		expect(result.success).toBe(false);
 	});
 
 	it('accepts a chain set with inputNode, outputNode, and canvasGroupId', () => {

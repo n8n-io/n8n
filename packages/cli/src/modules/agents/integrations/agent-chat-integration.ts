@@ -10,6 +10,7 @@ import type { Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
+import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
@@ -17,11 +18,12 @@ import {
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
+	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
-	IntegrationMessageContext,
-	IntegrationToolConnectionDescriptor,
+	IntegrationContextQueryParams,
+	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
 
@@ -56,6 +58,23 @@ export interface AgentIntegrationRemovalContext {
 /** Response shape returned by `handleUnauthenticatedWebhook`. */
 export interface UnauthenticatedWebhookResponse {
 	status: number;
+	body: unknown;
+	/**
+	 * Send `body` as plain text instead of JSON-encoding it. Meta's WhatsApp
+	 * webhook handshake expects the raw `hub.challenge` value back verbatim —
+	 * JSON-encoding a string wraps it in quotes, which Meta then treats as a
+	 * mismatch. Slack's `url_verification` challenge, by contrast, is echoed
+	 * back as JSON, so this defaults to JSON to keep that behavior unchanged.
+	 */
+	raw?: boolean;
+}
+
+/** Context handed to `handleUnauthenticatedWebhook` for a request with no live connection yet. */
+export interface UnauthenticatedWebhookContext {
+	agentId: string;
+	method: string;
+	query: Readonly<Record<string, string | string[] | undefined>>;
+	headers: Readonly<Record<string, string | string[] | undefined>>;
 	body: unknown;
 }
 
@@ -102,8 +121,35 @@ export function onceStatusHandle(
 	};
 }
 
+/** Narrower than `Thread.post`, which also takes an `AsyncIterable` to stream. */
+type EphemeralPostable = Parameters<Thread<unknown, unknown>['postEphemeral']>[1];
+
+/**
+ * Posts to `user` alone where the platform supports it, and to the thread where
+ * it does not, so the payload is never dropped. `fallbackToDM: false` because
+ * the SDK's own fallback would make this an unsolicited DM on Discord and
+ * Telegram.
+ */
+export async function postToUserOrThread(
+	thread: Thread<unknown, unknown>,
+	user: string | Author,
+	payload: EphemeralPostable,
+): Promise<void> {
+	try {
+		const sent = await thread.postEphemeral(user, payload, { fallbackToDM: false });
+		if (sent) return;
+	} catch {
+		// A rejected ephemeral post — rate limit, the user having left, a
+		// conversation that refuses targeting — must not cost the message.
+	}
+	await thread.post(payload);
+}
+
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
+	slackThreadContext?: SlackThreadContext;
+	/** Allow-listed metadata from the current platform message. */
+	platformMessage?: IntegrationPlatformMessageContext;
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
 	/**
@@ -120,6 +166,8 @@ export type BridgeResumeExecutionContext = Pick<
 >;
 
 export interface BridgeMessageContextParams {
+	/** Capture durable input without showing processing status while it waits. */
+	startStatus?: boolean;
 	chat: ChatInstance;
 	thread: Thread<unknown, unknown>;
 	message: Message<unknown>;
@@ -259,6 +307,14 @@ export abstract class AgentChatIntegration {
 	readonly defaultSessionIdleTimeoutMinutes: number | null = null;
 
 	/**
+	 * True to deliver a suspension card only to the user whose turn raised it,
+	 * so the rest of a channel never sees it. Delivery-scoped only: nothing
+	 * verifies who clicks. The card still goes to the whole conversation where
+	 * the platform has no ephemeral delivery, rather than being dropped.
+	 */
+	readonly targetSuspensionCardAtActingUser: boolean = false;
+
+	/**
 	 * True if the bridge should buffer streaming output and post it as a single
 	 * message instead of streaming text deltas via post-and-edit.
 	 */
@@ -309,17 +365,23 @@ export abstract class AgentChatIntegration {
 	 * (i.e. before credentials are configured). The canonical case is Slack's
 	 * `url_verification` challenge — sent when the user creates a Slack app
 	 * from the manifest, before they have pasted bot token / signing secret
-	 * into n8n. Without this hook, the standard handler returns 404 and the
-	 * user has to manually re-verify URLs after configuring the credential.
+	 * into n8n. WhatsApp's Meta app verification handshake (GET with
+	 * `hub.mode`/`hub.verify_token`/`hub.challenge`) is the other: its verify
+	 * token is derivable from the agent ID alone, so it needs no credential
+	 * either. Without this hook, the standard handler returns 404 and the user
+	 * has to connect (and, for WhatsApp, publish) the agent before Meta's
+	 * "Verify and save" can succeed.
 	 *
-	 * Implementations inspect the parsed JSON body; return a response to send
-	 * back, or undefined to fall through to the standard 404.
+	 * Implementations inspect the request; return a response to send back, or
+	 * undefined to fall through to the standard 404.
 	 *
 	 * Security note: this hook bypasses signature verification, so it must
 	 * only echo non-sensitive data (e.g. a challenge token sent by the caller
 	 * in the request itself).
 	 */
-	handleUnauthenticatedWebhook?(body: unknown): UnauthenticatedWebhookResponse | undefined;
+	handleUnauthenticatedWebhook?(
+		context: UnauthenticatedWebhookContext,
+	): UnauthenticatedWebhookResponse | undefined;
 
 	/**
 	 * Resolve platform-specific routing before selecting a connected adapter.
@@ -502,6 +564,7 @@ export abstract class AgentChatIntegration {
 		thread: Thread<unknown, unknown>;
 		logger: Logger;
 		agentId: string;
+		slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
 	}): Promise<BridgeResumeExecutionContext>;
 
 	/**
@@ -525,22 +588,17 @@ export abstract class AgentChatIntegration {
 }
 
 /** Per-platform context-query execution params. */
-export interface PlatformContextQueryParams {
+export interface PlatformContextQueryParams
+	extends Omit<IntegrationContextQueryParams, 'persistence'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
-	descriptor: IntegrationToolConnectionDescriptor;
-	query: IntegrationContextQuery;
-	input: Record<string, unknown>;
 }
 
 /** Per-platform action-execution params. */
-export interface PlatformActionParams {
+export interface PlatformActionParams
+	extends Omit<IntegrationActionParams, 'awaitResponse' | 'runId' | 'toolCallId'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	currentMessageContext?: IntegrationMessageContext;
 }
 
 /**

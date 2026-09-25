@@ -7,7 +7,13 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import { EntityManager } from '@n8n/typeorm';
+import {
+	GLOBAL_MEMBER_ROLE,
+	ProjectRepository,
+	ProjectRelationRepository,
+	ProjectRelation,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { MockInstance } from 'vitest';
 
@@ -18,6 +24,7 @@ import { Telemetry } from '@/telemetry';
 import {
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
+	createAdmin,
 	createMember,
 	createUserShell,
 } from '@test-integration/db/users';
@@ -229,6 +236,134 @@ describe('Projects in Public API', () => {
 			});
 		});
 
+		it.each([-1, 1])('preserves fields and rejects an occupied ID with quota %s', async (limit) => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+			const payload = {
+				id: 'source-project',
+				name: ' Sales ',
+				icon: { type: 'icon', value: 'briefcase', color: 'red' },
+				description: '',
+				customTelemetryTags: [
+					{ key: ' team ', value: ' Sales ' },
+					{ key: 'region', value: '' },
+				],
+			};
+			const created = await testServer
+				.publicApiAgentFor(owner)
+				.post('/projects')
+				.send(payload)
+				.expect(201);
+			expect(created.body).toMatchObject(payload);
+			const repository = Container.get(ProjectRepository);
+			const relations = Container.get(ProjectRelationRepository);
+			const before = await repository.findOneByOrFail({ id: payload.id });
+			const members = await relations.find({
+				where: { projectId: payload.id },
+				relations: ['role'],
+			});
+			expect(members).toMatchObject([{ userId: owner.id, role: { slug: 'project:admin' } }]);
+			const otherOwner = await createOwnerWithApiKey();
+			testServer.license.setQuota('quota:maxTeamProjects', limit);
+			emitSpy.mockClear();
+
+			const response = await testServer
+				.publicApiAgentFor(otherOwner)
+				.post('/projects')
+				.send({ ...payload, name: 'Replacement' })
+				.expect(409);
+
+			expect(response.body.message).toBe('A project with this ID already exists');
+			expect(await repository.findOneByOrFail({ id: payload.id })).toEqual(before);
+			expect(
+				await relations.find({ where: { projectId: payload.id }, relations: ['role'] }),
+			).toEqual(members);
+			expect(emitSpy).not.toHaveBeenCalledWith('team-project-created', expect.anything());
+		});
+
+		it('leaves a personal project unchanged when its ID is occupied', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+			const member = await createMember();
+			const repository = Container.get(ProjectRepository);
+			const project = await repository.getPersonalProjectForUserOrFail(member.id);
+			const relations = Container.get(ProjectRelationRepository);
+			const members = await relations.findBy({ projectId: project.id });
+
+			await testServer
+				.publicApiAgentFor(owner)
+				.post('/projects')
+				.send({ id: project.id, name: 'Replacement' })
+				.expect(409);
+
+			expect(await repository.findOneByOrFail({ id: project.id })).toEqual(project);
+			expect(await relations.findBy({ projectId: project.id })).toEqual(members);
+		});
+
+		it('rolls back the project when the admin insert fails', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+			const insert = EntityManager.prototype.insert;
+			const spy = vi.spyOn(EntityManager.prototype, 'insert').mockImplementation(async function (
+				this: EntityManager,
+				target,
+				data,
+			) {
+				if (target === ProjectRelation) throw new Error('Admin insert failed');
+				return await insert.call(this, target, data);
+			});
+			try {
+				await testServer
+					.publicApiAgentFor(owner)
+					.post('/projects')
+					.send({ id: 'rolled-back', name: 'Sales' })
+					.expect(500);
+				expect(await Container.get(ProjectRepository).findOneBy({ id: 'rolled-back' })).toBeNull();
+				expect(
+					await Container.get(ProjectRelationRepository).findBy({ projectId: 'rolled-back' }),
+				).toEqual([]);
+				expect(emitSpy).not.toHaveBeenCalledWith('team-project-created', expect.anything());
+			} finally {
+				spy.mockRestore();
+			}
+		});
+
+		it('checks user scope for session callers', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const member = await createMember();
+			await testServer
+				.publicApiAgentWithCookie(member)
+				.post('/projects')
+				.send({ name: 'Sales' })
+				.expect(403);
+			const owner = await createOwnerWithApiKey();
+			const response = await testServer
+				.publicApiAgentWithCookie(owner)
+				.post('/projects')
+				.send({ name: 'Sales', icon: null, description: null, customTelemetryTags: [] })
+				.expect(201);
+			expect(response.body).toMatchObject({
+				icon: null,
+				description: null,
+				customTelemetryTags: [],
+			});
+		});
+
+		it('requires the API key scope even when the user can create projects', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey({ scopes: ['project:list'] });
+			await testServer
+				.publicApiAgentFor(owner)
+				.post('/projects')
+				.send({ name: 'Sales' })
+				.expect(403);
+		});
+
 		it('if not authenticated, should reject', async () => {
 			/**
 			 * Arrange
@@ -321,16 +456,16 @@ describe('Projects in Public API', () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/projects')
-				.send({ name: 'some-project', icon: { type: 'icon', value: 'layers' } });
+				.send({ name: 'some-project', extra: true });
 
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty(
 				'message',
-				"request/body Unrecognized key(s) in object: 'icon'",
+				"request/body Unrecognized key(s) in object: 'extra'",
 			);
 		});
 
-		it.each(['id', 'type'])('should reject the read-only field %s', async (key) => {
+		it.each(['type'])('should reject the read-only field %s', async (key) => {
 			testServer.license.setQuota('quota:maxTeamProjects', -1);
 			testServer.license.enable('feat:projectRole:admin');
 			const owner = await createOwnerWithApiKey();
@@ -1031,6 +1166,26 @@ describe('Projects in Public API', () => {
 					'message',
 					'Your instance is not licensed to use role "project:viewer".',
 				);
+			});
+
+			it('should skip instance owners and admins and add the rest', async () => {
+				const owner = await createOwnerWithApiKey();
+				const [admin, member] = await Promise.all([createAdmin(), createMember()]);
+				const project = await createTeamProject('shared-project', owner);
+
+				await testServer
+					.publicApiAgentFor(owner)
+					.post(`/projects/${project.id}/users`)
+					.send({
+						relations: [
+							{ userId: admin.id, role: 'project:admin' },
+							{ userId: member.id, role: 'project:admin' },
+						],
+					})
+					.expect(201);
+
+				const relations = await getAllProjectRelations({ projectId: project.id });
+				expect(relations.map((r) => r.userId).sort()).toEqual([owner.id, member.id].sort());
 			});
 
 			describe('when project roles are managed', () => {

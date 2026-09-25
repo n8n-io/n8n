@@ -1,10 +1,16 @@
 import type { Project } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	ProjectRelationRepository,
+	SharedCredentialsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getActiveCredentialTypes, UserError } from 'n8n-workflow';
 
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
@@ -51,6 +57,7 @@ export class CredentialsPermissionChecker {
 		private readonly nodeTypes: NodeTypes,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	/**
@@ -66,6 +73,65 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
+		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUser(
+			userId,
+			workflowCredIds,
+		);
+		if (inaccessibleIds.length > 0) {
+			throw new InaccessibleCredentialForUserError(credIdsToNodes[inaccessibleIds[0]][0]);
+		}
+	}
+
+	/**
+	 * Non-throwing, named-credential sibling of `checkForUser`, for publish validation. Gated
+	 * behind {@link isCredSharingEnabled}, same as the personal route inside `findInaccessible`.
+	 */
+	async findInaccessibleForUser(
+		userId: string,
+		nodes: INode[],
+	): Promise<Array<{ id: string; name: string; exists: boolean }>> {
+		if (!isCredSharingEnabled()) return [];
+
+		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
+		const workflowCredIds = Object.keys(credIdsToNodes);
+
+		if (workflowCredIds.length === 0) return [];
+
+		const inaccessibleIds = await this.resolveInaccessibleCredentialIdsForUser(
+			userId,
+			workflowCredIds,
+		);
+		if (inaccessibleIds.length === 0) return [];
+
+		const dbNames = await this.credentialsRepository.findNamesByIds(inaccessibleIds);
+		const nameById = new Map(dbNames.map((c) => [c.id, c.name]));
+
+		return inaccessibleIds.map((id) => {
+			const dbName = nameById.get(id);
+			return {
+				id,
+				name: dbName ?? this.cachedCredentialName(id, credIdsToNodes),
+				exists: dbName !== undefined,
+			};
+		});
+	}
+
+	/** Best-effort name for a credential id from the node's own cached reference, for when the credential row is gone. */
+	private cachedCredentialName(
+		credentialId: string,
+		credIdsToNodes: { [id: string]: INode[] },
+	): string {
+		for (const cred of Object.values(credIdsToNodes[credentialId]?.[0]?.credentials ?? {})) {
+			if (cred.id === credentialId) return cred.name;
+		}
+		return credentialId;
+	}
+
+	/** The ids among `credentialIds` that `userId` personally cannot use. */
+	private async resolveInaccessibleCredentialIdsForUser(
+		userId: string,
+		credentialIds: string[],
+	): Promise<string[]> {
 		// Load the role relation (scopes are eager) so hasGlobalScope can resolve.
 		const user = await this.userRepository.findOne({
 			where: { id: userId },
@@ -73,27 +139,34 @@ export class CredentialsPermissionChecker {
 		});
 		if (!user) {
 			// Cannot resolve the triggering user - fail closed.
-			throw new InaccessibleCredentialForUserError(credIdsToNodes[workflowCredIds[0]][0]);
+			return credentialIds;
 		}
+
 		const unavailableCredentials =
-			await this.credentialsRepository.findNonProjectCredentialsByIds(workflowCredIds);
-		if (unavailableCredentials.length > 0) {
-			throw new InaccessibleCredentialForUserError(credIdsToNodes[unavailableCredentials[0].id][0]);
+			await this.credentialsRepository.findNonProjectCredentialsByIds(credentialIds);
+		const unavailableIds = unavailableCredentials.map((c) => c.id);
+		const unavailableSet = new Set(unavailableIds);
+		const remainingIds = credentialIds.filter((id) => !unavailableSet.has(id));
+
+		// Nothing left to check once every id is already unavailable outright.
+		if (remainingIds.length === 0) return unavailableIds;
+
+		// A user who may use any credential on the instance needs no further check for the rest —
+		// except a credential that no longer exists at all, which nobody can use, owner included.
+		if (hasGlobalScope(user, 'credential:use')) {
+			const existingIds = new Set(await this.credentialsRepository.findExistingIds(remainingIds));
+			const deletedIds = remainingIds.filter((id) => !existingIds.has(id));
+			return [...unavailableIds, ...deletedIds];
 		}
 
-		// A user with instance-wide credential listing can use any credential.
-		if (hasGlobalScope(user, 'credential:list')) return;
+		const accessibleSet = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+			remainingIds,
+			user,
+			['credential:read'],
+		);
+		const stillInaccessible = remainingIds.filter((id) => !accessibleSet.has(id));
 
-		const accessibleCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
-			'credential:read',
-		]);
-		const accessibleSet = new Set(accessibleCredentials.map((cred) => cred.id));
-
-		for (const credentialsId of workflowCredIds) {
-			if (!accessibleSet.has(credentialsId)) {
-				throw new InaccessibleCredentialForUserError(credIdsToNodes[credentialsId][0]);
-			}
-		}
+		return [...unavailableIds, ...stillInaccessible];
 	}
 
 	/**
@@ -140,10 +213,18 @@ export class CredentialsPermissionChecker {
 		if (
 			homeProject.type === 'personal' &&
 			homeProjectOwner &&
-			hasGlobalScope(homeProjectOwner, 'credential:list')
+			hasGlobalScope(homeProjectOwner, 'credential:use')
 		) {
-			// Workflow belongs to a project by a user with privileges
-			// so all credentials are usable. Skip credential checks.
+			// Workflow belongs to a personal project whose owner may use any credential
+			// on the instance, so all credentials are usable. Skip credential checks.
+			//
+			// This skip is deliberately wider than the NDV picker, which offers a
+			// personal-project owner only personal credentials: here a team-project
+			// credential passes too. "The instance owner can run anything" is the
+			// intended contract, so it is not narrowed. The consequence is that the
+			// picker's personal-only restriction is cosmetic for Owner/Admin — a
+			// hand-edited or imported workflow in their personal space still runs a
+			// team credential.
 			return { homeProject, inaccessibleIds: [] };
 		}
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
@@ -157,10 +238,66 @@ export class CredentialsPermissionChecker {
 		const global = await this.credentialsRepository.findGlobalProjectCredentialIds(credentialIds);
 		const accessibleSet = new Set([...accessible, ...global]);
 
+		if (isCredSharingEnabled()) {
+			const stillInaccessible = credentialIds.filter((id) => !accessibleSet.has(id));
+			if (stillInaccessible.length > 0) {
+				const viaPersonalRoute = await this.findAccessibleViaPersonalRoute(
+					stillInaccessible,
+					projectIds,
+				);
+				for (const id of viaPersonalRoute) accessibleSet.add(id);
+			}
+		}
+
 		return {
 			homeProject,
 			inaccessibleIds: credentialIds.filter((id) => !accessibleSet.has(id)),
 		};
+	}
+
+	/**
+	 * Personal route: a credential owned by a user's personal project is
+	 * usable in any other project that user belongs to, without a
+	 * SharedCredentials row into that project. Additive to the project route
+	 * above.
+	 */
+	private async findAccessibleViaPersonalRoute(
+		credentialIds: string[],
+		projectIds: string[],
+	): Promise<string[]> {
+		const ownerProjects =
+			await this.sharedCredentialsRepository.findOwnerProjectsByCredentialIds(credentialIds);
+
+		const personalOwnerProjectIds = [
+			...new Set(
+				[...ownerProjects.values()]
+					.filter((project) => project.type === 'personal')
+					.map((project) => project.id),
+			),
+		];
+		if (personalOwnerProjectIds.length === 0) return [];
+
+		const owners =
+			await this.ownershipService.getPersonalProjectOwnersCached(personalOwnerProjectIds);
+		const ownerUserIdByProjectId = new Map<string, string>();
+		personalOwnerProjectIds.forEach((projectId) => {
+			const owner = owners.get(projectId);
+			if (owner) ownerUserIdByProjectId.set(projectId, owner.id);
+		});
+
+		const memberProjectIdsByUserId = await this.projectRelationRepository.findProjectIdsByUserIds([
+			...new Set(ownerUserIdByProjectId.values()),
+		]);
+
+		const projectIdSet = new Set(projectIds);
+		return [...ownerProjects]
+			.filter(([, ownerProject]) => {
+				const ownerUserId = ownerUserIdByProjectId.get(ownerProject.id);
+				if (!ownerUserId) return false;
+				const memberProjectIds = memberProjectIdsByUserId.get(ownerUserId);
+				return memberProjectIds?.some((id) => projectIdSet.has(id)) ?? false;
+			})
+			.map(([credentialId]) => credentialId);
 	}
 
 	private mapCredIdsToNodes(nodes: INode[]) {

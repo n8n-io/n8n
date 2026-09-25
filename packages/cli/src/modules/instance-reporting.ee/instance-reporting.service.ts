@@ -4,11 +4,13 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
 import { InsightsService } from '@/modules/insights/insights.service';
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -26,6 +28,24 @@ const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
  * a fresh one.
  */
 const MAX_ATTEMPTS = 3;
+
+/** The receiver rejects the payload itself, which a pending report resends unchanged. */
+const PAYLOAD_REJECTED_STATUSES = new Set([400, 413]);
+
+class InstanceReportRejectedError extends OperationalError {
+	constructor(statusCode: number, body: unknown) {
+		const reason = isRecord(body) && typeof body.message === 'string' ? `: ${body.message}` : '';
+		super(`Instance report was rejected with status ${statusCode}${reason}`);
+	}
+}
+
+type SkipReason = 'max-retries' | 'slot-passed' | 'rejected';
+
+const SKIP_MESSAGES: Record<SkipReason, string> = {
+	'max-retries': 'Giving up on the instance report after repeated delivery failures',
+	'slot-passed': 'Giving up on the instance report because its slot has passed',
+	rejected: 'Giving up on the instance report because the receiver rejected its payload',
+};
 
 /** How long to wait before re-attempting a delivery that failed. */
 export const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
@@ -55,6 +75,7 @@ export class InstanceReportingService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
+		private readonly license: License,
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
 		outboundHttp: OutboundHttp,
@@ -66,7 +87,7 @@ export class InstanceReportingService {
 			// collector, so the URL is never user-controlled.
 			useDefaultSsrfPolicy: 'unsafe',
 			baseURL: this.config.instanceReportingBaseUrl.replace(/\/+$/, ''),
-			// An unset token drops the header, so an unauthenticated receiver works.
+			// An unset token drops the header; the license certificate is the credential then.
 			headers: () => ({
 				authorization: this.config.instanceReportingAuthToken
 					? `Bearer ${this.config.instanceReportingAuthToken}`
@@ -87,23 +108,39 @@ export class InstanceReportingService {
 	 * `batchId`, so a redelivery reuses the row instead of measuring the day again,
 	 * and only a delivered report crosses its days off.
 	 *
-	 * A retry resends today's pending report exactly as measured instead of taking
+	 * A retry resends the pending report exactly as measured instead of taking
 	 * fresh numbers. The cumulative point is a lifetime total sampled at this
 	 * instance's report time, so its day-to-day difference only lines up with the
 	 * daily point while every sample sits 24 hours apart; re-measuring hours later
 	 * would stretch one interval and skew the whole series.
 	 *
-	 * @throws when delivery fails, so the scheduler retries with backoff.
+	 * The credential is the license certificate, sent in the body, unless a
+	 * bearer token is configured; then the token goes in the header and the
+	 * certificate is not sent at all.
+	 *
+	 * A 400 or 413 skips the report at once, since a resend carries the same payload.
+	 *
+	 * @throws when delivery fails and a retry may succeed, so the scheduler retries with backoff.
 	 */
 	async sendReport(): Promise<void> {
+		const licenseCert = this.config.instanceReportingAuthToken
+			? undefined
+			: await this.license.loadCertStr();
+		if (licenseCert === '') {
+			this.logger.warn(
+				'Skipping the instance report because this instance has no license certificate.',
+			);
+			return;
+		}
+
 		const now = new Date();
-		let report = await this.reportRepository.findTodaysPending(now);
+		let report = await this.reportRepository.findPending();
 
 		// A crash between recording a failure and skipping the report leaves an
 		// exhausted row pending, so the budget is re-checked before sending rather
 		// than only after. Settling it here also ends the day for the scheduler.
 		if (report && report.attempts >= MAX_ATTEMPTS) {
-			await this.skip(report.id, report.attempts);
+			await this.skip(report.id, report.attempts, 'max-retries', report.lastError);
 			return;
 		}
 
@@ -126,6 +163,7 @@ export class InstanceReportingService {
 			...(this.config.instanceReportingLabel ? { label: this.config.instanceReportingLabel } : {}),
 			n8nVersion: N8N_VERSION,
 			dataPoints: report.dataPoints,
+			...(licenseCert ? { licenseCert } : {}),
 		};
 
 		try {
@@ -137,7 +175,7 @@ export class InstanceReportingService {
 				returnFullResponse: true,
 				// Inspect the status here rather than catching a generic request error.
 				ignoreHttpStatusErrors: true,
-				// A redirect would forward the auth token to whatever host it names.
+				// A redirect would forward the credential to whatever host it names.
 				disableFollowRedirect: true,
 			});
 
@@ -148,6 +186,8 @@ export class InstanceReportingService {
 						batchId: report.id,
 					},
 				);
+			} else if (PAYLOAD_REJECTED_STATUSES.has(response.statusCode)) {
+				throw new InstanceReportRejectedError(response.statusCode, response.body);
 			} else if (response.statusCode !== 201) {
 				// The endpoint answers 201 on success. Anything else, including a 2xx or a
 				// 3xx (redirects are not followed), means the report did not land.
@@ -162,8 +202,15 @@ export class InstanceReportingService {
 			await this.reportRepository.recordFailure(report.id, message, new Date());
 
 			// `recordFailure` incremented the count, so the in-memory row is one behind.
-			if (report.attempts + 1 >= MAX_ATTEMPTS) {
-				await this.skip(report.id, report.attempts + 1);
+			const attempts = report.attempts + 1;
+
+			if (error instanceof InstanceReportRejectedError) {
+				await this.skip(report.id, attempts, 'rejected', message);
+				return;
+			}
+
+			if (attempts >= MAX_ATTEMPTS) {
+				await this.skip(report.id, attempts, 'max-retries', message);
 			}
 
 			throw error;
@@ -174,12 +221,15 @@ export class InstanceReportingService {
 	}
 
 	/** Stop trying to deliver this report; the next one covers its days again. */
-	private async skip(id: string, attempts: number): Promise<void> {
+	async skip(
+		id: string,
+		attempts: number,
+		reason: SkipReason,
+		lastError: string | null,
+	): Promise<void> {
 		await this.reportRepository.markSkipped(id);
-		this.logger.error('Giving up on the instance report after repeated delivery failures', {
-			batchId: id,
-			attempts,
-		});
+
+		this.logger.error(SKIP_MESSAGES[reason], { batchId: id, attempts, lastError });
 	}
 
 	/**
@@ -191,7 +241,7 @@ export class InstanceReportingService {
 	 * seconds.
 	 */
 	async msUntilRetryAllowed(now: Date): Promise<number> {
-		const pending = await this.reportRepository.findTodaysPending(now);
+		const pending = await this.reportRepository.findPending();
 		if (!pending?.lastAttemptAt) return 0;
 
 		const elapsed = now.getTime() - pending.lastAttemptAt.getTime();

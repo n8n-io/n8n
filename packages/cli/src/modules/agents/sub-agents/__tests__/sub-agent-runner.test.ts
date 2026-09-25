@@ -19,6 +19,9 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
+import type { AgentMessageQueueService } from '../../agent-message-queue.service';
+import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
+import { AgentTurnExecutionService } from '../../agent-turn-execution.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import {
 	encodeAgentSandboxHostMetadata,
@@ -130,13 +133,19 @@ describe('SubAgentRunner', () => {
 		reconstructionService = mock<AgentRuntimeReconstructionService>();
 		Container.set(AgentRuntimeReconstructionService, reconstructionService);
 		agentExecutionService = mock<AgentExecutionService>();
+		agentExecutionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
 		runner = new SubAgentRunner(
 			sourceResolver,
-			agentExecutionService,
+			new AgentTurnExecutionService(
+				logger,
+				agentExecutionService,
+				mock<AgentChatExecutionService>(),
+				mock<AgentMessageQueueService>(),
+			),
 			checkpointStorage,
 			logger,
 			aiConfigMock,
@@ -144,6 +153,10 @@ describe('SubAgentRunner', () => {
 
 		childAgent = mock<BuiltAgent>();
 		childAgent.stream.mockResolvedValue(makeStreamResult(defaultStreamChunks));
+		childAgent.resume.mockImplementation(async (_method, _data, options) => {
+			await options.onResumeClaimed?.();
+			return makeStreamResult(defaultStreamChunks);
+		});
 		childAgent.close.mockResolvedValue(undefined);
 		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
 			agent: childAgent as never,
@@ -156,6 +169,7 @@ describe('SubAgentRunner', () => {
 
 	it('resolves reconstruction from the container at run time', async () => {
 		await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -168,6 +182,7 @@ describe('SubAgentRunner', () => {
 		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		const result = await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -193,7 +208,7 @@ describe('SubAgentRunner', () => {
 			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
 			runtimeProfile: 'sub-agent',
-			parentAgentIdForDelegation: undefined,
+			parentAgentIdForDelegation: parentAgentId,
 			user: undefined,
 		});
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
@@ -262,6 +277,7 @@ describe('SubAgentRunner', () => {
 		const onChunk = vi.fn();
 
 		const result = await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -286,6 +302,7 @@ describe('SubAgentRunner', () => {
 		const result = await runner.run(
 			{ ...spawnRequest, childThreadId: 'pre-minted-thread' },
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -303,6 +320,7 @@ describe('SubAgentRunner', () => {
 
 	it('records the child turn with the parent run type, not its own published state', async () => {
 		const result = await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'test',
@@ -324,7 +342,7 @@ describe('SubAgentRunner', () => {
 	])(
 		'resolves the child draft for test runs and the published version for production ($runType)',
 		async ({ runType, usePublishedVersion }) => {
-			await runner.run(spawnRequest, { projectId, credentialProvider, runType });
+			await runner.run(spawnRequest, { parentAgentId, projectId, credentialProvider, runType });
 
 			expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(spawnRequest.source, {
 				projectId,
@@ -337,6 +355,7 @@ describe('SubAgentRunner', () => {
 		'reconstructs child workflow tools with the parent %s execution mode',
 		async (workflowToolExecutionMode) => {
 			await runner.run(spawnRequest, {
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -353,6 +372,7 @@ describe('SubAgentRunner', () => {
 		const user = mock<User>({ id: 'user-1' });
 
 		await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -368,6 +388,7 @@ describe('SubAgentRunner', () => {
 		const result = await runner.run(
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -392,6 +413,7 @@ describe('SubAgentRunner', () => {
 		const result = await runner.run(
 			{ ...spawnRequest, parentSandboxPrincipalHash: principalHash },
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -421,7 +443,6 @@ describe('SubAgentRunner', () => {
 			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
 			pendingToolCalls: {},
 		});
-		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 		await runner.resumeForeground(
 			{
 				...delegatedRequest,
@@ -433,6 +454,7 @@ describe('SubAgentRunner', () => {
 				parentThreadId,
 			},
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -447,6 +469,7 @@ describe('SubAgentRunner', () => {
 	it('threads the parent workspace handle into child reconstruction with the delegation thread id', async () => {
 		const parentWorkspaceHandle = mock<AgentSandboxRuntime>();
 		const result = await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -459,7 +482,6 @@ describe('SubAgentRunner', () => {
 			}),
 		);
 
-		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 		await runner.resumeForeground(
 			{
 				...delegatedRequest,
@@ -471,6 +493,7 @@ describe('SubAgentRunner', () => {
 				parentThreadId,
 			},
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -566,6 +589,7 @@ describe('SubAgentRunner', () => {
 
 		await expect(
 			runner.run(spawnRequest, {
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -655,8 +679,6 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('resumes a draft child in the same thread', async () => {
-		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
-
 		const result = await runner.resumeForeground(
 			{
 				...delegatedRequest,
@@ -712,7 +734,6 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('resumes and cancels self-delegation from the parent-owned checkpoint', async () => {
-		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 		const request = {
 			...delegatedRequest,
 			subAgentId: INLINE_SUB_AGENT_ID,
@@ -747,8 +768,6 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('accepts a legacy pinned resume context', async () => {
-		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
-
 		await runner.resumeForeground(
 			{
 				...delegatedRequest,
@@ -759,6 +778,7 @@ describe('SubAgentRunner', () => {
 				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
 			},
 			{
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -816,6 +836,7 @@ describe('SubAgentRunner', () => {
 
 		await expect(
 			runner.run(spawnRequest, {
+				parentAgentId,
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -824,6 +845,51 @@ describe('SubAgentRunner', () => {
 			status: 'failed',
 		});
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
+		'requires child recording through %s',
+		async (operation) => {
+			const cause = new Error('recording unavailable');
+			agentExecutionService[operation].mockRejectedValue(cause);
+			await expect(
+				runner.run(spawnRequest, {
+					parentAgentId,
+					projectId,
+					credentialProvider,
+					runType: 'production',
+				}),
+			).rejects.toMatchObject({
+				phase: operation === 'startExecutionRecording' ? 'create' : 'finalize',
+				executionStarted: operation === 'finalizeExecution',
+				cause,
+			});
+			if (operation === 'startExecutionRecording') {
+				expect(childAgent.stream).not.toHaveBeenCalled();
+				expect(agentExecutionService.finalizeExecution).not.toHaveBeenCalled();
+			} else {
+				expect(agentExecutionService.finalizeExecution).toHaveBeenCalledOnce();
+				expect(childAgent.close).toHaveBeenCalledOnce();
+			}
+		},
+	);
+
+	it('records a failed child initialization without invoking the SDK', async () => {
+		const error = new Error('child initialization failed');
+		reconstructionService.reconstructFromResolvedSource.mockRejectedValue(error);
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+			}),
+		).rejects.toBe(error);
+		expect(childAgent.stream).not.toHaveBeenCalled();
+		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
+			expect.objectContaining({ record: expect.objectContaining({ error: error.message }) }),
+		);
 	});
 
 	it('aborts the child run when the parent run is cancelled', async () => {
@@ -844,12 +910,14 @@ describe('SubAgentRunner', () => {
 		);
 
 		const run = runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
 			abortSignal: parentAbort.signal,
 		});
 
+		await vi.waitFor(() => expect(childAgent.stream).toHaveBeenCalled());
 		parentAbort.abort();
 
 		await expect(run).resolves.toMatchObject({ status: 'failed' });
@@ -870,6 +938,7 @@ describe('SubAgentRunner', () => {
 		};
 
 		await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -891,6 +960,7 @@ describe('SubAgentRunner', () => {
 
 	it('omits telemetry from the child stream call when the parent context has none', async () => {
 		await runner.run(spawnRequest, {
+			parentAgentId,
 			projectId,
 			credentialProvider,
 			runType: 'production',

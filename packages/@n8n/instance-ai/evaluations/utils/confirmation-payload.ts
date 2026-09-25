@@ -54,6 +54,14 @@ export function tryInfrastructureResponse(
 		};
 	}
 
+	// The product asks the user to review where a new generic-auth credential will be
+	// used before it opens the credential card. A user who means to set the credential
+	// up approves the destination; the card that follows is governed by the usual rules.
+	const destination = getNestedRecord(payload, 'credentialDestination');
+	if (destination && typeof destination.origin === 'string') {
+		return { kind: 'credentialDestination', origin: destination.origin, approved: true };
+	}
+
 	// Standalone credential request only — when setupRequests is also present,
 	// the setup wizard takes priority because it carries node parameters to
 	// fill (handled by the caller).
