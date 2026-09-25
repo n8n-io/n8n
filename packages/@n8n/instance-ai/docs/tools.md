@@ -945,9 +945,9 @@ means setup is already complete, and the card is never open once a result is
 returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
 but always require an explicit Continue, since the type alone does not identify
 a service. When `needsBrowserSetup=true`, the orchestrator should load the
-`credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
-directly, then call `credentials(action="setup")` again to select the created
-credential.
+`credential-setup-with-computer-use` skill (which builds on the general
+`browser-use` skill), use Computer Use `browser_*` tools directly, then call
+`credentials(action="setup")` again to select the created credential.
 
 **Setup panel** (`118_instance_ai_setup_overhaul: variant`): when the call belongs
 to a workflow (`workflowId`, or the workflow this run last saved) and the stage

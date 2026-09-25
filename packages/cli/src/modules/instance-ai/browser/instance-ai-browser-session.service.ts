@@ -7,6 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { createFieldTextFn } from '@n8n/instance-ai';
 import type { BrowserExtensionTraceContext } from '@n8n/instance-ai';
 import type {
 	BrowserConnection,
@@ -165,7 +166,14 @@ export class InstanceAiBrowserSessionService {
 	}
 
 	private async createSession(userId: string): Promise<BrowserSession> {
-		const { CDPRelayServer, createBrowserTools } = await import('@n8n/mcp-browser');
+		const { CDPRelayServer, configureLogger, createBrowserTools, createSystemOneFn } = await import(
+			'@n8n/mcp-browser'
+		);
+
+		// `@n8n/mcp-browser` keeps its own logger, defaulting to `info`. Without
+		// this it never sees `N8N_LOG_LEVEL`, so its debug output is unreachable
+		// from a normal n8n deployment. The level names are the same set.
+		configureLogger({ level: this.globalConfig.logging.level });
 
 		const sessionId = nanoid();
 		const cdpToken = `cdp_${nanoid(32)}`;
@@ -184,11 +192,28 @@ export class InstanceAiBrowserSessionService {
 		);
 		const workDir = join(tmpdir(), 'n8n-instance-ai-browser', userId);
 		await mkdir(workDir, { recursive: true });
+		// An unset key leaves `systemOne` undefined, which is what disables
+		// `browser_act` — the tool then reports itself unavailable rather than
+		// failing mid-run.
+		const systemOne = createSystemOneFn(this.globalConfig.instanceAi.typesafeApiKey, {
+			onError: ({ status, statusText, body }) =>
+				// Truncated: the body is the vendor's reason for rejecting the request,
+				// which is what makes a 400 diagnosable, but it is not a place to let
+				// page content into the logs unbounded.
+				this.logger.warn('Fast model request failed', {
+					status,
+					statusText,
+					detail: body.slice(0, 200),
+				}),
+		});
 		const toolContext: ToolContext = {
 			dir: workDir,
 			secretsBuffer: createInMemorySecretsBuffer(),
 			createCredential: async (payload: CreateCredentialPayload) =>
 				await this.createCredential(userId, payload),
+			// Only useful alongside the fast model: it exists to keep `browser_act`
+			// going through a form rather than handing back at every input.
+			...(systemOne ? { systemOne, generateFieldText: createFieldTextFn() } : {}),
 		};
 
 		const session: BrowserSession = {

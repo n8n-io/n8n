@@ -371,6 +371,7 @@ describe('GlobalConfig', () => {
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
+			typesafeApiKey: '',
 			gatewayApiKey: '',
 			threadTtlDays: 30,
 			pruneInterval: 3_600_000,

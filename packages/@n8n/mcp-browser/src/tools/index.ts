@@ -1,6 +1,7 @@
 import { BrowserConnection } from '../connection';
 import type { BrowserConnectionOptions } from '../connection';
 import type { BrowserToolkit, Config, ToolDefinition } from '../types';
+import { createActTools } from './act';
 import { createCredentialTools } from './credential';
 import { createInspectionTools } from './inspection';
 import { createInteractionTools } from './interaction';
@@ -25,6 +26,7 @@ export function createBrowserTools(
 		...createWaitTools(connection),
 		...createStateTools(connection),
 		...createCredentialTools(connection),
+		...createActTools(connection),
 	];
 
 	return { tools, connection };

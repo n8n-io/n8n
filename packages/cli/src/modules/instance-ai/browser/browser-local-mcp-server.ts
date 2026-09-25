@@ -69,6 +69,14 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 
 	setDomainGate(gate: BrowserDomainGate | undefined): void {
 		this.gate = gate;
+		// `browser_act` drives the adapter directly, so its actions never pass
+		// through callTool and never meet the gate below. Give it the same two
+		// decisions the gate makes: whether a host is already allowed, and how to
+		// ask when it is not.
+		this.toolContext.isHostAllowed = gate ? (host: string) => hostAllowed(gate, host) : undefined;
+		this.toolContext.requestHostApproval = gate
+			? (host: string) => requestHostApproval(gate, host)
+			: undefined;
 	}
 
 	getAvailableTools(): McpTool[] {
@@ -140,6 +148,42 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 			return undefined;
 		}
 	}
+}
+
+/**
+ * Mirrors `gateDomainAccess`'s verdict without asking for anything.
+ *
+ * The admin modes have to be part of it: under `always_allow` the gate never
+ * consults the tracker, so a predicate that only asked the tracker would refuse
+ * hosts the gate would have let through.
+ */
+function hostAllowed(gate: BrowserDomainGate, host: string): boolean {
+	if (gate.permissionMode === 'blocked') return false;
+	if (gate.permissionMode === 'always_allow') return true;
+	return gate.tracker.isHostAllowed(host, gate.runId);
+}
+
+/**
+ * The confirmation for a host reached part-way through a `browser_act` run.
+ *
+ * Same payload the per-call gate produces, so the tool wrapper suspends and
+ * resumes exactly as it does for a single browser tool. On resume the loop
+ * starts again from the page it left off on, which is why the goal it takes is
+ * the remaining goal rather than a step.
+ */
+function requestHostApproval(gate: BrowserDomainGate, host: string): McpToolCallResult {
+	if (gate.permissionMode === 'blocked') {
+		return errorResult('Browser access blocked by admin');
+	}
+	return confirmationRequiredResult(
+		{
+			toolGroup: 'browser',
+			kind: 'host',
+			resource: host,
+			description: `Browser: ${host}`,
+		},
+		['denyOnce', 'allowOnce', 'allowForSession'],
+	);
 }
 
 async function gateDomainAccess(

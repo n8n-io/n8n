@@ -33,3 +33,39 @@ export type {
 	ToolDefinition,
 	CallToolResult,
 } from './types';
+export type {
+	Answer,
+	ChoiceQuestion,
+	FieldTextFn,
+	FieldTextRequest,
+	NoulQuestion,
+	Question,
+	RecentAction,
+	SystemOneFn,
+	SystemOneResult,
+	TaskBrief,
+} from './typesafe/types';
+export {
+	ACTIONS_TAKING_REF,
+	buildRequest,
+	EXECUTABLE_ACTIONS,
+	GUARD_QUESTIONS,
+	HANDBACK_ACTIONS,
+	pagedTargetRefKey,
+	TARGET_REF_NONE,
+	TARGET_REF_QUESTION,
+} from './typesafe/questions';
+export { decide, GUARD_THRESHOLD, pickRef } from './typesafe/decide';
+export { createSystemOneFn, DEFAULT_SYSTEM_ONE_MODEL } from './typesafe/client';
+export type { SystemOneOptions } from './typesafe/client';
+export type { Decision } from './typesafe/decide';
+export {
+	actionCandidates,
+	estimateTokens,
+	MAX_CANDIDATES,
+	MAX_CHOICE_OPTIONS,
+	parseOptionLabels,
+	parseSnapshot,
+	toChoiceCriteria,
+} from './typesafe/snapshot-elements';
+export type { SnapshotElement } from './typesafe/snapshot-elements';

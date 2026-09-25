@@ -87,6 +87,20 @@ and security model.
 | `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | string | `''` | Brave Search API key. Takes priority over SearXNG when set. |
 | `N8N_INSTANCE_AI_SEARXNG_URL` | string | `''` | SearXNG instance URL (e.g. `http://searxng:8080`). Empty = disabled. No API key needed. |
 
+### Browser fast loop
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `N8N_INSTANCE_AI_TYPESAFE_API_KEY` | string | `''` | TypeSafe API key for the `browser_act` fast loop. Empty = `browser_act` reports itself unavailable and the agent uses the individual browser tools. |
+
+`browser_act` batches mechanical browser actions (click, select, hover, key
+press, back, reload) under one tool call, asking a TypeSafe System One model
+for each next action instead of spending a full orchestrator turn on it. It
+hands control back as soon as anything needs judgement: text to type, a URL to
+choose, a tripped guard (sign-in wall, page error), low confidence, or a host
+the user has not approved yet. With no key configured the feature is off and
+nothing about the existing browser flow changes.
+
 **Provider priority**: Brave (if key set) > SearXNG (if URL set) > disabled.
 When no search provider is available, `research(action="web-search")` returns
 without search results. `research(action="fetch-url")` still works.

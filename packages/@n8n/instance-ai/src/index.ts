@@ -6,6 +6,7 @@ import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
+import type * as FieldTextMod from './tools/browser/field-text';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
 import type * as StructuredFileParserMod from './parsers/structured-file-parser';
@@ -103,6 +104,9 @@ const loadApplyAgentThinking = lazyModule(
 	() => require('./agent/apply-agent-thinking') as typeof ApplyAgentThinkingMod,
 );
 const loadDomainAccess = lazyModule(() => require('./domain-access') as typeof DomainAccessMod);
+const loadFieldText = lazyModule(
+	() => require('./tools/browser/field-text') as typeof FieldTextMod,
+);
 const loadSystemPrompt = lazyModule(
 	() => require('./agent/system-prompt') as typeof SystemPromptMod,
 );
@@ -243,6 +247,9 @@ export type { Logger } from './logger';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
 export type { DomainAccessTracker } from './domain-access';
+export const createFieldTextFn: typeof FieldTextMod.createFieldTextFn = lazyFunction(
+	() => loadFieldText().createFieldTextFn,
+);
 export type {
 	BrowserExtensionTraceContext,
 	SubmitLangsmithUserFeedbackOptions,

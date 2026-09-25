@@ -414,8 +414,8 @@ MCP connector cannot shadow configuration or lifecycle tools.
 
 The local Computer Use server is separate from external MCP configuration. Its
 browser tools are available directly to the orchestrator and are guided by the
-`credential-setup-with-computer-use` skill when credential setup requires a
-browser.
+`browser-use` skill, with `credential-setup-with-computer-use` layered on top
+when the goal is obtaining credential values.
 
 ## Tracing & Observability
 

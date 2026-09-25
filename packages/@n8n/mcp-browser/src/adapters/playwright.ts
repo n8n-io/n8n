@@ -432,6 +432,7 @@ export class PlaywrightAdapter {
 			button: options?.button,
 			clickCount: options?.clickCount,
 			modifiers: options?.modifiers as Array<'Alt' | 'Control' | 'Meta' | 'Shift'>,
+			...(options?.timeoutMs === undefined ? {} : { timeout: options.timeoutMs }),
 		});
 	}
 
@@ -461,17 +462,32 @@ export class PlaywrightAdapter {
 		}
 	}
 
-	async select(pageId: string, target: ElementTarget, values: string[]): Promise<string[]> {
+	async select(
+		pageId: string,
+		target: ElementTarget,
+		values: string[],
+		options?: { timeoutMs?: number },
+	): Promise<string[]> {
 		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 		await this.ensureActionable(locator, target, 'enabled');
-		return await locator.selectOption(values);
+		// Passed only when set: an explicit `undefined` would still change the
+		// call the driver sees.
+		return options?.timeoutMs === undefined
+			? await locator.selectOption(values)
+			: await locator.selectOption(values, { timeout: options.timeoutMs });
 	}
 
-	async hover(pageId: string, target: ElementTarget): Promise<void> {
+	async hover(
+		pageId: string,
+		target: ElementTarget,
+		options?: { timeoutMs?: number },
+	): Promise<void> {
 		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
-		await locator.hover();
+		await locator.hover(
+			options?.timeoutMs === undefined ? undefined : { timeout: options.timeoutMs },
+		);
 	}
 
 	async press(pageId: string, keys: string): Promise<void> {
