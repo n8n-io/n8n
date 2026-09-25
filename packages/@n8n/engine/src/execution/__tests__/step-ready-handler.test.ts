@@ -525,8 +525,6 @@ describe('StepReadyHandler', () => {
 	});
 
 	it('runs the step when the execution is waiting', async () => {
-		// the step resumed, and the execution reads `waiting` until this run lands,
-		// so refusing here would strand the step it just claimed
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
 		const executor = makeExecutor();

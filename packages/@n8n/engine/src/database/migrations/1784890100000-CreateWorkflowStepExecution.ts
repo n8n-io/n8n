@@ -89,10 +89,8 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						columnNames: ['wait_till'],
 						where: "status = 'waiting'",
 					},
-					// Partial index for the live-status refresh: it runs on every settlement
-					// and asks whether the execution still has an unsettled step. Settled rows
-					// drop out, so the index stays bounded by the work in flight rather than by
-					// an execution's history.
+					// For the live-status refresh, on every suspension and settlement.
+					// `status` in the key keeps its probes index-only; settled rows drop out.
 					{
 						name: 'idx_workflow_step_execution_unsettled',
 						columnNames: ['execution_id', 'status'],

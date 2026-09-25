@@ -476,8 +476,6 @@ describe('StepSettledHandler', () => {
 	});
 
 	it('reads the execution status off the steps again after every settlement', async () => {
-		// the settlement may have been what left only waiting steps behind, or what
-		// gave a waiting execution runnable work again
 		const stepStore = makeStepStore();
 		const { handler, executionStore } = makeHandler(stepStore);
 
@@ -487,8 +485,6 @@ describe('StepSettledHandler', () => {
 	});
 
 	it('plans successors for a waiting execution', async () => {
-		// a wait elsewhere does not end the execution, so this settlement still
-		// decides its own successors
 		const stepStore = makeStepStore();
 		const { handler, stepQueue } = makeHandler(stepStore, {
 			executionStore: makeExecutionStore({ status: 'waiting' }),

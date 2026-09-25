@@ -268,8 +268,7 @@ describe('step execution (integration)', () => {
 			resolveOn: 'suspend',
 		});
 
-		// the step it owes is suspended and no other step can run, so the
-		// execution reports the wait. Nothing settled it, so it has no outcome.
+		// nothing settled the step, so the execution has no outcome to record
 		expect(execution.status).toBe('waiting');
 		expect(execution.finishedAt).toBeNull();
 

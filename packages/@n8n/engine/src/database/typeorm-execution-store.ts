@@ -56,8 +56,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean> {
-		// A waiting execution can end too: a step that fails elsewhere ends the
-		// whole execution, and the steps that wait are cancelled with it.
+		// A waiting execution can end too: a failure elsewhere cancels its waits.
 		const result = await this.repo.update(
 			{ id, status: In(LIVE_STATUSES) },
 			{ status, finishedAt: new Date() },
@@ -66,16 +65,10 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async refreshLiveStatus(id: string): Promise<void> {
-		// One round trip, not one instant. The probes below run once, so a step can
-		// change while the UPDATE waits for the row's lock. The status is a
-		// projection: the next suspension or settlement re-derives it.
-		// MATERIALIZED, because `live.runnable` is read three times. Without it
-		// PostgreSQL inlines the CTE and runs that probe once for each read.
-		// The `e.status` predicate is re-checked against the current row, so a
-		// refresh that lost a race with `finishExecution` writes nothing.
-		// The last predicate skips the write when the status already holds. A
-		// settling step then does not take the execution row's lock for nothing.
+		// The probes read the steps before the UPDATE takes the row's lock, so a
+		// step can change in between.
 		await this.repo.query(
+			// MATERIALIZED, because `live.runnable` is read three times below.
 			`WITH live AS MATERIALIZED (
 				SELECT
 					EXISTS (
@@ -93,8 +86,10 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 				updated_at = now()
 			FROM live
 			WHERE e.id = $1
+				-- Re-checked against the row it locks, so losing to finishExecution writes nothing.
 				AND e.status IN ('running', 'waiting')
 				AND (live.runnable OR live.waiting)
+				-- Skip a write that changes nothing, so the row is not locked for it.
 				AND e.status IS DISTINCT FROM CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END`,
 			[id],
 		);

@@ -180,8 +180,6 @@ describe('workflow_execution table (integration)', () => {
 	});
 
 	it('TypeOrmExecutionStore.finishExecution ends a waiting execution', async () => {
-		// a resumed step can fail while the execution still reports the wait it
-		// resumed from, and that failure ends the execution
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const created = await repo.save(
 			repo.create({
@@ -208,9 +206,6 @@ describe('workflow_execution table (integration)', () => {
 	it.each<ExecutionStatus>(['completed', 'queued'])(
 		'TypeOrmExecutionStore.finishExecution leaves a %j execution alone',
 		async (status) => {
-			// The write is a compare-and-set on the live statuses. Only a live
-			// execution can end: an ended one must not take a second outcome, and one
-			// that never started has none to record.
 			const repo = dataSource.getRepository(WorkflowExecution);
 			const finishedAt = status === 'completed' ? new Date('2099-01-01T00:00:00.000Z') : null;
 			const created = await repo.save(
@@ -308,8 +303,7 @@ describe('workflow_execution table (integration)', () => {
 
 			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
 
-			// The timestamp is the only trace of the write. A settling step must not
-			// take the execution row's lock to store the status it already has.
+			// The timestamp is the only trace of the write: the status is the same.
 			const after = await repo.findOneOrFail({ where: { id } });
 			expect(after.updatedAt).toEqual(before.updatedAt);
 		});

@@ -1,11 +1,8 @@
 import type { JsonObject, JsonValue } from '../common';
 
 /**
- * Lifecycle status of an execution. `waiting` means every step it owes is
- * suspended: a step still owes an outcome.
- *
- * A resume does not update this value. When a waiting step runs again, the
- * execution still reads `waiting` until that step settles. See
+ * Lifecycle status of an execution. A resume does not update it, so it can
+ * read `waiting` while the resumed step runs. See
  * `ExecutionStore.refreshLiveStatus`.
  */
 export type ExecutionStatus =
@@ -16,11 +13,7 @@ export type ExecutionStatus =
 	| 'failed'
 	| 'cancelled';
 
-/**
- * A live execution has started and has not ended. Work runs now, or a suspended
- * step resumes later and moves it on. `queued` is not live: the execution has no
- * step rows yet.
- */
+/** Started and not ended. `queued` is not live: it has no step rows yet. */
 export function isLiveExecutionStatus(status: ExecutionStatus): boolean {
 	return status === 'running' || status === 'waiting';
 }
