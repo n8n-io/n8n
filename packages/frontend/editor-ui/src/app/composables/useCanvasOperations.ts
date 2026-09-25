@@ -755,19 +755,22 @@ export function useCanvasOperations() {
 
 	function deleteNodes(
 		ids: string[],
-		{ trackHistory = true, trackBulk = true, preserveEmptyGroupAnchor = true } = {},
+		{ trackHistory = true, trackBulk = true, deleteWholeGroupIds = [] } = {},
 	) {
+		const deleteWholeGroupIdSet = new Set(deleteWholeGroupIds);
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
-		ids.forEach((id) =>
+		ids.forEach((id) => {
+			const group = workflowDocumentStore.value.getGroupForNode(id);
 			deleteNode(id, {
 				trackHistory,
 				trackBulk: false,
-				preserveEmptyGroupAnchor,
-			}),
-		);
+				preserveEmptyGroupAnchor: !group || !deleteWholeGroupIdSet.has(group.id),
+			});
+		});
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
