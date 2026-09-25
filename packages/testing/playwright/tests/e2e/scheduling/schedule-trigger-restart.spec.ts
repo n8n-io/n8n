@@ -1,21 +1,13 @@
 import { expectScheduleTriggerFires } from './schedule-trigger-helpers';
 import { makeScheduleTriggerWorkflow } from './schedule-trigger-workflow';
+import { durableScheduleTestConfig } from './scheduler-test-config';
 import { test, expect } from '../../../fixtures/base';
 
 // The durable job is DB state, written on activation and independent of process
 // lifetime. After a main restart the sweep reclaims it and keeps firing with no
 // re-activation. This is the property the legacy in-memory timer cannot offer,
 // and it is only observable in container mode (needs a real process restart).
-test.use({
-	capability: {
-		env: {
-			N8N_SCHEDULER_ENABLED: 'true',
-			N8N_USE_WORKFLOW_PUBLICATION_SERVICE: 'true',
-			N8N_SCHEDULER_SWEEP_INTERVAL: '1',
-			N8N_SCHEDULER_EXECUTOR_INTERVAL: '1',
-		},
-	},
-});
+test.use(durableScheduleTestConfig);
 
 test.describe(
 	'Schedule Trigger restart continuity (durable scheduler)',

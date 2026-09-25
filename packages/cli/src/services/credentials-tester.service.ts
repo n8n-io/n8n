@@ -10,6 +10,7 @@ import get from 'lodash/get';
 import { CredentialTestContext, ErrorReporter, ExecuteContext, RoutingNode } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
+	ICredentialsHelper,
 	ICredentialTestFunction,
 	ICredentialTestRequestData,
 	INode,
@@ -472,6 +473,39 @@ export class CredentialsTester {
 			userId,
 			projectId: credentialsDecrypted.homeProject?.id,
 			currentNodeParameters: node.parameters,
+		});
+		// OAuth1/OAuth2 helpers re-read the stored credential by id via credentialsHelper.getDecrypted.
+		// Serve the posted data instead; every other method runs on the real singleton, including the
+		// token write-back (it must keep persisting rotated refresh tokens).
+		// Raw reads come only from the OAuth2 refresh race check, which must see the stored token so
+		// a refresh already done by another process is reused rather than repeated.
+		const storedCredentialsHelper = additionalData.credentialsHelper;
+		const getDecrypted: ICredentialsHelper['getDecrypted'] = async (
+			data,
+			nodeCredentials,
+			type,
+			mode,
+			executeData,
+			raw,
+			...rest
+		) =>
+			raw
+				? await storedCredentialsHelper.getDecrypted(
+						data,
+						nodeCredentials,
+						type,
+						mode,
+						executeData,
+						raw,
+						...rest,
+					)
+				: (credentialsDecrypted.data ?? {});
+		additionalData.credentialsHelper = new Proxy(storedCredentialsHelper, {
+			get(target, prop) {
+				if (prop === 'getDecrypted') return getDecrypted;
+				const value = Reflect.get(target, prop);
+				return typeof value === 'function' ? value.bind(target) : value;
+			},
 		});
 
 		const executeData: IExecuteData = { node, data: {}, source: null };

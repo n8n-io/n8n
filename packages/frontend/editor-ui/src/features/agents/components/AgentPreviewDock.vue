@@ -1,87 +1,81 @@
 <script setup lang="ts">
-import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
-	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
 	N8nTooltip,
-	N8nText,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, nextTick, useTemplateRef, watch, ref } from 'vue';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
-import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM } from '@/app/constants';
 
-import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
 
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
+import AgentSessionHistoryDropdown from './AgentSessionHistoryDropdown.vue';
 
 interface SessionOption {
 	id: string;
 	title: string;
 	disabled?: boolean;
 	label?: string;
-	when?: string;
+	updatedAt?: string;
 }
 
-interface SessionOptionData {
-	when?: string;
-}
-
-enum PreviewLayout {
+const enum PreviewLayout {
 	Docked = 'docked',
 	Fullpage = 'fullpage',
 }
 
-const props = defineProps<{
-	sessionTitle: string;
-	sessionOptions: SessionOption[];
-	hasSession: boolean;
-	initialized: boolean;
-	projectId: string;
-	agentId: string;
-	agent: AgentResource | null;
-	localConfig: AgentJsonConfig | null;
-	connectedTriggers: string[];
-	isOpen: boolean;
-	effectiveSessionId?: string;
-	initialPrompt?: string;
-	canSendToAssistant?: boolean;
-	beforeSend?: () => Promise<void> | void;
-}>();
+const props = withDefaults(
+	defineProps<{
+		sessionTitle: string;
+		sessionOptions: SessionOption[];
+		hasSession: boolean;
+		initialized: boolean;
+		projectId: string;
+		agentId: string;
+		agent: AgentResource | null;
+		localConfig: AgentJsonConfig | null;
+		connectedTriggers: string[];
+		isOpen: boolean;
+		effectiveSessionId?: string;
+		newSession?: boolean;
+		initialPrompt?: string;
+		canSendToAssistant?: boolean;
+		canDeleteSession?: boolean;
+		beforeSend?: () => Promise<void> | void;
+		isDeletingSession?: boolean;
+	}>(),
+	{ newSession: false, canDeleteSession: false, isDeletingSession: false },
+);
 
 const emit = defineEmits<{
 	'view-trace': [];
 	'new-session': [];
-	'session-deleted': [sessionId: string];
+	'delete-session': [sessionId: string];
 	'session-select': [sessionId: string];
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'session-created': [sessionId: string];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	'initial-consumed': [];
 }>();
 
 const i18n = useI18n();
-const message = useMessage();
-const toast = useToast();
-const sessionsStore = useAgentSessionsStore();
-const isDeletingSession = ref(false);
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -95,15 +89,16 @@ const layout = computed<PreviewLayout>(() =>
 	storedLayout.value === PreviewLayout.Fullpage ? PreviewLayout.Fullpage : PreviewLayout.Docked,
 );
 
-const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, SessionOptionData>>>(
-	() =>
-		props.sessionOptions.map((option) => ({
-			id: option.id,
-			label: option.label ?? option.title,
-			disabled: option.disabled,
-			data: { when: option.when },
-		})),
-);
+function requestActiveSessionDeletion() {
+	if (
+		!props.canDeleteSession ||
+		!props.hasSession ||
+		!props.effectiveSessionId ||
+		props.isDeletingSession
+	)
+		return;
+	emit('delete-session', props.effectiveSessionId);
+}
 
 function viewTrace() {
 	if (!props.hasSession || !props.effectiveSessionId) return;
@@ -123,39 +118,6 @@ function exportSession() {
 
 function createNewSession() {
 	emit('new-session');
-}
-
-async function deleteSession() {
-	const { projectId, agentId, effectiveSessionId: sessionId } = props;
-	if (!props.hasSession || !sessionId || isDeletingSession.value) return;
-
-	isDeletingSession.value = true;
-	try {
-		const confirmed = await message.confirm(
-			i18n.baseText('agentSessions.deleteConfirm.message'),
-			i18n.baseText('agentSessions.deleteConfirm.headline'),
-			{
-				type: 'warning',
-				confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
-				cancelButtonText: '',
-			},
-		);
-		if (confirmed !== MODAL_CONFIRM) return;
-
-		await sessionsStore.deleteThread(projectId, agentId, sessionId);
-		toast.showMessage({
-			title: i18n.baseText('agentSessions.showMessage.deleted'),
-			type: 'success',
-		});
-
-		if (props.projectId !== projectId || props.agentId !== agentId) return;
-		if (props.effectiveSessionId === sessionId) createNewSession();
-		emit('session-deleted', sessionId);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agentSessions.showError.delete'));
-	} finally {
-		isDeletingSession.value = false;
-	}
 }
 
 function close() {
@@ -208,12 +170,12 @@ useKeybindings({
 	>
 		<div :class="[$style.dockInner, { [$style.fullpage]: layout === PreviewLayout.Fullpage }]">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
-				<N8nDropdownMenu
-					:items="sessionDropdownOptions"
-					placement="bottom-start"
-					:extra-popper-class="$style.sessionDropdownMenu"
-					data-testid="agent-preview-session-switcher"
+				<AgentSessionHistoryDropdown
+					:session-options="props.sessionOptions"
+					:can-delete-session="props.canDeleteSession"
+					:is-deleting-session="props.isDeletingSession"
 					@select="emit('session-select', $event)"
+					@delete="emit('delete-session', $event)"
 				>
 					<template #trigger>
 						<N8nButton
@@ -233,15 +195,7 @@ useKeybindings({
 							<N8nIcon icon="chevron-down" color="text-light" :size="12" />
 						</N8nButton>
 					</template>
-					<template #item-label="{ item }">
-						<N8nText bold :class="$style.sessionDropdownName">{{ item.label }}</N8nText>
-					</template>
-					<template #item-trailing="{ item }">
-						<N8nText v-if="item.data?.when" :class="$style.sessionDropdownDate">
-							{{ item.data.when }}
-						</N8nText>
-					</template>
-				</N8nDropdownMenu>
+				</AgentSessionHistoryDropdown>
 
 				<div :class="$style.actions">
 					<N8nTooltip
@@ -283,14 +237,15 @@ useKeybindings({
 						:agent-id="props.agentId"
 						:effective-session-id="props.effectiveSessionId"
 						:has-session="props.hasSession"
-						:is-deleting-session="isDeletingSession"
+						:can-delete-session="props.canDeleteSession"
+						:is-deleting-session="props.isDeletingSession"
 						:is-full-width="layout === PreviewLayout.Fullpage"
 						:is-lang-smith-export-enabled="isLangSmithExportEnabled"
 						:is-exporting="isExporting"
 						:get-conversation-markdown="getConversationMarkdown"
 						@toggle-full-width="toggleFullWidth"
 						@export-session="exportSession"
-						@delete-session="deleteSession"
+						@delete-session="requestActiveSessionDeletion"
 					/>
 					<KeyboardShortcutTooltip
 						placement="bottom"
@@ -312,6 +267,7 @@ useKeybindings({
 
 			<AgentPreviewChatPage
 				ref="previewChatPage"
+				:visible="props.isOpen"
 				:initialized="props.initialized"
 				:project-id="props.projectId"
 				:agent-id="props.agentId"
@@ -319,12 +275,15 @@ useKeybindings({
 				:local-config="props.localConfig"
 				:connected-triggers="props.connectedTriggers"
 				:effective-session-id="props.effectiveSessionId"
+				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:before-send="props.beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
+				@initial-consumed="emit('initial-consumed')"
 			/>
 		</div>
 	</aside>
@@ -393,9 +352,10 @@ useKeybindings({
 	padding-inline: var(--spacing--2xs);
 }
 
-.sessionTitleLabel,
-.sessionDropdownName {
+.sessionTitleLabel {
 	display: block;
+	min-width: 0;
+	flex: 1 1 auto;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -405,27 +365,6 @@ useKeybindings({
 /** Let the button's inner container shrink so the session title can truncate. */
 .sessionTitle > div {
 	min-width: 0;
-}
-
-.sessionTitleLabel {
-	min-width: 0;
-	flex: 1 1 auto;
-}
-
-.sessionDropdownMenu {
-	width: max(var(--reka-dropdown-menu-trigger-width), 12rem);
-}
-
-.sessionDropdownName {
-	max-width: 80%;
-}
-
-.sessionDropdownDate {
-	margin-left: auto;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--xs);
-	text-align: right;
-	white-space: nowrap;
 }
 
 .actions {

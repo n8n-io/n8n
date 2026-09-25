@@ -12,6 +12,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
@@ -27,7 +28,10 @@ import {
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
+	findSeedFolderIssues,
+	instanceAiEvalSeedFolderSchema,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiThreadHistoryQuery,
 	InstanceAiThreadMessagesQuery,
 	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
@@ -40,6 +44,7 @@ import {
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
 	parseDomainAccessGrants,
+	resolveInstanceAiPermissions,
 	WEB_SEARCH_GRANT_KEY,
 	workflowSetupNodeSchema,
 	type InstanceAiConfirmationInputType,
@@ -60,6 +65,36 @@ describe('Instance AI prompt version requests', () => {
 				false,
 			);
 		}
+	});
+
+	it('accepts a thread artifact index and rejects an empty or oversized list', () => {
+		const base = { message: 'Change this', timeZone: 'UTC' };
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: {
+					artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+					activeId: 'wf-1',
+				},
+			}).success,
+		).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: { artifacts: [] },
+			}).success,
+		).toBe(false);
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: {
+					artifacts: Array.from({ length: 21 }, (_, index) => ({
+						type: 'workflow' as const,
+						id: `wf-${index}`,
+					})),
+				},
+			}).success,
+		).toBe(false);
 	});
 });
 
@@ -139,6 +174,90 @@ describe('instanceAiEventSchema', () => {
 
 	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
+	});
+
+	it('parses a preferences-applied event that names the rows the turn carried', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [
+					{ id: 'pref-1', scope: 'user' },
+					{ id: 'pref-2', scope: 'project', projectId: 'p-1', projectName: 'Marketing' },
+				],
+				renderedLength: 240,
+				injectedThisTurn: true,
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses a turn that reused an earlier block, naming the run that sent it', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-2',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [{ id: 'pref-1', scope: 'instance' }],
+				renderedLength: 240,
+				injectedThisTurn: false,
+				carriedFromRunId: 'run-1',
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses a reused block with no carrying run named', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-2',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [{ id: 'pref-1', scope: 'instance' }],
+				renderedLength: 240,
+				injectedThisTurn: false,
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses an empty payload, which says the turn applied no preferences', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { preferences: [], renderedLength: 0, injectedThisTurn: true },
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('refuses a turn that claims both a fresh injection and a carrying run', () => {
+		// The pair says the block was sent now and also comes from an earlier run. A client
+		// cannot discriminate on `injectedThisTurn` if both can be true at once.
+		const result = instanceAiEventSchema.safeParse({
+			type: 'preferences-applied',
+			runId: 'run-2',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [{ id: 'pref-1', scope: 'user' }],
+				renderedLength: 240,
+				injectedThisTurn: true,
+				carriedFromRunId: 'run-1',
+			},
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('keeps preferences-applied durable, so a reload still reports the turn', () => {
+		// A live-only frame would leave the plus menu blank for every turn a client
+		// missed, and a week-old thread could never answer the question at all.
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('preferences-applied')).toBe(false);
 	});
 
 	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
@@ -291,6 +410,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.mutateDataTableSchema).toBe('blocked');
 		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
+		expect(result.executeNode).toBe('blocked');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
@@ -310,11 +430,76 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.readFilesystem).toBe('always_allow');
 	});
 
+	it('blocks createPreference on a read-only branch like every other write', () => {
+		const result = applyBranchReadOnlyOverrides(DEFAULT_INSTANCE_AI_PERMISSIONS);
+		expect(result.createPreference).toBe('blocked');
+	});
+
 	it('should not mutate the original permissions object', () => {
 		const original = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
 		applyBranchReadOnlyOverrides(original);
 
 		expect(original.createWorkflow).toBe('require_approval');
+	});
+});
+
+describe('resolveInstanceAiPermissions', () => {
+	it('should fill missing keys from the defaults', () => {
+		const result = resolveInstanceAiPermissions({ createWorkflow: 'always_allow' });
+
+		expect(result.createWorkflow).toBe('always_allow');
+		expect(result.deleteWorkflow).toBe('require_approval');
+		expect(result.executeNode).toBe('require_approval');
+	});
+
+	it('should carry a blocked runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'blocked' });
+
+		expect(result.executeNode).toBe('blocked');
+	});
+
+	it('should not carry an always_allow runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'always_allow' });
+
+		expect(result.executeNode).toBe('require_approval');
+	});
+
+	it('should prefer an explicit executeNode over the runWorkflow fallback', () => {
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'blocked', executeNode: 'always_allow' })
+				.executeNode,
+		).toBe('always_allow');
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'always_allow', executeNode: 'blocked' })
+				.executeNode,
+		).toBe('blocked');
+	});
+
+	it('should not mutate the persisted permissions object', () => {
+		const persisted: Partial<InstanceAiPermissions> = { runWorkflow: 'blocked' };
+		resolveInstanceAiPermissions(persisted);
+
+		expect(persisted.executeNode).toBeUndefined();
+	});
+});
+
+describe('createPreference permission', () => {
+	it('defaults to always_allow, because the tool never pauses for approval', () => {
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.createPreference).toBe('always_allow');
+	});
+
+	it.each(['always_allow', 'blocked'] as const)('accepts %s from the settings API', (mode) => {
+		const parsed = InstanceAiAdminSettingsUpdateRequest.safeParse({
+			permissions: { createPreference: mode },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('refuses require_approval from the settings API', () => {
+		const parsed = InstanceAiAdminSettingsUpdateRequest.safeParse({
+			permissions: { createPreference: 'require_approval' },
+		});
+		expect(parsed.success).toBe(false);
 	});
 });
 
@@ -588,6 +773,45 @@ describe('data-tables session grant keys', () => {
 	it('builds action-scoped keys matching the frontend always-allow format', () => {
 		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
 		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
+	});
+});
+
+describe('node execution session grant keys', () => {
+	it('scopes the key by resource and operation', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.slack', {
+				resource: 'message',
+				operation: 'post',
+			}),
+		).toBe('nodes:execute:n8n-nodes-base.slack:message:post');
+	});
+
+	it('falls back to the first scoping parameter a node without resource/operation declares', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.httpRequest', {
+				method: 'POST',
+				url: 'https://example.com/v4/sheets',
+			}),
+		).toBe('nodes:execute:n8n-nodes-base.httpRequest:https://example.com/v4/sheets');
+		// `mode` precedes `url` in the fallback order, so a node declaring both is scoped by mode.
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.set', { mode: 'manual', url: 'https://x' }),
+		).toBe('nodes:execute:n8n-nodes-base.set:manual');
+	});
+
+	it('refuses a key a fallback parameter would push past the column width', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.graphql', { query: 'q'.repeat(600) }),
+		).toBeNull();
+	});
+
+	it('keeps the key at the node type when nothing scopes the call', () => {
+		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter', { conditions: {} })).toBe(
+			'nodes:execute:n8n-nodes-base.filter',
+		);
+		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter')).toBe(
+			'nodes:execute:n8n-nodes-base.filter',
+		);
 	});
 });
 
@@ -962,6 +1186,20 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts optional parent workflow display metadata', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({ workflowName: 'Orders' }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects parent workflow display metadata over 255 characters', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({ workflowName: 'a'.repeat(256) }),
+		);
+		expect(result.success).toBe(false);
+	});
+
 	it('accepts a chain set with inputNode, outputNode, and canvasGroupId', () => {
 		const result = instanceAiAttachmentSchema.safeParse(
 			nodesAttachment({
@@ -1121,5 +1359,189 @@ describe('instanceAiHandoffContextSchema', () => {
 			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel', workflowId: 'wf-1' })
 				.success,
 		).toBe(false);
+	});
+});
+
+describe('instanceAiEvalSeedFolderSchema', () => {
+	const errorOf = (result: { success: boolean; error?: { issues: unknown[] } }) =>
+		result.success ? '' : JSON.stringify(result.error?.issues);
+	const folder = (overrides: Record<string, unknown> = {}) => ({
+		id: 'odwFolder0001',
+		name: 'ODW',
+		...overrides,
+	});
+
+	it('accepts a root folder and a nested folder', () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder()).success).toBe(true);
+		expect(
+			instanceAiEvalSeedFolderSchema.safeParse(
+				folder({ id: 'odwArchive001', parentFolderId: 'odwFolder0001' }),
+			).success,
+		).toBe(true);
+	});
+
+	it('rejects an id under 8 characters, like a seed data table id', () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ id: 'odw1' })).success).toBe(false);
+	});
+
+	it('rejects a name that is not already trimmed', () => {
+		// The live turn names the folder the way a user would, so the created name
+		// must match the authored one verbatim. A silent trim would hide the mismatch.
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: ' ODW' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'ODW ' })).success).toBe(false);
+	});
+
+	it('rejects a name with a slash, the folderPath separator', () => {
+		const result = instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'ODW/Archive' }));
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('/');
+	});
+
+	it("applies n8n's own folder name rules", () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '...' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '.hidden' })).success).toBe(
+			false,
+		);
+		expect(
+			instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'O'.repeat(129) })).success,
+		).toBe(false);
+	});
+});
+
+describe('findSeedFolderIssues', () => {
+	it('returns nothing for a valid tree with workflows placed in declared folders', () => {
+		expect(
+			findSeedFolderIssues({
+				folders: [
+					{ id: 'odwFolder0001' },
+					{ id: 'odwArchive001', parentFolderId: 'odwFolder0001' },
+				],
+				workflows: [{ id: 'odwSignal1Wf', parentFolderId: 'odwArchive001' }, { id: 'rootWf00001' }],
+			}),
+		).toEqual([]);
+	});
+
+	it('flags a duplicate folder id', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001' }, { id: 'odwFolder0001' }],
+		});
+		expect(issues).toEqual([expect.stringContaining('Duplicate seed folder id "odwFolder0001"')]);
+	});
+
+	it('flags a folder whose parent is not declared', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwArchive001', parentFolderId: 'missingFolder1' }],
+		});
+		expect(issues).toEqual([expect.stringContaining('"missingFolder1"')]);
+	});
+
+	it('flags a folder that is its own parent as a cycle', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001', parentFolderId: 'odwFolder0001' }],
+		});
+		expect(issues).toEqual(['Seed folder "odwFolder0001" is in a parent cycle']);
+	});
+
+	it('flags every member of a parent cycle, and every folder that descends from it', () => {
+		const issues = findSeedFolderIssues({
+			folders: [
+				{ id: 'folderAaaaaa', parentFolderId: 'folderBbbbbb' },
+				{ id: 'folderBbbbbb', parentFolderId: 'folderAaaaaa' },
+				{ id: 'folderCccccc', parentFolderId: 'folderAaaaaa' },
+			],
+		});
+		expect(issues).toEqual([
+			'Seed folder "folderAaaaaa" is in a parent cycle',
+			'Seed folder "folderBbbbbb" is in a parent cycle',
+			'Seed folder "folderCccccc" descends from a parent cycle',
+		]);
+	});
+
+	it('flags a workflow placed in a folder the seed does not declare', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001' }],
+			workflows: [{ id: 'odwSignal1Wf', parentFolderId: 'nopeFolder001' }],
+		});
+		expect(issues).toEqual([
+			expect.stringContaining('Seed workflow "odwSignal1Wf" is placed in folder "nopeFolder001"'),
+		]);
+	});
+});
+
+describe('InstanceAiEvalRestoreThreadRequest folders', () => {
+	const threadId = '11111111-1111-4111-8111-111111111111';
+
+	it('accepts folders and a workflow with a parentFolderId', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+			workflows: [
+				{
+					id: 'odwSignal1Wf',
+					name: 'Odds Watch - 1',
+					nodes: [],
+					connections: {},
+					parentFolderId: 'odwFolder0001',
+				},
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a duplicate id and a parent cycle in the request itself', () => {
+		// A caller that validates with the schema alone must not accept a graph the
+		// restore cannot create.
+		const duplicate = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [
+				{ id: 'odwFolder0001', name: 'ODW' },
+				{ id: 'odwFolder0001', name: 'ODW 2' },
+			],
+		});
+		expect(duplicate.success).toBe(false);
+
+		const cycle = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [
+				{ id: 'folderAaaaaa', name: 'A', parentFolderId: 'folderBbbbbb' },
+				{ id: 'folderBbbbbb', name: 'B', parentFolderId: 'folderAaaaaa' },
+			],
+		});
+		expect(cycle.success).toBe(false);
+	});
+
+	it('caps folders at 20', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: Array.from({ length: 21 }, (_, i) => ({
+				id: `folder${String(i).padStart(8, '0')}`,
+				name: `Folder ${String(i)}`,
+			})),
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('InstanceAiThreadHistoryQuery', () => {
+	it('defaults the page size and trims the search text', () => {
+		expect(InstanceAiThreadHistoryQuery.parse({ search: ' Invoice ' })).toEqual({
+			limit: 30,
+			search: 'Invoice',
+		});
+	});
+
+	it.each([
+		{ limit: 0 },
+		{ limit: 101 },
+		{ search: 'x'.repeat(501) },
+		{ search: 'invoice\u0000draft' },
+		{ cursor: '' },
+	])('rejects %o', (query) => {
+		expect(InstanceAiThreadHistoryQuery.safeParse(query).success).toBe(false);
 	});
 });

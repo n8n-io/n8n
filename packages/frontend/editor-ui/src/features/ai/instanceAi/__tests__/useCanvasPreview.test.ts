@@ -6,7 +6,6 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
-import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
@@ -57,6 +56,9 @@ function createMockThread() {
 	const isHydratingThread = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
+	const pendingWorkflowAttachment = ref<{ type: 'workflow'; id: string; name?: string } | null>(
+		null,
+	);
 
 	return reactive({
 		id: 'thread-1',
@@ -65,6 +67,7 @@ function createMockThread() {
 		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
+		pendingWorkflowAttachment,
 	});
 }
 
@@ -877,57 +880,6 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
-	describe('signal agent config mutations on the event bus', () => {
-		function makeAgentConfigMutationTree(toolCallId: string) {
-			return makeAgentNode({
-				toolCalls: [
-					makeToolCall({
-						toolCallId,
-						toolName: 'patch_config',
-						isLoading: false,
-						result: { ok: true, configMutated: true, agentId: 'agent-1' },
-					}),
-				],
-			});
-		}
-
-		test('emits agentUpdated for each new config mutation', async () => {
-			const emitSpy = vi.spyOn(agentsEventBus, 'emit');
-			const ctx = setup();
-
-			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
-			await nextTick();
-
-			expect(emitSpy).toHaveBeenCalledWith('agentUpdated', {
-				agentId: 'agent-1',
-				source: 'instance-ai',
-			});
-
-			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-2') })];
-			await nextTick();
-
-			expect(emitSpy).toHaveBeenLastCalledWith('agentUpdated', {
-				agentId: 'agent-1',
-				source: 'instance-ai',
-			});
-			expect(emitSpy).toHaveBeenCalledTimes(2);
-
-			emitSpy.mockRestore();
-		});
-
-		test('does not emit while hydrating the thread', async () => {
-			const emitSpy = vi.spyOn(agentsEventBus, 'emit');
-			const ctx = setup();
-			ctx.thread.isHydratingThread = true;
-
-			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
-			await nextTick();
-
-			expect(emitSpy).not.toHaveBeenCalled();
-			emitSpy.mockRestore();
-		});
-	});
-
 	describe('auto-open data table preview', () => {
 		test('auto-opens data table preview when streaming', async () => {
 			const ctx = setup();
@@ -1136,6 +1088,49 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('resource attachment auto-open', () => {
+		test('ignores an attached parent workflow that has no artifact tab', async () => {
+			const ctx = setup();
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'missing-workflow',
+							workflowName: 'Missing workflow',
+							sets: [{ nodes: [{ id: 'n1' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('opens the parent workflow from an attached node mention', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders');
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'wf-1',
+							workflowName: 'Orders',
+							sets: [{ nodes: [{ id: 'n1', name: 'Validate' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
 		test('opens attached agent when no active tab is set', async () => {
 			const ctx = setup();
 			registerAgent(ctx.thread, 'agent-1', 'Support Agent', 'proj-1');
@@ -1156,6 +1151,20 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.activeTabId.value).toBe('agent-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('opens a pending workflow attachment on arrival', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'FAQ Responder');
+			ctx.thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
@@ -1255,6 +1264,7 @@ describe('useCanvasPreview', () => {
 
 			// Tab should remain set — guard skips when tabs are empty
 			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 	});
 	describe('tab picked by the user during a run', () => {

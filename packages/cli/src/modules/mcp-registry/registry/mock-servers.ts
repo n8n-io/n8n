@@ -113,6 +113,7 @@ export const databricksGenieTemplatedMockServer: McpRegistryServer = {
 	title: 'Databricks Genie',
 	description: 'Databricks Genie MCP server, resolved per-customer from the workspace host.',
 	tagline: 'Connect to Databricks Genie',
+	attribution: 'Powered by Genie',
 	version: '1.0.0',
 	updatedAt: '2026-08-20T10:00:00.000Z',
 	icons: [

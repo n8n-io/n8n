@@ -11,9 +11,10 @@ import { isRecord } from '@n8n/utils/is-record';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { agentHandler } from './artifacts/agent-handler';
-import { attributionForScenario } from './attribution';
+import { attributionForScenario, type EvalAttribution } from './attribution';
 import type { EvalLogger } from './logger';
 import { writeScenarioVerificationSnapshot, type VerificationArtifact } from './scenario-execution';
+import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import {
 	throwIfServerBudgetStop,
 	isTransientExecutionAbort,
@@ -22,12 +23,44 @@ import {
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient } from '../clients/n8n-client';
 import type {
+	AgentArtifact,
 	ArtifactRef,
 	BuildTrace,
 	ChecklistItem,
 	ExecutionScenarioResult,
 	ExecutionScenario,
+	TestCaseCredential,
 } from '../types';
+
+/** LLM credential types the eval seeder can create (credentials/seeder.ts). */
+const LLM_CREDENTIAL_TYPES = new Set(['openAiApi', 'googlePalmApi']);
+
+/**
+ * A built Agent with no model cannot run. Who owns that depends on what the
+ * case offered the builder: with no LLM credential declared, leaving the model
+ * for setup is the builder's documented behaviour, so the eval is what cannot
+ * proceed. With one declared, an empty model is the builder's miss.
+ */
+export function draftAgentVerdict(
+	artifact: AgentArtifact | undefined,
+	credentials: TestCaseCredential[] | undefined,
+): { attribution: EvalAttribution; reasoning: string } | undefined {
+	if (!artifact || !isRecord(artifact.config)) return undefined;
+	const model = artifact.config.model;
+	if (typeof model === 'string' && model.trim() !== '') return undefined;
+	const offeredLlmCredential = (credentials ?? []).some((c) => LLM_CREDENTIAL_TYPES.has(c.type));
+	return offeredLlmCredential
+		? {
+				attribution: 'builder_issue',
+				reasoning:
+					'The built Agent has no model although the case declared an LLM credential the builder could have used, so the scenario cannot run.',
+			}
+		: {
+				attribution: 'framework_issue',
+				reasoning:
+					'The built Agent has no model. The case declared no LLM credential, so the builder left model selection to setup by design; the eval has no credential to run the Agent with.',
+			};
+}
 
 /** Shared routing rule for both eval paths: an agent ref marks the case
  *  agent-anchored — the agent, not any co-built helper workflow, is the target. */
@@ -43,26 +76,32 @@ export function findAgentArtifactRef(
  * the workflow JSON block). Falls back to a marker string so a fetch failure
  * degrades verification instead of failing the scenario.
  */
+export interface AgentScenarioContext {
+	rendered: string;
+	artifact?: AgentArtifact;
+}
+
 export async function fetchAgentScenarioContext(
 	client: N8nClient,
 	ref: ArtifactRef,
 	logger: EvalLogger,
-): Promise<string> {
+): Promise<AgentScenarioContext> {
 	try {
-		const agentArtifact = await agentHandler.fetch(ref, client);
-		return agentHandler.renderArtifact(agentArtifact);
+		const artifact = await agentHandler.fetch(ref, client);
+		return { rendered: agentHandler.renderArtifact(artifact), artifact };
 	} catch (error: unknown) {
 		logger.warn(
 			`  Agent config fetch failed — verifying scenarios without it: ${error instanceof Error ? error.message : String(error)}`,
 		);
-		return '(agent configuration could not be fetched)';
+		return { rendered: '(agent configuration could not be fetched)' };
 	}
 }
 
 /**
  * Execute one scenario against a built first-class Agent and verify the
  * result — the agent-artifact counterpart of runScenario. The agent reasons
- * with its real model; its tools' outbound HTTP is served by the mock layer.
+ * with its real model; its tools' outbound HTTP is served by the mock layer and
+ * its Data Table tools read the real table, seeded with the scenario's rows first.
  */
 export async function executeAgentScenario(
 	client: N8nClient,
@@ -74,7 +113,18 @@ export async function executeAgentScenario(
 	testCaseName?: string,
 	buildTrace?: BuildTrace,
 	outputDir?: string,
+	seedContext?: ScenarioSeedContext,
 ): Promise<ExecutionScenarioResult> {
+	if (seedContext) {
+		await reseedScenarioTables(
+			client,
+			scenario,
+			seedContext.threadId,
+			seedContext.tableIdsByName,
+			logger,
+		);
+	}
+
 	const execStart = Date.now();
 	const projectId = await client.getPersonalProjectId();
 	let evalResult = await client.executeAgentWithLlmMock(

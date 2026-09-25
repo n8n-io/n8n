@@ -1,6 +1,16 @@
+import {
+	INSTANCE_AI_PREFILL_TYPES,
+	instanceContextAbsenceReasonSchema,
+	instanceContextSurfaceSchema,
+	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+	INSTANCE_AI_THREAD_SOURCES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+} from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { assistantSurfaceSchema } from '../schemas';
+import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 /**
  * How each n8n Assistant setup component is configured. Source (who set it) and
@@ -34,10 +44,106 @@ const setupSnapshotProps = {
 
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
+const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
 
+// Both taxonomies are owned by `@n8n/api-types`, beside the request schemas that
+// enforce them; the fallbacks are read-path only, so no caller can declare them.
+const threadActionSource = z.enum([
+	...INSTANCE_AI_THREAD_SOURCES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+]);
+const prefillType = z.enum([...INSTANCE_AI_PREFILL_TYPES, INSTANCE_AI_PREFILL_TYPE_FALLBACK]);
+
+const instanceContextTurnSchema = z.object({
+	surface: assistantSurfaceSchema,
+	user_id: z.string(),
+	thread_id: z.string().optional(),
+	run_id: z.string().describe('Turn ID shared by all segments'),
+	segment: z
+		.enum(['whole', 'suspended', 'resumed'])
+		.describe(
+			'Whole turn, pause for input, or final resumed segment. A turn can pause more than once.',
+		),
+	instance_context_enabled: z.boolean().describe('Instance activity gate result'),
+	node_usage_enabled: z.boolean().describe('Per-user node usage gate result'),
+	context_depth: z
+		.number()
+		.int()
+		.describe(
+			'Deepest attempted read: 0 none, 1 activity list, 2 activity expand or node usage, 3 workflow inspection',
+		),
+	context_surfaces: z
+		.array(z.enum(instanceContextSurfaceSchema.options))
+		.describe('Distinct context surfaces called in this segment'),
+	asked_clarifying_question: z
+		.boolean()
+		.describe('This segment asked for missing information. Combine segments with OR.'),
+	tool_calls: z.number().int().describe('Total tool calls in this segment'),
+	turn_prompt_tokens: z
+		.number()
+		.int()
+		.optional()
+		.describe('Measured prompt tokens for this segment'),
+	turn_completion_tokens: z
+		.number()
+		.int()
+		.optional()
+		.describe('Measured completion tokens for this segment'),
+	turn_total_tokens: z.number().int().optional().describe('Measured total tokens for this segment'),
+	turn_cost_usd: z.number().optional().describe('Estimated segment cost from model prices'),
+	status: z
+		.enum(['completed', 'cancelled', 'errored', 'suspended'])
+		.describe('How this segment ended'),
+});
+
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
+	SETUP_PANEL_STATE_OBSERVED: {
+		name: 'AI Assistant setup panel state observed',
+		description:
+			'The setup panel observed a new requirement snapshot. Also fires when no setup is needed, including workflows whose credentials were already connected.',
+		properties: z.object({
+			...setupTelemetryProperties,
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			credential_count: z.number(),
+			pending_credential_count: z.number(),
+			pending_parameter_count: z.number(),
+			already_connected_count: z.number(),
+		}),
+	},
+	SETUP_PANEL_ITEM_SHOWN: {
+		name: 'AI Assistant setup panel item shown',
+		description:
+			'A setup checklist row became visible. Reopening the same row within the mounted panel does not emit another event.',
+		properties: z.object({
+			...setupTelemetryProperties,
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			kind: z.enum(['credential', 'parameters', 'details']),
+			credential_type: z.string().optional(),
+			parameter_count: z.number(),
+			items: z.array(z.object(setupItemProperties)).optional(),
+		}),
+	},
+	SETUP_PANEL_DISMISSED: {
+		name: 'AI Assistant setup panel dismissed',
+		description:
+			'A visible setup panel closed. The reason separates navigation and removed requirements from a finished execution or an explicit dismissal.',
+		properties: z.object({
+			...setupTelemetryProperties,
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			reason: z.enum([
+				'navigation',
+				'items_removed',
+				'execution_succeeded',
+				'execution_finished',
+				'user_dismissed',
+			]),
+		}),
+	},
 	USER_CLICKED_AI_CREDIT_BALANCE: {
 		name: 'User clicked AI credit balance',
 		description:
@@ -177,6 +283,31 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The n8n Assistant requested a direct connection through the Browser Use extension.',
 		properties: z.object({}),
+	},
+	USER_RECEIVED_AI_ASSISTANT_RESPONSE: {
+		name: 'User received AI Assistant response',
+		description:
+			'The initial foreground AI Assistant reply was rendered after a user submitted a chat message. Starts before attachment processing and first-thread creation, then fires once when the initial run completes or pauses for user input. Automated follow-up runs do not create another sample.',
+		properties: z.object({
+			instance_id: z.string(),
+			thread_id: z.string(),
+			run_id: z.string().describe('Run ID returned for the user-submitted message'),
+			latency_ms: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Milliseconds from submit intent until the initial foreground reply is rendered'),
+			is_first_user_message: z
+				.boolean()
+				.describe("Whether this was the thread's first user message"),
+			response_kind: z
+				.enum(['completed', 'awaiting_input'])
+				.describe('Whether the response completed the run or rendered an input request'),
+			action_source: threadActionSource,
+			tab_visible: z
+				.boolean()
+				.describe('Whether the document was visible when the response rendered'),
+		}),
 	},
 	COMPUTER_USE_MODAL_OPENED: {
 		name: 'User opened computer use connection modal',
@@ -336,6 +467,80 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			node_count: z.number().describe('Total nodes attached across the sent message'),
 		}),
 	},
+	USER_OPENED_AI_ASSISTANT_MENTION_PICKER: {
+		name: 'User opened AI Assistant mention picker',
+		description:
+			'The user opened the n8n Assistant mention picker by typing an at sign or selecting the composer button.',
+		properties: z.object({
+			source: z.enum(['typed', 'button']),
+		}),
+	},
+	USER_SELECTED_AI_ASSISTANT_MENTION: {
+		name: 'User selected AI Assistant mention',
+		description:
+			'The user selected a workflow, node, or canvas group from the n8n Assistant mention picker. The event contains interaction metadata but no resource names or IDs.',
+		properties: z.object({
+			kind: assistantMentionKind,
+			mode: z.enum(['browse', 'search']),
+			source: z.enum(['artifacts', 'workflows']),
+			result_position: z
+				.number()
+				.int()
+				.positive()
+				.describe('One-based position in the current search list, browse section, or submenu'),
+			query_length: z.number().int().nonnegative(),
+			already_artifact: z.boolean(),
+		}),
+	},
+	USER_REMOVED_AI_ASSISTANT_MENTION: {
+		name: 'User removed AI Assistant mention',
+		description:
+			'The user removed workflow, node, or canvas group context that they added through the n8n Assistant mention picker.',
+		properties: z.object({
+			kind: assistantMentionKind,
+		}),
+	},
+	USER_SENT_BUILDER_MESSAGE: {
+		name: 'User sent builder message',
+		description:
+			'The user sent a message to the n8n Assistant. Fires once per message on the optimistic send, before the request is admitted, so a refused send still counts as an attempt. Carries who wrote the text: a pre-fill is an opener n8n composed (a failed execution, a credential modal, a template card, a suggestion chip) that the user accepted or edited, so pre-fill share must be read from prefill_type rather than matched against the message body.',
+		properties: z.object({
+			...setupTelemetryProperties,
+			workflow_id: z.string().optional(),
+			pending_credential_count: z.number().optional(),
+			pending_parameter_count: z.number().optional(),
+			thread_id: z.string(),
+			instance_id: z.string(),
+			is_first_message: z
+				.boolean()
+				.describe('Whether this is the first user message in the thread'),
+			action_source: threadActionSource.describe(
+				"The thread's entry point, read back from thread metadata. 'unknown' covers threads created before source was required.",
+			),
+			prefill_type: prefillType
+				.nullable()
+				.describe(
+					"Which pre-fill surface composed the text. Null when the user typed it. 'unknown' is a read-path fallback for a pre-fill a previous deploy stashed in the browser, so a non-trivial share of it is a bug, not a category.",
+				),
+			prefill_id: z
+				.string()
+				.nullable()
+				.describe(
+					'Catalog entry id for pre-fill types that have sub-items, e.g. a suggestion id. Null otherwise.',
+				),
+			prompt_modified: z
+				.boolean()
+				.nullable()
+				.describe(
+					'Whether the user edited the pre-filled text before sending. Always false for pre-fills that send without being shown. Null when the user typed the message.',
+				),
+			mention_count: z.number().int().nonnegative(),
+			workflow_mention_count: z.number().int().nonnegative(),
+			node_mention_count: z.number().int().nonnegative(),
+			group_mention_count: z.number().int().nonnegative(),
+			attachment_count: z.number().int().nonnegative(),
+		}),
+	},
 	BUILDER_LISTED_WORKFLOWS: {
 		name: 'Builder listed workflows',
 		description:
@@ -364,5 +569,34 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			result_count: z.number().int().describe('Rows returned on this page'),
 			total: z.number().int().describe('Rows matching every filter, ignoring limit'),
 		}),
+	},
+	INSTANCE_CONTEXT_TURN: {
+		name: 'Instance AI instance-context turn completed',
+		description:
+			'One context result per turn segment, including turns without a block. Group by run_id. Count distinct runs, sum segment tokens, and count a question if any segment asked one.',
+		properties: z.discriminatedUnion('block_state', [
+			instanceContextTurnSchema
+				.extend({
+					block_state: z.literal('absent'),
+					absence_reason: z
+						.enum(instanceContextAbsenceReasonSchema.options)
+						.describe('Why this turn received no block'),
+				})
+				.strict(),
+			instanceContextTurnSchema
+				.extend({
+					block_state: z.literal('injected'),
+					block_is_update: z.boolean().describe('The block adds to an earlier window'),
+					block_inventory_rows: z.number().int(),
+					block_event_rows: z.number().int(),
+					block_run_rows: z.number().int(),
+					block_chars: z.number().int().describe('Exact rendered block length'),
+					block_tokens_estimated: z
+						.number()
+						.int()
+						.describe('Block token estimate at four characters per token'),
+				})
+				.strict(),
+		]),
 	},
 });

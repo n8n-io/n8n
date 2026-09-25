@@ -14,6 +14,7 @@ import type * as PlannedTaskPermissionsMod from './planned-tasks/planned-task-pe
 import type * as PlannedTaskServiceMod from './planned-tasks/planned-task-service';
 import type * as PromptProfilesMod from './prompts/prompt-profiles';
 import type * as BackgroundTaskManagerMod from './runtime/background-task-manager';
+import type * as InstanceContextStateMod from './runtime/instance-context-state';
 import type * as LivenessPolicyMod from './runtime/liveness-policy';
 import type * as ResumableStreamExecutorMod from './runtime/resumable-stream-executor';
 import type * as RunStateRegistryMod from './runtime/run-state-registry';
@@ -22,8 +23,10 @@ import type * as TerminalResponseGuardMod from './runtime/terminal-response-guar
 import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-skills';
 import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as StorageMod from './storage';
+import type * as InstanceContextReachMod from './stream/instance-context-reach';
 import type * as MapChunkMod from './stream/map-chunk';
 import type * as UsageAccumulatorMod from './stream/usage-accumulator';
+import type * as WorkSummaryAccumulatorMod from './stream/work-summary-accumulator';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
@@ -120,6 +123,15 @@ const loadStorage = lazyModule(() => require('./storage') as typeof StorageMod);
 const loadMapChunk = lazyModule(() => require('./stream/map-chunk') as typeof MapChunkMod);
 const loadUsageAccumulator = lazyModule(
 	() => require('./stream/usage-accumulator') as typeof UsageAccumulatorMod,
+);
+const loadWorkSummaryAccumulator = lazyModule<typeof WorkSummaryAccumulatorMod>(() =>
+	require('./stream/work-summary-accumulator'),
+);
+const loadInstanceContextReach = lazyModule<typeof InstanceContextReachMod>(() =>
+	require('./stream/instance-context-reach'),
+);
+const loadInstanceContextState = lazyModule<typeof InstanceContextStateMod>(() =>
+	require('./runtime/instance-context-state'),
 );
 const loadRuntimeSkills = lazyModule(
 	() => require('./skills/runtime-skills') as typeof RuntimeSkillsMod,
@@ -263,6 +275,14 @@ export const createTraceReplayOnlyContext: typeof LangsmithTracingMod.createTrac
 
 export const setTracePromptVersion: typeof LangsmithTracingMod.setTracePromptVersion = lazyFunction(
 	() => loadLangsmithTracing().setTracePromptVersion,
+);
+
+export const setTraceModelId: typeof LangsmithTracingMod.setTraceModelId = lazyFunction(
+	() => loadLangsmithTracing().setTraceModelId,
+);
+
+export const modelIdTraceMetadata: typeof LangsmithTracingMod.modelIdTraceMetadata = lazyFunction(
+	() => loadLangsmithTracing().modelIdTraceMetadata,
 );
 
 export const continueInstanceAiTraceContext: typeof LangsmithTracingMod.continueInstanceAiTraceContext =
@@ -427,6 +447,10 @@ defineLazyExport(
 	() => loadAgentPersistence().SUB_AGENT_RESOURCE_PREFIX,
 );
 defineLazyExport('iterationEntrySchema', () => loadStorage().iterationEntrySchema);
+defineLazyExport(
+	'suspendedInstanceContextSchema',
+	() => loadInstanceContextState().suspendedInstanceContextSchema,
+);
 defineLazyExport('INSTANCE_AI_SKILLS_DIR', () => loadRuntimeSkills().INSTANCE_AI_SKILLS_DIR);
 defineLazyExport(
 	'SANDBOX_RUNTIME_SKILLS_DIR',
@@ -518,6 +542,7 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 	() => loadRunStateRegistry().RunStateRegistry,
 );
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
+export declare const suspendedInstanceContextSchema: typeof InstanceContextStateMod.suspendedInstanceContextSchema;
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
 export {
 	formatWorkflowSetupStateNote,
@@ -559,7 +584,14 @@ export type {
 	ResumableStreamSource,
 	TraceStatus,
 } from './runtime/resumable-stream-executor';
-export type { WorkSummary } from './stream/work-summary-accumulator';
+export type { WorkSummary, ToolCallSummary } from './stream/work-summary-accumulator';
+export type WorkSummaryAccumulator = WorkSummaryAccumulatorMod.WorkSummaryAccumulator;
+export const WorkSummaryAccumulator: typeof WorkSummaryAccumulatorMod.WorkSummaryAccumulator =
+	lazyClass(() => loadWorkSummaryAccumulator().WorkSummaryAccumulator);
+export const deriveInstanceContextReach: typeof InstanceContextReachMod.deriveInstanceContextReach =
+	lazyFunction(() => loadInstanceContextReach().deriveInstanceContextReach);
+export const mergeInstanceContextReach: typeof InstanceContextReachMod.mergeInstanceContextReach =
+	lazyFunction(() => loadInstanceContextReach().mergeInstanceContextReach);
 export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
 export const tokenUsageToBuilderUsageItems: typeof UsageAccumulatorMod.tokenUsageToBuilderUsageItems =
 	lazyFunction(() => loadUsageAccumulator().tokenUsageToBuilderUsageItems);
@@ -632,6 +664,8 @@ export type {
 	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
+	InstanceAiExecuteNodeService,
+	ExecuteNodeResult,
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
 	InstanceAiDataTableService,
@@ -642,6 +676,10 @@ export type {
 	InstanceAiActivityEntry,
 	InstanceAiActivityExpansion,
 	InstanceAiActivityService,
+	InstanceAiPreferenceService,
+	InstanceAiPreferenceWriteResult,
+	InstanceAiPreferenceWriteRejection,
+	InstanceAiSavedPreference,
 	InstanceAiMcpService,
 	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
@@ -684,7 +722,10 @@ export type {
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
 	ExecutionResult,
+	StepExecutionResult,
+	StepRunInputMode,
 	ExecutionDebugInfo,
+	NodeOutputBranch,
 	NodeOutputResult,
 	ResolvedNodeParametersResult,
 	ResolvedParametersDebugBundle,
@@ -724,6 +765,9 @@ export type {
 	ConversationHistorySearchResult,
 	ConversationHistoryMessage,
 	ConversationHistoryMessagesResult,
+	ComputerUseChannel,
+	ComputerUseChannelState,
+	ComputerUseState,
 } from './types';
 export {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,

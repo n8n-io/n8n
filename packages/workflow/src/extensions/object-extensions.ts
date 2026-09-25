@@ -6,17 +6,8 @@
 // splitting @n8n/expression-runtime into a browser-safe extensions subpath (not stubbed)
 // and a node-only VM entry (stubbed).
 import type { ExtensionMap } from './extensions';
+import { defineField } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
-
-// Define an own data field rather than assigning through an inherited setter.
-function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
-	Object.defineProperty(target, key, {
-		value,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
-}
 
 function isEmpty(value: object): boolean {
 	return Object.keys(value).length === 0;

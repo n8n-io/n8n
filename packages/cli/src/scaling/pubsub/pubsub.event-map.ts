@@ -1,5 +1,6 @@
 import type {
 	AgentIntegrationConfig,
+	AgentSseEvent,
 	ChatHubMessageStatus,
 	InstanceAiEvent,
 	PushMessage,
@@ -10,6 +11,12 @@ import type {
 import type { IWorkflowBase, RelatedAgentRun, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
+	'relay-agent-queued-chat': {
+		queueId: string;
+		sequence: number;
+		// An omitted event is a relay heartbeat. Null closes the stream.
+		event?: AgentSseEvent | null;
+	};
 	// #region Lifecycle
 
 	'reload-license': never;
@@ -46,11 +53,13 @@ export type PubSubCommandMap = {
 	'community-package-install': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-update': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-uninstall': {
@@ -127,6 +136,19 @@ export type PubSubCommandMap = {
 
 	'relay-agent-execution-update': {
 		data: PushPayload<'agentExecutionUpdated'>;
+		userIds: string[];
+	};
+
+	'cancel-agent-chat-execution': {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		executionId: string;
+		userId: string;
+	};
+
+	'relay-agent-background-tasks-update': {
+		data: PushPayload<'agentBackgroundTasksUpdated'>;
 		userIds: string[];
 	};
 

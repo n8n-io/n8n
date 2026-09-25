@@ -31,7 +31,11 @@ import {
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import {
+	AI_GATEWAY_UNSUPPORTED_NODE_TYPES,
+	ChatHubToolContextKey,
+	CREDENTIAL_ONLY_NODE_PREFIX,
+} from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -62,7 +66,7 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 
 import {
-	N8nActionPill,
+	N8nBadge,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
@@ -73,20 +77,6 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-
-// Nodes that let the user pick their own predefined credential type via a
-// parameter ("Authentication" → "Predefined Credential Type") rather than
-// declaring a fixed credential in their node type. Gateway credits mints a
-// managed credential for a specific, known provider — it can't stand in for
-// an arbitrary user-chosen one, so these nodes never offer it. Includes the
-// AI-Agent-tool variants ("Tool" suffix) generated from the same node types.
-const AI_GATEWAY_UNSUPPORTED_NODE_TYPES: readonly string[] = [
-	'n8n-nodes-base.httpRequest',
-	'n8n-nodes-base.httpRequestTool',
-	'@n8n/n8n-nodes-langchain.toolHttpRequest',
-	'n8n-nodes-base.graphql',
-	'n8n-nodes-base.graphqlTool',
-];
 
 type Props = {
 	node: INodeUi;
@@ -131,6 +121,13 @@ type Props = {
 	 *  document's nonexistent workflow id and replace the credential store
 	 *  with the empty result. */
 	skipCredentialsFetch?: boolean;
+	/** Host-supplied credential list to render in the dropdown instead of the
+	 *  shared usable-credentials slice. Used by hosts that already hold the
+	 *  exact, project-scoped, type-matched list (e.g. the Instance AI setup
+	 *  card, which receives it in the suspend payload) so the dropdown does
+	 *  not depend on a slice that may be empty or cleared by a competing
+	 *  scoped fetch. Items must carry the credential `type`. */
+	credentials?: ICredentialsResponse[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -148,6 +145,8 @@ const emit = defineEmits<{
 	credentialSelected: [credential: INodeUpdatePropertiesInformation];
 	valueChanged: [value: { name: string; value: NodeParameterValueType }];
 	blur: [source: string];
+	connectionStarted: [credentialId: string];
+	connectionCompleted: [credentialId: string];
 }>();
 
 const telemetry = useTelemetry();
@@ -254,6 +253,7 @@ const {
 	nodeType,
 	() => props.overrideCredType,
 	() => props.showAll,
+	() => props.credentials,
 );
 
 const credentialTypeNames = computed(() => {
@@ -271,11 +271,29 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 	() => props.node.credentials ?? {},
 );
 
+/**
+ * Resolve a picked credential from the rows the dropdown is showing before
+ * consulting the store. A host-supplied `credentials` list can hold ids the
+ * flat map has not (yet) loaded — the store lookup alone would be `undefined`.
+ */
+function findDisplayedCredential(
+	credentialType: string,
+	credentialId: string,
+): ICredentialsResponse | undefined {
+	const typeEntry = credentialTypesNodeDescriptionDisplayed.value.find(
+		({ type }) => type.name === credentialType,
+	);
+	return (
+		typeEntry?.options.find((option) => option.id === credentialId) ??
+		credentialsStore.getCredentialById(credentialId)
+	);
+}
+
 function isCredentialResolvable(credentialType: string): boolean {
 	if (!isPrivateCredentialsEnabled.value) return false;
 	const credentialId = selected.value[credentialType]?.id;
 	if (!credentialId) return false;
-	const credential = credentialsStore.getCredentialById(credentialId);
+	const credential = findDisplayedCredential(credentialType, credentialId);
 	return credential?.isResolvable === true;
 }
 
@@ -283,7 +301,7 @@ function getSelectedPrivateCredential(credentialType: string): ICredentialsRespo
 	if (!isPrivateCredentialsEnabled.value) return null;
 	const id = selected.value[credentialType]?.id;
 	if (!id) return null;
-	const credential = credentialsStore.getCredentialById(id);
+	const credential = findDisplayedCredential(credentialType, id);
 	return credential?.isResolvable === true ? credential : null;
 }
 
@@ -304,9 +322,11 @@ function canConnectPrivateCredential(credentialType: string): boolean {
 async function onConnectFromRow(credentialType: string): Promise<void> {
 	const credential = getSelectedPrivateCredential(credentialType);
 	if (!credential) return;
+	emit('connectionStarted', credential.id);
 	const success = await authorize(credential);
 	if (success) {
 		credentialsStore.setConnectedByMe(credential.id, true, await fetchMyAccount(credential.id));
+		emit('connectionCompleted', credential.id);
 	}
 }
 
@@ -403,8 +423,9 @@ watch(
 		if (types.length === 0) return;
 		// Before the scoped fetch lands there are no options to pick from, which would
 		// read as "no credentials exist" and auto-enable the AI Gateway below. The
-		// watcher re-fires once the fetch populates the slice.
-		if (!credentialsStore.hasFetchedUsableCredentials) return;
+		// watcher re-fires once the fetch populates the slice. A host-supplied list
+		// is complete on its own, so it does not wait for the fetch.
+		if (!props.credentials && !credentialsStore.hasFetchedUsableCredentials) return;
 
 		const isInitialEvaluation = !hasEvaluatedCredentials;
 		hasEvaluatedCredentials = true;
@@ -423,7 +444,11 @@ watch(
 
 		if (!isEmpty(selected.value)) return;
 
-		const autoSelected = getAutoSelectedCredential(node.value, props.overrideCredType);
+		const autoSelected = getAutoSelectedCredential(
+			node.value,
+			props.overrideCredType,
+			props.credentials,
+		);
 		if (autoSelected) {
 			onCredentialSelected(
 				autoSelected.credentialType,
@@ -458,6 +483,7 @@ watch(
 );
 
 function getCredentialFetchScope(): CredentialFetchScope | undefined {
+	if (props.workflowId) return { workflowId: props.workflowId };
 	const workflowId = workflowDocumentStore?.value.workflowId;
 	if (workflowId && !workflowsStore.isNewWorkflow) {
 		return { workflowId };
@@ -704,7 +730,8 @@ function onCredentialSelected(
 		});
 	}
 
-	const selectedCredentials = credentialsStore.getCredentialById(credentialId);
+	const selectedCredentials = findDisplayedCredential(credentialType, credentialId);
+	if (!selectedCredentials) return;
 	const selectedCredentialsType = props.showAll ? selectedCredentials.type : credentialType;
 	const oldCredentials = props.node.credentials?.[selectedCredentialsType] ?? null;
 
@@ -902,11 +929,12 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 		);
 
 		if (typeEntry && typeEntry.options.length > 0) {
+			// The option row already carries id and name — no store round-trip, so a
+			// host-supplied credential not yet in the flat map restores too.
 			const mostRecent = typeEntry.options.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));
-			const restoredCredential = credentialsStore.getCredentialById(mostRecent.id);
-			credentials[credentialType] = { id: restoredCredential.id, name: restoredCredential.name };
+			credentials[credentialType] = { id: mostRecent.id, name: mostRecent.name };
 			assignedKind = 'own';
-			assignedCredentialId = restoredCredential.id;
+			assignedCredentialId = mostRecent.id;
 		} else {
 			delete credentials[credentialType];
 		}
@@ -970,6 +998,7 @@ function editCredential(credentialType: string): void {
 		...(isToolContext ? { appendToBody: true } : {}),
 		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
 		workflowId: telemetryWorkflowId.value || undefined,
+		contextNode: props.node,
 	});
 
 	telemetry.track('User opened Credential modal', {
@@ -1141,6 +1170,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			nodeType: props.node.type,
 			source: 'node_type',
 			serviceName,
+			projectId: props.projectId,
+			workflowId: telemetryWorkflowId.value || undefined,
+			credentialFetchScope: getCredentialFetchScope(),
 		});
 
 		if (credential) {
@@ -1280,13 +1312,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										{{ i18n.baseText('aiGateway.picker.readyToRun') }}
 									</N8nText>
 								</span>
-								<N8nActionPill
+								<N8nBadge
 									v-if="balancePill"
-									size="small"
-									:type="balancePill.type"
-									:text="balancePill.text"
+									size="xxsmall"
+									:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
 									:class="$style.entryPill"
-								/>
+								>
+									{{ balancePill.text }}
+								</N8nBadge>
 							</div>
 						</N8nOption>
 						<template #empty> </template>
@@ -1354,9 +1387,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							@visible-change="(isVisible: boolean) => onSelectVisibleChange(type.name, isVisible)"
 							@blur="emit('blur', 'credentials')"
 						>
-							<template #prefix>
+							<template v-if="selectedCredentialIcon(type.name)" #prefix>
 								<N8nIcon
-									v-if="selectedCredentialIcon(type.name)"
 									:icon="selectedCredentialIcon(type.name)!"
 									size="large"
 									:class="$style.optionIcon"
@@ -1374,12 +1406,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									<N8nText :class="$style.optionName">
 										{{ N8N_CREDITS_LABEL }}
 									</N8nText>
-									<N8nActionPill
+									<N8nBadge
 										v-if="balancePill"
-										size="small"
-										:type="balancePill.type"
-										:text="balancePill.text"
-									/>
+										size="xxsmall"
+										:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
+									>
+										{{ balancePill.text }}
+									</N8nBadge>
 									<N8nIcon
 										v-if="isAiGatewayManagedCredentials(type.name)"
 										icon="check"
@@ -1462,7 +1495,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							<span :class="$style.balanceLabelSizer" aria-hidden="true">{{
 								N8N_CREDITS_LABEL
 							}}</span>
-							<N8nActionPill size="small" :type="balancePill?.type" :text="balancePill?.text" />
+							<N8nBadge
+								size="xxsmall"
+								:variant="balancePill?.type === 'danger' ? 'danger' : 'success'"
+							>
+								{{ balancePill?.text }}
+							</N8nBadge>
 						</div>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
@@ -1822,6 +1860,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .entryPill {
 	padding: var(--spacing--5xs) var(--spacing--3xs);
 	border-radius: var(--radius);
+	// N8nBadge draws a 1px border tinted to its variant; keep it transparent so the
+	// re-skinned pill stays fully neutral (box size unchanged).
+	border-color: transparent;
 	background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
 	color: light-dark(var(--color--neutral-750), var(--color--neutral-150));
 	font-size: var(--font-size--3xs);

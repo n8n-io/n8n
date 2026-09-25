@@ -18,6 +18,9 @@ export class Line implements INodeType {
 		icon: 'file:line.png',
 		group: ['input'],
 		version: 1,
+		// LINE Notify, the service this node calls, is shut down. Keep the node out
+		// of the nodes panel, but let existing workflows keep it.
+		hidden: true,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Line API',
 		defaults: {
@@ -40,8 +43,8 @@ export class Line implements INodeType {
 		properties: [
 			{
 				displayName:
-					'End of service: LINE Notify will be discontinued from April 1st 2025, You can find more information <a href="https://notify-bot.line.me/closing-announce" target="_blank">here</a>',
-				name: 'notice',
+					'This node is deprecated. LINE Notify was discontinued on April 1st 2025, so this node no longer sends notifications. You can find more information <a href="https://notify-bot.line.me/closing-announce" target="_blank">here</a>',
+				name: 'deprecationNotice',
 				type: 'notice',
 				default: '',
 			},

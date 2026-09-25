@@ -426,6 +426,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Succeeded,
 			finishedAt: () => dbNowLiteral(this.isPostgres),
+			errorMessage: null,
 		});
 	}
 
@@ -635,6 +636,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			{
 				status: ScheduledTaskStatus.Succeeded,
 				finishedAt: () => dbNowLiteral(this.isPostgres),
+				errorMessage: null,
 			},
 			'post-dispatch',
 		);

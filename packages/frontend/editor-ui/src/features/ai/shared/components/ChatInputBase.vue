@@ -8,9 +8,11 @@ import {
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nChatInput, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
+import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
+import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 
 const props = withDefaults(
 	defineProps<{
@@ -64,6 +66,16 @@ const toast = useToast();
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const isFocused = ref(false);
+const canAcceptFiles = computed(() =>
+	Boolean(props.showAttach && !props.disabled && !props.isStreaming),
+);
+const acceptedMimeTypeList = computed(() =>
+	(props.acceptedMimeTypes ?? '')
+		.split(',')
+		.map((type) => type.trim())
+		.filter(Boolean),
+);
+const fileDrop = useFileDrop(canAcceptFiles, handleFiles, acceptedMimeTypeList);
 
 // Visual only — must NOT gate `submit-disabled`, or clicking the button (which
 // blurs the textarea) would disable it mid-click and swallow the submit.
@@ -110,6 +122,11 @@ function handleAttach() {
 
 function focusInput(options?: FocusOptions) {
 	inputRef.value?.focusInput(options);
+}
+
+/** Returns the native textarea while the component is mounted. */
+function getInputElement(): HTMLTextAreaElement | undefined {
+	return inputRef.value?.getInputElement();
 }
 
 /**
@@ -167,25 +184,21 @@ function withinSizeLimit(files: File[]): File[] {
 	return accepted;
 }
 
+function handleFiles(files: File[]) {
+	const acceptedByType = files.filter((file) =>
+		isFileAcceptedByAccept(file.name, file.type, props.acceptedMimeTypes ?? ''),
+	);
+	const accepted = withinSizeLimit(acceptedByType);
+	if (accepted.length > 0) emit('files-selected', accepted);
+}
+
 function handleFileSelect(e: Event) {
 	const target = e.target as HTMLInputElement;
 	const files = target.files;
 	if (!files || files.length === 0) return;
-	const accepted = withinSizeLimit(Array.from(files));
-	if (accepted.length > 0) emit('files-selected', accepted);
+	handleFiles(Array.from(files));
 	target.value = '';
 	focusInput();
-}
-
-function handlePaste(e: ClipboardEvent) {
-	if (!props.showAttach || !e.clipboardData?.files.length) return;
-
-	const files = Array.from(e.clipboardData.files);
-	if (files.length > 0) {
-		e.preventDefault();
-		const accepted = withinSizeLimit(files);
-		if (accepted.length > 0) emit('files-selected', accepted);
-	}
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -209,6 +222,7 @@ function handleSubmit() {
 
 defineExpose({
 	focus: focusInput,
+	getInputElement,
 	openFilePicker: handleAttach,
 });
 </script>
@@ -219,9 +233,21 @@ defineExpose({
 			$style.inputWrapper,
 			{ [$style.focusGatedSubmit]: activeRequiresFocus, [$style.submitMuted]: submitMuted },
 		]"
-		@paste="handlePaste"
+		@dragenter="fileDrop.handleDragEnter"
+		@dragleave="fileDrop.handleDragLeave"
+		@dragover="fileDrop.handleDragOver"
+		@drop="fileDrop.handleDrop"
+		@paste="fileDrop.handlePaste"
 		@keydown.capture="handleKeydown"
 	>
+		<div
+			v-if="fileDrop.isDragging.value"
+			:class="$style.dropOverlay"
+			data-test-id="chat-input-drop-overlay"
+		>
+			<N8nText color="text-dark">{{ i18n.baseText('chatInputBase.dropOverlay') }}</N8nText>
+		</div>
+
 		<input
 			v-if="showAttach"
 			ref="fileInputRef"
@@ -252,12 +278,14 @@ defineExpose({
 			@blur="isFocused = false"
 		>
 			<template #leading>
+				<slot name="header" />
 				<slot name="attachments" />
 			</template>
 			<template #left-actions>
 				<slot name="footer-start" />
 			</template>
 			<template #right-actions>
+				<slot name="right-actions" />
 				<N8nTooltip
 					v-if="showAttach && showAttachButton"
 					:content="i18n.baseText('chatInputBase.button.attach')"
@@ -268,6 +296,7 @@ defineExpose({
 						:disabled="disabled || isStreaming"
 						icon="paperclip"
 						icon-size="large"
+						:aria-label="i18n.baseText('chatInputBase.button.attach')"
 						data-test-id="chat-input-attach-button"
 						@click.stop="handleAttach"
 					/>
@@ -283,6 +312,7 @@ defineExpose({
 						:icon="speechInput.isListening.value ? 'square' : 'mic'"
 						:class="{ [$style.recording]: speechInput.isListening.value }"
 						icon-size="large"
+						:aria-label="i18n.baseText('chatInputBase.button.dictate')"
 						data-test-id="chat-input-voice-button"
 						@click.stop="handleMic"
 					/>
@@ -294,7 +324,22 @@ defineExpose({
 
 <style lang="scss" module>
 .inputWrapper {
+	position: relative;
 	width: 100%;
+}
+
+.dropOverlay {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: color-mix(in srgb, var(--color--background--light-2) 95%, transparent);
+	border: var(--border);
+	border-color: var(--color--secondary);
+	border-radius: var(--radius--lg);
+	pointer-events: none;
 }
 
 .fileInput {

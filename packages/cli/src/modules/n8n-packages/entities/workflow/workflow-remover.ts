@@ -33,9 +33,15 @@ export class WorkflowRemover {
 		const nothingToRemove = {
 			removals: [],
 			failures: [],
+			conflicts: [],
 			deletionPolicy: request.deletionPolicy,
 			occupiedFolderIds: [],
 		};
+
+		// Explicit deletions must apply even when the folder policy disables reconciliation.
+		if (request.explicitDeleteIds?.length) {
+			return await this.planExplicitDeletes(context, request);
+		}
 
 		// Owned here rather than by the caller: the policy that turns reconciliation on is this
 		// service's concern, and a project being created holds nothing to reconcile against.
@@ -70,11 +76,69 @@ export class WorkflowRemover {
 
 		return {
 			removals,
+			conflicts: [],
 			failures: candidates
 				.filter(({ id }) => !removable.has(id))
 				.map(({ id, name }) => ({ workflowId: id, name, projectId: context.projectId })),
 			deletionPolicy: request.deletionPolicy,
 			occupiedFolderIds: occupiedBy(placements.filter(({ id }) => !removedIds.has(id))),
+		};
+	}
+
+	private async planExplicitDeletes(
+		context: ImportContext,
+		request: WorkflowRemovalRequest,
+	): Promise<WorkflowRemovalPlan> {
+		const requested = new Set(request.explicitDeleteIds);
+		// Check planned target ids before reading placements so absent and archived targets count too.
+		const conflicts = request.workflowItems
+			.filter((item) => requested.has(targetIdOf(item)))
+			.map((item) => ({
+				sourceWorkflowId: item.sourceWorkflowId,
+				workflowId: targetIdOf(item),
+				projectId: context.projectId,
+			}));
+		if (conflicts.length > 0) {
+			return {
+				removals: [],
+				failures: [],
+				conflicts,
+				deletionPolicy: request.deletionPolicy,
+				occupiedFolderIds: [],
+			};
+		}
+
+		const targets = await this.workflowFinderService.findOwnedWorkflowRemovalCandidates(
+			context.projectId,
+			[...requested],
+		);
+		if (targets.length === 0) {
+			return {
+				removals: [],
+				failures: [],
+				conflicts: [],
+				deletionPolicy: request.deletionPolicy,
+				occupiedFolderIds: [],
+			};
+		}
+
+		const authorized = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			targets.map(({ id }) => id),
+			context.user,
+			['workflow:delete'],
+		);
+
+		return {
+			removals: targets
+				.filter(({ id }) => authorized.has(id))
+				.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId })),
+			conflicts: [],
+			failures: targets
+				.filter(({ id }) => !authorized.has(id))
+				.map(({ id, name }) => ({ workflowId: id, name, projectId: context.projectId })),
+			deletionPolicy: request.deletionPolicy,
+			// Selection imports use `merge`, so folder reconciliation does not read these placements.
+			occupiedFolderIds: [],
 		};
 	}
 

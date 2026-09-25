@@ -8,11 +8,13 @@
 import {
 	analyzeVerificationResult,
 	buildSimulationNote,
+	injectedTriggerSimulations,
 	WORKFLOW_PIN_SIMULATION_REASON,
 	type ChatModelRecoveryOptions,
 	type VerificationAnalysis,
 } from './analyze-result';
 import type { PreparedVerificationRun } from './prepare-run';
+import type { ParameterCheckRun } from './resolved-parameter-warnings';
 import type { ExecutionRunResult } from './types';
 import type { OrchestrationContext } from '../../../types';
 import type {
@@ -48,9 +50,11 @@ interface DecisionPass {
 	analysis: VerificationAnalysis;
 }
 
-export async function runScriptedGateVerification(
-	args: ScriptedGateRunArgs,
-): Promise<{ result: ExecutionRunResult; analysis: VerificationAnalysis }> {
+export async function runScriptedGateVerification(args: ScriptedGateRunArgs): Promise<{
+	result: ExecutionRunResult;
+	analysis: VerificationAnalysis;
+	parameterCheckRuns: ParameterCheckRun[];
+}> {
 	const {
 		script,
 		prepared,
@@ -88,7 +92,14 @@ export async function runScriptedGateVerification(
 		passes.push({ label: decision.label, result, analysis });
 	}
 
-	return { result: mergeResults(passes), analysis: mergeAnalyses(script, prepared, passes) };
+	return {
+		result: mergeResults(passes),
+		analysis: mergeAnalyses(script, prepared, passes),
+		parameterCheckRuns: passes.map(({ result, analysis }) => ({
+			executionId: result.executionId,
+			nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
+		})),
+	};
 }
 
 function mergeResults(passes: DecisionPass[]): ExecutionRunResult {
@@ -172,6 +183,11 @@ function mergeAnalyses(
 			nodeName: name,
 			reason: WORKFLOW_PIN_SIMULATION_REASON,
 		})),
+		...injectedTriggerSimulations(
+			passes.find((pass) => pass.result.injectedTriggerNodeName)?.result.injectedTriggerNodeName,
+			reachedNames,
+			new Set([...plannedSimulatedNames, ...workflowPinnedNodeNames]),
+		),
 	];
 
 	return {

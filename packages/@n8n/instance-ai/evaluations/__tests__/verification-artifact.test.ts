@@ -541,6 +541,44 @@ describe('buildVerificationArtifact', () => {
 		expect(artifact.scenarioContext).toContain('**Did not run** (no execution data): none');
 	});
 
+	// TRUST-508: verifiers read a model sub-node's absence as "the harness did not
+	// mock it" and charged the root's own crash to the mock layer.
+	it('tells the verifier what a sub-node under "Did not run" means', () => {
+		const wf: WorkflowResponse = {
+			id: 'w1',
+			name: 'extractor',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'a',
+					name: 'Extract Jobs',
+					type: '@n8n/n8n-nodes-langchain.informationExtractor',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'b',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: { 'OpenAI Model': { ai_languageModel: [[{ node: 'Extract Jobs', index: 0 }]] } },
+		};
+		const evalResult = makeEvalResult({
+			'Extract Jobs': makeNodeResult({ executionMode: 'real', iterationCount: 1 }),
+		});
+
+		const artifact = buildVerificationArtifact(scenario, evalResult, [wf]);
+
+		expect(artifact.scenarioContext).toContain('**Did not run** (no execution data): OpenAI Model');
+		expect(artifact.scenarioContext).toContain('NOT that the harness declined to mock it');
+	});
+
 	it('head/tail-truncates oversized JSON output blocks and reports chars saved', () => {
 		const wf: WorkflowResponse = {
 			id: 'w1',

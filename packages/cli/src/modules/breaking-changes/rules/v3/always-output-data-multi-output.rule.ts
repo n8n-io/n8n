@@ -6,6 +6,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 
+import { reportAffectedNodes } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
@@ -55,21 +56,12 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 			}
 		}
 
-		if (affectedNodes.length === 0) {
-			return { isAffected: false, issues: [] };
-		}
-
-		return {
-			isAffected: true,
-			issues: affectedNodes.map((node) => ({
-				title: `Node '${node.name}' uses "Always Output Data" and has multiple outputs`,
-				description:
-					'"Always Output Data" currently adds an empty item to this node\'s first output even when another output has data. A future version fixes this to only add the empty item when every output is empty, so this node\'s output will change. Review any logic downstream of its first output.',
-				level: 'warning',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
+		return reportAffectedNodes(affectedNodes, (node) => ({
+			title: `Node '${node.name}' uses "Always Output Data" and has multiple outputs`,
+			description:
+				'"Always Output Data" currently adds an empty item to this node\'s first output even when another output has data. A future version fixes this to only add the empty item when every output is empty, so this node\'s output will change. Review any logic downstream of its first output.',
+			level: 'warning',
+		}));
 	}
 
 	/**

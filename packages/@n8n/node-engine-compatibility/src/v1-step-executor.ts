@@ -6,17 +6,26 @@ import type {
 } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
-import { Expression, isNodeClassInstance, UnexpectedError } from 'n8n-workflow';
+import {
+	Expression,
+	isNodeClassInstance,
+	UnexpectedError,
+	WAIT_FOR_SUB_EXECUTION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 
 import {
 	EngineRequestNotSupportedError,
+	InvalidWaitDateError,
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
 	UnsupportedStepTypeError,
+	UnsupportedWaitError,
 	VmExpressionEngineRequiredError,
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import { attachResponseHooks } from './v1-response-hooks';
 import type {
 	ExecutableNodeType,
 	NodeRunResult,
@@ -24,6 +33,7 @@ import type {
 	V1NodeStepConfig,
 	V1StepExecutorDeps,
 } from './types';
+import type { DurableWaitExecuteContext } from './v1-adapters';
 import {
 	toAdditionalDataContext,
 	toV1ExecuteContext,
@@ -32,6 +42,43 @@ import {
 	toV1Sources,
 	toV1Workflow,
 } from './v1-adapters';
+
+/**
+ * Turns what the node recorded in `putExecutionToWait` into a wait declaration.
+ * v1 resumes a timed wait by marking the node disabled before it re-enters it,
+ * and a disabled node does not run: it passes its first input through. So the
+ * step emits that input at the deadline, not what the node returned before it
+ * paused.
+ *
+ * A sentinel wait fails the step. Engine v2 has no resume route and no
+ * sub-workflow steps yet. A declaration replaces each failure when its path
+ * exists.
+ */
+function toStepResult(
+	context: DurableWaitExecuteContext,
+	nodeResult: INodeExecutionData[][],
+): StepExecutionResult {
+	const { waitTill } = context.runExecutionData;
+	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
+	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
+		throw new UnsupportedWaitError(context.getNode().name, 'a resume request');
+	}
+	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
+		throw new UnsupportedWaitError(context.getNode().name, 'a sub-execution');
+	}
+	// `toISOString` throws a bare RangeError on an invalid date.
+	if (Number.isNaN(waitTill.getTime())) {
+		throw new InvalidWaitDateError(context.getNode().name);
+	}
+
+	return {
+		wait: {
+			resumeAt: waitTill.toISOString(),
+			outputsAtDeadline: toStepOutputs([context.getInputData()]),
+			acceptsResumeRequest: context.acceptsResumeRequest,
+		},
+	};
+}
 
 /**
  * Runs `v1-node` steps by adapting them to the v1 node runtime.
@@ -61,6 +108,7 @@ export class V1StepExecutor implements IStepExecutor {
 		const additionalData = await this.deps.additionalDataFactory(
 			toAdditionalDataContext(request.context),
 		);
+		attachResponseHooks(additionalData, request);
 
 		const context = toV1ExecuteContext({
 			node,
@@ -74,7 +122,7 @@ export class V1StepExecutor implements IStepExecutor {
 
 		return await workflow.expression.withIsolate(async () => {
 			const nodeResult = await this.runNode({ nodeType, context });
-			return { outputs: toStepOutputs(nodeResult) };
+			return toStepResult(context, nodeResult);
 		});
 	}
 

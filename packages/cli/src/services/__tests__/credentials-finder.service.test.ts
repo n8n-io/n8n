@@ -6,6 +6,7 @@ import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
 	CredentialsEntity,
+	type Role,
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -14,6 +15,7 @@ import {
 	PROJECT_EDITOR_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
+	type Scope,
 } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
@@ -1348,6 +1350,275 @@ describe('CredentialsFinderService', () => {
 			await expect(credentialsFinderService.findGlobalCredentialById(credentialId)).rejects.toThrow(
 				'Database connection failed',
 			);
+		});
+	});
+
+	describe('the global override splits visibility from use', () => {
+		// A global credential scope bypasses project sharing. That override now needs
+		// `credential:use` as well, unless the caller declares itself see-only. The
+		// join path a member takes is the fail-closed fallback, so a view-only global
+		// role must land on exactly the query a member gets.
+		const globalCustomRole = (scopes: Scope[], slug: string): Role =>
+			({
+				slug,
+				displayName: slug,
+				description: null,
+				systemRole: false,
+				roleType: 'global',
+				scopes: scopes.map((scope) => ({ slug: scope, displayName: scope, description: null })),
+			}) as Role;
+
+		const viewOnly = mock<User>({
+			id: 'view-only',
+			role: globalCustomRole(['credential:list', 'credential:read'], 'global:cred-viewer'),
+		});
+		const canUse = mock<User>({
+			id: 'can-use',
+			role: globalCustomRole(
+				['credential:list', 'credential:read', 'credential:use'],
+				'global:cred-user',
+			),
+		});
+		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
+
+		const memberJoin = (userId: string) => ({
+			role: In(['credential:owner', 'credential:user']),
+			project: {
+				projectRelations: {
+					role: In([
+						PROJECT_ADMIN_ROLE_SLUG,
+						PROJECT_OWNER_ROLE_SLUG,
+						PROJECT_EDITOR_ROLE_SLUG,
+						PROJECT_VIEWER_ROLE_SLUG,
+					]),
+					userId,
+				},
+			},
+		});
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		describe('findCredentialsForUser', () => {
+			test('falls back to the sharing join for a view-only global role', async () => {
+				credentialsRepository.find.mockResolvedValueOnce([]);
+
+				await credentialsFinderService.findCredentialsForUser(viewOnly, ['credential:read']);
+
+				expect(credentialsRepository.find).toHaveBeenCalledWith({
+					where: {
+						isGlobal: false,
+						usageScope: 'project',
+						shared: memberJoin(viewOnly.id),
+					},
+					relations: { shared: true },
+				});
+			});
+
+			test('takes the override for a view-only global role when the caller is see-only', async () => {
+				credentialsRepository.find.mockResolvedValueOnce([]);
+
+				await credentialsFinderService.findCredentialsForUser(viewOnly, ['credential:read'], {
+					visibilityOnly: true,
+				});
+
+				expect(credentialsRepository.find).toHaveBeenCalledWith({
+					where: { isGlobal: false, usageScope: 'project' },
+					relations: { shared: true },
+				});
+				expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			});
+
+			test('takes the override once `credential:use` is granted', async () => {
+				credentialsRepository.find.mockResolvedValueOnce([]);
+
+				await credentialsFinderService.findCredentialsForUser(canUse, ['credential:read']);
+
+				expect(credentialsRepository.find).toHaveBeenCalledWith({
+					where: { isGlobal: false, usageScope: 'project' },
+					relations: { shared: true },
+				});
+				expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			});
+
+			test('still returns globally-shared credentials to a view-only global role', async () => {
+				// `hasGlobalReadOnlyAccess` is an exact match on ['credential:read'] with
+				// length === 1, and is deliberately independent of the override. Widening
+				// any caller's scope array to ['credential:read','credential:use'] would
+				// silently stop returning global credentials in the picker.
+				const globalCredential = mock<CredentialsEntity>({ id: 'global1', isGlobal: true });
+				credentialsRepository.find.mockResolvedValueOnce([]);
+				(credentialsRepository.manager.find as Mock).mockResolvedValueOnce([globalCredential]);
+
+				const result = await credentialsFinderService.findCredentialsForUser(viewOnly, [
+					'credential:read',
+				]);
+
+				expect(result.map((c) => c.id)).toEqual(['global1']);
+			});
+
+			test('leaves the owner on the override, unchanged', async () => {
+				credentialsRepository.find.mockResolvedValueOnce([]);
+
+				await credentialsFinderService.findCredentialsForUser(owner, ['credential:read']);
+
+				expect(credentialsRepository.find).toHaveBeenCalledWith({
+					where: { isGlobal: false, usageScope: 'project' },
+					relations: { shared: true },
+				});
+				expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('findCredentialForUser', () => {
+			test('falls back to the sharing join for a view-only global role', async () => {
+				sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+				credentialsRepository.findOne.mockResolvedValueOnce(null);
+
+				await credentialsFinderService.findCredentialForUser('cred1', viewOnly, [
+					'credential:read',
+				]);
+
+				expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith(
+					expect.objectContaining({
+						where: { credentialsId: 'cred1', ...memberJoin(viewOnly.id) },
+					}),
+				);
+			});
+
+			test('takes the override when the caller is see-only', async () => {
+				sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+				credentialsRepository.findOne.mockResolvedValueOnce(null);
+
+				await credentialsFinderService.findCredentialForUser(
+					'cred1',
+					viewOnly,
+					['credential:read'],
+					{ visibilityOnly: true },
+				);
+
+				expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith(
+					expect.objectContaining({ where: { credentialsId: 'cred1' } }),
+				);
+			});
+
+			test('takes the override once `credential:use` is granted', async () => {
+				sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+				credentialsRepository.findOne.mockResolvedValueOnce(null);
+
+				await credentialsFinderService.findCredentialForUser('cred1', canUse, ['credential:read']);
+
+				expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith(
+					expect.objectContaining({ where: { credentialsId: 'cred1' } }),
+				);
+			});
+
+			test('still resolves a globally-shared credential for a view-only global role', async () => {
+				const globalCredential = mock<CredentialsEntity>({ id: 'cred1', isGlobal: true });
+				sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+				credentialsRepository.findOne.mockResolvedValueOnce(globalCredential);
+
+				const result = await credentialsFinderService.findCredentialForUser('cred1', viewOnly, [
+					'credential:read',
+				]);
+
+				expect(result).toBe(globalCredential);
+			});
+
+			test('leaves a write-scoped request alone: the write scope is its own gate', async () => {
+				// An API-created global role with credential:read + credential:delete but
+				// no credential:use must keep its delete. Requiring `use` for every
+				// non-see request would break it, and a see-only role cannot satisfy this
+				// request anyway because it does not hold the write scope.
+				const canDelete = mock<User>({
+					id: 'can-delete',
+					role: globalCustomRole(
+						['credential:read', 'credential:list', 'credential:delete'],
+						'global:cred-deleter',
+					),
+				});
+				sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+
+				await credentialsFinderService.findCredentialForUser('cred1', canDelete, [
+					'credential:delete',
+				]);
+
+				expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith(
+					expect.objectContaining({ where: { credentialsId: 'cred1' } }),
+				);
+				expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('findCredentialIdsWithScopeForUser', () => {
+			test('falls back to the sharing join for a view-only global role', async () => {
+				sharedCredentialsRepository.find.mockResolvedValue([]);
+				credentialsRepository.find.mockResolvedValue([]);
+
+				await credentialsFinderService.findCredentialIdsWithScopeForUser(['cred1'], viewOnly, [
+					'credential:read',
+				]);
+
+				expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
+					select: { credentialsId: true },
+					where: {
+						credentialsId: In(['cred1']),
+						credentials: { usageScope: 'project' },
+						...memberJoin(viewOnly.id),
+					},
+				});
+			});
+
+			test('takes the override when the caller is see-only', async () => {
+				sharedCredentialsRepository.find.mockResolvedValue([]);
+				credentialsRepository.find.mockResolvedValue([]);
+
+				await credentialsFinderService.findCredentialIdsWithScopeForUser(
+					['cred1'],
+					viewOnly,
+					['credential:read'],
+					{ visibilityOnly: true },
+				);
+
+				expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
+					select: { credentialsId: true },
+					where: {
+						credentialsId: In(['cred1']),
+						credentials: { usageScope: 'project' },
+					},
+				});
+			});
+
+			test('takes the override once `credential:use` is granted', async () => {
+				sharedCredentialsRepository.find.mockResolvedValue([]);
+				credentialsRepository.find.mockResolvedValue([]);
+
+				await credentialsFinderService.findCredentialIdsWithScopeForUser(['cred1'], canUse, [
+					'credential:read',
+				]);
+
+				expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
+					select: { credentialsId: true },
+					where: {
+						credentialsId: In(['cred1']),
+						credentials: { usageScope: 'project' },
+					},
+				});
+			});
+
+			test('still includes globally-shared credential ids for a view-only global role', async () => {
+				sharedCredentialsRepository.find.mockResolvedValue([]);
+				credentialsRepository.find.mockResolvedValue([mock<CredentialsEntity>({ id: 'cred1' })]);
+
+				const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(
+					['cred1'],
+					viewOnly,
+					['credential:read'],
+				);
+
+				expect([...result]).toEqual(['cred1']);
+			});
 		});
 	});
 });

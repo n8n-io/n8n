@@ -6,7 +6,7 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useResourceRegistry } from '../useResourceRegistry';
-import type { ResourceEntry } from '../useResourceRegistry';
+import type { ResourceEntry, TransientWorkflowArtifactReference } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -50,6 +50,10 @@ function setup(
 	workflowNameLookup?: (id: string) => string | undefined,
 	agentBuilderTarget?: () => { agentId: string; projectId: string; name?: string } | undefined,
 	pendingAgentTarget?: () => { agentId: string; projectId: string; name: string } | undefined,
+	pendingWorkflowAttachment?: () =>
+		| { type: 'workflow'; id: string; name?: string; executionId?: string }
+		| undefined,
+	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
@@ -58,6 +62,8 @@ function setup(
 		undefined,
 		agentBuilderTarget,
 		pendingAgentTarget,
+		pendingWorkflowAttachment,
+		transientWorkflowReferences,
 	);
 	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
 }
@@ -256,6 +262,54 @@ describe('useResourceRegistry', () => {
 	});
 
 	describe('producedArtifacts — message attachments', () => {
+		test('registers the parent workflow from a nodes attachment with display metadata', async () => {
+			const { messages, producedArtifacts } = setup();
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'wf-1',
+							workflowName: 'Orders',
+							sets: [{ nodes: [{ id: 'n1', name: 'Validate' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')).toMatchObject({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'Orders',
+			});
+		});
+
+		test('keeps transient workflow references produced but not linkable', async () => {
+			const transient = ref<TransientWorkflowArtifactReference[]>([
+				{
+					referenceId: 'draft-1',
+					workflowId: 'wf-1',
+					workflowName: 'Orders',
+				},
+			]);
+			const { producedArtifacts, linkableResourceNameIndex } = setup(
+				() => 'Canonical Orders',
+				undefined,
+				undefined,
+				undefined,
+				() => transient.value,
+			);
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Canonical Orders');
+			expect(linkableResourceNameIndex.has('canonical orders')).toBe(false);
+
+			transient.value = [];
+			await nextTick();
+			expect(producedArtifacts.has('wf-1')).toBe(false);
+		});
 		test('keeps a pending new-agent attachment produced but not linkable', async () => {
 			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
@@ -283,6 +337,60 @@ describe('useResourceRegistry', () => {
 				pending: true,
 			});
 			expect(linkableResourceNameIndex.get('support agent')).toBeUndefined();
+		});
+
+		test('registers a pending workflow attachment as a produced tab', async () => {
+			const pending = ref<
+				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined
+			>({ type: 'workflow', id: 'wf-1', name: 'FAQ Responder' });
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				() => pending.value,
+			);
+
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')).toEqual({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			expect(linkableResourceNameIndex.get('faq responder')?.id).toBe('wf-1');
+
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [{ type: 'workflow', id: 'wf-1', name: 'FAQ Responder' }],
+				}),
+			];
+			pending.value = undefined;
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')).toEqual({
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			expect(producedArtifacts.size).toBe(1);
+		});
+
+		test('falls back to Untitled when the pending workflow name is blank', async () => {
+			const pending = ref<
+				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined
+			>({ type: 'workflow', id: 'wf-blank', name: '   ' });
+			const { producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				() => pending.value,
+			);
+
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-blank')?.name).toBe('Untitled');
+			expect(linkableResourceNameIndex.get('untitled')?.id).toBe('wf-blank');
 		});
 	});
 

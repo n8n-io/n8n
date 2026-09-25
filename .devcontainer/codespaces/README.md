@@ -26,8 +26,10 @@ Playwright system deps, and Docker-in-Docker (for testcontainers and
 ```bash
 pnpm session                       # attach Claude Code (creates everything on first run)
 pnpm session:shell                 # open a shell in the default checkout
-pnpm session:opencode              # attach OpenCode in auto mode
-pnpm session:opencode fix-flaky    # OpenCode in a separate worktree
+pnpm session:opencode              # connect the local OpenCode TUI
+pnpm session:opencode fix-flaky    # use a separate remote worktree
+pnpm session:opencode --web        # open OpenCode in the local browser
+pnpm session:opencode --legacy     # use the remote TUI in tmux
 pnpm session fix-flaky             # Claude Code in a separate worktree
 pnpm session ls                    # what's running
 pnpm session tunnel                # forward n8n ports (default 5678, 8080); Ctrl-C to stop
@@ -38,15 +40,136 @@ pnpm session rm                    # delete the codespace
 The dev container supports Codespaces with 2, 4, or 8 cores. The session commands
 create an 8-core Codespace by default.
 
-- **Detach** with `Ctrl-b d` — the agent keeps working without you.
-- **Scroll** with the mouse wheel (tmux mouse mode is on). To use the
+- **Detach from tmux** with `Ctrl-b d` — the agent keeps working without you.
+  Local OpenCode connections use the exit controls described below.
+- **Scroll in tmux** with the mouse wheel (tmux mouse mode is on). To use the
   terminal's own text selection, hold **Shift** and drag.
 - **Reattach** by running the same session command from any machine.
 - Each named session gets its own worktree (`/workspaces/wt-<name>`, branch
-  `session/<name>`), so parallel agents never touch each other's tree. Builds
+  `session/<name>`), so parallel agents never touch each other's tree. A new
+  branch starts from the latest `origin/master`. Builds
   in fresh worktrees are cache-hits via a shared turbo cache.
 - First codespace creation takes ~20 min uncached (image + full build). After
-  that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
+  that, sessions attach instantly; new worktrees cost a `pnpm install` (~10 s: the
+  store lives on `/workspaces`, so `node_modules` is hardlinked, not copied).
+
+## Configure the local OpenCode harness
+
+Install the pinned shared harness:
+
+```bash
+pnpm agent:harness
+```
+
+The command verifies the release checksum. It caches the bundle under
+`~/.cache/n8n-agent-harness`. It then links the bundle plugin into
+`~/.config/opencode/plugins`. Run the command again after the lock changes.
+Restart OpenCode after the command completes.
+
+## Local OpenCode clients
+
+Run these commands from a local checkout. The TUI runs on your laptop. The
+OpenCode server, repository, tools, and builds run in the Codespace. Browser
+mode opens the remote web interface through a local connection.
+
+```bash
+pnpm session:opencode fix-flaky              # resume that workspace's latest conversation
+pnpm session:opencode fix-flaky --web        # open it in a browser
+pnpm session:opencode fix-flaky --new        # start a new conversation in that worktree
+pnpm session:opencode --web --port 4100      # override the default browser port
+pnpm session:opencode --help
+```
+
+For the TUI, install the same OpenCode version as the remote server. The
+`OPENCODE_VERSION` argument in the [Dockerfile](Dockerfile) pins the version
+for new images:
+
+```bash
+npm install -g opencode-ai@<version>
+```
+
+Use npm, not pnpm. The package gets its binary from a `postinstall` script.
+pnpm does not run that script by default.
+
+The launcher checks both versions. It reports a mismatch with both version
+numbers before it opens the TUI. An existing Codespace can have a different
+version. Install that version locally, or use `--web`. Browser mode does not
+need a local OpenCode install.
+The launcher sends its bootstrap code over SSH, so an existing Codespace does
+not need a rebuild to use this connection method.
+The remote server loads the shared OpenCode harness that the Codespace
+post-start command installs. The local harness setup above is not required for
+these commands.
+
+The command prepares the worktree, starts or reuses one server, opens an SSH
+tunnel, and connects the client. Each workspace opens its own conversation: the
+most recently updated one in that worktree. A conversation moves to the front
+when it receives a message. Switching to a conversation without sending a
+message does not move it. Switching to another workspace's conversation does
+not change what this workspace opens next. `--new` starts a new conversation
+instead. It preserves the worktree and the old conversation.
+
+- **Exit the TUI** with `/exit` or its quit shortcut. The launcher closes its
+  tunnel. The remote server stays running.
+- **Disconnect browser mode** with `Ctrl-C` in the launcher terminal. Closing
+  the browser tab does not close the tunnel. Keep the launcher running while
+  you use the browser.
+- **Reconnect** with the same command after a network interruption. After a
+  Codespace stop, the command restarts the server and opens the workspace's
+  most recently updated conversation.
+  A stop terminates running tools. It does not resume interrupted commands.
+- **Browser mode uses local port 4096 by default.** Use `--port` to override it.
+  TUI mode selects an available port unless you specify one.
+  A fixed browser port preserves the browser origin across runs.
+  An occupied fixed port causes an error. It does not stop the existing listener.
+- **Use model and permission controls in the client.** The new connection uses
+  the remote OpenCode configuration. It does not force the legacy `--auto` mode.
+  For the old CLI flags, use `pnpm session:opencode fix-flaky --legacy --model <model>`.
+
+Both server and tunnel bind to `127.0.0.1`. The server uses a generated password.
+The TUI receives it through its environment. Browser mode uses a local proxy
+that adds authentication and rejects requests from other browser origins. The
+proxy supports streamed responses, attachments, and terminal WebSockets. The
+password does not appear in the URL or terminal output. Other processes on
+your laptop can access the local browser proxy while it runs. Do not forward
+this proxy or the OpenCode server port to other machines.
+
+The server enables only OpenRouter. It reads `OPENROUTER_API_KEY` when it starts.
+It enables OpenCode code mode by default to reduce the initial tool context.
+Browser mode opens the workspace's most recently updated conversation directly.
+The web UI stores opened projects in browser storage. If a new-session page
+shows **New project**, open `/workspaces/n8n` there once. Keep the same browser
+port when you reconnect to preserve this selection.
+
+The server runs in the detached tmux session `n8n-opencode-server`. Its log is
+`/workspaces/.n8n-opencode/server.log`. That directory also holds the server
+credentials. It is readable only by its owner.
+An unhealthy server produces an error without stopping active work. Inspect
+the log through `pnpm session:shell`. To restart it after checking active work,
+run `tmux kill-session -t '=n8n-opencode-server'` in that shell. Then reconnect.
+Restart the server after changing provider secrets, server configuration, or
+the pinned harness release.
+
+### Limits
+
+- The launcher supports macOS and Linux. On Windows, run it in WSL. If the
+  browser does not open automatically, open the printed URL yourself.
+- Local clipboard and attachment controls depend on the client, terminal,
+  file type, and model. A laptop file path does not copy a file to the Codespace.
+  Use a supported attachment control or copy the file with `gh codespace cp`.
+- Tools and local MCP processes run on the Codespace. Laptop configuration,
+  browser sessions, and files do not sync automatically.
+- Workspace names identify worktrees. Two agents that use the same name share
+  files. Separate conversations alone do not isolate edits.
+- The server survives a client disconnect while the Codespace stays running.
+  Codespaces idle timeouts still apply. An open tunnel is not a guarantee that
+  the Codespace will stay awake. Use `pnpm session stop` to stop compute billing.
+- Existing tmux OpenCode conversations are not migrated automatically. Use
+  `--legacy` to return to them.
+
+For upstream behavior, see the [OpenCode CLI](https://opencode.ai/docs/cli/),
+[server](https://opencode.ai/docs/server/), and [web](https://opencode.ai/docs/web/)
+documentation.
 
 ## PR previews (a running instance of someone else's PR)
 
@@ -59,12 +182,17 @@ PR instead of reading it. It is a different box from a `pnpm session`: it uses
 [util-codespace-preview.yml](../../.github/workflows/util-codespace-preview.yml)
 creates the box, serves the PR head, shares port 5678 with the org, and comments
 the URL on the PR. A later push serves the new head in the same box. Remove the
-label, or close the PR, to delete the box.
+label, or close the PR, to delete the box. The same workflow runs by hand from
+the Actions tab: give it a PR number and `up`, `refresh` or `down`.
 
 **From your laptop:** `pnpm preview up <pr>` does the same thing, plus
 `pnpm preview refresh <pr>`, `pnpm preview down <pr>` and `pnpm preview ls`. It
 needs `gh` with the codespace scope, the same as `pnpm session`.
 
+- **Watch it come up on the PR.** The comment appears before the box work starts
+  and updates about once a minute with a checklist of the phases, so you can see
+  which step a slow preview is on. `pnpm preview up <pr>` prints the same phases as
+  plain progress — the markers the comment reads are `--json` only.
 - **Sign in with one click** at `<url>/preview-signin`. It logs you in as the
   seeded owner and sends you to the editor. The credentials are
   `preview@n8n.io` / `PreviewInstance1`. They are not secrets: the boundary is
@@ -75,12 +203,22 @@ needs `gh` with the codespace scope, the same as `pnpm session`.
   present. `preview:debug` sets `N8N_LOG_LEVEL=debug`. Adding or removing one
   re-serves the box; it never creates or deletes one. From a laptop the labels
   apply the same way — `pnpm preview refresh <pr>` reads them from the PR. The
-  toggles are defined in `scripts/preview-labels.mjs`; add new ones there.
-- **A preview sleeps after 30 minutes** of no use and GitHub deletes it after 24
-  hours. Add the label again to get a new one.
+  toggles are defined in `scripts/codespace-preview/preview-labels.mjs`; add new ones there.
+- **Configure the instance from a webhook.** A preview also reads extra
+  environment from an n8n webhook, so a value can change without a commit. It
+  needs the `CODESPACE_ENV_URL`, `CODESPACE_ENV_USER` and `CODESPACE_ENV_PASSWORD`
+  codespace secrets. Every key the webhook returns becomes an environment
+  variable, so editing that workflow runs code in the box. Without the secrets
+  the preview serves as usual. See [WORKFLOWS.md](../../.github/WORKFLOWS.md).
+- **A preview sleeps after 2 hours** of no use and GitHub deletes it after 24
+  hours. A box that slept serves nothing and its port is private again, so wake
+  it with `pnpm preview up <pr>` or a manual run of
+  [util-codespace-preview.yml](../../.github/workflows/util-codespace-preview.yml)
+  with `up`. Removing and adding the label works too, but it deletes the box and
+  builds a new one.
 - **A PR from a fork gets no preview.** A codespace's token is scoped to
   `n8n-io/n8n`, so it cannot check out a fork head.
-- **A PR that predates this tooling has no `scripts/preview-serve.mjs`.** The
+- **A PR that predates this tooling has no `scripts/codespace-preview/preview-serve.mjs`.** The
   serve step says so and stops; rebase the PR on master and retry.
 
 ## Agent worker (drive a session from n8n)
@@ -99,7 +237,12 @@ instead. It asks n8n for a turn addressed to this box's owner (`$GITHUB_USER`).
 It runs the turn. It sends the result to the turn's resume URL. It uses no
 tunnel, no open port, and no domain.
 
-The worker starts on each container start (`postStartCommand`). It needs three
+The post-start command installs the pinned OpenCode harness before it starts the
+worker. It verifies a valid cached bundle before reuse. The worker does not start
+if the harness is unavailable. `/tmp/post-start-status.json` contains the harness
+and worker status.
+
+The worker needs three
 secrets and uses three optional secrets. Add them at
 [github.com/settings/codespaces](https://github.com/settings/codespaces), the
 same way as `ANTHROPIC_API_KEY`:
@@ -119,8 +262,12 @@ worker posts one placeholder in that thread. It coalesces completed tool calls.
 It updates the message at most once every 1.5 seconds. It does not send reasoning
 text. The worker replaces the placeholder with the final answer.
 If the Slack API fails, the turn still completes through the n8n resume URL.
-The worker does not export its dequeue or Slack credentials to OpenCode.
+The worker does not export its dequeue or Slack credentials to OpenCode. It uses
+the harness `sandbox` runtime and `slack` profile. The profile supplies the
+atomic-turn instruction.
 Interactive sessions remove all worker-only credentials before they start.
+Interactive OpenCode uses the global harness plugin with the `sandbox` runtime.
+It does not set a profile. It keeps the dynamic OpenRouter configuration.
 
 An idle worker starts with a 3-second poll interval. After each empty dequeue,
 it doubles the interval and limits it to 30 seconds. Work resets the interval
@@ -134,16 +281,15 @@ A turn stops after about 25 minutes (`TURN_TIMEOUT_MS`). This limit is below the
 n8n Wait limit. So the worker reports a clear message before n8n reports a
 generic timeout. Keep the worker limit below the n8n limit if you change either.
 
-**A turn is atomic, and the worker tells the session so.** The turn ends on the
+**A turn is atomic, and the harness tells the session so.** The turn ends on the
 session's final message, and its children end with it: a background `Bash` task
 is killed, `Monitor` events never arrive, `PushNotification` has nowhere to go,
 and `ScheduleWakeup` never fires. The session also gets no turn of its own to
 report back in — the turn's resume URL continues one waiting n8n execution and is
 then spent, so nothing on the box can post to the thread unprompted. A session
 that backgrounds a build and signs off with "I'll verify once it finishes" is
-therefore describing something that cannot happen. The worker states this in
-each OpenCode prompt (`turnContract`), together with a pointer to this file for
-the box-specific parts. This is only the n8n/Slack path: an
+therefore describing something that cannot happen. The harness `slack` profile
+states this contract. This is only the n8n/Slack path: an
 interactive session (`pnpm session`, tmux) is long-lived, so background work,
 monitors and notifications behave normally there.
 
@@ -282,7 +428,7 @@ partial mapping breaks it.
 | Event | Running processes | Disk (checkout, worktrees, chat history) |
 |---|---|---|
 | Detach / close laptop / network drop | ✅ keep running | ✅ |
-| Stop, or idle timeout (default 30 min, max 4 h) | ❌ killed | ✅ |
+| Stop, or idle timeout (2 h for a codespace that `pnpm session` creates, max 4 h) | ❌ killed | ✅ |
 | Delete (`pnpm session rm`) | ❌ | ❌ (push your branches first) |
 
 After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run

@@ -43,6 +43,7 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nBadge,
 	N8nButton,
@@ -134,7 +135,7 @@ const projectAdminCalloutDismissed = useStorage(
 
 const searchFnForFilters = useAvailableProjectSearch();
 const filterFnForFilters = (project: ProjectListItem) =>
-	!project.role || project.role === 'project:admin';
+	Boolean(getResourcePermissions(project.scopes)?.sourceControl?.push);
 
 onBeforeMount(async () => {
 	// Load projects for file→project mapping display and for member search
@@ -952,7 +953,7 @@ onMounted(async () => {
 								:active="Boolean(filterCount)"
 								data-test-id="source-control-filter-dropdown"
 							>
-								<N8nBadge v-if="filterCount" theme="primary" class="mr-4xs">
+								<N8nBadge v-if="filterCount" variant="primary" class="mr-4xs">
 									{{ filterCount }}
 								</N8nBadge>
 							</N8nButton>
@@ -1242,10 +1243,7 @@ onMounted(async () => {
 																:disabled="!renderMovedTooltip(row.file)"
 																placement="top"
 															>
-																<N8nBadge
-																	:theme="getStatusTheme(row.file.status)"
-																	style="height: 25px"
-																>
+																<N8nBadge :variant="getStatusTheme(row.file.status)" size="xsmall">
 																	{{ getStatusText(row.file.status) }}
 																</N8nBadge>
 															</N8nTooltip>

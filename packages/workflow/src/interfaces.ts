@@ -255,6 +255,11 @@ export interface IRequestOptionsSimplifiedAuth {
 export interface IHttpRequestHelper {
 	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
 }
+
+export interface IGetDecryptedCredentialsOptions {
+	credentialUsage?: 'trigger';
+}
+
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
 
@@ -303,6 +308,7 @@ export abstract class ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<ICredentialDataDecryptedObject>;
 
 	abstract updateCredentials(
@@ -976,6 +982,22 @@ interface NodeHelperFunctions {
 }
 
 /**
+ * Controls whether an outbound HTTP client is subject to the instance's
+ * outbound network policy (SSRF protection).
+ *
+ * - `'safe'` (default): the client enforces the instance policy. Whether the
+ *   guard actually runs is decided inside `OutboundHttp` from
+ *   `SsrfProtectionConfig.enabled` — callers never read that flag themselves.
+ * - `'enforced'`: the guard runs unconditionally, regardless of
+ *   `SsrfProtectionConfig.enabled`. Reserve this for destinations that must
+ *   stay guarded even on instances that leave protection off.
+ * - `'unsafe'`: the client bypasses the policy unconditionally. Reserve this
+ *   for fixed, n8n-owned or operator-configured destinations, and state the
+ *   reason in a comment at the call site.
+ */
+export type UseDefaultSsrfPolicy = 'safe' | 'enforced' | 'unsafe';
+
+/**
  * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
  * `httpRequest`. Mirrors the layers n8n's own egress uses: a pre-flight URL
  * validation, a connect-time secure DNS lookup, and per-redirect validation.
@@ -983,6 +1005,8 @@ interface NodeHelperFunctions {
 export interface NodeEgressFilter {
 	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
 	validateUrl(url: string | URL): Promise<Result<void, Error>>;
+	/** Validate a connection host no DNS lookup will see (e.g. an IP-literal proxy host), without resolving it. */
+	validateConnectionHost(host: string): Result<void, Error>;
 	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
 	createSecureLookup(): LookupFunction;
 	/** Validate a redirect hop synchronously; throws when the target is not allowed. */
@@ -1049,10 +1073,12 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 	/**
 	 * Returns the instance egress filter for clients that build their own HTTP
-	 * transport. When egress filtering is not configured, this is a passthrough
-	 * implementation, so callers can always use the returned filter unguarded.
+	 * transport. Under the default `'safe'` policy, this is a passthrough
+	 * implementation when egress filtering is not configured, so callers can
+	 * always use the returned filter unguarded.
+	 * @param {UseDefaultSsrfPolicy} [useDefaultSsrfPolicy='safe'] how the instance policy applies to the returned filter
 	 */
-	getSecureEgressFilter(): NodeEgressFilter;
+	getSecureEgressFilter(useDefaultSsrfPolicy?: UseDefaultSsrfPolicy): NodeEgressFilter;
 }
 
 export type SSHCredentials = {
@@ -1229,12 +1255,30 @@ export type CredentialCheckResult = {
 	credentials: CredentialCheckStatus[];
 };
 
+/**
+ * The authoritative root-workflow nodes to check, taken from the SAME workflow snapshot
+ * that is executing — the published version on a live webhook, the execution snapshot on a
+ * waiting form, the draft on a test webhook. Passing the node objects (rather than a
+ * persisted workflow id alone) fixes two things at once: it restricts the check to the
+ * nodes that can actually run on this trigger (disjoint branches and other triggers' chains
+ * are simply not in the list), AND it pins the check to the running snapshot, so a node
+ * renamed or re-wired in a draft that differs from the running version can't make the
+ * resolver silently skip a credential.
+ *
+ * When omitted, every enabled node of the persisted workflow is checked (the safe default,
+ * used by callers that only have a workflow id — e.g. the form connect panel).
+ */
+export type CredentialCheckOptions = {
+	rootNodes?: INode[];
+};
+
 export type DynamicCredentialCheckProxyProvider = {
 	checkCredentialStatus(
 		workflowId: string,
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1245,6 +1289,7 @@ export type CredentialCheckProxyFunctions = {
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1303,7 +1348,14 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
 		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
-		putExecutionToWait(waitTill: Date): Promise<void>;
+		/**
+		 * Pauses the execution until `waitTill`.
+		 *
+		 * Set `acceptsResumeRequest` to `false` when only the deadline can end the wait.
+		 * The engine then keeps a short wait in the process, so the wait does not survive
+		 * a restart. Without the option the engine suspends and persists the execution.
+		 */
+		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
 		sendMessageToUI(message: any): void;
 		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
 		isConsoleOutputRedacted(): boolean;
@@ -2012,6 +2064,12 @@ export interface ResourceMapperTypeOptionsBase {
 		hint?: string;
 	};
 	showTypeConversionOptions?: boolean;
+	// When true, values mapped to string-typed schema fields are always cast to
+	// string during validation, and the `convertFieldsToString` field stored in the
+	// resource mapper value is ignored. That stored field predates this option and
+	// was never user-editable: the UI wrote it unconditionally, so only
+	// programmatic authors could produce a differing value.
+	alwaysConvertFieldsToString?: boolean;
 	allowEmptyValues?: boolean;
 	// When true, a cached schema that is detected to be structurally incomplete
 	// (e.g. authored by an AI builder rather than loaded from the source) is
@@ -3413,6 +3471,12 @@ export interface RelatedAgentRun {
 	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
 	integrationType?: string;
 	/**
+	 * The run started in the in-app preview chat. `integrationType` cannot say
+	 * this: MCP and AI Assistant test runs use `n8n_chat` too, and they must
+	 * resume on the runtime they started on.
+	 */
+	previewChat?: boolean;
+	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
 	 */
@@ -3431,6 +3495,8 @@ export interface ITaskMetadata {
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
 	subExecutionsCount?: number;
+	/** Sub-executions whose wait parked this execution; read by the sweep that resumes the parent. */
+	waitingChildExecutionIds?: string[];
 	/**
 	 * Private-credential usage a sub-execution reported while this execution was
 	 * waiting. The waiting task is popped and the node re-runs disabled on resume,
@@ -3708,6 +3774,12 @@ export interface IWorkflowExecutionDataProcess {
 	agentRequest?: AiAgentRequest;
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
+	/**
+	 * Only engine v2 reads this. The caller mints the data-plane execution id
+	 * when it has to wait for the run's answer, so it can subscribe before the
+	 * run starts.
+	 */
+	engineExecutionId?: string;
 	startedAt?: Date;
 
 	// MCP-specific fields for queue mode support
@@ -4202,7 +4274,7 @@ export interface ExecutionSummary {
 	};
 	usedPrivateCredentials?: boolean;
 	annotation?: {
-		vote: AnnotationVote;
+		vote?: AnnotationVote | null;
 		tags: Array<{
 			id: string;
 			name: string;

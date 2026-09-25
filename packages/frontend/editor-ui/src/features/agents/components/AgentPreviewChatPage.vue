@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue';
+import { ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
 import AgentChatPanel from './AgentChatPanel.vue';
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
+		visible?: boolean;
 		initialized: boolean;
 		projectId: string;
 		agentId: string;
@@ -19,18 +20,21 @@ withDefaults(
 		localConfig: AgentJsonConfig | null;
 		connectedTriggers: string[];
 		effectiveSessionId?: string;
+		newSession?: boolean;
 		initialPrompt?: string;
 		canSendToAssistant?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 	}>(),
-	{ layout: 'dock' },
+	{ visible: true, newSession: false, layout: 'dock' },
 );
 
 const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'session-created': [sessionId: string];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	'initial-consumed': [];
 }>();
 
 const inputDraft = ref('');
@@ -43,6 +47,15 @@ function focusInput(options?: FocusOptions) {
 function getConversationMarkdown(): string {
 	return chatPanel.value?.getConversationMarkdown() ?? '';
 }
+
+watch(
+	[() => props.initialPrompt, chatPanel],
+	([prompt, panel]) => {
+		if (!prompt || !panel) return;
+		panel.sendMessageFromOutside(prompt);
+	},
+	{ immediate: true, flush: 'post' },
+);
 
 defineExpose({ focusInput, getConversationMarkdown });
 </script>
@@ -61,14 +74,19 @@ defineExpose({ focusInput, getConversationMarkdown });
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
+				:visible="visible"
+				:background-jobs-active="visible"
 				mode="inline"
 				:continue-session-id="effectiveSessionId"
+				:new-session="newSession"
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
 				:can-send-to-assistant="canSendToAssistant"
 				:before-send="beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@session-created="emit('session-created', $event)"
+				@initial-consumed="emit('initial-consumed')"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>

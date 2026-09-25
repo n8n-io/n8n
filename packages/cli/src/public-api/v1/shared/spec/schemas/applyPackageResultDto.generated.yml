@@ -1,0 +1,1192 @@
+oneOf:
+  - type: object
+    properties:
+      connectionId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      configId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      git:
+        type: object
+        properties:
+          commitSha:
+            type: string
+          branchName:
+            type: string
+        required:
+          - commitSha
+          - branchName
+      status:
+        type: string
+        enum:
+          - applied
+      counts:
+        type: object
+        properties:
+          projects:
+            type: object
+            properties:
+              created:
+                type: integer
+                minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+              skipped:
+                type: integer
+                minimum: 0
+              deleted:
+                type: integer
+                minimum: 0
+            required:
+              - created
+              - updated
+              - skipped
+              - deleted
+          folders:
+            type: object
+            properties:
+              created:
+                type: integer
+                minimum: 0
+              skipped:
+                type: integer
+                minimum: 0
+              removed:
+                type: integer
+                minimum: 0
+            required:
+              - created
+              - skipped
+              - removed
+          workflows:
+            type: object
+            properties:
+              created:
+                type: integer
+                minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+              skipped:
+                type: integer
+                minimum: 0
+              archived:
+                type: integer
+                minimum: 0
+              deleted:
+                type: integer
+                minimum: 0
+              publishing:
+                type: object
+                properties:
+                  published:
+                    type: integer
+                    minimum: 0
+                  unpublished:
+                    type: integer
+                    minimum: 0
+                  unchanged:
+                    type: integer
+                    minimum: 0
+                  blocked:
+                    type: integer
+                    minimum: 0
+                  failed:
+                    type: integer
+                    minimum: 0
+                required:
+                  - published
+                  - unpublished
+                  - unchanged
+                  - blocked
+                  - failed
+            required:
+              - created
+              - updated
+              - skipped
+              - archived
+              - deleted
+              - publishing
+          credentials:
+            type: object
+            properties:
+              matched:
+                type: integer
+                minimum: 0
+              stubbed:
+                type: integer
+                minimum: 0
+            required:
+              - matched
+              - stubbed
+          dataTables:
+            type: object
+            properties:
+              matched:
+                type: integer
+                minimum: 0
+              created:
+                type: integer
+                minimum: 0
+            required:
+              - matched
+              - created
+          variables:
+            type: object
+            properties:
+              matched:
+                type: integer
+                minimum: 0
+              created:
+                type: integer
+                minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+              stubbed:
+                type: integer
+                minimum: 0
+              missing:
+                type: integer
+                minimum: 0
+            required:
+              - matched
+              - created
+              - updated
+              - stubbed
+              - missing
+          tags:
+            type: object
+            properties:
+              matched:
+                type: integer
+                minimum: 0
+              created:
+                type: integer
+                minimum: 0
+              renamed:
+                type: integer
+                minimum: 0
+              reconciled:
+                type: integer
+                minimum: 0
+              skipped:
+                type: integer
+                minimum: 0
+            required:
+              - matched
+              - created
+              - renamed
+              - reconciled
+              - skipped
+        required:
+          - projects
+          - folders
+          - workflows
+          - credentials
+          - dataTables
+          - variables
+          - tags
+      warnings:
+        type: array
+        items:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - variable
+            code:
+              type: string
+              enum:
+                - variable-shadowed
+            name:
+              type: string
+              minLength: 1
+            scope:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - global
+              required:
+                - kind
+            consumers:
+              type: array
+              items:
+                type: object
+                properties:
+                  project:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        minLength: 1
+                      name:
+                        type: string
+                    required:
+                      - id
+                      - name
+                  workflows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                    minItems: 1
+                required:
+                  - project
+                  - workflows
+              minItems: 1
+          required:
+            - kind
+            - code
+            - name
+            - scope
+            - consumers
+    required:
+      - connectionId
+      - configId
+      - git
+      - status
+      - counts
+      - warnings
+  - type: object
+    properties:
+      connectionId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      configId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      git:
+        type: object
+        properties:
+          commitSha:
+            type: string
+          branchName:
+            type: string
+        required:
+          - commitSha
+          - branchName
+      status:
+        type: string
+        enum:
+          - blocked
+      preflight:
+        type: object
+        properties:
+          missingProjects:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                icon:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - emoji
+                        - icon
+                    value:
+                      type: string
+                  required:
+                    - type
+                    - value
+                description:
+                  type: string
+                customTelemetryTags:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                      - key
+                      - value
+              required:
+                - id
+                - name
+            description: Projects in the package that do not exist on this instance. Preflight preserves their metadata without checking project creation rules. The project creation API can reject invalid values.
+          missingBindings:
+            type: array
+            items:
+              oneOf:
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - credential
+                    sourceId:
+                      type: string
+                      minLength: 1
+                    name:
+                      type: string
+                    credentialType:
+                      type: string
+                      minLength: 1
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                    ownerProject:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                    expressionData:
+                      type: object
+                      additionalProperties:
+                        $ref: promotionCredentialExpressionValue.generated.yml
+                      description: Credential expressions.
+                  required:
+                    - kind
+                    - sourceId
+                    - name
+                    - credentialType
+                    - consumers
+                    - ownerProject
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - variable
+                    name:
+                      type: string
+                      minLength: 1
+                    variableType:
+                      type: string
+                      enum:
+                        - string
+                      default: string
+                    scope:
+                      oneOf:
+                        - type: object
+                          properties:
+                            kind:
+                              type: string
+                              enum:
+                                - global
+                          required:
+                            - kind
+                        - type: object
+                          properties:
+                            kind:
+                              type: string
+                              enum:
+                                - project
+                            project:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                          required:
+                            - kind
+                            - project
+                    sourceValue:
+                      type: string
+                      maxLength: 1000
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                  required:
+                    - kind
+                    - name
+                    - scope
+                    - consumers
+          accessRequirements:
+            type: array
+            items:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - credential
+                sourceId:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                credentialType:
+                  type: string
+                  minLength: 1
+                consumers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      project:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            minLength: 1
+                          name:
+                            type: string
+                        required:
+                          - id
+                          - name
+                      workflows:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              minLength: 1
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                        minItems: 1
+                    required:
+                      - project
+                      - workflows
+                  minItems: 1
+                code:
+                  type: string
+                  enum:
+                    - access-required
+              required:
+                - kind
+                - sourceId
+                - name
+                - credentialType
+                - consumers
+                - code
+          conflicts:
+            type: array
+            items:
+              oneOf:
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - credential
+                    sourceId:
+                      type: string
+                      nullable: true
+                      minLength: 1
+                    name:
+                      type: string
+                    expectedTypes:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    filePath:
+                      type: string
+                    referenceFiles:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                    code:
+                      type: string
+                      enum:
+                        - missing-id
+                  required:
+                    - kind
+                    - sourceId
+                    - name
+                    - expectedTypes
+                    - referenceFiles
+                    - consumers
+                    - code
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - credential
+                    sourceId:
+                      type: string
+                      nullable: true
+                      minLength: 1
+                    name:
+                      type: string
+                    expectedTypes:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    filePath:
+                      type: string
+                    referenceFiles:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                    code:
+                      type: string
+                      enum:
+                        - conflicting-types
+                  required:
+                    - kind
+                    - sourceId
+                    - name
+                    - expectedTypes
+                    - referenceFiles
+                    - consumers
+                    - code
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - credential
+                    sourceId:
+                      type: string
+                      nullable: true
+                      minLength: 1
+                    name:
+                      type: string
+                    expectedTypes:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    filePath:
+                      type: string
+                    referenceFiles:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                    code:
+                      type: string
+                      enum:
+                        - unknown-type
+                  required:
+                    - kind
+                    - sourceId
+                    - name
+                    - expectedTypes
+                    - referenceFiles
+                    - consumers
+                    - code
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - credential
+                    sourceId:
+                      type: string
+                      nullable: true
+                      minLength: 1
+                    name:
+                      type: string
+                    expectedTypes:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    filePath:
+                      type: string
+                    referenceFiles:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                    code:
+                      type: string
+                      enum:
+                        - unknown-owner
+                  required:
+                    - kind
+                    - sourceId
+                    - name
+                    - expectedTypes
+                    - referenceFiles
+                    - consumers
+                    - code
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - credential
+                    sourceId:
+                      type: string
+                      nullable: true
+                      minLength: 1
+                    name:
+                      type: string
+                    expectedTypes:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    filePath:
+                      type: string
+                    referenceFiles:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                    code:
+                      type: string
+                      enum:
+                        - type-mismatch
+                    targetType:
+                      type: string
+                  required:
+                    - kind
+                    - sourceId
+                    - name
+                    - expectedTypes
+                    - referenceFiles
+                    - consumers
+                    - code
+                    - targetType
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - credential
+                    sourceId:
+                      type: string
+                      nullable: true
+                      minLength: 1
+                    name:
+                      type: string
+                    expectedTypes:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    filePath:
+                      type: string
+                    referenceFiles:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                    code:
+                      type: string
+                      enum:
+                        - incompatible-usage-scope
+                    usageScope:
+                      type: string
+                  required:
+                    - kind
+                    - sourceId
+                    - name
+                    - expectedTypes
+                    - referenceFiles
+                    - consumers
+                    - code
+                    - usageScope
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - variable
+                    code:
+                      type: string
+                      enum:
+                        - missing-definition
+                    name:
+                      type: string
+                      minLength: 1
+                    referenceFiles:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                  required:
+                    - kind
+                    - code
+                    - name
+                    - referenceFiles
+                    - consumers
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - project
+                    code:
+                      type: string
+                      enum:
+                        - project-not-team
+                    project:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                    filePath:
+                      type: string
+                    workflows:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            minLength: 1
+                          name:
+                            type: string
+                        required:
+                          - id
+                          - name
+                  required:
+                    - kind
+                    - code
+                    - project
+                    - filePath
+                    - workflows
+          warnings:
+            type: array
+            items:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - variable
+                code:
+                  type: string
+                  enum:
+                    - variable-shadowed
+                name:
+                  type: string
+                  minLength: 1
+                scope:
+                  type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - global
+                  required:
+                    - kind
+                consumers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      project:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            minLength: 1
+                          name:
+                            type: string
+                        required:
+                          - id
+                          - name
+                      workflows:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              minLength: 1
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                        minItems: 1
+                    required:
+                      - project
+                      - workflows
+                  minItems: 1
+              required:
+                - kind
+                - code
+                - name
+                - scope
+                - consumers
+        required:
+          - missingProjects
+          - missingBindings
+          - accessRequirements
+          - conflicts
+          - warnings
+    required:
+      - connectionId
+      - configId
+      - git
+      - status
+      - preflight
+  - type: object
+    properties:
+      connectionId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      configId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      git:
+        type: object
+        properties:
+          commitSha:
+            type: string
+          branchName:
+            type: string
+        required:
+          - commitSha
+          - branchName
+      status:
+        type: string
+        enum:
+          - source-changed
+    required:
+      - connectionId
+      - configId
+      - git
+      - status

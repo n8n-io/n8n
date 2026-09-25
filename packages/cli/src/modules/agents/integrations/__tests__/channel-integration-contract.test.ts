@@ -7,6 +7,15 @@ import {
 	createSlackReplayContext,
 	type SlackReplayFixtures,
 } from './helpers/slack/replay-test-context';
+import { createTeamsReplayContext } from './helpers/teams/replay-test-context';
+import {
+	dmFollowUp,
+	dmMessage,
+	selfMessage,
+	TEAMS_DM_CONVERSATION_ID,
+	TEAMS_SERVICE_URL,
+	TEAMS_USER_ID,
+} from './helpers/teams/synthetic-fixtures';
 import {
 	createTelegramReplayContext,
 	type TelegramReplayFixtures,
@@ -21,6 +30,7 @@ vi.mock('../esm-loader', () => ({
 	loadTelegramAdapter: async () => await import('@chat-adapter/telegram'),
 	loadSlackAdapter: async () => await import('@chat-adapter/slack'),
 	loadLinearAdapter: async () => await import('@chat-adapter/linear'),
+	loadTeamsAdapter: async () => await import('@chat-adapter/teams'),
 }));
 
 const slackFixtures = jsonParse<SlackReplayFixtures>(
@@ -35,6 +45,7 @@ runSharedChannelIntegrationContract({
 	fixtures: slackFixtures,
 	expected: {
 		message: 'hello agent',
+		author: { id: 'U_ALICE', name: 'U_ALICE' },
 		followUpMessage: 'follow up',
 		integrationType: 'slack',
 		context: {
@@ -77,6 +88,7 @@ runSharedChannelIntegrationContract({
 	fixtures: telegramFixtures,
 	expected: {
 		message: 'hello agent',
+		author: { id: '123456', name: 'alice_dev' },
 		followUpMessage: 'follow up',
 		integrationType: 'telegram',
 		context: {
@@ -102,4 +114,50 @@ runSharedChannelIntegrationContract({
 		respondTarget: { threadId: 'telegram:123456' },
 	},
 	createContext: async () => await createTelegramReplayContext(telegramFixtures),
+});
+
+// Teams has no recorded session yet (no tenant in CI), so the contract runs
+// against hand-built activities driven through the real adapter.
+//
+// The adapter encodes its thread id as base64url conversation + service URL;
+// deriving it from the fixture constants keeps the two from drifting apart.
+const teamsThreadId = [
+	'teams',
+	Buffer.from(TEAMS_DM_CONVERSATION_ID).toString('base64url'),
+	Buffer.from(TEAMS_SERVICE_URL).toString('base64url'),
+].join(':');
+
+runSharedChannelIntegrationContract({
+	name: 'Microsoft Teams',
+	fixtures: { mention: dmMessage, followUp: dmFollowUp, selfMessage },
+	expected: {
+		message: 'hello agent',
+		author: { id: TEAMS_USER_ID, name: 'Alice' },
+		followUpMessage: 'follow up',
+		integrationType: 'teams',
+		context: {
+			integrationConnectionId: 'teams:cred-teams',
+			platform: 'teams',
+			messageId: 'activity-dm-1',
+			interactingUserId: TEAMS_USER_ID,
+			target: {
+				type: 'thread',
+				threadId: teamsThreadId,
+				channelId: teamsThreadId,
+			},
+		},
+		resourceId: TEAMS_USER_ID,
+		firstPost: {
+			type: 'message',
+			text: 'Got it',
+			conversation: { id: TEAMS_DM_CONVERSATION_ID },
+		},
+		respondPost: {
+			type: 'message',
+			text: 'Action response',
+			conversation: { id: TEAMS_DM_CONVERSATION_ID },
+		},
+		respondTarget: { threadId: teamsThreadId },
+	},
+	createContext: async () => await createTeamsReplayContext(),
 });

@@ -1,6 +1,6 @@
 import { computed, ref, watch } from 'vue';
+import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
-import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -8,11 +8,11 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
-	getLatestAgentConfigMutation,
 	getLatestAgentBuilderTarget,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
+import { useAgentMutationRefresh } from './composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import type { ThreadRuntime } from './instanceAi.store';
@@ -46,6 +46,17 @@ interface UseCanvasPreviewOptions {
 interface LinkedAgentTarget {
 	agentId: string;
 	projectId: string;
+}
+
+/**
+ * The artifact a message attachment refers to, if any. A nodes attachment refers
+ * to its parent workflow only when it carries the workflow name, which marks that
+ * workflow as a thread artifact.
+ */
+function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undefined {
+	if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
+	if (attachment.type === 'nodes' && attachment.workflowName) return attachment.workflowId;
+	return undefined;
 }
 
 export function useCanvasPreview({
@@ -173,16 +184,23 @@ export function useCanvasPreview({
 
 	const dataTableRefreshKey = ref(0);
 
-	const isPreviewVisible = computed(() => isPreviewOpen.value && activeTabId.value !== undefined);
+	const isPreviewVisible = computed(
+		() =>
+			isPreviewOpen.value &&
+			activeTabId.value !== undefined &&
+			allArtifactTabs.value.some((tab) => tab.id === activeTabId.value),
+	);
 
 	// --- Resource attachments (workflow or agent hand-offs) ---
 	// A workflow or agent attached to a message surfaces as an artifact tab via the
 	// resource registry. The first one is opened on arrival. (Its execution, if
 	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
 	const firstAttachedArtifactId = computed(() => {
+		const tabIds = new Set(allArtifactTabs.value.map(({ id }) => id));
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
-				if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
+				const artifactId = getAttachedArtifactId(attachment);
+				if (artifactId && tabIds.has(artifactId)) return artifactId;
 			}
 		}
 		return undefined;
@@ -199,7 +217,11 @@ export function useCanvasPreview({
 	});
 
 	const initialArtifactId = computed(
-		() => firstAttachedArtifactId.value ?? pendingAgentTabId.value ?? initialAgentTabId.value,
+		() =>
+			firstAttachedArtifactId.value ??
+			pendingAgentTabId.value ??
+			initialAgentTabId.value ??
+			thread.pendingWorkflowAttachment?.id,
 	);
 
 	// Open the arriving resource. Only when nothing is open, so it never steals
@@ -508,33 +530,7 @@ export function useCanvasPreview({
 	});
 
 	// --- Signal persisted builder config mutations onto the agents event bus ---
-	// Every successful config-mutating builder tool call (stamped configMutated
-	// by the backend) notifies any mounted AgentBuilderView for that agent —
-	// the artifact panel, or a full-page builder in another route.
-
-	const latestAgentConfigMutation = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestAgentConfigMutation(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
-
-	watch(
-		() => latestAgentConfigMutation.value?.toolCallId,
-		(toolCallId) => {
-			if (!toolCallId || !latestAgentConfigMutation.value) return;
-			if (thread.isHydratingThread) return;
-			agentsEventBus.emit('agentUpdated', {
-				agentId: latestAgentConfigMutation.value.agentId,
-				source: 'instance-ai',
-			});
-		},
-		{ flush: 'sync' },
-	);
+	useAgentMutationRefresh(thread);
 
 	return {
 		activeTabId,

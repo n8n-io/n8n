@@ -11,13 +11,14 @@ import type { Project, User } from '@n8n/db';
 import { NodeTypes } from '@/node-types';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
+import { clearPolicyCache } from './shared/policy-cache';
 
 const nodeTypes = mockInstance(NodeTypes);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
 	modules: ['type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;
@@ -35,8 +36,9 @@ const SLACK = 'n8n-nodes-base.slack';
 const CODE = 'n8n-nodes-base.code';
 const EXECUTE_COMMAND = 'n8n-nodes-base.executeCommand';
 const GMAIL = 'n8n-nodes-base.gmail';
+const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
 
-const KNOWN_TYPES = [SLACK, CODE, EXECUTE_COMMAND, GMAIL];
+const KNOWN_TYPES = [SLACK, CODE, EXECUTE_COMMAND, GMAIL, GMAIL_TOOL];
 
 const rule = (id: string, action: 'allow' | 'deny' | 'delegate', value: string) => ({
 	id,
@@ -77,6 +79,10 @@ beforeEach(() => {
 	nodeTypes.getKnownTypes.mockReturnValue(
 		Object.fromEntries(KNOWN_TYPES.map((name) => [name, { className: name, sourcePath: '' }])),
 	);
+	nodeTypes.resolveBaseName.mockImplementation((name) => ({
+		baseName: name === GMAIL_TOOL ? GMAIL : name,
+		isSyntheticTool: name === GMAIL_TOOL,
+	}));
 });
 
 afterEach(async () => {
@@ -85,6 +91,7 @@ afterEach(async () => {
 		'TypeAvailabilityPolicyScope',
 		'TypeAvailabilityPolicy',
 	]);
+	await clearPolicyCache();
 });
 
 /**
@@ -120,11 +127,11 @@ describe('available types endpoint RBAC', () => {
 
 describe('available types endpoint license gating', () => {
 	afterEach(() => {
-		testServer.license.enable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
 	test('rejects a member with 403 when the license feature is disabled', async () => {
-		testServer.license.disable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 
 		const response = await testServer
 			.authAgentFor(projectEditor)
@@ -172,7 +179,24 @@ describe('available types endpoint', () => {
 				matchedRuleId: 'instance-deny',
 			},
 			{ name: GMAIL, available: true },
+			{ name: GMAIL_TOOL, available: true },
 		]);
+	});
+
+	test('a rule for a node also decides its synthetic tool variant', async () => {
+		await setInstancePolicy([rule('instance-deny', 'deny', GMAIL)]);
+
+		const response = await testServer
+			.authAgentFor(projectViewer)
+			.get(availableTypesRoute(project.id));
+
+		const denied = (name: string) => ({
+			name,
+			available: false,
+			scope: 'instance',
+			matchedRuleId: 'instance-deny',
+		});
+		expect(response.body.data).toEqual(expect.arrayContaining([denied(GMAIL), denied(GMAIL_TOOL)]));
 	});
 
 	test('reports a delegated type as available once the project opts in', async () => {

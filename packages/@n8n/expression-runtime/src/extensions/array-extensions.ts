@@ -5,6 +5,7 @@ import uniqWith from 'lodash/uniqWith';
 import type { Extension, ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
 import { compact as oCompact } from './object-extensions';
+import { defineField } from './utils';
 
 // DIVERGENCE from packages/workflow/src/extensions/array-extensions.ts:
 // The original uses crypto.getRandomValues() which is a Web API unavailable
@@ -12,16 +13,6 @@ import { compact as oCompact } from './object-extensions';
 // are backed by Math.random() and randomItem() is non-security-critical.
 function randomInt(max: number): number {
 	return random(0, max - 1);
-}
-
-// Define an own data field rather than assigning through an inherited setter.
-function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
-	Object.defineProperty(target, key, {
-		value,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
 }
 
 // Report whether a field resolves on the object itself and not through its prototype chain.
