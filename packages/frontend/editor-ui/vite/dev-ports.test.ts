@@ -56,7 +56,7 @@ describe('devServerPlugin', () => {
 				},
 			},
 		});
-		expect(env.VUE_APP_URL_BASE_API).toBeUndefined();
+		expect(env.VUE_APP_URL_BASE_API).toBe('/');
 	});
 
 	it('falls back to the default ports', () => {
@@ -73,7 +73,7 @@ describe('devServerPlugin', () => {
 					},
 			},
 		});
-		expect(env.VUE_APP_URL_BASE_API).toBeUndefined();
+		expect(env.VUE_APP_URL_BASE_API).toBe('/');
 	});
 
 	it('keeps an explicitly set REST base URL', () => {
@@ -82,6 +82,14 @@ describe('devServerPlugin', () => {
 		runConfigHook(env, DEV);
 
 		expect(env.VUE_APP_URL_BASE_API).toBe('https://tunnel.example/');
+	});
+
+	it('normalizes an empty REST base URL to /', () => {
+		const env: NodeJS.ProcessEnv = { VUE_APP_URL_BASE_API: '' };
+
+		runConfigHook(env, DEV);
+
+		expect(env.VUE_APP_URL_BASE_API).toBe('/');
 	});
 
 	// A build that inherits VUE_APP_URL_BASE_API would ship a localhost REST base

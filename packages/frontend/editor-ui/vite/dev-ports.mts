@@ -43,6 +43,12 @@ export const devServerPlugin = (env: NodeJS.ProcessEnv): Plugin => ({
 		const { backendPort, editorPort } = resolveDevPorts(env);
 		const backendOrigin = `http://localhost:${backendPort}`;
 
+		// Normalize an empty or whitespace-only REST base to '/' so relative
+		// URLs on nested routes resolve to '/rest' rather than a route-relative path.
+		if (!env.VUE_APP_URL_BASE_API?.trim()) {
+			env.VUE_APP_URL_BASE_API = '/';
+		}
+
 		return {
 			server: {
 				host: '0.0.0.0',

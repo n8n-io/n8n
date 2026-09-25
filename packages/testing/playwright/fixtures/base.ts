@@ -264,7 +264,18 @@ export const test = base.extend<
 
 		const n8nInstance = new n8nPage(page, new ApiHelpers(page.context().request, apiOptions));
 		await n8nInstance.api.setupFromTags(testInfo.tags);
-		await n8nInstance.start.withProjectFeatures();
+
+		// Auth fallback: untagged tests establish the owner session
+		const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
+		const cookies = await context.cookies();
+		const authCookie = cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
+		if (!hasAuthTag && !authCookie) {
+			await n8nInstance.api.signin('owner');
+		}
+
+		if (!testInfo.tags.includes('@auth:none')) {
+			await n8nInstance.start.withProjectFeatures();
+		}
 		await use(n8nInstance);
 	},
 	},

@@ -138,6 +138,12 @@ test.describe(
 				}
 			});
 
+			// Verify that an explicit API call through the page request context routes to the backend
+			const settingsResponse = await n8n.page.request.get('/rest/settings');
+			expect(settingsResponse.ok()).toBe(true);
+			const settingsData = (await settingsResponse.json()) as { data?: unknown };
+			expect(settingsData).toHaveProperty('data');
+
 			await n8n.start.fromHome();
 
 			const frontendOrigin = new URL(n8n.page.url()).origin;
