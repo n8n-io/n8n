@@ -73,9 +73,7 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	// `extendsCredential` is the only record that a node came from the app/service picker, and
-	// nothing re-derives it, so it has to survive the write intact.
-	test('keeps extendsCredential on a node', () => {
+	test('keeps node.extendsCredential, its value matches nodeCredentialType, nothing else on the node marks it as the app-picker variant', () => {
 		const result = CreateWorkflowPublicDto.safeParse({
 			...validPayload,
 			nodes: [{ ...validPayload.nodes[0], extendsCredential: 'datadogApi' }],
