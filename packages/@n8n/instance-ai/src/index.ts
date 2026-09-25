@@ -739,6 +739,7 @@ export {
 	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
 } from './types';
 export { ASK_USER_TOOL_ID } from './tools/tool-ids';
+export { resolveStartingToolMode } from './tools/tool-modes';
 export const classifyAttachments: typeof StructuredFileParserMod.classifyAttachments = lazyFunction(
 	() => loadStructuredFileParser().classifyAttachments,
 );

@@ -235,7 +235,10 @@ export type {
 	CredentialProvider,
 	ResolvedCredential,
 	CredentialListItem,
+	ToolModeDefinition,
+	ToolModesConfig,
 } from './types';
+export { SWITCH_MODE_TOOL_NAME } from './runtime/tools/tool-mode-manager';
 export { McpClient } from './sdk/mcp-client';
 export {
 	hasMcpMediaContent,

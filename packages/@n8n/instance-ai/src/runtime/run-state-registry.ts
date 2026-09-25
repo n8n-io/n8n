@@ -4,6 +4,7 @@ import type {
 	InstanceAiPromptConfiguration,
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiThreadStatusResponse,
+	InstanceAiToolMode,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -142,6 +143,11 @@ export class RunStateRegistry<TUser = unknown> {
 
 	/** Build mode captured at user-run entry and reused by follow-up runs. */
 	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
+	/** Starting tool mode. An `explicit` mode applies without the rollout flag. */
+	private readonly threadToolModes = new Map<
+		string,
+		{ mode: InstanceAiToolMode; explicit: boolean }
+	>();
 	private readonly threadSetupPanelEnabled = new Map<string, boolean>();
 
 	private readonly threadObserverThresholds = new Map<string, number>();
@@ -509,6 +515,21 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadBuildModes.get(threadId);
 	}
 
+	/** Retain the starting tool mode for internal follow-ups. An omitted selection clears it. */
+	setToolModeSelection(
+		threadId: string,
+		selection: { mode: InstanceAiToolMode; explicit: boolean } | undefined,
+	): void {
+		if (selection === undefined) this.threadToolModes.delete(threadId);
+		else this.threadToolModes.set(threadId, selection);
+	}
+
+	getToolModeSelection(
+		threadId: string,
+	): { mode: InstanceAiToolMode; explicit: boolean } | undefined {
+		return this.threadToolModes.get(threadId);
+	}
+
 	setSetupPanelEnabled(threadId: string, enabled: boolean): void {
 		this.threadSetupPanelEnabled.set(threadId, enabled);
 	}
@@ -696,6 +717,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadTimeZones.delete(threadId);
 		this.threadComputerUseChannels.delete(threadId);
 		this.threadBuildModes.delete(threadId);
+		this.threadToolModes.delete(threadId);
 		this.threadSetupPanelEnabled.delete(threadId);
 		this.threadObserverThresholds.delete(threadId);
 		this.threadPromptSelections.delete(threadId);
@@ -749,6 +771,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadTimeZones.clear();
 		this.threadComputerUseChannels.clear();
 		this.threadBuildModes.clear();
+		this.threadToolModes.clear();
 		this.threadSetupPanelEnabled.clear();
 		this.threadObserverThresholds.clear();
 		this.threadPromptSelections.clear();

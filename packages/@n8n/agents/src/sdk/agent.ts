@@ -29,6 +29,7 @@ import {
 	LOAD_TOOL_TOOL_NAME,
 	SEARCH_TOOLS_TOOL_NAME,
 } from '../runtime/tools/deferred-tool-manager';
+import { SWITCH_MODE_TOOL_NAME } from '../runtime/tools/tool-mode-manager';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
@@ -86,6 +87,7 @@ import type { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
+import type { ToolModesConfig } from '../types/sdk/tool-modes';
 import { modelConfigToId } from '../utils/model';
 import type { Workspace } from '../workspace/workspace';
 
@@ -182,6 +184,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private deferredTools: BuiltTool[] = [];
 
 	private deferredToolSearchTopK: number | undefined;
+
+	private toolModesConfig?: ToolModesConfig;
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -329,6 +333,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (options?.search?.topK !== undefined) {
 			this.deferredToolSearchTopK = options.search.topK;
 		}
+		return this;
+	}
+
+	/**
+	 * Group tools added with `.tool()` into named modes. Each run starts in
+	 * `initialMode`, and the model calls `switch_mode` to change the mode.
+	 */
+	toolModes(config: ToolModesConfig): this {
+		this.toolModesConfig = config;
 		return this;
 	}
 
@@ -1035,8 +1048,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		const reservedDeferredToolNames = new Set([
 			SEARCH_TOOLS_TOOL_NAME,
 			LOAD_TOOL_TOOL_NAME,
+			...(this.toolModesConfig ? [SWITCH_MODE_TOOL_NAME] : []),
 			...RUNTIME_SKILL_TOOL_NAMES,
 		]);
+		if (this.toolModesConfig && staticNames.has(SWITCH_MODE_TOOL_NAME)) {
+			throw new Error(`Tool name "${SWITCH_MODE_TOOL_NAME}" is reserved for tool modes`);
+		}
 		const deferredNames = new Set<string>();
 		const deferredCollisions: string[] = [];
 		for (const tool of finalDeferredTools) {
@@ -1052,6 +1069,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (deferredCollisions.length > 0) {
 			throw new Error(
 				`Deferred tool name collision — the following tool names resolve to duplicates or reserved tools: ${deferredCollisions.join(', ')}`,
+			);
+		}
+		const deferredModeTools = Object.values(this.toolModesConfig?.modes ?? {})
+			.flatMap((mode) => mode.tools)
+			.filter((name) => deferredNames.has(name));
+		if (deferredModeTools.length > 0) {
+			throw new Error(
+				`Tool modes can only scope tools added with .tool(), not deferred tools: ${[...new Set(deferredModeTools)].join(', ')}`,
 			);
 		}
 
@@ -1133,6 +1158,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(this.skillSource ? { skillSource: this.skillSource } : {}),
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
+			...(this.toolModesConfig ? { toolModes: this.toolModesConfig } : {}),
 			...(this.workspaceInstance?.filesystem && this.workspaceInstance.filesystem.readOnly !== true
 				? { workspaceFilesystem: this.workspaceInstance.filesystem }
 				: {}),

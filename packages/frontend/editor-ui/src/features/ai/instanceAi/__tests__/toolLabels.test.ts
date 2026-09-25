@@ -25,6 +25,8 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.n8n-docs.lookup': 'Reading n8n docs',
 				'instanceAi.tools.n8n-docs.search': 'Searching n8n docs',
 				'instanceAi.tools.n8n-docs.read': 'Opening n8n docs',
+				'instanceAi.tools.switch_mode': 'Switching tools',
+				'instanceAi.tools.switch_mode.debug': 'Switching to debugging tools',
 				'instanceAi.tools.list_skills': 'Checking available skills',
 				'instanceAi.tools.load_skill': 'Opening skill',
 				'instanceAi.tools.load_skill.asset': 'Opening',
@@ -132,6 +134,10 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('conversation-history')).toBe('message-square');
 	});
 
+	test('returns arrow-left-right for the switch_mode tool', () => {
+		expect(getToolIcon('switch_mode')).toBe('arrow-left-right');
+	});
+
 	test('returns wrench as default', () => {
 		expect(getToolIcon('unknown-tool')).toBe('wrench');
 	});
@@ -161,6 +167,13 @@ describe('useToolLabel', () => {
 				filePath: 'scripts/import-rows.mjs',
 			}),
 		).toBe('Inspecting import rows script');
+	});
+
+	test('getToolLabel names the target mode of a switch_mode call', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('switch_mode', { mode: 'debug' })).toBe('Switching to debugging tools');
+		expect(getToolLabel('switch_mode', { mode: 'unknown' })).toBe('Switching tools');
+		expect(getToolLabel('switch_mode')).toBe('Switching tools');
 	});
 
 	test('getToolLabel humanizes builder tools via i18n keys for the stable tool IDs', () => {

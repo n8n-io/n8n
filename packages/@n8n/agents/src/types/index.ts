@@ -198,6 +198,8 @@ export type {
 
 export type { AgentBuilder } from './sdk/agent-builder';
 
+export type { ToolModeDefinition, ToolModesConfig } from './sdk/tool-modes';
+
 export type {
 	CredentialProvider,
 	ResolvedCredential,

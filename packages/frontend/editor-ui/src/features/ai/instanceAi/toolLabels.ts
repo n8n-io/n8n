@@ -120,6 +120,7 @@ export function getToolIcon(toolName: string): IconName {
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
+	if (toolName === 'switch_mode') return 'arrow-left-right';
 	if (toolName === 'credentials') return 'key-round';
 	if (toolName === 'updateWorkingMemory') return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
@@ -177,7 +178,9 @@ export function useToolLabel() {
 			return i18n.baseText('instanceAi.tools.workspace_execute_command.skill');
 		}
 
-		const action = typeof args?.action === 'string' ? args.action : undefined;
+		// `switch_mode` names its variant `mode`; the other tools name it `action`.
+		const actionArg = toolName === 'switch_mode' ? args?.mode : args?.action;
+		const action = typeof actionArg === 'string' ? actionArg : undefined;
 		if (action) {
 			const actionKey = `instanceAi.tools.${toolName}.${action}` as BaseTextKey;
 			const actionTranslated = i18n.baseText(actionKey);

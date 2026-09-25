@@ -251,6 +251,7 @@ export class InstanceAiController {
 			payload.computerUseChannels,
 			payload.threadArtifacts,
 			payload.observerThresholdTokens,
+			payload.toolMode,
 		);
 		return { runId };
 	}

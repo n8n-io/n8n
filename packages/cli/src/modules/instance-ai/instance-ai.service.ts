@@ -15,10 +15,12 @@ import {
 	credentialSetupHintSchema,
 	formatAttachmentSizeLimit,
 	instanceAiBuildModeSchema,
+	instanceAiToolModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type ComputerUseChannel,
 	type InstanceAiBuildMode,
+	type InstanceAiToolMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
@@ -55,6 +57,7 @@ import {
 	createLazyWorkspaceRuntimeSkillSource,
 	loadInstanceAiPromptSkills,
 	resolvePromptProfile,
+	resolveStartingToolMode,
 	describePromptProfile,
 	setTracePromptVersion,
 	setTraceModelId,
@@ -1239,6 +1242,7 @@ export class InstanceAiService {
 				hostMetadata: {
 					buildMode: this.runState.getBuildMode(threadId) ?? null,
 					promptVersion: this.runState.getPromptVersion(threadId) ?? null,
+					toolMode: this.getAppliedToolMode(threadId) ?? null,
 				},
 			},
 			providerOptions: {
@@ -1248,6 +1252,12 @@ export class InstanceAiService {
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
 				: {}),
 		};
+	}
+
+	/** The tool mode that environment creation applied, or `undefined` when tool modes are off. */
+	private getAppliedToolMode(threadId: string): InstanceAiToolMode | undefined {
+		const selection = this.runState.getToolModeSelection(threadId);
+		return selection?.explicit ? selection.mode : undefined;
 	}
 
 	private buildOrchestratorResumeAgentOptions(
@@ -1275,6 +1285,7 @@ export class InstanceAiService {
 				hostMetadata: {
 					buildMode: this.runState.getBuildMode(threadId) ?? null,
 					promptVersion: this.runState.getPromptVersion(threadId) ?? null,
+					toolMode: this.getAppliedToolMode(threadId) ?? null,
 				},
 			},
 			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
@@ -1419,6 +1430,7 @@ export class InstanceAiService {
 		computerUseChannels?: ComputerUseChannel[],
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
 		observerThresholdTokens?: number,
+		toolMode?: InstanceAiToolMode,
 	): string {
 		if (
 			promptVersion !== undefined &&
@@ -1449,6 +1461,15 @@ export class InstanceAiService {
 		this.runState.setBuildMode(threadId, mode);
 		this.runState.setPromptVersion(threadId, promptVersion);
 		this.runState.setObserverThresholdTokens(threadId, observerThresholdTokens);
+		// Environment creation applies the rollout flag to a mode that the user did not pick.
+		this.runState.setToolModeSelection(threadId, {
+			mode: resolveStartingToolMode({
+				requested: toolMode,
+				handoffContext: context,
+				threadArtifacts,
+			}),
+			explicit: toolMode !== undefined,
+		});
 
 		if (pushRef !== undefined) {
 			this.threadPushRef.set(threadId, pushRef);
@@ -2318,6 +2339,7 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
+			toolModesEnabled,
 			setupPanelEnabled,
 			setupPanelVariant,
 			folderExplorationEnabled,
@@ -2340,6 +2362,14 @@ export class InstanceAiService {
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
+		const toolModeSelection = this.runState.getToolModeSelection(threadId);
+		const toolMode =
+			toolModeSelection &&
+			(toolModeSelection.explicit || toolModesEnabled || this.instanceAiConfig.toolModesEnabled)
+				? toolModeSelection.mode
+				: undefined;
+		// Follow-ups and resumed runs retain the mode if the flag changes.
+		if (toolMode) this.runState.setToolModeSelection(threadId, { mode: toolMode, explicit: true });
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2580,6 +2610,7 @@ export class InstanceAiService {
 			projectId: boundProjectId,
 			promptConfiguration: promptMetadata,
 			disabledToolNames: new Set(selectedSkills.disabledTools),
+			toolMode,
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
@@ -4380,6 +4411,13 @@ export class InstanceAiService {
 			this.runState.setPromptVersion(
 				orphan.threadId,
 				typeof version === 'string' ? version : undefined,
+			);
+			const toolMode = instanceAiToolModeSchema.safeParse(
+				state.persistence?.hostMetadata?.toolMode,
+			);
+			this.runState.setToolModeSelection(
+				orphan.threadId,
+				toolMode.success ? { mode: toolMode.data, explicit: true } : undefined,
 			);
 		} catch (error: unknown) {
 			return { kind: 'no-checkpoint', error };

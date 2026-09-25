@@ -45,6 +45,7 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_THINKING_ENABLED` | boolean | `true` | Extended thinking / reasoning. When `false`, reasoning is not enabled on the model. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflows(action="list")`). `false` falls back to the PostHog flag. |
+| `N8N_INSTANCE_AI_TOOL_MODES_ENABLED` | boolean | `false` | Force-enable tool modes. The orchestrator binds only the tools of its current mode and calls `switch_mode` to change it. `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Computer Use browser tooling, used for credential setup. |
 | `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
 | `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Assistant messages that must be sent, in addition to instance activation, before an activation lock applies. |

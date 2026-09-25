@@ -15,6 +15,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	const profiles = await vi.importActual<typeof import('@n8n/instance-ai')>('@n8n/instance-ai');
 	return {
 		resolvePromptProfile: profiles.resolvePromptProfile,
+		resolveStartingToolMode: profiles.resolveStartingToolMode,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
@@ -300,6 +301,8 @@ type StartRunServiceInternals = {
 		setComputerUseChannels: Mock;
 		getComputerUseChannels: Mock;
 		setBuildMode: MockedFunction<(threadId: string, mode: string | undefined) => void>;
+		setToolModeSelection: Mock;
+		getToolModeSelection: Mock;
 		setPromptVersion: Mock;
 		setObserverThresholdTokens: Mock;
 		activeRunCount: MockedFunction<() => number>;
@@ -328,6 +331,8 @@ function createStartRunService(): StartRunServiceInternals {
 		setComputerUseChannels: vi.fn(),
 		getComputerUseChannels: vi.fn(() => undefined),
 		setBuildMode: vi.fn(),
+		setToolModeSelection: vi.fn(),
+		getToolModeSelection: vi.fn(() => undefined),
 		setPromptVersion: vi.fn(),
 		setObserverThresholdTokens: vi.fn(),
 		activeRunCount: vi.fn(() => 0),
@@ -496,6 +501,8 @@ type TerminalGuardOrderServiceInternals = {
 	finalizeCancelledSuspendedRun: (run: SuspendedRunState<User>, reason?: string) => Promise<void>;
 	runState: {
 		setBuildMode: Mock;
+		setToolModeSelection: Mock;
+		getToolModeSelection: Mock;
 		setPromptVersion: Mock;
 		getBuildMode: Mock;
 		getPromptVersion: Mock;
@@ -619,6 +626,8 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	) as unknown as TerminalGuardOrderServiceInternals;
 	service.runState = {
 		setBuildMode: vi.fn(),
+		setToolModeSelection: vi.fn(),
+		getToolModeSelection: vi.fn(() => undefined),
 		setPromptVersion: vi.fn(),
 		getBuildMode: vi.fn(() => undefined),
 		getPromptVersion: vi.fn(),
@@ -867,6 +876,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getPromptConfiguration: Mock;
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
+				setToolModeSelection: Mock;
+				getToolModeSelection: Mock;
 				setSetupPanelEnabled: Mock;
 				setPromptVersion: Mock;
 				setObserverThresholdTokens: Mock;
@@ -943,6 +954,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getPromptConfiguration: vi.fn(),
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
+			setToolModeSelection: vi.fn(),
+			getToolModeSelection: vi.fn(() => undefined),
 			setSetupPanelEnabled: vi.fn(),
 			setPromptVersion: vi.fn(),
 			setObserverThresholdTokens: vi.fn(),
@@ -1217,6 +1230,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getPromptConfiguration: Mock;
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
+				setToolModeSelection: Mock;
+				getToolModeSelection: Mock;
 				setSetupPanelEnabled: Mock;
 				setPromptVersion: Mock;
 				setObserverThresholdTokens: Mock;
@@ -1287,6 +1302,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getPromptConfiguration: vi.fn(),
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
+			setToolModeSelection: vi.fn(),
+			getToolModeSelection: vi.fn(() => undefined),
 			setSetupPanelEnabled: vi.fn(),
 			setPromptVersion: vi.fn(),
 			setObserverThresholdTokens: vi.fn(),

@@ -54,6 +54,7 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
+import type { ToolModesConfig } from '../../types/sdk/tool-modes';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
 import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
@@ -78,6 +79,7 @@ import { startStreamSession } from '../streaming/stream-session';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
+import { ToolModeManager } from '../tools/tool-mode-manager';
 import {
 	ToolCallExecutor,
 	type PendingResume,
@@ -107,6 +109,7 @@ export interface AgentRuntimeConfig {
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
+	toolModes?: ToolModesConfig;
 	workspaceFilesystem?: WorkspaceFilesystem;
 	toolSearch?: {
 		topK?: number;
@@ -230,15 +233,19 @@ export class AgentRuntime {
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
+		const toolModeManager = config.toolModes ? new ToolModeManager(config.toolModes) : undefined;
 		if (config.deferredTools && config.deferredTools.length > 0) {
 			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
 				...config.toolSearch,
 				// Let the discovery tools recognize the always-available toolset, so a
-				// `load_tool` call for one of those answers `already_loaded`.
-				activeTools: config.tools,
+				// `load_tool` call for one of those answers `already_loaded`. Mode-scoped
+				// tools are left out: they are not always available.
+				activeTools: toolModeManager
+					? config.tools?.filter((tool) => !toolModeManager.isModeScoped(tool.name))
+					: config.tools,
 			});
 		}
-		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
+		this.context = new RuntimeContextBuilder(config, this.deferredToolManager, toolModeManager);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
 		this.memory = new MemoryOrchestrator(
@@ -405,7 +412,7 @@ export class AgentRuntime {
 		}
 
 		const list = AgentMessageList.deserialize(state.messageList);
-		this.context.hydrateDeferredToolsFromList(list);
+		this.context.hydrateToolStateFromList(list);
 		await hydrateFileParts(list.messages(), this.config.fileStore, {
 			threadId: state.persistence?.threadId,
 		});
@@ -581,7 +588,7 @@ export class AgentRuntime {
 		}
 
 		const list = AgentMessageList.deserialize(state.messageList);
-		this.context.hydrateDeferredToolsFromList(list);
+		this.context.hydrateToolStateFromList(list);
 		await hydrateFileParts(list.messages(), this.config.fileStore, {
 			threadId: state.persistence?.threadId,
 		});
@@ -795,7 +802,7 @@ export class AgentRuntime {
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { list, options, abortScope, pendingResume } = ctx;
 		await this.activeSkills?.restore(list, options?.persistence);
-		this.context.hydrateDeferredToolsFromList(list);
+		this.context.hydrateToolStateFromList(list);
 		// Inject a model-facing note for any MCP servers that failed to connect
 		// during build(). The agent can mention the outage to the user when
 		// relevant; the note is system-message only and never persisted.

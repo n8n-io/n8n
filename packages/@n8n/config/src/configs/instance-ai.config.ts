@@ -220,6 +220,14 @@ export class InstanceAiConfig {
 	folderExplorationEnabled: boolean = false;
 
 	/**
+	 * Force-enable tool modes: the orchestrator binds only the tools of its
+	 * current mode and calls `switch_mode` to change it. Overrides the
+	 * `123_instance_ai_tool_modes` PostHog flag to on. `false` falls back to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_TOOL_MODES_ENABLED')
+	toolModesEnabled: boolean = true;
+
+	/**
 	 * Activation-capped trial variant for n8n cloud experiment.
 	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
 	 */

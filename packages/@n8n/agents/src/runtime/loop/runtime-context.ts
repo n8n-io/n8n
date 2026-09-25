@@ -31,6 +31,7 @@ import {
 	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
+import type { ToolModeManager } from '../tools/tool-mode-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
 /** Wrap tool-instruction fragments in a `<built_in_rules>` block, or `undefined` when there are none. */
@@ -58,6 +59,7 @@ export class RuntimeContextBuilder {
 	constructor(
 		private readonly config: AgentRuntimeConfig,
 		private readonly deferredToolManager: DeferredToolManager | undefined,
+		private readonly toolModeManager?: ToolModeManager,
 	) {}
 
 	get modelId(): string {
@@ -119,7 +121,10 @@ export class RuntimeContextBuilder {
 			aiTools: allTools,
 			hasTools: aiToolCount > 0,
 			effectiveInstructions,
-			volatileInstructions,
+			volatileInstructions:
+				[volatileInstructions, this.toolModeManager?.instructions()]
+					.filter((value): value is string => Boolean(value))
+					.join('\n\n') || undefined,
 			staticToolCacheName: this.getStaticToolCacheName(allUserTools),
 		};
 	}
@@ -129,10 +134,10 @@ export class RuntimeContextBuilder {
 	 * breakpoint, or `undefined` if the tool set isn't fully static. Deferred
 	 * (controller/loaded) tools can appear mid-conversation via `load_tool`, so
 	 * they disqualify caching — marking a tool block that later changes would
-	 * invalidate the cache.
+	 * invalidate the cache. A mode switch changes the tool set in the same way.
 	 */
 	private getStaticToolCacheName(allUserTools: BuiltTool[]): string | undefined {
-		if (this.deferredToolManager?.hasTools) return undefined;
+		if (this.deferredToolManager?.hasTools || this.toolModeManager) return undefined;
 		return allUserTools.at(-1)?.name;
 	}
 
@@ -141,7 +146,13 @@ export class RuntimeContextBuilder {
 		executionCounter?: AgentExecutionCounter,
 		list?: AgentMessageList,
 	): BuiltTool[] {
-		const baseTools = this.config.tools ?? [];
+		const modeManager = this.toolModeManager;
+		const baseTools = modeManager
+			? [
+					...(this.config.tools ?? []).filter((tool) => modeManager.isVisible(tool.name)),
+					modeManager.getControllerTool(),
+				]
+			: (this.config.tools ?? []);
 		const tools = [
 			...baseTools,
 			...(this.deferredToolManager?.hasTools
@@ -158,7 +169,9 @@ export class RuntimeContextBuilder {
 		return flagTool ? [...toolsWithRecall, flagTool] : toolsWithRecall;
 	}
 
-	hydrateDeferredToolsFromList(list: AgentMessageList): void {
+	/** Restore loaded deferred tools and the tool mode from the message list. */
+	hydrateToolStateFromList(list: AgentMessageList): void {
+		this.toolModeManager?.hydrateFromMessages(list.responseDelta());
 		if (!this.deferredToolManager?.hasTools) return;
 		this.deferredToolManager.hydrateLoadedToolsFromMessages(list.serialize().messages);
 	}

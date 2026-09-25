@@ -83,7 +83,11 @@ describe('InstanceAiService build mode recovery', () => {
 				orphan.runId,
 				signal,
 			);
-			expect(persistence.hostMetadata).toEqual({ buildMode: mode, promptVersion: `${mode}@1` });
+			expect(persistence.hostMetadata).toEqual({
+				buildMode: mode,
+				promptVersion: `${mode}@1`,
+				toolMode: null,
+			});
 
 			const checkpoint = mock<SerializableAgentState>({
 				persistence: structuredClone(persistence),
@@ -107,6 +111,7 @@ describe('InstanceAiService build mode recovery', () => {
 			expect(resumed.persistence.hostMetadata).toEqual({
 				buildMode: mode,
 				promptVersion: `${mode}@1`,
+				toolMode: null,
 			});
 		},
 	);

@@ -20,6 +20,7 @@ import type {
 	EvaluationMetric,
 	TaskList,
 	InstanceAiPromptConfiguration,
+	InstanceAiToolMode,
 	InstanceAiFileAttachment,
 	ComputerUseChannel,
 	InstanceAiPermissions,
@@ -1988,6 +1989,8 @@ export interface OrchestrationContext {
 	/** The selected prompt profile owns its skill and tool exclusions. */
 	promptConfiguration?: InstanceAiPromptConfiguration;
 	disabledToolNames?: ReadonlySet<string>;
+	/** Mode the run starts in. When unset, the orchestrator binds all always-loaded tools. */
+	toolMode?: InstanceAiToolMode;
 	/** Setup panel v2 flag, mirrored from the domain context's `setupItemsEmitter` presence. */
 	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;

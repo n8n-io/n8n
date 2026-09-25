@@ -219,6 +219,7 @@ describe('InstanceAiController', () => {
 				payload.computerUseChannels,
 				payload.threadArtifacts,
 				payload.observerThresholdTokens,
+				payload.toolMode,
 			);
 		});
 
@@ -252,6 +253,7 @@ describe('InstanceAiController', () => {
 				payloadWithArtifacts.computerUseChannels,
 				payloadWithArtifacts.threadArtifacts,
 				payloadWithArtifacts.observerThresholdTokens,
+				payloadWithArtifacts.toolMode,
 			);
 		});
 
@@ -271,7 +273,7 @@ describe('InstanceAiController', () => {
 			await controller.chat(evalReq, res, THREAD_ID, evalPayload);
 
 			const args = instanceAiService.startRun.mock.calls[0];
-			expect(args[args.length - 1]).toBe(1000);
+			expect(args[11]).toBe(1000);
 		});
 
 		it('rejects the observer threshold override from a caller without the eval scope', async () => {
@@ -330,6 +332,7 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.computerUseChannels,
 				payloadWithPushRef.threadArtifacts,
 				payloadWithPushRef.observerThresholdTokens,
+				payloadWithPushRef.toolMode,
 			);
 		});
 
@@ -361,6 +364,7 @@ describe('InstanceAiController', () => {
 				payloadWithMode.computerUseChannels,
 				payloadWithMode.threadArtifacts,
 				payloadWithMode.observerThresholdTokens,
+				payloadWithMode.toolMode,
 			);
 		});
 
@@ -399,6 +403,7 @@ describe('InstanceAiController', () => {
 				payloadWithContext.computerUseChannels,
 				payloadWithContext.threadArtifacts,
 				payloadWithContext.observerThresholdTokens,
+				payloadWithContext.toolMode,
 			);
 		});
 
@@ -505,6 +510,7 @@ describe('InstanceAiController', () => {
 				nodesPayload.computerUseChannels,
 				nodesPayload.threadArtifacts,
 				nodesPayload.observerThresholdTokens,
+				nodesPayload.toolMode,
 			);
 		});
 

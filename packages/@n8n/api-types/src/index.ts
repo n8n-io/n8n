@@ -427,6 +427,8 @@ export {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_TOOL_MODES_FLAG,
+	INSTANCE_AI_TOOL_MODES_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
@@ -514,12 +516,14 @@ export {
 	INSTANCE_AI_PREFILL_TYPES,
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	instanceAiBuildModeSchema,
+	instanceAiToolModeSchema,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
 } from './schemas/instance-ai.schema';
 
 export type {
 	InstanceAiBuildMode,
+	InstanceAiToolMode,
 	InstanceAiPromptConfiguration,
 	InstanceAiPrefillType,
 	InstanceAiPrefillTypeReported,

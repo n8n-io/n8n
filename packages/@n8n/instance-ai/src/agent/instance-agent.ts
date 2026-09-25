@@ -23,6 +23,7 @@ import {
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../tools/tool-ids';
+import { createToolModesConfig } from '../tools/tool-modes';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -234,6 +235,11 @@ export async function createInstanceAgent(
 		})
 		.tool(toolRegistryValues(runtimeTools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	if (orchestrationContext?.toolMode) {
+		agent.toolModes(
+			createToolModesConfig(orchestrationContext.toolMode, new Set(runtimeTools.keys())),
+		);
+	}
 	if (mcpConnectionFailures.length > 0) {
 		agent.mcpConnectionFailures(mcpConnectionFailures);
 	}

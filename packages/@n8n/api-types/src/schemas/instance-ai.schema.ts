@@ -1598,6 +1598,13 @@ export type InstanceAiThreadArtifactsContext = z.infer<
 export const instanceAiBuildModeSchema = z.enum(['default', 'progressive']);
 export type InstanceAiBuildMode = z.infer<typeof instanceAiBuildModeSchema>;
 
+/**
+ * Tool set a run starts with. Each mode binds its own tools next to the shared
+ * tools, and the agent can switch modes during the run.
+ */
+export const instanceAiToolModeSchema = z.enum(['general', 'build', 'debug', 'data', 'agents']);
+export type InstanceAiToolMode = z.infer<typeof instanceAiToolModeSchema>;
+
 export const instanceAiPromptConfigurationSchema = z.object({
 	version: z.string(),
 	systemPromptVersion: z.string(),
@@ -1631,6 +1638,8 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	mode: instanceAiBuildModeSchema.optional(),
 	/** Pin a published prompt profile. Takes precedence over mode. */
 	promptVersion: z.string().trim().min(1).max(128).optional(),
+	/** Tool mode picked by the user. Omit to select it from the current page. */
+	toolMode: instanceAiToolModeSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
 	 *  for one case does not lower it for every conversation on the instance. */
 	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
@@ -2665,6 +2674,10 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
 
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
+
+/** Selects the orchestrator's tools by tool mode instead of binding all of them. */
+export const INSTANCE_AI_TOOL_MODES_FLAG = '123_instance_ai_tool_modes';
+export const INSTANCE_AI_TOOL_MODES_ENABLED_VARIANT = 'variant';
 
 /** Enables the node-usage context surface for Instance AI: the `node-usage`
 
