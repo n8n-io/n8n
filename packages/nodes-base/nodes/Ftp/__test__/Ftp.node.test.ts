@@ -1,5 +1,10 @@
 import { mockDeep } from 'vitest-mock-extended';
-import type { IExecuteFunctions, NodeExecutionWithMetadata } from 'n8n-workflow';
+import type {
+	ICredentialTestFunctions,
+	ICredentialsDecrypted,
+	IExecuteFunctions,
+	NodeExecutionWithMetadata,
+} from 'n8n-workflow';
 import type PromiseFtp from 'promise-ftp';
 import * as ftpModule from 'promise-ftp';
 import type sftp from 'ssh2-sftp-client';
@@ -35,8 +40,9 @@ describe('Ftp', () => {
 		executeFunctions.getCredentials.mockResolvedValue({
 			host: 'test.com',
 			port: 21,
-			user: 'test',
+			username: 'test',
 			password: 'test',
+			forcePasv: true,
 		});
 		executeFunctions.getNodeParameter.mockImplementation((parameterName, _idx, defaultValue) => {
 			switch (parameterName) {
@@ -60,8 +66,38 @@ describe('Ftp', () => {
 		expect(connect).toHaveBeenCalledWith(
 			expect.objectContaining({
 				connTimeout: 12345,
+				forcePasv: true,
 			}),
 		);
+	});
+
+	it('should pass Force PASV to the FTP credential test', async () => {
+		const connect = vi.fn();
+		vi.spyOn(ftpModule, 'default').mockImplementation(function () {
+			return { connect, end: vi.fn() } as unknown as PromiseFtp;
+		});
+
+		const credentialTestFunctions = mockDeep<ICredentialTestFunctions>();
+		const credential: ICredentialsDecrypted = {
+			id: 'test-credential',
+			name: 'Test FTP credential',
+			type: 'ftp',
+			data: {
+				host: 'test.com',
+				port: 21,
+				username: 'test',
+				password: 'test',
+				forcePasv: true,
+			},
+		};
+
+		const result = await new Ftp().methods.credentialTest.ftpConnectionTest.call(
+			credentialTestFunctions,
+			credential,
+		);
+
+		expect(result).toEqual({ status: 'OK', message: 'Connection successful!' });
+		expect(connect).toHaveBeenCalledWith(expect.objectContaining({ forcePasv: true }));
 	});
 
 	it('should add timeout option with sftp without private key', async () => {

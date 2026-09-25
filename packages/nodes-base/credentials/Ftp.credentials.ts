@@ -38,5 +38,13 @@ export class Ftp implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'Force PASV',
+			name: 'forcePasv',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to use PASV instead of EPSV for FTP data connections. Enable this for servers that advertise EPSV but do not support it.',
+		},
 	];
 }
