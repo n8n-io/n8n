@@ -1,4 +1,4 @@
-import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
+import type { BuiltTool, CredentialListItem, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	channelSuspendPayloadSchema,
@@ -14,14 +14,14 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import type { BuilderTrackFn } from '../builder-config-telemetry';
 import { BUILDER_TOOLS } from '../builder-tool-names';
+import type { ChannelSetupDeps, CredentialSetupDeps } from './setup-tool.types';
 
 /** Filter an already-fetched credential list down to one type, in the shape setup cards need. */
 function credentialsOfType(
-	all: Array<{ id: string; name: string; type: string }>,
+	all: CredentialListItem[],
 	credentialType: string,
-): Array<{ id: string; name: string }> {
+): Array<Pick<CredentialListItem, 'id' | 'name'>> {
 	return all.filter((c) => c.type === credentialType).map((c) => ({ id: c.id, name: c.name }));
 }
 
@@ -38,16 +38,7 @@ async function credentialNameById(
 	}
 }
 
-export interface FinishSetupToolDeps {
-	credentialService: InstanceAiCredentialService;
-	agentId: string;
-	projectId: string;
-	track: BuilderTrackFn;
-	isCredentialTypeKnown?: (credentialType: string) => boolean;
-	/** Credential ids of the agent's configured chat channel integrations — reused for a matching credential slot. */
-	listIntegrationCredentialIds?: () => Promise<string[]>;
-	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
-	listChatIntegrationTypes: () => string[];
+export interface FinishSetupToolDeps extends CredentialSetupDeps, ChannelSetupDeps {
 	/**
 	 * Credential types whose every required node-tool slot is already served by an
 	 * n8n Connect managed credential — a card for these is redundant. A type still
@@ -363,7 +354,7 @@ async function suspendForPhase(params: {
 	const credentialRequests: Array<{
 		credentialType: string;
 		reason: string;
-		existingCredentials: Array<{ id: string; name: string }>;
+		existingCredentials: Array<Pick<CredentialListItem, 'id' | 'name'>>;
 	}> = [];
 	for (const slot of phase.slots) {
 		if (seenTypes.has(slot.credentialType)) continue;

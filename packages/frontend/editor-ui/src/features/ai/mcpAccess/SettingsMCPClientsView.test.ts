@@ -8,15 +8,17 @@ import SettingsMCPClientsView from '@/features/ai/mcpAccess/SettingsMCPClientsVi
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { FrontendSettings } from '@n8n/api-types';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-const { routerPush, routerReplace } = vi.hoisted(() => ({
+const { routerPush, routerReplace, route } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	routerReplace: vi.fn(),
+	route: { params: {}, query: {} as Record<string, string> },
 }));
 
 const { trackSpy } = vi.hoisted(() => ({ trackSpy: vi.fn() }));
@@ -28,9 +30,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRouter: () => ({ push: routerPush, replace: routerReplace }),
-	useRoute: vi.fn(() => ({
-		params: {},
-	})),
+	useRoute: vi.fn(() => route),
 	RouterLink: {
 		template: '<a><slot /></a>',
 	},
@@ -46,6 +46,7 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let usersStore: MockedStore<typeof useUsersStore>;
+let rbacStore: MockedStore<typeof useRBACStore>;
 
 const createComponent = createComponentRenderer(SettingsMCPClientsView, {
 	global: {
@@ -65,6 +66,10 @@ describe('SettingsMCPClientsView', () => {
 		mcpStore = mockedStore(useMCPStore);
 		settingsStore = mockedStore(useSettingsStore);
 		usersStore = mockedStore(useUsersStore);
+		rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockReturnValue(false);
+		route.query = {};
+		mcpStore.oauthClientsOwnership = 'mine';
 
 		// The stub row's consent belongs to user-2, so a different current user is
 		// what makes revoked_for_other meaningful rather than trivially true.
@@ -142,7 +147,10 @@ describe('SettingsMCPClientsView', () => {
 		await userEvent.click(within(document.body).getByRole('button', { name: 'Revoke' }));
 
 		await waitFor(() => {
-			expect(mcpStore.removeOAuthClient).toHaveBeenCalledWith('client-1', 'user-2');
+			// The clients page shows the list, so it lets the store refetch it.
+			expect(mcpStore.removeOAuthClient).toHaveBeenCalledWith('client-1', 'user-2', {
+				refreshList: true,
+			});
 		});
 	});
 
@@ -203,6 +211,71 @@ describe('SettingsMCPClientsView', () => {
 
 		await waitFor(() => {
 			expect(trackSpy).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.USER_VIEWED_ALL_MCP_CLIENTS, {});
+		});
+	});
+
+	it('should reflect a tab switch in the URL before the fetch settles', async () => {
+		// Keep the fetch pending: the URL must follow the user's choice, not the
+		// (possibly slower, possibly superseded) response.
+		mcpStore.setOAuthClientsOwnership.mockReturnValue(new Promise<void>(() => {}));
+
+		const { getByTestId } = createComponent({ pinia });
+		await nextTick();
+
+		await userEvent.click(getByTestId('stub-ownership-all'));
+
+		expect(routerReplace).toHaveBeenCalledWith({ query: { tab: 'all' } });
+	});
+
+	describe('?tab deep link', () => {
+		it("should open everyone's clients for a manager", async () => {
+			rbacStore.hasScope.mockReturnValue(true);
+			route.query = { tab: 'all' };
+
+			createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.setOAuthClientsOwnership).toHaveBeenCalledWith('all');
+			});
+			expect(mcpStore.getAllOAuthClients).not.toHaveBeenCalled();
+			expect(trackSpy).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.USER_VIEWED_ALL_MCP_CLIENTS, {});
+		});
+
+		it("should stay on the user's own clients without mcp:manage", async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			route.query = { tab: 'all' };
+
+			createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
+			});
+			expect(mcpStore.setOAuthClientsOwnership).not.toHaveBeenCalled();
+		});
+
+		it("should switch back to the user's own clients when the store is on everyone's", async () => {
+			rbacStore.hasScope.mockReturnValue(true);
+			mcpStore.oauthClientsOwnership = 'all';
+			route.query = { tab: 'mine' };
+
+			createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.setOAuthClientsOwnership).toHaveBeenCalledWith('mine');
+			});
+		});
+
+		it('should just fetch when the requested tab is already active', async () => {
+			rbacStore.hasScope.mockReturnValue(true);
+			mcpStore.oauthClientsOwnership = 'all';
+			route.query = { tab: 'all' };
+
+			createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
+			});
+			expect(mcpStore.setOAuthClientsOwnership).not.toHaveBeenCalled();
 		});
 	});
 });

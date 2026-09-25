@@ -63,14 +63,14 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 }));
 
 const {
-	mcpConnectionsExperimentMock,
 	computerUseExperimentMock,
 	browserUseExperimentMock,
+	contextPreferencesEnabledMock,
 	routerPushMock,
 } = vi.hoisted(() => ({
-	mcpConnectionsExperimentMock: vi.fn(),
 	browserUseExperimentMock: vi.fn(),
 	computerUseExperimentMock: vi.fn(),
+	contextPreferencesEnabledMock: vi.fn(() => true),
 	routerPushMock: vi.fn(),
 }));
 
@@ -79,16 +79,16 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: () => ({ push: routerPushMock }),
 }));
 
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: mcpConnectionsExperimentMock,
-}));
-
 vi.mock('@/experiments/instanceAiBrowserUse', () => ({
 	useInstanceAiBrowserUseExperiment: browserUseExperimentMock,
 }));
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	useInstanceAiComputerUseExperiment: computerUseExperimentMock,
+}));
+
+vi.mock('@/features/settings/context/context.utils', () => ({
+	isContextPreferencesEnabled: () => contextPreferencesEnabledMock(),
 }));
 
 const renderComponent = createComponentRenderer(SettingsInstanceAiView);
@@ -114,7 +114,6 @@ describe('SettingsInstanceAiView', () => {
 		vi.clearAllMocks();
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
-		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
@@ -619,22 +618,51 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
 		});
 
-		it('hides the MCP settings card when the connections experiment is disabled', () => {
-			mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+		it('offers only always_allow and blocked for createPreference', async () => {
+			// N8nSelect (element-plus) teleports its option list to the document
+			// body and only mounts it once open, so the options never show up in
+			// `select.textContent`. Open the select and read the teleported list
+			// instead of the select's own DOM subtree.
+			const { getByTestId, getByLabelText, queryAllByText } = renderComponent();
+			await fireEvent.click(
+				getByLabelText('Toggle settings.n8nAgent.permissions.group.preferences'),
+			);
+			const select = await waitFor(() => getByTestId('n8n-agent-permission-createPreference'));
+			expect(select).toBeVisible();
 
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('n8n-agent-mcp-access-toggle')).toBeNull();
-			expect(queryByTestId('n8n-agent-permission-group-mcp')).toBeNull();
+			await fireEvent.click(select.querySelector('input')!);
+			await waitFor(() =>
+				expect(queryAllByText('settings.n8nAgent.permissions.alwaysAllow').length).toBeGreaterThan(
+					0,
+				),
+			);
+			expect(queryAllByText('settings.n8nAgent.permissions.blocked').length).toBeGreaterThan(0);
+			expect(queryAllByText('settings.n8nAgent.permissions.needsApproval')).toHaveLength(0);
 		});
 	});
 
 	describe('Permissions groups', () => {
 		it('renders a row per permission group', () => {
 			const { getByTestId } = renderComponent();
-			for (const group of ['workflows', 'folders', 'dataTables', 'credentials', 'system', 'web']) {
+			for (const group of [
+				'workflows',
+				'nodes',
+				'folders',
+				'dataTables',
+				'credentials',
+				'system',
+				'web',
+			]) {
 				expect(getByTestId(`n8n-agent-permission-group-${group}`)).toBeVisible();
 			}
+		});
+
+		it('shows the Execute a node permission when the Nodes group is expanded', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+
+			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.nodes'));
+
+			await waitFor(() => expect(getByTestId('n8n-agent-permission-executeNode')).toBeVisible());
 		});
 
 		it('summarises non-default permissions as exceptions', () => {
@@ -650,6 +678,25 @@ describe('SettingsInstanceAiView', () => {
 				'settings.n8nAgent.permissions.group.exceptions',
 			);
 			expect(getByTestId('n8n-agent-permission-group-folders').textContent).toContain(
+				'settings.n8nAgent.permissions.group.default',
+			);
+		});
+
+		it('hides the Preferences group while the 111_context_preferences flag is off', () => {
+			contextPreferencesEnabledMock.mockReturnValueOnce(false);
+
+			const { queryByTestId, getByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-permission-group-preferences')).toBeNull();
+			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
+		});
+
+		it('summarises the untouched Preferences group as the default', () => {
+			// createPreference defaults to always_allow. A summary that compares
+			// against require_approval would read the untouched group as an
+			// exception.
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-permission-group-preferences').textContent).toContain(
 				'settings.n8nAgent.permissions.group.default',
 			);
 		});

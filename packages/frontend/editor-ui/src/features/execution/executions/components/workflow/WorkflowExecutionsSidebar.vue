@@ -301,7 +301,7 @@ const goToUpgrade = () => {
 	}
 
 	// Lower first execution card so fader is not visible when not scrolled
-	& > div:first-child {
+	& > div:first-child:not(.noResultsContainer) {
 		margin-top: 3px;
 	}
 }
@@ -322,7 +322,10 @@ const goToUpgrade = () => {
 
 .noResultsContainer {
 	width: 100%;
-	margin-top: var(--spacing--2xl);
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	text-align: center;
 }
 

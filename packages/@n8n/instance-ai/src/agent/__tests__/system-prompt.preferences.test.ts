@@ -1,0 +1,25 @@
+import { getSystemPrompt } from '../system-prompt';
+
+describe('system prompt: saving preferences', () => {
+	it('tells the model when to call save_user_preference, and when not to', () => {
+		const prompt = getSystemPrompt({ preferenceSavingEnabled: true });
+		expect(prompt).toContain('## Saving Preferences');
+		expect(prompt).toContain('`save_user_preference`');
+		expect(prompt).toContain('not only for the current task');
+		expect(prompt).toContain(
+			'Do not tell the user you saved a preference until the tool returns a success',
+		);
+	});
+
+	it('tells the model to retry a too-long text once, and to stop on any other refusal', () => {
+		const prompt = getSystemPrompt({ preferenceSavingEnabled: true });
+		expect(prompt).toContain('shorten it to the limit the result names and call it once more');
+		expect(prompt).toContain('do not call it again in this turn');
+	});
+
+	it('says nothing about preferences when the feature is off', () => {
+		const prompt = getSystemPrompt({ preferenceSavingEnabled: false });
+		expect(prompt).not.toContain('## Saving Preferences');
+		expect(prompt).not.toContain('save_user_preference');
+	});
+});

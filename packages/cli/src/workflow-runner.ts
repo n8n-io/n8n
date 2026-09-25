@@ -52,6 +52,7 @@ import {
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
@@ -129,6 +130,7 @@ export class WorkflowRunner {
 		private readonly externalHooks: ExternalHooks,
 		private readonly engineV2Dispatcher: EngineV2Dispatcher,
 		private readonly workflowPreExecute: WorkflowPreExecute,
+		private readonly executionCrashService: ExecutionCrashService,
 	) {}
 
 	/** The process did error */
@@ -285,11 +287,23 @@ export class WorkflowRunner {
 		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 		this.errorReporter.error(error, { executionId });
 
+		if (error instanceof MaxStalledCountError) {
+			const claimed = await this.executionCrashService.markAsCrashedWithoutCounting(
+				executionId,
+				'stall',
+			);
+			if (claimed.length === 0) {
+				this.activeExecutions.finalizeExecution(executionId);
+				return;
+			}
+		}
+
 		const fullRunData: IRun = {
 			data: createRunExecutionData({
 				resultData: {
 					error: {
 						...error,
+						name: error.constructor.name,
 						message: error.message,
 						stack: error.stack,
 					},
@@ -300,7 +314,7 @@ export class WorkflowRunner {
 			mode: executionMode,
 			startedAt,
 			stoppedAt: new Date(),
-			status: 'error',
+			status: error instanceof MaxStalledCountError ? 'crashed' : 'error',
 			storedAt: this.storageConfig.modeTag,
 		};
 
@@ -397,7 +411,7 @@ export class WorkflowRunner {
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		// The engine 2.0 path owns the whole run: it keeps no control-plane
+		// The engine v2 path owns the whole run: it keeps no control-plane
 		// execution row, so everything below here does not apply to it.
 		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {
 			return await this.engineV2Dispatcher.start(data);

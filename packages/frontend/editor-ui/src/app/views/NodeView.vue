@@ -221,7 +221,7 @@ const chatHubPanelStore = useChatHubPanelStore();
 const workflowHelpers = useWorkflowHelpers();
 
 // Initialize activity detection for collaboration
-useActivityDetection();
+useActivityDetection(collaborationStore);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -612,7 +612,7 @@ async function onCopyNodes(ids: string[]) {
 			return;
 		}
 
-		await copyNodes(ids);
+		if (!(await copyNodes(ids))) return;
 
 		toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 	};
@@ -2210,6 +2210,7 @@ onBeforeUnmount(() => {
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
+					@replace-node="onClickReplaceNode"
 				/>
 			</Suspense>
 		</WorkflowCanvas>

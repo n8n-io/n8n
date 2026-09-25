@@ -88,8 +88,9 @@ export async function readInstanceContext(
 	projectId?: string,
 ): Promise<InstanceContextRead> {
 	const scope = buildScope(options.executionGranted, projectId);
-	const built = await instanceContext.buildBlock({ user, scope, cursor: null });
-	if (built) return { kind: 'context', text: built.block };
+	// Registration has already checked the shared instance flag.
+	const built = await instanceContext.buildBlock({ user, scope, cursor: null, enabled: true });
+	if (built.state === 'injected') return { kind: 'context', text: built.block };
 
 	// An empty block has two very different causes, and the client acts on them differently.
 	return (await instanceContext.hasWithheldWorkflows(user, scope))

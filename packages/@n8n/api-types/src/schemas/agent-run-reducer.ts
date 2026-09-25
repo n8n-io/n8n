@@ -399,6 +399,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const tc = state.toolCallsById[event.payload.toolCallId];
 			if (tc) {
 				tc.error = event.payload.error;
+				tc.interrupted = true;
 				tc.isLoading = false;
 				tc.completedAt = eventTimestamp(event);
 			}
@@ -482,6 +483,24 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'instance-context': {
+			// Store the row on the root so history replay restores it.
+			const root = ensureAgent(state, state.rootAgentId);
+			// Match by run ID. A message group can contain several turns.
+			const alreadyShown = root?.timeline.some(
+				(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
+			);
+			if (root && !alreadyShown) {
+				root.timeline.push({
+					type: 'instance-context',
+					runId: event.runId,
+					injection: event.payload.injection,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
 		case 'tasks-update': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
@@ -507,6 +526,32 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				root.setupItemsByWorkflowId = {
 					...root.setupItemsByWorkflowId,
 					[event.payload.workflowId]: event.payload.items,
+				};
+			}
+			break;
+		}
+
+		// A later fact about a preference the `save_user_preference` tool saved: the user
+		// edited it or undid it from the card. It folds onto the tool call so the card
+		// renders the current state after a reload, without asking the database.
+		case 'preference-card': {
+			// The id comes from a request body, so an inherited name like `toString`
+			// must not resolve to a function on the prototype.
+			if (!Object.hasOwn(state.toolCallsById, event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				// An edit fact names a scope; an undo fact names none.
+				const namesScope = event.payload.scope !== undefined;
+				tc.preferenceCard = {
+					state: event.payload.state,
+					// An undo fact carries no content, scope or project, so keep the last ones a
+					// fact named. An edit then an undo must strike out the edited text, not the
+					// text the tool result still holds, and must still name where the row was.
+					content: event.payload.content ?? tc.preferenceCard?.content,
+					scope: event.payload.scope ?? tc.preferenceCard?.scope,
+					// A fact that names a scope also decides the project: `null` on a move out of
+					// a project must win over the project the last fact named, so `??` is wrong here.
+					projectId: namesScope ? (event.payload.projectId ?? null) : tc.preferenceCard?.projectId,
 				};
 			}
 			break;
@@ -549,6 +594,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				root.status = state.status;
 				if (state.status === 'cancelled') {
 					root.cancellationReason = categorizeCancellation(event.payload.reason);
+				}
+				// The terminal event contains reads from all segments. Match it to this run's row.
+				const { contextReach } = event.payload;
+				const contextEntry = root.timeline.find(
+					(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
+				);
+				if (contextReach && contextEntry?.type === 'instance-context') {
+					contextEntry.reach = contextReach;
 				}
 			}
 			// A terminated run can't have tool calls still in-flight.

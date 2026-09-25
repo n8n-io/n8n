@@ -34,11 +34,22 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export {
+	InstanceAiPreferenceCardUndoRequestDto,
+	InstanceAiPreferenceCardEditRequestDto,
+} from './instance-ai/instance-ai-preference-card-request.dto';
 export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
 export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
+
+export {
+	discoverDataPublicSchema,
+	DiscoverPublicDto,
+	DiscoverQueryPublicDto,
+} from './discover/discover-public.dto';
+export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
 
@@ -111,6 +122,11 @@ export { UserUpdateRequestDto } from './user/user-update-request.dto';
 export { ChangeEmailRequestDto } from './user/change-email-request.dto';
 export { ResolveChangeEmailTokenQueryDto } from './user/resolve-change-email-token-query.dto';
 export { ConfirmEmailChangeRequestDto } from './user/confirm-email-change-request.dto';
+export { ListUsersQueryDto } from './user/list-users-query.dto';
+export { GetUserQueryDto } from './user/get-user-query.dto';
+export { UserPublicDto, UserListPublicDto, userPublicSchema } from './user/user-public.dto';
+export { CreateUsersPublicDto, InvitedUsersPublicDto } from './user/create-users-public.dto';
+export { DeleteUserQueryPublicDto } from './user/delete-user-query-public.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
@@ -145,6 +161,7 @@ export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dt
 export {
 	AiPreferenceListQueryDto,
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
+	AI_PREFERENCES_MAX_IDS_FILTER,
 	AI_PREFERENCES_MAX_PAGE_SIZE,
 } from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
@@ -243,6 +260,13 @@ export {
 	tagPublicSchema,
 } from './tag/tag-public.dto';
 
+export {
+	CommunityPackageListPublicDto,
+	ListCommunityPackagesQueryDto,
+	communityPackagePublicSchema,
+	type CommunityPackagePublic,
+} from './community-packages/community-package-public.dto';
+
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
 export {
@@ -257,16 +281,26 @@ export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
 export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 export {
+	CreateFolderPublicDto,
+	CreatedFolderPublicDto,
+	DeleteFolderQueryPublicDto,
+	FolderDetailsPublicDto,
 	FolderListPublicDto,
 	FolderPublicDto,
-	FolderDetailsPublicDto,
 	ListFoldersQueryPublicDto,
+	UpdateFolderPublicDto,
+	UpdatedFolderPublicDto,
+	folderProjectIdParamSchema,
 	folderPublicSchema,
 } from './folders/folder-public.dto';
 export type { FolderPublic } from './folders/folder-public.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
+export {
+	InsightsSummaryPublicDto,
+	InsightsSummaryQueryPublicDto,
+} from './insights/insights-summary-public.dto';
 
 export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
 export {
@@ -292,29 +326,29 @@ export type {
 	PolicyAction,
 	PolicyRule,
 	PolicySelector,
-} from './node-type-policies/policy-rule.types';
-export { policySelectorSchema } from './node-type-policies/policy-selector.schema';
+} from './type-availability-policies/policy-rule.types';
+export { policySelectorSchema } from './type-availability-policies/policy-selector.schema';
 export {
 	nonDelegatingPolicyActionSchema,
 	nonDelegatingPolicyRuleListSchema,
 	policyActionSchema,
 	policyRuleListSchema,
 	policyRuleSchema,
-} from './node-type-policies/policy-rule.schema';
-export { PutInstancePolicyDto } from './node-type-policies/put-instance-policy.dto';
-export { PutProjectPolicyDto } from './node-type-policies/put-project-policy.dto';
-export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-document.dto';
-export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
-export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
+} from './type-availability-policies/policy-rule.schema';
+export { PutInstancePolicyDto } from './type-availability-policies/put-instance-policy.dto';
+export { PutProjectPolicyDto } from './type-availability-policies/put-project-policy.dto';
+export { CreatePolicyDocumentDto } from './type-availability-policies/create-policy-document.dto';
+export { UpdatePolicyDocumentDto } from './type-availability-policies/update-policy-document.dto';
+export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
 export {
 	ListNodeTypePolicyDocumentsQueryDto,
-	NodeTypePolicyAttachmentsPublicDto,
-	NodeTypePolicyDocumentListPublicDto,
-	NodeTypePolicyDocumentPublicDto,
-	NodeTypePolicyDocumentWriteResultPublicDto,
-	NodeTypePolicyEffectivePublicDto,
-	NodeTypePolicyEffectiveWriteResultPublicDto,
-} from './node-type-policies/node-type-policy-public.dto';
+	PolicyAttachmentsPublicDto,
+	PolicyDocumentListPublicDto,
+	PolicyDocumentPublicDto,
+	PolicyDocumentWriteResultPublicDto,
+	PolicyEffectivePublicDto,
+	PolicyEffectiveWriteResultPublicDto,
+} from './type-availability-policies/node-type-policy-public.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
@@ -370,7 +404,14 @@ export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto'
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
-export { PublicApiCreateDataTableDto } from './data-table/public-api-create-data-table.dto';
+export {
+	CreateDataTablePublicDto,
+	DataTableListPublicDto,
+	DataTablePublicDto,
+	UpdateDataTablePublicDto,
+	dataTablePublicSchema,
+	type DataTablePublic,
+} from './data-table/data-table-public.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
 export { DeleteDataTableRowsDto } from './data-table/delete-data-table-rows.dto';
 export { UpsertDataTableRowDto } from './data-table/upsert-data-table-row.dto';
@@ -397,6 +438,8 @@ export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.d
 export {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+	ImportPackageSelectionRequestDto,
+	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
 
@@ -422,8 +465,9 @@ export {
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
 export {
+	SecurityPolicyPublicDto,
 	UpdateSecurityPolicyDto,
-	type SecurityPolicyResponse,
+	securityPolicyPublicSchema,
 } from './security-settings/security-policy.dto';
 
 export { UpdateProjectPoolSettingsDto } from './worker-pools/update-project-pool-settings.dto';
@@ -534,6 +578,7 @@ export {
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
 	promoteRequestSchema,
+	PromoteSelectionRequestDto,
 	promotionChangesSchema,
 	type PromotableResource,
 	type PromotableResourceStatus,

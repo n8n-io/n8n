@@ -17,6 +17,7 @@ import {
 	type EvalLlmMockHandler,
 	type EvalMockHttpResponse,
 	synthesizeBinaryFixture,
+	WorkflowHasIssuesError,
 } from 'n8n-core';
 import {
 	type IBinaryData,
@@ -38,6 +39,7 @@ import {
 	TimeoutExecutionCancelledError,
 	UserError,
 	Workflow,
+	type IWorkflowIssues,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -62,6 +64,7 @@ import {
 	isOpenAiResponsesUrl,
 	normalizeOpenAiResponsesMockResponse,
 } from './openai-responses-envelope';
+import { applyDataTableReadParameters } from './data-table-pin-filter';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
@@ -256,6 +259,14 @@ export class EvalExecutionService {
 				}),
 		);
 
+		// A trigger pinned without content runs with no items and blames every downstream miss on the builder.
+		const triggerStart = this.triggerStartNode(workflowEntity, hints);
+		if (triggerStart && lacksTriggerContent(hints)) {
+			throw new Error(
+				`FRAMEWORK ISSUE: Phase 1 produced no trigger content for start node "${triggerStart.name}" (${hints.warnings.join('; ') || 'no details'}); the scenario cannot run without a trigger event`,
+			);
+		}
+
 		if (!hints.globalContext && nodeNames.length > 0) {
 			this.logger.warn(
 				'[EvalMock] Phase 1 hint generation returned empty — mock responses will lack cross-node consistency',
@@ -279,6 +290,7 @@ export class EvalExecutionService {
 				bypassNodeNames,
 				hints.globalContext,
 				timings,
+				hints.warnings,
 				scenarioHints,
 			);
 			this.logger.debug(
@@ -301,6 +313,7 @@ export class EvalExecutionService {
 		bypassNodeNames: string[],
 		globalContext: string,
 		timings: EvalTimings,
+		warnings: string[],
 		scenarioHints?: string,
 	): Promise<IPinData> {
 		if (bypassNodeNames.length === 0) return {};
@@ -342,6 +355,15 @@ export class EvalExecutionService {
 					);
 					normalized[nodeName] = [];
 				}
+			}
+
+			const bypassSet = new Set(bypassNodeNames);
+			for (const node of workflowEntity.nodes) {
+				if (!bypassSet.has(node.name) || !emitsDataTableRows(node)) continue;
+				const filtered = applyDataTableReadParameters(node, normalized[node.name]);
+				normalized[node.name] = filtered.items;
+				for (const warning of filtered.warnings) this.logger.warn(`[EvalMock] ${warning}`);
+				warnings.push(...filtered.flags);
 			}
 
 			return normalized;
@@ -490,6 +512,7 @@ export class EvalExecutionService {
 			startNode,
 			hints.triggerContent,
 			binaryRequirement,
+			hints.triggerEmitsNoItems,
 		);
 		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
 		const pinDataNodeNames = Object.keys(pinData);
@@ -502,6 +525,20 @@ export class EvalExecutionService {
 		// Genuinely unresolved misconfigurations are still recorded and still fail.
 		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
 		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+
+		// The engine drops a refused execution before the runner can await it, so report the refusal first.
+		const blockingIssues = this.issuesBlockingRun(workflow, startNode, pinDataNodeNames);
+		if (blockingIssues) {
+			const reason = new WorkflowHasIssuesError(blockingIssues, workflow.nodes).message;
+			this.logger.warn(`[EvalMock] Workflow cannot start: ${reason}`);
+			return this.buildPartialFailureResult(
+				randomUUID(),
+				new Error(`n8n refused to start the workflow: ${reason}`),
+				nodeResults,
+				hints,
+				undefined,
+			);
+		}
 		const executionData = this.buildExecutionData(startNode, pinData);
 
 		// Mark the trigger node as pinned (it gets its output from pin data, not execution).
@@ -650,6 +687,40 @@ export class EvalExecutionService {
 		return workflow.getStartNode() ?? this.findWebhookNode(workflow);
 	}
 
+	private triggerStartNode(workflowEntity: IWorkflowBase, hints: MockHints): INode | undefined {
+		const hinted = hints.startNodeName
+			? workflowEntity.nodes.find((node) => node.name === hints.startNodeName)
+			: undefined;
+		return (
+			this.asTriggerNode(hinted) ??
+			this.asTriggerNode(this.findStartNode(this.buildWorkflow(workflowEntity)))
+		);
+	}
+
+	// Same rule as `WorkflowExecute.checkReadyForExecution`.
+	private issuesBlockingRun(
+		workflow: Workflow,
+		startNode: INode,
+		pinDataNodeNames: string[],
+	): IWorkflowIssues | null {
+		const issues: IWorkflowIssues = {};
+		for (const nodeName of [...workflow.getChildNodes(startNode.name), startNode.name]) {
+			const node = workflow.nodes[nodeName];
+			if (!node || node.disabled) continue;
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeIssues = nodeType
+				? NodeHelpers.getNodeParametersIssues(
+						nodeType.description.properties,
+						node,
+						nodeType.description,
+						pinDataNodeNames,
+					)
+				: { typeUnknown: true };
+			if (nodeIssues) issues[node.name] = nodeIssues;
+		}
+		return Object.keys(issues).length > 0 ? issues : null;
+	}
+
 	/** Accept a Phase-1 start-node hint only when it names a real, enabled trigger-capable node. */
 	private asTriggerNode(node: INode | undefined): INode | undefined {
 		if (!node || node.disabled) return undefined;
@@ -761,7 +832,12 @@ export class EvalExecutionService {
 		startNode: INode,
 		triggerContent: Record<string, unknown>,
 		binaryRequirement?: TriggerBinaryRequirement,
+		triggerEmitsNoItems = false,
 	): IPinData {
+		// A pinned empty array is "this node emitted nothing": downstream nodes stay idle,
+		// which is the point of a "no new items" scenario. No pin at all would instead
+		// start the trigger with one injected empty item.
+		if (triggerEmitsNoItems) return { [startNode.name]: [] };
 		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) return {};
 
 		// Mirror any LLM-embedded binary map as real item-level binary; json stays
@@ -1019,7 +1095,7 @@ export class EvalExecutionService {
 			success: false,
 			nodeResults,
 			errors: [`Execution failed: ${message}`],
-			hints,
+			hints: withInterceptionGaps(hints, credentialsHelper),
 			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
 			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
@@ -1129,7 +1205,7 @@ export class EvalExecutionService {
 			success: allErrors.length === 0,
 			nodeResults,
 			errors: allErrors,
-			hints,
+			hints: withInterceptionGaps(hints, credentialsHelper),
 			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
 			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
@@ -1152,6 +1228,20 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+function lacksTriggerContent(hints: MockHints): boolean {
+	return !hints.triggerEmitsNoItems && Object.keys(hints.triggerContent).length === 0;
+}
+
+/** `warnings` is the channel the verification artifact renders as FRAMEWORK ISSUE flags. */
+function withInterceptionGaps(
+	hints: MockHints,
+	credentialsHelper: EvalMockedCredentialsHelper | undefined,
+): MockHints {
+	const gaps = credentialsHelper?.interceptionGaps ?? [];
+	if (gaps.length === 0) return hints;
+	return { ...hints, warnings: [...hints.warnings, ...gaps] };
 }
 
 /** Synthesize a structurally valid binary entry (real bytes, base64-inlined). */
@@ -1223,6 +1313,8 @@ function synthesizePlaceholderValue(hint: string): string {
 	if (h.includes('slack channel') || h.includes('channel')) return 'C00000000EVAL';
 	if (h.includes('chat') && h.includes('id')) return '100000000';
 	if (h.includes('telegram')) return '100000000';
+	// Page, account and object ids: the node validates the shape, so a word is rejected.
+	if (/\bid\b/.test(h) || h.includes('account')) return '100000000';
 	const selectedResourceValue = synthesizeSelectedResourcePlaceholderValue(h);
 	if (selectedResourceValue) return selectedResourceValue;
 	return '__evalMockValue';

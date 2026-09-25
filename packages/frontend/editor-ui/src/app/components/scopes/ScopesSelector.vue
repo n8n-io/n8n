@@ -421,8 +421,8 @@ function toggleScope(scope: S, checked: boolean) {
 												@update:model-value="(checked: boolean) => toggleScope(scope, checked)"
 											/>
 											<N8nBadge
-												:theme="
-													classifyScope(scope, readActions) === 'read' ? 'default' : 'success'
+												:variant="
+													classifyScope(scope, readActions) === 'read' ? 'outline' : 'success'
 												"
 											>
 												{{ getBadgeLabel(scope) }}

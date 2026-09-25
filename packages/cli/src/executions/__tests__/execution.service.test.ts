@@ -11,7 +11,6 @@ import type {
 	Project,
 	User,
 	WorkflowHistoryRepository,
-	WorkflowHistory,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -167,7 +166,7 @@ describe('ExecutionService', () => {
 			await expect(executionService.findOne(req, ['workflow-1'])).rejects.toBe(error);
 		});
 
-		it('should read an engine 2.0 id from the data plane, not the control plane', async () => {
+		it('should read an engine v2 id from the data plane, not the control plane', async () => {
 			const execution = mock<IExecutionResponse>({
 				id: V2_EXECUTION_ID,
 				data: { resultData: {} },
@@ -865,31 +864,26 @@ describe('ExecutionService', () => {
 			const result = await executionService.getExecutedVersions(workflowId);
 
 			expect(result).toEqual([]);
-			expect(workflowHistoryRepository.find).not.toHaveBeenCalled();
+			expect(workflowHistoryRepository.findVersionSummaries).not.toHaveBeenCalled();
 		});
 
 		it('should return versions with metadata from workflow history', async () => {
 			const versionIds = ['v1', 'v2'];
 			executionRepository.getDistinctVersionIds.mockResolvedValue(versionIds);
 
-			const historyVersions = [
-				mock<WorkflowHistory>({ versionId: 'v2', name: null, createdAt: new Date('2025-01-02') }),
-				mock<WorkflowHistory>({
-					versionId: 'v1',
-					name: 'Release 1',
-					createdAt: new Date('2025-01-01'),
-				}),
+			const historySummaries = [
+				{ versionId: 'v2', name: null, createdAt: new Date('2025-01-02') },
+				{ versionId: 'v1', name: 'Release 1', createdAt: new Date('2025-01-01') },
 			];
-			workflowHistoryRepository.find.mockResolvedValue(historyVersions);
+			workflowHistoryRepository.findVersionSummaries.mockResolvedValue(historySummaries);
 
 			const result = await executionService.getExecutedVersions(workflowId);
 
 			expect(executionRepository.getDistinctVersionIds).toHaveBeenCalledWith(workflowId);
-			expect(workflowHistoryRepository.find).toHaveBeenCalledWith({
-				where: { workflowId, versionId: expect.anything() },
-				select: ['versionId', 'name', 'createdAt'],
-				order: { createdAt: 'DESC' },
-			});
+			expect(workflowHistoryRepository.findVersionSummaries).toHaveBeenCalledWith(
+				workflowId,
+				versionIds,
+			);
 			expect(result).toHaveLength(2);
 			expect(result[0].versionId).toBe('v2');
 			expect(result[0].name).toBeNull();
@@ -899,7 +893,7 @@ describe('ExecutionService', () => {
 
 		it('should return empty array when version IDs have no matching history', async () => {
 			executionRepository.getDistinctVersionIds.mockResolvedValue(['orphan-v1']);
-			workflowHistoryRepository.find.mockResolvedValue([]);
+			workflowHistoryRepository.findVersionSummaries.mockResolvedValue([]);
 
 			const result = await executionService.getExecutedVersions(workflowId);
 
@@ -1107,16 +1101,37 @@ describe('ExecutionService', () => {
 			]);
 		});
 
-		it('should map QueryFailedError to NotFoundError for missing tags', async () => {
+		it('should map a foreign-key-constraint violation to NotFoundError for missing tags', async () => {
 			executionPersistence.findOneInWorkflows.mockResolvedValue(mock<IExecutionBase>({ id: '1' }));
 			executionAnnotationRepository.findOneOrFail.mockResolvedValue({ id: 42 } as never);
 			annotationTagMappingRepository.overwriteTags.mockRejectedValue(
-				new QueryFailedError('INSERT', [], new Error('FK')),
+				new QueryFailedError(
+					'INSERT',
+					[],
+					Object.assign(new Error('FOREIGN KEY constraint failed'), {
+						code: 'SQLITE_CONSTRAINT_FOREIGNKEY',
+					}),
+				),
 			);
 
 			await expect(
 				executionService.updateExecutionTags('1', ['missing'], ['wf-1']),
 			).rejects.toThrow('Some tags not found');
+		});
+
+		it('should let a non-foreign-key QueryFailedError propagate instead of mapping it to a 404', async () => {
+			executionPersistence.findOneInWorkflows.mockResolvedValue(mock<IExecutionBase>({ id: '1' }));
+			executionAnnotationRepository.findOneOrFail.mockResolvedValue({ id: 42 } as never);
+			const dbError = new QueryFailedError(
+				'INSERT',
+				[],
+				Object.assign(new Error('Connection timeout after 30000ms'), {}),
+			);
+			annotationTagMappingRepository.overwriteTags.mockRejectedValue(dbError);
+
+			await expect(executionService.updateExecutionTags('1', ['tag-1'], ['wf-1'])).rejects.toThrow(
+				dbError,
+			);
 		});
 	});
 });

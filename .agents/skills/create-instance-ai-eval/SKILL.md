@@ -140,7 +140,7 @@ discover → verify → encode workflow.
 
 ## Pick the case shape first
 
-The corpus is four archetypes. Decide which you're writing before you draft — it
+The corpus is five archetypes. Decide which you're writing before you draft — it
 determines the fields, the grading, and how you validate. They compose (a seeded
 case can still assert outcome), but the primary shape drives the work.
 
@@ -150,9 +150,24 @@ case can still assert outcome), but the primary shape drives the work.
 | **Behaviour / process** | Does the agent *converse* correctly (ask the right clarifying question, not re-ask, honour a correction, respect plan approval)? | `processExpectations` + multi-turn director script; often **build-only** |
 | **Credential** | Does the build behave correctly given a specific credential view? | `credentials[]` |
 | **Seeded** | Start mid-thread, with prior work already in place, and drive the turn under test | `seed` (authored `mode: "inline"`; `"replay"` for a local check) |
+| **Context** | Does the agent still work once the conversation is long — does it reuse what it already read, and keep what matters after observational memory compacts the history? | `processExpectations` + a long `seed`; `requiresMemoryCompaction` for the compaction ones |
 
-**Build** is documented in full below. The other three, the director-script
+**Build** is documented in full below. The other four, the director-script
 vocabulary, and the seeding modes are in [`case-shapes.md`](case-shapes.md).
+
+The judge also sees **token ground truth** for workflow-build cases: per-turn
+input and output tokens inline in each transcript turn header, a build-wide
+total, a cache read/write split, and the opening step's cost. So an expectation
+may reference cost or consumption directly ("does not re-read the same node's
+schema in turn 2"). The numbers cover the orchestrator's own LLM steps only. A
+delegated Agent build runs in a sub-agent whose steps are not in the snapshot,
+so do not write cost expectations on an Agent case. Those numbers come from run-debug snapshots, so they need
+`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` on the instance under test; without it
+the judge reads `(no run debug captured)` and cost expectations are ungradeable.
+
+The judge also sees the thread's **observation rows** — what observational
+memory kept after it compacted — so a memory case can grade the summary itself.
+That block is a separate REST read and needs no flag.
 
 ## Core principle (all shapes)
 
@@ -600,7 +615,8 @@ nodes get LLM-generated pin data). So:
   static data** (`removeItemsSeenInPreviousExecutions`, `$getWorkflowStaticData`)
   is **not** seedable, because static data starts empty every run, so such a
   scenario reds vacuously (it sees everything as "new"). To get a seedable
-  change-detection scenario, steer the build toward a Data Table; otherwise
+  change-detection scenario, say "keep the state in a data table" in the prompt;
+  otherwise
   accept the static-data red as a harness limit and carry the logic in
   `outcomeExpectations`. Note the agent may *choose* static-data dedup on its own.
 - Don't assert exact counts that depend on mock generation ("exactly 7 posts").
@@ -831,6 +847,13 @@ pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline
   `<slugs...>` (exact file slugs), `--changed` (new/untracked + staged + modified
   `data/{workflows,agents}/*.json`, ideal right after authoring an uncommitted case),
   `--filter`/`--tier` (with `--exclude` as a modifier).
+- **Validation is selective.** Exact slugs and `--changed` read only the named
+  files, so an unrelated invalid file in `data/workflows` (a case authored on a
+  newer branch, a half-written draft) never blocks your push. `--filter` parses
+  only the files whose slug matches; `--tier` reads the tier from inside each
+  file, so it parses them all. An invalid file either one parses prints
+  `⚠ skipped invalid case file …` and the push continues without it. A file you
+  named still fails the push when it is invalid.
 - **Multiple positional slugs? Skip pnpm — call the script directly.** `pnpm
   eval:langtracer-push … slugA slugB` forwards the slugs as one joined argument
   (`"slugA slugB"`), so no case file matches and nothing is pushed. Either use a

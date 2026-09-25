@@ -6,11 +6,13 @@ import type {
 	McpClientConnectedPeriod,
 	McpClientType,
 	McpClientTypeFilter,
+	OAuthClientResponseDto,
 } from '@n8n/api-types';
-import type { BaseTextKey } from '@n8n/i18n';
+import type { BaseTextKey, I18nClass } from '@n8n/i18n';
 
 import ClaudeIcon from './assets/client-icons/claude.svg?component';
 import CursorIcon from './assets/client-icons/cursor.svg?component';
+import MistralIcon from './assets/client-icons/mistral.svg?component';
 import OpenAiIcon from './assets/client-icons/openai.svg?component';
 import VsCodeIcon from './assets/client-icons/vscode.svg?component';
 
@@ -25,6 +27,7 @@ const BRAND_ICONS: Record<McpClientBrandName, Component> = {
 	cursor: CursorIcon,
 	vscode: VsCodeIcon,
 	openai: OpenAiIcon,
+	mistral: MistralIcon,
 };
 
 // Client names are bounded (a user's own registered clients), so memoizing the
@@ -76,6 +79,33 @@ export function scopeLabel(
 export function isFullAccessGrant(scopes: string[], offeredScopes?: string[]): boolean {
 	const required = offeredScopes?.length ? offeredScopes : MCP_INSTANCE_SCOPES;
 	return scopes.length > 0 && required.every((scope) => scopes.includes(scope));
+}
+
+/** Scopes spelled out in a one-line grant summary before the rest collapse into "+N". */
+const ACCESS_SUMMARY_VISIBLE_SCOPES = 2;
+
+/**
+ * One-line summary of a client's grant for list rows: "Full access", "No access",
+ * or the first two scope labels followed by a "+N" overflow.
+ */
+export function getAccessSummary(
+	i18n: Pick<I18nClass, 'baseText'>,
+	client: Pick<OAuthClientResponseDto, 'scopes'>,
+	offeredScopes?: string[],
+): string {
+	if (client.scopes.length === 0) return i18n.baseText('settings.mcp.oAuthClients.access.none');
+	if (isFullAccessGrant(client.scopes, offeredScopes)) {
+		return i18n.baseText('settings.mcp.oAuthClients.access.full');
+	}
+	const visible = client.scopes
+		.slice(0, ACCESS_SUMMARY_VISIBLE_SCOPES)
+		.map((scope) => scopeLabel(i18n, scope))
+		.join(', ');
+	const remaining = client.scopes.length - ACCESS_SUMMARY_VISIBLE_SCOPES;
+	if (remaining <= 0) return visible;
+	return `${visible} ${i18n.baseText('settings.mcp.oAuthClients.scope.more', {
+		interpolate: { count: remaining },
+	})}`;
 }
 
 /** UI state of the connected-clients search + filter popover; applied server-side. */

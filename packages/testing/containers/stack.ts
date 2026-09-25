@@ -1,4 +1,5 @@
 import getPort from 'get-port';
+import { createHash } from 'node:crypto';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { Network } from 'testcontainers';
 
@@ -147,9 +148,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const needsLoadBalancer = mains > 1 || webhooks > 0;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 
-	assertEngineSupported({ engine, isQueueMode, usePostgres });
+	assertEngineSupported({ engine, mains, isQueueMode, usePostgres });
 
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
+	// Derived from the project name, not random, so a rerun with the same name
+	// reuses the engine and main containers instead of changing their env.
+	const engineAuthSecret =
+		engine === 'container'
+			? createHash('sha256').update(`${uniqueProjectName}:engine-auth`).digest('hex')
+			: undefined;
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
@@ -359,6 +366,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				userEnvironment: env,
 				usePostgres,
 				engine,
+				engineAuthSecret,
 				baseUrl: needsLoadBalancer ? undefined : baseUrl,
 				allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 				resourceQuota,
@@ -580,8 +588,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						userEnvironment: { ...env, ...options.env },
 						usePostgres,
 						// Without this the replacement main drops the engine-v2 module, and a
-						// workflow that still asks for engine 2.0 fails far from the cause.
+						// workflow that still asks for engine v2 fails far from the cause.
 						engine,
+						engineAuthSecret,
+						// The engine container is not replaced: it keeps running against the
+						// new main.
+						reuseEngine: true,
 						baseUrl,
 						// The same host port keeps `baseUrl` valid across the swap.
 						allocatedPort: allocatedMainPort,

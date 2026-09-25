@@ -27,6 +27,13 @@ export type ResourceEntry = {
 	pending?: boolean;
 };
 
+export interface TransientWorkflowArtifactReference {
+	referenceId: string;
+	workflowId: string;
+	workflowName: string;
+	projectId?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers (defined before use to satisfy no-use-before-define)
 // ---------------------------------------------------------------------------
@@ -361,6 +368,14 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				},
 				{ linkable: !attachment.pending },
 			);
+		} else if (attachment.type === 'nodes') {
+			const workflowName = optionalString(attachment.workflowName);
+			if (!workflowName) continue;
+			recordProduced(col, {
+				type: 'workflow',
+				id: attachment.workflowId,
+				name: workflowName,
+			});
 		}
 	}
 }
@@ -397,11 +412,13 @@ function enrichWorkflowNames(
 		if (entry.type !== 'workflow') continue;
 		const storeName = workflowNameLookup(entry.id);
 		if (storeName && storeName !== entry.name) {
-			col.byName.delete(entry.name.toLowerCase());
-			col.linkableByName.delete(entry.name.toLowerCase());
+			const previousKey = entry.name.toLowerCase();
+			const wasLinkable = col.linkableByName.get(previousKey)?.id === entry.id;
+			col.byName.delete(previousKey);
+			col.linkableByName.delete(previousKey);
 			entry.name = storeName;
 			col.byName.set(storeName.toLowerCase(), entry);
-			col.linkableByName.set(storeName.toLowerCase(), entry);
+			if (wasLinkable) col.linkableByName.set(storeName.toLowerCase(), entry);
 		}
 	}
 }
@@ -427,6 +444,25 @@ function enrichWorkflowFromPendingAttachment(
 		},
 		{ linkable: true },
 	);
+}
+
+function enrichWorkflowsFromTransientReferences(
+	col: Collections,
+	references: readonly TransientWorkflowArtifactReference[],
+): void {
+	for (const reference of references) {
+		if (col.produced.has(reference.workflowId)) continue;
+		recordProduced(
+			col,
+			{
+				type: 'workflow',
+				id: reference.workflowId,
+				name: reference.workflowName,
+				...(reference.projectId ? { projectId: reference.projectId } : {}),
+			},
+			{ linkable: false },
+		);
+	}
 }
 
 /**
@@ -488,6 +524,7 @@ export function useResourceRegistry(
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
 	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined,
+	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -515,6 +552,7 @@ export function useResourceRegistry(
 			enrichAgentFromBuilderTarget(col, boundTarget);
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
+			enrichWorkflowsFromTransientReferences(col, transientWorkflowReferences?.() ?? []);
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);

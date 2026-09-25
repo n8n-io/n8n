@@ -9,6 +9,7 @@ import {
 	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	aiPreferencesAppliedPayloadSchema,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
@@ -29,11 +30,16 @@ import {
 	type TaskList,
 	type AgentRunState,
 	type InstanceAiRunLimitReason,
+	type AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
+import {
+	redactTelemetryProperties,
+	TELEMETRY_EVENT,
+	type InferTelemetryProps,
+} from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -54,7 +60,10 @@ import {
 import type { InstanceAiMessageAuthorship } from './prefills';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
-import { useResourceRegistry } from './useResourceRegistry';
+import {
+	useResourceRegistry,
+	type TransientWorkflowArtifactReference,
+} from './useResourceRegistry';
 import { buildThreadArtifactsContext } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
@@ -101,6 +110,16 @@ export interface PendingConfirmationItem {
 }
 
 export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
+
+type SetupChatTelemetryContext = Pick<
+	InferTelemetryProps<typeof TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE>,
+	| 'workflow_id'
+	| 'pending_credential_count'
+	| 'pending_parameter_count'
+	| 'session_id'
+	| 'variant'
+	| '$feature/118_instance_ai_setup_overhaul'
+>;
 
 const MAX_DEBUG_EVENTS = 1000;
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
@@ -439,6 +458,14 @@ export function createThreadRuntime(
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
+	let readSetupChatTelemetryContext: (() => SetupChatTelemetryContext | undefined) | undefined;
+
+	function registerSetupChatTelemetryContext(reader: () => SetupChatTelemetryContext | undefined) {
+		readSetupChatTelemetryContext = reader;
+		return () => {
+			if (readSetupChatTelemetryContext === reader) readSetupChatTelemetryContext = undefined;
+		};
+	}
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
@@ -447,6 +474,13 @@ export function createThreadRuntime(
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const latestSetupItems = ref<Record<string, InstanceAiSetupItem[]> | null>(null);
+	/**
+	 * What the latest turn reported as applied, from the durable fact on restore and from
+	 * the live event after that. `null` means no turn has reported yet, which differs from
+	 * a turn that reported an empty list. The frontend never derives this list itself: a
+	 * menu that disagrees with what the assistant received is worse than no menu.
+	 */
+	const appliedPreferences = ref<AiPreferencesAppliedPayload | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const resolvedConfirmationIds = reactive(
 		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
@@ -490,6 +524,15 @@ export function createThreadRuntime(
 	}
 	function clearPendingWorkflowAttachment(): void {
 		pendingWorkflowAttachment.value = null;
+	}
+	const transientWorkflowReferences = reactive(
+		new Map<string, TransientWorkflowArtifactReference>(),
+	);
+	function upsertTransientWorkflowReference(reference: TransientWorkflowArtifactReference): void {
+		transientWorkflowReferences.set(reference.referenceId, { ...reference });
+	}
+	function removeTransientWorkflowReference(referenceId: string): void {
+		transientWorkflowReferences.delete(referenceId);
 	}
 
 	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
@@ -543,6 +586,7 @@ export function createThreadRuntime(
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
 		() => pendingWorkflowAttachment.value ?? undefined,
+		() => [...transientWorkflowReferences.values()],
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -1011,6 +1055,25 @@ export function createThreadRuntime(
 
 	// --- SSE lifecycle ---
 
+	/**
+	 * Fold one event into the thread state. The stream calls it for every frame
+	 * it receives, and an action that already holds the fact its endpoint
+	 * published calls it too, so its own card renders at once instead of waiting
+	 * for the stream. The stream then delivers the same fact; the facts that take
+	 * this second path are idempotent, so the repeat sets the same fields.
+	 */
+	function applyEvent(event: InstanceAiEvent): void {
+		activeRunId.value = reduceEvent(
+			{
+				messages: messages.value,
+				activeRunId: activeRunId.value,
+				runStateByGroupId,
+				groupIdByRunId,
+			},
+			event,
+		);
+	}
+
 	function onSSEMessage(sseEvent: MessageEvent): void {
 		try {
 			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
@@ -1065,15 +1128,7 @@ export function createThreadRuntime(
 				debugEvents.value.splice(0, debugEvents.value.length - MAX_DEBUG_EVENTS);
 			}
 			const previousRunId = activeRunId.value;
-			activeRunId.value = reduceEvent(
-				{
-					messages: messages.value,
-					activeRunId: activeRunId.value,
-					runStateByGroupId,
-					groupIdByRunId,
-				},
-				parsed.data,
-			);
+			applyEvent(parsed.data);
 			// Anything received on the stream means generation isn't stalled.
 			resetGenerationStallWatchdog();
 			if (parsed.data.type === 'tasks-update') {
@@ -1087,6 +1142,12 @@ export function createThreadRuntime(
 			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
+			}
+			if (parsed.data.type === 'preferences-applied') {
+				// Last write wins, like `latestTasks` and `latestSetupItems`: a thread runs one
+				// turn at a time and each turn publishes one of these, so arrival order is turn
+				// order. A seq guard would freeze the menu after a backend sequence restart.
+				appliedPreferences.value = parsed.data.payload;
 			}
 			if (parsed.data.type === 'run-finish') {
 				const ids = parsed.data.payload.archivedWorkflowIds;
@@ -1275,6 +1336,7 @@ export function createThreadRuntime(
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		latestSetupItems.value = null;
+		appliedPreferences.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -1290,6 +1352,7 @@ export function createThreadRuntime(
 		seenEventIds.clear();
 		activeArtifactId.value = undefined;
 		pendingWorkflowAttachment.value = null;
+		transientWorkflowReferences.clear();
 		pendingHandoff.value = null;
 		disarmGenerationStallWatchdog();
 	}
@@ -1297,6 +1360,7 @@ export function createThreadRuntime(
 	function dispose(): void {
 		closeSSE();
 		resetState();
+		readSetupChatTelemetryContext = undefined;
 	}
 
 	async function loadHistoricalMessages(): Promise<HistoricalHydrationStatus> {
@@ -1314,6 +1378,13 @@ export function createThreadRuntime(
 			try {
 				const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
 				if (capturedHydrationGeneration !== hydrationGeneration) return 'stale';
+				// A live event that arrived while the request was in flight is newer than
+				// the persisted fact, so it wins. Parsed like the SSE path parses its frames,
+				// so a row an older build wrote cannot reach readers unvalidated.
+				if (result.appliedPreferences && appliedPreferences.value === null) {
+					const restored = aiPreferencesAppliedPayloadSchema.safeParse(result.appliedPreferences);
+					if (restored.success) appliedPreferences.value = restored.data;
+				}
 				// Only hydrate if SSE hasn't delivered messages while the request was in flight.
 				if (messages.value.length > 0) return 'skipped';
 				// Backend now returns InstanceAiMessage[] directly — no conversion needed.
@@ -1447,7 +1518,12 @@ export function createThreadRuntime(
 		actionSource: InstanceAiThreadSourcePersisted,
 	): void {
 		const isPrefill = authorship.kind === 'prefill';
+		const setupContext =
+			isPrefill && authorship.prefillType === 'handoff_setup_panel_execute'
+				? undefined
+				: readSetupChatTelemetryContext?.();
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
+			...setupContext,
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,
@@ -1742,6 +1818,7 @@ export function createThreadRuntime(
 		activeRunId,
 		archivedWorkflowIds,
 		latestTasks,
+		appliedPreferences,
 		debugEvents,
 		resolvedConfirmationIds,
 		sessionAlwaysAllowKeys,
@@ -1778,15 +1855,20 @@ export function createThreadRuntime(
 		pendingWorkflowAttachment,
 		setPendingWorkflowAttachment,
 		clearPendingWorkflowAttachment,
+		transientWorkflowReferences,
+		upsertTransientWorkflowReference,
+		removeTransientWorkflowReference,
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,
 		resetState,
 		dispose,
+		applyEvent,
 		connectSSE,
 		closeSSE,
 		loadHistoricalMessages,
 		loadThreadStatus,
+		registerSetupChatTelemetryContext,
 		sendMessage,
 		cancelRun,
 		cancelBackgroundTask,

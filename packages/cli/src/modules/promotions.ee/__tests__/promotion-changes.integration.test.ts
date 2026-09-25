@@ -37,7 +37,7 @@ import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service'
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
-import { setupTestServer } from '@test-integration/utils';
+import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
 import { PromotionConfigRepository } from '../database/repositories/promotion-config.repository';
 import { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
@@ -166,11 +166,8 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	});
 
 	const workflows = Container.get(WorkflowRepository);
+	// Publication is state in the metadata file, not content, so it never lists.
 	await workflows.update(publishable.id, { activeVersionId: publishable.versionId });
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: publishable.id, status: 'modified' }),
-	]);
-	await workflows.update(publishable.id, { activeVersionId: null });
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
 	await workflows.update(modified.id, { name: 'Renamed', settings: { executionOrder: 'v1' } });
 	await workflows.update(archived.id, { isArchived: true });
@@ -248,9 +245,10 @@ it('preserves workflow moves and changes across workflow files', async () => {
 		expect.objectContaining({ id: workflow.id, status: 'renamed' }),
 	]);
 
+	// Publishing does not turn the move into a modification.
 	await workflows.update(workflow.id, { activeVersionId: workflow.versionId });
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: workflow.id, status: 'renamed-and-modified' }),
+		expect.objectContaining({ id: workflow.id, status: 'renamed' }),
 	]);
 
 	await workflows.update(workflow.id, { activeVersionId: null, parentFolder: null });
@@ -349,22 +347,17 @@ it('logs file hashes without workflow content', async () => {
 	expect(output).not.toContain('fixture@example.test');
 	expect(output).not.toContain('fixture-variable-value');
 
+	// The version id stays changed. It lives in the metadata file, which the preview skips.
 	await workflows.update(workflow.id, { nodes: workflow.nodes });
 	await Container.get(VariablesRepository).delete(variable.id);
 	await Container.get(VariablesService).updateCache();
-	debug.mockClear();
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: workflow.id, status: 'modified' }),
-	]);
-	expect(debug.mock.calls.map(([message]) => message).join('\n')).not.toContain('versionId');
-
-	await workflows.update(workflow.id, { versionId: workflow.versionId });
 	debug.mockClear();
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
 	expect(debug).toHaveBeenCalledWith(
 		'Promotion change preview',
 		expect.objectContaining({ projectId: project.id, fileChangeCount: 0, workflowIds: [] }),
 	);
+	expect(debug.mock.calls.map(([message]) => message).join('\n')).not.toContain('versionId');
 }, 30_000);
 
 it('detects variable and data table changes without reporting shadowed or unrelated dependencies', async () => {
@@ -576,6 +569,48 @@ it('answers for a destination that has only an apply configuration', async () =>
 	await agent.get(endpoint).expect(400);
 }, 30_000);
 
+it('lists nothing after apply, although the destination mints its own version', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Destination', owner);
+	const workflow = await createWorkflow({ name: 'Orders', nodes: [], connections: {} }, project);
+	const connection = await createConnection(['promote', 'apply']);
+	const service = Container.get(PromotionsService);
+	const workflows = Container.get(WorkflowRepository);
+	await initNodeTypes();
+	// The source edits the workflow and promotes it.
+	await workflows.update(workflow.id, {
+		versionId: 'source-version',
+		nodes: [
+			{
+				id: 'set',
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		],
+	});
+	await service.promote(connection.id, owner, {
+		commitMessage: 'Source edit',
+		canExportVariableValues: true,
+	});
+	// The destination still runs the previous content under a version of its own.
+	await workflows.update(workflow.id, { versionId: 'destination-version', nodes: [] });
+	const agent = server.authAgentFor(owner);
+	const endpoint = `/promotions/${project.id}/changes/apply`;
+	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
+		expect.objectContaining({ id: workflow.id, status: 'modified' }),
+	]);
+
+	expect((await service.apply(connection.id, owner)).status).toBe('applied');
+
+	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
+	const stored = await workflows.findOneByOrFail({ id: workflow.id });
+	expect(stored.nodes).toHaveLength(1);
+	expect(stored.versionId).not.toBe('source-version');
+}, 30_000);
+
 it('lists every local workflow as deleted when a valid branch manifest has no entry for the project', async () => {
 	const owner = await createOwner();
 	const otherProject = await createTeamProject('Other', owner);
@@ -616,7 +651,7 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	await server.authlessAgent.get(endpoint).expect(401);
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
-	// A project admin can export and update the project, but lacks the global push and pull scopes.
+	// A project admin manages the project, but lacks the global git connection scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);

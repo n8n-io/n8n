@@ -1,11 +1,14 @@
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { WorkflowPublicationTriggerStatus } from '../entities';
 import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
 } from '../entities/workflow-publication-outbox';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 
 export type TriggerStatusRow = {
@@ -23,26 +26,25 @@ export type InMemoryTriggerRef = {
 };
 
 @Service()
-export class WorkflowPublicationTriggerStatusRepository extends Repository<WorkflowPublicationTriggerStatus> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowPublicationTriggerStatus, dataSource.manager);
+export class WorkflowPublicationTriggerStatusRepository extends BaseRepository<WorkflowPublicationTriggerStatus> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowPublicationTriggerStatus, dataSource.manager, transactionRunner);
 	}
 
-	/** Replace all rows for a workflow with `rows`, atomically. Pass `trx` to enroll in an existing transaction. */
+	/** Replace all rows for a workflow with `rows`, atomically. */
 	async replaceForWorkflow(
 		workflowId: string,
 		rows: TriggerStatusRow[],
-		trx?: EntityManager,
+		ctx: OperationContext = {},
 	): Promise<void> {
-		const run = async (em: EntityManager) => {
+		await this.runInTransaction(ctx, async (em) => {
 			await em.delete(WorkflowPublicationTriggerStatus, { workflowId });
 			if (rows.length === 0) return;
 			await em.insert(
 				WorkflowPublicationTriggerStatus,
 				rows.map((row) => ({ workflowId, ...row })),
 			);
-		};
-		await (trx ? run(trx) : this.manager.transaction(run));
+		});
 	}
 
 	async findByWorkflowId(workflowId: string): Promise<WorkflowPublicationTriggerStatus[]> {

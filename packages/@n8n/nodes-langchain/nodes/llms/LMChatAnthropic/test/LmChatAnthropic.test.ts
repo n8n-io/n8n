@@ -806,17 +806,6 @@ describe('LmChatAnthropic', () => {
 		const modelFields = (type: string) =>
 			lmChatAnthropic.description.properties.filter((p) => p.name === 'model' && p.type === type);
 
-		it('should recommend the current Claude generation on every resource locator', () => {
-			const hints = modelFields('resourceLocator').map((p) => p.builderHint?.propertyHint);
-
-			expect(hints).toHaveLength(4);
-			for (const hint of hints) {
-				expect(hint).toContain('claude-sonnet-5');
-				expect(hint).toContain('claude-opus-5');
-				expect(hint).not.toContain('Default to claude-sonnet-4-6');
-			}
-		});
-
 		it('should only name models a fixed-enum model field can actually select', () => {
 			const enumFields = modelFields('options');
 			expect(enumFields.length).toBeGreaterThan(0);

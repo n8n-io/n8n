@@ -21,6 +21,7 @@ import { channelIntegrationRecorder } from './integrations/recording/channel-int
 import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -33,6 +34,7 @@ export class AgentIntegrationsController {
 		private readonly channelStatusRepository: AgentChannelStatusRepository,
 		private readonly statusReporter: AgentChannelStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@Post('/:agentId/integrations/connect')
@@ -46,6 +48,14 @@ export class AgentIntegrationsController {
 		await this.integrationManagementService.validateConfig(req.body);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			req.params.projectId,
+			agentId,
+			'connect integration for',
+		);
 		const { savedAgent } = await this.integrationManagementService.connect({
 			agent,
 			user: req.user,
@@ -69,6 +79,14 @@ export class AgentIntegrationsController {
 		const { type, credentialId, deleteExternalResource } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			req.params.projectId,
+			agentId,
+			'disconnect integration for',
+		);
 		const { warning } = await this.integrationManagementService.disconnect({
 			agent,
 			user: req.user,
