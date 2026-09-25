@@ -1,8 +1,9 @@
 import { LicenseState, Logger, ModuleRegistry, ModulesConfig } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-<<<<<<< HEAD
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
+import { SystemTaskMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import {
 	BinaryDataConfig,
 	BinaryDataService,
@@ -13,16 +14,10 @@ import {
 
 import { DatabaseManager } from '@/binary-data/database.manager';
 import { License } from '@/license';
-import { ShutdownService } from '@/shutdown/shutdown.service';
-=======
-import { GlobalConfig } from '@n8n/config';
-import { SystemTaskMetadata } from '@n8n/decorators';
-import { Container } from '@n8n/di';
-
 import { DummySystemTask } from '@/scheduling/system-tasks/__tests__/dummy.task';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
+import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TelemetryBufferFlushTask } from '@/telemetry/telemetry-buffer-flush.task';
->>>>>>> 4d5c66375dd82dd02677256d8a8d5bb1c86c0c3d
 
 import { BaseCommand } from '../base-command';
 
@@ -38,7 +33,10 @@ class TestCommand extends BaseCommand {
 	}
 }
 
-mockInstance(GlobalConfig, { generic: { gracefulShutdownTimeout: 30 } });
+mockInstance(GlobalConfig, {
+	diagnostics: { enabled: true },
+	generic: { gracefulShutdownTimeout: 30 },
+});
 mockInstance(InstanceSettings);
 mockInstance(ShutdownService);
 mockInstance(ModulesConfig);

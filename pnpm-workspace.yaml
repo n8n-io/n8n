@@ -369,12 +369,7 @@ overrides:
   baseline-browser-mapping: ^2.10.31
   '@azure/identity': 4.13.0
   '@lezer/common': ^1.2.0
-<<<<<<< HEAD
-  '@mistralai/mistralai': ^1.10.0
-=======
   '@mistralai/mistralai': ^2.2.1
-  '@n8n/typeorm>@sentry/node': catalog:sentry
->>>>>>> 4d5c66375dd82dd02677256d8a8d5bb1c86c0c3d
   'mssql@12.7.0>tedious': 20.0.5
   '@opentelemetry/api': 'catalog:'
   '@opentelemetry/core': 2.10.0
