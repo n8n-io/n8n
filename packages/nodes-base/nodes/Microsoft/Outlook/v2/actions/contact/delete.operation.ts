@@ -2,29 +2,10 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { contactRLC } from '../../descriptions';
+import { contactPermanentDelete, contactRLC } from '../../descriptions';
 import { executeDeletion } from '../../helpers/delete';
 
-export const properties: INodeProperties[] = [
-	contactRLC,
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add option',
-		default: {},
-		options: [
-			{
-				displayName: 'Permanent Delete',
-				name: 'permanentDelete',
-				type: 'boolean',
-				default: false,
-				description:
-					"Permanently delete a contact and place it in the purges folder at the user's mailbox.",
-			},
-		],
-	},
-];
+export const properties: INodeProperties[] = [contactRLC, contactPermanentDelete];
 
 const displayOptions = {
 	show: {

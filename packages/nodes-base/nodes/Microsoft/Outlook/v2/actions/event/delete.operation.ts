@@ -2,31 +2,11 @@ import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { calendarRLC, eventRLC } from '../../descriptions';
+import { calendarRLC, eventPermanentDelete, eventRLC } from '../../descriptions';
 import { executeDeletion } from '../../helpers/delete';
 import { decodeOutlookId } from '../../helpers/utils';
 
-export const properties: INodeProperties[] = [
-	calendarRLC,
-	eventRLC,
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add option',
-		default: {},
-		options: [
-			{
-				displayName: 'Permanent Delete',
-				name: 'permanentDelete',
-				type: 'boolean',
-				default: false,
-				description:
-					"Permanently delete an event and place it in the purges folder at the user's mailbox.",
-			},
-		],
-	},
-];
+export const properties: INodeProperties[] = [calendarRLC, eventRLC, eventPermanentDelete];
 
 const displayOptions = {
 	show: {
