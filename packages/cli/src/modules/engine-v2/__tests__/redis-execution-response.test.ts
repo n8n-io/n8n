@@ -268,7 +268,8 @@ describe('Redis execution response receiver', () => {
 		const receiver = new RedisExecutionResponseReceiver(subscriber, getChannelName, mockLogger());
 		await receiver.start();
 		await receiver.receive('exec-1', vi.fn());
-		const leave = await receiver.receive('exec-2', vi.fn());
+		await receiver.receive('exec-2', vi.fn());
+		const leave = await receiver.receive('exec-3', vi.fn());
 		leave();
 		subscriber.subscribe.mockClear();
 
@@ -276,7 +277,10 @@ describe('Redis execution response receiver', () => {
 		connectionHandler(subscriber, 'ready')();
 
 		await vi.waitFor(() =>
-			expect(subscriber.subscribe).toHaveBeenCalledExactlyOnceWith(executionChannel),
+			expect(subscriber.subscribe).toHaveBeenCalledExactlyOnceWith(
+				executionChannel,
+				getChannelName('exec-2'),
+			),
 		);
 	});
 
