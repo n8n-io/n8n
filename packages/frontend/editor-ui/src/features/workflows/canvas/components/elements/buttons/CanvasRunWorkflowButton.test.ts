@@ -89,7 +89,7 @@ describe('CanvasRunWorkflowButton', () => {
 			},
 		});
 
-		expect(wrapper.container.textContent).toBe('Execute workflow from A');
+		expect(wrapper.container.textContent?.trim()).toBe('Execute');
 		expect(wrapper.queryByLabelText('Select trigger node')).toBeInTheDocument();
 	});
 
@@ -105,7 +105,7 @@ describe('CanvasRunWorkflowButton', () => {
 			},
 		});
 
-		expect(wrapper.container.textContent).toBe('Execute workflow ');
+		expect(wrapper.container.textContent?.trim()).toBe('Execute');
 		expect(wrapper.queryByLabelText('Select trigger node')).not.toBeInTheDocument();
 	});
 
@@ -129,10 +129,10 @@ describe('CanvasRunWorkflowButton', () => {
 		const menuItems = await wrapper.findAllByRole('menuitem');
 
 		expect(menuItems).toHaveLength(4);
-		expect(menuItems[0]).toHaveTextContent('from C');
-		expect(menuItems[1]).toHaveTextContent('from B');
-		expect(menuItems[2]).toHaveTextContent('from D');
-		expect(menuItems[3]).toHaveTextContent('from A');
+		expect(menuItems[0]).toHaveTextContent('From C');
+		expect(menuItems[1]).toHaveTextContent('From B');
+		expect(menuItems[2]).toHaveTextContent('From D');
+		expect(menuItems[3]).toHaveTextContent('From A');
 	});
 
 	it('should show keyboard shortcut tooltip when disabled', async () => {
@@ -152,7 +152,7 @@ describe('CanvasRunWorkflowButton', () => {
 		await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute workflow'));
 	});
 
-	it('should allow to select and execute a different trigger', async () => {
+	it('should select and execute the trigger picked from the dropdown', async () => {
 		const wrapper = renderComponent({
 			props: {
 				selectedTriggerNodeName: 'A',
@@ -163,11 +163,11 @@ describe('CanvasRunWorkflowButton', () => {
 			},
 		});
 
-		const [executeButton, chevron] = await wrapper.findAllByRole('button');
+		const [, chevron] = await wrapper.findAllByRole('button');
 		await fireEvent.click(chevron);
 		const menuItems = await wrapper.findAllByRole('menuitem');
 		await fireEvent.click(menuItems[1]);
-		await fireEvent.click(executeButton);
 		expect(wrapper.emitted('selectTriggerNode')).toEqual([['B']]);
+		expect(wrapper.emitted('execute')).toEqual([[]]);
 	});
 });
