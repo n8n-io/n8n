@@ -15,7 +15,11 @@ import type { ExecutionStatus } from '../execution/execution.types';
  */
 type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
 
-/** The statuses an execution can still move on from. */
+/**
+ * The statuses of an execution that started and has not ended. `queued` also
+ * moves on, so it is not this set. The SQL in `refreshLiveStatus` and
+ * `isLiveExecutionStatus` repeat this list. Change all three together.
+ */
 const LIVE_STATUSES: ExecutionStatus[] = ['running', 'waiting'];
 
 /** TypeORM-backed `ExecutionStore` adapter. */
@@ -62,7 +66,11 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async refreshLiveStatus(id: string): Promise<void> {
-		// One statement, so no step can change between the decision and the write.
+		// One round trip, not one instant. The probes below run once, so a step can
+		// change while the UPDATE waits for the row's lock. The status is a
+		// projection: the next suspension or settlement re-derives it.
+		// The `e.status` predicate is re-checked against the current row, so a
+		// refresh that lost a race with `finishExecution` writes nothing.
 		// The last predicate skips the write when the status already holds. A
 		// settling step then does not take the execution row's lock for nothing.
 		await this.repo.query(
@@ -79,6 +87,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			)
 			UPDATE workflow_execution e
 			SET status = CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END,
+				-- A raw query bypasses the UpdateDateColumn hook, so set the time here.
 				updated_at = now()
 			FROM live
 			WHERE e.id = $1

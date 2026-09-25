@@ -2,7 +2,8 @@ import type { JsonObject, JsonValue } from '../common';
 
 /**
  * Lifecycle status of an execution. `waiting` means every step it owes is
- * suspended: the execution runs no work now, but a step still owes an outcome.
+ * suspended: a step still owes an outcome. The stored value lags a resume. See
+ * `ExecutionStore.refreshLiveStatus`.
  */
 export type ExecutionStatus =
 	| 'queued'
@@ -13,8 +14,9 @@ export type ExecutionStatus =
 	| 'cancelled';
 
 /**
- * A live execution can still make progress. It is the counterpart of a settled
- * step: work runs now, or a suspended step resumes later and moves it on.
+ * A live execution has started and has not ended. Work runs now, or a suspended
+ * step resumes later and moves it on. `queued` is not live: the execution has no
+ * step rows yet.
  */
 export function isLiveExecutionStatus(status: ExecutionStatus): boolean {
 	return status === 'running' || status === 'waiting';

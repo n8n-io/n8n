@@ -772,7 +772,6 @@ describe('StepReadyHandler waits', () => {
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
-		// the execution reports `waiting` once this was its last runnable step
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 

@@ -80,7 +80,7 @@ export class StepReadyHandler {
 			// The execution has ended, so we don't run the step. The step is left
 			// `running` for reconciliation (CAT-2938) or internal consistency
 			// checks (CAT-3930) to resolve. A `waiting` execution passes: this step
-			// resumed, and the status only catches up once it does.
+			// resumed, and nothing refreshes the execution's status until it settles.
 			return;
 		}
 

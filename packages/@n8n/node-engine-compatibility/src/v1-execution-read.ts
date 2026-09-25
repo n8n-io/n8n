@@ -37,7 +37,9 @@ import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './
  * holds a task for the paused node, with the status `waiting`.
  *
  * That entry carries no outputs. The step produces none until it resumes.
- * Engine v1 puts the node's pass-through data there instead.
+ * Engine v1 puts the node's pass-through data there instead. This read cannot:
+ * those slots live in the step's wait declaration, which `StepDetail` does not
+ * report.
  *
  * TODO(CAT-2928): a `cancelled` step gets no entry. That is correct for a step
  * that never started, but `cancelPendingSteps` also cancels the waiting steps

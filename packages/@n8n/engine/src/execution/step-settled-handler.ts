@@ -79,9 +79,8 @@ export class StepSettledHandler {
 		// definitely don't need to mark it finished.
 		if (queued === 0) await this.finishExecutionIfDone(execution, step, node);
 
-		// The steps decide the execution's status, and this settlement changed
-		// one, so read it off them again. An execution this call just finished is
-		// no longer live, which leaves it alone.
+		// An execution this call just finished is no longer live, so the refresh
+		// leaves it alone.
 		await this.executionStore.refreshLiveStatus(execution.id);
 	}
 

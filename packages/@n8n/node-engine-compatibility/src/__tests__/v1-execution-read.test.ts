@@ -64,9 +64,6 @@ describe('toV1RunExecutionData', () => {
 		expect(data.resultData.runData.Trigger[0].executionStatus).toBe(expected);
 	});
 
-	// A cancelled step reports no run, but `cancelPendingSteps` cancels a waiting
-	// step too, and that step did run. TODO(CAT-2928): decide what the canvas
-	// shows for one.
 	it.each<StepStatus>(['queued', 'skipped', 'cancelled'])(
 		'reports no run for a %j step, the way v1 reports a node that did not run',
 		(status) => {

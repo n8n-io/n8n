@@ -63,15 +63,18 @@ export interface ExecutionStore {
 	/**
 	 * Sets a live execution's status from the state of its steps. The status is
 	 * `waiting` when every step the execution still owes is suspended. It is
-	 * `running` when one step can run. Call this after a step changes state.
+	 * `running` when one step can run.
 	 *
-	 * One statement calculates the status and writes it. Two statements are not
-	 * enough. A step could change between the read and the write. The write
-	 * would then store the older status.
+	 * Call this when a step suspends and when a step settles. A resume does not
+	 * call it, so the row still reads `waiting` while the resumed step runs. The
+	 * settlement that follows corrects it.
 	 *
-	 * Leaves an execution alone when no step of it is unsettled, because
-	 * `finishExecution` owns the end. Leaves an execution that already ended
-	 * alone too.
+	 * The status is a projection, and it is not written under a lock. A refresh
+	 * can lose a race with a step that changes under it, and mislabel a live
+	 * execution until the next call re-derives the value.
+	 *
+	 * Writes only to a live execution. An execution with no unsettled step is
+	 * left alone, because `finishExecution` owns the end.
 	 */
 	refreshLiveStatus(id: string): Promise<void>;
 }
