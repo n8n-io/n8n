@@ -96,6 +96,34 @@ describe('V1StepExecutor', () => {
 		}
 	});
 
+	it('signs the resume URLs with the token the host mints for the execution', async () => {
+		const graph = graphWith('test.echoParam', {
+			message: '={{ $execution.resumeUrl }} {{ $execution.resumeFormUrl }}',
+		});
+		const resumeToken = vi.fn(() => 'minted');
+		const executor = new V1StepExecutor({
+			nodeTypes: testNodeTypes,
+			resumeToken,
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+		});
+		const request = stepRequest(graph, 'n', items({}));
+		const { executionId } = request.context;
+
+		const result = await executor.execute(request);
+
+		expect(resumeToken).toHaveBeenCalledExactlyOnceWith({ executionId });
+		expect(result.outputs).toEqual([
+			[
+				{
+					json: {
+						message: `http://localhost:5678/webhook-waiting/${executionId}?signature=minted http://localhost:5678/form-waiting/${executionId}?signature=minted`,
+					},
+				},
+			],
+		]);
+	});
+
 	it('builds the additional data from the execution context of the step', async () => {
 		const graph = graphWith('test.echoParam', { message: 'hi' });
 		const additionalDataFactory = vi.fn(testAdditionalDataFactory);
