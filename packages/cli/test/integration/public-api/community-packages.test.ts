@@ -11,7 +11,6 @@ import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
-import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -117,15 +116,15 @@ describe('Community packages (Public API)', () => {
 		});
 
 		it('should return installed packages when present', async () => {
-			const pkg = mockPackage();
-			const node = mockNode(pkg.packageName);
-			pkg.authorName = 'Test Author';
-			pkg.authorEmail = 'test@example.com';
-			pkg.installedNodes = [node];
+			const packageName = mockPackageName();
+			const node = mockNode(packageName);
+			const pkg = mockPackage({
+				packageName,
+				authorName: 'Test Author',
+				authorEmail: 'test@example.com',
+				installedNodes: [node],
+			});
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
-			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
-				{ ...pkg, updateAvailable: COMMUNITY_PACKAGE_VERSION.UPDATED },
-			]);
 			communityPackagesService.withLoadStatus.mockReturnValue([
 				{
 					...pkg,
@@ -168,39 +167,6 @@ describe('Community packages (Public API)', () => {
 				['outdated', '--json'],
 				expect.objectContaining({ doNotHandleError: true, cwd: expect.any(String) }),
 			);
-		});
-
-		it('should return packages with updateAvailable when outdated', async () => {
-			const pkg = mockPackage();
-			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
-
-			mockedExecuteNpmCommand.mockImplementation(() => {
-				const error = new Error('npm outdated');
-				Object.assign(error, {
-					code: 1,
-					stdout: JSON.stringify({
-						[pkg.packageName]: {
-							current: COMMUNITY_PACKAGE_VERSION.CURRENT,
-							wanted: COMMUNITY_PACKAGE_VERSION.CURRENT,
-							latest: COMMUNITY_PACKAGE_VERSION.UPDATED,
-							location: path.join('node_modules', pkg.packageName),
-						},
-					}),
-				});
-				throw error;
-			});
-
-			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
-				{
-					...pkg,
-					updateAvailable: COMMUNITY_PACKAGE_VERSION.UPDATED,
-				},
-			]);
-
-			const response = await testServer.publicApiAgentFor(owner).get('/community-packages');
-
-			expect(response.status).toBe(200);
-			expect(response.body[0].updateAvailable).toBe(COMMUNITY_PACKAGE_VERSION.UPDATED);
 		});
 	});
 
@@ -256,13 +222,14 @@ describe('Community packages (Public API)', () => {
 		});
 
 		it('should return 200 when package is installed successfully', async () => {
-			const pkg = Object.assign(mockPackage(), {
-				updateAvailable: COMMUNITY_PACKAGE_VERSION.UPDATED,
-				failedLoading: false,
+			const packageName = mockPackageName();
+			const node = mockNode(packageName);
+			const pkg = mockPackage({
+				packageName,
+				authorName: 'Test Author',
+				authorEmail: 'author@example.com',
+				installedNodes: [node],
 			});
-			pkg.authorName = 'Test Author';
-			pkg.authorEmail = 'author@example.com';
-			pkg.installedNodes = [mockNode(pkg.packageName)];
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
@@ -288,8 +255,6 @@ describe('Community packages (Public API)', () => {
 				],
 				createdAt: pkg.createdAt.toISOString(),
 				updatedAt: pkg.updatedAt.toISOString(),
-				updateAvailable: pkg.updateAvailable,
-				failedLoading: pkg.failedLoading,
 			});
 			// No version requested, so install() pins the latest vetted version:
 			// the same catalog lookup provides both it and the checksum.
@@ -379,14 +344,16 @@ describe('Community packages (Public API)', () => {
 		});
 
 		it('should return 200 when package is updated successfully', async () => {
-			const pkg = mockPackage();
-			const updatedPkg = mockPackage();
-			const updatedNode = mockNode(pkg.packageName);
-			updatedPkg.packageName = pkg.packageName;
-			updatedPkg.installedVersion = COMMUNITY_PACKAGE_VERSION.UPDATED;
-			updatedPkg.authorName = 'Test Author';
-			updatedPkg.authorEmail = 'author@example.com';
-			updatedPkg.installedNodes = [updatedNode];
+			const packageName = mockPackageName();
+			const pkg = mockPackage({ packageName });
+			const updatedNode = mockNode(packageName);
+			const updatedPkg = mockPackage({
+				packageName,
+				installedVersion: COMMUNITY_PACKAGE_VERSION.UPDATED,
+				authorName: 'Test Author',
+				authorEmail: 'author@example.com',
+				installedNodes: [updatedNode],
+			});
 
 			communityPackagesService.findInstalledPackage.mockResolvedValue(pkg);
 			communityPackagesService.parseNpmPackageName.mockReturnValue({
