@@ -16,7 +16,7 @@ import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
 import type { PromotableResourceStatus, PromotionDirection } from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
 import { promotionEventBus } from '../promotions.eventBus';
-import { applyPromotion } from '../promotionsSettings.api';
+import { applyProjectSelection } from '../promotionsSettings.api';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
 import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 
@@ -183,16 +183,18 @@ async function onSourceChanged() {
 	});
 }
 
-/** Applies the whole branch. The selection is kept for the selective apply that follows. */
-async function onApplyAll() {
+/** Applies only the selected workflows. Unselected content on the instance is left as is. */
+async function onApplySelected() {
 	const { apply } = props.data;
 	if (!apply) return;
 	const confirmed = await message.confirm(
-		i18n.baseText('promotions.modal.incoming.confirm.message'),
-		i18n.baseText('promotions.modal.incoming.confirm.title'),
+		i18n.baseText('promotions.modal.incoming.confirmSelected.message'),
+		i18n.baseText('promotions.modal.incoming.confirmSelected.title'),
 		{
 			type: 'warning',
-			confirmButtonText: i18n.baseText('promotions.modal.incoming.confirm.confirmButtonText'),
+			confirmButtonText: i18n.baseText(
+				'promotions.modal.incoming.confirmSelected.confirmButtonText',
+			),
 			cancelButtonText: i18n.baseText('promotions.modal.close'),
 		},
 	);
@@ -203,11 +205,10 @@ async function onApplyAll() {
 		const expectedSource = commitSha.value
 			? { configId: apply.configId, branchName: apply.branchName, commitSha: commitSha.value }
 			: undefined;
-		const result = await applyPromotion(
-			rootStore.publicApiContext,
-			apply.connectionId,
-			expectedSource && { expectedSource },
-		);
+		const result = await applyProjectSelection(rootStore.publicApiContext, props.data.projectId, {
+			workflowIds: Array.from(selectedIds.value),
+			expectedSource,
+		});
 		if (result.status === 'applied') {
 			await onApplied(result);
 			return;
@@ -417,11 +418,15 @@ onMounted(async () => {
 					<N8nButton
 						v-if="isIncoming"
 						:loading="isApplying"
-						:disabled="isLoading || !!error"
-						data-test-id="promotion-apply-all"
-						@click="onApplyAll"
+						:disabled="isLoading || !!error || selectedCount === 0"
+						data-test-id="promotion-apply-selected"
+						@click="onApplySelected"
 					>
-						{{ i18n.baseText('promotions.modal.incoming.applyAll') }}
+						{{
+							i18n.baseText('promotions.modal.incoming.applySelected', {
+								interpolate: { count: String(selectedCount) },
+							})
+						}}
 					</N8nButton>
 					<N8nButton v-else disabled data-test-id="promotion-submit">
 						{{ getPromoteButtonLabel() }}
@@ -434,6 +439,7 @@ onMounted(async () => {
 		v-else
 		:open="true"
 		:blocked-result="blockedResult"
+		:continue-with="{ projectId: props.data.projectId, workflowIds: Array.from(selectedIds) }"
 		@update:open="
 			(open) => {
 				if (!open) blockedResult = undefined;
