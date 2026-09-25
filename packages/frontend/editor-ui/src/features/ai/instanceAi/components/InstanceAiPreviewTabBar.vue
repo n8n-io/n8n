@@ -121,10 +121,16 @@ function handleOpenInEditor(tab: ArtifactTab) {
 	window.open(href, '_blank', 'noopener');
 }
 
-type HoverTarget = { tab: ArtifactTab; reference: HTMLElement };
+type HoverTarget = { tabId: string; reference: HTMLElement };
 
 const { getSummary, refresh: refreshSummaries } = useArtifactTabSummaries(() => props.tabs);
-const hoveredTab = shallowRef<HoverTarget | null>(null);
+const hoverTarget = shallowRef<HoverTarget | null>(null);
+// Read the tab from the current props, so a rename shows at once while the card is open.
+const hoveredTab = computed(() => {
+	const target = hoverTarget.value;
+	const tab = target && props.tabs.find(({ id }) => id === target.tabId);
+	return tab ? { tab, reference: target.reference } : null;
+});
 const hoveredSummary = computed(() =>
 	hoveredTab.value ? getSummary(hoveredTab.value.tab) : undefined,
 );
@@ -153,9 +159,14 @@ const hoveredStatus = computed(() => {
 });
 
 function setHoveredTab(target: HoverTarget) {
-	hoveredTab.value = target;
+	hoverTarget.value = target;
+	// The tab can close while the open delay runs.
+	if (!hoveredTab.value) {
+		hoverTarget.value = null;
+		return;
+	}
 	// Keep the stored details on screen while this refresh runs.
-	void refreshSummaries([target.tab]);
+	void refreshSummaries([hoveredTab.value.tab]);
 }
 
 const { start: startOpenTimer, stop: stopOpenTimer } = useTimeoutFn(
@@ -166,7 +177,7 @@ const { start: startOpenTimer, stop: stopOpenTimer } = useTimeoutFn(
 
 const { start: startCloseTimer, stop: stopCloseTimer } = useTimeoutFn(
 	() => {
-		hoveredTab.value = null;
+		hoverTarget.value = null;
 	},
 	// The grace lets the pointer cross the gap between tabs, so the open card
 	// moves to the next tab instead of closing and waiting to open again.
@@ -176,7 +187,7 @@ const { start: startCloseTimer, stop: stopCloseTimer } = useTimeoutFn(
 
 function showTabHoverCard(tab: ArtifactTab, event: MouseEvent) {
 	if (!(event.currentTarget instanceof HTMLElement)) return;
-	const target = { tab, reference: event.currentTarget };
+	const target = { tabId: tab.id, reference: event.currentTarget };
 	stopCloseTimer();
 
 	if (hoveredTab.value) {
@@ -194,8 +205,13 @@ function scheduleHideTabHoverCard() {
 function hideTabHoverCard() {
 	stopOpenTimer();
 	stopCloseTimer();
-	hoveredTab.value = null;
+	hoverTarget.value = null;
 }
+
+// A removed tab fires no mouseleave, so close the card when its tab is gone.
+watch(hoveredTab, (tab) => {
+	if (!tab && hoverTarget.value) hideTabHoverCard();
+});
 
 function handleHoverCardOpenChange(open: boolean) {
 	if (!open) hideTabHoverCard();
