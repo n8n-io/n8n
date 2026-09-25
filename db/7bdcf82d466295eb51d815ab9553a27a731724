@@ -1,0 +1,25 @@
+packages/cli/test/integration/shared/utils/community-nodes.ts
+  s_9baa1e4b52dd7f::t_1e62ede5b54d0c 15
+  s_9baa1e4b52dd7f::t_9918bcbd4c97b8 13,22
+  s_9baa1e4b52dd7f::t_9630e3c99f3059 38-47
+packages/cli/test/integration/public-api/community-packages.test.ts
+  s_9baa1e4b52dd7f::t_39a30e49e614ec 347-356
+  s_9baa1e4b52dd7f::t_a5cf36e8c964db 119-126
+  s_9baa1e4b52dd7f::t_39d410d7b3b917 225-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "db7bdcf82d466295eb51d815ab9553a27a731724",
+  "prompts": {},
+  "sessions": {
+    "s_9baa1e4b52dd7f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c1fe859e-22f1-46c1-9764-8579979b9830",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
