@@ -153,6 +153,7 @@ describe('SourceControlImportService', () => {
 			mock(), // workflowPublishGuard
 			mock(), // workflowMutationHooks
 			Container.get(WorkflowFinderService),
+			Container.get(WorkflowIndexService),
 		);
 	});
 

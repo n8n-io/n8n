@@ -288,6 +288,10 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
+	async removePublishedDependenciesForWorkflow(workflowId: string): Promise<void> {
+		await this.delete({ workflowId, publishedVersionId: Not(IsNull()) });
+	}
+
 	private async acquireLockAndCheckForExistingData(
 		workflowId: string,
 		publishedVersionId: string | null,
