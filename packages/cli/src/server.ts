@@ -62,6 +62,7 @@ import '@/credentials/credentials.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/node-execution/ephemeral-node-executor';
+import '@/jwks/jwks.controller';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/evaluation.ee/evaluation-config.controller';
