@@ -25,7 +25,6 @@ requestBody:
             description: Whether to verify the package against the n8n-vetted package list. Required when the instance has N8N_UNVERIFIED_PACKAGES_ENABLED=false.
         required:
           - name
-        additionalProperties: false
 responses:
   '200':
     description: Operation successful.

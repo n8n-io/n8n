@@ -26,7 +26,6 @@ requestBody:
           verify:
             type: boolean
             description: Whether to verify the package against the n8n-vetted package list. Setting to false will allow installing or updating to an unverified version. Default is true.
-        additionalProperties: false
 responses:
   '200':
     description: Operation successful.

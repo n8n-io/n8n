@@ -197,16 +197,6 @@ describe('Community packages (Public API)', () => {
 			expect(response.body.message).toBeDefined();
 		});
 
-		it('should return 400 when the body contains an unknown field', async () => {
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.post('/community-packages')
-				.send({ name: mockPackageName(), unknown: true });
-
-			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('unknown');
-		});
-
 		it('should return 400 when package is already installed and loaded', async () => {
 			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
 			communityPackagesService.isPackageLoaded.mockReturnValue(true);
@@ -260,6 +250,26 @@ describe('Community packages (Public API)', () => {
 			});
 			// No version requested, so install() pins the latest vetted version:
 			// the same catalog lookup provides both it and the checksum.
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				parsedNpmPackageName.packageName,
+				mockedVettedPackage.npmVersion,
+				mockedVettedPackage.checksum,
+			);
+		});
+
+		it('should return 200 when the body contains an unknown field', async () => {
+			const pkg = mockPackage();
+			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+			communityPackagesService.installPackage.mockResolvedValue(pkg);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/community-packages')
+				.send({ name: mockPackageName(), unknown: true });
+
+			expect(response.status).toBe(200);
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				parsedNpmPackageName.packageName,
 				mockedVettedPackage.npmVersion,
