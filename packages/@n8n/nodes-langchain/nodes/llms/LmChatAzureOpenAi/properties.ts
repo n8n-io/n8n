@@ -53,6 +53,19 @@ export const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
+		displayName: 'Use Responses API',
+		name: 'responsesApiEnabled',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to call the deployment on the Responses API instead of Chat Completions. Azure does not tell us which one a deployment supports, so set this to match your deployment: leave it off for a chat-completions deployment, turn it on for a Responses-only one. Needs a credential using the Azure AI Foundry endpoint type.',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
@@ -139,6 +152,14 @@ export const properties: INodeProperties[] = [
 				description:
 					'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 				type: 'number',
+			},
+			{
+				displayName: 'Extra Body',
+				name: 'extraBody',
+				type: 'json',
+				default: '{}',
+				description:
+					'Optional additional JSON properties to include in the request body. Use this for parameters a deployment supports that the options above do not cover.',
 			},
 		],
 	},

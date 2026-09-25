@@ -647,6 +647,25 @@ describe('LmChatOpenAi', () => {
 			},
 		);
 
+		// Reserved names, refused whatever the caller does with them: this node merges with
+		// `Object.assign`, so `__proto__` would repoint the prototype of the options object.
+		it.each([
+			['{"__proto__":{"polluted":true}}', '__proto__'],
+			['{"constructor":{"x":1}}', 'constructor'],
+		])('should reject a reserved extraBody key: %s', async (extraBody, key) => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return { extraBody };
+				return undefined;
+			});
+
+			const result = lmChatOpenAi.supplyData.call(mockContext, 0);
+			await expect(result).rejects.toThrow(`The "Extra Body" field cannot set "${key}"`);
+			await expect(result).rejects.toThrow(NodeOperationError);
+		});
+
 		it('should wrap Chat Completions models to normalize empty tool-call content', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.2 });
 			const wrappedModel = { wrapped: true };

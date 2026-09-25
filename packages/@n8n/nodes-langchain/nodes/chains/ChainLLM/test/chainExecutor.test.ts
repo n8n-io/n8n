@@ -50,6 +50,34 @@ describe('chainExecutor', () => {
 			expect(parser).toBeInstanceOf(NaiveJsonOutputParser);
 		});
 
+		// The Responses API takes the same setting as `text.format`, so a model configured for it
+		// carries no `response_format` and would otherwise fall through to the string parser.
+		it('should return NaiveJsonOutputParser for models using the Responses text.format shape', () => {
+			const responsesModel = {
+				modelKwargs: {
+					text: { format: { type: 'json_object' } },
+				},
+			};
+
+			const parser = chainExecutor.getOutputParserForLLM(
+				responsesModel as unknown as BaseChatModel,
+			);
+			expect(parser).toBeInstanceOf(NaiveJsonOutputParser);
+		});
+
+		it('should not treat a non-JSON Responses text.format as JSON output', () => {
+			const responsesModel = {
+				modelKwargs: {
+					text: { format: { type: 'text' } },
+				},
+			};
+
+			const parser = chainExecutor.getOutputParserForLLM(
+				responsesModel as unknown as BaseChatModel,
+			);
+			expect(parser).not.toBeInstanceOf(NaiveJsonOutputParser);
+		});
+
 		it('should return NaiveJsonOutputParser for Ollama models with json format', () => {
 			const ollamaLikeModel = {
 				format: 'json',
