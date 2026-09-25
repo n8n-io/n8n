@@ -252,6 +252,46 @@ describe('LiveWebhooks', () => {
 			);
 		});
 
+		// Publication writes `workflow.activeVersionId` first and swaps the published
+		// version after, so mid-publication the row names a version whose nodes are
+		// not the ones this request runs.
+		it('attributes the run to the publisher of the version it runs, not the row pointer', async () => {
+			workflowPublisherService.findPublisherUserId.mockResolvedValue('publisher-of-running');
+
+			const workflowEntity = publishedWorkflowEntity();
+			// The row already points at the version being published.
+			workflowEntity.activeVersionId = 'version-publishing';
+			const publishedVersion = mock<WorkflowHistory>({
+				versionId: 'version-running',
+				workflowId: WORKFLOW_ID,
+				nodes: workflowEntity.activeVersion!.nodes,
+				connections: {},
+			});
+			const request = setupExecuteWebhookMocks(workflowEntity);
+			// After the helper, which seeds this mock from the entity's active version.
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+				workflow: workflowEntity,
+				publishedVersion,
+			});
+			// Only the publication path can hold a row pointer and a published
+			// version that disagree; the old path resolves one from the other.
+			Object.assign(workflowsConfig, { useWorkflowPublicationService: true });
+
+			try {
+				await liveWebhooks.executeWebhook(request, mock<Response>());
+			} finally {
+				Object.assign(workflowsConfig, { useWorkflowPublicationService: false });
+			}
+
+			expect(workflowPublisherService.findPublisherUserId).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				'version-running',
+			);
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'publisher-of-running' }),
+			);
+		});
+
 		it('leaves the context without a user when nobody published the workflow', async () => {
 			workflowPublisherService.findPublisherUserId.mockResolvedValue(undefined);
 
@@ -260,6 +300,9 @@ describe('LiveWebhooks', () => {
 
 			await liveWebhooks.executeWebhook(request, mock<Response>());
 
+			// Asserted as well as the empty context, so this still fails if the path
+			// ever stops asking and hardcodes an unattributed run.
+			expect(workflowPublisherService.findPublisherUserId).toHaveBeenCalledWith(WORKFLOW_ID, 'v1');
 			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
 				expect.objectContaining({ userId: undefined }),
 			);

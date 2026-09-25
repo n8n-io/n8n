@@ -94,7 +94,6 @@ describe('ActiveWorkflowManager', () => {
 			mock(), // workflowPushNotifier
 			policyEnforcementService,
 			ownershipService,
-			mock(),
 		);
 	});
 
@@ -233,7 +232,6 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // pollTriggerJobRegistrar
 				policyEnforcementService,
 				ownershipService,
-				mock(), // workflowPublisherService
 			);
 
 		const makeWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
@@ -446,7 +444,6 @@ describe('ActiveWorkflowManager', () => {
 				workflowPushNotifier,
 				policyEnforcementService,
 				ownershipService,
-				mock(), // workflowPublisherService
 			);
 		});
 
@@ -706,7 +703,6 @@ describe('ActiveWorkflowManager', () => {
 				workflowPushNotifier,
 				policyEnforcementService,
 				ownershipService,
-				mock(), // workflowPublisherService
 			);
 		});
 
@@ -918,7 +914,6 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
-				mock(), // workflowPublisherService
 			);
 		});
 
@@ -954,7 +949,7 @@ describe('ActiveWorkflowManager', () => {
 					workflowData,
 					node,
 					triggerData,
-					additionalData,
+					expect.objectContaining({ userId: undefined }),
 					mode,
 					undefined,
 					undefined,
@@ -997,7 +992,7 @@ describe('ActiveWorkflowManager', () => {
 					workflowData,
 					node,
 					triggerData,
-					additionalData,
+					expect.objectContaining({ userId: undefined }),
 					mode,
 					undefined,
 					'wf-1:node-1:1700000000000',
@@ -1372,7 +1367,6 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
-				mock(), // workflowPublisherService
 			);
 		});
 
@@ -1561,7 +1555,6 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
-				mock(), // workflowPublisherService
 			);
 
 		beforeEach(() => vi.clearAllMocks());
@@ -1641,7 +1634,6 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
-				mock(), // workflowPublisherService
 			);
 
 		const makeWorkflow = () => {

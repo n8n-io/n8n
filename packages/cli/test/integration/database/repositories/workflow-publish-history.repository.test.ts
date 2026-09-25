@@ -293,6 +293,39 @@ describe('WorkflowPublishHistoryRepository', () => {
 			expect(result).toBeUndefined();
 		});
 
+		// A deleted publisher must leave the run unattributed. Falling through to the
+		// latest activation would hand it to whoever published a different version.
+		it('returns undefined when the version was activated by a since-deleted user', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const otherPublisher = await createUser();
+			const deletedPublishersVersion = uuid();
+			const otherVersion = uuid();
+			const workflow = await createWorkflow();
+			await createWorkflowHistory({ ...workflow, versionId: deletedPublishersVersion });
+			await createWorkflowHistory({ ...workflow, versionId: otherVersion });
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: deletedPublishersVersion,
+				event: 'activated',
+				userId: null,
+			});
+
+			// Keep `createdAt` ordering deterministic, as the tests above do.
+			await new Promise((resolve) => setTimeout(resolve, 5));
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: otherVersion,
+				event: 'activated',
+				userId: otherPublisher.id,
+			});
+
+			await expect(
+				repository.findPublisherUserId(workflow.id, deletedPublishersVersion),
+			).resolves.toBeUndefined();
+		});
+
 		it('returns undefined for a workflow that was never activated', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflowWithHistory();

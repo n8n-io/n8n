@@ -15,6 +15,7 @@ import type { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-task';
 import { ScheduleTriggerTaskHandler } from '../schedule-trigger-task-handler';
@@ -26,6 +27,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 	const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 	const workflowExecutionService = mock<WorkflowExecutionService>();
 	const ownershipService = mock<OwnershipService>();
+	const workflowPublisherService = mock<WorkflowPublisherService>();
 	const globalConfig = mock<GlobalConfig>({ generic: { timezone: 'America/New_York' } });
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
@@ -41,7 +43,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		triggerExecutionContextFactory,
 		workflowExecutionService,
 		ownershipService,
-		mock(),
+		workflowPublisherService,
 	);
 
 	// The executor's dispatch-marker callback; cleared each test by vi.clearAllMocks().
@@ -87,9 +89,32 @@ describe('ScheduleTriggerTaskHandler', () => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 		triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(buildWorkflowData());
 		workflowExecutionService.runWorkflow.mockResolvedValue('exec-1');
+		workflowPublisherService.findPublisherUserId.mockResolvedValue(undefined);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'My Project' }),
 		);
+	});
+
+	describe('run attribution', () => {
+		// Publication writes `workflow.activeVersionId` first and swaps the
+		// published-version mapping after, so mid-publication the row already names
+		// a version whose nodes are not the ones this occurrence runs.
+		test('attributes the run to the publisher of the version it runs, not the row pointer', async () => {
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({ versionId: 'version-running', activeVersionId: 'version-publishing' }),
+			);
+			workflowPublisherService.findPublisherUserId.mockResolvedValue('publisher-of-running');
+
+			await handler.execute(buildTask(), report);
+
+			expect(workflowPublisherService.findPublisherUserId).toHaveBeenCalledWith(
+				'wf-1',
+				'version-running',
+			);
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'publisher-of-running' }),
+			);
+		});
 	});
 
 	describe('task type', () => {

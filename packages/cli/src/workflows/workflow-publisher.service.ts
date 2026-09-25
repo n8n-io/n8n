@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowPublishHistoryRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowPublishHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
@@ -17,13 +17,12 @@ import { isCredSharingEnabled } from '@/constants/credential-sharing';
 export class WorkflowPublisherService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly workflowRepository: WorkflowRepository,
 		private readonly publishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	/**
-	 * The publisher of the workflow's active version, or `undefined` when there
-	 * is none to attribute the run to.
+	 * The publisher of the given version, or `undefined` when there is none to
+	 * attribute the run to.
 	 *
 	 * Left empty rather than substituted with a stand-in. A run with no identity
 	 * behaves exactly as it does today, so callers need no fallback: this only
@@ -32,29 +31,31 @@ export class WorkflowPublisherService {
 	 * Returns `undefined` while the feature flag is off, which is the single
 	 * gate for this behaviour — call sites stay unconditional.
 	 *
-	 * @param activeVersionId - pass it when the caller already holds the
-	 * workflow, which the schedule, poll and webhook paths all do. This runs per
-	 * execution on those paths, so the lookup it saves is per execution too.
+	 * @param executedVersionId - the version whose nodes the run executes, which
+	 * every caller already holds. Deliberately not the workflow row's
+	 * `activeVersionId`: publication writes that row before it swaps the
+	 * published-version mapping, so mid-publication the row names a version the
+	 * run is not executing. Absent means unattributed, never "use the newest
+	 * activation" — an unpublished or stale workflow must not inherit the
+	 * identity of whoever published something else.
 	 */
 	async findPublisherUserId(
 		workflowId: string,
-		activeVersionId?: string | null,
+		executedVersionId: string | null | undefined,
 	): Promise<string | undefined> {
 		if (!isCredSharingEnabled()) return undefined;
 
-		const versionId =
-			activeVersionId !== undefined
-				? activeVersionId
-				: (
-						await this.workflowRepository.findOne({
-							where: { id: workflowId },
-							select: ['id', 'activeVersionId'],
-						})
-					)?.activeVersionId;
+		if (!executedVersionId) {
+			// Nothing to attribute to. The latest activation belongs to whichever
+			// version was published last, which is not the one running here, so
+			// guessing would hand the run an identity it never had.
+			this.logger.debug('Triggered execution has no version to attribute it to', { workflowId });
+			return undefined;
+		}
 
 		const publisherUserId = await this.publishHistoryRepository.findPublisherUserId(
 			workflowId,
-			versionId,
+			executedVersionId,
 		);
 
 		if (!publisherUserId) {

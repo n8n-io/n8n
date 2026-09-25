@@ -138,11 +138,13 @@ export class LiveWebhooks implements IWebhookManager {
 		)?.projectId;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			projectId: ownerProjectId,
-			// A production webhook is fired by a third party, so the run is
-			// attributed to whoever published the workflow.
+			// A production webhook is fired by a third party, so the run is attributed
+			// to whoever published the version it runs — the same published revision
+			// used for the content above, not the workflow row's pointer, which can
+			// already name the next version mid-publication.
 			userId: await this.workflowPublisherService.findPublisherUserId(
 				webhook.workflowId,
-				workflowData.activeVersionId,
+				versionId,
 			),
 		});
 

@@ -82,10 +82,14 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId,
 			workflowSettings: workflowData.settings,
-			// A schedule has nobody to be, so the run is attributed to the publisher.
+			// A schedule has nobody to be, so the run is attributed to the publisher
+			// of the version it runs. That is the mapping's `versionId`, not the
+			// workflow row's `activeVersionId`: publication updates the row first and
+			// the mapping after, so mid-publication the row already points at a
+			// version whose nodes are not the ones below.
 			userId: await this.workflowPublisherService.findPublisherUserId(
 				workflowId,
-				workflowData.activeVersionId,
+				workflowData.versionId,
 			),
 		});
 

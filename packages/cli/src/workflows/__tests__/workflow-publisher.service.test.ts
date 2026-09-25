@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowEntity, WorkflowPublishHistoryRepository, WorkflowRepository } from '@n8n/db';
+import type { WorkflowPublishHistoryRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import * as credentialSharing from '@/constants/credential-sharing';
@@ -7,33 +7,28 @@ import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service
 
 describe('WorkflowPublisherService', () => {
 	const logger = mock<Logger>();
-	const workflowRepository = mock<WorkflowRepository>();
 	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 
-	const service = new WorkflowPublisherService(
-		logger,
-		workflowRepository,
-		publishHistoryRepository,
-	);
+	const service = new WorkflowPublisherService(logger, publishHistoryRepository);
 
 	const workflowId = 'workflow-1';
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 		vi.spyOn(credentialSharing, 'isCredSharingEnabled').mockReturnValue(true);
-		workflowRepository.findOne.mockResolvedValue(
-			mock<WorkflowEntity>({ id: workflowId, activeVersionId: 'version-1' }),
-		);
 	});
 
-	it('attributes the run to whoever published the active version', async () => {
+	// The caller passes the version whose nodes are about to run, never the
+	// workflow row's `activeVersionId`, which names the next version while a
+	// publication is still applying.
+	it('attributes the run to whoever published the version it runs', async () => {
 		publishHistoryRepository.findPublisherUserId.mockResolvedValue('user-1');
 
-		await expect(service.findPublisherUserId(workflowId)).resolves.toBe('user-1');
+		await expect(service.findPublisherUserId(workflowId, 'version-9')).resolves.toBe('user-1');
 
 		expect(publishHistoryRepository.findPublisherUserId).toHaveBeenCalledWith(
 			workflowId,
-			'version-1',
+			'version-9',
 		);
 	});
 
@@ -42,7 +37,7 @@ describe('WorkflowPublisherService', () => {
 	it('returns nothing and logs when there is no publisher', async () => {
 		publishHistoryRepository.findPublisherUserId.mockResolvedValue(undefined);
 
-		await expect(service.findPublisherUserId(workflowId)).resolves.toBeUndefined();
+		await expect(service.findPublisherUserId(workflowId, 'version-9')).resolves.toBeUndefined();
 
 		expect(logger.debug).toHaveBeenCalledWith(
 			'Triggered execution has no publishing user to attribute it to',
@@ -50,50 +45,29 @@ describe('WorkflowPublisherService', () => {
 		);
 	});
 
-	it('still asks when the workflow has no active version', async () => {
-		workflowRepository.findOne.mockResolvedValue(null);
-		publishHistoryRepository.findPublisherUserId.mockResolvedValue('user-1');
+	// An unpublished workflow, and a shape that carries no version at all. The
+	// newest activation belongs to whichever version was published last, so
+	// falling back to it would attribute the run to someone who published
+	// something else.
+	it.each([null, undefined])(
+		'leaves the run unattributed, and reads nothing, when the version is %s',
+		async (versionId) => {
+			await expect(service.findPublisherUserId(workflowId, versionId)).resolves.toBeUndefined();
 
-		await expect(service.findPublisherUserId(workflowId)).resolves.toBe('user-1');
-
-		expect(publishHistoryRepository.findPublisherUserId).toHaveBeenCalledWith(
-			workflowId,
-			undefined,
-		);
-	});
-
-	// The schedule, poll and webhook paths run this per execution and already
-	// hold the workflow, so they pass the version and save a query each time.
-	it('skips the workflow lookup when the caller supplies the version', async () => {
-		publishHistoryRepository.findPublisherUserId.mockResolvedValue('user-1');
-
-		await expect(service.findPublisherUserId(workflowId, 'version-9')).resolves.toBe('user-1');
-
-		expect(workflowRepository.findOne).not.toHaveBeenCalled();
-		expect(publishHistoryRepository.findPublisherUserId).toHaveBeenCalledWith(
-			workflowId,
-			'version-9',
-		);
-	});
-
-	// `null` is a real value here — an unpublished workflow — and must not be
-	// mistaken for "the caller did not tell me".
-	it('treats a null version from the caller as given, not missing', async () => {
-		publishHistoryRepository.findPublisherUserId.mockResolvedValue(undefined);
-
-		await service.findPublisherUserId(workflowId, null);
-
-		expect(workflowRepository.findOne).not.toHaveBeenCalled();
-		expect(publishHistoryRepository.findPublisherUserId).toHaveBeenCalledWith(workflowId, null);
-	});
+			expect(publishHistoryRepository.findPublisherUserId).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Triggered execution has no version to attribute it to',
+				{ workflowId },
+			);
+		},
+	);
 
 	// The single gate for this behaviour, so every call site stays unconditional.
 	it('reads nothing at all while the feature flag is off', async () => {
 		vi.spyOn(credentialSharing, 'isCredSharingEnabled').mockReturnValue(false);
 
-		await expect(service.findPublisherUserId(workflowId)).resolves.toBeUndefined();
+		await expect(service.findPublisherUserId(workflowId, 'version-9')).resolves.toBeUndefined();
 
-		expect(workflowRepository.findOne).not.toHaveBeenCalled();
 		expect(publishHistoryRepository.findPublisherUserId).not.toHaveBeenCalled();
 	});
 });
