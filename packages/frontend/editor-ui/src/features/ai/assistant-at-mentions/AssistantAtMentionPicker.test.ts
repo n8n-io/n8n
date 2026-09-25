@@ -144,12 +144,30 @@ describe('AssistantAtMentionPicker', () => {
 		expect(getByTestId('instance-ai-mention-button')).toBeDisabled();
 	});
 
-	it('shows the empty recent-workflow state after browse completes', async () => {
-		const { findByText } = renderComponent({
+	it('shows the empty state without section headers when nothing is mentionable', async () => {
+		const { findByText, queryByText } = renderComponent({
 			props: { modelValue: true, query: '', projectId: undefined },
 		});
 
 		expect(await findByText('No recent workflows')).toBeVisible();
+		expect(queryByText('Workflows')).toBeNull();
+		expect(queryByText('Artifacts')).toBeNull();
+	});
+
+	it('hides the workflows section when only artifacts are available', async () => {
+		const { findByText, queryByText } = renderComponent({
+			props: {
+				modelValue: true,
+				query: '',
+				projectId: undefined,
+				artifacts: [{ id: 'w1', name: 'Orders' }],
+			},
+		});
+
+		expect(await findByText('Orders')).toBeVisible();
+		expect(await findByText('Artifacts')).toBeVisible();
+		expect(queryByText('Workflows')).toBeNull();
+		expect(queryByText('No recent workflows')).toBeNull();
 	});
 
 	it('renders ten skeleton rows while workflows load', async () => {
@@ -372,7 +390,7 @@ describe('AssistantAtMentionPicker', () => {
 		});
 	});
 
-	it('counts sub-menu opens per picker open and ignores state rows', async () => {
+	it('counts sub-menu opens per picker open', async () => {
 		getWorkflow.mockResolvedValue({
 			id: 'w1',
 			name: 'Orders',
@@ -393,8 +411,6 @@ describe('AssistantAtMentionPicker', () => {
 		const { findByText, rerender } = renderHarness({
 			props: { modelValue: true, query: '', artifacts: [{ id: 'w1', name: 'Orders' }] },
 		});
-		// The empty "Workflows" section renders a header and a disabled state row.
-		expect(await findByText('No recent workflows')).toBeVisible();
 		const workflowRow = (await findByText('Orders')).closest('[role="menuitem"]');
 		await userEvent.click(
 			workflowRow?.querySelector('[data-sub-menu-action="open"]') as HTMLElement,

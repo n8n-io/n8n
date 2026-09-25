@@ -167,28 +167,13 @@ const menuItems = computed<MentionMenuItem[]>(() => {
 	if (!hasItems && sources.providerErrors.value.size > 0) return [];
 
 	return sections.flatMap((section) => {
-		if (section.id === 'workflows' && section.items.length === 0) {
-			if (section.hadItems) return [];
-			if (sources.isBrowsing.value) return [];
-			if (sources.providerErrors.value.has('workflows')) {
-				return [
-					{
-						id: 'section:workflows',
-						label: i18n.baseText('instanceAi.mentions.workflowsSection'),
-						header: true,
-					},
-					{
-						id: 'state:workflows-error',
-						label: i18n.baseText('instanceAi.mentions.loadError'),
-						disabled: true,
-					},
-					{
-						id: RETRY_SOURCES_ITEM_ID,
-						label: i18n.baseText('generic.retry'),
-						keepOpen: true,
-					},
-				];
-			}
+		if (section.items.length === 0) {
+			const failedToLoadWorkflows =
+				section.id === 'workflows' &&
+				!section.hadItems &&
+				!sources.isBrowsing.value &&
+				sources.providerErrors.value.has('workflows');
+			if (!failedToLoadWorkflows) return [];
 			return [
 				{
 					id: 'section:workflows',
@@ -196,13 +181,17 @@ const menuItems = computed<MentionMenuItem[]>(() => {
 					header: true,
 				},
 				{
-					id: 'state:no-recent-workflows',
-					label: i18n.baseText('instanceAi.mentions.noRecentWorkflows'),
+					id: 'state:workflows-error',
+					label: i18n.baseText('instanceAi.mentions.loadError'),
 					disabled: true,
+				},
+				{
+					id: RETRY_SOURCES_ITEM_ID,
+					label: i18n.baseText('generic.retry'),
+					keepOpen: true,
 				},
 			];
 		}
-		if (section.items.length === 0) return [];
 		return [
 			{
 				id: `section:${section.id}`,
@@ -224,6 +213,12 @@ const isLoading = computed(
 			? sources.searchResults.value.length === 0
 			: !sources.browseSections.value.some((section) => section.items.length > 0)) &&
 		(searchPending.value || sources.isBrowsing.value || sources.isSearching.value),
+);
+
+const emptyText = computed(() =>
+	i18n.baseText(
+		props.query.trim() ? 'instanceAi.mentions.noResults' : 'instanceAi.mentions.noRecentWorkflows',
+	),
 );
 
 function getResultPosition(itemId: string): number | undefined {
@@ -402,7 +397,7 @@ defineExpose({ handleExternalKeydown, getOpenMetrics });
 		:disabled="disabled"
 		:loading="isLoading"
 		:loading-item-count="10"
-		:empty-text="i18n.baseText('instanceAi.mentions.noResults')"
+		:empty-text="emptyText"
 		:search-placeholder="i18n.baseText('instanceAi.mentions.searchPlaceholder')"
 		placement="top-start"
 		searchable
