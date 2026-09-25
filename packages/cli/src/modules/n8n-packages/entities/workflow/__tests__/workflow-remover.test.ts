@@ -20,6 +20,12 @@ function makeRemover(placements: Placement[], archivableIds = placements.map(({ 
 	workflowFinderService.findOwnedWorkflowPlacementsInProject.mockResolvedValue(
 		placements.map((placement) => ({ isArchived: false, ...placement })),
 	);
+	workflowFinderService.findOwnedWorkflowRemovalCandidates.mockImplementation(
+		async (_projectId, workflowIds) =>
+			placements
+				.filter(({ id, isArchived }) => workflowIds.includes(id) && !isArchived)
+				.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId })),
+	);
 	workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(archivableIds));
 	const workflowService = mock<WorkflowService>();
 	return {
@@ -232,7 +238,7 @@ describe('WorkflowRemover.planExplicitDeletes', () => {
 							existing: mock<WorkflowEntity>({ id: 'target' }),
 							sourceWorkflowId: 'source',
 						});
-			const { remover } = makeRemover([]);
+			const { remover, workflowFinderService } = makeRemover([]);
 
 			const plan = await remover.plan(context, {
 				workflowItems: [item],
@@ -246,6 +252,7 @@ describe('WorkflowRemover.planExplicitDeletes', () => {
 				{ sourceWorkflowId: 'source', workflowId: 'target', projectId: 'proj-1' },
 			]);
 			expect(plan.removals).toEqual([]);
+			expect(workflowFinderService.findOwnedWorkflowRemovalCandidates).not.toHaveBeenCalled();
 		},
 	);
 
@@ -277,13 +284,17 @@ describe('WorkflowRemover.planExplicitDeletes', () => {
 			// merge never reconciles by absence, yet the explicit delete still goes.
 			folderConflictPolicy: 'merge',
 			deletionPolicy: 'archive',
-			explicitDeleteIds: ['target'],
+			explicitDeleteIds: ['target', 'target'],
 		});
 
 		expect(plan.removals).toEqual([{ id: 'target', name: 'Target', parentFolderId: 'F1' }]);
 		expect(plan.failures).toEqual([]);
 		// Explicit deletes never drive folder reconciliation.
 		expect(plan.occupiedFolderIds).toEqual([]);
+		expect(
+			workflowFinderService.findOwnedWorkflowRemovalCandidates,
+		).toHaveBeenCalledExactlyOnceWith('proj-1', ['target']);
+		expect(workflowFinderService.findOwnedWorkflowPlacementsInProject).not.toHaveBeenCalled();
 		// Only the named id is scope-checked, not the bystander.
 		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledExactlyOnceWith(
 			['target'],

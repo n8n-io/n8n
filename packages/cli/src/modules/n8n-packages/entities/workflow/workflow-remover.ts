@@ -117,13 +117,10 @@ export class WorkflowRemover {
 			};
 		}
 
-		// Confined to the scoped project: an id naming a workflow elsewhere is simply not found here.
-		// Archived rows load so an already-archived id reads as gone rather than a candidate.
-		const placements = await this.workflowFinderService.findOwnedWorkflowPlacementsInProject(
+		const targets = await this.workflowFinderService.findOwnedWorkflowRemovalCandidates(
 			context.projectId,
-			{ includeArchived: true },
+			[...requested],
 		);
-		const targets = placements.filter(({ id, isArchived }) => requested.has(id) && !isArchived);
 		if (targets.length === 0) {
 			return {
 				removals: [],
