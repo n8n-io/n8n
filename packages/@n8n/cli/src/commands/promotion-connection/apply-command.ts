@@ -61,13 +61,13 @@ function blockedMessage(
 		preflight.missingBindings.filter((binding) => binding.kind === kind).length;
 
 	return [
-		'Apply is blocked until bindings are set up. Nothing was imported.',
+		'Apply is blocked. Nothing was imported.',
 		`  Missing projects:    ${preflight.missingProjects.length}`,
 		`  Missing credentials: ${bindings('credential')}`,
 		`  Missing variables:   ${bindings('variable')}`,
 		`  Access requirements: ${preflight.accessRequirements.length}`,
 		`  Conflicts:           ${preflight.conflicts.length}`,
-		'Run with --json for the details. After setup, run:',
+		'Run with --json for the details. After you resolve them, run:',
 		`  n8n-cli promotion-connection apply-continue ${shellQuote(connectionId)}` +
 			` --expected-config-id=${shellQuote(result.configId)}` +
 			` --expected-branch=${shellQuote(result.git.branchName)}` +

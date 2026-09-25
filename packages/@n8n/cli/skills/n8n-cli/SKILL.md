@@ -219,9 +219,10 @@ n8n-cli promotion-connection apply <id>
 Apply a reviewed commit only:
 
 ```bash
-# Review the changes, and note the commit they were read from.
-n8n-cli promotion-connection list-changes <projectId> apply --sort=updatedAt --order=desc
-n8n-cli promotion-connection list-changes <projectId> apply --jq '.commitSha'
+# Review the changes. Take the commit SHA from the same response as the rows:
+# a second request can read a newer commit.
+n8n-cli promotion-connection list-changes <projectId> apply --sort=updatedAt --order=desc --json > reviewed-changes.json
+jq '{commitSha, changes}' reviewed-changes.json
 # The config ID and branch come from the connection.
 n8n-cli promotion-connection get <id> --jq '.configs.apply.id'
 n8n-cli promotion-connection get <id> --jq '.configs.apply.settings.branchName'
@@ -229,7 +230,7 @@ n8n-cli promotion-connection get <id> --jq '.configs.apply.settings.branchName'
 n8n-cli promotion-connection apply <id> \
   --expected-config-id=<configId> --expected-branch=<branch> --expected-commit-sha=<full sha>
 # Exit 3: the source changed since the review. Review again.
-# Exit 4: bindings are missing. Create the credentials, variables, or projects,
+# Exit 4: preflight found missing bindings, access requirements, or conflicts. Resolve them,
 # then run the apply-continue command that apply printed:
 n8n-cli promotion-connection apply-continue <id> \
   --expected-config-id=<configId> --expected-branch=<branch> --expected-commit-sha=<full sha>

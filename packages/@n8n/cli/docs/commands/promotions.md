@@ -245,7 +245,7 @@ For `promote` the rows are what a promotion would send to the branch, and the
 API key needs `gitConnection:push`. For `apply` the rows are what applying the
 branch would change on this instance, and the key needs `gitConnection:pull`.
 `commitSha` is the commit the rows were read from. Table output shows the rows
-only. Read `commitSha` with `--json` or `--jq '.commitSha'`. Clone the direction
+only. Use `--json` to get the rows and `commitSha` together. Clone the direction
 first. Use the `id` of each row to build a selective promote.
 
 ## `promotion-connection promote-selection`
@@ -294,7 +294,7 @@ none.
 |--------|-----------|---------------|
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
 | `source-changed` | `3` | The configuration, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
-| `blocked` | `4` | The package needs projects, credentials, or variables that this instance does not have. Nothing was imported. The output shows the `apply-continue` command to run after setup. |
+| `blocked` | `4` | Preflight found missing bindings, access requirements, or conflicts. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
 
 With `--json`, the output is the full result for each status. For `blocked`, the
 `preflight` object lists each missing project, missing binding, access
@@ -305,8 +305,7 @@ connection only. The API key needs `gitConnection:pull`.
 
 ## `promotion-connection apply-continue`
 
-Continue an Apply that was `blocked`, after you set up the missing projects,
-credentials, and variables.
+Continue an Apply that was `blocked`, after you resolve the missing bindings, access requirements, or conflicts.
 
 ```bash
 n8n-cli promotion-connection apply-continue conn-1 \
@@ -315,17 +314,18 @@ n8n-cli promotion-connection apply-continue conn-1 \
 
 The three `--expected-*` flags are required. Use the `configId`,
 `git.branchName`, and `git.commitSha` that the blocked Apply reported. The
-command checks the bindings again. The results and exit codes are the same as
-for `apply`: `blocked` again means that bindings are still missing, and
+command runs the preflight again. The results and exit codes are the same as
+for `apply`: `blocked` again means that something still blocks, and
 `source-changed` means that you must review again. The server keeps no session,
 so run the command again when it exits `4`.
 
 ## Apply a reviewed commit
 
 ```bash
-# 1. Review the changes, and note the commit that they were read from.
-n8n-cli promotion-connection list-changes proj-abc apply
-n8n-cli promotion-connection list-changes proj-abc apply --jq '.commitSha'
+# 1. Review the changes. Take the commit SHA from the same response as the rows:
+#    a second request can read a newer commit.
+n8n-cli promotion-connection list-changes proj-abc apply --json > reviewed-changes.json
+jq '{commitSha, changes}' reviewed-changes.json
 
 # 2. Read the apply configuration ID and branch of the connection.
 n8n-cli promotion-connection get conn-1 --jq '.configs.apply.id'
@@ -335,7 +335,7 @@ n8n-cli promotion-connection get conn-1 --jq '.configs.apply.settings.branchName
 n8n-cli promotion-connection apply conn-1 \
   --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<sha from step 1>
 
-# 4. On exit code 4, create the missing projects, credentials, and variables.
+# 4. On exit code 4, resolve the missing bindings, access requirements, or conflicts.
 #    Then run the apply-continue command that step 3 printed.
 ```
 
