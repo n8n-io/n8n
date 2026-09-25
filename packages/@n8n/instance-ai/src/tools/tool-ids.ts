@@ -90,7 +90,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// on every agent build.
 	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.BUILD_AGENT] : []),
 	// Paired with build-agent: the model must be able to check supported agent
-	// channels/capabilities during intent recognition — before committing to a
+	// channels/capabilities while it chooses a workflow or Agent — before committing to a
 	// path — so an unsupported channel (e.g. WhatsApp) is explained rather than
 	// improvised as a workflow. Deferring it costs a search_tools + load_tool
 	// round-trip and lets the model fall back to workflow assumptions first.

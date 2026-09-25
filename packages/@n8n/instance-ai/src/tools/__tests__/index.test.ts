@@ -242,7 +242,7 @@ describe('domain tool construction', () => {
 	it('pairs list-agent-capabilities with build-agent in the always-loaded set', () => {
 		// Both are gated on the agents feature flag at module load time, so they
 		// must always be in or out together — the orchestrator needs to check
-		// support during intent recognition on the same footing as build-agent.
+		// support before it chooses a workflow or Agent, on the same footing as build-agent.
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('list-agent-capabilities')).toBe(
 			ALWAYS_LOADED_TOOL_NAMES.has('build-agent'),
 		);

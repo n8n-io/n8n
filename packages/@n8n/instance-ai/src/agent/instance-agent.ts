@@ -22,7 +22,7 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES } from '../tools/tool-ids';
+import { ALWAYS_LOADED_TOOL_NAMES, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 import { createToolModesConfig } from '../tools/tool-modes';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
@@ -208,6 +208,7 @@ export async function createInstanceAgent(
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
+			agentBuildingEnabled: allOrchestratorTools.has(ORCHESTRATION_TOOL_IDS.BUILD_AGENT),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot

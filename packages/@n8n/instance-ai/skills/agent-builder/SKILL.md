@@ -5,8 +5,7 @@ description: >-
   request after any required orchestrator-owned prerequisites are ready. Agent
   Builder owns Agent setup and implementation questions. Governs prerequisite
   creation, faithful handoff, targeting, testing, and publishing. Use directly
-  for routine Agent follow-ups; rerun intent-recognition only when the requested
-  artifact is no longer clear.
+  for routine Agent follow-ups.
 shared_references:
   - credential-setup-with-computer-use
 recommended_tools:
@@ -19,10 +18,9 @@ recommended_tools:
 
 ## Routing
 
-Use this skill after `intent-recognition` chooses an agent-anchored design, or
-when the conversation already targets an Agent and the user is continuing that
-build. Do not rerun intent recognition for routine Agent edits or extensions.
-Use `build-agent` only for Agent artifacts.
+Use this skill when a request calls for an n8n Agent, or when the conversation
+already targets an Agent and the user is continuing that build. Use
+`build-agent` only for Agent artifacts.
 
 For a new Agent request, make the first `build-agent` call with a faithful copy
 of the request as soon as any required orchestrator-owned prerequisites are

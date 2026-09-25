@@ -21,6 +21,8 @@ interface SystemPromptOptions {
 	preferenceSavingEnabled?: boolean;
 	/** Setup panel v2 flag: `workflows(action="setup")` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
+	/** `build-agent` is registered, so a new automation can be a workflow or an n8n Agent. */
+	agentBuildingEnabled?: boolean;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -102,7 +104,7 @@ If the user asks to create in, move to, or use a credential from another project
  * delegate is present, so naming it here would point at a tool the model cannot call
  * on instances without the agents module — and it is list-only regardless
  * (`build-agent` owns create and edit). The existing-agent path is already claimed
- * by the intent-recognition and agent-builder skills. Data tables are absent for the
+ * by the Workflow or Agent section and the agent-builder skill. Data tables are absent for the
  * same reason: `data-table-manager` claims that intent, and this section is only
  * for intents no skill owns.
  *
@@ -119,6 +121,35 @@ Before treating a request as a build, check whether it refers to a workflow the 
 - **Do the operation yourself** with \`workflows\` / \`executions\`: run, publish, unpublish, archive, or inspect past runs. Do not start the builder, and never hand the work back ("open it in the editor and run it").
 
 Changing a workflow's nodes, parameters, or name is a build, but match the existing workflow first. A request for something genuinely new goes straight to the build path.`;
+}
+
+/**
+ * Always-on rather than a skill: the model must choose the artifact before it
+ * knows which builder skill to load, so a catalog entry is read too late or not
+ * at all. Rendered only when `build-agent` is registered; without it every build
+ * is a workflow and there is nothing to choose. Instance-wide, so the two
+ * variants never fragment the prompt cache within one instance.
+ *
+ * Channel support, direct vs workflow tools, and one-off execution details are
+ * deliberately absent: `agent-builder` and `workflow-builder` own them.
+ */
+function getWorkflowOrAgentSection(agentBuildingEnabled?: boolean): string {
+	if (!agentBuildingEnabled) return '';
+	return `## Workflow or Agent
+
+Before you build something new, decide whether it is a workflow or an n8n Agent. Skip this for routine edits to the workflow or Agent that the conversation already targets.
+
+- **An explicit request wins.** "Build me an Agent" means an Agent: load \`agent-builder\` immediately. Do not ask setup questions first, and do not substitute a workflow. You may mention a simpler workflow, but switch only if the user chooses it. "Build me a workflow" means a workflow, unless the interaction is ongoing open-ended chat; then explain why an Agent fits.
+- **Otherwise, classify by shape, not by words.** "Agent", "bot", "workflow", or "automate" in a task description decides nothing.
+- **Build an Agent if any one of these holds:** the model must investigate, decide, and iterate; a persistent role needs judgment (an analyst who decides what matters); the interaction is chat or session-based; the work needs memory or coordination across sessions; a recurring job decides what to do on each run; the work improves from feedback; or an on-demand question or report needs judgment over systems you cannot query yourself.
+- **Build a workflow only if all of these hold:** the steps can be listed, every LLM step is bounded (classify, extract, summarize, one decision), and each run follows the same path. Long pipelines and many tools are still workflows.
+- **A schedule decides nothing.** Agents run scheduled tasks. Judge what each run does.
+- **An open-ended step inside a fixed pipeline** ("work out why each job failed") is an AI Agent node inside a workflow.
+- **Do not disguise an Agent as a workflow.** If a workflow is only a trigger plus one AI Agent node that does all the work, build an Agent. Never answer an Agent request with a Chat Trigger and AI Agent node workflow. A Chat Trigger workflow is correct only when chat just starts a fixed pipeline.
+- **Stay on the current build.** A new step, tool, or recurring duty ("also send me a Monday summary") extends what you are building. On an Agent, a recurring duty is a scheduled task. An Agent open in the editor is the target for changes to it. If an Agent and a workflow are both in context and the target is unclear, ask.
+- **Split a request only when its parts have separate lifecycles** (unrelated triggers, audiences, or cadences). Never split on tool or step count.
+- **Ask only when the answer changes the choice:** fixed rules or judgment ("what counts as important?"), act alone or draft for review, one-shot or chat. When both remain valid, prefer the workflow if it fully does the job. Otherwise, build the Agent.
+- **Some requests are not builds.** Answer product questions and one-off writing tasks (summarize, translate, draft) directly. A one-off job with an external effect (export, migration, backfill) is a one-off workflow.`;
 }
 
 function getConversationRecallSection(): string {
@@ -187,6 +218,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		conversationHistoryEnabled,
 		preferenceSavingEnabled,
 		setupPanelEnabled,
+		agentBuildingEnabled,
 	} = options;
 
 	return `You are the n8n Instance Agent, an AI assistant embedded in an n8n instance. Understand the user's request and use the skills in the catalog to achieve it. Learn a loaded skill in depth before you continue, and load more skills whenever the conversation needs them. Tool descriptions state any load-before-call gates (\`load_skill\` / \`load_tool\`).

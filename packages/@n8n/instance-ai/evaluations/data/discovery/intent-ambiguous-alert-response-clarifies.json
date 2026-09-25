@@ -4,10 +4,6 @@
 	"expectedToolInvocations": {
 		"allOfToolCalls": [
 			{
-				"toolName": "load_skill",
-				"argsContainAny": ["intent-recognition"]
-			},
-			{
 				"toolName": "ask-user",
 				"argsContainAny": [
 					"fixed rules",

@@ -5,10 +5,6 @@
 		"allOfToolCalls": [
 			{
 				"toolName": "load_skill",
-				"argsContainAny": ["intent-recognition"]
-			},
-			{
-				"toolName": "load_skill",
 				"argsContainAny": ["agent-builder"]
 			},
 			{

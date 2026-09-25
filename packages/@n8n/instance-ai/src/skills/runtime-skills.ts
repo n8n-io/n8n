@@ -14,7 +14,7 @@ import {
 import { composeSkillVariants } from '../prompts/skill-variants';
 
 export const INSTANCE_AI_SKILLS_DIR = resolve(__dirname, '..', '..', 'skills');
-const AGENTS_MODULE_RUNTIME_SKILLS = new Set(['agent-builder', 'intent-recognition']);
+const AGENTS_MODULE_RUNTIME_SKILLS = new Set(['agent-builder']);
 
 let cachedRuntimeSkillSource: RuntimeSkillSource | undefined;
 const cachedProfiles = new Map<string, ReturnType<typeof composeSkillVariants>>();

@@ -45,8 +45,6 @@ export const INSTANCE_AI_TOOL_MODES = {
 			DOMAIN_TOOL_IDS.N8N_DOCS,
 			DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
 			DOMAIN_TOOL_IDS.MCP_SERVERS,
-			// The default mode must be able to tell an agent request from a workflow request.
-			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
 			...WEB_TOOLS,
 		],
 	},
@@ -66,7 +64,8 @@ export const INSTANCE_AI_TOOL_MODES = {
 		tools: [DOMAIN_TOOL_IDS.DATA_TABLES, DOMAIN_TOOL_IDS.N8N_DOCS],
 	},
 	agents: {
-		description: 'Create, edit, or inspect n8n Agents.',
+		description:
+			'Create, edit, or inspect n8n Agents, or check which chat channels and capabilities Agents support.',
 		tools: [
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			DOMAIN_TOOL_IDS.AGENTS,
