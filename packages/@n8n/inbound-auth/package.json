@@ -24,7 +24,9 @@
   ],
   "dependencies": {
     "@n8n/permissions": "workspace:*",
-    "n8n-workflow": "workspace:*",
+    "n8n-workflow": "workspace:*"
+  },
+  "peerDependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
