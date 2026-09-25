@@ -95,19 +95,10 @@ function onUpdateClick() {
 }
 
 watch(
-	() => props.communityPackage?.packageName,
-	async (packageName) => {
-		if (packageName) {
-			await nodeTypesStore.loadNodeTypesIfNotLoaded();
-			const nodeType = nodeTypesStore.visibleNodeTypes.find((node) =>
-				node.name.includes(packageName),
-			);
-
-			const attributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name || '');
-			if (attributes?.npmVersion) {
-				latestVerifiedVersion.value = attributes.npmVersion;
-			}
-		}
+	() => props.communityPackage?.installedNodes[0]?.type,
+	async (nodeType) => {
+		const attributes = nodeType ? await nodeTypesStore.getCommunityNodeAttributes(nodeType) : null;
+		latestVerifiedVersion.value = attributes?.npmVersion;
 	},
 	{ immediate: true },
 );

@@ -195,17 +195,13 @@ const onUpdate = async () => {
 	}
 };
 
-async function fetchPackageInfo(packageName: string) {
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	const nodeType = nodeTypesStore.visibleNodeTypes.find((nodeType) =>
-		nodeType.name.includes(packageName),
-	);
+async function fetchPackageInfo() {
+	const nodeType = communityStorePackage.value?.installedNodes[0]?.type;
+	const communityNodeAttributes = nodeType
+		? await nodeTypesStore.getCommunityNodeAttributes(nodeType)
+		: null;
 
-	if (nodeType) {
-		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name);
-
-		nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
-	}
+	nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
 }
 
 function setIsVerifiedLatestPackage() {
@@ -233,7 +229,7 @@ const onClick = async () => {
 
 onMounted(async () => {
 	if (props.activePackageName) {
-		await fetchPackageInfo(props.activePackageName);
+		await fetchPackageInfo();
 	}
 
 	if (communityStorePackage.value?.installedNodes.length) {
