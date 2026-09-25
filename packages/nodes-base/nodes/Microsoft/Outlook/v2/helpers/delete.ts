@@ -19,7 +19,7 @@ export async function executeDeletion(
 	const options = this.getNodeParameter('options', itemIndex, {}) as {
 		permanentDelete?: boolean;
 	};
-	const isPermanentDelete = options?.permanentDelete || false;
+	const isPermanentDelete = options.permanentDelete ?? false;
 
 	return await microsoftApiRequest.call(
 		this,
