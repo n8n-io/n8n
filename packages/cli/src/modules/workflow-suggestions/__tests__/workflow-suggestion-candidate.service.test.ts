@@ -1,4 +1,4 @@
-import type { WorkflowDraftGraph, WorkflowDraftSnapshot } from '@n8n/api-types';
+import type { WorkflowSuggestionGraph, WorkflowSuggestionSnapshot } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
@@ -12,7 +12,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-import { WorkflowDraftCandidateService } from '../workflow-draft-candidate.service';
+import { WorkflowSuggestionCandidateService } from '../workflow-suggestion-candidate.service';
 
 const license = mock<LicenseState>();
 const credentials = mock<CredentialsService>();
@@ -21,21 +21,21 @@ const validation = mock<WorkflowValidationService>();
 const policies = mock<PolicyEnforcementService>();
 const enterprise = mockInstance(EnterpriseWorkflowService);
 const user = mock<User>({ id: 'user' });
-const service = new WorkflowDraftCandidateService(
+const service = new WorkflowSuggestionCandidateService(
 	license,
 	credentials,
 	nodeTypes,
 	validation,
 	policies,
 );
-const baseline: WorkflowDraftSnapshot = {
+const baseline: WorkflowSuggestionSnapshot = {
 	name: 'Original',
 	nodes: [],
 	connections: {},
 	settings: { executionTimeout: 15 },
 	nodeGroups: [],
 };
-const graph: WorkflowDraftGraph = {
+const graph: WorkflowSuggestionGraph = {
 	nodes: [
 		{
 			id: 'n',

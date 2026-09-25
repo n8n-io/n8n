@@ -95,8 +95,8 @@
 			"reason": "Project-scoped AI preferences describe how to work inside the deleted project; dropped via FK cascade, like Variables. Personal and global preferences carry no projectId."
 		},
 		{
-			"name": "WorkflowDraft",
-			"path": "packages/cli/src/modules/workflow-drafts/database/workflow-draft.entity.ts",
+			"name": "WorkflowSuggestion",
+			"path": "packages/cli/src/modules/workflow-suggestions/database/workflow-suggestion.entity.ts",
 			"reason": "Keeps the original project and baseline. A workflow transfer makes the proposal ineligible. Retain the source receipt for delayed retries."
 		}
 	]

@@ -1,12 +1,12 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateWorkflowDraftTables1790254283961 implements ReversibleMigration {
+export class CreateWorkflowSuggestionTables1790254283961 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
 			schemaBuilder: { createTable, column, createIndex },
 			escape,
 		} = ctx;
-		await createTable('workflow_draft')
+		await createTable('workflow_suggestion')
 			.withColumns(
 				column('id').varchar().primary,
 				column('sourceKey')
@@ -28,13 +28,13 @@ export class CreateWorkflowDraftTables1790254283961 implements ReversibleMigrati
 				column('state')
 					.varchar(16)
 					.notNull.withEnumCheck(['preparing', 'pending', 'closed'])
-					.comment('Draft lifecycle state'),
+					.comment('Suggestion lifecycle state'),
 				column('revision').int.notNull,
 				column('submittedRevision').int,
 				column('closedReason')
 					.varchar(16)
 					.withEnumCheck(['outdated', 'abandoned', 'applied', 'discarded'])
-					.comment('Reason the draft closed'),
+					.comment('Reason the suggestion closed'),
 				column('closedAt').timestampTimezone(),
 				column('payload').json.comment(
 					'Independent baseline, graph, explanation, validation, and error context. Removed on expiry',
@@ -46,16 +46,16 @@ export class CreateWorkflowDraftTables1790254283961 implements ReversibleMigrati
 			.withIndexOn(['state', 'updatedAt'])
 			.withIndexOn(['state', 'closedAt']);
 		await createIndex(
-			'workflow_draft',
+			'workflow_suggestion',
 			['workflowId'],
 			true,
 			undefined,
 			`${escape.columnName('state')} = 'pending'`,
 		);
-		await createTable('workflow_draft_activity')
+		await createTable('workflow_suggestion_activity')
 			.withColumns(
 				column('id').varchar().primary,
-				column('draftId').varchar().notNull,
+				column('suggestionId').varchar().notNull,
 				column('action')
 					.varchar(16)
 					.notNull.withEnumCheck(['submitted'])
@@ -68,16 +68,16 @@ export class CreateWorkflowDraftTables1790254283961 implements ReversibleMigrati
 				column('createdAt').timestampTimezone().notNull.default('NOW()'),
 				column('updatedAt').timestampTimezone().notNull.default('NOW()'),
 			)
-			.withIndexOn(['draftId', 'action'], true)
-			.withForeignKey('draftId', {
-				tableName: 'workflow_draft',
+			.withIndexOn(['suggestionId', 'action'], true)
+			.withForeignKey('suggestionId', {
+				tableName: 'workflow_suggestion',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			});
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
-		await dropTable('workflow_draft_activity');
-		await dropTable('workflow_draft');
+		await dropTable('workflow_suggestion_activity');
+		await dropTable('workflow_suggestion');
 	}
 }

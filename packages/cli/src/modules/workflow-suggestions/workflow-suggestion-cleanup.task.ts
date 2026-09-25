@@ -1,11 +1,11 @@
 import { SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
-import { WorkflowDraftRepository } from './database/workflow-draft.repository';
+import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 
 @SystemTask()
-export class WorkflowDraftCleanupTask implements SystemTask {
-	readonly name = 'workflow-draft-cleanup';
+export class WorkflowSuggestionCleanupTask implements SystemTask {
+	readonly name = 'workflow-suggestion-cleanup';
 	readonly schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 3600 };
 	readonly effects: SystemTaskEffects = 'idempotent';
 	readonly placement: SystemTaskPlacement = {
@@ -15,9 +15,9 @@ export class WorkflowDraftCleanupTask implements SystemTask {
 	};
 	readonly retryDelaySeconds = 30;
 
-	constructor(private readonly drafts: WorkflowDraftRepository) {}
+	constructor(private readonly suggestions: WorkflowSuggestionRepository) {}
 
 	async run(signal: AbortSignal) {
-		if (!signal.aborted) await this.drafts.cleanup(new Date());
+		if (!signal.aborted) await this.suggestions.cleanup(new Date());
 	}
 }

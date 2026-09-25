@@ -135,8 +135,6 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.webhook_entity](public.webhook_entity.md) | 6 |  | BASE TABLE |
 | [public.workflow_builder_session](public.workflow_builder_session.md) | 9 |  | BASE TABLE |
 | [public.workflow_dependency](public.workflow_dependency.md) | 9 |  | BASE TABLE |
-| [public.workflow_draft](public.workflow_draft.md) | 14 |  | BASE TABLE |
-| [public.workflow_draft_activity](public.workflow_draft_activity.md) | 7 |  | BASE TABLE |
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
 | [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 8 |  | BASE TABLE |
@@ -152,6 +150,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 5 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
+| [public.workflow_suggestion](public.workflow_suggestion.md) | 14 |  | BASE TABLE |
+| [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) | 7 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -353,7 +353,6 @@ erDiagram
 "public.workflow_builder_session" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.workflow_builder_session" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_dependency" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
-"public.workflow_draft_activity" }o--|| "public.workflow_draft" : "FOREIGN KEY (#quot;draftId#quot;) REFERENCES workflow_draft(id) ON DELETE CASCADE"
 "public.workflow_entity" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflow_entity" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
 "public.workflow_history" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -381,6 +380,7 @@ erDiagram
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;workflowVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;baselineVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_review_request_workflow" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
+"public.workflow_suggestion_activity" }o--|| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 
@@ -1655,31 +1655,6 @@ erDiagram
   varchar_36_ workflowId FK
   integer workflowVersionId
 }
-"public.workflow_draft" {
-  uuid backgroundUserId
-  timestamp_3__with_time_zone closedAt
-  varchar_16_ closedReason
-  timestamp_3__with_time_zone createdAt
-  json expectedBaseline
-  varchar id
-  json payload
-  varchar_36_ projectId
-  integer revision
-  varchar_255_ sourceKey
-  varchar_16_ state
-  integer submittedRevision
-  timestamp_3__with_time_zone updatedAt
-  varchar_36_ workflowId
-}
-"public.workflow_draft_activity" {
-  varchar_16_ action
-  varchar_16_ author
-  timestamp_3__with_time_zone createdAt
-  varchar draftId FK
-  varchar id
-  integer revision
-  timestamp_3__with_time_zone updatedAt
-}
 "public.workflow_entity" {
   boolean active
   varchar_36_ activeVersionId FK
@@ -1819,6 +1794,31 @@ erDiagram
   smallint rootCountDelta
   varchar_36_ workflowId
   varchar_128_ workflowName
+}
+"public.workflow_suggestion" {
+  uuid backgroundUserId
+  timestamp_3__with_time_zone closedAt
+  varchar_16_ closedReason
+  timestamp_3__with_time_zone createdAt
+  json expectedBaseline
+  varchar id
+  json payload
+  varchar_36_ projectId
+  integer revision
+  varchar_255_ sourceKey
+  varchar_16_ state
+  integer submittedRevision
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId
+}
+"public.workflow_suggestion_activity" {
+  varchar_16_ action
+  varchar_16_ author
+  timestamp_3__with_time_zone createdAt
+  varchar id
+  integer revision
+  varchar suggestionId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.workflows_tags" {
   varchar_36_ tagId FK

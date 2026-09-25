@@ -1,8 +1,8 @@
 import type {
-	WorkflowDraftContent,
-	WorkflowDraftGraph,
-	WorkflowDraftProposalDetail,
-	WorkflowDraftSource,
+	WorkflowSuggestionContent,
+	WorkflowSuggestionGraph,
+	WorkflowSuggestionProposalDetail,
+	WorkflowSuggestionSource,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { TransactionRunner, UserRepository } from '@n8n/db';
@@ -19,19 +19,19 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
-import { WorkflowDraftRepository } from './database/workflow-draft.repository';
-import { WorkflowDraftCandidateService } from './workflow-draft-candidate.service';
+import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
+import { WorkflowSuggestionCandidateService } from './workflow-suggestion-candidate.service';
 import {
 	assertSameSource,
-	draftSourceSchema,
+	suggestionSourceSchema,
 	lifecycleResult,
 	preparingContent,
 	requireSubmittable,
-} from './workflow-draft.contracts';
+} from './workflow-suggestion.contracts';
 
 const reviseSchema = z
 	.object({
-		draftId: z.string().min(1),
+		suggestionId: z.string().min(1),
 		expectedRevision: z.number().int().positive(),
 		graph: z.object({ nodes: z.array(z.unknown()), connections: z.record(z.unknown()) }).strict(),
 		explanation: z.string().trim().min(1).max(20_000),
@@ -46,10 +46,10 @@ const errorContextSchema = z
 	.nullable();
 
 @Service()
-export class WorkflowDraftService {
+export class WorkflowSuggestionService {
 	constructor(
-		private readonly drafts: WorkflowDraftRepository,
-		private readonly candidates: WorkflowDraftCandidateService,
+		private readonly suggestions: WorkflowSuggestionRepository,
+		private readonly candidates: WorkflowSuggestionCandidateService,
 		private readonly users: UserRepository,
 		private readonly publication: WorkflowPublicationStatusService,
 		private readonly txRunner: TransactionRunner,
@@ -57,8 +57,8 @@ export class WorkflowDraftService {
 	) {}
 
 	private requireEnabled() {
-		if (!this.modules.isActive('workflow-drafts'))
-			throw new NotFoundError('Workflow drafts are not enabled.');
+		if (!this.modules.isActive('workflow-suggestions'))
+			throw new NotFoundError('Workflow suggestions are not enabled.');
 	}
 
 	private async requireEditor(userId: string, workflowId: string) {
@@ -74,7 +74,7 @@ export class WorkflowDraftService {
 	}
 
 	private async baselineMatches(
-		source: WorkflowDraftSource,
+		source: WorkflowSuggestionSource,
 		workflow: WorkflowEntity | null,
 		ctx: OperationContext,
 	) {
@@ -92,22 +92,22 @@ export class WorkflowDraftService {
 		return status.status === 'published' && status.liveVersionId === expected.publishedVersionId;
 	}
 
-	async createDraft(
-		source: WorkflowDraftSource,
-		errorContext: WorkflowDraftContent['errorContext'] = null,
+	async createSuggestion(
+		source: WorkflowSuggestionSource,
+		errorContext: WorkflowSuggestionContent['errorContext'] = null,
 	) {
 		this.requireEnabled();
-		source = draftSourceSchema.parse(source);
+		source = suggestionSourceSchema.parse(source);
 		errorContext = errorContextSchema.parse(errorContext);
 		await this.requireEditor(source.backgroundUserId, source.workflowId);
-		const existing = await this.drafts.findBySourceKey(source.sourceKey);
+		const existing = await this.suggestions.findBySourceKey(source.sourceKey);
 		if (existing) {
 			assertSameSource(existing, source);
 			return existing;
 		}
 
 		const baseline = await this.txRunner.run({}, async (ctx) => {
-			const target = await this.drafts.readWorkflowTarget(source.workflowId, ctx);
+			const target = await this.suggestions.readWorkflowTarget(source.workflowId, ctx);
 			if (
 				!target.workflow ||
 				!target.projectId ||
@@ -120,7 +120,7 @@ export class WorkflowDraftService {
 				snapshot: structuredClone(pick(target.workflow, WORKFLOW_CHECKSUM_FIELDS)),
 			};
 		});
-		return await this.drafts.createOnce(source, baseline.projectId, {
+		return await this.suggestions.createOnce(source, baseline.projectId, {
 			original: baseline.snapshot,
 			candidate: structuredClone({
 				nodes: baseline.snapshot.nodes,
@@ -132,36 +132,36 @@ export class WorkflowDraftService {
 		});
 	}
 
-	async readDraft(source: WorkflowDraftSource, draftId: string) {
+	async readSuggestion(source: WorkflowSuggestionSource, suggestionId: string) {
 		this.requireEnabled();
-		draftSourceSchema.parse(source);
+		suggestionSourceSchema.parse(source);
 		await this.requireEditor(source.backgroundUserId, source.workflowId);
-		const draft = await this.drafts.getDraft(draftId);
-		assertSameSource(draft, source);
-		return draft;
+		const suggestion = await this.suggestions.getSuggestion(suggestionId);
+		assertSameSource(suggestion, source);
+		return suggestion;
 	}
 
-	async reviseDraft(
-		source: WorkflowDraftSource,
+	async reviseSuggestion(
+		source: WorkflowSuggestionSource,
 		input: {
-			draftId: string;
+			suggestionId: string;
 			expectedRevision: number;
-			graph: WorkflowDraftGraph;
+			graph: WorkflowSuggestionGraph;
 			explanation: string;
 		},
 	) {
 		reviseSchema.parse(input);
-		const draft = await this.readDraft(source, input.draftId);
-		const content = preparingContent(draft, input.expectedRevision);
+		const suggestion = await this.readSuggestion(source, input.suggestionId);
+		const content = preparingContent(suggestion, input.expectedRevision);
 		const user = await this.requireEditor(source.backgroundUserId, source.workflowId);
 		const graph = await this.candidates.prepare(
 			user,
-			draft.workflowId,
-			draft.projectId,
+			suggestion.workflowId,
+			suggestion.projectId,
 			content.original,
 			input.graph,
 		);
-		return await this.drafts.reviseIfCurrent(draft.id, input.expectedRevision, {
+		return await this.suggestions.reviseIfCurrent(suggestion.id, input.expectedRevision, {
 			...content,
 			candidate: graph,
 			explanation: input.explanation,
@@ -174,9 +174,9 @@ export class WorkflowDraftService {
 		});
 	}
 
-	async submitDraft(source: WorkflowDraftSource, draftId: string, revision: number) {
+	async submitSuggestion(source: WorkflowSuggestionSource, suggestionId: string, revision: number) {
 		z.number().int().positive().parse(revision);
-		const checked = await this.readDraft(source, draftId);
+		const checked = await this.readSuggestion(source, suggestionId);
 		if (checked.state === 'preparing') {
 			const content = requireSubmittable(checked, revision);
 			const user = await this.requireEditor(source.backgroundUserId, source.workflowId);
@@ -189,19 +189,22 @@ export class WorkflowDraftService {
 			);
 		}
 		return await this.txRunner.run({}, async (ctx) => {
-			const { draft, workflow, projectId } = await this.drafts.loadForSubmission(
-				draftId,
+			const { suggestion, workflow, projectId } = await this.suggestions.loadForSubmission(
+				suggestionId,
 				source.workflowId,
 				ctx,
 			);
-			assertSameSource(draft, source);
-			if (draft.state !== 'preparing') return lifecycleResult(draft);
-			requireSubmittable(draft, revision);
-			if (projectId !== draft.projectId || !(await this.baselineMatches(source, workflow, ctx))) {
-				return lifecycleResult(await this.drafts.closeAsOutdated(draft.id, ctx));
+			assertSameSource(suggestion, source);
+			if (suggestion.state !== 'preparing') return lifecycleResult(suggestion);
+			requireSubmittable(suggestion, revision);
+			if (
+				projectId !== suggestion.projectId ||
+				!(await this.baselineMatches(source, workflow, ctx))
+			) {
+				return lifecycleResult(await this.suggestions.closeAsOutdated(suggestion.id, ctx));
 			}
-			const proposal = await this.drafts.markPendingIfCurrent(draft.id, revision, ctx);
-			await this.drafts.appendSubmittedActivity(proposal.id, revision, ctx);
+			const proposal = await this.suggestions.markPendingIfCurrent(suggestion.id, revision, ctx);
+			await this.suggestions.appendSubmittedActivity(proposal.id, revision, ctx);
 			return lifecycleResult(proposal);
 		});
 	}
@@ -209,24 +212,31 @@ export class WorkflowDraftService {
 	async getProposal(
 		viewer: User,
 		projectId: string,
-		draftId: string,
-	): Promise<WorkflowDraftProposalDetail> {
+		suggestionId: string,
+	): Promise<WorkflowSuggestionProposalDetail> {
 		this.requireEnabled();
-		const draft = await this.drafts.getDraft(draftId);
-		if (draft.projectId !== projectId) throw new NotFoundError('Proposal not found.');
-		await this.requireEditor(viewer.id, draft.workflowId);
-		const current = await this.drafts.readWorkflowTarget(draft.workflowId, {});
-		if (!current.workflow || current.projectId !== projectId || draft.submittedRevision === null) {
+		const suggestion = await this.suggestions.getSuggestion(suggestionId);
+		if (suggestion.projectId !== projectId) throw new NotFoundError('Proposal not found.');
+		await this.requireEditor(viewer.id, suggestion.workflowId);
+		const current = await this.suggestions.readWorkflowTarget(suggestion.workflowId, {});
+		if (
+			!current.workflow ||
+			current.projectId !== projectId ||
+			suggestion.submittedRevision === null
+		) {
 			throw new NotFoundError('Proposal not found.');
 		}
-		const activity = await this.drafts.getActivity(draftId);
+		const activity = await this.suggestions.getActivity(suggestionId);
 		return {
-			...lifecycleResult(draft),
+			...lifecycleResult(suggestion),
 			projectId,
-			revision: draft.revision,
+			revision: suggestion.revision,
 			author: 'assistant',
-			payload: draft.payload
-				? { ...draft.payload, proposed: { ...draft.payload.original, ...draft.payload.candidate } }
+			payload: suggestion.payload
+				? {
+						...suggestion.payload,
+						proposed: { ...suggestion.payload.original, ...suggestion.payload.candidate },
+					}
 				: null,
 			activity: activity.map(({ id, action, author, revision, createdAt }) => ({
 				id,
@@ -239,13 +249,13 @@ export class WorkflowDraftService {
 	}
 
 	// Trusted backend consumers can recover the receipt after background access is lost.
-	async getLifecycleResult(source: WorkflowDraftSource) {
+	async getLifecycleResult(source: WorkflowSuggestionSource) {
 		this.requireEnabled();
-		const parsed = draftSourceSchema.safeParse(source);
-		if (!parsed.success) throw new BadRequestError('Invalid draft source.');
-		const draft = await this.drafts.findBySourceKey(source.sourceKey);
-		if (!draft) return null;
-		assertSameSource(draft, source);
-		return lifecycleResult(draft);
+		const parsed = suggestionSourceSchema.safeParse(source);
+		if (!parsed.success) throw new BadRequestError('Invalid suggestion source.');
+		const suggestion = await this.suggestions.findBySourceKey(source.sourceKey);
+		if (!suggestion) return null;
+		assertSameSource(suggestion, source);
+		return lifecycleResult(suggestion);
 	}
 }

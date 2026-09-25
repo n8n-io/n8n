@@ -1,16 +1,16 @@
 import type {
-	WorkflowDraftContent,
-	WorkflowDraftLifecycleResult,
-	WorkflowDraftSource,
+	WorkflowSuggestionContent,
+	WorkflowSuggestionLifecycleResult,
+	WorkflowSuggestionSource,
 } from '@n8n/api-types';
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
-@Entity('workflow_draft')
+@Entity('workflow_suggestion')
 @Index(['workflowId'], { unique: true, where: "state = 'pending'" })
 @Index(['state', 'updatedAt'])
 @Index(['state', 'closedAt'])
-export class WorkflowDraft extends WithTimestampsAndStringId {
+export class WorkflowSuggestion extends WithTimestampsAndStringId {
 	@Index({ unique: true })
 	@Column({ type: 'varchar', length: 255 })
 	sourceKey: string;
@@ -26,10 +26,10 @@ export class WorkflowDraft extends WithTimestampsAndStringId {
 	backgroundUserId: string;
 
 	@JsonColumn()
-	expectedBaseline: WorkflowDraftSource['expectedBaseline'];
+	expectedBaseline: WorkflowSuggestionSource['expectedBaseline'];
 
 	@Column({ type: 'varchar', length: 16 })
-	state: WorkflowDraftLifecycleResult['state'];
+	state: WorkflowSuggestionLifecycleResult['state'];
 
 	@Column({ type: 'int' })
 	revision: number;
@@ -38,11 +38,11 @@ export class WorkflowDraft extends WithTimestampsAndStringId {
 	submittedRevision: number | null;
 
 	@Column({ type: 'varchar', length: 16, nullable: true })
-	closedReason: WorkflowDraftLifecycleResult['closedReason'];
+	closedReason: WorkflowSuggestionLifecycleResult['closedReason'];
 
 	@DateTimeColumn({ nullable: true })
 	closedAt: Date | null;
 
 	@JsonColumn({ nullable: true })
-	payload: WorkflowDraftContent | null;
+	payload: WorkflowSuggestionContent | null;
 }

@@ -1,4 +1,4 @@
-import type { WorkflowDraftSource } from '@n8n/api-types';
+import type { WorkflowSuggestionSource } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import {
 	WorkflowEntity,
@@ -13,26 +13,33 @@ import { mock } from 'vitest-mock-extended';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
-import { WorkflowDraft } from '../database/workflow-draft.entity';
-import type { WorkflowDraftRepository } from '../database/workflow-draft.repository';
-import type { WorkflowDraftCandidateService } from '../workflow-draft-candidate.service';
-import { WorkflowDraftService } from '../workflow-draft.service';
+import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
+import type { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
+import type { WorkflowSuggestionCandidateService } from '../workflow-suggestion-candidate.service';
+import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
-const drafts = mock<WorkflowDraftRepository>();
-const candidates = mock<WorkflowDraftCandidateService>();
+const suggestions = mock<WorkflowSuggestionRepository>();
+const candidates = mock<WorkflowSuggestionCandidateService>();
 const users = mock<UserRepository>();
 const publication = mock<WorkflowPublicationStatusService>();
 const modules = mock<ModuleRegistry>();
 const tx = mock<TransactionRunner>();
 const ctx: OperationContext = {};
-const service = new WorkflowDraftService(drafts, candidates, users, publication, tx, modules);
+const service = new WorkflowSuggestionService(
+	suggestions,
+	candidates,
+	users,
+	publication,
+	tx,
+	modules,
+);
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
 const versionId = '2d97d917-00ae-4fce-98c0-9b4d708a6c94';
-let source: WorkflowDraftSource;
+let source: WorkflowSuggestionSource;
 let workflow: WorkflowEntity;
-let draft: WorkflowDraft;
+let suggestion: WorkflowSuggestion;
 
 beforeEach(async () => {
 	vi.resetAllMocks();
@@ -61,8 +68,8 @@ beforeEach(async () => {
 			checksum: await calculateWorkflowChecksum(workflow),
 		},
 	};
-	draft = Object.assign(new WorkflowDraft(), {
-		id: 'draft',
+	suggestion = Object.assign(new WorkflowSuggestion(), {
+		id: 'suggestion',
 		...source,
 		projectId: 'project',
 		state: 'preparing',
@@ -94,28 +101,28 @@ beforeEach(async () => {
 			},
 		},
 	});
-	drafts.getDraft.mockResolvedValue(draft);
-	drafts.findBySourceKey.mockResolvedValue(null);
-	drafts.readWorkflowTarget.mockResolvedValue({ workflow, projectId: 'project' });
-	drafts.loadForSubmission.mockResolvedValue({ draft, workflow, projectId: 'project' });
+	suggestions.getSuggestion.mockResolvedValue(suggestion);
+	suggestions.findBySourceKey.mockResolvedValue(null);
+	suggestions.readWorkflowTarget.mockResolvedValue({ workflow, projectId: 'project' });
+	suggestions.loadForSubmission.mockResolvedValue({ suggestion, workflow, projectId: 'project' });
 	publication.getStatus.mockResolvedValue({
 		status: 'published',
 		liveVersionId: versionId,
 		pendingVersionId: null,
 		triggers: [],
 	});
-	drafts.markPendingIfCurrent.mockImplementation(async () =>
-		Object.assign(draft, { state: 'pending', submittedRevision: 2 }),
+	suggestions.markPendingIfCurrent.mockImplementation(async () =>
+		Object.assign(suggestion, { state: 'pending', submittedRevision: 2 }),
 	);
-	drafts.closeAsOutdated.mockImplementation(async () =>
-		Object.assign(draft, { state: 'closed', closedReason: 'outdated' }),
+	suggestions.closeAsOutdated.mockImplementation(async () =>
+		Object.assign(suggestion, { state: 'closed', closedReason: 'outdated' }),
 	);
-	drafts.getActivity.mockResolvedValue([]);
+	suggestions.getActivity.mockResolvedValue([]);
 });
 
 it('captures a separate baseline without validation or workflow writes', async () => {
-	await service.createDraft(source);
-	expect(drafts.createOnce).toHaveBeenCalledWith(
+	await service.createSuggestion(source);
+	expect(suggestions.createOnce).toHaveBeenCalledWith(
 		source,
 		'project',
 		expect.objectContaining({
@@ -141,16 +148,16 @@ it.each(['settings', 'version', 'published', 'archived', 'publication'] as const
 				pendingVersionId: versionId,
 				triggers: [],
 			});
-		await expect(service.createDraft(source)).rejects.toThrow('baseline');
-		expect(drafts.createOnce).not.toHaveBeenCalled();
+		await expect(service.createSuggestion(source)).rejects.toThrow('baseline');
+		expect(suggestions.createOnce).not.toHaveBeenCalled();
 	},
 );
 
 it('binds a source retry to its original identity and baseline', async () => {
-	drafts.findBySourceKey.mockResolvedValue(draft);
-	expect(await service.createDraft(source)).toBe(draft);
+	suggestions.findBySourceKey.mockResolvedValue(suggestion);
+	expect(await service.createSuggestion(source)).toBe(suggestion);
 	await expect(
-		service.createDraft({
+		service.createSuggestion({
 			...source,
 			expectedBaseline: { ...source.expectedBaseline, checksum: 'a'.repeat(64) },
 		}),
@@ -158,17 +165,17 @@ it('binds a source retry to its original identity and baseline', async () => {
 });
 
 it('stores the exact prepared candidate with validation for the new revision', async () => {
-	const graph = draft.payload!.candidate;
+	const graph = suggestion.payload!.candidate;
 	const prepared = { nodes: [], connections: {} };
 	candidates.prepare.mockResolvedValue(prepared);
-	await service.reviseDraft(source, {
-		draftId: draft.id,
+	await service.reviseSuggestion(source, {
+		suggestionId: suggestion.id,
 		expectedRevision: 2,
 		graph,
 		explanation: 'Prepared fix',
 	});
-	expect(drafts.reviseIfCurrent).toHaveBeenCalledWith(
-		draft.id,
+	expect(suggestions.reviseIfCurrent).toHaveBeenCalledWith(
+		suggestion.id,
 		2,
 		expect.objectContaining({
 			candidate: prepared,
@@ -180,21 +187,21 @@ it('stores the exact prepared candidate with validation for the new revision', a
 it('keeps the previous candidate when validation fails', async () => {
 	candidates.prepare.mockRejectedValue(new Error('Credential access required'));
 	await expect(
-		service.reviseDraft(source, {
-			draftId: draft.id,
+		service.reviseSuggestion(source, {
+			suggestionId: suggestion.id,
 			expectedRevision: 2,
-			graph: draft.payload!.candidate,
+			graph: suggestion.payload!.candidate,
 			explanation: 'Fix',
 		}),
 	).rejects.toThrow('Credential');
-	expect(drafts.reviseIfCurrent).not.toHaveBeenCalled();
+	expect(suggestions.reviseIfCurrent).not.toHaveBeenCalled();
 });
 
 it('rejects unsupported graph fields', async () => {
-	const graph = { ...draft.payload!.candidate, settings: {} };
+	const graph = { ...suggestion.payload!.candidate, settings: {} };
 	await expect(
-		service.reviseDraft(source, {
-			draftId: draft.id,
+		service.reviseSuggestion(source, {
+			suggestionId: suggestion.id,
 			expectedRevision: 2,
 			graph,
 			explanation: 'Fix',
@@ -204,45 +211,45 @@ it('rejects unsupported graph fields', async () => {
 });
 
 it('submits once and returns the same frozen result on retry', async () => {
-	const first = await service.submitDraft(source, draft.id, 2);
-	expect(await service.submitDraft(source, draft.id, 2)).toEqual(first);
-	expect(drafts.appendSubmittedActivity).toHaveBeenCalledTimes(1);
-	expect(drafts.appendSubmittedActivity).toHaveBeenCalledWith(draft.id, 2, ctx);
+	const first = await service.submitSuggestion(source, suggestion.id, 2);
+	expect(await service.submitSuggestion(source, suggestion.id, 2)).toEqual(first);
+	expect(suggestions.appendSubmittedActivity).toHaveBeenCalledTimes(1);
+	expect(suggestions.appendSubmittedActivity).toHaveBeenCalledWith(suggestion.id, 2, ctx);
 	expect(candidates.assertStillAllowed).toHaveBeenCalledTimes(1);
 });
 
 it.each(['unchecked', 'wrong revision', 'unchanged'] as const)(
 	'does not submit an %s candidate',
 	async (failure) => {
-		if (failure === 'unchecked') draft.payload!.validation = null;
-		if (failure === 'wrong revision') draft.payload!.validation!.revision = 1;
-		if (failure === 'unchanged') draft.payload!.candidate = { nodes: [], connections: {} };
-		await expect(service.submitDraft(source, draft.id, 2)).rejects.toThrow();
-		expect(drafts.markPendingIfCurrent).not.toHaveBeenCalled();
+		if (failure === 'unchecked') suggestion.payload!.validation = null;
+		if (failure === 'wrong revision') suggestion.payload!.validation!.revision = 1;
+		if (failure === 'unchanged') suggestion.payload!.candidate = { nodes: [], connections: {} };
+		await expect(service.submitSuggestion(source, suggestion.id, 2)).rejects.toThrow();
+		expect(suggestions.markPendingIfCurrent).not.toHaveBeenCalled();
 	},
 );
 
 it('requires the preflight revision again inside the transaction', async () => {
 	candidates.assertStillAllowed.mockImplementation(async () => {
-		draft.revision = 3;
+		suggestion.revision = 3;
 	});
-	await expect(service.submitDraft(source, draft.id, 2)).rejects.toThrow('revision');
-	expect(drafts.markPendingIfCurrent).not.toHaveBeenCalled();
+	await expect(service.submitSuggestion(source, suggestion.id, 2)).rejects.toThrow('revision');
+	expect(suggestions.markPendingIfCurrent).not.toHaveBeenCalled();
 });
 
 it('closes a changed baseline without creating a submission activity', async () => {
 	workflow.settings = { executionTimeout: 10 };
-	expect(await service.submitDraft(source, draft.id, 2)).toMatchObject({
+	expect(await service.submitSuggestion(source, suggestion.id, 2)).toMatchObject({
 		state: 'closed',
 		closedReason: 'outdated',
 	});
-	expect(drafts.appendSubmittedActivity).not.toHaveBeenCalled();
+	expect(suggestions.appendSubmittedActivity).not.toHaveBeenCalled();
 });
 
 it('rejects changed credential access at submission', async () => {
 	candidates.assertStillAllowed.mockRejectedValue(new Error('Credential access changed'));
-	await expect(service.submitDraft(source, draft.id, 2)).rejects.toThrow('Credential');
-	expect(drafts.markPendingIfCurrent).not.toHaveBeenCalled();
+	await expect(service.submitSuggestion(source, suggestion.id, 2)).rejects.toThrow('Credential');
+	expect(suggestions.markPendingIfCurrent).not.toHaveBeenCalled();
 });
 
 it.each(['disabled', 'no edit access'] as const)(
@@ -251,36 +258,38 @@ it.each(['disabled', 'no edit access'] as const)(
 		if (failure === 'disabled')
 			users.findByIdWithRole.mockResolvedValue(mock<User>({ id: user.id, disabled: true }));
 		else vi.mocked(userHasScopes).mockResolvedValue(false);
-		await expect(service.readDraft(source, draft.id)).rejects.toThrow('edit access');
-		await expect(service.getProposal(user, 'project', draft.id)).rejects.toThrow('edit access');
+		await expect(service.readSuggestion(source, suggestion.id)).rejects.toThrow('edit access');
+		await expect(service.getProposal(user, 'project', suggestion.id)).rejects.toThrow(
+			'edit access',
+		);
 	},
 );
 
 it('allows another current editor to review without publish permission', async () => {
-	draft.submittedRevision = 2;
-	draft.state = 'pending';
+	suggestion.submittedRevision = 2;
+	suggestion.state = 'pending';
 	const viewer = mock<User>({ id: 'another-editor', disabled: false });
 	users.findByIdWithRole.mockResolvedValue(viewer);
-	const detail = await service.getProposal(viewer, 'project', draft.id);
-	expect(detail.payload?.proposed.nodes).toEqual(draft.payload!.candidate.nodes);
+	const detail = await service.getProposal(viewer, 'project', suggestion.id);
+	expect(detail.payload?.proposed.nodes).toEqual(suggestion.payload!.candidate.nodes);
 	expect(userHasScopes).toHaveBeenCalledWith(viewer, ['workflow:read', 'workflow:update'], false, {
 		workflowId: 'wf',
 	});
 });
 
-it('rejects a wrong project and an unsubmitted draft', async () => {
-	await expect(service.getProposal(user, 'other', draft.id)).rejects.toThrow('not found');
-	await expect(service.getProposal(user, 'project', draft.id)).rejects.toThrow('not found');
+it('rejects a wrong project and an unsubmitted suggestion', async () => {
+	await expect(service.getProposal(user, 'other', suggestion.id)).rejects.toThrow('not found');
+	await expect(service.getProposal(user, 'project', suggestion.id)).rejects.toThrow('not found');
 });
 
 it('retains a lifecycle receipt after content expires and background access is lost', async () => {
-	Object.assign(draft, {
+	Object.assign(suggestion, {
 		state: 'closed',
 		submittedRevision: 2,
 		closedReason: 'discarded',
 		payload: null,
 	});
-	drafts.findBySourceKey.mockResolvedValue(draft);
+	suggestions.findBySourceKey.mockResolvedValue(suggestion);
 	vi.mocked(userHasScopes).mockResolvedValue(false);
 	expect(await service.getLifecycleResult(source)).toMatchObject({
 		content: 'expired',
@@ -291,5 +300,5 @@ it('retains a lifecycle receipt after content expires and background access is l
 
 it('blocks operations when the module is disabled', async () => {
 	modules.isActive.mockReturnValue(false);
-	await expect(service.createDraft(source)).rejects.toThrow('not enabled');
+	await expect(service.createSuggestion(source)).rejects.toThrow('not enabled');
 });

@@ -1,4 +1,4 @@
-import type { WorkflowDraftContent, WorkflowDraftSource } from '@n8n/api-types';
+import type { WorkflowSuggestionContent, WorkflowSuggestionSource } from '@n8n/api-types';
 import {
 	BaseRepository,
 	SharedWorkflow,
@@ -13,28 +13,32 @@ import { DataSource, IsNull, LessThan, Not } from '@n8n/typeorm';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { WorkflowDraftActivityEntity } from './workflow-draft-activity.entity';
-import { WorkflowDraft } from './workflow-draft.entity';
-import { assertSameSource } from '../workflow-draft.contracts';
+import { WorkflowSuggestionActivityEntity } from './workflow-suggestion-activity.entity';
+import { WorkflowSuggestion } from './workflow-suggestion.entity';
+import { assertSameSource } from '../workflow-suggestion.contracts';
 
 @Service()
-export class WorkflowDraftRepository extends BaseRepository<WorkflowDraft> {
+export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggestion> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(WorkflowDraft, dataSource.manager, transactionRunner);
+		super(WorkflowSuggestion, dataSource.manager, transactionRunner);
 	}
 
-	async getDraft(id: string, ctx: OperationContext = {}) {
-		const draft = await this.managerFor(ctx).findOneBy(WorkflowDraft, { id });
-		if (!draft) throw new NotFoundError('Draft not found.');
-		return draft;
+	async getSuggestion(id: string, ctx: OperationContext = {}) {
+		const suggestion = await this.managerFor(ctx).findOneBy(WorkflowSuggestion, { id });
+		if (!suggestion) throw new NotFoundError('Suggestion not found.');
+		return suggestion;
 	}
 
 	async findBySourceKey(sourceKey: string, ctx: OperationContext = {}) {
-		return await this.managerFor(ctx).findOneBy(WorkflowDraft, { sourceKey });
+		return await this.managerFor(ctx).findOneBy(WorkflowSuggestion, { sourceKey });
 	}
 
-	async createOnce(source: WorkflowDraftSource, projectId: string, payload: WorkflowDraftContent) {
-		const draft = this.create({
+	async createOnce(
+		source: WorkflowSuggestionSource,
+		projectId: string,
+		payload: WorkflowSuggestionContent,
+	) {
+		const suggestion = this.create({
 			sourceKey: source.sourceKey,
 			workflowId: source.workflowId,
 			projectId,
@@ -48,7 +52,7 @@ export class WorkflowDraftRepository extends BaseRepository<WorkflowDraft> {
 			payload,
 		});
 		try {
-			return await this.save(draft);
+			return await this.save(suggestion);
 		} catch (error) {
 			if (!isUniqueConstraintError(error)) throw error;
 			const existing = await this.findBySourceKey(source.sourceKey);
@@ -70,38 +74,38 @@ export class WorkflowDraftRepository extends BaseRepository<WorkflowDraft> {
 		return { workflow, projectId: owner?.projectId };
 	}
 
-	async reviseIfCurrent(id: string, revision: number, payload: WorkflowDraftContent) {
+	async reviseIfCurrent(id: string, revision: number, payload: WorkflowSuggestionContent) {
 		return await this.runInTransaction({}, async (manager, ctx) => {
 			// Bind the JSON column as one value, without TypeORM's nested update shape.
 			const result = await manager
 				.createQueryBuilder()
-				.update(WorkflowDraft)
+				.update(WorkflowSuggestion)
 				.set({ revision: revision + 1, payload: () => ':payload' })
 				.setParameter('payload', JSON.stringify(payload))
 				.where({ id, revision, state: 'preparing', payload: Not(IsNull()) })
 				.execute();
-			if (result.affected !== 1) throw new ConflictError('Draft revision has changed.');
-			return await this.getDraft(id, ctx);
+			if (result.affected !== 1) throw new ConflictError('Suggestion revision has changed.');
+			return await this.getSuggestion(id, ctx);
 		});
 	}
 
 	async loadForSubmission(id: string, workflowId: string, ctx: OperationContext) {
-		// Keep workflow-before-draft order for all submission and later apply operations.
+		// Keep workflow-before-suggestion order for all submission and later apply operations.
 		const target = await this.readWorkflowTarget(workflowId, ctx);
 		const manager = this.managerFor(ctx);
-		const draft = await manager.findOne(WorkflowDraft, {
+		const suggestion = await manager.findOne(WorkflowSuggestion, {
 			where: { id },
 			...(manager.connection.options.type === 'postgres'
 				? { lock: { mode: 'pessimistic_write' as const } }
 				: {}),
 		});
-		if (!draft) throw new NotFoundError('Draft not found.');
-		return { draft, ...target };
+		if (!suggestion) throw new NotFoundError('Suggestion not found.');
+		return { suggestion, ...target };
 	}
 
 	async closeAsOutdated(id: string, ctx: OperationContext) {
 		await this.managerFor(ctx).update(
-			WorkflowDraft,
+			WorkflowSuggestion,
 			{ id, state: 'preparing' },
 			{
 				state: 'closed',
@@ -109,34 +113,34 @@ export class WorkflowDraftRepository extends BaseRepository<WorkflowDraft> {
 				closedAt: new Date(),
 			},
 		);
-		return await this.getDraft(id, ctx);
+		return await this.getSuggestion(id, ctx);
 	}
 
 	async markPendingIfCurrent(id: string, revision: number, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
 		try {
 			const result = await manager.update(
-				WorkflowDraft,
+				WorkflowSuggestion,
 				{ id, revision, state: 'preparing' },
 				{
 					state: 'pending',
 					submittedRevision: revision,
 				},
 			);
-			if (result.affected !== 1) throw new ConflictError('Draft revision has changed.');
+			if (result.affected !== 1) throw new ConflictError('Suggestion revision has changed.');
 		} catch (error) {
 			if (isUniqueConstraintError(error))
 				throw new ConflictError('This workflow already has a pending proposal.');
 			throw error;
 		}
-		return await this.getDraft(id, ctx);
+		return await this.getSuggestion(id, ctx);
 	}
 
-	async appendSubmittedActivity(draftId: string, revision: number, ctx: OperationContext) {
+	async appendSubmittedActivity(suggestionId: string, revision: number, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
 		await manager.save(
-			manager.create(WorkflowDraftActivityEntity, {
-				draftId,
+			manager.create(WorkflowSuggestionActivityEntity, {
+				suggestionId,
 				revision,
 				action: 'submitted',
 				author: 'assistant',
@@ -144,9 +148,9 @@ export class WorkflowDraftRepository extends BaseRepository<WorkflowDraft> {
 		);
 	}
 
-	async getActivity(draftId: string) {
-		return await this.manager.find(WorkflowDraftActivityEntity, {
-			where: { draftId },
+	async getActivity(suggestionId: string) {
+		return await this.manager.find(WorkflowSuggestionActivityEntity, {
+			where: { suggestionId },
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 	}

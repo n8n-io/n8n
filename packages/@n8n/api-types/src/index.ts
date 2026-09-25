@@ -871,4 +871,4 @@ export type {
 } from './dto/executions/execution-list-pagination';
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
 
-export type * from './workflow-drafts';
+export type * from './workflow-suggestions';

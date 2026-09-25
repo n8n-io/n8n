@@ -1,11 +1,11 @@
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { WorkflowDraftsController } from '../workflow-drafts.controller';
+import { WorkflowSuggestionsController } from '../workflow-suggestions.controller';
 
-it('requires project edit scope for every draft route', () => {
+it('requires project edit scope for every suggestion route', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-		WorkflowDraftsController as never,
+		WorkflowSuggestionsController as never,
 	);
 	expect(metadata.routes.size).toBe(1);
 	for (const route of metadata.routes.values()) {

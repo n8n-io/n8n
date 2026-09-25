@@ -1,4 +1,4 @@
-import type { WorkflowDraftContent, WorkflowDraftSource } from '@n8n/api-types';
+import type { WorkflowSuggestionContent, WorkflowSuggestionSource } from '@n8n/api-types';
 import { createWorkflow, createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import {
 	TransactionRunner,
@@ -12,12 +12,12 @@ import { DataSource } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { randomUUID } from 'node:crypto';
 
-import { WorkflowDraftActivityEntity } from '../database/workflow-draft-activity.entity';
-import { WorkflowDraftRepository } from '../database/workflow-draft.repository';
+import { WorkflowSuggestionActivityEntity } from '../database/workflow-suggestion-activity.entity';
+import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 
-let drafts: WorkflowDraftRepository;
+let suggestions: WorkflowSuggestionRepository;
 let tx: TransactionRunner;
-const source = (): WorkflowDraftSource => ({
+const source = (): WorkflowSuggestionSource => ({
 	sourceKey: randomUUID(),
 	workflowId: 'workflow',
 	backgroundUserId: randomUUID(),
@@ -27,7 +27,7 @@ const source = (): WorkflowDraftSource => ({
 		checksum: 'a'.repeat(64),
 	},
 });
-const payload = (): WorkflowDraftContent => ({
+const payload = (): WorkflowSuggestionContent => ({
 	original: { name: 'Example', nodes: [], connections: {} },
 	candidate: { nodes: [], connections: {} },
 	explanation: '',
@@ -36,102 +36,102 @@ const payload = (): WorkflowDraftContent => ({
 });
 
 beforeAll(async () => {
-	await testModules.loadModules(['workflow-drafts']);
+	await testModules.loadModules(['workflow-suggestions']);
 	await testDb.init();
-	drafts = Container.get(WorkflowDraftRepository);
+	suggestions = Container.get(WorkflowSuggestionRepository);
 	tx = Container.get(TransactionRunner);
 });
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
-	await Container.get(DataSource).getRepository(WorkflowDraftActivityEntity).clear();
-	await drafts.createQueryBuilder().delete().execute();
+	await Container.get(DataSource).getRepository(WorkflowSuggestionActivityEntity).clear();
+	await suggestions.createQueryBuilder().delete().execute();
 });
 
 it('resolves simultaneous creation to one source identity', async () => {
 	const identity = source();
 	const results = await Promise.all([
-		drafts.createOnce(identity, 'project', payload()),
-		drafts.createOnce(identity, 'project', payload()),
+		suggestions.createOnce(identity, 'project', payload()),
+		suggestions.createOnce(identity, 'project', payload()),
 	]);
 	expect(results[0].id).toBe(results[1].id);
-	expect(await drafts.count()).toBe(1);
+	expect(await suggestions.count()).toBe(1);
 	await expect(
-		drafts.createOnce({ ...identity, backgroundUserId: randomUUID() }, 'project', payload()),
+		suggestions.createOnce({ ...identity, backgroundUserId: randomUUID() }, 'project', payload()),
 	).rejects.toThrow('source');
 });
 
 it('accepts only one concurrent revision', async () => {
-	const draft = await drafts.createOnce(source(), 'project', payload());
+	const suggestion = await suggestions.createOnce(source(), 'project', payload());
 	const results = await Promise.allSettled([
-		drafts.reviseIfCurrent(draft.id, 1, { ...payload(), explanation: 'first' }),
-		drafts.reviseIfCurrent(draft.id, 1, { ...payload(), explanation: 'second' }),
+		suggestions.reviseIfCurrent(suggestion.id, 1, { ...payload(), explanation: 'first' }),
+		suggestions.reviseIfCurrent(suggestion.id, 1, { ...payload(), explanation: 'second' }),
 	]);
 	expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
 	expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
-	expect((await drafts.getDraft(draft.id)).revision).toBe(2);
+	expect((await suggestions.getSuggestion(suggestion.id)).revision).toBe(2);
 });
 
 it('keeps submission and activity atomic and enforces one pending proposal', async () => {
-	const first = await drafts.createOnce(source(), 'project', payload());
-	const second = await drafts.createOnce(source(), 'project', payload());
+	const first = await suggestions.createOnce(source(), 'project', payload());
+	const second = await suggestions.createOnce(source(), 'project', payload());
 	await tx.run({}, async (ctx) => {
-		await drafts.markPendingIfCurrent(first.id, 1, ctx);
-		await drafts.appendSubmittedActivity(first.id, 1, ctx);
+		await suggestions.markPendingIfCurrent(first.id, 1, ctx);
+		await suggestions.appendSubmittedActivity(first.id, 1, ctx);
 	});
 	await expect(
-		tx.run({}, async (ctx) => await drafts.markPendingIfCurrent(second.id, 1, ctx)),
+		tx.run({}, async (ctx) => await suggestions.markPendingIfCurrent(second.id, 1, ctx)),
 	).rejects.toThrow('pending proposal');
-	expect((await drafts.getDraft(second.id)).state).toBe('preparing');
-	expect(await drafts.getActivity(first.id)).toHaveLength(1);
+	expect((await suggestions.getSuggestion(second.id)).state).toBe('preparing');
+	expect(await suggestions.getActivity(first.id)).toHaveLength(1);
 	await expect(
 		tx.run({}, async (ctx) => {
-			await drafts.appendSubmittedActivity(first.id, 1, ctx);
+			await suggestions.appendSubmittedActivity(first.id, 1, ctx);
 		}),
 	).rejects.toThrow();
-	expect(await drafts.getActivity(first.id)).toHaveLength(1);
+	expect(await suggestions.getActivity(first.id)).toHaveLength(1);
 });
 
 it('rolls back a state transition if its activity fails', async () => {
-	const draft = await drafts.createOnce(source(), 'project', payload());
+	const suggestion = await suggestions.createOnce(source(), 'project', payload());
 	await expect(
 		tx.run({}, async (ctx) => {
-			await drafts.markPendingIfCurrent(draft.id, 1, ctx);
+			await suggestions.markPendingIfCurrent(suggestion.id, 1, ctx);
 			throw new Error('activity unavailable');
 		}),
 	).rejects.toThrow('activity unavailable');
-	expect((await drafts.getDraft(draft.id)).state).toBe('preparing');
+	expect((await suggestions.getSuggestion(suggestion.id)).state).toBe('preparing');
 });
 
 it('retains pending content and receipts while expiring old payloads in bounded batches', async () => {
 	const old = new Date('2026-01-01T00:00:00Z');
 	const now = new Date('2026-03-01T00:00:00Z');
-	const preparing = await drafts.createOnce(source(), 'project', payload());
-	const pending = await drafts.createOnce(source(), 'project', payload());
-	const closed = await drafts.createOnce(source(), 'project', payload());
-	await drafts.update(preparing.id, { updatedAt: old });
-	await drafts.update(pending.id, { state: 'pending', submittedRevision: 1, updatedAt: old });
-	await drafts.update(closed.id, {
+	const preparing = await suggestions.createOnce(source(), 'project', payload());
+	const pending = await suggestions.createOnce(source(), 'project', payload());
+	const closed = await suggestions.createOnce(source(), 'project', payload());
+	await suggestions.update(preparing.id, { updatedAt: old });
+	await suggestions.update(pending.id, { state: 'pending', submittedRevision: 1, updatedAt: old });
+	await suggestions.update(closed.id, {
 		state: 'closed',
 		closedReason: 'discarded',
 		submittedRevision: 1,
 		closedAt: old,
 		updatedAt: old,
 	});
-	await drafts.cleanup(now, 1);
-	expect((await drafts.find()).filter((d) => d.payload === null)).toHaveLength(1);
-	await drafts.cleanup(now);
-	expect(await drafts.getDraft(preparing.id)).toMatchObject({
+	await suggestions.cleanup(now, 1);
+	expect((await suggestions.find()).filter((d) => d.payload === null)).toHaveLength(1);
+	await suggestions.cleanup(now);
+	expect(await suggestions.getSuggestion(preparing.id)).toMatchObject({
 		state: 'closed',
 		closedReason: 'abandoned',
 		payload: null,
 	});
-	expect(await drafts.getDraft(closed.id)).toMatchObject({
+	expect(await suggestions.getSuggestion(closed.id)).toMatchObject({
 		submittedRevision: 1,
 		closedReason: 'discarded',
 		payload: null,
 	});
-	expect((await drafts.getDraft(pending.id)).payload).not.toBeNull();
-	const retry = await drafts.createOnce(
+	expect((await suggestions.getSuggestion(pending.id)).payload).not.toBeNull();
+	const retry = await suggestions.createOnce(
 		{
 			sourceKey: closed.sourceKey,
 			workflowId: closed.workflowId,
@@ -147,12 +147,12 @@ it('retains pending content and receipts while expiring old payloads in bounded 
 
 it('keeps recent activity and recently closed content', async () => {
 	const now = new Date();
-	const preparing = await drafts.createOnce(source(), 'project', payload());
-	const closed = await drafts.createOnce(source(), 'project', payload());
-	await drafts.update(closed.id, { state: 'closed', closedReason: 'outdated', closedAt: now });
-	await drafts.cleanup(now);
-	expect((await drafts.getDraft(preparing.id)).payload).not.toBeNull();
-	expect((await drafts.getDraft(closed.id)).payload).not.toBeNull();
+	const preparing = await suggestions.createOnce(source(), 'project', payload());
+	const closed = await suggestions.createOnce(source(), 'project', payload());
+	await suggestions.update(closed.id, { state: 'closed', closedReason: 'outdated', closedAt: now });
+	await suggestions.cleanup(now);
+	expect((await suggestions.getSuggestion(preparing.id)).payload).not.toBeNull();
+	expect((await suggestions.getSuggestion(closed.id)).payload).not.toBeNull();
 });
 
 it('leaves workflow and history unchanged and reads current saves at the guarded boundary', async () => {
@@ -163,19 +163,19 @@ it('leaves workflow and history unchanged and reads current saves at the guarded
 	const before = await workflows.findOneByOrFail({ id: workflow.id });
 	const historyCount = await histories.count();
 	const identity = { ...source(), workflowId: workflow.id };
-	const draft = await drafts.createOnce(identity, project.id, payload());
-	await drafts.reviseIfCurrent(draft.id, 1, { ...payload(), explanation: 'Fix' });
+	const suggestion = await suggestions.createOnce(identity, project.id, payload());
+	await suggestions.reviseIfCurrent(suggestion.id, 1, { ...payload(), explanation: 'Fix' });
 	await tx.run({}, async (ctx) => {
-		const target = await drafts.loadForSubmission(draft.id, workflow.id, ctx);
+		const target = await suggestions.loadForSubmission(suggestion.id, workflow.id, ctx);
 		expect(target.workflow?.versionId).toBe(before.versionId);
-		await drafts.markPendingIfCurrent(draft.id, 2, ctx);
-		await drafts.appendSubmittedActivity(draft.id, 2, ctx);
+		await suggestions.markPendingIfCurrent(suggestion.id, 2, ctx);
+		await suggestions.appendSubmittedActivity(suggestion.id, 2, ctx);
 	});
 	expect(await workflows.findOneByOrFail({ id: workflow.id })).toEqual(before);
 	expect(await histories.count()).toBe(historyCount);
 	await workflows.update(workflow.id, { settings: { executionTimeout: 45 } });
 	await tx.run({}, async (ctx) => {
-		const target = await drafts.loadForSubmission(draft.id, workflow.id, ctx);
+		const target = await suggestions.loadForSubmission(suggestion.id, workflow.id, ctx);
 		expect(target.workflow?.settings).toEqual({ executionTimeout: 45 });
 	});
 });
@@ -183,7 +183,7 @@ it('leaves workflow and history unchanged and reads current saves at the guarded
 it('holds a concurrent workflow save until the submission boundary commits', async () => {
 	const project = await createTeamProject();
 	const workflow = await createWorkflow({}, project);
-	const draft = await drafts.createOnce(
+	const suggestion = await suggestions.createOnce(
 		{ ...source(), workflowId: workflow.id },
 		project.id,
 		payload(),
@@ -191,10 +191,10 @@ it('holds a concurrent workflow save until the submission boundary commits', asy
 	const locked = createDeferredPromise<boolean>();
 	const release = createDeferredPromise<boolean>();
 	const submission = tx.run({}, async (ctx) => {
-		await drafts.loadForSubmission(draft.id, workflow.id, ctx);
+		await suggestions.loadForSubmission(suggestion.id, workflow.id, ctx);
 		locked.resolve(true);
 		await release.promise;
-		await drafts.markPendingIfCurrent(draft.id, 1, ctx);
+		await suggestions.markPendingIfCurrent(suggestion.id, 1, ctx);
 	});
 	await locked.promise;
 	let saved = false;
@@ -213,21 +213,21 @@ it('holds a concurrent workflow save until the submission boundary commits', asy
 		await save;
 	}
 	expect(saved).toBe(true);
-	expect((await drafts.getDraft(draft.id)).state).toBe('pending');
+	expect((await suggestions.getSuggestion(suggestion.id)).state).toBe('pending');
 });
 
-it('reverts and reapplies the draft schema', async () => {
+it('reverts and reapplies the suggestion schema', async () => {
 	const db = Container.get(DataSource);
 	// Template databases skip migrate(), which normally installs the DSL wrappers.
 	postgresMigrations.forEach(wrapMigration);
 	await db.undoLastMigration();
 	const runner = db.createQueryRunner();
 	try {
-		const table = db.getMetadata(WorkflowDraftActivityEntity).tablePath;
+		const table = db.getMetadata(WorkflowSuggestionActivityEntity).tablePath;
 		expect(await runner.hasTable(table)).toBe(false);
 	} finally {
 		await runner.release();
 		await db.runMigrations();
 	}
-	expect(await drafts.count()).toBe(0);
+	expect(await suggestions.count()).toBe(0);
 });

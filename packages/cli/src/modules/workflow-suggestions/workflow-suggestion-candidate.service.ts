@@ -1,4 +1,4 @@
-import type { WorkflowDraftGraph, WorkflowDraftSnapshot } from '@n8n/api-types';
+import type { WorkflowSuggestionGraph, WorkflowSuggestionSnapshot } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -13,7 +13,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 
 @Service()
-export class WorkflowDraftCandidateService {
+export class WorkflowSuggestionCandidateService {
 	constructor(
 		private readonly licenseState: LicenseState,
 		private readonly credentials: CredentialsService,
@@ -26,8 +26,8 @@ export class WorkflowDraftCandidateService {
 		user: User,
 		workflowId: string,
 		projectId: string,
-		baseline: WorkflowDraftSnapshot,
-		graph: WorkflowDraftGraph,
+		baseline: WorkflowSuggestionSnapshot,
+		graph: WorkflowSuggestionGraph,
 	) {
 		WorkflowHelpers.validateWorkflowStructure(graph);
 		const original = structuredClone(baseline);
@@ -66,11 +66,11 @@ export class WorkflowDraftCandidateService {
 		user: User,
 		workflowId: string,
 		projectId: string,
-		baseline: WorkflowDraftSnapshot,
-		graph: WorkflowDraftGraph,
+		baseline: WorkflowSuggestionSnapshot,
+		graph: WorkflowSuggestionGraph,
 	) {
 		const prepared = await this.prepare(user, workflowId, projectId, baseline, graph);
 		if (!isEqual(prepared, graph))
-			throw new ConflictError('Draft permissions changed. Prepare a new revision.');
+			throw new ConflictError('Suggestion permissions changed. Prepare a new revision.');
 	}
 }
