@@ -286,6 +286,64 @@ describe('createCasePipeline', () => {
 		});
 	});
 
+	it('grades the saved workflow of a timed-out conversation but keeps the row out of the pass rate', async () => {
+		const lane = makeLane();
+		vi.mocked(lane.tracedExecute).mockResolvedValue({
+			success: true,
+			score: 1,
+			reasoning: 'the saved workflow handles the scenario',
+		} as never);
+		const timeout = { kind: 'turn' as const, turn: 3, elapsedMs: 900_400 };
+		const orchestrator = makeOrchestrator({
+			build: okBuild({ timeout }),
+			lane,
+			buildDurationMs: 1_500_000,
+		});
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(vi.mocked(lane.tracedExecute)).toHaveBeenCalledTimes(1);
+		expect(output).toMatchObject({
+			buildSuccess: true,
+			passed: true,
+			reasoning: 'the saved workflow handles the scenario',
+			incomplete: true,
+			attribution: 'timeout',
+			failureCategory: 'build_timeout',
+			buildTimeout: timeout,
+		});
+	});
+
+	it('stamps a timed-out conversation that saved nothing as build_timeout, not build_failure', async () => {
+		const lane = makeLane();
+		const timeout = { kind: 'inactivity' as const, turn: 1, elapsedMs: 240_100 };
+		const orchestrator = makeOrchestrator({
+			build: okBuild({
+				success: false,
+				workflowId: undefined,
+				error: 'Run timed out after 240100ms (inactivity budget, user turn 1)',
+				timeout,
+			}),
+			lane,
+			buildDurationMs: 5,
+		});
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+		expect(output).toMatchObject({
+			buildSuccess: false,
+			passed: false,
+			incomplete: true,
+			attribution: 'timeout',
+			failureCategory: 'build_timeout',
+			buildTimeout: timeout,
+			execErrors: ['Run timed out after 240100ms (inactivity budget, user turn 1)'],
+		});
+	});
+
 	it('classifies transport-failed builds as framework_issue, not build_failure', async () => {
 		const lane = makeLane();
 		const orchestrator = makeOrchestrator({

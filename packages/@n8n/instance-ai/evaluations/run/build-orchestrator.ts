@@ -514,12 +514,19 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// and reshape's side band) then carry the same verdict (TRUST-375).
 		const infraFailed = buildFailedOnInfra(build);
 		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
-			verdicts.map((v) => ({
-				// An attribution already set is a decision the caller made with more
-				// context than this closure has; don't overwrite it.
-				...v,
-				attribution: v.attribution ?? attributionForExpectation(v, infraFailed),
-			}));
+			verdicts.map((v) =>
+				// A budget ended the conversation: the judge's verdict on the partial
+				// transcript is kept for the record but counts neither way, same as
+				// the iteration's scenario rows (see `attachExpectations`).
+				build.timeout
+					? { ...v, incomplete: true, attribution: 'timeout' as const }
+					: {
+							// An attribution already set is a decision the caller made with more
+							// context than this closure has; don't overwrite it.
+							...v,
+							attribution: v.attribution ?? attributionForExpectation(v, infraFailed),
+						},
+			);
 		// The lane's deterministic verdicts ride along on EVERY path, including the
 		// unjudged one: they describe what the run actually did to the provider and
 		// to n8n, which stays true whether or not the author expectations got judged.
@@ -709,7 +716,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
 			if (timeoutMs !== args.timeoutMs) {
 				logger.info(
-					`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
+					`  Complex case: per-turn budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
 				);
 			}
 			// Transport failures are not agent verdicts — retry on a different lane

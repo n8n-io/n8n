@@ -42,6 +42,24 @@ export interface ChecklistResult {
 }
 
 // ---------------------------------------------------------------------------
+// Build conversation timeouts
+// ---------------------------------------------------------------------------
+
+/** Which budget ended a build conversation. `turn`: one user turn overran its
+ *  budget. `conversation`: the whole conversation overran its budget.
+ *  `inactivity`: a run in flight emitted no event for the inactivity bound (a
+ *  stalled model stream). */
+export type RunTimeoutKind = 'turn' | 'conversation' | 'inactivity';
+
+export interface BuildTimeout {
+	kind: RunTimeoutKind;
+	/** User turn (1-based) in flight, or about to start, when the budget fired. */
+	turn: number;
+	/** Time measured by the budget that fired. */
+	elapsedMs: number;
+}
+
+// ---------------------------------------------------------------------------
 // SSE event capture
 // ---------------------------------------------------------------------------
 
@@ -343,6 +361,9 @@ export interface WorkflowTestCaseResult {
 	agentArtifact?: AgentArtifact;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
+	/** Set when a budget ended the conversation. The build fields describe what
+	 *  was saved before it fired; the scenarios ran against that. */
+	buildTimeout?: BuildTimeout;
 	executionScenarioResults: ExecutionScenarioResult[];
 	/** The built workflow JSON — saved for debugging and cross-run comparison */
 	workflowJson?: WorkflowResponse;
