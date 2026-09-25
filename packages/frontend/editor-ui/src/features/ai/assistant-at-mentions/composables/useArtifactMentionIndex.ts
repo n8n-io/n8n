@@ -300,8 +300,9 @@ export function useArtifactMentionIndex(options: UseArtifactMentionIndexOptions)
 			const nextIds = new Set(artifacts.map(([workflowId]) => workflowId));
 			for (const [workflowId, name] of artifacts) {
 				const entry = entries.get(workflowId);
-				if (!entry?.index || entry.source === 'active' || entry.index.workflowName === name)
+				if (!entry?.index || entry.source === 'active' || entry.index.workflowName === name) {
 					continue;
+				}
 				setEntry(workflowId, {
 					...entry,
 					index: { ...entry.index, workflowName: name },
@@ -327,11 +328,12 @@ export function useArtifactMentionIndex(options: UseArtifactMentionIndexOptions)
 		[() => toValue(options.activeWorkflowId), activeProjection],
 		([workflowId, index], previousValues) => {
 			const previousWorkflowId = previousValues?.[0];
-			if (previousWorkflowId && previousWorkflowId !== workflowId) {
-				if (entries.get(previousWorkflowId)?.source === 'active') {
-					invalidate(previousWorkflowId);
-					void load(previousWorkflowId);
-				}
+			const activeWorkflowChanged =
+				previousWorkflowId !== undefined && previousWorkflowId !== workflowId;
+			if (activeWorkflowChanged && entries.get(previousWorkflowId)?.source === 'active') {
+				// The previous workflow lost its live canvas projection. Refresh it from the backend.
+				invalidate(previousWorkflowId);
+				void load(previousWorkflowId);
 			}
 
 			if (!workflowId || !artifactById.value.has(workflowId)) return;

@@ -124,7 +124,7 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 	const browseItemsByProvider = new Map<MentionSourceProvider['id'], AssistantMentionItem[]>();
 	const searchItemsByProvider = new Map<MentionSourceProvider['id'], AssistantMentionItem[]>();
 	const providerRequestGenerations = new Map<MentionSourceProvider['id'], number>();
-	let requestGeneration = 0;
+	let latestRequestGeneration = 0;
 	let currentQuery = '';
 	let currentMode: 'browse' | 'search' | undefined;
 	let disposed = false;
@@ -170,20 +170,22 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 			const items = await provider.browse();
 			if (
 				disposed ||
-				generation !== requestGeneration ||
+				generation !== latestRequestGeneration ||
 				providerGeneration !== providerRequestGenerations.get(provider.id)
-			)
+			) {
 				return;
+			}
 			browseItemsByProvider.set(provider.id, items);
 			clearProviderError(provider.id);
 			updateBrowseSections();
 		} catch (error) {
 			if (
 				disposed ||
-				generation !== requestGeneration ||
+				generation !== latestRequestGeneration ||
 				providerGeneration !== providerRequestGenerations.get(provider.id)
-			)
+			) {
 				return;
+			}
 			browseItemsByProvider.set(provider.id, []);
 			setProviderError(provider.id, error);
 			updateBrowseSections();
@@ -191,7 +193,7 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 	}
 
 	async function browse(): Promise<void> {
-		const generation = ++requestGeneration;
+		const generation = ++latestRequestGeneration;
 		currentQuery = '';
 		currentMode = 'browse';
 		isSearching.value = false;
@@ -203,7 +205,7 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 		await Promise.allSettled(
 			providers.map(async (provider) => await loadBrowseProvider(provider, generation)),
 		);
-		if (!disposed && generation === requestGeneration) isBrowsing.value = false;
+		if (!disposed && generation === latestRequestGeneration) isBrowsing.value = false;
 	}
 
 	async function loadSearchProvider(
@@ -216,22 +218,24 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 			const items = await provider.search(query);
 			if (
 				disposed ||
-				generation !== requestGeneration ||
+				generation !== latestRequestGeneration ||
 				query !== currentQuery ||
 				providerGeneration !== providerRequestGenerations.get(provider.id)
-			)
+			) {
 				return;
+			}
 			searchItemsByProvider.set(provider.id, items);
 			clearProviderError(provider.id);
 			updateSearchResults(query);
 		} catch (error) {
 			if (
 				disposed ||
-				generation !== requestGeneration ||
+				generation !== latestRequestGeneration ||
 				query !== currentQuery ||
 				providerGeneration !== providerRequestGenerations.get(provider.id)
-			)
+			) {
 				return;
+			}
 			searchItemsByProvider.set(provider.id, []);
 			setProviderError(provider.id, error);
 			updateSearchResults(query);
@@ -239,7 +243,7 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 	}
 
 	async function search(query: string): Promise<void> {
-		const generation = ++requestGeneration;
+		const generation = ++latestRequestGeneration;
 		const normalizedQuery = query.trim();
 		currentQuery = normalizedQuery;
 		currentMode = normalizedQuery ? 'search' : undefined;
@@ -258,7 +262,7 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 				async (provider) => await loadSearchProvider(provider, normalizedQuery, generation),
 			),
 		);
-		if (!disposed && generation === requestGeneration) isSearching.value = false;
+		if (!disposed && generation === latestRequestGeneration) isSearching.value = false;
 	}
 
 	for (const provider of providers) {
@@ -266,16 +270,16 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 		watch(provider.revision, () => {
 			if (disposed) return;
 			if (currentMode === 'search' && currentQuery) {
-				void loadSearchProvider(provider, currentQuery, requestGeneration);
+				void loadSearchProvider(provider, currentQuery, latestRequestGeneration);
 			} else if (currentMode === 'browse') {
-				void loadBrowseProvider(provider, requestGeneration);
+				void loadBrowseProvider(provider, latestRequestGeneration);
 			}
 		});
 	}
 
 	function dispose(): void {
 		disposed = true;
-		requestGeneration++;
+		latestRequestGeneration++;
 	}
 
 	onScopeDispose(dispose);

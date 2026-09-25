@@ -8,14 +8,25 @@ const MATCH_RANK = {
 	description: 4,
 } as const;
 
+// A run of characters that are neither letters nor digits, in any script.
+const TOKEN_SEPARATOR = /[^\p{L}\p{N}]+/u;
+
 function getMatchRank(item: AssistantMentionItem, normalizedQuery: string): number | undefined {
 	const normalizedName = item.label.trim().toLocaleLowerCase();
-	if (normalizedName === normalizedQuery) return MATCH_RANK.exact;
-	if (normalizedName.startsWith(normalizedQuery)) return MATCH_RANK.prefix;
+	if (normalizedName === normalizedQuery) {
+		return MATCH_RANK.exact;
+	}
+	if (normalizedName.startsWith(normalizedQuery)) {
+		return MATCH_RANK.prefix;
+	}
 
-	const tokens = normalizedName.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
-	if (tokens.some((token) => token.startsWith(normalizedQuery))) return MATCH_RANK.tokenPrefix;
-	if (normalizedName.includes(normalizedQuery)) return MATCH_RANK.substring;
+	const tokens = normalizedName.split(TOKEN_SEPARATOR).filter(Boolean);
+	if (tokens.some((token) => token.startsWith(normalizedQuery))) {
+		return MATCH_RANK.tokenPrefix;
+	}
+	if (normalizedName.includes(normalizedQuery)) {
+		return MATCH_RANK.substring;
+	}
 	if (item.description?.toLocaleLowerCase().includes(normalizedQuery)) {
 		return MATCH_RANK.description;
 	}
@@ -31,22 +42,21 @@ export function searchMentionItems(
 	const normalizedQuery = query.trim().toLocaleLowerCase();
 	if (normalizedQuery === '' || limit <= 0) return [];
 
+	// Array#sort is stable, so items with the same rank keep their source order.
 	const ranked = items
-		.map((item, index) => ({ item, index, rank: getMatchRank(item, normalizedQuery) }))
-		.filter(
-			(candidate): candidate is { item: AssistantMentionItem; index: number; rank: number } =>
-				candidate.rank !== undefined,
-		)
-		.sort((left, right) => left.rank - right.rank || left.index - right.index);
+		.flatMap((item) => {
+			const rank = getMatchRank(item, normalizedQuery);
+			return rank === undefined ? [] : [{ item, rank }];
+		})
+		.sort((left, right) => left.rank - right.rank);
 
-	const seenKeys = new Set<string>();
-	const results: AssistantMentionItem[] = [];
+	// The same key can come from several providers. Keep its best-ranked item.
+	const bestItemByKey = new Map<string, AssistantMentionItem>();
 	for (const { item } of ranked) {
-		if (seenKeys.has(item.key)) continue;
-		seenKeys.add(item.key);
-		results.push(item);
-		if (results.length === limit) break;
+		if (!bestItemByKey.has(item.key)) {
+			bestItemByKey.set(item.key, item);
+		}
 	}
 
-	return results;
+	return [...bestItemByKey.values()].slice(0, limit);
 }
