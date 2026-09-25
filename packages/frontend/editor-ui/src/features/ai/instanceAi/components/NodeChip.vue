@@ -9,6 +9,7 @@ import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 
 const props = defineProps<{
 	label: string;
+	breadcrumbs?: readonly string[];
 	nodeType?: INodeTypeDescription | null;
 	testid: string;
 	icon?: 'layers';
@@ -64,6 +65,7 @@ function handleKeydown(event: KeyboardEvent) {
 		ref="root"
 		:class="{ [$style.expandable]: expanded != null }"
 		:label="label"
+		:breadcrumbs="breadcrumbs"
 		:removable="removable"
 		:remove-label="i18n.baseText('generic.delete')"
 		:test-id="testid"

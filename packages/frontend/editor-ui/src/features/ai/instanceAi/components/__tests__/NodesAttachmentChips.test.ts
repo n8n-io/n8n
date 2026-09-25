@@ -1,4 +1,4 @@
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
@@ -299,5 +299,64 @@ describe('NodesAttachmentChips', () => {
 		await fireEvent.keyDown(getByTestId('nodes-chip-remove'), { key: 'Escape' });
 
 		expect(queryByTestId('nodes-chip-panel')).toBeNull();
+	});
+
+	describe('chip tooltip', () => {
+		// Keyboard focus opens a Reka tooltip at once, unlike hover, which waits
+		// out the show delay. The content is teleported, so it is read from the body.
+		async function openTooltip(chip: HTMLElement) {
+			await fireEvent.focus(chip);
+			return await waitFor(() => screen.getByTestId('tooltip-content'));
+		}
+
+		it('shows the workflow the set belongs to, then the chip label', async () => {
+			const { getByTestId } = renderComponent(NodesAttachmentChips, {
+				props: {
+					attachment: { ...att([{ nodes: nodeRefs('Start Enrichment') }]), workflowName: 'Leads' },
+				},
+			});
+
+			const tooltip = await openTooltip(getByTestId('nodes-chip-node'));
+
+			expect(tooltip).toHaveTextContent('Leads > Start Enrichment');
+		});
+
+		it('labels a group chip with its workflow and group name', async () => {
+			const { getByTestId } = renderComponent(NodesAttachmentChips, {
+				props: {
+					attachment: {
+						...att([
+							{ nodes: nodeRefs('A', 'B'), canvasGroupId: 'g1', canvasGroupName: 'Enrichment' },
+						]),
+						workflowName: 'Leads',
+					},
+				},
+			});
+
+			const tooltip = await openTooltip(getByTestId('nodes-chip-group'));
+
+			expect(tooltip).toHaveTextContent('Leads > Enrichment');
+		});
+
+		it('falls back to the open workflow document for a canvas selection without a workflow name', async () => {
+			useWorkflowDocumentStore(createWorkflowDocumentId('w1')).setName('Leads');
+			const { getByTestId } = renderComponent(NodesAttachmentChips, {
+				props: { attachment: att([{ nodes: nodeRefs('A') }]) },
+			});
+
+			const tooltip = await openTooltip(getByTestId('nodes-chip-node'));
+
+			expect(tooltip).toHaveTextContent('Leads > A');
+		});
+
+		it('shows only the label when the workflow is unknown', async () => {
+			const { getByTestId } = renderComponent(NodesAttachmentChips, {
+				props: { attachment: att([{ nodes: nodeRefs('A') }]) },
+			});
+
+			const tooltip = await openTooltip(getByTestId('nodes-chip-node'));
+
+			expect(tooltip).toHaveTextContent(/^A$/);
+		});
 	});
 });
