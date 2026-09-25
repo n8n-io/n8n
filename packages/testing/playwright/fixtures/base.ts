@@ -251,7 +251,7 @@ export const test = base.extend<
 		await use(frontendUrl);
 	},
 
-	n8n: async ({ context, backendUrl, frontendUrl, n8nStackConfig }, use, testInfo) => {
+	n8n: async ({ context, n8nStackConfig }, use, testInfo) => {
 		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
@@ -262,63 +262,11 @@ export const test = base.extend<
 			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1');
 		});
 
-		const useSeparateApiContext = backendUrl !== frontendUrl;
-
-		if (useSeparateApiContext) {
-			const apiContext = await request.newContext({ baseURL: backendUrl });
-			const api = new ApiHelpers(apiContext, apiOptions);
-
-			const n8nInstance = new n8nPage(page, api);
-			await n8nInstance.api.setupFromTags(testInfo.tags);
-
-			// Auth: no tag = owner, @auth:none = unauthenticated, @auth:member etc = specific role
-			const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
-			let apiCookies = await apiContext.storageState();
-			let authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
-
-			if (!hasAuthTag && !authCookie) {
-				await api.signin('owner');
-				apiCookies = await apiContext.storageState();
-				authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
-			}
-
-			// Transfer auth cookie from API context (backend) to browser context (frontend)
-			if (authCookie) {
-				const backendUrlParsed = new URL(backendUrl);
-				const frontendUrlParsed = new URL(frontendUrl);
-
-				if (backendUrlParsed.hostname === frontendUrlParsed.hostname) {
-					await context.addCookies([
-						{
-							...authCookie,
-							domain: frontendUrlParsed.hostname,
-							path: '/',
-							sameSite: 'Lax',
-						},
-					]);
-				} else {
-					await context.addCookies([
-						{
-							name: authCookie.name,
-							value: authCookie.value,
-							url: frontendUrl,
-							path: '/',
-							httpOnly: authCookie.httpOnly,
-							secure: authCookie.secure,
-							sameSite: 'Lax',
-						},
-					]);
-				}
-			}
-			await n8nInstance.start.withProjectFeatures();
-			await use(n8nInstance);
-			await apiContext.dispose();
-		} else {
-			const n8nInstance = new n8nPage(page, new ApiHelpers(page.context().request, apiOptions));
-			await n8nInstance.api.setupFromTags(testInfo.tags);
-			await n8nInstance.start.withProjectFeatures();
-			await use(n8nInstance);
-		}
+		const n8nInstance = new n8nPage(page, new ApiHelpers(page.context().request, apiOptions));
+		await n8nInstance.api.setupFromTags(testInfo.tags);
+		await n8nInstance.start.withProjectFeatures();
+		await use(n8nInstance);
+	},
 	},
 
 	api: async ({ backendUrl, n8nStackConfig }, use, testInfo) => {

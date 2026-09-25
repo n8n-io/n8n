@@ -49,11 +49,12 @@ export const devServerPlugin = (env: NodeJS.ProcessEnv): Plugin => ({
 				port: editorPort,
 				strictPort: true,
 				proxy: {
-					'^/(rest|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)': {
-						target: backendOrigin,
-						changeOrigin: true,
-						ws: true,
-					},
+					'^/(rest|api|types|icons|schemas|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)':
+						{
+							target: backendOrigin,
+							changeOrigin: true,
+							ws: true,
+						},
 				},
 			},
 		};

@@ -47,11 +47,12 @@ describe('devServerPlugin', () => {
 				port: 8082,
 				strictPort: true,
 				proxy: {
-					'^/(rest|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)': {
-						target: 'http://localhost:5699',
-						changeOrigin: true,
-						ws: true,
-					},
+					'^/(rest|api|types|icons|schemas|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)':
+						{
+							target: 'http://localhost:5699',
+							changeOrigin: true,
+							ws: true,
+						},
 				},
 			},
 		});
@@ -64,11 +65,12 @@ describe('devServerPlugin', () => {
 		expect(runConfigHook(env, DEV)?.server).toMatchObject({
 			port: 8080,
 			proxy: {
-				'^/(rest|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)': {
-					target: 'http://localhost:5678',
-					changeOrigin: true,
-					ws: true,
-				},
+				'^/(rest|api|types|icons|schemas|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)':
+					{
+						target: 'http://localhost:5678',
+						changeOrigin: true,
+						ws: true,
+					},
 			},
 		});
 		expect(env.VUE_APP_URL_BASE_API).toBeUndefined();
