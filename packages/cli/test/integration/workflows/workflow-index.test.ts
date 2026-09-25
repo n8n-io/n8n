@@ -321,6 +321,39 @@ describe('WorkflowIndexService Integration', () => {
 		});
 	});
 
+	it('keeps newer published dependencies when cleanup for an earlier version runs late', async () => {
+		const owner = await createOwner();
+		const { workflow, publishedVersionId } = await createAndIndexDraftAndPublishedWorkflow(owner);
+		const newerVersionId = uuid();
+		await workflowIndexService.updateIndexForPublished(workflow, newerVersionId, workflow.nodes);
+
+		const publishedBeforeCleanup = await workflowDependencyRepository.findBy({
+			workflowId: workflow.id,
+		});
+		const publishedVersionsBeforeCleanup = publishedBeforeCleanup.map(
+			(dep) => dep.publishedVersionId,
+		);
+		expect(publishedVersionsBeforeCleanup).toContain(publishedVersionId);
+		expect(publishedVersionsBeforeCleanup).toContain(newerVersionId);
+
+		eventService.emit('workflow-deactivated', {
+			user: createUserPayload(owner),
+			workflowId: workflow.id,
+			workflow: { ...workflow, activeVersionId: null },
+			publicApi: false,
+			deactivatedVersionId: publishedVersionId,
+		});
+
+		await retryUntil(async () => {
+			const publishedVersions = (
+				await workflowDependencyRepository.findBy({ workflowId: workflow.id })
+			)
+				.filter((dep) => dep.publishedVersionId !== null)
+				.map((dep) => dep.publishedVersionId);
+			expect(publishedVersions).toEqual([newerVersionId]);
+		});
+	});
+
 	describe('buildIndex (server startup re-indexing)', () => {
 		const httpRequestNode: INode = {
 			id: 'node-1',
