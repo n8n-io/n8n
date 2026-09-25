@@ -109,6 +109,32 @@ describe('handleLoadOperation', () => {
 		expect(result).toHaveLength(3);
 	});
 
+	it('should search by text when searchByText is set', async () => {
+		mockVectorStore.similaritySearchWithScore.mockResolvedValue([
+			[{ pageContent: 'test content 1', metadata: { test: 'metadata 1' } } as Document, 0.95],
+			[{ pageContent: 'test content 2', metadata: { test: 'metadata 2' } } as Document, 0.85],
+			[{ pageContent: 'test content 3', metadata: { test: 'metadata 3' } } as Document, 0.75],
+		]);
+
+		const result = await handleLoadOperation(
+			mockContext,
+			{ ...mockArgs, searchByText: true },
+			mockEmbeddings,
+			0,
+		);
+
+		expect(mockVectorStore.similaritySearchWithScore).toHaveBeenCalledWith('test search query', 3, {
+			testFilter: 'value',
+		});
+		expect(mockEmbeddings.embedQuery).not.toHaveBeenCalled();
+		expect(mockVectorStore.similaritySearchVectorWithScore).not.toHaveBeenCalled();
+		expect(result.map((item) => (item.json.document as IDataObject).pageContent)).toEqual([
+			'test content 1',
+			'test content 2',
+			'test content 3',
+		]);
+	});
+
 	it('should include document metadata when includeDocumentMetadata is true', async () => {
 		const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
 

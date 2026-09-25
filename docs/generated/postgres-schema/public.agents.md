@@ -162,6 +162,7 @@ erDiagram
   boolean expired
   varchar_255_ runId
   text state
+  text threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_credential_dependency" {
@@ -182,11 +183,13 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution_threads" {
+  varchar_16_ accessScope
   varchar_36_ agentId FK
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
   varchar_128_ id
+  uuid ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK

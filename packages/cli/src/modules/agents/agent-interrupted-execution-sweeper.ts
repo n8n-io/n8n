@@ -39,7 +39,12 @@ export class AgentInterruptedExecutionSweeper {
 				) {
 					continue;
 				}
-				if (await this.executionService.finalizeInterruptedExecution(execution)) {
+				if (
+					await this.executionService.finalizeInterruptedExecution(
+						execution,
+						new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS),
+					)
+				) {
 					this.logger.info('Marked abandoned agent execution as interrupted', {
 						executionId: execution.id,
 						threadId: execution.threadId,

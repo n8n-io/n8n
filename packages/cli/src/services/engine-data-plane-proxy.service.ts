@@ -1,16 +1,23 @@
 import { Service } from '@n8n/di';
-import type { ExecutionSnapshot, StartExecutionRequest, StartExecutionResult } from '@n8n/engine';
+import type {
+	ExecutionSnapshot,
+	StartExecutionRequest,
+	StartExecutionResult,
+	SearchExecutionsRequest,
+	SearchExecutionsResponse,
+} from '@n8n/engine';
 import { UserError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 
 /**
- * Starts and reads executions on the engine 2.0 data plane.
+ * Starts and reads executions on the engine v2 data plane.
  *
  * The control plane always reaches the engine over HTTP, even when the engine
  * runs in the same process, so this stays a network-shaped contract.
  */
 export interface EngineDataPlaneProvider {
+	searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse>;
 	startExecution(request: StartExecutionRequest): Promise<StartExecutionResult>;
 
 	/**
@@ -44,10 +51,15 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		return this.provider !== null;
 	}
 
+	async searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse> {
+		if (!this.provider) return { items: [], nextCursor: null, total: 0 };
+		return await this.provider.searchExecutions(request);
+	}
+
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {
 		if (!this.provider) {
 			throw new UserError(
-				'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 			);
 		}
 

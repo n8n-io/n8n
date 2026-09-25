@@ -20,7 +20,6 @@ import {
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 
 export interface LinearUserFixture {
@@ -100,6 +99,7 @@ export interface LinearReplayContext extends Omit<ReplayContextSetup, 'nextStrea
 	agentExecutor: {
 		executeForChatPublished: Mock;
 		resumeForChat: Mock;
+		isResumable: Mock;
 	};
 	apiCalls: LinearApiCall[];
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
@@ -263,6 +263,7 @@ export async function createLinearReplayContext(
 		userName: 'n8n-agent-agent-1',
 		adapters: { linear: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		concurrency: 'concurrent',
 	});
 
 	const integration: AgentIntegrationConfig = { type: 'linear', credentialId: 'cred-linear' };
@@ -287,7 +288,7 @@ export async function createLinearReplayContext(
 			'linear-signature',
 			createHmac('sha256', LINEAR_WEBHOOK_SECRET).update(rawBody).digest('hex'),
 		);
-		return await sendJsonWebhook(
+		return await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.linear(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/linear',
 			signed,
@@ -300,8 +301,8 @@ export async function createLinearReplayContext(
 		chat: chat as unknown as ChatInstance,
 		apiCalls: stub.apiCalls,
 		sendWebhook,
-		latestContext: () => setup.messageContextStore.latest(),
-		latestThreadId: () => setup.messageContextStore.latestThreadId(),
+		latestContext: setup.latestContext,
+		latestThreadId: setup.latestThreadId,
 		lastPost: () => stub.apiCalls.filter((call) => POST_METHODS.has(call.method)).at(-1),
 		shutdown: async () => {
 			try {

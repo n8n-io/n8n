@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InstanceRegistryService } from './instance-registry.service';
 import { REGISTRY_CONSTANTS } from './instance-registry.types';
@@ -14,14 +13,13 @@ import { REGISTRY_CONSTANTS } from './instance-registry.types';
 export class StaleMemberCleanupTask implements SystemTask {
 	readonly name = 'instance-registry-stale-member-cleanup';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS / Time.seconds.toMilliseconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(
+		REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS,
+	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
 	private readonly logger: Logger;
 

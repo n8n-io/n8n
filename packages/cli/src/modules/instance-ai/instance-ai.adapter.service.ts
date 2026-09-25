@@ -1,27 +1,29 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_SETUP_PANEL_FLAG,
+	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
@@ -56,7 +58,9 @@ import type {
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
 	ExecutionResult,
+	StepExecutionResult,
 	ExecutionDebugInfo,
+	NodeOutputBranch,
 	NodeOutputResult,
 	ResolvedNodeParametersResult,
 	ExecutionSummary as InstanceAiExecutionSummary,
@@ -79,7 +83,10 @@ import type {
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
+	InstanceAiPreferenceService,
 	InstanceAiMcpService,
+	InstanceAiExecuteNodeService,
+	ExecuteNodeResult as InstanceAiExecuteNodeResult,
 	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	ModelConfig,
@@ -101,6 +108,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { InstanceSettings } from 'n8n-core';
 import {
 	type ICredentialsDecrypted,
+	type IDataObject,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
@@ -109,19 +117,20 @@ import {
 	type IWorkflowBase,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
+	type AiAgentRequest,
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
 	type IRunData,
 	type ITaskData,
+	NodeConnectionTypes,
 	NodeHelpers,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
-	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
 	UserError,
@@ -162,11 +171,15 @@ import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mc
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
+import { ExecuteNodeService } from '@/node-execution';
+import type { ExecuteNodeResult } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { writeAssistantPreference } from '@/services/ai-preference-write';
+import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -184,6 +197,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
+import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
 import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
@@ -198,7 +212,17 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import {
+	buildToolAgentRequest,
+	declaredToolArguments,
+	findRootsAboveOtherRoots,
+	isToolkitNode,
+	pinDataForStepRun,
+	planStepRun,
+	toExecutionItems,
+} from './instance-ai-step-run';
 import { InstanceContextService } from './instance-context.service';
+import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
@@ -238,6 +262,21 @@ function resolveDisplayedDefaults(
 		desc,
 	);
 	return resolved ?? (parameters as INodeParameters);
+}
+
+/**
+ * Whether the engine can run this node on its own through a Tool Executor. This
+ * is the same test `runPartialWorkflow2` and `runManually` make, so it decides
+ * the same way they will. A node type that does not load is not a tool here:
+ * the run fails on the missing type either way.
+ */
+function isToolNode(nodeTypes: NodeTypes, node: INode): boolean {
+	try {
+		const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		return NodeHelpers.isTool(description, node.parameters);
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -402,6 +441,13 @@ export class InstanceAiAdapterService {
 		private readonly folderRepository?: FolderRepository,
 		private readonly folderFinderService?: FolderFinderService,
 		private readonly instanceContext?: InstanceContextService,
+		private readonly executeNodeService?: ExecuteNodeService,
+		// Optional for the same positional-construction reason as above.
+		// See `teamProjectsLicensed()` for the absent case.
+		private readonly licenseState?: LicenseState,
+		// Optional for the same reason as the other services above: existing tests
+		// construct this class positionally, and this must stay the last parameter.
+		private readonly aiPreferenceService?: AiPreferenceService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -417,8 +463,10 @@ export class InstanceAiAdapterService {
 			pushRef?: string;
 			threadId?: string;
 			projectId?: string;
-			/** Eval-only: restrict the credential `list()` view to these IDs. */
-			credentialIdAllowlist?: string[];
+			/** Eval-only: restrict the credential `list()` view to these IDs. A getter,
+			 *  read on every `list()`: the harness appends credentials it creates
+			 *  mid-run, after this context is built. */
+			getCredentialIdAllowlist?: () => string[] | undefined;
 			/** Eval-only: resolve a credential's connection test as successful without
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
@@ -429,12 +477,14 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
-			/** Per-user MCP registry gate (via `resolveExperimentGates`). Falsy →
-			 *  mcp service/tool not wired. */
-			mcpConnectionsEnabled?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
+			/** Resolved MCP registry availability. Falsy → mcp service/tool not wired. */
+			mcpConnectionsAvailable?: boolean;
 			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
 			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
 			nodeUsageEnabled?: boolean;
+			/** Instance activity gate. False disables the activity tool. */
+			instanceContextEnabled?: boolean;
 			/** Past-conversation recall, already bound to the run's user, project and
 			 *  thread by the caller. Absent → conversation-history tool not wired. */
 			conversationHistory?: InstanceAiConversationHistoryReader;
@@ -442,6 +492,10 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			credentialDescriptionsEnabled?: boolean;
+			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
+			 *  `save_user_preference` tool. */
+			aiPreferencesEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -452,14 +506,18 @@ export class InstanceAiAdapterService {
 			pushRef,
 			threadId,
 			projectId,
-			credentialIdAllowlist,
+			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
+			setupPanelVariant,
+			mcpConnectionsAvailable,
 			nodeUsageEnabled,
+			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
+			aiPreferencesEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -471,17 +529,19 @@ export class InstanceAiAdapterService {
 		const credentialService = this.createCredentialAdapter(
 			user,
 			projectId,
-			credentialIdAllowlist,
+			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
 		);
 		return {
 			userId: user.id,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
+				setupPanelVariant,
 			}),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService,
@@ -495,14 +555,18 @@ export class InstanceAiAdapterService {
 						),
 					}
 				: {}),
-			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
+			mcpService: mcpConnectionsAvailable ? this.createMcpAdapter(user) : undefined,
+			executeNodeService: this.executeNodeService
+				? this.createExecuteNodeAdapter(this.executeNodeService, user, projectId)
+				: undefined,
 			conversationHistoryService: conversationHistory,
-			// Presence is the gate, as with the services above: no reader, no `activity` tool.
-			...(this.instanceContext?.enabled
+			// The tool and context block use the same instance gate result.
+			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
+			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
-			workspaceService: this.createWorkspaceAdapter(user),
+			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
@@ -520,9 +584,18 @@ export class InstanceAiAdapterService {
 						builderDelegate: builderDelegateAdapter.createDelegate(
 							user,
 							projectId,
-							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+							// The target agent id is only known per turn (a build-new-agent
+							// flow creates it after this context is built), so tag Gateway
+							// spend with the concrete id the delegate hands us each turn.
+							(targetAgentId) =>
+								new AgentsCredentialProvider(
+									this.credentialsService,
+									projectId,
+									user,
+									targetAgentId,
+								),
 							credentialService,
-							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
+							{ useEvalModelCatalog: getCredentialIdAllowlist?.() !== undefined },
 						),
 					}
 				: {}),
@@ -565,62 +638,62 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/**
-	 * Every experiment gate from one PostHog fetch, so a caller wires its context
-	 * from one call. `mcpConnectionsEnabled` also folds in two instance-wide
-	 * preconditions. Fails closed: `getFeatureFlags` returns `{}` on a PostHog
-	 * outage, and an unexpected throw here still fails every gate closed rather
-	 * than failing the whole context build.
-	 */
+	/** Resolves experiment assignments. */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */
 		configEvalsEnabled: boolean;
-		/** MCP registry discovery: module active, MCP access allowed, user in the experiment. */
-		mcpConnectionsEnabled: boolean;
 		/** Past-conversation recall: tool, prompt section and first-turn hint. */
 		conversationHistoryEnabled: boolean;
 		/** Progressive workflow policy and planning-tool selection. */
 		progressiveBuildingEnabled: boolean;
+		setupPanelEnabled: boolean;
+		setupPanelVariant?: 'control' | 'variant';
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
-		/** Saved AI preferences on the opening turn. */
+		/** Saved AI preferences on every user turn. */
 		aiPreferencesEnabled: boolean;
+		credentialDescriptionsEnabled: boolean;
+		/** Shared activity recording and retrieval use the same instance gate. */
+		instanceContextEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
+		let instanceContextEnabled = false;
 		try {
-			flags = await Container.get(PostHogClient).getFeatureFlags(user);
+			const postHog = Container.get(PostHogClient);
+			const [userFlags, instanceFlag] = await Promise.allSettled([
+				postHog.getFeatureFlags(user),
+				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+			]);
+			if (userFlags.status === 'fulfilled') flags = userFlags.value;
+			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
 		} catch {
-			// getFeatureFlags already swallows PostHog errors and returns {}; this
-			// second layer is for an unexpected throw elsewhere in the call.
+			// Leave unreadable flags unassigned.
 		}
+		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
 		return {
+			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
-			mcpConnectionsEnabled:
-				this.mcpPreconditionsHold() &&
-				flags[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 			progressiveBuildingEnabled:
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
+			...(setupPanelVariant === 'control' || setupPanelVariant === 'variant'
+				? { setupPanelVariant }
+				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
+			instanceContextEnabled,
 		};
-	}
-
-	private mcpPreconditionsHold(): boolean {
-		return (
-			Container.get(ModuleRegistry).isActive('mcp-registry') &&
-			this.settingsService.isMcpAccessEnabled()
-		);
 	}
 
 	/**
@@ -631,22 +704,57 @@ export class InstanceAiAdapterService {
 		const instanceContext = this.instanceContext;
 		if (!instanceContext) throw new UnexpectedError('Instance context service is not available');
 
+		const scope: InstanceContextScope = {
+			surface: 'conversation',
+			...(projectId !== undefined ? { projectId } : {}),
+		};
+
 		return {
 			list: async (input) =>
 				await instanceContext.list({
 					user,
-					...(projectId !== undefined ? { projectId } : {}),
+					scope,
 					limit: input.limit,
 					...(input.category !== undefined ? { category: input.category } : {}),
 					...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
-			expand: async (id) =>
-				await instanceContext.expand({
-					id,
+			expand: async (id) => await instanceContext.expand({ id, user, scope }),
+		};
+	}
+
+	/** `source` is chosen here, never by the model: this is the assistant's write. */
+	private createPreferenceAdapter(user: User): InstanceAiPreferenceService {
+		const aiPreferenceService = this.aiPreferenceService;
+		if (!aiPreferenceService) throw new UnexpectedError('AI preference service is not available');
+
+		return {
+			create: async ({ content, scope }) => {
+				// The write, the refusal mapping and the events are shared with the MCP tool.
+				const result = await writeAssistantPreference({
+					aiPreferenceService,
+					telemetry: this.telemetry,
+					logger: this.logger,
 					user,
-					...(projectId !== undefined ? { projectId } : {}),
-				}),
+					surface: 'aia',
+					content,
+					scope,
+				});
+				if (!result.ok) return result;
+				// The card names the owner, so the write returns it.
+				const { id, content: saved, userId, projectId } = result.preference;
+				return { ok: true, preference: { id, content: saved, scope, userId, projectId } };
+			},
+			recordRejection: (reason, textLength, scope) => {
+				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+					surface: 'aia',
+					reason,
+					// From the tool input, so the reported scope follows the tool instead of a constant
+					// that turns wrong the day the tool offers a second scope.
+					scope_type: scope,
+					text_length: textLength,
+				});
+			},
 		};
 	}
 
@@ -693,6 +801,32 @@ export class InstanceAiAdapterService {
 			},
 			listConnections: async (): Promise<Array<{ slug: string }>> =>
 				await this.listMcpRegistryConnections(user),
+		};
+	}
+
+	private createExecuteNodeAdapter(
+		executeNodeService: ExecuteNodeService,
+		user: User,
+		boundProjectId?: string,
+	): InstanceAiExecuteNodeService {
+		const { resolveProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
+		return {
+			execute: async (request) => {
+				this.assertInstanceNotReadOnly('executions');
+				const projectId = await resolveProjectId(['workflow:execute']);
+				const result = await executeNodeService.run(user, {
+					type: request.type,
+					version: request.version,
+					config: {
+						parameters: request.config.parameters as INodeParameters,
+						credentials: request.config.credentials,
+					},
+					input: request.input as Array<{ json: IDataObject }> | undefined,
+					timeoutMs: request.timeoutMs,
+					projectId,
+				});
+				return redactExecuteNodeResult(result, this.allowSendingParameterValues);
+			},
 		};
 	}
 
@@ -745,6 +879,11 @@ export class InstanceAiAdapterService {
 		};
 	}
 
+	/** Team projects are a quota, not a feature flag, so the read goes through `LicenseState`. */
+	private teamProjectsLicensed(): boolean {
+		return this.licenseState?.isTeamProjectsLicensed() ?? true;
+	}
+
 	private buildLicenseHints(): string[] {
 		const hints: string[] = [];
 		if (!this.license.isLicensed('feat:namedVersions')) {
@@ -755,6 +894,11 @@ export class InstanceAiAdapterService {
 		if (!this.license.isLicensed('feat:folders')) {
 			hints.push(
 				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+			);
+		}
+		if (!this.teamProjectsLicensed()) {
+			hints.push(
+				'**Team projects** — this instance has no team-project license. `list-projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
 			);
 		}
 		return hints;
@@ -819,8 +963,18 @@ export class InstanceAiAdapterService {
 		user: User,
 		threadId?: string,
 		boundProjectId?: string,
-		options: { nodeUsageGateOpen?: boolean; folderExploration?: boolean } = {},
+		options: {
+			nodeUsageGateOpen?: boolean;
+			folderExploration?: boolean;
+			setupPanelVariant?: 'control' | 'variant';
+		} = {},
 	): InstanceAiWorkflowService {
+		const setupExperimentProperties = options.setupPanelVariant
+			? {
+					variant: options.setupPanelVariant,
+					[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: options.setupPanelVariant,
+				}
+			: {};
 		const foldersOn = options.folderExploration === true;
 		// Attribution reveals folder ids, names and paths on every row, so it needs
 		// the licence as well as the flag. Resolution stays on the flag alone so an
@@ -1321,6 +1475,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
@@ -1554,6 +1709,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: updated.id,
@@ -1645,6 +1801,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
+						...setupExperimentProperties,
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
@@ -1729,11 +1886,12 @@ export class InstanceAiAdapterService {
 					nodeGroups: version.nodeGroups,
 				} as Partial<WorkflowEntity>);
 
-				await workflowService.update(user, updateData, workflowId, {
+				const updated = await workflowService.update(user, updateData, workflowId, {
 					source: 'n8n-ai',
 				});
 
 				await notifyWorkflowUpdated(workflowId);
+				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
 			},
 
 			...(this.license.isLicensed('feat:namedVersions')
@@ -1760,6 +1918,8 @@ export class InstanceAiAdapterService {
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
+			executionPersistence,
+			workflowHistoryService,
 			nodeTypes,
 			allowSendingParameterValues,
 			roleService,
@@ -1813,7 +1973,7 @@ export class InstanceAiAdapterService {
 
 				const query: ExecutionSummaries.RangeQuery = {
 					kind: 'range' as const,
-					range: { limit: options?.limit ?? 20, lastId: undefined, firstId: undefined },
+					range: { limit: options?.limit ?? 20 },
 					order: { startedAt: 'DESC' as const },
 					user,
 					sharingOptions,
@@ -2015,77 +2175,22 @@ export class InstanceAiAdapterService {
 					};
 
 					// Wait for completion with timeout / abort protection
-					const abortSignal = options?.abortSignal;
+					const waitOutcome = await waitForInstanceAiExecution({
+						activeExecutions,
+						executionId,
+						timeoutMs,
+						abortSignal: options?.abortSignal,
+					});
 
-					if (activeExecutions.has(executionId)) {
-						let timeoutId: NodeJS.Timeout | undefined;
-						const timeoutPromise = new Promise<never>((_, reject) => {
-							timeoutId = setTimeout(() => {
-								reject(new Error(`Execution timed out after ${timeoutMs}ms`));
-							}, timeoutMs);
-						});
-
-						let onAbort: (() => void) | undefined;
-						const abortPromise =
-							abortSignal === undefined
-								? undefined
-								: new Promise<never>((_, reject) => {
-										onAbort = () => {
-											const error = new Error(
-												typeof abortSignal.reason === 'string'
-													? abortSignal.reason
-													: 'This operation was aborted',
-											);
-											error.name = 'AbortError';
-											reject(error);
-										};
-										if (abortSignal.aborted) {
-											onAbort();
-											return;
-										}
-										abortSignal.addEventListener('abort', onAbort, { once: true });
-									});
-
-						try {
-							await Promise.race([
-								activeExecutions.getPostExecutePromise(executionId),
-								timeoutPromise,
-								...(abortPromise ? [abortPromise] : []),
-							]);
-							clearTimeout(timeoutId);
-							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
-						} catch (error) {
-							clearTimeout(timeoutId);
-							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
-							const isTimeout = error instanceof Error && error.message.includes('timed out');
-							const isAbort =
-								error instanceof Error &&
-								(error.name === 'AbortError' || abortSignal?.aborted === true);
-							// On timeout or abort, cancel the execution with the matching reason
-							if (isTimeout || isAbort) {
-								try {
-									activeExecutions.stopExecution(
-										executionId,
-										isAbort
-											? new ManualExecutionCancelledError(executionId)
-											: new TimeoutExecutionCancelledError(executionId),
-									);
-								} catch {
-									// Execution may have completed between timeout/abort and cancel
-								}
-								const result = {
-									executionId,
-									status: 'error',
-									error: isAbort
-										? 'Execution was cancelled'
-										: `Execution timed out after ${timeoutMs}ms and was cancelled`,
-								} satisfies ExecutionResult;
-								await pruneVerificationPins();
-								trackBuilderExecutedWorkflow(result.status, result.error);
-								return result;
-							}
-							throw error;
-						}
+					if (waitOutcome.kind === 'cancelled') {
+						const result = {
+							executionId,
+							status: 'error',
+							error: waitOutcome.message,
+						} satisfies ExecutionResult;
+						await pruneVerificationPins();
+						trackBuilderExecutedWorkflow(result.status, result.error);
+						return result;
 					}
 
 					const { result, telemetryError } = await extractExecutionOutcome(
@@ -2098,9 +2203,18 @@ export class InstanceAiAdapterService {
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
 					// report them so callers don't mistake pin-fed nodes for live ones.
 					const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
-					return workflowPinnedNodeNames.length > 0
-						? { ...result, workflowPinnedNodeNames }
-						: result;
+					// The trigger did not fire when the assistant supplied its output.
+					const injectedTriggerNodeName =
+						triggerNode &&
+						(pinDataPlan.mockDataSources.includes('trigger_input') ||
+							Object.hasOwn(pinDataPlan.verificationPinData, triggerNode.name))
+							? triggerNode.name
+							: undefined;
+					return {
+						...result,
+						...(workflowPinnedNodeNames.length > 0 ? { workflowPinnedNodeNames } : {}),
+						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
+					};
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
@@ -2109,6 +2223,328 @@ export class InstanceAiAdapterService {
 						'error',
 						error instanceof Error ? error.message : String(error),
 					);
+					throw error;
+				}
+			},
+
+			async runStep(workflowId: string, nodeName: string, options) {
+				assertNotReadOnly();
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:execute',
+				]);
+
+				if (!workflow) {
+					throw new WorkflowNotFoundError(workflowId);
+				}
+
+				// The draft is the default. A named version runs that graph instead,
+				// while the execution still belongs to the workflow.
+				let nodes: INode[] = workflow.nodes ?? [];
+				let connections: IConnections = workflow.connections ?? {};
+				const versionId = options?.versionId;
+				if (versionId !== undefined && versionId !== workflow.versionId) {
+					const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
+					nodes = version.nodes ?? [];
+					connections = version.connections ?? {};
+				}
+
+				const target = nodes.find((node) => node.name === nodeName);
+				if (!target) {
+					throw new UserError(
+						`The workflow has no node named "${nodeName}". Use workflows(action="get-as-code") to see the node names.`,
+					);
+				}
+				if (target.disabled) {
+					throw new UserError(`Node "${nodeName}" is disabled. Enable it before you run it.`);
+				}
+
+				// Read the run data to replay on the server. A run data payload is far
+				// too large to route through the agent's context.
+				let priorRunData: IRunData | undefined;
+				let reusedFromExecutionId: string | undefined;
+				if (options?.reuseExecutionId !== undefined) {
+					const execution = await assertExecutionAccess(options.reuseExecutionId);
+					if (execution.workflowId !== workflowId) {
+						throw new UserError(
+							`Execution ${options.reuseExecutionId} belongs to a different workflow.`,
+						);
+					}
+					const stored = await executionPersistence.findSingleExecution(options.reuseExecutionId, {
+						includeData: true,
+						unflattenData: true,
+					});
+					// An execution with no stored run data still counts as a request to
+					// replay: `planStepRun` has to see the empty set to refuse the run
+					// rather than fall back to running the chain.
+					priorRunData = stored?.data?.resultData?.runData ?? {};
+					reusedFromExecutionId = options.reuseExecutionId;
+				}
+
+				const plan = planStepRun({
+					nodes,
+					connections,
+					targetName: nodeName,
+					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
+					priorRunData,
+					pinnedNodeNames: Object.keys(workflow.pinData ?? {}),
+				});
+
+				// The caller asked to keep the nodes above the target out of the run and
+				// the graph cannot deliver that. Running the chain anyway would execute
+				// them for real, which is the one thing the caller ruled out.
+				if (plan.unhonoredInput) {
+					const names = plan.unhonoredInput.upstreamNodeNames;
+					const upstream = names.slice(0, 10).join(', ') + (names.length > 10 ? ', …' : '');
+					if (plan.unhonoredInput.requested === 'mocked') {
+						throw new UserError(
+							`mockInput cannot keep every node above "${nodeName}" out of the run: ` +
+								`the mock leaves a Loop Over Items node unfinished, and n8n would restart it and execute these nodes for real (${upstream}). ` +
+								'Pass reuseExecutionId with an execution where the loop finished, or omit both options to run the chain on purpose.',
+						);
+					}
+					throw new UserError(
+						`Execution ${options?.reuseExecutionId} does not cover every node above "${nodeName}", ` +
+							`so the run would execute them for real (${upstream}). ` +
+							'Pick an execution where those nodes ran to completion, or omit both options to run the chain on purpose.',
+					);
+				}
+
+				// A tool runs through a virtual Tool Executor that passes it the agent
+				// request. Every other sub-node type has no such path: n8n runs it as
+				// part of the node that owns it and nowhere else.
+				let agentRequest: AiAgentRequest | undefined;
+				if (plan.rootNodeNames) {
+					const roots = plan.rootNodeNames.map((name) => `"${name}"`).join(' or ');
+					if (!isToolNode(nodeTypes, target)) {
+						throw new UserError(
+							`Node "${nodeName}" cannot run on its own — n8n runs it as part of ${roots}. ` +
+								`Run ${roots} instead: its execution records what this node returned on every ` +
+								'call it made.',
+						);
+					}
+
+					// A toolkit node holds several tools and the Tool Executor runs only the
+					// one whose name matches the request. That name is built from the node
+					// name and the server's tool name, so nothing here can name a member
+					// reliably, and a miss reports success with no result at all.
+					if (isToolkitNode(target)) {
+						throw new UserError(
+							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
+								`Run ${roots} instead, then read this node with ` +
+								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'tool call returned.',
+						);
+					}
+
+					// The engine runs the tool through one of its Agents only. When it picks
+					// a lower one, the Agent above it and the nodes in between run for
+					// real, whatever mocked or replayed data the plan gave them.
+					const upperRoots = findRootsAboveOtherRoots(nodes, connections, plan.rootNodeNames);
+					if (upperRoots.length > 0) {
+						const upper = upperRoots.map((name) => `"${name}"`).join(' or ');
+						throw new UserError(
+							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
+								`so a step run would run ${upper} and the nodes after it again. ` +
+								`Run ${upper} instead, then read this node with ` +
+								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'tool call returned.',
+						);
+					}
+
+					// A tool whose parameters hold `$fromAI` calls gets those values from
+					// the agent. With no arguments it runs on empty ones and fails for a
+					// reason that has nothing to do with the user's problem.
+					const expected = declaredToolArguments(target);
+					if (expected.length > 0 && options?.toolArguments === undefined) {
+						throw new UserError(
+							`Node "${nodeName}" takes its arguments from the agent, so a step run has to supply them. ` +
+								`Pass toolArguments with: ${expected.join(', ')}.`,
+						);
+					}
+
+					agentRequest = buildToolAgentRequest({ target, toolArguments: options?.toolArguments });
+				} else if (isToolNode(nodeTypes, target)) {
+					// A tool runs only through the node that owns it, and nothing owns
+					// this one: its tool output goes nowhere. `rewireGraph` then finds no
+					// node to stand in for, so the run would start, cost an execution and
+					// die on an error about a graph the caller never asked about.
+					throw new UserError(
+						`Node "${nodeName}" is a tool, and no node is connected to run it. ` +
+							'A tool runs only through the node that owns it, so connect it to an Agent ' +
+							'and run the step again.',
+					);
+				} else if (options?.toolArguments !== undefined) {
+					throw new UserError(
+						`toolArguments applies only to a tool node. "${nodeName}" runs in the main graph, ` +
+							'so its input comes from mockInput, reuseExecutionId, or the nodes above it.',
+					);
+				}
+
+				// A pinned node never executes, so the target's own pin — and any pin on
+				// a node whose output we just mocked — has to come off this run's
+				// copy. The saved workflow keeps them.
+				const stepPinData = pinDataForStepRun(workflow.pinData, {
+					targetName: nodeName,
+					mockedNodeNames: plan.mockedNodeNames,
+				});
+
+				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+
+				// A step run is always manual. `WorkflowRunner.resolvePinData` returns pin
+				// data only for manual and evaluation mode, so any other mode would drop
+				// the workflow's pins and the mocked path with them.
+				const runData: IWorkflowExecutionDataProcess = {
+					executionMode: 'manual',
+					workflowData: {
+						...workflow,
+						nodes,
+						connections,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataSuccessExecution: 'all',
+							saveDataErrorExecution: 'all',
+							executionTimeout: Math.ceil(timeoutMs / 1000),
+						},
+					},
+					userId: user.id,
+					pushRef,
+					destinationNode: { nodeName, mode: 'inclusive' },
+					pinData: stepPinData,
+					runData: plan.runData,
+					dirtyNodeNames: plan.dirtyNodeNames,
+					agentRequest,
+					source: 'instance_ai',
+				};
+
+				// A trigger has no upstream to run, so the chain and the partial paths
+				// are the same thing. Naming it keeps the engine from auto-detecting a
+				// different trigger in a multi-trigger workflow.
+				if (isTriggerNodeType(target.type)) {
+					runData.triggerToStartFrom = { name: nodeName };
+				}
+
+				// In queue mode the worker rebuilds the run from `execution.data`, where
+				// the transient top-level fields do not survive. Mirror the shape
+				// `workflow-execution.service` persists. `runData` stays `null` when the
+				// plan has none, so `createRunExecutionData` does not initialize it and
+				// turn a chain run into a partial one.
+				const offloadingManualExecutionsInQueueMode =
+					globalConfig.executions?.mode === 'queue' &&
+					process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+				if (offloadingManualExecutionsInQueueMode) {
+					runData.executionData = createRunExecutionData({
+						startData: { destinationNode: runData.destinationNode },
+						resultData: { pinData: stepPinData, runData: plan.runData ?? null },
+						manualData: {
+							userId: user.id,
+							dirtyNodeNames: plan.dirtyNodeNames,
+							triggerToStartFrom: runData.triggerToStartFrom,
+							// Without this a worker-run step on a tool loses the arguments and
+							// runs the tool on empty ones.
+							agentRequest,
+							source: 'instance_ai',
+						},
+						executionData: null,
+					});
+				}
+
+				const trackStepRun = (status: ExecutionResult['status'], error?: string) => {
+					if (!threadId) return;
+
+					telemetry.track('Builder executed workflow', {
+						user_id: user.id,
+						thread_id: threadId,
+						workflow_id: workflowId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(stepPinData ?? {}).length,
+						exec_type: 'step',
+						input_mode: plan.inputMode,
+						status,
+						...(error ? { error: redactTelemetryText(error) } : {}),
+					});
+				};
+
+				// Nodes the reused execution could contribute. The target is excluded:
+				// `dirtyNodeNames` forces it to re-run, and a step run stops there, so
+				// it is the only node of the reused set that executes again.
+				const offeredForReplay = priorRunData
+					? Object.keys(priorRunData).filter((name) => name !== nodeName)
+					: [];
+
+				const describe = (result: ExecutionResult): StepExecutionResult => {
+					// `findSubgraph` keeps only the nodes between the trigger and the
+					// target, so a sibling branch of the reused execution never enters
+					// this run. Report what the run really carried, not what was offered.
+					const inRunData = new Set(result.executedNodeNames ?? []);
+					const replayedNodeNames = offeredForReplay.filter((name) => inRunData.has(name));
+
+					// `extractExecutionOutcome` derives `executedNodeNames` from the run
+					// data keys, and both a mocked stub and a replayed entry carry run
+					// data without having run in *this* execution. Leaving them in reports
+					// a whole chain as executed when one node was — the false-coverage
+					// signal this tool must never emit.
+					const notExecutedHere = new Set([...plan.mockedNodeNames, ...replayedNodeNames]);
+
+					return {
+						...result,
+						...(result.executedNodeNames
+							? {
+									executedNodeNames: result.executedNodeNames.filter(
+										(name) => !notExecutedHere.has(name),
+									),
+								}
+							: {}),
+						nodeName,
+						inputMode: plan.inputMode,
+						mockedNodeNames: plan.mockedNodeNames,
+						// A sub-node only runs through the node that owns it, so the input
+						// the caller supplied fed that node, not the sub-node. Every owner is
+						// listed, not the one that ran: `rewireGraph` picks one and reports
+						// nothing about the choice, so naming a single owner here would be a
+						// guess.
+						...(plan.rootNodeNames ? { ranThroughNodeNames: plan.rootNodeNames } : {}),
+						...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
+						...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
+						// Report the pins that actually fed this run, not every pin the
+						// workflow carries: the ones this run dropped never applied.
+						...(Object.keys(stepPinData ?? {}).length > 0
+							? { workflowPinnedNodeNames: Object.keys(stepPinData ?? {}) }
+							: {}),
+					};
+				};
+
+				try {
+					const executionId = await workflowRunner.run(runData);
+
+					const waitOutcome = await waitForInstanceAiExecution({
+						activeExecutions,
+						executionId,
+						timeoutMs,
+						abortSignal: options?.abortSignal,
+					});
+
+					if (waitOutcome.kind === 'cancelled') {
+						trackStepRun('error', waitOutcome.message);
+						return describe({
+							executionId,
+							status: 'error',
+							error: waitOutcome.message,
+						});
+					}
+
+					const { result, telemetryError } = await extractExecutionOutcome(
+						executionId,
+						allowSendingParameterValues,
+						nodeTypes,
+						// A tool ran through the virtual Tool Executor. Report the run
+						// under the node the caller named, which is the one they can open.
+						plan.rootNodeNames ? nodeName : undefined,
+					);
+					trackStepRun(result.status, telemetryError);
+					return describe(result);
+				} catch (error) {
+					trackStepRun('error', error instanceof Error ? error.message : String(error));
 					throw error;
 				}
 			},
@@ -2203,7 +2639,7 @@ export class InstanceAiAdapterService {
 	private createCredentialAdapter(
 		user: User,
 		boundProjectId?: string,
-		credentialIdAllowlist?: string[],
+		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
 		const {
@@ -2225,7 +2661,14 @@ export class InstanceAiAdapterService {
 						projectId: boundProjectId,
 					});
 					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
-					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
+					return filtered.map(
+						(c): CredentialSummary => ({
+							id: c.id,
+							name: c.name,
+							type: c.type,
+							...(c.description !== undefined && { description: c.description }),
+						}),
+					);
 				}
 
 				// Unbound runs (temporary-workflow archiving, the only caller without a
@@ -2247,6 +2690,7 @@ export class InstanceAiAdapterService {
 							id: c.id,
 							name: c.name,
 							type: c.type,
+							...(c.description !== undefined && { description: c.description }),
 						}),
 					);
 				}
@@ -2263,6 +2707,7 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
+						...(c.description !== undefined && { description: c.description }),
 					}),
 				);
 			},
@@ -2273,6 +2718,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
+					...(credential.description !== undefined && { description: credential.description }),
 				} satisfies CredentialDetail;
 			},
 
@@ -2626,16 +3072,21 @@ export class InstanceAiAdapterService {
 			},
 		};
 
-		if (!credentialIdAllowlist) return adapter;
+		if (!getCredentialIdAllowlist?.()) return adapter;
 
 		// Eval runs pin each build thread to a declared credential set so
 		// concurrent test cases can't observe each other's credentials. Discovery
 		// only: get/test/delete still resolve explicit IDs the caller already has.
-		const allowed = new Set(credentialIdAllowlist);
+		// Read per call, not snapshotted: a credential the harness creates on a
+		// setup card must show on the next card of the same run.
 		return {
 			...adapter,
-			list: async (options) =>
-				allowed.size === 0 ? [] : (await adapter.list(options)).filter((c) => allowed.has(c.id)),
+			list: async (options) => {
+				const allowed = new Set(getCredentialIdAllowlist());
+				return allowed.size === 0
+					? []
+					: (await adapter.list(options)).filter((c) => allowed.has(c.id));
+			},
 		};
 	}
 
@@ -3340,6 +3791,7 @@ export class InstanceAiAdapterService {
 								name: String(o.name),
 								value: o.value,
 							})),
+						...(p.displayOptions ? { displayOptions: p.displayOptions } : {}),
 					})),
 					credentials: desc.credentials?.map((c) => ({
 						name: c.name,
@@ -3542,7 +3994,7 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createWorkspaceAdapter(user: User): InstanceAiWorkspaceService {
+	private createWorkspaceAdapter(user: User, boundProjectId?: string): InstanceAiWorkspaceService {
 		const {
 			projectService,
 			folderService,
@@ -3555,6 +4007,7 @@ export class InstanceAiAdapterService {
 		} = this;
 		const assertNotReadOnly = (resource: string) => this.assertInstanceNotReadOnly(resource);
 		const { assertProjectScope } = this.createProjectScopeHelpers(user);
+		const teamProjectsLicensed = this.teamProjectsLicensed();
 
 		const adapter: InstanceAiWorkspaceService = {
 			async getProject(projectId: string): Promise<ProjectSummary | null> {
@@ -3565,11 +4018,18 @@ export class InstanceAiAdapterService {
 
 			async listProjects(): Promise<ProjectSummary[]> {
 				const projects = await projectService.getAccessibleProjects(user);
-				return projects.map((p) => ({
+				const summaries = projects.map((p) => ({
 					id: p.id,
 					name: p.name,
 					type: p.type,
 				}));
+				if (teamProjectsLicensed) return summaries;
+				// An instance that loses its team-project license keeps its projects, and
+				// an admin still reads all of them. The user cannot work in those
+				// projects, so list only their own personal project and the project this
+				// conversation is bound to.
+				const personalProjectId = (await projectService.getPersonalProject(user))?.id;
+				return summaries.filter((p) => p.id === personalProjectId || p.id === boundProjectId);
 			},
 
 			...(this.license.isLicensed('feat:folders')
@@ -4087,6 +4547,49 @@ export async function extractExecutionResult(
 	return (await extractExecutionOutcome(executionId, includeOutputData, nodeTypes)).result;
 }
 
+/** Output branches of a run that a non-main connection carried. */
+function nonMainOutputs(run: ITaskData | undefined) {
+	return Object.entries(run?.data ?? {}).find(([type]) => type !== NodeConnectionTypes.Main)?.[1];
+}
+
+/** Whether this is the virtual node the engine runs a tool through. */
+const isToolExecutor = (nodeName: string | undefined) => nodeName === TOOL_EXECUTOR_NODE_NAME;
+
+/** Reports the node the caller asked for in place of the virtual one. */
+function renameToolExecutor(nodeName: string | undefined, subNodeTarget?: string) {
+	return subNodeTarget && isToolExecutor(nodeName) ? subNodeTarget : nodeName;
+}
+
+/**
+ * Folds the virtual Tool Executor's run into the node the step run targeted.
+ *
+ * `rewireGraph` runs a tool through a node the workflow does not contain, and
+ * that node's name reaches the result in four places — the output data, the
+ * executed names, the last node, and a node error. None of them can be looked
+ * up or opened, because the workflow has no such node.
+ *
+ * The tool's own run is the better record: the Tool Executor re-serializes the
+ * result as one string, while the tool keeps its items. So the executor's run
+ * only stands in when the tool recorded none of its own.
+ */
+function foldToolExecutorRun(
+	runData: IRunData | undefined,
+	subNodeTarget?: string,
+): IRunData | undefined {
+	if (!runData || !subNodeTarget || !runData[TOOL_EXECUTOR_NODE_NAME]) return runData;
+
+	const folded: IRunData = {};
+	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+		if (isToolExecutor(nodeName)) {
+			folded[subNodeTarget] ??= nodeRuns;
+			continue;
+		}
+		folded[nodeName] = nodeRuns;
+	}
+
+	return folded;
+}
+
 /**
  * The execution result the agent sees, plus the error string telemetry may use.
  * They differ when `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is on: that setting
@@ -4099,6 +4602,11 @@ export async function extractExecutionOutcome(
 	executionId: string,
 	includeOutputData = true,
 	nodeTypes?: NodeTypes,
+	/**
+	 * Sub-node a step run targeted. The engine ran it through a virtual node, so
+	 * the result has to be told which node the caller actually asked for.
+	 */
+	subNodeTarget?: string,
 ): Promise<{ result: ExecutionResult; telemetryError?: string }> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
@@ -4125,7 +4633,7 @@ export async function extractExecutionOutcome(
 	// omits. Verification uses this to tell "ran and returned nothing" apart
 	// from "never reached". Node names only, so it is safe regardless of the
 	// parameter-values privacy setting.
-	const runData = execution.data?.resultData?.runData;
+	const runData = foldToolExecutorRun(execution.data?.resultData?.runData, subNodeTarget);
 	const executedNodeNames = Object.keys(runData ?? {});
 	if (includeOutputData && runData) {
 		const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
@@ -4133,8 +4641,15 @@ export async function extractExecutionOutcome(
 		try {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
-				if (!lastRun?.data?.main) continue;
-				const branches = lastRun.data.main.map((items) => (items ?? []).map((item) => item.json));
+				// A sub-node records its run under the connection type that carried it,
+				// never `main`. Only the step run's own target is read that way: every
+				// other sub-node (a model, a memory) would otherwise put its whole
+				// exchange into the result of every ordinary run.
+				const outputs =
+					lastRun?.data?.[NodeConnectionTypes.Main] ??
+					(nodeName === subNodeTarget ? nonMainOutputs(lastRun) : undefined);
+				if (!outputs) continue;
+				const branches = outputs.map((items) => (items ?? []).map((item) => item.json));
 				const totalItems = branches.reduce((sum, items) => sum + items.length, 0);
 				if (totalItems === 0) continue;
 				if (branches.length === 1) {
@@ -4173,7 +4688,10 @@ export async function extractExecutionOutcome(
 					: undefined,
 			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
 			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
-			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			lastNodeExecuted: renameToolExecutor(
+				execution.data?.resultData?.lastNodeExecuted,
+				subNodeTarget,
+			),
 			workflowVersionId: execution.workflowVersionId,
 			error: errorMessage,
 			startedAt: execution.startedAt?.toISOString(),
@@ -4235,19 +4753,8 @@ export function formatExecutionError(
 const MAX_NODE_OUTPUT_BYTES = 5_000;
 
 export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
-	const serialized = JSON.stringify(items);
-	if (serialized.length <= MAX_NODE_OUTPUT_BYTES) return items;
-
-	// Binary search for the number of items that fit within the limit
-	const truncated: unknown[] = [];
-	let size = 2; // account for "[]"
-	for (const item of items) {
-		const itemStr = JSON.stringify(item);
-		// +1 for comma separator, +1 margin
-		if (size + itemStr.length + 2 > MAX_NODE_OUTPUT_BYTES) break;
-		truncated.push(item);
-		size += itemStr.length + 1;
-	}
+	const truncated = capItemsBySerializedSize(items, MAX_NODE_OUTPUT_BYTES);
+	if (truncated === items) return items;
 
 	return {
 		items: truncated,
@@ -4255,6 +4762,87 @@ export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
 		totalItems: items.length,
 		shownItems: truncated.length,
 		message: `Output truncated: showing ${truncated.length} of ${items.length} items. Use get-node-output to retrieve full data for this node.`,
+	};
+}
+
+/** Returns the input array itself when it fits, so callers can detect truncation by identity. */
+function capItemsBySerializedSize<T>(items: T[], maxBytes: number): T[] {
+	if (JSON.stringify(items).length <= maxBytes) return items;
+
+	const kept: T[] = [];
+	let size = 2; // account for "[]"
+	for (const item of items) {
+		const itemStr = JSON.stringify(item);
+		// +1 for comma separator, +1 margin
+		if (size + itemStr.length + 2 > maxBytes) break;
+		kept.push(item);
+		size += itemStr.length + 1;
+	}
+	return kept;
+}
+
+const EXECUTE_NODE_DETAILS_SUPPRESSED =
+	'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)';
+
+/**
+ * The standalone execution row is deleted after the result is read, so unlike
+ * workflow runs there is no get-node-output fallback for truncated or
+ * suppressed output.
+ */
+export function redactExecuteNodeResult(
+	result: ExecuteNodeResult,
+	allowSendingParameterValues: boolean,
+): InstanceAiExecuteNodeResult {
+	if (result.status === 'error') {
+		const { message, description, nodeErrorType } = result.error;
+		const cappedDescription =
+			description && description.length > MAX_ERROR_CHARS
+				? `${description.slice(0, MAX_ERROR_CHARS)}…`
+				: description;
+		return {
+			status: 'error',
+			error: {
+				message,
+				description: allowSendingParameterValues
+					? cappedDescription
+					: description
+						? EXECUTE_NODE_DETAILS_SUPPRESSED
+						: undefined,
+				nodeErrorType,
+			},
+		};
+	}
+
+	if (!allowSendingParameterValues) {
+		return {
+			status: 'success',
+			output: '',
+			outputSuppressed:
+				'The node executed successfully, but its output items are suppressed by the instance AI privacy setting.',
+		};
+	}
+
+	let totalItems = 0;
+	let shownItems = 0;
+	const kept = result.output.map((branch) => {
+		totalItems += branch.length;
+		const keptBranch = capItemsBySerializedSize(branch, MAX_NODE_OUTPUT_BYTES);
+		shownItems += keptBranch.length;
+		return keptBranch;
+	});
+	// The items come from whatever service the node called, so they carry the same
+	// boundary tag the workflow-execution path puts on node output.
+	const output = wrapUntrustedData(JSON.stringify(kept, null, 2), 'execution-output');
+	if (shownItems === totalItems) return { status: 'success', output };
+
+	return {
+		status: 'success',
+		output,
+		truncated: {
+			totalItems,
+			shownItems,
+			message: `Output truncated: showing ${shownItems} of ${totalItems} items. Re-run with fewer input items or a narrower operation to see more.`,
+		},
 	};
 }
 
@@ -4355,41 +4943,72 @@ export async function extractNodeOutput(
 		await workflow?.expression.releaseIsolate();
 	}
 
+	// A sub-node (a model, a memory, a tool) records its run under the connection
+	// type that carried it, never `main`, and it records one run for each call
+	// its owner made. A step run on one is refused and the caller is sent here to
+	// read those calls, so all of them are read. A node in the main graph keeps
+	// to its last run: one run for each iteration of a loop is the common case
+	// there, and merging them would change what every caller already gets.
+	//
+	// The test is a non-main output on *some* run, not the absence of a main one
+	// on the last. A failed run carries no data at all — `createTaskData` sets
+	// none and only a rewired tool has it filled on the error path — so "no main
+	// output" also describes a node that failed on the last iteration of a loop.
+	// Reading every run of it would answer a question about the failed run with
+	// the output of earlier ones. A sub-node that failed on its last call is the
+	// mirror case: the calls that did return are the answer, and they are only
+	// reachable by looking past the last run.
+	const readsEveryRun = nodeRuns.some((run) => nonMainOutputs(run) !== undefined);
+	const runsRead = readsEveryRun ? nodeRuns : [lastRun];
+	const outputsPerRun = runsRead.map(
+		(run) => run?.data?.[NodeConnectionTypes.Main] ?? nonMainOutputs(run) ?? [],
+	);
+	const outputCount = Math.max(0, ...outputsPerRun.map((runOutputs) => runOutputs.length));
+
 	// One page over the items of all outputs (first output first), reported per
 	// output so a Filter's Kept and Discarded items never read as one list.
 	// Only the requested slice is materialized — avoids OOM on huge result sets.
+	// A label names the call when several were read, so two items that differ
+	// only by call are still told apart.
 	let index = 0;
 	let returnedCount = 0;
-	const outputs = (lastRun?.data?.main ?? []).map((output, outputIndex) => {
-		const items = output ?? [];
-		const firstInPage = Math.max(startIndex - index, 0);
+	const outputs: NodeOutputBranch[] = [];
+	for (let outputIndex = 0; outputIndex < outputCount; outputIndex++) {
 		const collected: unknown[] = [];
-		for (const item of items) {
-			if (index >= startIndex && returnedCount < maxItems) {
-				collected.push(item.json);
-				returnedCount++;
+		let itemsOnOutput = 0;
+
+		outputsPerRun.forEach((runOutputs, runIndex) => {
+			for (const item of runOutputs[outputIndex] ?? []) {
+				if (index >= startIndex && returnedCount < maxItems) {
+					const call = runsRead.length > 1 ? `[call ${runIndex + 1}]` : '';
+					collected.push(
+						wrapUntrustedData(
+							JSON.stringify(capItem(item.json), null, 2),
+							'execution-output',
+							`node:${nodeName}${call}[${outputIndex}][${itemsOnOutput}]`,
+						),
+					);
+					returnedCount++;
+				}
+				index++;
+				itemsOnOutput++;
 			}
-			index++;
-		}
-		return {
+		});
+
+		outputs.push({
 			index: outputIndex,
 			...(names[outputIndex] ? { name: names[outputIndex] } : {}),
-			totalItems: items.length,
-			items: collected.map((item, i) =>
-				wrapUntrustedData(
-					JSON.stringify(capItem(item), null, 2),
-					'execution-output',
-					`node:${nodeName}[${outputIndex}][${firstInPage + i}]`,
-				),
-			),
-		};
-	});
+			totalItems: itemsOnOutput,
+			items: collected,
+		});
+	}
 
 	return {
 		nodeName,
 		outputs,
 		totalItems: index,
 		returned: { from: startIndex, to: startIndex + returnedCount },
+		...(nodeRuns.length > 1 ? { totalRuns: nodeRuns.length } : {}),
 	};
 }
 

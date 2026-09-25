@@ -80,6 +80,9 @@ function makeContext(threadMemory: unknown) {
 	domainContext.threadMemory = threadMemory as InstanceAiContext['threadMemory'];
 	domainContext.threadId = THREAD_ID;
 	domainContext.agentBuilderTarget = undefined;
+	domainContext.agentPreviewSession = undefined;
+	domainContext.currentUserAttachments = undefined;
+	domainContext.resolvedUserDecisions = undefined;
 
 	const logger = {
 		debug: vi.fn(),
@@ -101,6 +104,7 @@ function makeContext(threadMemory: unknown) {
 	context.tracing = undefined;
 	context.claimSubAgentUsage = undefined;
 	context.trackTelemetry = undefined;
+	context.currentUserMessage = undefined;
 
 	return { context, delegate };
 }

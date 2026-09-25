@@ -13,6 +13,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
@@ -117,7 +119,8 @@ export class LmChatVercelAiGateway implements INodeType {
 				default: 'openai/gpt-4o',
 				builderHint: {
 					propertyHint:
-						'Default to a current flagship (e.g. openai/gpt-5.4, anthropic/claude-sonnet-4.6, google/gemini-3.1-pro). Avoid the openai/gpt-4o default and other pre-2026 models.',
+						'Use the exact provider-prefixed ID returned by Vercel AI Gateway. Do not assume it serves every model from the underlying provider. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{
@@ -233,10 +236,14 @@ export class LmChatVercelAiGateway implements INodeType {
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					credentials.url,
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 		};
 

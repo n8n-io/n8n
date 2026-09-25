@@ -1,5 +1,9 @@
 import { isRecord } from '@n8n/utils/is-record';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
+import { stringProperty } from '../../integration-helpers';
+
 const SLACK_APP_SETUP_CACHE_PREFIX = 'agents:slack-app-setup:';
 const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
 
@@ -42,6 +46,20 @@ export interface SlackAppSetupSession {
 	teamName?: string;
 }
 
+export function hasSessionShape(value: unknown): value is SlackAppSetupSession {
+	const keys: Array<keyof SlackAppSetupSession> = [
+		'projectId',
+		'agentId',
+		'userId',
+		'appId',
+		'clientId',
+		'clientSecret',
+		'signingSecret',
+		'redirectUrl',
+	];
+	return isRecord(value) && keys.every((key) => typeof value[key] === 'string');
+}
+
 export function slackSetupCacheKey(state: string): string {
 	return `${SLACK_APP_SETUP_CACHE_PREFIX}${state}`;
 }
@@ -63,4 +81,17 @@ export function childRecord(
 ): Record<string, unknown> | undefined {
 	const child = record[key];
 	return isRecord(child) ? child : undefined;
+}
+
+export function parseSlackAppSetupResponse(response: Record<string, unknown>) {
+	const credentials = childRecord(response, 'credentials');
+	const appId = stringProperty(response, 'app_id');
+	const clientId = stringProperty(credentials, 'client_id');
+	const clientSecret = stringProperty(credentials, 'client_secret');
+	const signingSecret = stringProperty(credentials, 'signing_secret');
+	const oauthAuthorizeUrl = stringProperty(response, 'oauth_authorize_url');
+	if (!appId || !clientId || !clientSecret || !signingSecret || !oauthAuthorizeUrl) {
+		throw new BadRequestError('Slack returned an incomplete app setup response');
+	}
+	return { appId, clientId, clientSecret, signingSecret, oauthAuthorizeUrl };
 }

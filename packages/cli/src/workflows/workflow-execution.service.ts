@@ -263,7 +263,7 @@ export class WorkflowExecutionService {
 	}
 
 	/**
-	 * Starts a polled execution on engine 2.0, then advances the cursor.
+	 * Starts a polled execution on engine v2, then advances the cursor.
 	 *
 	 * The v2 path keeps no control-plane execution row, so the cursor cannot
 	 * commit in the same transaction as the run the way {@link runPolledWorkflow}
@@ -326,7 +326,7 @@ export class WorkflowExecutionService {
 
 		responsePromise?.reject(ensureError(error));
 
-		await this.executionCrashService.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashed(executionId, 'start-failure');
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {
@@ -500,6 +500,9 @@ export class WorkflowExecutionService {
 						userId: data.userId,
 						dirtyNodeNames: data.dirtyNodeNames,
 						triggerToStartFrom: data.triggerToStartFrom,
+						// A run of a single tool node needs this to reach the worker, or the
+						// tool runs on empty arguments.
+						agentRequest: data.agentRequest,
 						source: data.source,
 					},
 					// Set this to null so `createRunExecutionData` doesn't initialize it.

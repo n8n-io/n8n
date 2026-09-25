@@ -1,0 +1,140 @@
+name: 'Utility: Probe npm OIDC Exchange'
+
+on:
+  workflow_dispatch:
+    inputs:
+      package-name:
+        description: 'Published npm package to test'
+        required: true
+        default: '@n8n/typeorm'
+        type: string
+
+permissions: {}
+
+jobs:
+  probe:
+    name: Probe npm OIDC exchange (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: pnpm 12
+            safe_chain: false
+            bypass_safe_chain: false
+          - name: pnpm 12 with SafeChain
+            safe_chain: true
+            bypass_safe_chain: false
+          - name: pnpm 12 with SafeChain bypass
+            safe_chain: true
+            bypass_safe_chain: true
+    env:
+      PACKAGE_NAME: ${{ inputs.package-name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        if: matrix.safe_chain == false
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '26.5.1'
+
+      - name: Resolve pnpm version
+        id: pnpm-version
+        if: matrix.safe_chain == false
+        run: node .github/scripts/resolve-pnpm-version.mjs
+
+      - name: Set up raw pnpm
+        if: matrix.safe_chain == false
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          install: false
+          version: ${{ steps.pnpm-version.outputs.version }}
+
+      - name: Install dependencies without SafeChain
+        if: matrix.safe_chain == false
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up pnpm with SafeChain
+        if: matrix.safe_chain == true
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Verify pnpm version for publishing
+        shell: bash
+        run: |
+          if [ "$(pnpm --version)" != '12.4.2' ]; then
+            echo '::error::Expected pnpm 12.4.2 for publishing.'
+            exit 1
+          fi
+
+      - name: Exchange GitHub OIDC token with npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          ID_TOKEN_RESPONSE="$RUNNER_TEMP/npm-oidc-id-token.json"
+          EXCHANGE_RESPONSE="$RUNNER_TEMP/npm-oidc-exchange.json"
+          trap 'rm -f "$ID_TOKEN_RESPONSE" "$EXCHANGE_RESPONSE"' EXIT
+
+          id_token_status="$(curl --silent --show-error --output "$ID_TOKEN_RESPONSE" --write-out '%{http_code}' --get \
+            --header "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            --header 'Accept: application/json' \
+            --data-urlencode 'audience=npm:registry.npmjs.org' \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL")"
+          if [ "$id_token_status" != '200' ]; then
+            echo "::error::GitHub did not issue an OIDC token (HTTP $id_token_status)."
+            exit 1
+          fi
+
+          id_token="$(node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const response = JSON.parse(readFileSync(process.argv[1], "utf8"));
+            if (typeof response.value !== "string") process.exit(1);
+            process.stdout.write(response.value);
+          ' "$ID_TOKEN_RESPONSE")"
+          package_name="$(node --input-type=module -e 'process.stdout.write(encodeURIComponent(process.env.PACKAGE_NAME))')"
+          exchange_status="$(curl --silent --show-error --output "$EXCHANGE_RESPONSE" --write-out '%{http_code}' \
+            --request POST \
+            --header "Authorization: Bearer $id_token" \
+            --header 'Accept: application/json' \
+            --header 'Content-Length: 0' \
+            "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/$package_name")"
+
+          if [ "$exchange_status" != '201' ]; then
+            echo "::error::npm OIDC token exchange failed (HTTP $exchange_status)."
+            exit 1
+          fi
+
+          echo 'npm OIDC token exchange succeeded.'
+
+      - name: Dry-run an unpublished package version with pnpm
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_DIRECTORY="$RUNNER_TEMP/npm-oidc-probe"
+          mkdir "$PROBE_DIRECTORY"
+          node --input-type=module -e '
+            import { writeFileSync } from "node:fs";
+            const [path, name, runId, attempt] = process.argv.slice(1);
+            writeFileSync(path, JSON.stringify({
+              name,
+              version: "0.0.0-oidc-probe." + runId + "." + attempt,
+            }));
+          ' "$PROBE_DIRECTORY/package.json" "$PACKAGE_NAME" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+
+          pnpm_command=(pnpm)
+          if [ '${{ matrix.bypass_safe_chain }}' = 'true' ]; then
+            pnpm_command=("$PNPM_HOME/pnpm")
+          fi
+          "${pnpm_command[@]}" --dir "$PROBE_DIRECTORY" publish --access public --no-git-checks --dry-run 2>&1 | tee "$RUNNER_TEMP/pnpm-oidc.log"
+          if [[ "$(< "$RUNNER_TEMP/pnpm-oidc.log")" == *'Skipped OIDC: ERR_PNPM_AUTH_TOKEN_FETCH'* ]]; then
+            echo '::error::pnpm failed to exchange the OIDC token.'
+            exit 1
+          fi

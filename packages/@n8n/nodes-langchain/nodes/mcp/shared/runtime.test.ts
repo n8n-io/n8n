@@ -48,6 +48,7 @@ const baseConnectionConfig: McpConnectionConfig = {
 
 const createTestEgressFilter = (): NodeEgressFilter => ({
 	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+	validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
 	createSecureLookup: vi.fn(),
 	validateRedirectSync: vi.fn(),
 });
@@ -605,8 +606,8 @@ describe('runtime', () => {
 				expect(manager.size).toBe(1);
 
 				fire();
-				expect(close).toHaveBeenCalledTimes(1);
 				expect(manager.size).toBe(0);
+				await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
 			},
 		);
 	});

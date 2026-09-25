@@ -34,13 +34,8 @@ type Settings = ReadOnlySettings & WritableSettings;
  * package dependency: `@n8n/db` depends on `n8n-core` at runtime.
  */
 export type DeploymentStateRepo = {
-	findActiveByType(type: string): Promise<{ value: string } | null>;
-	insertOrIgnore(entity: {
-		type: string;
-		value: string;
-		status: string;
-		algorithm: null;
-	}): Promise<void>;
+	findActiveIdentifier(type: string): Promise<{ value: string } | null>;
+	seedActiveIdentifier(type: string, value: string): Promise<void>;
 	findActiveSigningSecret(type: string, opts?: { rewrapLegacy?: boolean }): Promise<string | null>;
 	seedSigningSecret(type: string, secret: string): Promise<void>;
 };
@@ -103,7 +98,7 @@ export class InstanceSettings {
 		private readonly logger: Logger,
 	) {
 		const command = process.argv[2] as InstanceType;
-		this.instanceType = ['webhook', 'worker'].includes(command) ? command : 'main';
+		this.instanceType = ['webhook', 'worker', 'engine'].includes(command) ? command : 'main';
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
@@ -165,14 +160,14 @@ export class InstanceSettings {
 			set(envValue);
 			return;
 		}
-		const existing = await repo.findActiveByType(type);
+		const existing = await repo.findActiveIdentifier(type);
 		if (existing) {
 			set(existing.value);
 			return;
 		}
 		if (!canSeed) return;
-		await repo.insertOrIgnore({ type, value: get(), status: 'active', algorithm: null });
-		const winner = await repo.findActiveByType(type);
+		await repo.seedActiveIdentifier(type, get());
+		const winner = await repo.findActiveIdentifier(type);
 		if (winner) set(winner.value);
 	}
 

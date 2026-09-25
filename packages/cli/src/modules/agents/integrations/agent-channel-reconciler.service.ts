@@ -7,21 +7,19 @@ import { Service } from '@n8n/di';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
+import { agentChannelKey, agentChannelRef, type AgentChannelRef } from '../utils/agent-channel';
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { ChatIntegrationService } from './chat-integration.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
-import {
-	AgentChannelStatusRepository,
-	type AgentChannelRef,
-} from '../repositories/agent-channel-status.repository';
+import { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 
 /** Why a pass is running. Only the periodic one waits out a channel's backoff. */
 export type ChannelReconcileReason = 'startup' | 'leader-takeover' | 'interval';
 
-/** Channels a pass should see running, keyed by {@link channelKey}. */
+/** Channels a pass should see running, keyed by {@link agentChannelKey}. */
 type WantedChannels = Map<string, { agent: Agent; integration: AgentIntegrationConfig }>;
 
 /**
@@ -30,10 +28,6 @@ type WantedChannels = Map<string, { agent: Agent; integration: AgentIntegrationC
  * nearly done finish, not to see a stalled one through.
  */
 const SHUTDOWN_SETTLE_MS = 5 * Time.seconds.toMilliseconds;
-
-function channelKey(ref: AgentChannelRef): string {
-	return `${ref.agentId}:${ref.integrationType}:${ref.credentialId}`;
-}
 
 /**
  * Keeps the channels this main runs in line with the channels the published
@@ -206,23 +200,7 @@ export class AgentChannelReconciler {
 			const agents = await this.agentRepository.findPublished();
 			const ownStatuses = await this.channelStatusRepository.findOwnAll();
 
-			const wantedHere: WantedChannels = new Map();
-
-			for (const agent of agents) {
-				for (const integration of agent.integrations ?? []) {
-					// A draft entry has no credential to connect with. The builder writes
-					// it so the panel can show a needs-setup chip, and publishing rejects
-					// it, so it can only be here mid-setup.
-					if (isDraftIntegration(integration)) continue;
-
-					const key = channelKey({
-						agentId: agent.id,
-						integrationType: integration.type,
-						credentialId: integration.credentialId,
-					});
-					if (this.runsHere(integration)) wantedHere.set(key, { agent, integration });
-				}
-			}
+			const wantedHere = this.collectWantedChannels(agents);
 
 			await this.settleWanted(wantedHere, ownStatuses, reason);
 			await this.releaseGhosts(wantedHere);
@@ -252,68 +230,13 @@ export class AgentChannelReconciler {
 		ownStatuses: AgentChannelStatus[],
 		reason: ChannelReconcileReason,
 	): Promise<void> {
-		const ownByChannel = new Map(ownStatuses.map((status) => [channelKey(status), status]));
+		const ownByChannel = new Map(ownStatuses.map((status) => [agentChannelKey(status), status]));
 		const now = new Date();
 
 		for (const [key, { agent, integration }] of wantedHere) {
 			if (this.isShuttingDown) return;
 
-			const ref = this.refOf(agent, integration);
-			const own = ownByChannel.get(key);
-
-			// `wantedHere` was decided when the pass began, and a stepdown since then
-			// makes a leader-only channel someone else's. Checked before the branches
-			// below so a demoted main neither starts it — putting a polling loop on a
-			// follower, the one thing the role gate exists to prevent — nor goes on
-			// affirming a row for it. The row is withdrawn here because
-			// `forgetOwnOrphans` reads the same stale snapshot and would leave it
-			// standing, reported as this instance's, until the next pass.
-			if (!this.runsHere(integration)) {
-				await this.statusReporter.withdraw(ref);
-				continue;
-			}
-
-			if (this.chatIntegrationService.hasLiveChannel(ref)) {
-				await this.affirmRunning(ref, own);
-				continue;
-			}
-
-			// Startup and takeover always try: the backoff was set by an earlier life
-			// of this process or by whatever it inherited, and a restart or a
-			// promotion is exactly when the cause may have gone away.
-			if (reason === 'interval' && !this.statusReporter.isRetryReady(own, now)) {
-				// Waiting is still this main standing behind what it said, so the lease
-				// is kept alive. From the third consecutive failure on the backoff
-				// outgrows a lease (four intervals against three), and letting the row
-				// expire mid-wait would have the sweep delete it: the channel would
-				// report as `starting` with no reason given, and the next pass — seeing
-				// no row — would retry at once and count from one again, so the backoff
-				// could never grow past that point.
-				await this.statusReporter.refreshLease(ref);
-				continue;
-			}
-
-			try {
-				await this.chatIntegrationService.startChannel(agent, integration);
-				this.logger.info('[AgentChannelReconciler] Started channel', {
-					agentId: agent.id,
-					type: integration.type,
-					reason,
-				});
-			} catch (error) {
-				// `connect` has already recorded why, which is what the user sees.
-				// Logged at warn rather than error because a retry is scheduled and the
-				// state is reported — this is not the last word on the channel.
-				this.logger.warn('[AgentChannelReconciler] Could not start channel', {
-					agentId: agent.id,
-					type: integration.type,
-					attempts: (own?.attempts ?? 0) + 1,
-					// Scrubbed for the same reason `recordFailure` scrubs it: a platform
-					// error can quote the credential it failed with, and a Telegram API
-					// URL carries the bot token in its path.
-					error: scrubSecretsInText(error instanceof Error ? error.message : String(error)),
-				});
-			}
+			await this.settleChannel(agent, integration, ownByChannel.get(key), reason, now);
 		}
 	}
 
@@ -352,7 +275,7 @@ export class AgentChannelReconciler {
 	private async releaseGhosts(wantedHere: WantedChannels): Promise<void> {
 		for (const ref of this.chatIntegrationService.listLiveChannels()) {
 			if (this.isShuttingDown) return;
-			if (wantedHere.has(channelKey(ref))) continue;
+			if (wantedHere.has(agentChannelKey(ref))) continue;
 
 			try {
 				await this.chatIntegrationService.releaseChannelLocally(ref.agentId, {
@@ -386,7 +309,7 @@ export class AgentChannelReconciler {
 	): Promise<void> {
 		for (const status of ownStatuses) {
 			if (this.isShuttingDown) return;
-			if (wantedHere.has(channelKey(status))) continue;
+			if (wantedHere.has(agentChannelKey(status))) continue;
 
 			await this.statusReporter.withdraw({
 				agentId: status.agentId,
@@ -422,11 +345,70 @@ export class AgentChannelReconciler {
 		}
 	}
 
-	private refOf(agent: Agent, integration: AgentIntegrationConfig): AgentChannelRef {
-		return {
-			agentId: agent.id,
-			integrationType: integration.type,
-			credentialId: integration.credentialId,
-		};
+	private collectWantedChannels(agents: Agent[]): WantedChannels {
+		const wanted: WantedChannels = new Map();
+		for (const agent of agents) {
+			const integrations = (agent.integrations ?? []).filter(
+				(integration) => !isDraftIntegration(integration) && this.runsHere(integration),
+			);
+			for (const integration of integrations) {
+				wanted.set(agentChannelKey(agentChannelRef(agent.id, integration)), { agent, integration });
+			}
+		}
+		return wanted;
+	}
+
+	private async settleChannel(
+		agent: Agent,
+		integration: AgentIntegrationConfig,
+		own: AgentChannelStatus | undefined,
+		reason: ChannelReconcileReason,
+		now: Date,
+	): Promise<void> {
+		const ref = agentChannelRef(agent.id, integration);
+		// A leader stepdown can invalidate the set selected at the start of the pass.
+		if (!this.runsHere(integration)) {
+			await this.statusReporter.withdraw(ref);
+			return;
+		}
+		if (this.chatIntegrationService.hasLiveChannel(ref)) {
+			await this.affirmRunning(ref, own);
+			return;
+		}
+		if (reason === 'interval' && !this.statusReporter.isRetryReady(own, now)) {
+			// Keep the failure and its backoff alive until the next attempt.
+			await this.statusReporter.refreshLease(ref);
+			return;
+		}
+		await this.startWantedChannel(agent, integration, own, reason);
+	}
+
+	private async startWantedChannel(
+		agent: Agent,
+		integration: AgentIntegrationConfig,
+		own: AgentChannelStatus | undefined,
+		reason: ChannelReconcileReason,
+	): Promise<void> {
+		try {
+			await this.chatIntegrationService.startChannel(agent, integration);
+			this.logger.info('[AgentChannelReconciler] Started channel', {
+				agentId: agent.id,
+				type: integration.type,
+				reason,
+			});
+		} catch (error) {
+			// `connect` has already recorded why, which is what the user sees.
+			// Logged at warn rather than error because a retry is scheduled and the
+			// state is reported — this is not the last word on the channel.
+			this.logger.warn('[AgentChannelReconciler] Could not start channel', {
+				agentId: agent.id,
+				type: integration.type,
+				attempts: (own?.attempts ?? 0) + 1,
+				// Scrubbed for the same reason `recordFailure` scrubs it: a platform
+				// error can quote the credential it failed with, and a Telegram API
+				// URL carries the bot token in its path.
+				error: scrubSecretsInText(error instanceof Error ? error.message : String(error)),
+			});
+		}
 	}
 }

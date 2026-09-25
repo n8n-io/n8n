@@ -3,7 +3,6 @@ import * as path from 'node:path';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
-import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
@@ -46,7 +45,9 @@ async function getQuickJSModule(): Promise<QuickJSModule> {
 	return _quickjs;
 }
 
-const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
+// Joined by hand, not with `path.join`. This runs at module load, and a browser
+// build resolves `node:path` to an empty module, so `path.join` is undefined there.
+const BUNDLE_RELATIVE_PATH = ['dist', 'bundle', 'runtime.iife.js'].join('/');
 
 // Captured at module load so values rendered into generated code stay stable
 // even if the global is later replaced.
@@ -269,6 +270,9 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
  * `dist/bundle/runtime.iife.js` is found. Walking up (rather than a fixed
  * relative path) works from either compiled output dir — `dist/cjs/bridge/`
  * and `dist/esm/bridge/` sit at different depths from the bundle.
+ *
+ * Node-only. A browser never reaches it: `initialize()` seeds the cache from
+ * `config.runtimeBundle` first.
  */
 function loadRuntimeBundle(): string {
 	if (_runtimeBundle !== null) return _runtimeBundle;
@@ -493,7 +497,15 @@ export class QuickJsBridge implements RuntimeBridge {
 		const QuickJS = await getQuickJS();
 		_quickjsWasm = QuickJS;
 
-		this.setupContext(QuickJS, loadRuntimeBundle());
+		// A host without a filesystem (the browser) passes the bundle in, so
+		// loadRuntimeBundle() — the only Node-only code here — is never reached.
+		const runtimeBundle = this.config.runtimeBundle || _runtimeBundle || loadRuntimeBundle();
+
+		this.setupContext(QuickJS, runtimeBundle);
+
+		// Cached after the load, so initializeSync() can only ever build a later
+		// bridge from a bundle this one proved good.
+		_runtimeBundle = runtimeBundle;
 	}
 
 	/**

@@ -1,10 +1,13 @@
 import type { StartedTestContainer, StartedNetwork } from 'testcontainers';
 
+import type { EngineMode } from './engine';
+
 /** Hostname that containers use to reach the host machine (Docker Desktop built-in) */
 export const EXTERNAL_HOST = 'host.docker.internal';
 
 export const SERVICE_NAMES = [
 	'postgres',
+	'enginePostgres',
 	'redis',
 	'mailpit',
 	'gitea',
@@ -63,16 +66,22 @@ export interface StartContext {
 	serviceResults: Partial<Record<ServiceName, ServiceResult>>;
 	allocatedPorts: { main?: number; loadBalancer?: number };
 	baseUrl?: string;
+	registerContainer?(container: StartedTestContainer): void;
+	registerPath?(path: string): void;
 }
 
 export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
 
 export interface StackConfig {
+	/** Overall startup deadline and n8n readiness timeout override in milliseconds. */
+	startupTimeoutMs?: number;
 	mains?: number;
 	workers?: number;
 	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
 	webhooks?: number;
 	postgres?: boolean;
+	/** Runs engine v2. Needs `postgres: true`, one main, no workers, no webhook procs. */
+	engine?: EngineMode;
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
@@ -98,6 +107,21 @@ export interface StackConfig {
 	 * Opt-in capability for the coverage pipeline; off by default.
 	 */
 	coverageHostDir?: string;
+	/**
+	 * Override the n8n image for this stack (default: the process-wide
+	 * TEST_IMAGE_N8N resolution). `stack.replaceN8N()` can then swap to a
+	 * different image on the same data — the upgrade/downgrade cycles.
+	 */
+	image?: string;
+	/**
+	 * Host dir bind-mounted as the n8n container's home (`/home/node`), so the
+	 * user folder (settings file, sqlite database) outlives the container and
+	 * `replaceN8N()` can boot another image on the same data. Single-main
+	 * stacks only. Pair with `user` so the files stay owned by the host user.
+	 */
+	userHomeHostDir?: string;
+	/** Run the n8n containers as this uid:gid (e.g. the host user for bind mounts). */
+	user?: string;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {

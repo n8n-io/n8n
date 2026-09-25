@@ -255,30 +255,33 @@ describe('AgentConfigService', () => {
 			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 
-		it('accepts the current config hash, returns the new hash and notifies other readers', async () => {
-			const { service, agentRepository, agentUpdateBroadcaster } = makeService();
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			const currentConfig = composeJsonConfig(agent);
-			if (!currentConfig) throw new Error('Expected the agent to have a config');
-			const baseConfigHash = getAgentConfigHash(currentConfig);
+		it.each(['user', 'builder', 'mcp'] as const)(
+			'notifies other readers of a %s config update with the current hash',
+			async (source) => {
+				const { service, agentRepository, agentUpdateBroadcaster } = makeService();
+				const agent = makeAgent();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				const currentConfig = composeJsonConfig(agent);
+				if (!currentConfig) throw new Error('Expected the agent to have a config');
+				const baseConfigHash = getAgentConfigHash(currentConfig);
 
-			const result = await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, instructions: 'Keep the latest work' },
-				user,
-				{ ...byUser, baseConfigHash, pushRef: 'writer-push-ref' },
-			);
+				const result = await service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, instructions: 'Keep the latest work' },
+					user,
+					{ baseConfigHash, modifiedBy: source, pushRef: 'writer-push-ref' },
+				);
 
-			expect(result.config.instructions).toBe('Keep the latest work');
-			expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
-			expect(result.configHash).not.toBe(baseConfigHash);
-			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
-				{ projectId, agentId },
-				'writer-push-ref',
-			);
-		});
+				expect(result.config.instructions).toBe('Keep the latest work');
+				expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
+				expect(result.configHash).not.toBe(baseConfigHash);
+				expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+					{ projectId, agentId, source },
+					'writer-push-ref',
+				);
+			},
+		);
 
 		it('rejects saving an HTTP Request URL controlled by $fromAI', async () => {
 			const { service, agentRepository } = makeService();

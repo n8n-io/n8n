@@ -67,7 +67,8 @@ function renderInlineConstraintLines(): string {
 const SAFE_METHODS_SENTENCE =
 	`The only non-builder methods available are ${SAFE_JSON_METHOD_NAMES.map((n) => `\`JSON.${n}\``).join(', ')} ` +
 	`and the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}. ` +
-	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
+	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available in builder code. ' +
+	'This restriction applies to builder code only: n8n expressions (`{{ ... }}`) run full JavaScript at runtime, so all of these methods work inside an expression.';
 
 /**
  * Node-groups documentation, shared by Instance AI and the MCP `get_sdk_reference` tool.
@@ -115,9 +116,8 @@ ${renderRulesLines()}
 
 /**
  * Grouping judgement guidance: *when* to group — the rules that make a group
- * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list
- * only when the canvas-groups flag is on; Instance AI always materializes it
- * into the knowledge base.
+ * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list;
+ * Instance AI materializes it into the knowledge base.
  */
 export const GROUPING_GUIDANCE = `## Grouping
 
@@ -151,14 +151,8 @@ Examples:
 
 Read the node groups reference for the exact rules before creating groups.`;
 
-/**
- * Render the full language reference. The node-groups section is included by
- * default (Instance AI's knowledge base); the MCP SDK reference passes its
- * `canvasGroupsEnabled` flag state as `includeGroups`.
- */
-export function buildSdkLanguageReference(options: { includeGroups?: boolean } = {}): string {
-	const { includeGroups = true } = options;
-
+/** Render the full language reference, node-groups section included. */
+export function buildSdkLanguageReference(): string {
 	return `# Workflow SDK language reference
 
 SDK builder code is a **restricted subset of TypeScript**, not a Code node and
@@ -172,7 +166,9 @@ ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
 
-${includeGroups ? `${NODE_GROUPS_REFERENCE}\n\n` : ''}## Forbidden constructs
+${NODE_GROUPS_REFERENCE}
+
+## Forbidden constructs
 
 ${renderForbiddenLines()}
 
@@ -188,19 +184,31 @@ ${renderBlockedGlobalsLines()}
 
 ## Where to put runtime logic
 
-Builder code only describes the graph. For anything that needs to run at
-runtime (joining/aggregating values, transforming items, parsing, date math,
-regex), do it in one of these:
+Builder code only describes the graph. Anything that runs at runtime (shaping
+items, filtering, routing, sorting, de-duplicating, aggregating, splitting,
+parsing, date math, regex) belongs in a node. Pick the native node first:
 
-- Build strings with **template literals** or explicit lines.
-- Use an **n8n expression** via \`expr('{{ ... }}')\` for per-item values.
-- Use a **Code node** for multi-step aggregation or transformation.
+- Per-item shaping (rename, combine, compute, default, format fields): **Edit Fields (Set)** with expressions.
+- Filtering: **Filter**. Routing: **IF** / **Switch**. Sorting: **Sort**.
+- De-duplication: **Remove Duplicates**. Aggregation: **Aggregate** / **Summarize**.
+- Splitting an array into items: **Split Out**. Capping items: **Limit**. Joining branches: **Merge**.
+
+n8n expressions run full JavaScript at runtime, so \`.join()\`, \`.filter()\`,
+\`.map()\`, \`.split()\`, ternaries and \`||\` defaults all work inside a Set field
+value, for example \`{{ [$json.title, $json.category].filter(Boolean).join(' ') }}\`.
+The builder-code method restriction above does not apply to expressions. In
+builder code, pass an expression with \`expr('{{ ... }}')\` and build static
+strings with **template literals**.
+
+Use a **Code node** only for: multi-pass algorithms (loops over loops,
+recursion), \`$getWorkflowStaticData\` counters or state kept across runs,
+parsing model output that needs fence stripping, try/catch around upstream
+node access, or a step that would otherwise need three or more native nodes.
 `;
 }
 
 /**
  * Full reference including groups docs. Materialized into Instance AI's
- * knowledge base for on-demand reading; the MCP SDK reference embeds the
- * groups-gated variant via `buildSdkLanguageReference` instead.
+ * knowledge base for on-demand reading and embedded in the MCP SDK reference.
  */
 export const SDK_LANGUAGE_REFERENCE = buildSdkLanguageReference();

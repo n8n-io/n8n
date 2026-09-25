@@ -4,11 +4,16 @@ import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
+import { AgentMessageQueueService } from '../../agent-message-queue.service';
+import type { AgentMessageQueue } from '../../entities/agent-message-queue.entity';
+import type { QueuedIntegrationMessage } from '../../types/agent-queued-message';
 import { mock } from 'vitest-mock-extended';
-import { UserError, type Logger } from 'n8n-workflow';
+import { deepCopy, UserError, type Logger } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service';
-
+import {
+	AgentResourceRepository,
+	type ChatSessionGeneration,
+} from '../../repositories/agent-resource.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -18,7 +23,7 @@ import {
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
 import * as esmLoader from '../esm-loader';
-import type { IntegrationMessageContextService } from '../integration-message-context.service';
+import { IntegrationMessageContextService } from '../integration-message-context.service';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
@@ -26,6 +31,61 @@ import type { RichCardComponentType } from '@n8n/api-types';
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
+
+const drainQueuedMessages = new WeakMap<object, () => Promise<void>>();
+
+/** Exercise capture and delivery separately. Database ownership has real-DB coverage. */
+function makeQueuedBridge(...args: ConstructorParameters<typeof AgentChatBridge>) {
+	const [
+		bot,
+		agentId,
+		executor,
+		mapper,
+		logger,
+		projectId,
+		integration,
+		contexts,
+		attachments,
+		http,
+	] = args;
+	const pending: Array<{ payload: QueuedIntegrationMessage; threadId: string }> = [];
+	const queue = mock<AgentMessageQueueService>();
+	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
+		if (payload.kind !== 'integration') throw new Error('Expected integration input');
+		pending.push({
+			payload: deepCopy(payload),
+			threadId,
+		});
+		return mock<AgentMessageQueue>();
+	});
+	const bridge = new AgentChatBridge(
+		bot,
+		agentId,
+		executor,
+		mapper,
+		logger,
+		projectId,
+		integration,
+		contexts,
+		attachments,
+		http,
+		queue,
+	);
+	drainQueuedMessages.set(bot, async () => {
+		for (const item of pending.splice(0)) {
+			await bridge
+				.consumeQueuedMessage(
+					item.payload,
+					item.threadId,
+					{ executionId: 'execution-1', startedAt: new Date() },
+					new AbortController().signal,
+					integration,
+				)
+				.catch(() => {});
+		}
+	});
+	return bridge;
+}
 
 interface FakeThread {
 	id: string;
@@ -47,12 +107,21 @@ function makeBot() {
 		action?: (event: unknown) => Promise<void>;
 		slashCommand?: (event: unknown) => Promise<void>;
 	} = {};
+	const threads = new Map<string, unknown>();
 	const bot = {
 		onNewMention: (h: typeof handlers.mention) => {
-			handlers.mention = h;
+			handlers.mention = async (thread, message) => {
+				threads.set((thread as FakeThread).id, thread);
+				await h?.(thread, message);
+				await drainQueuedMessages.get(bot)?.();
+			};
 		},
 		onSubscribedMessage: (h: typeof handlers.subscribed) => {
-			handlers.subscribed = h;
+			handlers.subscribed = async (thread, message) => {
+				threads.set((thread as FakeThread).id, thread);
+				await h?.(thread, message);
+				await drainQueuedMessages.get(bot)?.();
+			};
 		},
 		onAction: (h: typeof handlers.action) => {
 			handlers.action = h;
@@ -61,7 +130,7 @@ function makeBot() {
 			handlers.slashCommand = h;
 		},
 		getAdapter: vi.fn().mockReturnValue(undefined),
-		thread: vi.fn(),
+		thread: vi.fn((id: string) => threads.get(id)),
 	};
 	return { bot, handlers };
 }
@@ -119,6 +188,23 @@ function makeAgentExecutor(chunks: StreamChunk[]) {
 		resumeForChat: vi.fn(() => toStream(chunks)),
 		captured,
 	};
+}
+
+/** In-memory stand-in for the session pointer storage, so state persists across calls within a test. */
+function mockSessionGenerations(seed?: [baseThreadId: string, session: ChatSessionGeneration]) {
+	const store = new Map<string, ChatSessionGeneration>(seed ? [seed] : []);
+	const resources = {
+		findChatSessionGeneration: vi.fn(
+			async (baseThreadId: string) => store.get(baseThreadId) ?? null,
+		),
+		saveChatSessionGeneration: vi.fn(
+			async (baseThreadId: string, session: ChatSessionGeneration) => {
+				store.set(baseThreadId, session);
+			},
+		),
+	};
+	Container.set(AgentResourceRepository, resources as never);
+	return resources;
 }
 
 async function drainIterable(value: unknown): Promise<string> {
@@ -246,7 +332,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		const { bot, handlers } = makeBot();
 		const thread = options.thread ?? makeThread();
 
-		new AgentChatBridge(
+		makeQueuedBridge(
 			bot as unknown as ChatBotLike,
 			'agent-1',
 			makeAgentExecutor(chunks) as never,
@@ -268,6 +354,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		mockSessionGenerations();
 	});
 
 	afterEach(() => {
@@ -275,6 +362,25 @@ describe('AgentChatBridge — consumeStream', () => {
 		Container.reset();
 		vi.clearAllMocks();
 	});
+
+	it.each([bufferedIntegration, streamingIntegration])(
+		'shows the content-filter reason for $type',
+		async (integration) => {
+			const thread = await runMention(integration, [
+				{
+					type: 'error',
+					error: {
+						type: 'invalid_request_error',
+						message: 'Output blocked by content filtering policy',
+					},
+				},
+				{ type: 'finish', finishReason: 'error' },
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith('⚠️ Output blocked by content filtering policy');
+		},
+	);
 
 	describe('silent outcome from the integration action tool', () => {
 		const silentToolResult: StreamChunk = {
@@ -374,7 +480,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -408,7 +514,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -454,7 +560,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -507,7 +613,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -601,7 +707,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -623,17 +729,60 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
-		it('names the misconfiguration when the run fails with a UserError', async () => {
+		it.each([
+			'Image dimensions exceed max allowed size: 8000 pixels',
+			'Image is too small',
+			'Unsupported MIME type: image/svg+xml',
+			'Could not decode image',
+		])('explains attachment errors: %s', async (message) => {
+			const thread = await runMention(bufferedIntegration, [
+				{ type: 'error', error: new Error(message) },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(
+				'⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.',
+			);
+		});
+
+		it.each([
+			new Error('fetch failed'),
+			new Error('Unknown error'),
+			new Error('Request payload size exceeds the limit'),
+			{ type: 'invalid_request_error', message: 'Invalid request format' },
+		])('keeps the generic message for unrelated errors: $message', async (error) => {
+			const thread = await runMention(bufferedIntegration, [{ type: 'error', error }, finishChunk]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it.each([
+			{
+				error: new UserError('Credential "OpenAI" not found.'),
+				expected:
+					'⚠️ This agent is misconfigured: Credential "OpenAI" not found. An agent owner has to fix this in n8n.',
+			},
+			{
+				error: new Error('Output blocked by content filtering policy'),
+				expected: '⚠️ Output blocked by content filtering policy',
+			},
+			{
+				error: new Error('Provider error: Output blocked by content filtering policy.'),
+				expected: '⚠️ Provider error: Output blocked by content filtering policy.',
+			},
+		])('shows the reason when the run throws: $error.message', async ({ error, expected }) => {
 			const { bot, handlers } = makeBot();
 			const agentExecutor = {
-				// The real method is an async generator: the build error surfaces on
+				// The real method is an async generator: the error surfaces on
 				// the first `next()`, inside the stream consumer.
 				// eslint-disable-next-line require-yield
 				executeForChatPublished: vi.fn(async function* () {
-					throw new UserError('Credential "OpenAI" not found.');
+					throw error;
 				}),
 			};
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -647,9 +796,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledOnce();
-			expect(thread.post).toHaveBeenCalledWith(
-				'⚠️ This agent is misconfigured: Credential "OpenAI" not found. An agent owner has to fix this in n8n.',
-			);
+			expect(thread.post).toHaveBeenCalledWith(expected);
 		});
 
 		it('does not add a generic error when text follows an errored tool result', async () => {
@@ -699,7 +846,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		try {
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -733,7 +880,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const raw = '<@123> see **x** and `code` at [y](https://u)';
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -761,7 +908,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const thread = makeThread('thread-1');
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -815,7 +962,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const thread2 = makeThread('1002', { botUserId: 'bot-1' });
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -876,31 +1023,11 @@ describe('AgentChatBridge — consumeStream', () => {
 			} as unknown as AgentIntegrationConfig;
 		}
 
-		/** In-memory stand-in for CacheService, so state persists across calls within a test. */
-		function mockCache(seed?: [key: string, value: unknown]) {
-			const store = new Map<string, unknown>(seed ? [seed] : []);
-			const cache = {
-				get: vi.fn(async (key: string) => store.get(key)),
-				set: vi.fn(async (key: string, value: unknown) => {
-					store.set(key, value);
-				}),
-			};
-			Container.set(CacheService, cache as never);
-			return cache;
-		}
-
-		function sessionGenerationKey(baseId: string): string {
-			return `agents:chat-session-generation:${baseId}`;
-		}
-
 		it('stays on the same session while within the idle window', async () => {
-			mockCache([
-				sessionGenerationKey('agent-1:thread-1'),
-				{ generation: 0, lastActivityAt: Date.now() },
-			]);
+			mockSessionGenerations(['agent-1:thread-1', { generation: 0, lastActivityAt: Date.now() }]);
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -925,13 +1052,13 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('rotates to a new session once the idle window has elapsed', async () => {
-			mockCache([
-				sessionGenerationKey('agent-1:thread-1'),
+			mockSessionGenerations([
+				'agent-1:thread-1',
 				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
 			]);
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -956,13 +1083,13 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('rotates again from an already-rotated generation', async () => {
-			mockCache([
-				sessionGenerationKey('agent-1:thread-1'),
+			mockSessionGenerations([
+				'agent-1:thread-1',
 				{ generation: 3, lastActivityAt: Date.now() - 31 * 60_000 },
 			]);
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -987,10 +1114,10 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('resets on the /new command without invoking the agent, even without an idle timeout', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1011,12 +1138,12 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('resets on a native /new slash command (e.g. Telegram, which never delivers it as a message)', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const thread = makeThread('thread-1');
 			bot.thread.mockReturnValue(thread);
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1037,13 +1164,13 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('ignores a /new slash command from a user the platform allowlist rejects', async () => {
-			const cache = mockCache();
+			const resources = mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const thread = makeThread('thread-1');
 			bot.thread.mockReturnValue(thread);
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1061,7 +1188,7 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			// Nothing was reset and nothing was said back — a rejected user must not
 			// even learn that the command exists.
-			expect(cache.set).not.toHaveBeenCalled();
+			expect(resources.saveChatSessionGeneration).not.toHaveBeenCalled();
 			expect(messageContextStore.unbindSession).not.toHaveBeenCalled();
 			expect(thread.post).not.toHaveBeenCalled();
 
@@ -1076,10 +1203,10 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('carries a /new reset over to the next message, even without an idle timeout configured', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1131,8 +1258,8 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('does not rotate an idle-expired thread that still has an open suspension', async () => {
-			mockCache([
-				sessionGenerationKey('agent-1:thread-1'),
+			mockSessionGenerations([
+				'agent-1:thread-1',
 				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
 			]);
 			const { bot, handlers } = makeBot();
@@ -1141,6 +1268,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				...makeAgentExecutor([finishChunk]),
 				findOpenSuspension: vi.fn().mockResolvedValue({ suspendPayload: {} }),
 			};
+			const queue = mock<AgentMessageQueueService>();
 			new AgentChatBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
@@ -1149,6 +1277,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				integrationWithIdleTimeout(30),
+				undefined,
+				undefined,
+				undefined,
+				queue,
 			);
 
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
@@ -1160,21 +1292,21 @@ describe('AgentChatBridge — consumeStream', () => {
 				agentId: 'agent-1',
 				threadId: 'agent-1:thread-1',
 			});
-			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('still waiting'));
+			expect(queue.enqueue).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'agent-1:thread-1' }),
+			);
+			expect(thread.post).not.toHaveBeenCalled();
 			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
 		});
 
 		it('looks up a bound task session by the base thread id, not a rotated one', async () => {
-			mockCache([
-				sessionGenerationKey('agent-1:thread-1'),
-				{ generation: 2, lastActivityAt: Date.now() },
-			]);
+			mockSessionGenerations(['agent-1:thread-1', { generation: 2, lastActivityAt: Date.now() }]);
 			const { bot, handlers } = makeBot();
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			messageContextStore.getLatest.mockResolvedValue(null);
 			messageContextStore.resolveSession.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1197,7 +1329,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('/new clears a bound task session so the next message actually starts fresh', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			messageContextStore.getLatest.mockResolvedValue(null);
@@ -1206,7 +1338,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resourceId: 'task:task-1',
 			});
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1230,14 +1362,14 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('reports an error instead of confirming success when unbinding the task session fails', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			messageContextStore.getLatest.mockResolvedValue(null);
 			messageContextStore.resolveSession.mockResolvedValue(null);
 			messageContextStore.unbindSession.mockRejectedValue(new Error('db unavailable'));
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1270,8 +1402,8 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('reports an error and stays on the unbound base session when the rotation write fails', async () => {
-			const cache = mockCache();
-			cache.set.mockRejectedValueOnce(new Error('cache unavailable'));
+			const resources = mockSessionGenerations();
+			resources.saveChatSessionGeneration.mockRejectedValueOnce(new Error('database unavailable'));
 			const { bot, handlers } = makeBot();
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			messageContextStore.getLatest.mockResolvedValue(null);
@@ -1283,7 +1415,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				bound = false;
 			});
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1321,7 +1453,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('unbinds and rotates as one unit — a message racing a reset of a bound thread never lands back on the bound task session', async () => {
-			mockCache();
+			mockSessionGenerations();
 			const { bot, handlers } = makeBot();
 			const messageContextStore = mock<IntegrationMessageContextService>();
 			messageContextStore.getLatest.mockResolvedValue(null);
@@ -1346,7 +1478,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				bound = false;
 			});
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1405,7 +1537,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot } = makeBot();
 			const thread = makeThread('slack:channel-1:1');
 			bot.thread.mockReturnValue(thread);
-			const bridge = new AgentChatBridge(
+			const bridge = makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				makeAgentExecutor([]) as never,
@@ -1513,7 +1645,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot } = makeBot();
 			bot.thread.mockReturnValue(makeThread('1001'));
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			const bridge = new AgentChatBridge(
+			const bridge = makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1522,7 +1654,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				'project-1',
 				integration,
 			);
-			return { bot, bridge };
+			return { bot, bridge, agentExecutor };
 		}
 
 		it('strips a rotation suffix before reconstructing the platform thread id', async () => {
@@ -1536,6 +1668,31 @@ describe('AgentChatBridge — consumeStream', () => {
 				.catch(() => {});
 
 			expect(bot.thread).toHaveBeenCalledWith('1001');
+		});
+
+		it('routes a task continuation to its saved reply destination', async () => {
+			const { bot, bridge, agentExecutor } = makeResumeBridge(streamingIntegration);
+			const messageContext = {
+				integrationConnectionId: 'test-streaming:cred-1',
+				platform: 'test-streaming',
+				target: { type: 'thread' as const, threadId: 'outbound-thread' },
+				replyTarget: { type: 'thread' as const, threadId: 'reply-thread' },
+				updatedAt: '2026-09-18T10:00:00.000Z',
+			};
+			await bridge.resumeInAgentThread(
+				'task-run-1',
+				'run-1',
+				'tool-1',
+				{},
+				{
+					messageContext,
+					allowLegacyThreadId: false,
+				},
+			);
+			expect(bot.thread).toHaveBeenCalledWith('reply-thread');
+			expect(agentExecutor.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({ messageContext }),
+			);
 		});
 
 		it('reconstructs an unrotated thread id unchanged', async () => {
@@ -1583,7 +1740,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			discordHttpClient?: HttpRequestClient,
 		) {
 			const { bot, handlers } = makeBot();
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1864,7 +2021,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -1905,7 +2062,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2011,7 +2168,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2046,7 +2203,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2084,7 +2241,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2124,7 +2281,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2175,7 +2332,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2225,7 +2382,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2274,7 +2431,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2331,7 +2488,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2390,7 +2547,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2449,7 +2606,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2480,15 +2637,14 @@ describe('AgentChatBridge — consumeStream', () => {
 	});
 
 	describe('message context', () => {
-		it('strips the Slack bot mention before executing and stores the Slack bot user ID', async () => {
+		it('strips the Slack bot mention before executing and captures the Slack bot user ID', async () => {
 			const { bot, handlers } = makeBot();
 			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
 			const thread = makeThread();
 			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2515,26 +2671,27 @@ describe('AgentChatBridge — consumeStream', () => {
 					author: { id: 'u1', name: 'user1' },
 				}),
 			);
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:thread-1',
-				'u1',
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
-					agentUserId: 'U_BOT',
-					interactingUserId: 'u1',
-					messageId: 'message-1',
+					contextConversation: { threadId: 'agent-1:thread-1', resourceId: 'u1' },
+					messageContext: expect.objectContaining({
+						agentUserId: 'U_BOT',
+						interactingUserId: 'u1',
+						messageId: 'message-1',
+					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 
-		it('stores the platform reply expectation for subscribed Slack channel messages', async () => {
+		it('captures the platform reply expectation for subscribed Slack channel messages', async () => {
 			const { bot, handlers } = makeBot();
 			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
 			const thread = makeThread();
 			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2555,29 +2712,30 @@ describe('AgentChatBridge — consumeStream', () => {
 				raw: { channel: 'C123', channel_type: 'channel' },
 			});
 
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:thread-1',
-				'u1',
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
-					replyExpectation: 'optional',
-					replyTarget: {
-						type: 'thread',
-						threadId: 'thread-1',
-						channelId: 'channel-1',
-					},
-					replyMessageId: 'message-2',
+					contextConversation: { threadId: 'agent-1:thread-1', resourceId: 'u1' },
+					messageContext: expect.objectContaining({
+						replyExpectation: 'optional',
+						replyTarget: {
+							type: 'thread',
+							threadId: 'thread-1',
+							channelId: 'channel-1',
+						},
+						replyMessageId: 'message-2',
+					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 
 		it('defaults the reply expectation to required for platforms without a reply policy', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2594,21 +2752,22 @@ describe('AgentChatBridge — consumeStream', () => {
 				author: { userId: 'u1', userName: 'user1' },
 			});
 
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:thread-1',
-				'u1',
-				expect.objectContaining({ replyExpectation: 'required' }),
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					contextConversation: { threadId: 'agent-1:thread-1', resourceId: 'u1' },
+					messageContext: expect.objectContaining({ replyExpectation: 'required' }),
+				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 
-		it('stores a sanitized message subject from the inbound message', async () => {
+		it('captures a sanitized message subject from the inbound message', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2639,51 +2798,39 @@ describe('AgentChatBridge — consumeStream', () => {
 				},
 			});
 
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:thread-1',
-				'u1',
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
-					integrationConnectionId: 'test-streaming:cred-1',
-					platform: 'test-streaming',
-					target: { type: 'thread', threadId: 'thread-1', channelId: 'channel-1' },
-					messageId: 'message-1',
-					interactingUserId: 'u1',
-					subject: {
-						type: 'issue',
-						id: 'ENG-123',
-						title: 'Fix signup',
-						description: 'Signup fails for invited users',
-						status: 'In Progress',
-						url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
-						labels: ['Bug'],
-						assignee: { id: 'user-2', name: 'Michael Drury' },
-						author: { id: 'user-3', name: 'Ada Lovelace' },
-					},
+					contextConversation: { threadId: 'agent-1:thread-1', resourceId: 'u1' },
+					messageContext: expect.objectContaining({
+						integrationConnectionId: 'test-streaming:cred-1',
+						platform: 'test-streaming',
+						target: { type: 'thread', threadId: 'thread-1', channelId: 'channel-1' },
+						messageId: 'message-1',
+						interactingUserId: 'u1',
+						subject: {
+							type: 'issue',
+							id: 'ENG-123',
+							title: 'Fix signup',
+							description: 'Signup fails for invited users',
+							status: 'In Progress',
+							url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
+							labels: ['Bug'],
+							assignee: { id: 'user-2', name: 'Michael Drury' },
+							author: { id: 'user-3', name: 'Ada Lovelace' },
+						},
+					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 
-		it('keeps the previous subject when an action click updates the latest context', async () => {
+		it('captures the selected interaction without reading or writing thread context', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue({
-				integrationConnectionId: 'test-streaming:cred-1',
-				platform: 'test-streaming',
-				target: { type: 'thread', threadId: 'thread-1', channelId: 'channel-1' },
-				messageId: 'message-1',
-				interactingUserId: 'u1',
-				agentUserId: 'U_BOT',
-				subject: {
-					type: 'issue',
-					id: 'ENG-123',
-					title: 'Fix signup',
-				},
-				updatedAt: '2026-05-18T10:00:00.000Z',
-			});
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2704,21 +2851,17 @@ describe('AgentChatBridge — consumeStream', () => {
 				adapter: { deleteMessage: vi.fn().mockResolvedValue(undefined) },
 			});
 
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:thread-1',
-				'u2',
+			expect(agentExecutor.resumeForChat).toHaveBeenCalledWith(
 				expect.objectContaining({
-					messageId: 'card-message-1',
-					interactingUserId: 'u2',
-					agentUserId: 'U_BOT',
-					subject: {
-						type: 'issue',
-						id: 'ENG-123',
-						title: 'Fix signup',
-					},
-					replyExpectation: 'required',
+					contextConversation: { threadId: 'agent-1:thread-1', resourceId: 'u2' },
+					messageContext: expect.objectContaining({
+						messageId: 'card-message-1',
+						interactingUserId: 'u2',
+						replyExpectation: 'required',
+					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2734,7 +2877,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			});
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2763,20 +2906,17 @@ describe('AgentChatBridge — consumeStream', () => {
 					}),
 				}),
 			);
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:slack:D123:1001',
-				'u1',
-				expect.objectContaining({ messageId: '1002', interactingUserId: 'u1' }),
-			);
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'task-1-uuid',
-				'task:task-1',
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
-					messageId: '1002',
-					interactingUserId: 'u1',
-					target: expect.objectContaining({ threadId: 'slack:D123:1001' }),
+					contextConversation: { threadId: 'agent-1:slack:D123:1001', resourceId: 'u1' },
+					messageContext: expect.objectContaining({
+						messageId: '1002',
+						interactingUserId: 'u1',
+						target: expect.objectContaining({ threadId: 'slack:D123:1001' }),
+					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 
 		it('stores inbound attachments on the bound task thread', async () => {
@@ -2801,7 +2941,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			};
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2853,7 +2993,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			messageContextStore.resolveSession.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2891,7 +3031,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			messageContextStore.resolveSession.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2912,7 +3052,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				author: { userId: 'u1', userName: 'user1' },
 			});
 
-			expect(bot.thread).not.toHaveBeenCalled();
+			expect(bot.thread).toHaveBeenCalledWith(thread.id);
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					memory: expect.objectContaining({
@@ -2932,7 +3072,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			messageContextStore.resolveSession.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2971,7 +3111,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			messageContextStore.resolveSession.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -2992,7 +3132,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				raw: { channel_type: 'mpim', channel: 'G123' },
 			});
 
-			expect(bot.thread).not.toHaveBeenCalled();
+			expect(bot.thread).toHaveBeenCalledWith(thread.id);
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					memory: expect.objectContaining({
@@ -3012,7 +3152,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			messageContextStore.resolveSession.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -3045,99 +3185,51 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 	});
 
-	describe('while the run is parked on a suspension', () => {
-		function bridgeWithOpenSuspension(suspendPayload: unknown | null) {
+	describe('durable capture', () => {
+		it('queues overlapping messages with their session and reply connection', async () => {
 			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			const agentExecutor = {
-				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
-				resumeForChat: vi.fn(() => toStream([])),
-				findOpenSuspension: vi
-					.fn()
-					.mockResolvedValue(suspendPayload === null ? null : { suspendPayload }),
-			};
-
+			const executor = makeAgentExecutor([finishChunk]);
+			const queue = mock<AgentMessageQueueService>();
 			new AgentChatBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
-				agentExecutor as never,
+				executor as never,
 				componentMapper,
 				logger,
 				'project-1',
 				streamingIntegration,
+				undefined,
+				undefined,
+				undefined,
+				queue,
 			);
-
-			return { handlers, thread, agentExecutor };
-		}
-
-		// Starting a second run strips the pending tool call from the model's
-		// context, so it calls the same tool again — a duplicate side effect.
-		it('answers instead of starting a second run', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
-				type: 'workflow_wait',
-				title: 'Waiting on "Approval workflow"',
-				components: [{ type: 'section', text: 'paused' }],
-			});
-
-			await handlers.subscribed!(thread, {
-				text: 'any news?',
-				author: { userId: 'u1', userName: 'user1' },
-			});
-
-			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
-			expect(agentExecutor.findOpenSuspension).toHaveBeenCalledWith({
-				agentId: 'agent-1',
-				threadId: 'agent-1:thread-1',
-			});
-			expect(thread.post).toHaveBeenCalledWith(
-				expect.stringContaining('Waiting on "Approval workflow"'),
+			const thread = makeThread('thread-1');
+			await Promise.all(
+				['first', 'second'].map(
+					async (text) =>
+						await handlers.subscribed!(thread, {
+							text,
+							author: { userId: 'u1', userName: 'user1' },
+						}),
+				),
 			);
-		});
-
-		// A fresh @mention lands in the same thread as the parked run, so it has
-		// to be gated on the same grounds as a follow-up message.
-		it('answers a new mention in the parked thread too', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
-				title: 'Approval required',
-				components: [{ type: 'section', text: 'approve?' }],
-			});
-
-			await handlers.mention!(thread, {
-				text: '@bot hello',
-				author: { userId: 'u1', userName: 'user1' },
-			});
-
-			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
-			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('Approval required'));
-		});
-
-		// The gate must not swallow the message: nothing ran, so the handler's error
-		// reply is all that can tell the user their message went nowhere.
-		it('surfaces a failure to post the notice instead of dropping the message', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
-				title: 'Approval required',
-				components: [{ type: 'section', text: 'approve?' }],
-			});
-			thread.post.mockRejectedValueOnce(new Error('platform unavailable'));
-
-			await handlers.subscribed!(thread, {
-				text: 'any news?',
-				author: { userId: 'u1', userName: 'user1' },
-			});
-
-			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
-			expect(thread.post).toHaveBeenLastCalledWith(GENERIC_ERROR_MESSAGE);
-		});
-
-		it('runs normally when nothing is parked', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension(null);
-
-			await handlers.subscribed!(thread, {
-				text: 'hello',
-				author: { userId: 'u1', userName: 'user1' },
-			});
-
-			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(queue.enqueue.mock.calls.map(([item]) => item.payload.message).sort()).toEqual([
+				'first',
+				'second',
+			]);
+			expect(queue.enqueue).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'agent-1:thread-1',
+					payload: expect.objectContaining({
+						credentialId: 'cred-1',
+						platformThreadId: 'thread-1',
+						resourceId: expect.any(String),
+					}),
+				}),
+			);
+			expect(executor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.startTyping).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
 		});
 	});
 
@@ -3157,8 +3249,8 @@ describe('AgentChatBridge — consumeStream', () => {
 				async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 					return {};
 				}
-				async createBridgeExecutionContext() {
-					return { platformAgentContext: {}, statusHandle: { clearBeforeResponse } };
+				async createResumeExecutionContext() {
+					return { statusHandle: { clearBeforeResponse } };
 				}
 			}
 			registry.register(new StatusHandleTestIntegration());
@@ -3170,7 +3262,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				resumeForChat: vi.fn(),
 			};
 
-			new AgentChatBridge(
+			makeQueuedBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -3208,6 +3300,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		const registry = new ChatIntegrationRegistry();
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		mockSessionGenerations();
 	});
 
 	afterEach(() => {
@@ -3234,7 +3327,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		});
 		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		new AgentChatBridge(
+		makeQueuedBridge(
 			bot as unknown as ChatBotLike,
 			'agent-1',
 			agentExecutor as never,
@@ -3280,7 +3373,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		const thread = makeThread();
 		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		new AgentChatBridge(
+		makeQueuedBridge(
 			bot as unknown as ChatBotLike,
 			'agent-1',
 			agentExecutor as never,
@@ -3312,7 +3405,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		const thread = makeThread('thread-1', undefined, asyncIterableOf([]));
 		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		new AgentChatBridge(
+		makeQueuedBridge(
 			bot as unknown as ChatBotLike,
 			'agent-1',
 			agentExecutor as never,
@@ -3348,7 +3441,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		);
 		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		new AgentChatBridge(
+		makeQueuedBridge(
 			bot as unknown as ChatBotLike,
 			'agent-1',
 			agentExecutor as never,
@@ -3395,7 +3488,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		});
 		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		new AgentChatBridge(
+		makeQueuedBridge(
 			bot as unknown as ChatBotLike,
 			'agent-1',
 			agentExecutor as never,
@@ -3438,7 +3531,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		});
 		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		new AgentChatBridge(
+		makeQueuedBridge(
 			bot as unknown as ChatBotLike,
 			'agent-1',
 			agentExecutor as never,
@@ -3516,7 +3609,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		});
 		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		new AgentChatBridge(
+		makeQueuedBridge(
 			bot as unknown as ChatBotLike,
 			'agent-1',
 			agentExecutor as never,
@@ -3561,7 +3654,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		});
 		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		new AgentChatBridge(
+		makeQueuedBridge(
 			bot as unknown as ChatBotLike,
 			'agent-1',
 			agentExecutor as never,
@@ -3605,7 +3698,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		});
 		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		new AgentChatBridge(
+		makeQueuedBridge(
 			bot as unknown as ChatBotLike,
 			'agent-1',
 			agentExecutor as never,

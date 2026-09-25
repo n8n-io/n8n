@@ -90,6 +90,8 @@ export function openCodeEnvironment(environment) {
 	delete childEnvironment.N8N_DEQUEUE_URL;
 	delete childEnvironment.SLACK_BOT_TOKEN;
 	childEnvironment.OPENCODE_CONFIG_CONTENT = JSON.stringify(openCodeConfig(childEnvironment));
+	childEnvironment.N8N_AGENT_RUNTIME = 'sandbox';
+	childEnvironment.N8N_AGENT_PROFILE = 'slack';
 	return childEnvironment;
 }
 
@@ -97,37 +99,6 @@ export function openCodeEnvironment(environment) {
 const TURN_ENV = openCodeEnvironment(process.env);
 if (BOX_ID) TURN_ENV.CODESPACE_NAME = BOX_ID;
 if (GITHUB_USER) TURN_ENV.GITHUB_USER = GITHUB_USER;
-
-const CODESPACE_DOCS = '.devcontainer/codespaces/README.md';
-
-// The worker has no later turn, so each prompt must define the atomic runtime contract.
-function turnContract(author) {
-	return [
-		'# Your runtime',
-		'You are one turn of a Slack thread, driven by an n8n workflow that runs you as a headless',
-		'OpenCode session on a GitHub codespace. Your final message is the reply that reaches Slack, so keep',
-		'it short and skip heavy markdown.',
-		author ? `You are replying to ${author}.` : '',
-		'',
-		'# A turn is atomic',
-		'The turn ends when you emit your final message, and everything you started ends with it:',
-		'background Bash tasks are killed, Monitor events never arrive, PushNotification has nowhere to',
-		'go, and ScheduleWakeup never fires. You get no turn of your own afterwards — you cannot speak',
-		'again until a human writes again. So run long work (builds, test suites, restarts) in the',
-		'foreground of this turn and wait for it, or do not start it at all. Never end a turn promising',
-		`to verify, check back, or follow up. Work that will not fit the turn limit of ~${Math.round(
-			TURN_TIMEOUT_MS / 60_000,
-		)} minutes`,
-		'should be split: do the part that fits, then say what to ask for next.',
-		'',
-		'# This box',
-		`You are on codespace ${BOX_ID ?? '(unknown)'}, not a laptop. Before you build, start, or expose`,
-		`the app, read ${CODESPACE_DOCS} ("Build and run the app in a session"). It is box-specific and`,
-		'the repo AGENTS.md does not cover it.',
-	]
-		.filter(Boolean)
-		.join('\n');
-}
 
 function safeCwd(cwd) {
 	const safeCwd = resolvePath(typeof cwd === 'string' && cwd ? cwd : `${ROOT}/n8n`);
@@ -150,7 +121,7 @@ function eventError(event) {
 }
 
 export function runOpenCode(
-	{ message, sessionId, cwd, author },
+	{ message, sessionId, cwd },
 	onEvent,
 	onSession,
 	{
@@ -238,9 +209,7 @@ export function runOpenCode(
 			resolve({ result: text.join('\n').trim(), session_id: activeSessionId });
 		});
 
-		child.stdin.end(
-			`${turnContract(typeof author === 'string' ? author : '')}\n\n# Request\n${message}`,
-		);
+		child.stdin.end(message);
 	});
 }
 

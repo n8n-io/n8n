@@ -1,4 +1,6 @@
 import type {
+	AgentApproval,
+	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentConfigMutationResponse,
@@ -220,6 +222,8 @@ export const warmAgentKnowledgeSandbox = async (
 /** `replaces` swaps a same-type channel in the same request instead of a follow-up disconnect. */
 export interface ConnectIntegrationOptions {
 	replaces?: { credentialId: string };
+	/** Channel actions that need approval before they run. */
+	approval?: AgentApproval;
 }
 
 export const connectIntegration = async (
@@ -240,6 +244,7 @@ export const connectIntegration = async (
 			credentialId,
 			...(settings ? { settings } : {}),
 			...(options?.replaces ? { replaces: options.replaces } : {}),
+			...(options?.approval ? { approval: options.approval } : {}),
 		},
 	);
 };
@@ -527,6 +532,19 @@ export const updateAgentSkill = async (
 	);
 };
 
+export const getAgentBackgroundJobs = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentBackgroundJobsResponse> => {
+	return await makeRestApiRequest<AgentBackgroundJobsResponse>(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks`,
+	);
+};
+
 export const getChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -577,6 +595,20 @@ export const cancelAgentChatRun = async (
 	);
 };
 
+export const cancelAgentChatExecution = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	executionId: string,
+): Promise<{ cancelRequested: boolean }> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
+	);
+};
+
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -611,5 +643,17 @@ export const listAgentIntegrations = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/catalog/integrations`,
+	);
+};
+
+export const getAgentWriteLock = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<{ clientId: string; userId: string } | null> => {
+	return await makeRestApiRequest<{ clientId: string; userId: string } | null>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/collaboration/write-lock`,
 	);
 };

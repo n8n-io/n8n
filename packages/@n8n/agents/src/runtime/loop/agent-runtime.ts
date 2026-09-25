@@ -6,12 +6,13 @@ import type { z } from 'zod';
 import { incrementMessageCount, incrementTokenCountFromUsage } from './execution-counter';
 import { GenerateSink } from './generate-sink';
 import { hydrateFileParts } from './hydrate-file-parts';
-import type { RunOutputSink, RunServices } from './run-output-sink';
+import type { ModelCallContext, RunOutputSink, RunServices } from './run-output-sink';
 import { RuntimeContextBuilder } from './runtime-context';
 import {
 	extractSettledToolCalls,
 	formatMcpConnectionNote,
 	isEmptyModelTurn,
+	isReasoningOnlyStop,
 	makeErrorStream,
 	mergeUsage,
 	normalizeInput,
@@ -153,7 +154,7 @@ export interface AgentRuntimeConfig {
 	volatileInstructionsProvider?: VolatileInstructionsProvider;
 }
 
-const MAX_LOOP_ITERATIONS = 30;
+const MAX_LOOP_ITERATIONS = 100;
 
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
 const MAX_EMPTY_TURN_RETRIES = 2;
@@ -171,6 +172,7 @@ type RuntimeExecutionOptions = RunOptions & ExecutionOptions & { iterationCount?
 /** Shared input for the private generate/stream loops. */
 interface LoopContext {
 	list: AgentMessageList;
+	isFreshRun?: boolean;
 	options?: RuntimeExecutionOptions;
 	abortScope: AgentAbortScope;
 	pendingResume?: PendingResume;
@@ -313,7 +315,7 @@ export class AgentRuntime {
 					const initializedList = await this.initRun(input, options);
 					list = initializedList;
 					const result = await this.runAgentLoop<GenerateResult>(
-						{ list: initializedList, options, abortScope },
+						{ list: initializedList, options, abortScope, isFreshRun: true },
 						sink,
 					);
 					return { result, list: initializedList };
@@ -398,6 +400,9 @@ export class AgentRuntime {
 		if (!toolCall) {
 			throw new StaleResumeError(`No tool call found for toolCallId: ${options.toolCallId}`);
 		}
+		if (options.hostMetadata !== undefined && !state.persistence) {
+			throw new Error('Cannot update host metadata without persistence');
+		}
 
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.context.hydrateDeferredToolsFromList(list);
@@ -429,6 +434,7 @@ export class AgentRuntime {
 				runId: _rid,
 				toolCallId: _tcid,
 				onResumeClaimed: _onResumeClaimed,
+				hostMetadata,
 				...callerExecOptions
 			} = options;
 			const persisted = state.executionOptions ?? {};
@@ -451,16 +457,23 @@ export class AgentRuntime {
 				...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
 			};
 
-			const resumeOptions: RuntimeExecutionOptions = {
-				persistence: state.persistence,
-				...mergedExecOptions,
-			};
-
 			const claimed = await this.runState.claimResume(this.runId, state);
 			if (!claimed) {
 				throw new StaleResumeError(`Run ${this.runId} is not suspended. Cannot resume.`);
 			}
 			resumeClaimed = true;
+			const resumeOptions: RuntimeExecutionOptions = {
+				persistence: state.persistence
+					? {
+							...state.persistence,
+							...(state.persistence.hostMetadata || hostMetadata
+								? { hostMetadata: { ...state.persistence.hostMetadata, ...hostMetadata } }
+								: {}),
+						}
+					: undefined,
+				...mergedExecOptions,
+			};
+			this.updateState({ persistence: resumeOptions.persistence });
 			await options.onResumeClaimed?.();
 
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
@@ -805,6 +818,20 @@ export class AgentRuntime {
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
+		const inputMessages = new Set(list.inputDelta());
+		const inputIds = new Set([...inputMessages].map((message) => message.id));
+
+		// Can we discard an input in case of an error caused by its attachment
+		const canDiscardRejectedInput =
+			ctx.isFreshRun === true &&
+			[...inputMessages].some(
+				(message) =>
+					'role' in message &&
+					message.role === 'user' &&
+					Array.isArray(message.content) &&
+					message.content.some((part) => part.type === 'file' && part.data !== undefined),
+			) &&
+			!list.messages().some((message) => !inputMessages.has(message) && inputIds.has(message.id));
 
 		const buildToolBatchContext = (toolMap: Map<string, BuiltTool>): ToolBatchContext => ({
 			toolMap,
@@ -858,7 +885,7 @@ export class AgentRuntime {
 						abortScope.isAborted ? 'Run aborted' : 'Parent run failed before suspension',
 					);
 					try {
-						await this.runState.cancel(this.runId);
+						await this.runState.cancel(this.runId, this.getState());
 					} catch {
 						// Preserve the failure that interrupted suspension finalization.
 					}
@@ -888,6 +915,10 @@ export class AgentRuntime {
 			this.assertNotAborted(abortScope);
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
+
+			for (const toolName of this.activeSkills?.toolDependencies() ?? []) {
+				this.deferredToolManager?.load(toolName);
+			}
 
 			const {
 				toolMap,
@@ -927,7 +958,7 @@ export class AgentRuntime {
 				staticToolCacheName,
 			});
 
-			const modelCallContext = {
+			const modelCallContext: ModelCallContext = {
 				model: staticLoopContext.model,
 				system,
 				messages: cached.messages,
@@ -939,6 +970,14 @@ export class AgentRuntime {
 				outputSpec: staticLoopContext.outputSpec,
 				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
+				onInputRejected:
+					canDiscardRejectedInput && iterationCount === 0
+						? async () => {
+								if (abortScope.isAborted) return;
+								await this.memory.discardRejectedInput(list, options);
+								this.updateState({ messageList: list.serialize() });
+							}
+						: undefined,
 			};
 			let turn = await sink.callModel(modelCallContext);
 
@@ -969,7 +1008,7 @@ export class AgentRuntime {
 			this.assertNotAborted(abortScope);
 
 			lastFinishReason = turn.finishReason;
-			list.addResponse(turn.newMessages);
+			if (!isReasoningOnlyStop(turn)) list.addResponse(turn.newMessages);
 			// The turn is now in the list; drop any retained streamed text so a later
 			// abort's snapshot can't duplicate it (a stop before this point recovers it).
 			sink.onTurnFolded?.();
@@ -1086,6 +1125,7 @@ export class AgentRuntime {
 						options: ctx.options,
 						abortScope: ctx.abortScope,
 						pendingResume: ctx.pendingResume,
+						isFreshRun: ctx.list === undefined,
 					},
 					sink,
 				);
@@ -1194,7 +1234,7 @@ export class AgentRuntime {
 	/** Clean up stored state for a run when it finishes without re-suspending. */
 	private async cleanupRun(): Promise<void> {
 		try {
-			await this.runState.complete(this.runId);
+			await this.runState.complete(this.runId, this.getState());
 		} catch (error) {
 			logger.warn('Failed to clean up agent run checkpoint', { runId: this.runId, error });
 			return;

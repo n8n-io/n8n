@@ -1,3 +1,4 @@
+import type { ResourceEditorDestination } from '@/features/collaboration/projects/projects.types';
 import type {
 	AgentJsonConfig,
 	FrontendSettings,
@@ -9,7 +10,7 @@ import type {
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
-import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import type { CredentialPayload, IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type { ModalState } from '@n8n/frontend-module-sdk';
@@ -351,6 +352,7 @@ export type VariableResource = BaseResource & {
 
 export type CredentialsResource = BaseResource & {
 	resourceType: 'credential';
+	description?: string | null;
 	updatedAt: string;
 	createdAt: string;
 	type: string;
@@ -703,6 +705,12 @@ export type ModalKey = keyof Modals;
 export type { ModalState };
 
 export interface NewCredentialsModal extends ModalState {
+	notice?: () => string;
+	initialName?: string;
+	initialData?: Record<string, unknown>;
+	destination?: ResourceEditorDestination;
+	createCredential?: (details: CredentialPayload, projectId: string) => Promise<string>;
+	onInitializeError?: (error: unknown) => void;
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
 	closeOnSave?: boolean;

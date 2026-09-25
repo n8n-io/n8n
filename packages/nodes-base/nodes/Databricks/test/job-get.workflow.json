@@ -1,0 +1,100 @@
+{
+	"name": "Databricks Job Get Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "getJob",
+				"jobId": {
+					"mode": "id",
+					"value": "281874479417551"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "job-get-001",
+			"name": "Get Job",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Job": [
+			{
+				"json": {
+					"job_id": 281874479417551,
+					"creator_user_name": "owner@example.com",
+					"run_as_user_name": "owner@example.com",
+					"created_time": 1757923200000,
+					"settings": {
+						"name": "Nightly ETL",
+						"tasks": [
+							{
+								"task_key": "extract",
+								"notebook_task": {
+									"notebook_path": "/Repos/etl/extract"
+								}
+							},
+							{
+								"task_key": "load",
+								"notebook_task": {
+									"notebook_path": "/Repos/etl/load"
+								}
+							}
+						],
+						"job_clusters": [
+							{
+								"job_cluster_key": "etl",
+								"new_cluster": {
+									"spark_version": "15.4.x-scala2.12",
+									"num_workers": 2
+								}
+							}
+						],
+						"schedule": {
+							"quartz_cron_expression": "0 0 2 * * ?",
+							"timezone_id": "UTC",
+							"pause_status": "UNPAUSED"
+						},
+						"max_concurrent_runs": 1
+					},
+					"trigger_state": {
+						"file_arrival": {
+							"using_file_events": false
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Job",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -36,11 +36,30 @@ describe('AiPreferenceRepository', () => {
 			id,
 			userId: null,
 			projectId: null,
+			// NOT NULL with no default: every write names the surface it came from.
+			source: 'ui',
 			createdById: owner.id,
 			...overrides,
 		});
 		return id;
 	}
+
+	describe('countForTarget', () => {
+		it('counts one scope at a time, so a cap applies per scope', async () => {
+			await insertPreference({ content: 'Instance A' });
+			await insertPreference({ content: 'Instance B' });
+			await insertPreference({ content: 'Mine', userId: member.id });
+			await insertPreference({ content: 'Marketing', projectId: marketing.id });
+
+			expect(await repository.countForTarget({ scope: 'instance' })).toBe(2);
+			expect(await repository.countForTarget({ scope: 'user', userId: member.id })).toBe(1);
+			expect(await repository.countForTarget({ scope: 'user', userId: owner.id })).toBe(0);
+			expect(await repository.countForTarget({ scope: 'project', projectId: marketing.id })).toBe(
+				1,
+			);
+			expect(await repository.countForTarget({ scope: 'project', projectId: sales.id })).toBe(0);
+		});
+	});
 
 	describe('findApplicable', () => {
 		it('returns the instance rows, the rows of the user, and the rows of the listed projects', async () => {
@@ -79,6 +98,31 @@ describe('AiPreferenceRepository', () => {
 			const rows = await repository.findApplicable({ userId: member.id, projectIds: [] });
 
 			expect(rows.map((row) => row.id).sort()).toEqual([instanceId, ownId].sort());
+		});
+	});
+
+	describe('existsForTargetWithContent', () => {
+		it('is true for an exact match in the scope and false otherwise', async () => {
+			await insertPreference({ content: 'Keep replies short.', userId: member.id });
+
+			const target = { scope: 'user' as const, userId: member.id };
+			expect(await repository.existsForTargetWithContent(target, 'Keep replies short.')).toBe(true);
+			expect(await repository.existsForTargetWithContent(target, 'Keep replies long.')).toBe(false);
+			expect(
+				await repository.existsForTargetWithContent({ scope: 'instance' }, 'Keep replies short.'),
+			).toBe(false);
+		});
+
+		it('ignores the excluded row', async () => {
+			const id = await insertPreference({ content: 'Keep replies short.', userId: member.id });
+
+			expect(
+				await repository.existsForTargetWithContent(
+					{ scope: 'user', userId: member.id },
+					'Keep replies short.',
+					id,
+				),
+			).toBe(false);
 		});
 	});
 });

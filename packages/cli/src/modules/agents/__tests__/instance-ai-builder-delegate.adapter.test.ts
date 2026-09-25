@@ -54,10 +54,11 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
+	const credentialProviderFor = vi.fn().mockReturnValue(credentialProvider);
 	const delegate = service.createDelegate(
 		user,
 		'project-1',
-		credentialProvider,
+		credentialProviderFor,
 		credentialService,
 		options,
 	);
@@ -74,6 +75,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 		agentSkills,
 		agentIntegrationPersistenceService,
 		credentialProvider,
+		credentialProviderFor,
 		credentialService,
 	};
 }
@@ -218,6 +220,22 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.buildAgent).not.toHaveBeenCalled();
+		});
+
+		it('builds the credential provider from the concrete target agent id', async () => {
+			const { delegate, agentsBuilderService, credentialProviderFor } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+
+			await delegate.streamBuild('agent-1', 'hi', {
+				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
+			});
+
+			expect(credentialProviderFor).toHaveBeenCalledWith('agent-1');
 		});
 	});
 
@@ -746,6 +764,13 @@ describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
 		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('never ask the user to create them manually');
 		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain(
 			'the orchestrator will provision them and call you again',
+		);
+	});
+
+	it('tells the builder to use Sessions tab for agent history', () => {
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('say Sessions tab for history');
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain(
+			'Never say Runs, Executions, or Activity History for agents.',
 		);
 	});
 });

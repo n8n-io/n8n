@@ -1,15 +1,16 @@
 import {
+	type AgentBackgroundJobsResponse,
 	type AgentChatAttachmentPayload,
 	AgentChatMessageDto,
 	type AgentChatMessagesResponse,
 	AgentChatResumeDto,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
-	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
@@ -20,18 +21,28 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import {
-	AgentChatAttachmentService,
-	type StoredAttachmentRef,
-} from './agent-chat-attachment.service';
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentMessageQueueService } from './agent-message-queue.service';
+import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
+import {
+	AgentChatExecutionService,
+	AgentTurnAlreadyRunningError,
+} from './agent-chat-execution.service';
+import { AgentExecutionService } from './agent-execution.service';
+import { threadBelongsTo } from './utils/agent-thread-access';
 import { messagesToDto } from './agent-message-mapper';
-import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
+import { type FlushableResponse, initSseStream } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import {
+	draftChatMemoryResourceId,
+	userIdFromDraftChatMemoryResourceId,
+} from './utils/agent-memory-scope';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 import { withOpenSuspensions } from './utils/messages-envelope';
 
@@ -45,7 +56,33 @@ export class AgentChatController {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly agentExecutionService: AgentExecutionService,
+		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly chatExecutionService: AgentChatExecutionService,
+		private readonly messageQueue: AgentMessageQueueService,
+		private readonly queuedPreviewStreams: AgentQueuedPreviewStreamService,
 	) {}
+
+	private createChatExecution(res: FlushableResponse) {
+		const delivery = initSseStream(res);
+		const requestController = new AbortController();
+		const abandon = () => requestController.abort();
+		delivery.abortSignal.addEventListener('abort', abandon, { once: true });
+		if (delivery.abortSignal.aborted) abandon();
+		return {
+			send: delivery.send,
+			abortSignal: requestController.signal,
+			onExecutionStarted: (id: string, sessionId: string) => {
+				delivery.abortSignal.removeEventListener('abort', abandon);
+				delivery.send({ type: 'execution-started', executionId: id, sessionId });
+			},
+			onChunk: delivery.onChunk,
+			close: () => {
+				delivery.abortSignal.removeEventListener('abort', abandon);
+				delivery.close();
+			},
+		};
+	}
 
 	/** Decode, sniff, and persist inbound chat attachments; returns refs for the user turn. */
 	private async storeChatAttachments(params: {
@@ -107,28 +144,31 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, attachments } = payload;
+		const { message, sessionId, newSession, attachments } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			projectId,
 			req.user,
+			agentId,
 		);
 
-		const { send } = initSseStream(res);
-		const abortController = new AbortController();
-		const abortOnClose = () => abortController.abort();
-		res.once('close', abortOnClose);
-		let executionId: string | undefined;
+		const delivery = initSseStream(res);
+		const { send, abortSignal } = delivery;
+		let accepted = false;
+		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
 			const prepared = await this.agentTestRunService.prepareDraftRun({
 				agentId,
 				projectId,
+				user: req.user,
 				sessionId,
+				previewChat: true,
+				newSession,
 				credentialProvider,
 			});
-			if (abortController.signal.aborted) return;
+			if (abortSignal.aborted) return;
 			if (prepared.status === 'session_not_found') {
 				send({ type: 'error', message: 'Session not found' });
 				return;
@@ -151,42 +191,48 @@ export class AgentChatController {
 				threadId,
 				resourceId: draftChatMemoryResourceId(req.user.id),
 			});
+			abortSignal.throwIfAborted();
 
-			const suspended = await pumpChunks(
-				this.agentTestRunService.streamDraftRun({
+			await this.messageQueue.enqueue(
+				{
 					agentId,
 					projectId,
-					message,
-					attachments: storedAttachments,
-					user: req.user,
-					sessionId: threadId,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
+					threadId,
+					sessionMode: prepared.sessionMode,
+					source: 'chat',
+					payload: {
+						kind: 'preview',
+						message,
+						attachments: storedAttachments,
+						userId: req.user.id,
+						resourceId: draftChatMemoryResourceId(req.user.id),
 					},
-					abortSignal: abortController.signal,
-				}),
-				send,
+				},
+				(queueId) => {
+					subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
+				},
 			);
-			if (!suspended) {
-				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
-			}
+			accepted = true;
+			subscription?.accepted();
+			await subscription?.done;
 		} catch (error) {
-			// No execution recorded means nothing references this turn's attachments —
-			// remove them so failed turns can't accumulate orphans. Best-effort, and
-			// deliberately also on aborted turns.
-			if (!executionId && storedAttachments?.length) {
+			// Committed messages own their attachments, including after a disconnect.
+			if (!accepted && storedAttachments?.length) {
 				await this.agentChatAttachmentService
 					.deleteByIds(storedAttachments.map((ref) => ref.id))
 					.catch(() => {});
 			}
-			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-				send({ type: 'error', message: errorMessage });
-			}
+			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
+			send({
+				type: 'error',
+				message: errorMessage,
+				...(error instanceof AgentTurnAlreadyRunningError
+					? { errorCode: 'turn_already_running' }
+					: {}),
+			});
 		} finally {
-			res.off('close', abortOnClose);
-			res.end();
+			subscription?.close();
+			delivery.close();
 		}
 	}
 
@@ -200,43 +246,60 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
-		const { send } = initSseStream(res);
-
-		const abortController = new AbortController();
-		const abortOnClose = () => abortController.abort();
-		res.once('close', abortOnClose);
+		const execution = this.createChatExecution(res);
+		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
 		try {
-			let executionId: string | undefined;
-			const suspended = await pumpChunks(
-				this.agentExecutionOrchestratorService.resumeForChat({
-					agentId,
-					projectId,
-					runId,
-					toolCallId,
-					resumeData,
-					user: req.user,
-					usePublishedVersion: false,
-					integrationType: N8N_CHAT_INTEGRATION_TYPE,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
-					abortSignal: abortController.signal,
-				}),
-				send,
-			);
-			if (!suspended) {
-				send({ type: 'done', ...(executionId ? { executionId } : {}) });
+			abortSignal.throwIfAborted();
+			const result = await this.agentTestRunService.resumePreparedDraftRun({
+				agentId,
+				projectId,
+				runId,
+				toolCallId,
+				resumeData,
+				user: req.user,
+				previewChat: true,
+				errorMode: 'forward',
+				onChunk,
+				onExecutionStarted,
+				abortSignal,
+			});
+			if (result.status === 'completed') {
+				send({
+					type: 'done',
+					...(result.executionId ? { executionId: result.executionId } : {}),
+				});
 			}
 		} catch (error) {
-			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Resume failed';
-				send({ type: 'error', message: errorMessage });
-			}
+			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
+			send({
+				type: 'error',
+				message: errorMessage,
+				...(error instanceof AgentTurnAlreadyRunningError
+					? { errorCode: 'turn_already_running' }
+					: {}),
+			});
 		} finally {
-			res.off('close', abortOnClose);
-			res.end();
+			execution.close();
 		}
+	}
+
+	@Delete('/:agentId/chat/:threadId/executions/:executionId')
+	@ProjectScope('agent:execute')
+	async cancelChatExecution(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('threadId') threadId: string,
+		@Param('executionId') executionId: string,
+	) {
+		const cancelRequested = await this.chatExecutionService.requestCancel({
+			projectId: req.params.projectId,
+			agentId,
+			threadId,
+			executionId,
+			userId: req.user.id,
+		});
+		return { cancelRequested };
 	}
 
 	@Delete('/:agentId/chat/runs/:runId')
@@ -259,6 +322,39 @@ export class AgentChatController {
 		return { cancelled };
 	}
 
+	@Get('/:agentId/chat/:threadId/background-tasks')
+	@ProjectScope('agent:read')
+	async getBackgroundJobs(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentBackgroundJobsResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+
+		// A new preview session has no thread until its first execution starts.
+		if (!thread) return { tasks: [] };
+
+		if (!threadBelongsTo(thread, projectId, agentId, req.user.id)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+
+		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
+		return {
+			pendingTaskIds: jobs
+				.filter((job) => job.status !== 'running' && !job.notifiedAt)
+				.map((job) => job.id),
+			tasks: jobs.map((job) => ({
+				id: job.id,
+				title: scrubSecretsInText(job.title),
+				kind: job.kind,
+				status: job.status,
+				startedAt: job.createdAt.toISOString(),
+				...(job.settledAt ? { settledAt: job.settledAt.toISOString() } : {}),
+			})),
+		};
+	}
+
 	@Get('/:agentId/chat/:threadId/messages')
 	@ProjectScope('agent:read')
 	async getChatMessages(
@@ -267,25 +363,46 @@ export class AgentChatController {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		// getConversationHistory delegates to getThreadDetail, which validates
-		// thread ownership against both projectId and agentId before returning
-		// execution transcript data.
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		if (thread && !threadBelongsTo(thread, projectId, agentId, req.user.id)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
 		const history = await this.agentExecutionOrchestratorService.getConversationHistory({
 			threadId,
 			projectId,
 			agentId,
+			userId: req.user.id,
 		});
 		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
 			agentId,
 			threadId,
 		);
-		if (!history) {
-			if (checkpoint) return withOpenSuspensions([], checkpoint);
+		if (
+			checkpoint &&
+			(thread?.accessScope === 'project'
+				? userIdFromDraftChatMemoryResourceId(checkpoint.persistence?.resourceId ?? '') !==
+					undefined
+				: checkpoint.persistence?.resourceId !== draftChatMemoryResourceId(req.user.id) ||
+					(!thread &&
+						!(await this.agentExecutionService.canUseDraftThread(
+							threadId,
+							projectId,
+							agentId,
+							req.user.id,
+						))))
+		) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return withOpenSuspensions(history, checkpoint, {
-			appendInactiveCheckpointMessages: false,
-		});
+		if (!history) {
+			if (checkpoint) return { ...withOpenSuspensions([], checkpoint), activeExecutionId: null };
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		return {
+			...withOpenSuspensions(history.messages, checkpoint, {
+				appendInactiveCheckpointMessages: false,
+			}),
+			activeExecutionId: history.activeExecutionId,
+		};
 	}
 
 	@Get('/:agentId/chat/messages')
@@ -296,12 +413,27 @@ export class AgentChatController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (
+			!(await this.agentExecutionService.canUseDraftThread(
+				chatThreadId(agentId, req.user.id),
+				projectId,
+				agentId,
+				req.user.id,
+			))
+		) {
+			throw new NotFoundError('Session not found');
+		}
 		const messages = await this.agentTestChatService.getTestChatMessages(agentId, req.user.id);
 		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
 			agentId,
 			chatThreadId(agentId, req.user.id),
 		);
-		return withOpenSuspensions(messagesToDto(messages), checkpoint);
+		return withOpenSuspensions(
+			messagesToDto(messages),
+			checkpoint?.persistence?.resourceId === draftChatMemoryResourceId(req.user.id)
+				? checkpoint
+				: null,
+		);
 	}
 
 	@Get('/:agentId/chat/attachments/:attachmentId')
@@ -317,6 +449,7 @@ export class AgentChatController {
 		const attachment = await this.agentChatAttachmentService.getForAgent(attachmentId, {
 			agentId,
 			projectId,
+			userId: req.user.id,
 		});
 		if (!attachment) throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 
@@ -370,6 +503,16 @@ export class AgentChatController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (
+			!(await this.agentExecutionService.canUseDraftThread(
+				chatThreadId(agentId, req.user.id),
+				projectId,
+				agentId,
+				req.user.id,
+			))
+		) {
+			throw new NotFoundError('Session not found');
+		}
 		await this.agentTestChatService.clearTestChatMessages(agentId, req.user.id);
 		return { ok: true };
 	}

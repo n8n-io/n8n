@@ -1184,10 +1184,20 @@ export class CanvasPage extends BasePage {
 	async openWorkflowHistory(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-version-history');
+		await this.page.waitForURL(/\/history(?:\/|$)/);
+		await expect(this.getWorkflowHistoryCloseButton()).toBeVisible();
+		// The history list loads asynchronously. Wait for it to settle so a later
+		// close click is not dropped by the re-render when loading finishes.
+		await expect(this.page.getByTestId('workflow-history-list-item').first()).toBeVisible();
 	}
 
 	async closeWorkflowHistory(): Promise<void> {
 		await this.getWorkflowHistoryCloseButton().click();
+		// Don't wait on the URL here (as openWorkflowHistory does): this close is a
+		// client-side route change and waitForURL races the SPA router. Wait on the
+		// editor UI instead.
+		await expect(this.getWorkflowHistoryCloseButton()).toBeHidden();
+		await expect(this.page.getByTestId('workflow-menu')).toBeVisible();
 	}
 
 	// Canvas node groups (selection toolbar + group overlay)

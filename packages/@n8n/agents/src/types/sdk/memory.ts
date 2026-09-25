@@ -315,6 +315,11 @@ export interface ObservationLogMemoryConfig {
 export interface ObservationalMemoryConfig {
 	/** Estimated visible-window tokens at which the Observer is scheduled mid-run and post-turn. */
 	observerThresholdTokens?: number;
+	/**
+	 * Run the Observer at tool-loop boundaries inside a turn. Default `true`.
+	 * When `false`, the Observer runs only after the turn completes.
+	 */
+	midRunObservation?: boolean;
 	/** Estimated active observation-log tokens required before the Reflector runs. */
 	reflectorThresholdTokens?: number;
 	/** Maximum estimated tokens to render into the system prompt. */
@@ -376,6 +381,6 @@ export interface CheckpointStore {
 	 * false when another process has already claimed or changed the snapshot.
 	 */
 	claimForResume?(key: string, state: SerializableAgentState): Promise<boolean>;
-	/** Delete a snapshot by key. */
-	delete(key: string): Promise<void>;
+	/** Delete a snapshot. Hosts can use the finishing state to check ownership. */
+	delete(key: string, state?: SerializableAgentState): Promise<void>;
 }

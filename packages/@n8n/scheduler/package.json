@@ -1,6 +1,6 @@
 {
   "name": "@n8n/scheduler",
-  "version": "1.8.0",
+  "version": "1.10.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -9,8 +9,8 @@
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "mutate": "node ../../../scripts/mutation-health/mutate.mjs --package-dir packages/@n8n/scheduler",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run --passWithNoTests",
@@ -37,6 +37,7 @@
     "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@stryker-mutator/core": "catalog:",
@@ -44,7 +45,10 @@
     "@types/luxon": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "fast-check": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

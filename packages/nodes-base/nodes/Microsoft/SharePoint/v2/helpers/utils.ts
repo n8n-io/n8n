@@ -1,6 +1,8 @@
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
+
 /** v1's Simplify $select list — the exact trimmed fields v2 keeps returning; Get Many reuses it. */
 export const LIST_SIMPLIFY_SELECT =
 	'id,name,displayName,description,createdDateTime,lastModifiedDateTime,webUrl';
@@ -48,7 +50,7 @@ export type GraphSearchReply<T> = { '@odata.nextLink'?: string; value?: T[] };
  * is the single quote, escaped by doubling; URL encoding is the transport's job.
  */
 export const odataFieldEqualsClause = (column: string, value: unknown) =>
-	`fields/${column} eq '${String(value ?? '').replaceAll("'", "''")}'`;
+	`fields/${column} eq '${escapeODataValue(value ?? '')}'`;
 
 /** SharePoint refuses to filter on non-indexed columns without this opt-in. */
 export const NON_INDEXED_QUERY_HEADERS: IDataObject = {

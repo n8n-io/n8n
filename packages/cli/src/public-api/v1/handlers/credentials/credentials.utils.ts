@@ -3,7 +3,6 @@ import type { CredentialsEntity } from '@n8n/db';
 import { validate } from 'jsonschema';
 import {
 	type DisplayCondition,
-	type IDataObject,
 	type INodeProperties,
 	type INodePropertyOptions,
 } from 'n8n-workflow';
@@ -53,11 +52,6 @@ export function buildSharedForCredential(
 		}));
 }
 
-export function sanitizeCredentials(credential: CredentialsEntity): Partial<CredentialsEntity> {
-	const { data, shared, ...rest } = credential;
-	return rest;
-}
-
 /**
  * Validates credential data against the JSON Schema derived from its type's properties.
  */
@@ -74,7 +68,7 @@ export function validateCredentialData(
 	const schema = toJsonSchema(properties);
 
 	if (options?.partialData) {
-		delete schema.required;
+		schema.required = [];
 		delete schema.allOf;
 	}
 
@@ -109,6 +103,12 @@ export function assertValidUpdateProperties(
 	}
 }
 
+// Same rule as the internal route: an omitted field takes its default value.
+function isRequired(property: INodeProperties): boolean {
+	if (!property.required) return false;
+	return property.default === undefined || property.default === null || property.default === '';
+}
+
 /**
  * toJsonSchema
  * Take an array of credentials parameter and map it
@@ -116,7 +116,7 @@ export function assertValidUpdateProperties(
  * the JSON Schema definition we can validate the credential's shape
  * @param properties - Credentials properties
  */
-export function toJsonSchema(properties: INodeProperties[]): IDataObject {
+export function toJsonSchema(properties: INodeProperties[]): IJsonSchema {
 	const jsonSchema: IJsonSchema = {
 		additionalProperties: false,
 		type: 'object',
@@ -150,7 +150,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	// the credentials sent in the API call.
 	// eslint-disable-next-line complexity
 	properties.forEach((property) => {
-		if (property.required) {
+		if (isRequired(property)) {
 			requiredFields.push(property.name);
 		}
 		if (property.type === 'options') {
@@ -280,7 +280,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			}
 
 			// Only enforce a field as required when the credential actually marks it `required`.
-			if (property.required) {
+			if (isRequired(property)) {
 				propertyRequiredDependencies[dependencyKey].then?.allOf.push({
 					required: [property.name],
 				});
@@ -301,5 +301,5 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		delete jsonSchema.allOf;
 	}
 
-	return jsonSchema as unknown as IDataObject;
+	return jsonSchema;
 }

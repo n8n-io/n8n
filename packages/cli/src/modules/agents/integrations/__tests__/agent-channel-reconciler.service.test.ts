@@ -6,12 +6,10 @@ import { Time } from '@n8n/constants';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentChannelRef } from '../../utils/agent-channel';
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentChannelStatus } from '../../entities/agent-channel-status.entity';
-import type {
-	AgentChannelRef,
-	AgentChannelStatusRepository,
-} from '../../repositories/agent-channel-status.repository';
+import type { AgentChannelStatusRepository } from '../../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChannelReconciler } from '../agent-channel-reconciler.service';
 import { AgentChannelStatusReporter } from '../agent-channel-status-reporter';

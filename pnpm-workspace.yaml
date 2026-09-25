@@ -20,7 +20,6 @@ verifyDepsBeforeRun: false
 pmOnFail: warn
 updateNotifier: false
 loglevel: warn
-packageImportMethod: clone-or-copy
 
 minimumReleaseAge: 2880
 # Blacksmith's path to Cloudflare AMS intermittently stalls a single connection
@@ -79,6 +78,7 @@ catalog:
   '@chat-adapter/linear': 4.37.0
   '@chat-adapter/slack': 4.37.0
   '@chat-adapter/state-memory': 4.37.0
+  '@chat-adapter/teams': 4.37.0
   '@chat-adapter/telegram': 4.37.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
@@ -167,6 +167,7 @@ catalog:
   '@types/ssh2': 1.15.0
   '@types/turndown': ^5.0.6
   '@types/uuid': ^11.0.0
+  '@types/validator': ^13.7.0
   '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
   # Pinned exactly and kept together: these packages cross types with each other
@@ -193,6 +194,7 @@ catalog:
   consola: ^3.4.2
   cron: 4.4.0
   cron-parser: 5.6.1
+  cronstrue: ^3.27.0
   cross-env: ^7.0.3
   csv-parse: 7.0.2
   dotenv: 17.2.3
@@ -216,6 +218,7 @@ catalog:
   isolated-vm: ^7.0.1
   js-base64: 3.7.8
   js-tiktoken: 1.0.21
+  jsdom: 23.0.1
   json-schema: 0.4.0
   jsonrepair: 3.13.2
   jsonwebtoken: 9.0.3
@@ -271,18 +274,20 @@ catalog:
   typescript: 6.0.2
   typescript-eslint: 8.70.0
   uuid: 11.1.1
+  validator: 13.15.26
   vite: ^8.0.2
   unplugin-dts: ^1.1.0
   vite-plugin-singlefile: 2.3.3
   vitest: ^4.1.9
   vitest-mock-extended: ^3.1.0
-  vm2: 3.11.6
+  vm2: 3.12.2
   xml2js: 0.6.2
   xss: 1.0.15
   yaml: 2.8.3
   zod: 3.25.76
   zod-to-json-schema: 3.23.3
   knip: ^6.35.1
+  openapi-types: 12.1.3
 
 catalogMode: strict
 
@@ -351,7 +356,7 @@ catalogs:
   undici-v6:
     undici: ^6.28.0
   undici-v7:
-    undici: ^7.29.0
+    undici: ^7.29.1
   # knip needs zod 4 while the default catalog pins zod 3.
   zod-v4:
     zod: ^4.4.3
@@ -364,7 +369,7 @@ overrides:
   baseline-browser-mapping: ^2.10.31
   '@azure/identity': 4.13.0
   '@lezer/common': ^1.2.0
-  '@mistralai/mistralai': ^1.10.0
+  '@mistralai/mistralai': ^2.2.1
   '@n8n/typeorm>@sentry/node': catalog:sentry
   'mssql@12.7.0>tedious': 20.0.5
   '@opentelemetry/api': 'catalog:'
@@ -390,7 +395,7 @@ overrides:
   pdfjs-dist: 'catalog:'
   tmp: 0.2.7
   nodemailer: 8.0.10
-  validator: 13.15.26
+  validator: 'catalog:'
   zod: 3.25.76
   # Scoped to knip so the repo-wide zod 3 pin stays for everything else.
   'knip>zod': catalog:zod-v4
@@ -494,6 +499,8 @@ patchedDependencies:
   '@langchain/openai@1.4.4': patches/@langchain__openai@1.4.4.patch
   '@langchain/google-common@2.1.24': patches/@langchain__google-common@2.1.24.patch
   '@confluentinc/kafka-javascript@1.9.1': patches/@confluentinc__kafka-javascript@1.9.1.patch
+  imapflow@1.7.1: patches/imapflow@1.7.1.patch
+  '@chat-adapter/teams@4.37.0': patches/@chat-adapter__teams@4.37.0.patch
 
 allowBuilds:
   '@biomejs/biome': false
