@@ -1,4 +1,4 @@
-import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useVueFlow } from '@vue-flow/core';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import { isPresent } from '@/app/utils/typesUtils';
@@ -48,6 +48,7 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 	// Selection snapshot from the last reconciliation — diffing against it
 	// tells user-driven changes apart from our own.
 	let lastSelectedIds = new Set<string>();
+	const explicitlySelectedGroupIds = ref<Set<string>>(new Set());
 
 	const selectedIds = computed(() => new Set(getSelectedNodes.value.map((node) => node.id)));
 
@@ -175,6 +176,7 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 
 	watch([selectedIds, userSelectionActive, mountedGroupNodeIdsKey], () => {
 		if (!toValue(deps.isEnabled)) {
+			explicitlySelectedGroupIds.value = new Set();
 			lastSelectedIds = selectedIds.value;
 			return;
 		}
@@ -183,6 +185,18 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		if (userSelectionActive.value) return;
 
 		const currentIds = selectedIds.value;
+		const added = [...currentIds].filter((id) => !lastSelectedIds.has(id));
+		const removed = [...lastSelectedIds].filter((id) => !currentIds.has(id));
+		const nextExplicitlySelectedGroupIds = new Set(explicitlySelectedGroupIds.value);
+		for (const id of added) {
+			const groupId = parseCanvasGroupNodeId(id);
+			if (groupId) nextExplicitlySelectedGroupIds.add(groupId);
+		}
+		for (const id of removed) {
+			const groupId = parseCanvasGroupNodeId(id);
+			if (groupId) nextExplicitlySelectedGroupIds.delete(groupId);
+		}
+		explicitlySelectedGroupIds.value = nextExplicitlySelectedGroupIds;
 		const target = reconcile(currentIds);
 		const isInSync =
 			target.size === currentIds.size && [...target].every((id) => currentIds.has(id));
@@ -238,5 +252,6 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		fullySelectedGroupMemberIds,
 		selectedElementCount,
 		selectionBoxBounds,
+		explicitlySelectedGroupIds: computed(() => explicitlySelectedGroupIds.value),
 	};
 }

@@ -1799,6 +1799,8 @@ describe('useCanvasOperations', () => {
 			};
 			workflowDocumentStoreInstance.allNodes = [anchor];
 			workflowDocumentStoreInstance.connectionsBySourceNode = {};
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
 				nodesById.get(id),
 			);

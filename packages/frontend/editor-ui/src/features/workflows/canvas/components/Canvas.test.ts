@@ -1664,7 +1664,7 @@ describe('Canvas', () => {
 			await fireEvent.keyDown(document, { key: 'Backspace' });
 			await fireEvent.keyUp(document, { key: 'Backspace' });
 
-			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b'], ['g1']]);
+			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b'], [group.id]]);
 		});
 
 		it('only suppresses anchor preservation for explicitly selected groups', async () => {
@@ -1690,7 +1690,9 @@ describe('Canvas', () => {
 					],
 				},
 				global: {
-					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+					provide: {
+						[NodeGroupViewKey as symbol]: createNodeGroupViewMock(false),
+					},
 				},
 			});
 
@@ -1709,7 +1711,10 @@ describe('Canvas', () => {
 			await fireEvent.keyDown(document, { key: 'Backspace' });
 			await fireEvent.keyUp(document, { key: 'Backspace' });
 
-			const [ids, deleteWholeGroupIds] = emitted()['delete:nodes']?.at(-1) ?? [];
+			const deleteEvent = rendered.emitted()['delete:nodes']?.at(-1) as
+				| [string[], string[]?]
+				| undefined;
+			const [ids, deleteWholeGroupIds] = deleteEvent ?? [];
 			expect(ids).toEqual(expect.arrayContaining(['a1', 'a2', 'b1']));
 			expect(deleteWholeGroupIds).toEqual(['g1']);
 		});
@@ -1934,9 +1939,11 @@ describe('Canvas', () => {
 
 			await fireEvent.contextMenu(getByTestId('canvas-node-group'));
 			await waitFor(() => expect(useContextMenu().isOpen.value).toBe(true));
+			await waitFor(() => expect(getByTestId('context-menu-item-delete')).toBeInTheDocument());
 			await fireEvent.click(getByTestId('context-menu-item-delete'));
 
-			const [ids, deleteWholeGroupIds] = emitted()['delete:nodes']?.at(-1) ?? [];
+			const deleteEvent = emitted()['delete:nodes']?.at(-1) as [string[], string[]?] | undefined;
+			const [ids, deleteWholeGroupIds] = deleteEvent ?? [];
 			expect(ids).toEqual(expect.arrayContaining(['a', 'b', 'node-3']));
 			expect(deleteWholeGroupIds).toEqual([group.id]);
 		});
