@@ -143,6 +143,20 @@ export function useOpenArtifactTabs({
 		return true;
 	}
 
+	/**
+	 * Open a tab for any resource, for example one picked from the project.
+	 * The tab opens at the end, or stays where it is when it is open already.
+	 */
+	function openTab(tab: ArtifactTab) {
+		const current = currentLayout();
+		const key = tabKey(tab);
+		const isOpen = openTabs.value.some((open) => tabKey(open) === key);
+		layout.value = {
+			tabs: isOpen ? current.tabs : [...openTabs.value.map(toStoredTab), toStoredTab(tab)],
+			closedTabs: current.closedTabs.filter((closed) => tabKey(closed) !== key),
+		};
+	}
+
 	// --- Storage ---
 
 	let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -216,6 +230,7 @@ export function useOpenArtifactTabs({
 		storedPreviewOpen,
 		closeTab,
 		reopenTab,
+		openTab,
 		saveTabs,
 	};
 }
