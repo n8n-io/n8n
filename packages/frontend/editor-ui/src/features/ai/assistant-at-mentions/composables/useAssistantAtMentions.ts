@@ -44,7 +44,6 @@ export function useAssistantAtMentions(options: {
 	const savedSelection = ref({ start: 0, end: 0 });
 	const dismissedTypedTriggerIndex = ref<number>();
 	let updatingTextInternally = false;
-	let openedAt = 0;
 
 	function updateText(value: string): void {
 		updatingTextInternally = true;
@@ -54,7 +53,6 @@ export function useAssistantAtMentions(options: {
 
 	function markOpened(source: AssistantMentionTriggerSource): void {
 		if (menuOpen.value) return;
-		openedAt = Date.now();
 		menuOpen.value = true;
 		options.onOpened?.(source);
 	}
@@ -69,13 +67,7 @@ export function useAssistantAtMentions(options: {
 		}
 		// The range, not `menuOpen`, marks an open picker: the host's v-model may have
 		// already flipped `menuOpen` before the menu's close reaches this function.
-		if (range) {
-			options.onClosed?.({
-				source: range.origin,
-				reason,
-				durationMs: Math.max(0, Math.round(Date.now() - openedAt)),
-			});
-		}
+		if (range) options.onClosed?.({ source: range.origin, reason });
 		menuOpen.value = false;
 		query.value = '';
 		activeRange.value = undefined;

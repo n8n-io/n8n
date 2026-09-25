@@ -741,10 +741,7 @@ export function createThreadRuntime(
 				response_kind: signal.responseKind,
 				action_source: metric.actionSource,
 				tab_visible: tabVisible,
-				mention_count: metric.mentionCounts.mentionCount,
-				workflow_mention_count: metric.mentionCounts.workflowMentionCount,
-				node_mention_count: metric.mentionCounts.nodeMentionCount,
-				group_mention_count: metric.mentionCounts.groupMentionCount,
+				mention_counts: metric.mentionCounts,
 				attachment_count: metric.attachmentCount,
 			});
 		});
@@ -1566,10 +1563,7 @@ export function createThreadRuntime(
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
-			mention_count: mentionCounts.mentionCount,
-			workflow_mention_count: mentionCounts.workflowMentionCount,
-			node_mention_count: mentionCounts.nodeMentionCount,
-			group_mention_count: mentionCounts.groupMentionCount,
+			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
 		});
 	}

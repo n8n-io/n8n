@@ -38,7 +38,6 @@ export function useAssistantAtMentionsTelemetry(options: {
 			result_count: metrics.resultCount,
 			ambiguous_result_count: metrics.ambiguousResultCount,
 			submenu_open_count: metrics.submenuOpenCount,
-			duration_ms: info.durationMs,
 		});
 	}
 

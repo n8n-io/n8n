@@ -121,10 +121,10 @@ describe('useAssistantMentionAttachments', () => {
 		mentions.select(nodeSelection());
 
 		expect(mentions.snapshotCounts()).toEqual({
-			mentionCount: 2,
-			workflowMentionCount: 1,
-			nodeMentionCount: 1,
-			groupMentionCount: 0,
+			total: 2,
+			workflow: 1,
+			node: 1,
+			group: 0,
 		});
 		scope.stop();
 	});

@@ -23,7 +23,6 @@ export type AssistantMentionCloseReason =
 export interface AssistantMentionCloseInfo {
 	source: AssistantMentionTriggerSource;
 	reason: AssistantMentionCloseReason;
-	durationMs: number;
 }
 
 /** What the picker showed when it closed. Counts cover top-level rows only. */
@@ -115,18 +114,17 @@ export interface AssistantMentionSelection {
 	};
 }
 
-export interface AssistantMentionCounts {
-	mentionCount: number;
-	workflowMentionCount: number;
-	nodeMentionCount: number;
-	groupMentionCount: number;
-}
+/**
+ * Mentions attached to a message, by kind plus a total. Keyed by `AssistantMentionKind`
+ * so a new kind must be counted here too, and sent to telemetry as one object.
+ */
+export type AssistantMentionCounts = Record<AssistantMentionKind, number> & { total: number };
 
 export const EMPTY_ASSISTANT_MENTION_COUNTS: AssistantMentionCounts = {
-	mentionCount: 0,
-	workflowMentionCount: 0,
-	nodeMentionCount: 0,
-	groupMentionCount: 0,
+	total: 0,
+	workflow: 0,
+	node: 0,
+	group: 0,
 };
 
 export interface AssistantMentionArtifactReference {

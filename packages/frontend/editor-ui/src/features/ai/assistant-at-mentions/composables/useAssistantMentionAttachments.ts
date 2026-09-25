@@ -4,11 +4,12 @@ import {
 } from '@n8n/api-types';
 import { onScopeDispose, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue';
 
-import type {
-	AssistantMentionArtifactReference,
-	AssistantMentionCounts,
-	AssistantMentionItem,
-	AssistantMentionSelection,
+import {
+	EMPTY_ASSISTANT_MENTION_COUNTS,
+	type AssistantMentionArtifactReference,
+	type AssistantMentionCounts,
+	type AssistantMentionItem,
+	type AssistantMentionSelection,
 } from '../assistantAtMentions.types';
 import { mergeNodeSets } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
 
@@ -214,20 +215,12 @@ export function useAssistantMentionAttachments(options: {
 	}
 
 	function snapshotCounts(): AssistantMentionCounts {
-		let workflowMentionCount = 0;
-		let nodeMentionCount = 0;
-		let groupMentionCount = 0;
+		const counts: AssistantMentionCounts = { ...EMPTY_ASSISTANT_MENTION_COUNTS };
 		for (const { item } of selectedRecords.values()) {
-			if (item.kind === 'workflow') workflowMentionCount++;
-			if (item.kind === 'node') nodeMentionCount++;
-			if (item.kind === 'group') groupMentionCount++;
+			counts[item.kind]++;
+			counts.total++;
 		}
-		return {
-			mentionCount: workflowMentionCount + nodeMentionCount + groupMentionCount,
-			workflowMentionCount,
-			nodeMentionCount,
-			groupMentionCount,
-		};
+		return counts;
 	}
 
 	function detachSubmission(

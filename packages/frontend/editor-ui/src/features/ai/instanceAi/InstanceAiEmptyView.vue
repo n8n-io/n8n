@@ -601,7 +601,7 @@ async function handleSubmit(
 		attachments,
 		pushRef: rootStore.pushRef,
 		...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
-		...(mentionCounts.mentionCount > 0 ? { mentionCounts } : {}),
+		...(mentionCounts.total > 0 ? { mentionCounts } : {}),
 	});
 	if (!sent) {
 		isStartingThread.value = false;

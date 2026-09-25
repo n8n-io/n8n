@@ -1363,10 +1363,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_count: 0,
-				workflow_mention_count: 0,
-				node_mention_count: 0,
-				group_mention_count: 0,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 			},
 		);
@@ -1381,10 +1378,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_count: 0,
-				workflow_mention_count: 0,
-				node_mention_count: 0,
-				group_mention_count: 0,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 			},
 		);
@@ -1463,10 +1457,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					prefill_type: 'handoff_setup_panel_execute',
 					prefill_id: null,
 					prompt_modified: false,
-					mention_count: 0,
-					workflow_mention_count: 0,
-					node_mention_count: 0,
-					group_mention_count: 0,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
 				},
 			);
@@ -1512,20 +1503,17 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				},
 			],
 			mentionCounts: {
-				mentionCount: 3,
-				workflowMentionCount: 1,
-				nodeMentionCount: 1,
-				groupMentionCount: 1,
+				total: 3,
+				workflow: 1,
+				node: 1,
+				group: 1,
 			},
 		});
 
 		expect(mockTelemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			expect.objectContaining({
-				mention_count: 3,
-				workflow_mention_count: 1,
-				node_mention_count: 1,
-				group_mention_count: 1,
+				mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
 				attachment_count: 2,
 			}),
 		);
@@ -1554,10 +1542,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_count: 0,
-				workflow_mention_count: 0,
-				node_mention_count: 0,
-				group_mention_count: 0,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 			},
 		);
@@ -1587,10 +1572,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_count: 0,
-				workflow_mention_count: 0,
-				node_mention_count: 0,
-				group_mention_count: 0,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 			},
 		);
@@ -1625,10 +1607,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: 'suggestion_catalog',
 				prefill_id: 'v4-engineering-data-management-1',
 				prompt_modified: true,
-				mention_count: 0,
-				workflow_mention_count: 0,
-				node_mention_count: 0,
-				group_mention_count: 0,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 			},
 		);
@@ -1893,10 +1872,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
-					mention_count: 0,
-					workflow_mention_count: 0,
-					node_mention_count: 0,
-					group_mention_count: 0,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
 				},
 			],
@@ -1911,10 +1887,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
-					mention_count: 0,
-					workflow_mention_count: 0,
-					node_mention_count: 0,
-					group_mention_count: 0,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
 				},
 			],
@@ -1935,10 +1908,10 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				},
 			],
 			mentionCounts: {
-				mentionCount: 3,
-				workflowMentionCount: 1,
-				nodeMentionCount: 1,
-				groupMentionCount: 1,
+				total: 3,
+				workflow: 1,
+				node: 1,
+				group: 1,
 			},
 		});
 		finishRun('run-with-context', 'completed');
@@ -1946,10 +1919,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 
 		expect(responseMetricCalls()[0][1]).toMatchObject({
 			run_id: 'run-with-context',
-			mention_count: 3,
-			workflow_mention_count: 1,
-			node_mention_count: 1,
-			group_mention_count: 1,
+			mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
 			attachment_count: 2,
 		});
 	});
