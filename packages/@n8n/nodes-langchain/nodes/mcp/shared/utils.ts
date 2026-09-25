@@ -31,6 +31,16 @@ import {
 	type McpTool,
 } from './types';
 
+/**
+ * Human-readable label for a tool, following the MCP spec's precedence:
+ * `title`, then `annotations.title`, then `name`.
+ */
+export function getMcpToolDisplayName(
+	tool: Pick<McpTool, 'name' | 'title' | 'annotations'>,
+): string {
+	return tool.title ?? tool.annotations?.title ?? tool.name;
+}
+
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
 
