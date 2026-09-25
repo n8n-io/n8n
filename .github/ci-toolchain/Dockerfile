@@ -9,6 +9,7 @@ ARG PLAYWRIGHT_VERSION=1.62.1
 ARG SAFE_CHAIN_VERSION=1.5.20
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV N8N_EVAL_BROWSER_EXECUTABLE=/usr/local/bin/ci-chromium
 
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins /usr/local/libexec/docker/cli-plugins
@@ -18,6 +19,7 @@ RUN npm install --global "pnpm@${PNPM_VERSION}" \
     && apt-get update \
     && apt-get install -y --no-install-recommends git iproute2 jq rsync sudo zstd \
     && node /opt/ci-playwright/node_modules/playwright/cli.js install chromium --with-deps \
+    && ln -s "$(node -e 'process.stdout.write(require("/opt/ci-playwright/node_modules/playwright").chromium.executablePath())')" "$N8N_EVAL_BROWSER_EXECUTABLE" \
     && rm -rf /var/lib/apt/lists/* /root/.npm
 
 # Use the release binary, not the installer's mutable "latest" endpoint.

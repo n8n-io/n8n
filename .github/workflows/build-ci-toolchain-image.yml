@@ -91,6 +91,7 @@ jobs:
           docker buildx version
           ip -Version
           zstd --version
+          test -x "$N8N_EVAL_BROWSER_EXECUTABLE"
       - name: Activate SafeChain
         run: |
           mkdir -p "$HOME/.safe-chain/bin"
