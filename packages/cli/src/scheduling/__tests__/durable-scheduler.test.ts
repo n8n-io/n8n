@@ -7,6 +7,7 @@ import { createScheduler } from '@n8n/scheduler';
 import type { InstanceSettings, Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
 import type { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { DurableScheduler } from '../durable-scheduler';
@@ -56,6 +57,7 @@ describe('DurableScheduler', () => {
 		const workflowOwner = mock<WorkflowScheduledJobOwner>();
 		const agentOwner = mock<AgentScheduledJobOwner>();
 		const systemTaskOwner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
+		const eventService = mock<EventService>();
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -92,8 +94,19 @@ describe('DurableScheduler', () => {
 			workflowOwner,
 			agentOwner,
 			systemTaskOwner,
+			eventService,
 		);
-		return { scheduler, inner, logger, tracing, tasks, workflowOwner, agentOwner, systemTaskOwner };
+		return {
+			scheduler,
+			inner,
+			logger,
+			tracing,
+			tasks,
+			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
+			eventService,
+		};
 	}
 
 	describe('composition', () => {

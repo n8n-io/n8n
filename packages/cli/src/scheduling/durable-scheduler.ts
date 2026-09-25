@@ -12,6 +12,7 @@ import {
 } from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
+import { EventService } from '@/events/event.service';
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
@@ -20,6 +21,7 @@ import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-ha
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
+import { reportSystemTaskOverlaps } from './system-tasks/system-task-overlap-reporter';
 import { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
@@ -47,6 +49,7 @@ export class DurableScheduler implements Scheduler {
 		workflowOwner: WorkflowScheduledJobOwner,
 		agentOwner: AgentScheduledJobOwner,
 		systemTaskOwner: SystemTaskScheduledJobOwner,
+		eventService: EventService,
 	) {
 		const config = globalConfig.scheduler;
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
@@ -106,6 +109,8 @@ export class DurableScheduler implements Scheduler {
 						maxConcurrentPasses: config.maxConcurrentPasses,
 					},
 					now: async () => await tasks.readDbTime(),
+					onHeldByConcurrencyLimit: (occurrences) =>
+						reportSystemTaskOverlaps(eventService, occurrences),
 					onEvent: ({ level, message, context }) => logger[level](message, context),
 					tracer,
 				})
