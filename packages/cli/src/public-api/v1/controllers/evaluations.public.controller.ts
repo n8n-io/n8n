@@ -199,8 +199,6 @@ export class EvaluationsPublicController {
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Param('runId', testRunIdParamSchema) runId: string,
 	): Promise<TestRunSummaryPublicDto> {
-		// Scoped lookup: a run of another workflow returns null (404), so a caller cannot reach it
-		// by guessing ids.
 		const summary = await this.evaluationTestRunService.findSummaryByWorkflowId(runId, workflowId);
 		if (!summary) throw new NotFoundError('Test run not found');
 
@@ -260,12 +258,9 @@ export class EvaluationsPublicController {
 	): Promise<CancelledTestRunPublicDto> {
 		this.assertEvaluationsEnabled();
 
-		// Scoped lookup: a run from another workflow returns null (→ 404), so a
-		// caller can't reach another workflow's runs by guessing ids.
 		const testRun = await this.evaluationTestRunService.findOneByIdAndWorkflowId(runId, workflowId);
 		if (!testRun) throw new NotFoundError('Test run not found');
 
-		// `canBeCancelled` returns true when the run is in a terminal state.
 		if (this.testRunnerService.canBeCancelled(testRun)) {
 			throw new ConflictError(`The test run "${runId}" cannot be cancelled`);
 		}
