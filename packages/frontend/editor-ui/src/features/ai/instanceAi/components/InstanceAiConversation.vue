@@ -634,7 +634,7 @@ async function handleSubmit(
 			pushRef: rootStore.pushRef,
 			handoffContext,
 			...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
-			...(mentionCounts.mentionCount > 0 ? { mentionCounts } : {}),
+			...(mentionCounts.total > 0 ? { mentionCounts } : {}),
 		})
 		.then((sent) => {
 			if (!sent) {

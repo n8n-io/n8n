@@ -52,14 +52,29 @@ const assistantMentionThreadId = z
 	.string()
 	.nullable()
 	.describe('Thread the composer belongs to. Null before the first message creates one');
+const mentionCount = z.number().int().nonnegative();
+// One object rather than one column per kind: the picker will grow to agents,
+// data tables and more, and each new kind adds a key here, never a column on the
+// event. Keys match the `kind` values of the mention events.
+const assistantMentionCounts = z
+	.object({
+		total: mentionCount.describe('Sum of all kinds. Stable predicate for "has mentions"'),
+		workflow: mentionCount,
+		node: mentionCount,
+		group: mentionCount,
+	})
+	.describe('Picker mentions attached to the message, by kind');
 // Shared by the send and the response events so a with/without-mentions cut reads
 // the same columns on both.
-const mentionCountProperties = {
-	mention_count: z.number().int().nonnegative(),
-	workflow_mention_count: z.number().int().nonnegative(),
-	node_mention_count: z.number().int().nonnegative(),
-	group_mention_count: z.number().int().nonnegative(),
-	attachment_count: z.number().int().nonnegative(),
+const mentionContextProperties = {
+	mention_counts: assistantMentionCounts,
+	attachment_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.describe(
+			'All outbound attachments: files, workflow, agent and nodes attachments, including ones the host adds',
+		),
 };
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
@@ -308,7 +323,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			instance_id: z.string(),
 			thread_id: z.string(),
 			run_id: z.string().describe('Run ID returned for the user-submitted message'),
-			...mentionCountProperties,
+			...mentionContextProperties,
 			latency_ms: z
 				.number()
 				.int()
@@ -524,7 +539,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.int()
 				.nonnegative()
 				.describe('How many times the user opened a workflow or group sub-menu during this open'),
-			duration_ms: z.number().int().nonnegative().describe('Milliseconds the picker was open'),
 		}),
 	},
 	USER_SELECTED_AI_ASSISTANT_MENTION: {
@@ -588,7 +602,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Whether the user edited the pre-filled text before sending. Always false for pre-fills that send without being shown. Null when the user typed the message.',
 				),
-			...mentionCountProperties,
+			...mentionContextProperties,
 		}),
 	},
 	BUILDER_LISTED_WORKFLOWS: {

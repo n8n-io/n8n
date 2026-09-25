@@ -314,7 +314,6 @@ describe('InstanceAiInput — mention attachments', () => {
 				result_count: 4,
 				ambiguous_result_count: 2,
 				submenu_open_count: 1,
-				duration_ms: expect.any(Number),
 			},
 		);
 	});
@@ -417,10 +416,10 @@ describe('InstanceAiInput — mention attachments', () => {
 		];
 		expect(firstSubmit[1]).toEqual([{ type: 'workflow', id: 'w1', name: 'Orders' }]);
 		expect(firstSubmit[6]).toEqual({
-			mentionCount: 1,
-			workflowMentionCount: 1,
-			nodeMentionCount: 0,
-			groupMentionCount: 0,
+			total: 1,
+			workflow: 1,
+			node: 0,
+			group: 0,
 		});
 		expect(firstSubmit[2]()).toBe(true);
 		await findByTestId('attachment-preview-resource');

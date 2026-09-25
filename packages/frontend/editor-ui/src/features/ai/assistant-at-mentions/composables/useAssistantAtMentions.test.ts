@@ -244,11 +244,7 @@ describe('useAssistantAtMentions', () => {
 		// The host's v-model flips the flag before the menu's close notification arrives.
 		mentions.menuOpen.value = false;
 		mentions.handleMenuOpenChange(false);
-		expect(onClosed).toHaveBeenLastCalledWith({
-			source: 'typed',
-			reason: 'closed_menu',
-			durationMs: expect.any(Number),
-		});
+		expect(onClosed).toHaveBeenLastCalledWith({ source: 'typed', reason: 'closed_menu' });
 
 		await openTyped('@ord');
 		input.value = 'ord';
