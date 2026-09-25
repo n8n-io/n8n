@@ -23,7 +23,7 @@ export class StoragePathRenameRule implements IBreakingChangeInstanceRule {
 			description:
 				'The filesystem storage directory `~/.n8n/binaryData` is renamed to `~/.n8n/storage` on the first start of the new version.',
 			category: BreakingChangeCategory.infrastructure,
-			impact: 'upgradeBlocked',
+			impact: 'behaviorChanges',
 		};
 	}
 
