@@ -1033,25 +1033,13 @@ async function resolveTargetForCall(
 export function createBuildAgentTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.BUILD_AGENT)
 		.description(
-			'Builds and edits n8n **Agent** artifacts (instructions, model, tools, skills, tasks, ' +
-				'integrations, sub-agents) and delegates draft agent test runs to the agents-module ' +
-				'builder. Load `agent-builder` via `load_skill` before calling this tool and follow it ' +
-				'for prerequisite creation, faithful handoff, targeting, interactive questions, ' +
-				'testing, and publishing. In `message`, forward only the user’s explicit requirements ' +
-				'and relevant prior decisions; never infer, invent, expand, recommend, or prescribe ' +
-				'implementation details. Do not translate a named outcome or service into an ' +
-				'implementation choice — for example, do not turn “a Slack agent” into a Slack node ' +
-				'tool. This tool is only for Agent artifacts. When the request is workflow-anchored ' +
-				'(via the intent gate / ' +
-				'`intent-recognition`), stay on the `workflow-builder` path and do not call this tool ' +
-				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
-				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
-				'provide, ask the user or use a placeholder; do not route around that by calling ' +
-				'`build-agent`. Returns the builder’s reply, the target `agentRef`/`agentId`, and ' +
-				'whether it updated the Agent config. It can also return structured ' +
-				'`requiredArtifacts` for workflows or data tables Instance AI must create. Build ' +
-				'an `agent-entrypoint` workflow around the returned Agent; never pass it back in ' +
-				'`workflowContext` or attach it as an Agent tool.',
+			'Builds, edits, and test-runs n8n **Agent** artifacts (instructions, model, tools, ' +
+				'skills, tasks, integrations, sub-agents). Load `agent-builder` via `load_skill` first ' +
+				'and follow it; `message` is a faithful copy of the user’s request, never your own ' +
+				'spec. Only for Agent artifacts: on the `workflow-builder` path never call it — not ' +
+				'to inspect nodes, list workflows, or supply a tool the workspace lacks (ask the user ' +
+				'or use a placeholder instead). Returns the builder’s reply, `agentRef`/`agentId`, ' +
+				'whether the config changed, and any `requiredArtifacts` Instance AI must create.',
 		)
 		.input(buildAgentInputSchema)
 		.output(buildAgentOutputSchema)

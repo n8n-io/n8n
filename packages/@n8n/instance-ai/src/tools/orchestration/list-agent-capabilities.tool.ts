@@ -37,17 +37,11 @@ const listAgentCapabilitiesOutputSchema = z.object({
 export function createListAgentCapabilitiesTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES)
 		.description(
-			'List what n8n Agents can do and the chat-channel integrations they support. ' +
-				"Returns each supported channel's `type`, `label`, supported credential types, " +
-				'and builder guidance (`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`), ' +
-				'plus `agentCapabilities` (what an agent can do beyond chat) and `limitations` ' +
-				'(agent-level constraints to respect when planning a build). ' +
-				'Call this before building or modifying an agent whenever the user names a ' +
-				'specific channel or capability (e.g. WhatsApp, Teams): if the named channel ' +
-				'is absent from `channels`, it is unsupported for agents — explain the ' +
-				'limitation and offer the listed alternatives instead of improvising a ' +
-				'workflow substitute or claiming it is configured. Read-only; channels and ' +
-				'capabilities are configured via `build-agent`.',
+			'List the chat channels, capabilities, and limitations of n8n Agents. Read-only. ' +
+				'Call it before building or changing an agent when the user names a channel or ' +
+				'capability (e.g. WhatsApp, Teams). A channel absent from `channels` is unsupported: ' +
+				'explain that and offer the listed alternatives; never improvise a workflow ' +
+				'substitute or claim it is configured.',
 		)
 		.input(z.object({}))
 		.output(listAgentCapabilitiesOutputSchema)

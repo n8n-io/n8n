@@ -166,12 +166,9 @@ const nodeUsageAction = z.object({
 	action: z
 		.literal('node-usage')
 		.describe(
-			'Which node types the workflows in scope actually use, and how many use each, most-used ' +
-				'first. Read this BEFORE opening workflows when the question is what a project is built ' +
-				'out of — its conventions, which integrations are in play, whether something already ' +
-				'exists. Call it with no `nodeType` for the overview; call it with one to get the ' +
-				'workflows using that type, most recently updated first, when you want to read a ' +
-				'current example.',
+			'Node types the workflows in scope use, with counts, most-used first. Read it BEFORE ' +
+				"opening workflows to learn a project's conventions and integrations. With `nodeType`, " +
+				'returns the workflows using that type, most recently updated first.',
 		),
 	nodeType: z
 		.string()
@@ -256,7 +253,7 @@ const setupAction = z.object({
 		)
 		.optional()
 		.describe(
-			'Recipes for the Simplified Custom Auth credentials the user will create during setup: the setup form pre-fills the template and asks only for the placeholder values. Provide one per templated credential. REQUIRED before composing: load the `credential-recipe-research` skill and execute its lookup procedure — the template and testUrl must come from provider pages fetched there, never from memory.',
+			'Simplified Custom Auth recipes, one per templated credential; the setup form pre-fills the template. REQUIRED first: load the `credential-recipe-research` skill and follow it — the template and testUrl come from fetched provider pages, never from memory.',
 		),
 	allowPlainGenericAuth: z
 		.boolean()
@@ -268,18 +265,15 @@ const setupAction = z.object({
 		.array(z.string())
 		.optional()
 		.describe(
-			'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user ' +
-				'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
-				'credential whose secret is invalid or rotated (e.g. pasted a new token in chat, which you ' +
-				'cannot store). Never pass as a default. The card opens with nothing preselected so the user ' +
-				'lands on credential creation; existing credentials of the type stay listed in case they ' +
-				'change their mind. Pass the same list you passed to build-workflow.',
+			'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — only when the ' +
+				'user asked for a new credential or must replace an invalid or rotated secret. Never a ' +
+				'default. Pass the same list you passed to build-workflow.',
 		),
 	reopenSkipped: z
 		.array(z.string())
 		.optional()
 		.describe(
-			'Credential types (or node names) the user has just explicitly asked to configure after skipping them earlier — e.g. ["slackApi"] for "connect Slack now". Use the `reopenWith` value setup reported for that card. Anything the user skipped and did not ask about stays out of the card; without this, setup reports skipped credentials instead of re-opening them. An entry matching nothing in the workflow comes back as `unknown_reopen_target` with the list to choose from.',
+			'Credential types or node names the user just asked to configure after skipping them (e.g. ["slackApi"] for "connect Slack now"); use the `reopenWith` value setup reported. Skipped cards the user did not ask about stay out.',
 		),
 	includeAllNodes: z
 		.boolean()

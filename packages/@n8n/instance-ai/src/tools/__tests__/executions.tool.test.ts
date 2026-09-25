@@ -195,27 +195,46 @@ describe('executions tool', () => {
 			expect(result.workflow).toEqual({
 				activeVersionId: 'published-1',
 				draftVersionId: 'draft-2',
+				hasUnpublishedChanges: true,
 			});
 			expect(result.executions[0]).toMatchObject({
 				id: 'exec-live',
 				workflowVersionId: 'published-1',
+				ranPublishedVersion: true,
 			});
 			expect(result.executions[1]).toMatchObject({
 				id: 'exec-draft',
 				workflowVersionId: 'draft-2',
+				ranPublishedVersion: false,
 			});
 		});
 
 		it('should report a null published version while the workflow is unpublished', async () => {
 			const context = createMockContext();
-			(context.executionService.list as Mock).mockResolvedValue([]);
+			(context.executionService.list as Mock).mockResolvedValue([
+				{
+					id: 'exec-unknown',
+					workflowId: 'wf-1',
+					workflowName: 'Test WF',
+					status: 'success',
+					startedAt: '2024-01-01T00:00:00Z',
+					mode: 'manual',
+					workflowVersionId: null,
+				},
+			]);
 
 			const tool = createExecutionsTool(context);
 			const result = await executeTool<{
+				executions: Array<{ id: string; ranPublishedVersion?: boolean }>;
 				workflow?: { activeVersionId: string | null; draftVersionId: string };
 			}>(tool, { action: 'list' as const, workflowId: 'wf-1' }, {} as never);
 
-			expect(result.workflow).toEqual({ activeVersionId: null, draftVersionId: 'draft-1' });
+			expect(result.workflow).toEqual({
+				activeVersionId: null,
+				draftVersionId: 'draft-1',
+				hasUnpublishedChanges: false,
+			});
+			expect(result.executions[0].ranPublishedVersion).toBe(false);
 		});
 
 		it('should skip the version lookup for an instance-wide list', async () => {

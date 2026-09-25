@@ -386,7 +386,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished, so never tell the user a card is open or that they must authorize. A `success` result carries a `credentials` map plus a `selections` array reporting what each selection actually is (`connection`, `hasNoValues`) and a `verified` flag: only report credentials as ready when `verified` is true, and otherwise relay the unresolved selections named in `message`. A sole service-scoped credential may have been auto-selected with no user action, unless the entry set `preferNew`; generic auth types always need an explicit Continue.',
+			'Open the credential setup card for the user to create or select credentials. Any returned result means the card already closed: never tell the user a card is open or that they must authorize. Report credentials as ready only when `verified` is true; otherwise relay the unresolved selections in `message`. A sole service-scoped credential may be auto-selected unless `preferNew` is set.',
 		),
 	credentials: z
 		.array(
@@ -407,7 +407,7 @@ const setupAction = z.object({
 					.boolean()
 					.optional()
 					.describe(
-						'Set when the user explicitly asked to create a new credential of this type ("create a new Slack credential"), or needs to enter a replacement for one whose secret is invalid or rotated (e.g. pasted a new token in chat, which you cannot store). The card then opens with nothing preselected instead of offering the most recent existing credential — existing ones stay listed in case the user changes their mind.',
+						'Set only when the user asked for a new credential of this type or must replace an invalid or rotated secret. The card then opens with nothing preselected.',
 					),
 				setupHint: standaloneSetupHintField.optional(),
 			}),
@@ -423,7 +423,7 @@ const setupAction = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'Set true only for standalone setup when the user explicitly asks to create a new, separate, or different credential, or explicitly asks to see the setup card or choose a credential even if one already exists. Keeps the card open for an explicit user choice instead of automatically accepting a sole existing credential. Omit otherwise.',
+			'Standalone setup only: set true when the user explicitly asks for a new or different credential, or to see the card or choose one, even if one exists. Keeps the card open instead of accepting a sole existing credential.',
 		),
 	credentialFlow: z
 		.object({

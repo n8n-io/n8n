@@ -63,19 +63,15 @@ export function createAskUserTool(context?: InstanceAiContext) {
 	return new Tool(ASK_USER_TOOL_ID)
 		.description(
 			'Ask the user when only a human can decide; the run suspends until they respond. ' +
-				'Questions are single-select, multi-select, or free-text. ' +
-				'Before the first build-workflow call, use only for choices that change workflow intent or topology ' +
-				'(e.g. destination service) — setup values (recipients, accounts, resources, channels, credentials, ' +
-				'timezone) use placeholders or unresolved newCredential() calls instead. ' +
-				'The UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +
-				'catch-all options ("Something else", "Other", "None of the above") in the options array, and NEVER ' +
-				'add a follow-up question elaborating a previous "other" answer. Keep questions concise and independent ' +
-				"of each other's answers. A skip or dismissal (answered: false, or skipped: true) grants no additional permission. " +
-				'Choose defaults only for unspecified details within the requested task, or leave those details for setup. ' +
-				'If a skipped question seeks permission to change existing authentication, delete nodes, or expand scope, ' +
-				'preserve the existing state and report any remaining blocker. ' +
+				'Questions are single-select, multi-select, or free-text; keep them concise and independent. ' +
+				'Before the first build-workflow call, ask only about workflow intent or topology (e.g. destination ' +
+				'service); setup values (recipients, accounts, channels, credentials, timezone) use placeholders or ' +
+				'unresolved newCredential() calls. The UI adds a "Something else" input to every select question. ' +
+				'NEVER add catch-all options ("Other", "None of the above") or follow up on an "other" answer. ' +
 				'NEVER re-present an answered, deferred, or skipped question. ' +
-				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
+				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys. ' +
+				'A skip (answered: false or skipped: true) grants no permission: choose defaults only within the ' +
+				'requested task, keep existing authentication, nodes, and scope, and report any remaining blocker.',
 		)
 		.input(askUserInputSchema)
 		.output(

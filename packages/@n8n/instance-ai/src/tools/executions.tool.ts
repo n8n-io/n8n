@@ -29,15 +29,9 @@ const listAction = z.object({
 	action: z
 		.literal('list')
 		.describe(
-			'List recent workflow executions. Each row carries the `workflowVersionId` it ran. ' +
-				'With `workflowId`, the result also carries `workflow.activeVersionId` (the published ' +
-				'version, null while unpublished) and `workflow.draftVersionId`. Use them to answer ' +
-				'whether the LIVE workflow works: a row ran the published code only when its ' +
-				'`workflowVersionId` and `workflow.activeVersionId` are both set and equal. Two nulls ' +
-				'are not a match — a null `activeVersionId` means the workflow is not published, so no ' +
-				'row can prove production works, and a row with a null `workflowVersionId` ran an ' +
-				'unknown version, which is not the same as a draft. A draft version different from the ' +
-				'published one means the latest changes are not live yet.',
+			'List recent executions. With `workflowId`, only rows with `ranPublishedVersion: true` ' +
+				'prove the LIVE workflow works; `workflow.activeVersionId` is null while unpublished, ' +
+				'and `workflow.hasUnpublishedChanges` means the latest draft is not live yet.',
 		),
 	workflowId: z.string().optional().describe('Workflow ID'),
 	status: z
@@ -57,9 +51,8 @@ const getAction = z.object({
 	action: z
 		.literal('get')
 		.describe(
-			'Get execution status without blocking (poll running ones). `workflowVersionId` is the ' +
-				'version this run executed; it only tells you whether the run was live when compared ' +
-				"with the workflow's `activeVersionId`.",
+			'Get execution status without blocking (poll running ones). The run was live only if ' +
+				"`workflowVersionId` equals the workflow's `activeVersionId`.",
 		),
 	executionId: z.string().describe('Execution ID'),
 });
@@ -104,18 +97,12 @@ const runStepAction = z.object({
 	action: z
 		.literal('run-step')
 		.describe(
-			'Run ONE node of a saved workflow and return its real output — the canvas ' +
-				'"Execute step". The node runs inside the real workflow, so expressions ' +
-				'that reference other nodes resolve, sub-nodes (model, memory, tools) come ' +
-				"along, and the run lands in the workflow's execution history. " +
-				"This is a REAL run with the user's real credentials against their real " +
-				'systems. Use it on reads and transforms. Do not use it to debug a node ' +
-				'that writes (create/update/delete/send/append, non-GET HTTP) — that ' +
-				'performs the effect again. Read the failed execution with action="debug" ' +
-				'and action="get-resolved-node-parameters" instead. When unsure, treat the ' +
-				'node as a write. A tool runs through the node that owns it (the Agent), so ' +
-				"mockInput and reuseExecutionId feed that node and the tool's own " +
-				'arguments come from toolArguments. No other sub-node kind can run.',
+			'Run ONE node of a saved workflow — the canvas "Execute step". This is a REAL run ' +
+				"with the user's real credentials, logged in execution history. Use it on reads " +
+				'and transforms. NEVER on a node that writes (create/update/delete/send/append, ' +
+				'non-GET HTTP): that repeats the effect, so debug it with action="debug" and ' +
+				'action="get-resolved-node-parameters". When unsure, treat the node as a write. ' +
+				'A tool node runs through the Agent that owns it; pass its arguments in toolArguments.',
 		),
 	workflowId: z.string().describe('Workflow ID'),
 	nodeName: z.string().describe('Name of the node, as named in the workflow the action targets'),
@@ -132,13 +119,9 @@ const runStepAction = z.object({
 		.array(z.record(z.unknown()))
 		.optional()
 		.describe(
-			'Items to feed the target node, skipping every node above it. Good for ' +
-				'studying one node on its own: probing an edge case, or holding the input ' +
-				'still while upstream data changes between runs. The result shows the node ' +
-				'handles THIS input; it shows nothing about what the workflow really ' +
-				'produces, so use reuseExecutionId or a chain run when that is the ' +
-				'question. This does not make a write node safe: the node still runs for ' +
-				'real, only its input is invented.',
+			'Items to feed the target node, skipping every node above it. Shows how the node ' +
+				'handles THIS input, not what the workflow really produces (use reuseExecutionId ' +
+				'for that). A write node still runs for real.',
 		),
 	toolArguments: z
 		.union([z.string(), z.record(z.unknown())])
@@ -196,11 +179,9 @@ const getResolvedNodeParametersAction = z.object({
 	action: z
 		.literal('get-resolved-node-parameters')
 		.describe(
-			"Replay expression resolution for a node's parameters against a past execution. " +
-				'Returns raw `parameters`, the `resolved` tree, `failedExpressions`, and ' +
-				'`emptyResolutions` (resolved to `null`/`undefined`/`""` — the common silent ' +
-				'cause of empty downstream fields). Use when debugging why a node received an ' +
-				'unexpected value — more precise than guessing from raw expressions or input data.',
+			"Replay a node's expression resolution against a past execution: raw `parameters`, " +
+				'the `resolved` tree, `failedExpressions`, and `emptyResolutions` (the usual silent ' +
+				'cause of empty fields). Use it to debug why a node got an unexpected value.',
 		),
 	executionId: z.string().describe('Execution ID'),
 	nodeName: z.string().describe('Name of the node, as named in the workflow the action targets'),
@@ -263,7 +244,24 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		resolveListedWorkflowVersions(context, input.workflowId),
 	]);
 
-	return workflow === undefined ? { executions } : { executions, workflow };
+	if (workflow === undefined) return { executions };
+
+	const { activeVersionId, draftVersionId } = workflow;
+	return {
+		executions: executions.map((execution) => ({
+			...execution,
+			// A null on either side is an unknown or unpublished version, never a match.
+			ranPublishedVersion:
+				activeVersionId !== null &&
+				execution.workflowVersionId !== null &&
+				execution.workflowVersionId !== undefined &&
+				execution.workflowVersionId === activeVersionId,
+		})),
+		workflow: {
+			...workflow,
+			hasUnpublishedChanges: activeVersionId !== null && activeVersionId !== draftVersionId,
+		},
+	};
 }
 
 /**
@@ -499,18 +497,12 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 export function createExecutionsTool(context: InstanceAiContext) {
 	return new Tool('executions')
 		.description(
-			'Manage workflow executions — list, inspect, run, run one node, debug, ' +
-				'get node output, get resolved node parameters for a past run, and stop. ' +
-				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
-				'do not treat such a request as a request to build something. ' +
-				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
-				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
-				'action="run-step" runs a single node of the saved workflow, like the canvas ' +
-				'"Execute step" button. Use it to see what one node really returns — when ' +
-				'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
-				'the node re-runs on the data it actually received. It runs for real, so do ' +
-				'not point it at a node that writes.',
+			'Inspect, run, debug, and stop workflow executions. ' +
+				'"Trigger/run my <workflow>" is action="run" (find it with workflows(action="list"), ' +
+				'pass the user\'s values as inputData), not a build request. Reserve action="run" for ' +
+				'runs the user asked for: it runs live with no pin data and asks for approval. ' +
+				'To verify a workflow you built, use verify-built-workflow instead. ' +
+				'action="run-step" runs one node for real, so never point it at a node that writes.',
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

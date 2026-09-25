@@ -96,11 +96,11 @@ const mcpServersOutputSchema = z.union([
 	connectOutputSchema,
 ]);
 
-const DESCRIPTION = `The user's MCP servers: connections to third-party services that persist across conversations, exposing tools you can use here. Not \`credentials\`, which only stores what a node authenticates with when a workflow runs, and not for building — a workflow that talks to a service uses that service's node and credential. What separates them is who runs it: reading, fetching or summarizing a service's data yourself, in this conversation, is this tool; a workflow the user runs later is a node.
-\`connected\`: which servers are connected, and each one's tool count. Only the user connects or disconnects, so a server missing here is one they never connected or disconnected — ask here instead of answering from the conversation. A connected server with no tools has a broken or expired connection.
+const DESCRIPTION = `The user's MCP servers: connections to third-party services that persist across conversations, whose tools you run yourself in this conversation. Not \`credentials\` and not for building — a workflow the user runs later uses a node and its credential.
+\`connected\`: servers and tool counts. Only the user connects or disconnects, so a missing server is one they never connected or disconnected — ask here instead of answering from the conversation. No tools means a broken or expired connection.
 \`details\`: one server's tool names; \`connected\` never returns them. \`search_tools\` finds a tool by keyword.
-\`search\`: find a server for a service nothing connected covers, before saying it is unavailable or serving that request another way.
-\`connect\`: offer servers for the user to connect, resuming once they connect or skip. Only they can complete it; also use it to switch a credential or reconnect a broken server. In the same turn, first write one sentence telling them what connecting unlocks.`;
+\`search\`: find a server for an uncovered service before calling it unavailable or working around it.
+\`connect\`: let the user connect, switch a credential, or reconnect; resumes when they connect or skip. First write one sentence on what connecting unlocks.`;
 
 const NOTHING_CONNECTED_HINT =
 	'Nothing connected. Only the user can connect a server: `search` for it, then `connect` it.';
