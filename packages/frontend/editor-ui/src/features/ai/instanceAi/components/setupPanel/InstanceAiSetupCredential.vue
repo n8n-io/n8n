@@ -2,6 +2,7 @@
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import isEqual from 'lodash/isEqual';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
+import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nButton,
 	N8nCallout,
@@ -178,13 +179,17 @@ watch(
 		selectedOAuthId,
 		() => storedCredential.value?.updatedAt,
 		() => storedCredential.value?.connectedByMe,
+		() => storedCredential.value?.scopes?.join(','),
 	],
 	async ([id], _previous, onCleanup) => {
 		let stale = false;
 		onCleanup(() => {
 			stale = true;
 		});
-		oauthConnection.value = undefined;
+		const permissions = getResourcePermissions(storedCredential.value?.scopes).credential;
+		oauthConnection.value = storedCredential.value?.isResolvable
+			? storedCredential.value.connectedByMe
+			: permissions.read === true && !permissions.update;
 		oauthMode.value = 'unknown';
 		loadingOAuth.value = Boolean(id);
 		if (!id) return;
@@ -207,7 +212,7 @@ watch(
 				oauthMode.value = customClient || !form.managedOAuthAvailable.value ? 'custom' : 'managed';
 			}
 		} catch {
-			// A shared credential can be usable without permission to read its data.
+			// Keep the permission-based fallback when credential data is unavailable.
 		} finally {
 			if (!stale) loadingOAuth.value = false;
 		}

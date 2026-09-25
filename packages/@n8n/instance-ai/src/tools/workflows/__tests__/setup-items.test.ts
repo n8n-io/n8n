@@ -373,6 +373,28 @@ const templatedAuthHint = {
 };
 
 describe('buildSetupItemsFromCredentialRequests', () => {
+	it.each([
+		[undefined, true],
+		[true, undefined],
+	])('preserves preferNew across duplicate requests (%s, %s)', (first, second) => {
+		const requests = [first, second].map((preferNew) => ({
+			credentialType: 'slackApi',
+			preferNew,
+		}));
+		const analyzed = [
+			setupRequest({ nodeName: 'Slack', credentialType: 'slackApi', credentialNeedsAction: true }),
+		];
+
+		for (const items of [
+			buildSetupItemsFromCredentialRequests('wf-1', requests),
+			buildSetupItemsFromAnnouncement('wf-1', requests, analyzed),
+		]) {
+			expect(items).toEqual([
+				expect.objectContaining({ credentialType: 'slackApi', preferNew: true }),
+			]);
+		}
+	});
+
 	it('builds one service-keyed credential item per type, carrying reason and setupHint', () => {
 		const items = buildSetupItemsFromCredentialRequests('wf-1', [
 			{ credentialType: 'slackApi', reason: 'to post alerts' },

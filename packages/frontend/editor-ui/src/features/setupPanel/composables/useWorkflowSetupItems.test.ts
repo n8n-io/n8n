@@ -645,12 +645,16 @@ describe('useWorkflowSetupItems', () => {
 		'connected',
 		'disconnected',
 		'read-only shared credential',
+		'read-only shared read-error',
+		'editable missing data',
+		'unknown access missing data',
 		'clientCredentials',
 		'read-error',
 	] as const)('derives saved OAuth completion after loading a workflow: %s', async (scenario) => {
-		const scopes: ICredentialsResponse['scopes'] =
-			scenario === 'read-only shared credential'
-				? ['credential:read']
+		const scopes: ICredentialsResponse['scopes'] = scenario.startsWith('read-only')
+			? ['credential:read']
+			: scenario === 'unknown access missing data'
+				? undefined
 				: ['credential:read', 'credential:update'];
 		const credential = {
 			id: 'gmail-1',
@@ -686,12 +690,12 @@ describe('useWorkflowSetupItems', () => {
 		expect(state.isItemDone(item)).toBe(false);
 		expect(state.credentialsAvailable.value).toBe(true);
 		expect(state.isCheckingOAuthCredentials.value).toBe(true);
-		if (scenario === 'read-error') read.reject(new Error('Request failed'));
+		if (scenario.endsWith('read-error')) read.reject(new Error('Request failed'));
 		else
 			read.resolve({
 				...credential,
 				data:
-					scenario === 'read-only shared credential'
+					scenario === 'read-only shared credential' || scenario.endsWith('missing data')
 						? undefined
 						: {
 								grantType:
@@ -700,7 +704,9 @@ describe('useWorkflowSetupItems', () => {
 							},
 			});
 		await flushPromises();
-		expect(state.isItemDone(item)).toBe(!['disconnected', 'read-error'].includes(scenario));
+		expect(state.isItemDone(item)).toBe(
+			scenario.startsWith('read-only') || ['connected', 'clientCredentials'].includes(scenario),
+		);
 		expect(state.isCheckingOAuthCredentials.value).toBe(false);
 	});
 

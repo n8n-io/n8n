@@ -947,30 +947,37 @@ async function handleSetup(
 		if (isSetupPanelEnabled(context) && !keepsCard) {
 			const panelWorkflowId = resolveSetupPanelWorkflowId(context, input);
 			if (panelWorkflowId !== undefined) {
-				const preferNewTypes = await filterSatisfiedSetupCredentialTypes(
-					context,
-					panelWorkflowId,
-					input.credentials
-						.filter((request) => request.preferNew)
-						.map((request) => request.credentialType),
-				);
-				const analyzed = preferNewTypes?.length
-					? await analyzeWorkflow(context, panelWorkflowId, undefined, { includeSettled: true })
-					: undefined;
-				if (!analyzed || !requestsCredentialReplacement(analyzed, preferNewTypes)) {
-					return await announceSetupItems(
+				try {
+					const preferNewTypes = await filterSatisfiedSetupCredentialTypes(
 						context,
-						{
-							...input,
-							credentials: input.credentials.map((request) =>
-								request.preferNew
-									? { ...request, preferNew: preferNewTypes?.includes(request.credentialType) }
-									: request,
-							),
-						},
 						panelWorkflowId,
-						analyzed,
+						input.credentials
+							.filter((request) => request.preferNew)
+							.map((request) => request.credentialType),
 					);
+					const analyzed = preferNewTypes?.length
+						? await analyzeWorkflow(context, panelWorkflowId, undefined, { includeSettled: true })
+						: undefined;
+					if (!analyzed || !requestsCredentialReplacement(analyzed, preferNewTypes)) {
+						return await announceSetupItems(
+							context,
+							{
+								...input,
+								credentials: input.credentials.map((request) =>
+									request.preferNew
+										? { ...request, preferNew: preferNewTypes?.includes(request.credentialType) }
+										: request,
+								),
+							},
+							panelWorkflowId,
+							analyzed,
+						);
+					}
+				} catch (error) {
+					context.logger.warn('Failed to check credential replacement; using setup card', {
+						workflowId: panelWorkflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
 				}
 			}
 		}

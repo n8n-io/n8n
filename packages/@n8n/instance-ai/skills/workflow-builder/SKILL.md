@@ -111,10 +111,12 @@ resources, credentials, channel IDs, or timezone; use placeholders or unresolved
 for a capability the user did not name,
 discover coverage first and use a Gateway credits–covered node instead of asking
 when the user has no credential for a comparable tool (see Gateway credits
-Preference). Setup details — recipients, accounts,
-resources, channels, credentials, timezone — belong in placeholders or
-unresolved `newCredential()` calls until post-build setup. After the first
-build, use `ask-user` when stuck or genuinely ambiguous; do not retry the same
+Preference). Setup details such as recipients, accounts, resources,
+channels, credentials, and timezone belong in placeholders or
+unresolved `newCredential()` calls. Announce known credentials through early
+setup when available, then continue building without waiting for the user.
+After the first build, resolve remaining setup and use `ask-user` when stuck
+or when choices are ambiguous; do not retry the same
 failing approach more than twice. Never re-ask an answered, deferred, or skipped
 question. A skip grants no additional permission. Choose defaults only for
 unspecified details within the requested task. If a skipped question seeks

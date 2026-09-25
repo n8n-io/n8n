@@ -96,6 +96,7 @@ const {
 	rows,
 	rowSource,
 	credentialsAvailable,
+	savedWorkflowChecksum,
 	isRefreshingWorkflow,
 	isCheckingOAuthCredentials,
 	isAgentBuilding,
@@ -151,6 +152,7 @@ const actions = useSetupPanelActions({
 	threadId: thread.id,
 	workflowId: () => props.workflowId,
 	isAgentBuilding,
+	savedWorkflowChecksum,
 	onFlushResult: notifyApplyResult,
 	onSaved: (workflow) => panelTelemetry.trackSaved(workflow),
 });

@@ -177,6 +177,7 @@ const savedCredential = mock<ICredentialsResponse>({
 	id: 'new-credential',
 	name: 'Service account',
 	type: 'serviceApi',
+	scopes: ['credential:read', 'credential:update'],
 });
 const renderComponent = createComponentRenderer(InstanceAiSetupCredential, {
 	props: {
@@ -657,6 +658,37 @@ describe('InstanceAiSetupCredential', () => {
 		},
 	);
 
+	it.each([
+		{ readOnly: true, readFails: false },
+		{ readOnly: true, readFails: true },
+		{ readOnly: false, readFails: false },
+		{ readOnly: false, readFails: true },
+	])(
+		'keeps unavailable OAuth data complete only for read-only credentials: $readOnly, failure: $readFails',
+		async ({ readOnly, readFails }) => {
+			mocks.isOAuth.mockReturnValue(true);
+			const credential: ICredentialsResponse = {
+				...savedCredential,
+				scopes: readOnly ? ['credential:read'] : ['credential:read', 'credential:update'],
+			};
+			const store = mockedStore(useCredentialsStore);
+			store.getCredentialById = vi.fn().mockReturnValue(credential);
+			if (readFails) store.getCredentialData.mockRejectedValue(new Error('Request failed'));
+			else store.getCredentialData.mockResolvedValue({ ...credential, data: undefined });
+			const view = renderComponent({
+				props: {
+					node: {
+						...node,
+						credentials: { serviceApi: { id: credential.id, name: credential.name } },
+					},
+				},
+			});
+			await flushPromises();
+			expect(view.queryByRole('button', { name: 'Connect my account' }) !== null).toBe(!readOnly);
+			expect(view.queryByText('Credential selected') !== null).toBe(readOnly);
+		},
+	);
+
 	it('keeps the same sign-in button available without creating another credential', async () => {
 		mocks.isOAuth.mockReturnValue(true);
 		form.credentialProperties.value = [
@@ -868,6 +900,10 @@ describe('InstanceAiSetupCredential', () => {
 	it('reuses managed OAuth and leaves the current account unchanged on cancellation', async () => {
 		mocks.isOAuth.mockReturnValue(true);
 		mocks.canQuickConnect.mockReturnValue(true);
+		mockedStore(useCredentialsStore).getCredentialData.mockResolvedValue({
+			...savedCredential,
+			data: { oauthTokenData: true },
+		});
 		const authorization = Promise.withResolvers<ICredentialsResponse | null>();
 		const reopen = vi.fn();
 		mocks.authorize.mockImplementationOnce((_type, _node, options) => {

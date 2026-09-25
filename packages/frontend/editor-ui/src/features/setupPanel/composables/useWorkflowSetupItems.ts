@@ -9,6 +9,7 @@ import {
 } from 'vue';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
+import { getResourcePermissions } from '@n8n/permissions';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -255,7 +256,9 @@ export function useWorkflowSetupItems(
 					if (cached?.key === key && cached.status !== 'error') return;
 					const connection = { key, status: 'loading' as const };
 					oauthConnections.set(id, connection);
-					let status: OAuthConnectionStatus = 'error';
+					const permissions = getResourcePermissions(getBoundCredential(id)?.scopes).credential;
+					let status: OAuthConnectionStatus =
+						permissions.read && !permissions.update ? 'unknown' : 'error';
 					try {
 						const loaded = await credentialsStore.getCredentialData({ id });
 						const data = loaded?.data;
@@ -267,13 +270,9 @@ export function useWorkflowSetupItems(
 								) || hasOAuthTokenData(loaded)
 									? 'connected'
 									: 'disconnected';
-						} else {
-							// Shared credentials without data keep the existing completion behavior.
-							// Add a scoped status API if setup must verify their authorization.
-							status = 'unknown';
 						}
 					} catch {
-						// A failed read cannot confirm completion. Retry on the next credential refresh.
+						// Read-only credentials can remain usable without access to their data.
 					}
 					// A removed or changed credential must not accept an older response.
 					if (oauthConnections.get(id) === connection) oauthConnections.set(id, { key, status });
@@ -470,6 +469,7 @@ export function useWorkflowSetupItems(
 
 	return {
 		credentialsAvailable,
+		savedWorkflowChecksum: computed(() => fetchedWorkflow.value?.checksum),
 		isCheckingOAuthCredentials,
 		isWorkflowAvailable,
 		hasWorkflowNodes: computed(() => (workflowNodes.value?.length ?? 0) > 0),

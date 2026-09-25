@@ -186,6 +186,7 @@ export function useSetupPanelState(options: {
 
 	return {
 		credentialsAvailable: derivation.credentialsAvailable,
+		savedWorkflowChecksum: derivation.savedWorkflowChecksum,
 		isCheckingOAuthCredentials: derivation.isCheckingOAuthCredentials,
 		isRefreshingWorkflow: derivation.isRefreshingWorkflow,
 		rows,

@@ -154,6 +154,17 @@ export interface AnnouncedCredentialRequest {
 	setupHint?: InstanceAiCredentialSetupHint;
 }
 
+function mergeCredentialRequests(requests: readonly AnnouncedCredentialRequest[]) {
+	const byType = new Map<string, AnnouncedCredentialRequest>();
+	for (const request of requests) {
+		const existing = byType.get(request.credentialType);
+		if (!existing || request.preferNew) {
+			byType.set(request.credentialType, existing ? { ...existing, preferNew: true } : request);
+		}
+	}
+	return byType;
+}
+
 /**
  * Items for a `credentials(action="setup")` announcement without node context:
  * one service-keyed row per type, no bindings; the next build snapshot fans them
@@ -164,12 +175,11 @@ export function buildSetupItemsFromCredentialRequests(
 	workflowId: string,
 	requests: readonly AnnouncedCredentialRequest[],
 ): InstanceAiSetupItem[] {
-	const byType = new Map<string, InstanceAiSetupItem>();
-	for (const request of requests) {
+	const items: InstanceAiSetupItem[] = [];
+	for (const request of mergeCredentialRequests(requests).values()) {
 		if (GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType)) continue;
 		const id = credentialSetupItemId(workflowId, request.credentialType);
-		if (byType.has(id)) continue;
-		byType.set(id, {
+		items.push({
 			id,
 			kind: 'credential',
 			credentialType: request.credentialType,
@@ -178,7 +188,7 @@ export function buildSetupItemsFromCredentialRequests(
 			...(request.setupHint ? { setupHint: request.setupHint } : {}),
 		});
 	}
-	return [...byType.values()];
+	return items;
 }
 
 /**
@@ -193,12 +203,7 @@ export function buildSetupItemsFromAnnouncement(
 	requests: readonly AnnouncedCredentialRequest[],
 	analyzedRequests: readonly SetupRequest[],
 ): InstanceAiSetupItem[] {
-	const requestByType = new Map<string, AnnouncedCredentialRequest>();
-	for (const request of requests) {
-		if (!requestByType.has(request.credentialType)) {
-			requestByType.set(request.credentialType, request);
-		}
-	}
+	const requestByType = mergeCredentialRequests(requests);
 	const coveredTypes = new Set<string>();
 	const items = buildSetupItemsFromSetupRequests(workflowId, analyzedRequests).map((item) => {
 		if (item.kind !== 'credential') return item;

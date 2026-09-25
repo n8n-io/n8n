@@ -1270,7 +1270,7 @@ describe('credentials tool', () => {
 			expect(emitter.merge).not.toHaveBeenCalled();
 		});
 
-		it('should keep the card when an entry replaces a bound credential', async () => {
+		it.each(['bound', 'unreadable'])('keeps the card for %s workflows', async (state) => {
 			const { context, emitter } = panelContext();
 			vi.mocked(analyzeWorkflow).mockResolvedValue([
 				{
@@ -1289,6 +1289,9 @@ describe('credentials tool', () => {
 					isTrigger: false,
 				},
 			]);
+			if (state === 'unreadable') {
+				vi.mocked(analyzeWorkflow).mockRejectedValue(new Error('workflow unavailable'));
+			}
 			const suspendFn = vi.fn();
 
 			await executeTool(

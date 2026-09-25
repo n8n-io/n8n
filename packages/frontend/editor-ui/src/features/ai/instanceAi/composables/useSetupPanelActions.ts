@@ -155,6 +155,8 @@ export function useSetupPanelActions(options: {
 	/** The thread's active artifact workflow — same source as `useSetupPanelState`. */
 	workflowId: MaybeRefOrGetter<string | undefined>;
 	isAgentBuilding: MaybeRefOrGetter<boolean>;
+	/** Retry early selections when a saved workflow gains nodes. */
+	savedWorkflowChecksum?: MaybeRefOrGetter<string | undefined>;
 	/**
 	 * Receives the outcome of the automatic settle flush (queued writes
 	 * draining when the agent lock releases) — the one apply path with no
@@ -607,7 +609,11 @@ export function useSetupPanelActions(options: {
 	}
 
 	watch(
-		[() => toValue(options.workflowId), () => toValue(options.isAgentBuilding)],
+		[
+			() => toValue(options.workflowId),
+			() => toValue(options.isAgentBuilding),
+			() => toValue(options.savedWorkflowChecksum),
+		],
 		([workflowId, building]) => {
 			if (!building && workflowId) {
 				void flushPendingApplies().then((result) => {

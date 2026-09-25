@@ -89,6 +89,7 @@ function createHarness(
 ) {
 	const building = ref(options.agentBuilding ?? false);
 	const workflowId = ref('workflowId' in options ? options.workflowId : WORKFLOW_ID);
+	const savedWorkflowChecksum = ref('c1');
 
 	const updateWorkflow = vi
 		.fn()
@@ -103,10 +104,11 @@ function createHarness(
 		threadId: 'thread-1',
 		workflowId: () => workflowId.value,
 		isAgentBuilding: () => building.value,
+		savedWorkflowChecksum,
 		onFlushResult: options.onFlushResult,
 		onSaved,
 	});
-	return { actions, building, workflowId, updateWorkflow, onSaved };
+	return { actions, building, workflowId, savedWorkflowChecksum, updateWorkflow, onSaved };
 }
 
 describe('useSetupPanelActions', () => {
@@ -501,7 +503,7 @@ describe('useSetupPanelActions', () => {
 		expect(updateWorkflow).not.toHaveBeenCalled();
 	});
 
-	it('restores an early selection after a remount and an artifact switch', async () => {
+	it('restores an early selection after a remount and applies it when the empty artifact is saved with nodes', async () => {
 		const { actions, workflowId } = createHarness({ agentBuilding: true });
 		await actions.bindCredential({ ...credentialItem, nodeBindings: undefined }, credential);
 		workflowId.value = 'wf-2';
@@ -514,6 +516,20 @@ describe('useSetupPanelActions', () => {
 		restored.building.value = false;
 		await expect(restored.actions.flushPendingApplies()).resolves.toBe('queued');
 		expect(restored.actions.pendingApplyCount.value).toBe(1);
+
+		const nodeTypes = mockedStore(useNodeTypesStore);
+		nodeTypes.loadNodeTypesIfNotLoaded.mockResolvedValue(undefined);
+		nodeTypes.getNodeType = vi.fn().mockReturnValue({
+			credentials: [{ name: 'slackApi', required: true }],
+			properties: [],
+		});
+		vi.mocked(getWorkflow).mockResolvedValue(makeWorkflow({ checksum: 'c2' }));
+		restored.savedWorkflowChecksum.value = 'c2';
+		await vi.waitFor(() => expect(restored.actions.pendingApplyCount.value).toBe(0));
+		expect(restored.updateWorkflow).toHaveBeenCalledTimes(1);
+		expect(restored.updateWorkflow.mock.calls[0][1].nodes[0].credentials.slackApi).toEqual(
+			credential,
+		);
 	});
 
 	it('does not queue a selection when its metadata save fails', async () => {
