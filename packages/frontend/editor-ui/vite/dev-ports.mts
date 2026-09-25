@@ -1,10 +1,10 @@
 import type { Plugin } from 'vite';
 
-export const DEFAULT_BACKEND_PORT = 5678;
-export const DEFAULT_EDITOR_PORT = 8080;
+const DEFAULT_BACKEND_PORT = 5678;
+const DEFAULT_EDITOR_PORT = 8080;
 
 // `||` not `??`: an explicitly empty env var must fall back like an unset one.
-export const readDevPort = (env: NodeJS.ProcessEnv, name: string, fallback: number): number =>
+const readDevPort = (env: NodeJS.ProcessEnv, name: string, fallback: number): number =>
 	Number(env[name] || fallback);
 
 const assertDevPort = (env: NodeJS.ProcessEnv, name: string, fallback: number): number => {
