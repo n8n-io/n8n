@@ -501,80 +501,87 @@ describe('NodeView', () => {
 			});
 		});
 
-		it('replaces the empty-group anchor and restores it with undo', async () => {
-			routeMock.meta = { nodeView: true };
-			useWorkflowsListStore().addWorkflow(
-				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
-			);
-			useNodeTypesStore().setNodeTypes([
-				mockNodeTypeDescription({
-					name: NO_OP_NODE_TYPE,
-					displayName: 'No Operation, do nothing',
-					inputs: [NodeConnectionTypes.Main],
-					outputs: [NodeConnectionTypes.Main],
-					properties: [
-						{
-							displayName: 'Empty Group Anchor',
-							name: 'emptyGroupAnchor',
-							type: 'hidden',
-							default: false,
-							validateType: undefined,
-						},
-					],
-				}),
-				mockNodeTypeDescription({
-					name: SET_NODE_TYPE,
-					inputs: [NodeConnectionTypes.Main],
-					outputs: [NodeConnectionTypes.Main],
-				}),
-			]);
-			const { findByTestId } = renderNodeView();
+		it.each([
+			['plus endpoint', NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT],
+			['connection action', NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION],
+			['connection drop', NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP],
+		] as const)(
+			'replaces the empty-group anchor from %s and restores it with undo',
+			async (_, eventSource) => {
+				routeMock.meta = { nodeView: true };
+				useWorkflowsListStore().addWorkflow(
+					createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+				);
+				useNodeTypesStore().setNodeTypes([
+					mockNodeTypeDescription({
+						name: NO_OP_NODE_TYPE,
+						displayName: 'No Operation, do nothing',
+						inputs: [NodeConnectionTypes.Main],
+						outputs: [NodeConnectionTypes.Main],
+						properties: [
+							{
+								displayName: 'Empty Group Anchor',
+								name: 'emptyGroupAnchor',
+								type: 'hidden',
+								default: false,
+								validateType: undefined,
+							},
+						],
+					}),
+					mockNodeTypeDescription({
+						name: SET_NODE_TYPE,
+						inputs: [NodeConnectionTypes.Main],
+						outputs: [NodeConnectionTypes.Main],
+					}),
+				]);
+				const { findByTestId } = renderNodeView();
 
-			await userEvent.click(await findByTestId('node-creation-stub-add-empty-group'));
-			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
-			const group = workflowDocumentStore.allGroups[0];
-			const anchor = workflowDocumentStore.allNodes[0];
+				await userEvent.click(await findByTestId('node-creation-stub-add-empty-group'));
+				await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
+				const group = workflowDocumentStore.allGroups[0];
+				const anchor = workflowDocumentStore.allNodes[0];
 
-			useNodeCreatorStore().openNodeCreatorForConnectingNode({
-				workflowId: workflowDocumentStore.workflowId,
-				connection: {
-					source: anchor.id,
-					sourceHandle: `outputs/${NodeConnectionTypes.Main}/0`,
-				},
-				eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-			});
-			await userEvent.click(await findByTestId('node-creation-stub-add-node'));
+				useNodeCreatorStore().openNodeCreatorForConnectingNode({
+					workflowId: workflowDocumentStore.workflowId,
+					connection: {
+						source: anchor.id,
+						sourceHandle: `outputs/${NodeConnectionTypes.Main}/0`,
+					},
+					eventSource,
+				});
+				await userEvent.click(await findByTestId('node-creation-stub-add-node'));
 
-			await waitFor(() => expect(workflowDocumentStore.allNodes[0]?.id).not.toBe(anchor.id));
-			expect(workflowDocumentStore.allNodes).toHaveLength(1);
-			const addedNode = workflowDocumentStore.allNodes[0];
-			expect(addedNode.id).not.toBe(anchor.id);
-			expect(isEmptyGroupAnchor(addedNode)).toBe(false);
-			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([addedNode.id]);
+				await waitFor(() => expect(workflowDocumentStore.allNodes[0]?.id).not.toBe(anchor.id));
+				expect(workflowDocumentStore.allNodes).toHaveLength(1);
+				const addedNode = workflowDocumentStore.allNodes[0];
+				expect(addedNode.id).not.toBe(anchor.id);
+				expect(isEmptyGroupAnchor(addedNode)).toBe(false);
+				expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([addedNode.id]);
 
-			const historyStore = useHistoryStore();
-			expect(historyStore.undoStack).toHaveLength(2);
-			const transition = historyStore.undoStack[1];
-			expect(transition).toBeInstanceOf(BulkCommand);
-			if (!(transition instanceof BulkCommand)) throw new Error('Expected a bulk history action');
+				const historyStore = useHistoryStore();
+				expect(historyStore.undoStack).toHaveLength(2);
+				const transition = historyStore.undoStack[1];
+				expect(transition).toBeInstanceOf(BulkCommand);
+				if (!(transition instanceof BulkCommand)) throw new Error('Expected a bulk history action');
 
-			const redoCommands = [];
-			for (let index = transition.commands.length - 1; index >= 0; index--) {
-				const command = transition.commands[index];
-				await command.revert();
-				redoCommands.push(command.getReverseCommand(Date.now()));
-			}
+				const redoCommands = [];
+				for (let index = transition.commands.length - 1; index >= 0; index--) {
+					const command = transition.commands[index];
+					await command.revert();
+					redoCommands.push(command.getReverseCommand(Date.now()));
+				}
 
-			await waitFor(() => expect(workflowDocumentStore.allNodes).toEqual([anchor]));
-			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([anchor.id]);
+				await waitFor(() => expect(workflowDocumentStore.allNodes).toEqual([anchor]));
+				expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([anchor.id]);
 
-			for (let index = redoCommands.length - 1; index >= 0; index--) {
-				await redoCommands[index].revert();
-			}
+				for (let index = redoCommands.length - 1; index >= 0; index--) {
+					await redoCommands[index].revert();
+				}
 
-			await waitFor(() => expect(workflowDocumentStore.allNodes).toEqual([addedNode]));
-			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([addedNode.id]);
-		});
+				await waitFor(() => expect(workflowDocumentStore.allNodes).toEqual([addedNode]));
+				expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([addedNode.id]);
+			},
+		);
 
 		it('replaces the empty-group anchor with the selected batch and restores it on undo', async () => {
 			routeMock.meta = { nodeView: true };

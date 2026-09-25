@@ -68,6 +68,7 @@ import {
 	ABOUT_MODAL_KEY,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	isNodeCreatorOpenFromConnection,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -999,8 +1000,7 @@ function onNodeCreatorClose() {
 function getOutputPlusEmptyGroupAnchorId(): string | undefined {
 	const isExplicitOutputAdd =
 		nodeCreatorStore.isCreateNodeActive &&
-		(nodeCreatorStore.openSource === NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT ||
-			nodeCreatorStore.openSource === NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION);
+		isNodeCreatorOpenFromConnection(nodeCreatorStore.openSource);
 	if (!isExplicitOutputAdd || !uiStore.lastInteractedWithNodeId) return undefined;
 
 	const { type, mode } = parseCanvasConnectionHandleString(uiStore.lastInteractedWithNodeHandle);
