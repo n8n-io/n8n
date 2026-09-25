@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { TokenExchangeJtiRepository } from '../database/repositories/token-exchange-jti.repository';
@@ -13,10 +13,9 @@ import { TokenExchangeConfig } from '../token-exchange.config';
 export class JtiCleanupTask implements SystemTask {
 	readonly name = 'jti-cleanup';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: this.config.jtiCleanupIntervalSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(
+		this.config.jtiCleanupIntervalSeconds,
+	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 

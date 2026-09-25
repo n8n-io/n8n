@@ -63,7 +63,7 @@ describe('TeamsIntegration', () => {
 	});
 
 	describe('platform capabilities', () => {
-		it('reuses the Entra credential, stays hidden, buffers, and settles in place', () => {
+		it('reuses the Entra credential, stays hidden, buffers, and targets its cards', () => {
 			expect(integration).toMatchObject({
 				credentialTypes: ['microsoftEntraServicePrincipalApi'],
 				internal: true,
@@ -71,7 +71,9 @@ describe('TeamsIntegration', () => {
 				// Left at the base-class default: full Adaptive Card payloads fit, so
 				// no callback store is needed.
 				needsShortCallbackData: false,
-				deleteActionMessageBeforeResume: false,
+				targetSuspensionCardAtActingUser: true,
+				// A targeted card cannot be edited, so an answered one is deleted.
+				deleteActionMessageBeforeResume: true,
 			});
 		});
 
@@ -202,49 +204,6 @@ describe('TeamsIntegration', () => {
 					connectionContext(servicePrincipalCredential({ tenantId: '' })),
 				),
 			).rejects.toThrow(UserError);
-		});
-	});
-
-	describe('formatActionDecisionMessage', () => {
-		const user = { userId: 'u-1', userName: 'alice', fullName: 'Alice', isBot: false, isMe: false };
-
-		it.each([
-			[true, '✅ Approved by Alice'],
-			[false, '🚫 Declined by Alice'],
-		])('names the decision when one was resolved: %p', (approved, expected) => {
-			expect(
-				integration.formatActionDecisionMessage({
-					approved,
-					raw: {},
-					user,
-				} as Parameters<typeof integration.formatActionDecisionMessage>[0]),
-			).toBe(expected);
-		});
-
-		it.each([
-			[{ userId: 'u-1', userName: 'alice', fullName: 'Alice' }, 'Alice'],
-			[{ userId: 'u-1', userName: 'alice', fullName: '' }, 'alice'],
-			[{ userId: 'u-1', userName: '', fullName: '' }, 'u-1'],
-		])('resolves the responder from %p', (responder, expected) => {
-			expect(
-				integration.formatActionDecisionMessage({
-					approved: true,
-					raw: {},
-					user: { ...responder, isBot: false, isMe: false },
-				} as Parameters<typeof integration.formatActionDecisionMessage>[0]),
-			).toBe(`✅ Approved by ${expected}`);
-		});
-
-		// Without the CallbackStore the resume handler resolves neither the
-		// decision nor the label, so this generic wording is what a Teams
-		// approval actually settles to today.
-		it('falls back to a generic outcome when no decision reaches it', () => {
-			expect(
-				integration.formatActionDecisionMessage({
-					raw: {},
-					user,
-				} as Parameters<typeof integration.formatActionDecisionMessage>[0]),
-			).toBe('✅ Action selected by Alice');
 		});
 	});
 
