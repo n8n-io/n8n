@@ -81,6 +81,24 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 		expect(n8nOAuth2TokenCredentialSpy).not.toHaveBeenCalled();
 	});
 
+	it('asks for the project before it lists deployments', async () => {
+		ctx.getNodeParameter = vi
+			.fn()
+			.mockReturnValueOnce(AuthenticationType.ApiKey)
+			.mockReturnValueOnce('');
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'secret-key',
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+		});
+
+		await expect(searchModels.call(ctx)).rejects.toThrow(
+			'Enter the Project to list its deployments',
+		);
+
+		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();
+	});
+
 	it('derives the base URL from the Foundry endpoint origin for an api-key credential', async () => {
 		ctx.getNodeParameter = vi
 			.fn()

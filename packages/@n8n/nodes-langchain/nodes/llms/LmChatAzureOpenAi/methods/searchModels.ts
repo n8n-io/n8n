@@ -75,6 +75,14 @@ export async function searchModels(
 		headers = { Authorization: `Bearer ${token.token}` };
 	}
 
+	// Without this, the list call reports `Project "" was not found`.
+	if (!project) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Enter the Project to list its deployments. Or select By ID and enter the deployment name.',
+		);
+	}
+
 	const models = await listAzureOpenAiModels({
 		baseURL,
 		project,
