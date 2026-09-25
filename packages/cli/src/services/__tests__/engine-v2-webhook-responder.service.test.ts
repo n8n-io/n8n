@@ -10,6 +10,7 @@ import type { ExecutionResponseReceiver } from '@/modules/engine-v2/response-cha
 import {
 	EngineV2WebhookResponder,
 	MAX_PENDING_WEBHOOKS,
+	SUBSCRIBE_TIMEOUT_MS,
 } from '@/services/engine-v2-webhook-responder.service';
 
 const TIMEOUT_MS = 50_000;
@@ -342,16 +343,25 @@ describe('EngineV2WebhookResponder while the receiver subscribes', () => {
 		await expect(retried).resolves.toBeDefined();
 	});
 
-	it('gives up at the response timeout and drops a late subscription', async () => {
+	it('gives up at the subscribe timeout and drops a late subscription', async () => {
 		const { receiver, subscriptions } = slowReceiver();
+		// The response timeout is shorter, but it must not end the subscribe wait.
 		const responder = newResponder(1_000);
 		responder.useReceiver(receiver);
 		const executionId = createExecutionIdV2();
 
-		const waiting = responder.waitForResponse(executionId);
-		const rejection = expect(waiting).rejects.toThrow('before the timeout');
-		await vi.advanceTimersByTimeAsync(1_000);
+		let settled = false;
+		const waiting = responder.waitForResponse(executionId).finally(() => {
+			settled = true;
+		});
+		const rejection = expect(waiting).rejects.toThrow(`within ${SUBSCRIBE_TIMEOUT_MS / 1000}s`);
+
+		await vi.advanceTimersByTimeAsync(SUBSCRIBE_TIMEOUT_MS - 1);
+		expect(settled).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(1);
 		await rejection;
+		expect(vi.getTimerCount()).toBe(0);
 
 		const unsubscribe = vi.fn();
 		subscriptions[0].resolve(unsubscribe);

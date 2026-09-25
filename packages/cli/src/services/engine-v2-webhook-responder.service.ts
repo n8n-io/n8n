@@ -24,6 +24,9 @@ type PendingWebhook = {
  */
 export const MAX_PENDING_WEBHOOKS = 5000;
 
+/** How long to wait for the transport to start listening for a run. */
+export const SUBSCRIBE_TIMEOUT_MS = 30_000;
+
 /**
  * A service for hooking up responses from the data plane with webhook callers
  * expecting that response.
@@ -61,7 +64,7 @@ export class EngineV2WebhookResponder {
 	 * @throws {UnexpectedError} If the execution response receiver is not set, or
 	 * if the service already waits for this execution.
 	 * @throws {OperationalError} If the service is at capacity, or if it cannot
-	 * listen for the response before the response timeout.
+	 * listen for the response within `SUBSCRIBE_TIMEOUT_MS`.
 	 */
 	async waitForResponse(
 		executionId: ExecutionIdV2,
@@ -80,7 +83,7 @@ export class EngineV2WebhookResponder {
 
 		// A second entry would take over the first one's slot and release.
 		if (this.pendingWebhooks.has(executionId)) {
-			throw new UnexpectedError('Engine 2.0 already waits for a response for this execution', {
+			throw new UnexpectedError('Engine v2 already waits for a response for this execution', {
 				extra: { executionId },
 			});
 		}
@@ -91,6 +94,7 @@ export class EngineV2WebhookResponder {
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});
+
 		// Hold the slot before the subscription is ready, so requests that arrive
 		// meanwhile still count against the limit.
 		const pending: PendingWebhook = { response, unsubscribe: () => {} };
@@ -108,8 +112,8 @@ export class EngineV2WebhookResponder {
 
 	/**
 	 * A transport can wait for its broker, for example Redis while it reconnects.
-	 * The response timeout also bounds that wait, so the request cannot stay open
-	 * past it. The run is not started when the wait runs out.
+	 * A separate timer bounds that wait, so the request cannot stay open while
+	 * the broker is down. The run is not started when the wait runs out.
 	 */
 	private async subscribe(
 		receiver: ExecutionResponseReceiver,
@@ -119,24 +123,27 @@ export class EngineV2WebhookResponder {
 		const subscription = receiver.receive(executionId, (received) =>
 			this.handle(received, response),
 		);
+		let timeoutTimer: NodeJS.Timeout | undefined;
 		const timedOut = new Promise<'timed-out'>((resolve) => {
-			void response.settled.then((outcome) => {
-				if (outcome.status === 'timeout') resolve('timed-out');
-			});
+			timeoutTimer = setTimeout(() => resolve('timed-out'), SUBSCRIBE_TIMEOUT_MS).unref();
 		});
 
-		const result = await Promise.race([subscription, timedOut]);
-		if (result !== 'timed-out') return result;
+		const result = await Promise.race([subscription, timedOut]).finally(() =>
+			clearTimeout(timeoutTimer),
+		);
+		if (result === 'timed-out') {
+			// The subscription can still complete. It must not outlive the request.
+			void subscription.then(
+				(unsubscribe) => unsubscribe(),
+				() => {},
+			);
+			throw new OperationalError(
+				`Engine v2 could not listen for the execution response within ${SUBSCRIBE_TIMEOUT_MS / 1000}s.`,
+				{ extra: { executionId } },
+			);
+		}
 
-		// The subscription can still complete. It must not outlive the request.
-		void subscription.then(
-			(unsubscribe) => unsubscribe(),
-			() => {},
-		);
-		throw new OperationalError(
-			'Engine 2.0 could not listen for the execution response before the timeout.',
-			{ extra: { executionId } },
-		);
+		return result;
 	}
 
 	private handle(received: ExecutionResponse, response: PendingWebhookResponse): void {
