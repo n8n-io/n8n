@@ -7279,6 +7279,8 @@
 	"instanceAi.previewTabBar.openInEditor": "Open in editor",
 	"instanceAi.previewTabBar.openWorkflowInEditor": "Open workflow in editor",
 	"instanceAi.previewTabBar.copyLink": "Copy link",
+	"instanceAi.previewTabBar.edited": "Edited",
+	"instanceAi.previewTabBar.draft": "Draft",
 	"instanceAi.confirmation.approve": "Allow once",
 	"instanceAi.confirmation.alwaysAllow": "Always allow",
 	"instanceAi.confirmation.alwaysAllowSuffix": "during this session",
