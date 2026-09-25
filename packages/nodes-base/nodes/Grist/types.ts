@@ -19,6 +19,8 @@ export type GristSortProperties = Array<{
 export type GristFilterProperties = Array<{
 	field: string;
 	values: string;
+	// Absent on filters saved before this field existed, so it's treated the same as 'autoDetect'.
+	type?: 'autoDetect' | 'string' | 'number';
 }>;
 
 export type GristGetAllOptions = {

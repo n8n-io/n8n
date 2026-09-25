@@ -159,6 +159,31 @@ export const operationFields: INodeProperties[] = [
 								default: '',
 								description: 'Comma-separated list of values to search for in the filtered column',
 							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Auto-Detect',
+										value: 'autoDetect',
+										description:
+											'Guess from the value: e.g. "123" is sent as a number. Breaks matching a text column whose values happen to look numeric.',
+									},
+									{
+										name: 'String',
+										value: 'string',
+										description: 'Always send the value as text, e.g. for a Text column',
+									},
+									{
+										name: 'Number',
+										value: 'number',
+										description: 'Always send the value as a number, e.g. for a Numeric or Integer column',
+									},
+								],
+								default: 'autoDetect',
+								description: 'How to interpret the value above when matching it against the column',
+							},
 						],
 					},
 				],
