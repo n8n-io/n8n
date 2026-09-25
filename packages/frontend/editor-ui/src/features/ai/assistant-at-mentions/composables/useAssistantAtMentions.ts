@@ -44,6 +44,9 @@ export function useAssistantAtMentions(options: {
 	const savedSelection = ref({ start: 0, end: 0 });
 	const dismissedTypedTriggerIndex = ref<number>();
 	let updatingTextInternally = false;
+	// How the current open started. A typed `@` can replace a button range while the
+	// picker stays open, so the outcome must report the source the open reported.
+	let openSource: AssistantMentionTriggerSource | undefined;
 
 	function updateText(value: string): void {
 		updatingTextInternally = true;
@@ -53,6 +56,7 @@ export function useAssistantAtMentions(options: {
 
 	function markOpened(source: AssistantMentionTriggerSource): void {
 		if (menuOpen.value) return;
+		openSource = source;
 		menuOpen.value = true;
 		options.onOpened?.(source);
 	}
@@ -67,7 +71,8 @@ export function useAssistantAtMentions(options: {
 		}
 		// The range, not `menuOpen`, marks an open picker: the host's v-model may have
 		// already flipped `menuOpen` before the menu's close reaches this function.
-		if (range) options.onClosed?.({ source: range.origin, reason });
+		if (range) options.onClosed?.({ source: openSource ?? range.origin, reason });
+		openSource = undefined;
 		menuOpen.value = false;
 		query.value = '';
 		activeRange.value = undefined;

@@ -382,7 +382,8 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 		);
 		return;
 	}
-	if (result.status === 'added') mentionTelemetry.trackMentionSelected(selection, alreadyArtifact);
+	// A duplicate pick stages nothing, but it is still the pick that ends this open.
+	mentionTelemetry.trackMentionSelected(selection, alreadyArtifact);
 
 	if (result.truncated) {
 		toast.showError(

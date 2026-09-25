@@ -275,7 +275,14 @@ describe('useAssistantAtMentions', () => {
 		expect(onClosed).toHaveBeenLastCalledWith(
 			expect.objectContaining({ source: 'button', reason: 'selected' }),
 		);
-		expect(onClosed).toHaveBeenCalledTimes(5);
+
+		// A typed `@` while a button-opened picker is open replaces the range but
+		// not the open, so the outcome keeps reporting the source of that open.
+		mentions.openFromButton();
+		await openTyped('"Orders" @');
+		mentions.handleMenuOpenChange(false);
+		expect(onClosed).toHaveBeenLastCalledWith({ source: 'button', reason: 'closed_menu' });
+		expect(onClosed).toHaveBeenCalledTimes(6);
 	});
 
 	it('reports one close per open', async () => {
