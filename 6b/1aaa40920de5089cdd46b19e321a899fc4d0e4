@@ -1,0 +1,83 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotableChangeCount.cache.ts
+  s_3d539b5f21edcc::t_c5c0fc99fb5f64 1-62
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_3d539b5f21edcc::t_edbc11d9bb048d 248
+  s_3d539b5f21edcc::t_5ef92efd9269aa 3
+  s_3d539b5f21edcc::t_fe15d79252dd52 13
+  s_3d539b5f21edcc::t_20f6eeeaa5baea 25,34,42
+  s_3d539b5f21edcc::t_8fd2bcb418f8cb 212
+  s_3d539b5f21edcc::t_5ecb51f36d98c4 106
+  s_3d539b5f21edcc::t_968d661dde2962 156,158-159
+  s_3d539b5f21edcc::t_854a0616869a64 157
+  s_3d539b5f21edcc::t_7327cc86f1a0f4 311,314-319
+  s_3d539b5f21edcc::t_8c55160e3dba9f 171,180,189
+  s_3d539b5f21edcc::t_a986a6251f326a 435-441
+  s_3d539b5f21edcc::t_e981af8423c445 257
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.test.ts
+  s_3d539b5f21edcc::t_72b981d4cb0144 111
+  s_3d539b5f21edcc::t_5391391dbe9922 6
+  s_3d539b5f21edcc::t_fd309d0b8a08a7 107
+  s_3d539b5f21edcc::t_66e34f8a766a8f 104-106,108-110,112-130,132-135
+  s_3d539b5f21edcc::t_7d657c9df08576 131
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_3d539b5f21edcc::t_ff5661b1483ae5 5
+  s_3d539b5f21edcc::t_c9c6eff9d4ed5d 182-183,186,188
+  s_3d539b5f21edcc::t_50450fa8e0fb85 162
+  s_3d539b5f21edcc::t_1d6cd23c430e8b 191,211-213,218-220
+  s_3d539b5f21edcc::t_a1079bd31b14b8 1,9,14,16-17,22-28,56-70,93,144,157,161,163-181,184-185,187,189-190,192-210,214-217,269
+  s_3d539b5f21edcc::t_7a9d9429018f3c 12,15,18-21
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3d539b5f21edcc::t_17dc2223bf0fb7 8809
+  s_3d539b5f21edcc::t_78560b4ccec94b 8818
+  s_3d539b5f21edcc::t_88502fbdc39ace 8810-8812
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.api.ts
+  s_3d539b5f21edcc::t_c3f784bad9c871 1-8,17-29
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  s_3d539b5f21edcc::t_8caa38baa12483 168-210
+  s_3d539b5f21edcc::t_a483451efca066 158-160
+  s_3d539b5f21edcc::t_3c0adde19c8b6e 26,28-32,38
+  s_3d539b5f21edcc::t_70528318083875 98
+  s_3d539b5f21edcc::t_6250b31231aa01 21
+  s_3d539b5f21edcc::t_da2addbf0b9aa3 146-148
+  s_3d539b5f21edcc::t_b250d1b2a59f1f 211-255
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotableChangeCount.cache.test.ts
+  s_3d539b5f21edcc::t_021cd2a3418274 1-70
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.ts
+  s_3d539b5f21edcc::t_ae523b8c4b78b7 49
+  s_3d539b5f21edcc::t_63feb31ea363ae 8
+  s_3d539b5f21edcc::t_b0d18dbc9cfe99 87-99,105,113
+  s_3d539b5f21edcc::t_e84f52316b639d 2-6
+  s_3d539b5f21edcc::t_ee381d137606ff 16
+  s_3d539b5f21edcc::t_771bf32deae29a 77
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_3d539b5f21edcc::t_a3e65c84fe6b93 80,89-93,96,99-101,103
+  s_3d539b5f21edcc::t_8e7c626e314a45 85
+  s_3d539b5f21edcc::t_7a146005c5fc10 673-678,680-684,686-691
+  s_3d539b5f21edcc::t_84ba7de193400f 407-408
+  s_3d539b5f21edcc::t_0d5fa49df47241 86,97,104-107,111-115
+  s_3d539b5f21edcc::t_b2ae86e8a5224d 27-30
+  s_3d539b5f21edcc::t_df6f33da5a9d7b 544-545,558-560,568-569,571,573-581
+  s_3d539b5f21edcc::t_8d2ba5f321841a 2
+  s_3d539b5f21edcc::t_59f6eb45ed2303 71
+  s_3d539b5f21edcc::t_7466de2438f36e 552,570,572
+  s_3d539b5f21edcc::t_8754a573d349f3 553
+  s_3d539b5f21edcc::t_23fa091e7d396d 561-567,672
+  s_3d539b5f21edcc::t_b3564ac565c4da 546-551,554-557
+  s_3d539b5f21edcc::t_70241fe3485c5f 31-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b1aaa40920de5089cdd46b19e321a899fc4d0e4",
+  "prompts": {},
+  "sessions": {
+    "s_3d539b5f21edcc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "014ce5b1-c3a7-4da2-965f-7080da7a6a17",
+        "model": "composer-2.5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

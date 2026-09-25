@@ -10,7 +10,7 @@ packages/@n8n/cli/src/commands/package/import-selection.ts
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.5",
-  "base_commit_sha": "be61035c7a5cb5fea1a82de4214a14eadeffa801",
+  "base_commit_sha": "ebb3723c0a6b1a0be52b7d821443f7bd1bff8e7c",
   "prompts": {},
   "sessions": {
     "s_7d92849ff15ae6": {
