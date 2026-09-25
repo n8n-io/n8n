@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AnsweredQuestions.vue
+  s_2ed659fa6b1ae7::t_2b8a95b6cf5e66 36-37
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_2ed659fa6b1ae7::t_2a05212d84c321 25-28
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_2ed659fa6b1ae7::t_2b8a95b6cf5e66 47-49,64,71-84,86,107-108
+  s_2ed659fa6b1ae7::t_d3eefb4867ef9c 65-66
+  s_2ed659fa6b1ae7::t_fb115db576de2b 34-37
+  s_2ed659fa6b1ae7::t_4f4c34956f05a0 28-30,33
+  s_2ed659fa6b1ae7::t_9469175f2dc618 94-95,114-115
+  s_2ed659fa6b1ae7::t_2a05212d84c321 67-70
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiQuestions.vue
+  s_2ed659fa6b1ae7::t_bdc6ced9012a2a 692
+  s_2ed659fa6b1ae7::t_2a05212d84c321 461-464,519-522
+  s_2ed659fa6b1ae7::t_2b8a95b6cf5e66 19-24,431-436,491-496,683-691,693-694
+  s_2ed659fa6b1ae7::t_d43f962d8a0023 695
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_2ed659fa6b1ae7::t_2a05212d84c321 758-759
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiQuestions.test.ts
+  s_2ed659fa6b1ae7::t_2b8a95b6cf5e66 128-141
+  s_2ed659fa6b1ae7::t_2a05212d84c321 142-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "695311fa2b2b9483637eca843831fcad6f3369f2",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
