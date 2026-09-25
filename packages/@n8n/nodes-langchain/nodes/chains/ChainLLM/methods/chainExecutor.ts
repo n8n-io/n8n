@@ -56,6 +56,25 @@ export function isModelInThinkingMode(
 }
 
 /**
+ * Type guard for the Responses API shape of the same setting. Chat Completions takes
+ * `response_format`; the Responses API takes it as `text.format`, so a model configured for
+ * Responses carries the JSON setting under a different key.
+ */
+export function isModelWithResponsesTextFormat(
+	llm: BaseLanguageModel,
+): llm is BaseLanguageModel & { modelKwargs: { text: { format: { type: string } } } } {
+	return (
+		'modelKwargs' in llm &&
+		!!llm.modelKwargs &&
+		typeof llm.modelKwargs === 'object' &&
+		'text' in llm.modelKwargs &&
+		!!(llm.modelKwargs as { text?: unknown }).text &&
+		typeof (llm.modelKwargs as { text?: unknown }).text === 'object' &&
+		'format' in ((llm.modelKwargs as { text: object }).text as object)
+	);
+}
+
+/**
  * Type guard to check if the LLM has a format property(Ollama)
  */
 export function isModelWithFormat(
@@ -71,6 +90,13 @@ export function getOutputParserForLLM(
 	llm: BaseChatModel | BaseLanguageModel,
 ): BaseLLMOutputParser<string | Record<string, unknown>> {
 	if (isModelWithResponseFormat(llm) && llm.modelKwargs?.response_format?.type === 'json_object') {
+		return new NaiveJsonOutputParser();
+	}
+
+	if (
+		isModelWithResponsesTextFormat(llm) &&
+		llm.modelKwargs?.text?.format?.type === 'json_object'
+	) {
 		return new NaiveJsonOutputParser();
 	}
 
