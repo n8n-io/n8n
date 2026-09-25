@@ -63,6 +63,7 @@ describe('NodesAttachmentChips', () => {
 			},
 		});
 		expect(getByTestId('nodes-chip-group').textContent).toContain('My Group 1');
+		expect(getByTestId('nodes-chip-group').querySelector('[data-icon="group"]')).toBeTruthy();
 		expect(queryByTestId('nodes-chip-expand')).toBeNull();
 	});
 

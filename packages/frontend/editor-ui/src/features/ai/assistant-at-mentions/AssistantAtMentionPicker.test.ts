@@ -209,7 +209,7 @@ describe('AssistantAtMentionPicker', () => {
 
 		const groupResult = await findByRole('menuitem', { name: 'Orders > If checks' });
 		const nodeResult = await findByRole('menuitem', { name: 'Orders > If checks > If' });
-		expect(groupResult.querySelector('[data-icon="layers"]')).toBeVisible();
+		expect(groupResult.querySelector('[data-icon="group"]')).toBeVisible();
 		expect(nodeResult.querySelector('.n8n-node-icon')).toBeVisible();
 		expect(
 			[...nodeResult.querySelectorAll('[class*="breadcrumbAncestor"]')].map((element) =>
