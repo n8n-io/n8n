@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { ResultCard } from './chat-hub-result-card';
 import { TimeZoneSchema } from './schemas/timezone.schema';
 import { Z } from './zod-class';
 
@@ -464,6 +465,14 @@ export type ChatMessageContentChunk =
 			content: string;
 			buttons: ChatHubMessageButton[];
 			blockUserInput: boolean;
+	  }
+	| {
+			type: 'card';
+			/** Raw `<command:card>…</command:card>` text, kept so re-parsing on stream append works */
+			content: string;
+			/** Parsed card; `null` while the command is still streaming */
+			card: ResultCard | null;
+			isIncomplete: boolean;
 	  };
 
 export interface ChatHubMessageDto {

@@ -98,6 +98,26 @@ export {
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
 } from './chat-hub';
 
+export {
+	resultCardSchema,
+	resultCardArchetypes,
+	resultCardStatusSchema,
+	resultCardSourceSchema,
+	chatHubMessageCardsSchema,
+	MAX_RESULT_CARDS_PER_MESSAGE,
+	type ResultCard,
+	type ResultCardArchetype,
+	type ResultCardStatus,
+	type ResultCardSource,
+	type EmailCard,
+	type MessageCard,
+	type RecordsCard,
+	type MetricCard,
+	type ListCard,
+	type KeyValueCard,
+	type ChatHubMessageCards,
+} from './chat-hub-result-card';
+
 export { isValidTimeZone, StrictTimeZoneSchema, TimeZoneSchema } from './schemas/timezone.schema';
 
 export type {
