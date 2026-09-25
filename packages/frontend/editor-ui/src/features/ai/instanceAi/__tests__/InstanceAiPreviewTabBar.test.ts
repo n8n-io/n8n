@@ -450,6 +450,40 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(getHoverCard()).toHaveTextContent('Second Workflow');
 		});
 
+		it('shows the new name when the hovered tab is renamed', async () => {
+			const { container, rerender } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			await hoverTab(container, 'wf-1');
+			await rerender({ tabs: [{ ...workflowTab, name: 'Renamed Workflow' }], activeTabId: 'wf-1' });
+
+			expect(getHoverCard()).toHaveTextContent('Renamed Workflow');
+		});
+
+		it('closes when the hovered tab is removed', async () => {
+			const { container, rerender } = renderComponent({
+				props: { tabs: [workflowTab, workflowTab2], activeTabId: 'wf-2' },
+			});
+
+			await hoverTab(container, 'wf-1');
+			await rerender({ tabs: [workflowTab2], activeTabId: 'wf-2' });
+
+			expect(getHoverCard()).toBeNull();
+		});
+
+		it('does not open when the tab is removed during the hover delay', async () => {
+			const { container, rerender } = renderComponent({
+				props: { tabs: [workflowTab, workflowTab2], activeTabId: 'wf-2' },
+			});
+
+			await fireEvent.mouseEnter(getTabTrigger(container, 'wf-1'));
+			await rerender({ tabs: [workflowTab2], activeTabId: 'wf-2' });
+			await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW);
+
+			expect(getHoverCard()).toBeNull();
+		});
+
 		it('closes after the pointer leaves the tabs', async () => {
 			const { container } = renderComponent({
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
