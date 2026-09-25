@@ -111,6 +111,12 @@ describe('POST /n8n-packages/import-selection', () => {
 			projectId: project.id,
 		});
 		expect(emitSpy).toHaveBeenCalledWith('n8n-package-imported', expect.any(Object));
+
+		// Ground truth: only WFA lands in the DB; the unselected WFB is never created.
+		const workflowRepository = Container.get(WorkflowRepository);
+		expect(await workflowRepository.count()).toBe(1);
+		expect(await workflowRepository.findOneBy({ id: 'WFA' })).not.toBeNull();
+		expect(await workflowRepository.findOneBy({ id: 'WFB' })).toBeNull();
 	});
 
 	it('rejects a request that omits selectedProjectId', async () => {
