@@ -79,9 +79,9 @@ export namespace n8n {
 		description: string;
 		documentationUrl: string;
 		hasBreakingChange: boolean;
-		hasSecurityFix: boolean;
-		hasSecurityIssue: boolean;
-		securityIssueFixVersion: string;
+		hasSecurityFix: boolean | null;
+		hasSecurityIssue: boolean | null;
+		securityIssueFixVersion: string | null;
 	};
 }
 

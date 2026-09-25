@@ -3,6 +3,9 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /audit:
+    post:
+      $ref: ./handlers/audit/spec/paths/generateAudit.generated.yml
   /community-packages:
     get:
       $ref: ./handlers/community-packages/spec/paths/getInstalledPackages.generated.yml

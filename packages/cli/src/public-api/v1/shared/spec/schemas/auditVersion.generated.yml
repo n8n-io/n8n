@@ -1,0 +1,35 @@
+type: object
+properties:
+  name:
+    type: string
+  nodes:
+    type: array
+    items:
+      nullable: true
+  createdAt:
+    type: string
+  description:
+    type: string
+  documentationUrl:
+    type: string
+  hasBreakingChange:
+    type: boolean
+  hasSecurityFix:
+    type: boolean
+    nullable: true
+  hasSecurityIssue:
+    type: boolean
+    nullable: true
+  securityIssueFixVersion:
+    type: string
+    nullable: true
+required:
+  - name
+  - nodes
+  - createdAt
+  - description
+  - documentationUrl
+  - hasBreakingChange
+  - hasSecurityFix
+  - hasSecurityIssue
+  - securityIssueFixVersion
