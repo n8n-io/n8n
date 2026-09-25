@@ -1454,6 +1454,8 @@ describe('PromotionsService', () => {
 		describe('apply project selection', () => {
 			const branchWorkflow = mock<InventoryWorkflow>({ id: 'w1', projectId: 'p1' });
 			const foreignWorkflow = mock<InventoryWorkflow>({ id: 'foreign', projectId: 'p2' });
+			// Owned by p1 on the instance, but the package now holds it under p2: a move.
+			const movedWorkflow = mock<InventoryWorkflow>({ id: 'moved', projectId: 'p2' });
 			const project = mock<Project>({ id: 'p1' });
 			const foreignProject = mock<Project>({ id: 'p2' });
 
@@ -1464,7 +1466,7 @@ describe('PromotionsService', () => {
 				await mkdir(packageFolder, { recursive: true });
 				inventoryReader.read.mockResolvedValue({
 					projects: [],
-					workflows: [branchWorkflow, foreignWorkflow],
+					workflows: [branchWorkflow, foreignWorkflow, movedWorkflow],
 					credentials: [],
 					variables: [],
 				});
@@ -1472,6 +1474,7 @@ describe('PromotionsService', () => {
 					new Map([
 						['deleted', project],
 						['foreign', foreignProject],
+						['moved', project],
 					]),
 				);
 				n8nPackagesService.importPackageSelectionFromDirectory.mockResolvedValue(importResult());
@@ -1519,6 +1522,18 @@ describe('PromotionsService', () => {
 				).rejects.toMatchObject({
 					httpStatusCode: 400,
 					message: `The following workflows are not in this project's branch or instance: ${invalidIds.join(', ')}`,
+				});
+				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
+			});
+
+			it('rejects a cross-project move before preflight or import', async () => {
+				await expect(
+					service.applyProjectSelection('p1', actor, { workflowIds: ['w1', 'moved'] }),
+				).rejects.toMatchObject({
+					httpStatusCode: 422,
+					message:
+						'These workflows moved to another project: moved. A selective apply cannot move them. Apply all projects instead.',
 				});
 				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
 				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
