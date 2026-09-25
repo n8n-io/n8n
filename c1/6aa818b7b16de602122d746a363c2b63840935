@@ -1,0 +1,21 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.integration.test.ts
+  s_df393df16d589d::t_bd45b61f54c00f 208-245
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_df393df16d589d::t_e5cdd8d3232483 79-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c16aa818b7b16de602122d746a363c2b63840935",
+  "prompts": {},
+  "sessions": {
+    "s_df393df16d589d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "587c8b66-2e9a-4b6a-ae11-b9263622685c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

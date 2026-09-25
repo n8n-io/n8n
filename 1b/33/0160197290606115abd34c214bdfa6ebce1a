@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b330160197290606115abd34c214bdfa6ebce1a",
+  "prompts": {},
+  "sessions": {
+    "s_ceea518ec91e06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d6c8-dc68-7ef2-9d12-e19ee76a253d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
