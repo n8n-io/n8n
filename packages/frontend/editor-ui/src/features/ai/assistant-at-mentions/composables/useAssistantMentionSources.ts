@@ -163,7 +163,7 @@ export function useAssistantMentionSources(providers: readonly MentionSourceProv
 	}
 
 	function clearSearchResults(): void {
-		requestGeneration++;
+		latestRequestGeneration++;
 		currentQuery = '';
 		currentMode = undefined;
 		isBrowsing.value = false;
