@@ -240,11 +240,6 @@ const tabDrag = useTabDragReorder({
 	onDragStart: () => hideTabHoverCard(),
 });
 
-function tabDragStyle(tabId: string) {
-	const offset = tabDrag.offsets.value[tabId];
-	return offset ? { transform: `translateX(${offset}px)` } : undefined;
-}
-
 // --- New tab picker ---
 
 const isPickerOpen = ref(false);
@@ -309,10 +304,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 							{
 								[$style.tabActive]: tab.id === activeTabId,
 								[$style.tabDragging]: tab.id === tabDrag.draggedTabId.value,
-								[$style.tabMovable]: tabDrag.draggedTabId.value !== undefined,
 							},
 						]"
-						:style="tabDragStyle(tab.id)"
 						:data-tab-item-id="tab.id"
 						@pointerdown="tabDrag.onPointerDown(tab.id, $event)"
 						@mouseenter="showTabHoverCard(tab, $event)"
@@ -544,15 +537,9 @@ async function handleCopyLink(tab: ArtifactTab) {
 		--tab--background: light-dark(var(--color--neutral-150), var(--color--neutral-800));
 	}
 
-	// While a drag runs, the other tabs slide aside. There is no transition after
-	// the drop, so the tabs land in their new places at once.
-	&.tabMovable {
-		transition: transform 150ms ease;
-	}
-
+	// The drag composable moves the tabs through inline styles.
 	&.tabDragging {
 		z-index: 1;
-		transition: none;
 		cursor: grabbing;
 	}
 

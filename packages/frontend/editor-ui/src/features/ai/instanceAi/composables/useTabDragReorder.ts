@@ -3,11 +3,13 @@ import { onScopeDispose, ref } from 'vue';
 // The pointer must move this far sideways before a press becomes a drag, so a
 // click still selects the tab.
 const DRAG_THRESHOLD_PX = 4;
+const SLIDE_TRANSITION = 'transform 150ms ease';
 
 /** Marks an element inside a tab, such as the close button, that does not start a drag. */
 export const TAB_DRAG_IGNORE_ATTRIBUTE = 'data-tab-drag-ignore';
 
 interface TabBox {
+	element: HTMLElement;
 	id: string;
 	left: number;
 	width: number;
@@ -28,6 +30,9 @@ const center = (box: TabBox) => box.left + box.width / 2;
  * Drag tabs sideways to reorder them, like browser tabs. The dragged tab
  * follows the pointer and the other tabs move aside. The new order applies
  * when the pointer is released.
+ *
+ * The tab positions are written to the element styles once per frame, not
+ * through reactive state, so a drag does not render the tab bar again.
  */
 export function useTabDragReorder({
 	getTabElements,
@@ -40,14 +45,14 @@ export function useTabDragReorder({
 	onDragStart?: () => void;
 }) {
 	const draggedTabId = ref<string>();
-	// Horizontal offset in pixels for each tab while a drag runs.
-	const offsets = ref<Record<string, number>>({});
 	let state: DragState | null = null;
+	let frame: number | undefined;
+	let pendingDeltaX = 0;
 
 	function measure(): TabBox[] {
 		return getTabElements().map((element) => {
 			const rect = element.getBoundingClientRect();
-			return { id: element.dataset.tabItemId ?? '', left: rect.left, width: rect.width };
+			return { element, id: element.dataset.tabItemId ?? '', left: rect.left, width: rect.width };
 		});
 	}
 
@@ -79,10 +84,24 @@ export function useTabDragReorder({
 		// A tab that moves aside moves by the dragged tab's width plus the gap.
 		const gap = boxes.length > 1 ? boxes[1].left - (boxes[0].left + boxes[0].width) : 0;
 		const step = dragged.width + gap;
-		const next: Record<string, number> = { [dragged.id]: delta };
-		for (let i = fromIndex + 1; i <= targetIndex; i++) next[boxes[i].id] = -step;
-		for (let i = targetIndex; i < fromIndex; i++) next[boxes[i].id] = step;
-		offsets.value = next;
+		boxes.forEach((box, i) => {
+			let offset = 0;
+			if (i === fromIndex) offset = delta;
+			else if (i > fromIndex && i <= targetIndex) offset = -step;
+			else if (i < fromIndex && i >= targetIndex) offset = step;
+			box.element.style.transform = offset ? `translateX(${offset}px)` : '';
+		});
+	}
+
+	function startDrag() {
+		if (!state) return;
+		draggedTabId.value = state.tabId;
+		state.boxes.forEach((box, i) => {
+			// The other tabs slide aside. The dragged tab follows the pointer at once.
+			box.element.style.transition = i === state?.fromIndex ? 'none' : SLIDE_TRANSITION;
+			box.element.style.willChange = 'transform';
+		});
+		onDragStart?.();
 	}
 
 	function onPointerMove(event: PointerEvent) {
@@ -90,11 +109,15 @@ export function useTabDragReorder({
 		const deltaX = event.clientX - state.startX;
 		if (draggedTabId.value === undefined) {
 			if (Math.abs(deltaX) < DRAG_THRESHOLD_PX) return;
-			draggedTabId.value = state.tabId;
-			onDragStart?.();
+			startDrag();
 		}
 		event.preventDefault();
-		update(deltaX);
+		// Pointer events can arrive faster than the screen refreshes, so draw once per frame.
+		pendingDeltaX = deltaX;
+		frame ??= requestAnimationFrame(() => {
+			frame = undefined;
+			update(pendingDeltaX);
+		});
 	}
 
 	function stop(commit: boolean) {
@@ -102,20 +125,32 @@ export function useTabDragReorder({
 		window.removeEventListener('pointerup', onPointerUp);
 		window.removeEventListener('pointercancel', onPointerCancel);
 		window.removeEventListener('keydown', onKeyDown, true);
+		if (frame !== undefined) {
+			cancelAnimationFrame(frame);
+			frame = undefined;
+		}
 
 		const finished = state;
 		const wasDragging = draggedTabId.value !== undefined;
 		state = null;
-		// Reset before the reorder, so the tabs land in their new places without an animation.
 		draggedTabId.value = undefined;
-		offsets.value = {};
+		// Clear the transition together with the offsets, so the tabs land in
+		// their new places at once instead of sliding back first.
+		finished?.boxes.forEach(({ element }) => {
+			element.style.transform = '';
+			element.style.transition = '';
+			element.style.willChange = '';
+		});
 		if (commit && wasDragging && finished && finished.targetIndex !== finished.fromIndex) {
 			onReorder(finished.tabId, finished.targetIndex);
 		}
 	}
 
 	function onPointerUp(event: PointerEvent) {
-		if (state && event.pointerId === state.pointerId) stop(true);
+		if (!state || event.pointerId !== state.pointerId) return;
+		// Apply the last position that has not been drawn yet, so the drop matches the pointer.
+		if (frame !== undefined) update(pendingDeltaX);
+		stop(true);
 	}
 
 	function onPointerCancel(event: PointerEvent) {
@@ -156,5 +191,5 @@ export function useTabDragReorder({
 
 	onScopeDispose(() => stop(false));
 
-	return { draggedTabId, offsets, onPointerDown };
+	return { draggedTabId, onPointerDown };
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { effectScope, type EffectScope } from 'vue';
 import { TAB_DRAG_IGNORE_ATTRIBUTE, useTabDragReorder } from '../composables/useTabDragReorder';
 
@@ -37,6 +37,25 @@ function pointerEvent(
 
 describe('useTabDragReorder', () => {
 	let scope: EffectScope;
+	let frameCallbacks: FrameRequestCallback[] = [];
+
+	// Positions update once per animation frame; tests draw a frame on demand.
+	function flushFrame() {
+		const callbacks = frameCallbacks;
+		frameCallbacks = [];
+		callbacks.forEach((callback) => callback(0));
+	}
+
+	beforeEach(() => {
+		frameCallbacks = [];
+		vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+			frameCallbacks.push(callback);
+			return frameCallbacks.length;
+		});
+		vi.stubGlobal('cancelAnimationFrame', () => {
+			frameCallbacks = [];
+		});
+	});
 
 	function setup(layout: Array<[string, number]>) {
 		const elements = createTabs(layout);
@@ -50,15 +69,22 @@ describe('useTabDragReorder', () => {
 		function press(tabId: string, clientX: number, init: Parameters<typeof pointerEvent>[1] = {}) {
 			drag.onPointerDown(tabId, pointerEvent('pointerdown', { clientX, ...init }));
 		}
-		const move = (clientX: number) =>
+		const move = (clientX: number) => {
 			window.dispatchEvent(pointerEvent('pointermove', { clientX }));
+			flushFrame();
+		};
+		const transforms = () =>
+			Object.fromEntries(
+				elements.map((element) => [element.dataset.tabItemId, element.style.transform]),
+			);
 		const release = () => window.dispatchEvent(pointerEvent('pointerup'));
 
-		return { ...drag, elements, onReorder, onDragStart, press, move, release };
+		return { ...drag, elements, onReorder, onDragStart, press, move, release, transforms };
 	}
 
 	afterEach(() => {
 		scope?.stop();
+		vi.unstubAllGlobals();
 	});
 
 	it('does not start a drag for a small movement', () => {
@@ -87,13 +113,43 @@ describe('useTabDragReorder', () => {
 
 		expect(ctx.onDragStart).toHaveBeenCalledTimes(1);
 		expect(ctx.draggedTabId.value).toBe('a');
-		expect(ctx.offsets.value).toEqual({ a: 60, b: -104 });
+		expect(ctx.transforms()).toEqual({ a: 'translateX(60px)', b: 'translateX(-104px)', c: '' });
 
 		ctx.release();
 
 		expect(ctx.onReorder).toHaveBeenCalledWith('a', 1);
 		expect(ctx.draggedTabId.value).toBeUndefined();
-		expect(ctx.offsets.value).toEqual({});
+		expect(ctx.transforms()).toEqual({ a: '', b: '', c: '' });
+		expect(ctx.elements.map((element) => element.style.transition)).toEqual(['', '', '']);
+	});
+
+	it('moves the tabs once per frame, however many pointer moves arrive', () => {
+		const ctx = setup([
+			['a', 100],
+			['b', 100],
+		]);
+		ctx.press('a', 50);
+
+		window.dispatchEvent(pointerEvent('pointermove', { clientX: 60 }));
+		window.dispatchEvent(pointerEvent('pointermove', { clientX: 70 }));
+		expect(frameCallbacks).toHaveLength(1);
+		expect(ctx.transforms().a).toBe('');
+
+		flushFrame();
+		expect(ctx.transforms().a).toBe('translateX(20px)');
+	});
+
+	it('drops at the last pointer position when the pointer is released before the next frame', () => {
+		const ctx = setup([
+			['a', 100],
+			['b', 100],
+		]);
+		ctx.press('a', 50);
+
+		window.dispatchEvent(pointerEvent('pointermove', { clientX: 200 }));
+		ctx.release();
+
+		expect(ctx.onReorder).toHaveBeenCalledWith('a', 1);
 	});
 
 	it('drops the tab before a tab it passes to the left', () => {
@@ -121,7 +177,7 @@ describe('useTabDragReorder', () => {
 		ctx.press('wide', 150);
 		ctx.move(-200);
 
-		expect(ctx.offsets.value.wide).toBe(-64);
+		expect(ctx.transforms().wide).toBe('translateX(-64px)');
 		ctx.release();
 
 		expect(ctx.onReorder).toHaveBeenCalledWith('wide', 0);
@@ -168,7 +224,7 @@ describe('useTabDragReorder', () => {
 
 		expect(ctx.onReorder).not.toHaveBeenCalled();
 		expect(ctx.draggedTabId.value).toBeUndefined();
-		expect(ctx.offsets.value).toEqual({});
+		expect(ctx.transforms()).toEqual({ a: '', b: '' });
 	});
 
 	it('does not start a drag from the close button', () => {
