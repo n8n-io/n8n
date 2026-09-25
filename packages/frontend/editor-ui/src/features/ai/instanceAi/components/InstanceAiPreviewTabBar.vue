@@ -17,7 +17,7 @@ import { useToast } from '@n8n/composables/useToast';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { HOVER_DELAY } from '@/app/constants/durations';
 import type { ArtifactTab } from '../useCanvasPreview';
-import { useWorkflowTabSummaries } from '../useWorkflowTabSummaries';
+import { hasTabSummary, useArtifactTabSummaries } from '../useArtifactTabSummaries';
 
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
@@ -123,26 +123,39 @@ function handleOpenInEditor(tab: ArtifactTab) {
 
 type HoverTarget = { tab: ArtifactTab; reference: HTMLElement };
 
-const { summaries: workflowSummaries, refresh: refreshWorkflowSummaries } = useWorkflowTabSummaries(
-	() => props.tabs,
-);
+const { getSummary, refresh: refreshSummaries } = useArtifactTabSummaries(() => props.tabs);
 const hoveredTab = shallowRef<HoverTarget | null>(null);
 const hoveredSummary = computed(() =>
-	hoveredTab.value ? workflowSummaries.get(hoveredTab.value.tab.id) : undefined,
+	hoveredTab.value ? getSummary(hoveredTab.value.tab) : undefined,
 );
 const isHoveredSummaryLoading = computed(
 	() =>
-		hoveredTab.value?.tab.type === 'workflow' &&
-		!hoveredTab.value.tab.pending &&
-		hoveredSummary.value === undefined,
+		!!hoveredTab.value && hasTabSummary(hoveredTab.value.tab) && hoveredSummary.value === undefined,
 );
+const hoveredStatus = computed(() => {
+	const summary = hoveredSummary.value;
+	if (!summary) return undefined;
+	if (summary.type === 'workflow') {
+		return {
+			label: i18n.baseText(
+				summary.published ? 'workflows.published' : 'instanceAi.previewTabBar.draft',
+			),
+			published: summary.published,
+		};
+	}
+	return {
+		label: i18n.baseText('dataTable.card.column.count', {
+			adjustToNumber: summary.columnCount,
+			interpolate: { count: summary.columnCount },
+		}),
+		published: false,
+	};
+});
 
 function setHoveredTab(target: HoverTarget) {
 	hoveredTab.value = target;
 	// Keep the stored details on screen while this refresh runs.
-	if (target.tab.type === 'workflow' && !target.tab.pending) {
-		void refreshWorkflowSummaries([target.tab.id]);
-	}
+	void refreshSummaries([target.tab]);
 }
 
 const { start: startOpenTimer, stop: stopOpenTimer } = useTimeoutFn(
@@ -288,15 +301,11 @@ async function handleCopyLink(tab: ArtifactTab) {
 						:class="[$style.statusTag, $style.placeholder, $style.placeholderTag]"
 					/>
 					<span
-						v-else-if="hoveredSummary"
-						:class="[$style.statusTag, { [$style.statusTagPublished]: hoveredSummary.published }]"
+						v-else-if="hoveredStatus"
+						:class="[$style.statusTag, { [$style.statusTagPublished]: hoveredStatus.published }]"
 						data-test-id="instance-ai-tab-hover-card-status"
 					>
-						{{
-							hoveredSummary.published
-								? i18n.baseText('workflows.published')
-								: i18n.baseText('instanceAi.previewTabBar.draft')
-						}}
+						{{ hoveredStatus.label }}
 					</span>
 				</div>
 			</template>
