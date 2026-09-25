@@ -118,7 +118,7 @@ export const createSearchWorkflowsTool = (
 		name: 'search_workflows',
 		config: {
 			description:
-				'Search for workflows with optional filters. Returns a preview of each workflow. Where workflows are organised into folders, narrow the search with folderId instead of scanning everything: reuse a parentFolderId from an earlier result, or resolve a folder name with search_folders when that tool is available.',
+				'Search for workflows available to MCP tools with optional filters. Returns a preview of each workflow. Where workflows are organised into folders, narrow the search with folderId instead of scanning everything: reuse a parentFolderId from an earlier result, or resolve a folder name with search_folders when that tool is available.',
 			inputSchema,
 			outputSchema,
 			annotations: {
@@ -272,6 +272,7 @@ export async function searchWorkflows(
 		sortBy,
 		filter: {
 			isArchived: false,
+			availableInMCP: true,
 			...(query ? { query } : {}),
 			...(projectId ? { projectId } : {}),
 			...(filterTags && filterTags.length > 0 ? { tags: filterTags } : {}),
