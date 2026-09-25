@@ -308,6 +308,58 @@ describe('Test Webhook Node', () => {
 		});
 	});
 
+	describe('Ignore Bots option', () => {
+		const node = new Webhook();
+		let context: ReturnType<typeof mock<IWebhookFunctions>>;
+		let req: ReturnType<typeof mock<Request>>;
+		let res: ReturnType<typeof mock<Response>>;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			context = mock<IWebhookFunctions>({ nodeHelpers: mock(), logger: mock() });
+			req = mock<Request>();
+			res = mock<Response>();
+			context.getRequestObject.mockReturnValue(req);
+			context.getResponseObject.mockReturnValue(res);
+			context.getChildNodes.mockReturnValue([]);
+			context.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2.1,
+				name: 'Webhook',
+			} as any);
+			context.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return { ignoreBots: true };
+				if (paramName === 'responseMode') return 'onReceived';
+				if (paramName === 'authentication') return 'none';
+				if (paramName === 'httpMethod') return 'GET';
+				return undefined;
+			});
+			req.headers = { 'user-agent': 'curl/8.4.0' };
+			req.params = {};
+			req.query = {};
+			req.method = 'GET';
+			Object.defineProperty(req, 'ips', { value: [], configurable: true });
+			Object.defineProperty(req, 'ip', { value: '127.0.0.1', configurable: true });
+			res.writeHead.mockImplementation(() => res);
+			res.end.mockImplementation(() => res);
+		});
+
+		it('rejects a bot user agent with a message naming the actual cause, not the generic auth message', async () => {
+			// Regression for https://github.com/n8n-io/n8n/issues/36363: with no authentication
+			// configured at all, the 403 body used to be the generic "Authorization data is
+			// wrong!", which sends anyone debugging it looking for credential problems instead of
+			// the real cause - their client's user agent being classified as a bot.
+			const result = await node.webhook(context);
+
+			expect(res.writeHead).toHaveBeenCalledWith(403, expect.any(Object));
+			const [message] = res.end.mock.calls[0];
+			expect(message).toMatch(/bot/i);
+			expect(message).toMatch(/ignore bots/i);
+			expect(message).not.toBe('Authorization data is wrong!');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+	});
+
 	describe('onlyRunIf filter', () => {
 		const node = new Webhook();
 		let context: ReturnType<typeof mock<IWebhookFunctions>>;
