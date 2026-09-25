@@ -49,7 +49,7 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 		vi.clearAllMocks();
 	});
 
-	it('skips discovery for a classic api-key credential (no data-plane deployments API)', async () => {
+	it('rejects a classic api-key credential with a clear error (no data-plane deployments API)', async () => {
 		ctx.getNodeParameter = vi
 			.fn()
 			.mockReturnValueOnce(AuthenticationType.ApiKey)
@@ -59,24 +59,26 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 			resourceName: 'my-resource',
 		});
 
-		const result = await searchModels.call(ctx);
+		await expect(searchModels.call(ctx)).rejects.toThrow(
+			'Only an Azure AI Foundry credential can list deployments',
+		);
 
 		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();
-		expect(result).toEqual({ results: [] });
 	});
 
-	it('skips discovery for a classic Entra ID credential', async () => {
+	it('rejects a classic Entra ID credential with a clear error', async () => {
 		ctx.getNodeParameter = vi
 			.fn()
 			.mockReturnValueOnce(AuthenticationType.EntraOAuth2)
 			.mockReturnValueOnce('');
 		ctx.getCredentials = vi.fn().mockResolvedValue({ resourceName: 'my-resource' });
 
-		const result = await searchModels.call(ctx);
+		await expect(searchModels.call(ctx)).rejects.toThrow(
+			'Only an Azure AI Foundry credential can list deployments',
+		);
 
 		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();
 		expect(n8nOAuth2TokenCredentialSpy).not.toHaveBeenCalled();
-		expect(result).toEqual({ results: [] });
 	});
 
 	it('derives the base URL from the Foundry endpoint origin for an api-key credential', async () => {

@@ -23,6 +23,14 @@ function resolveFoundryBaseURL(node: INode, foundryEndpoint?: string): string {
 	return new URL(requireFoundryEndpoint(node, foundryEndpoint)).origin;
 }
 
+// The dropdown shows only the message, so it also says how to fix the problem.
+function classicCredentialError(node: INode): NodeOperationError {
+	return new NodeOperationError(
+		node,
+		"Only an Azure AI Foundry credential can list deployments. Select By ID and enter the deployment name, or set the credential's Endpoint Type to Azure AI Foundry.",
+	);
+}
+
 export async function searchModels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -42,7 +50,7 @@ export async function searchModels(
 			'azureOpenAiApi',
 		);
 		if (credential.endpointType !== 'foundry') {
-			return { results: [] };
+			throw classicCredentialError(this.getNode());
 		}
 		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
 		headers = { 'api-key': credential.apiKey };
@@ -51,7 +59,7 @@ export async function searchModels(
 			'azureEntraCognitiveServicesOAuth2Api',
 		);
 		if (credential.endpointType !== 'foundry') {
-			return { results: [] };
+			throw classicCredentialError(this.getNode());
 		}
 		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
 		// Mints a token for the Foundry audience, which this call needs.
