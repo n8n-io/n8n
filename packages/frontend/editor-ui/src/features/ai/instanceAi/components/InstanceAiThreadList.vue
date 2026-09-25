@@ -53,8 +53,10 @@ const { history, search, sentinelRef, loadMore } = useInstanceAiThreadHistory();
 
 const menuOpen = ref(false);
 const menuContentId = useId();
-const historyDropdownRef = ref<{ highlightFirstItem: () => void } | null>(null);
-const triggerRef = ref<HTMLElement | null>(null);
+const historyDropdownRef = ref<{
+	highlightFirstItem: () => void;
+	focusTrigger: () => void;
+} | null>(null);
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
@@ -115,7 +117,7 @@ function handleMenuOpenChange(open: boolean) {
 	if (!restoreTriggerFocus) return;
 
 	restoreTriggerFocus = false;
-	void nextTick(() => triggerRef.value?.querySelector('button')?.focus());
+	void nextTick(() => historyDropdownRef.value?.focusTrigger());
 }
 
 function closeMenu() {
@@ -225,7 +227,8 @@ function handleThreadAction(action: string, threadId: string) {
 	if (action === 'delete') {
 		void handleDeleteThread(threadId);
 	} else if (action === 'rename') {
-		startRename(threadId);
+		// Wait for the action menu to unmount before the rename input takes focus.
+		requestAnimationFrame(() => startRename(threadId));
 	}
 }
 </script>
@@ -251,7 +254,7 @@ function handleThreadAction(action: string, threadId: string) {
 		@update:model-value="handleMenuOpenChange"
 	>
 		<template v-if="$slots.trigger" #trigger>
-			<span ref="triggerRef"><slot name="trigger" /></span>
+			<slot name="trigger" />
 		</template>
 
 		<template #loading>

@@ -2716,6 +2716,9 @@ export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 /** Enables adding selected canvas nodes as chat context in the n8n Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
+/** Enables workflow, node, and canvas group mentions in the n8n Assistant */
+export const AI_ASSISTANT_AT_MENTIONS_FLAG = '116_at_mentions_enabled';
+
 /** Enables the conversation-history tool and the past-conversations first-turn hint */
 export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
 

@@ -16,4 +16,6 @@ export interface ActionDropdownProps<T extends string = string> {
 	maxHeight?: string | number;
 	width?: string;
 	modal?: boolean;
+	/** Prevents the menu from returning focus to its trigger when it closes. */
+	suppressCloseAutoFocus?: boolean;
 }

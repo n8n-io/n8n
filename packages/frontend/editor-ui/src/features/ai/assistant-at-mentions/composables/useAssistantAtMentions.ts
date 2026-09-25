@@ -1,5 +1,7 @@
 import { nextTick, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue';
 
+import type { AssistantMentionTriggerSource } from '../assistantAtMentions.types';
+
 interface MentionRange {
 	origin: 'typed' | 'button';
 	start: number;
@@ -17,17 +19,36 @@ export function isMentionTrigger(character: string | undefined): boolean {
 	return character !== undefined && MENTION_TRIGGER_CHARACTERS.has(character);
 }
 
+function findLastMentionTriggerIndex(text: string): number {
+	for (let index = text.length - 1; index >= 0; index--) {
+		if (isMentionTrigger(text[index])) return index;
+	}
+	return -1;
+}
+
 export function useAssistantAtMentions(options: {
 	text: Ref<string>;
 	enabled: MaybeRefOrGetter<boolean>;
 	getInputElement: () => HTMLTextAreaElement | undefined;
+	onOpened?: (source: AssistantMentionTriggerSource) => void;
 }) {
 	const menuOpen = ref(false);
 	const query = ref('');
 	const activeRange = ref<MentionRange>();
 	const savedSelection = ref({ start: 0, end: 0 });
+	const dismissedTypedTriggerIndex = ref<number>();
+	let updatingTextInternally = false;
 
-	function close(): void {
+	function updateText(value: string): void {
+		updatingTextInternally = true;
+		options.text.value = value;
+		updatingTextInternally = false;
+	}
+
+	function close(rememberTypedTrigger = false): void {
+		if (rememberTypedTrigger && activeRange.value?.origin === 'typed') {
+			dismissedTypedTriggerIndex.value = activeRange.value.start;
+		}
 		menuOpen.value = false;
 		query.value = '';
 		activeRange.value = undefined;
@@ -42,19 +63,23 @@ export function useAssistantAtMentions(options: {
 		};
 	}
 
-	function openTypedRange(triggerIndex: number, caret: number): void {
+	function openTypedRange(triggerIndex: number, caret: number, initialQuery = ''): void {
+		const wasOpen = menuOpen.value;
 		activeRange.value = {
 			origin: 'typed',
 			start: triggerIndex,
 			queryStart: triggerIndex + 1,
 			end: caret,
 		};
-		query.value = '';
+		dismissedTypedTriggerIndex.value = undefined;
+		query.value = initialQuery;
 		menuOpen.value = true;
+		if (!wasOpen) options.onOpened?.('typed');
 	}
 
 	function openFromButton(): void {
 		if (!toValue(options.enabled)) return;
+		const wasOpen = menuOpen.value;
 		saveSelection();
 		activeRange.value = {
 			origin: 'button',
@@ -64,10 +89,17 @@ export function useAssistantAtMentions(options: {
 		};
 		query.value = '';
 		menuOpen.value = true;
+		if (!wasOpen) options.onOpened?.('button');
 	}
 
 	async function handleTextChange(value: string, caretOverride?: number): Promise<void> {
-		options.text.value = value;
+		updateText(value);
+		if (
+			dismissedTypedTriggerIndex.value !== undefined &&
+			!isMentionTrigger(value[dismissedTypedTriggerIndex.value])
+		) {
+			dismissedTypedTriggerIndex.value = undefined;
+		}
 		if (!toValue(options.enabled)) {
 			close();
 			return;
@@ -77,14 +109,19 @@ export function useAssistantAtMentions(options: {
 		const input = options.getInputElement();
 		const caret = caretOverride ?? input?.selectionEnd ?? value.length;
 		savedSelection.value = { start: caret, end: caret };
-		const triggerIndex = caret - 1;
-		const followsWhitespace = triggerIndex === 0 || /\s/.test(value[triggerIndex - 1] ?? '');
-		if (isMentionTrigger(value[triggerIndex]) && followsWhitespace) {
-			openTypedRange(triggerIndex, caret);
+		const valueBeforeCaret = value.slice(0, caret);
+		const possibleTriggerIndex = findLastMentionTriggerIndex(valueBeforeCaret);
+		const triggerIndex =
+			possibleTriggerIndex === 0 || /\s/.test(valueBeforeCaret[possibleTriggerIndex - 1] ?? '')
+				? possibleTriggerIndex
+				: -1;
+		const range = activeRange.value;
+		if (triggerIndex >= 0 && (!range || range.origin !== 'typed' || range.start !== triggerIndex)) {
+			if (dismissedTypedTriggerIndex.value === triggerIndex && !range) return;
+			openTypedRange(triggerIndex, caret, value.slice(triggerIndex + 1, caret));
 			return;
 		}
 
-		const range = activeRange.value;
 		if (range) {
 			const triggerExists = range.origin === 'button' || isMentionTrigger(value[range.start]);
 			const beforeRange = range.origin === 'typed' ? caret <= range.start : caret < range.start;
@@ -116,8 +153,7 @@ export function useAssistantAtMentions(options: {
 		const start = range?.start ?? savedSelection.value.start;
 		const end = range?.end ?? savedSelection.value.end;
 		const insertedText = `"${label}"`;
-		options.text.value =
-			options.text.value.slice(0, start) + insertedText + options.text.value.slice(end);
+		updateText(options.text.value.slice(0, start) + insertedText + options.text.value.slice(end));
 		close();
 
 		await nextTick();
@@ -130,7 +166,7 @@ export function useAssistantAtMentions(options: {
 
 	function handleMenuOpenChange(open: boolean): void {
 		if (!open) {
-			close();
+			close(true);
 			return;
 		}
 		if (!activeRange.value) openFromButton();
@@ -141,6 +177,13 @@ export function useAssistantAtMentions(options: {
 		(enabled) => {
 			if (!enabled) close();
 		},
+	);
+	watch(
+		options.text,
+		() => {
+			if (!updatingTextInternally) dismissedTypedTriggerIndex.value = undefined;
+		},
+		{ flush: 'sync' },
 	);
 
 	return {

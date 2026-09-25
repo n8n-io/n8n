@@ -1,6 +1,8 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	AI_ASSISTANT_AT_MENTIONS_FLAG,
+	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -650,6 +652,8 @@ export class InstanceAiAdapterService {
 		setupPanelVariant?: 'control' | 'variant';
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
+		/** Node attachments from either the canvas or Assistant mentions rollout. */
+		nodeContextEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
@@ -688,6 +692,8 @@ export class InstanceAiAdapterService {
 				? { setupPanelVariant }
 				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
+			nodeContextEnabled:
+				flags[CANVAS_NODE_CONTEXT_FLAG] === true || flags[AI_ASSISTANT_AT_MENTIONS_FLAG] === true,
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,

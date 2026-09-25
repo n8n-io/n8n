@@ -1362,6 +1362,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_count: 0,
+				workflow_mention_count: 0,
+				node_mention_count: 0,
+				group_mention_count: 0,
+				attachment_count: 0,
 			},
 		);
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
@@ -1375,6 +1380,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_count: 0,
+				workflow_mention_count: 0,
+				node_mention_count: 0,
+				group_mention_count: 0,
+				attachment_count: 0,
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1452,6 +1462,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					prefill_type: 'handoff_setup_panel_execute',
 					prefill_id: null,
 					prompt_modified: false,
+					mention_count: 0,
+					workflow_mention_count: 0,
+					node_mention_count: 0,
+					group_mention_count: 0,
+					attachment_count: 0,
 				},
 			);
 		});
@@ -1481,6 +1496,41 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 	});
 
+	test('sendMessage reports mention and outbound attachment counts', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await activeRuntime(registry).sendMessage('Compare the workflow and node', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-1', name: 'Orders' },
+				{
+					type: 'nodes',
+					workflowId: 'workflow-1',
+					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
+				},
+			],
+			mentionCounts: {
+				mentionCount: 3,
+				workflowMentionCount: 1,
+				nodeMentionCount: 1,
+				groupMentionCount: 1,
+			},
+		});
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({
+				mention_count: 3,
+				workflow_mention_count: 1,
+				node_mention_count: 1,
+				group_mention_count: 1,
+				attachment_count: 2,
+			}),
+		);
+		warnSpy.mockRestore();
+	});
+
 	test('sendMessage includes action_source from thread metadata', async () => {
 		const hooks = {
 			onTitleUpdated: vi.fn(),
@@ -1503,6 +1553,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_count: 0,
+				workflow_mention_count: 0,
+				node_mention_count: 0,
+				group_mention_count: 0,
+				attachment_count: 0,
 			},
 		);
 		expect(warnSpy).not.toHaveBeenCalled();
@@ -1531,6 +1586,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_count: 0,
+				workflow_mention_count: 0,
+				node_mention_count: 0,
+				group_mention_count: 0,
+				attachment_count: 0,
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1564,6 +1624,11 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: 'suggestion_catalog',
 				prefill_id: 'v4-engineering-data-management-1',
 				prompt_modified: true,
+				mention_count: 0,
+				workflow_mention_count: 0,
+				node_mention_count: 0,
+				group_mention_count: 0,
+				attachment_count: 0,
 			},
 		);
 		warnSpy.mockRestore();

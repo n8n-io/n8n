@@ -155,8 +155,25 @@ describe('InstanceAiConversation', () => {
 			USER_TYPED_MESSAGE,
 			Date.now(),
 			acceptDraft,
+			{
+				mentionCount: 1,
+				workflowMentionCount: 1,
+				nodeMentionCount: 0,
+				groupMentionCount: 0,
+			},
 		);
 		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Compare orders',
+			expect.objectContaining({
+				mentionCounts: {
+					mentionCount: 1,
+					workflowMentionCount: 1,
+					nodeMentionCount: 0,
+					groupMentionCount: 0,
+				},
+			}),
+		);
 		expect(acceptDraft).not.toHaveBeenCalled();
 
 		admit(true);
