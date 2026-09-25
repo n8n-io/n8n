@@ -76,7 +76,9 @@ export class PromotionBindingPreflightService {
 			: packageInventory;
 		const credentials = collectCredentialReferences(inventory);
 		const variables = collectVariableReferences(inventory, this.variableExtractor);
-		const projects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
+		// Bindings can point at owner projects outside the selection, so resolve
+		// names from the full package while the checks below stay selection-scoped.
+		const projects = new Map(packageInventory.projects.map(({ id, name }) => [id, { id, name }]));
 		const projectOf: ProjectLookup = (id) => {
 			const project = projects.get(id);
 			// The reader requires a project file for every project directory.

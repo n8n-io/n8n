@@ -205,6 +205,44 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		});
 	});
 
+	it('reports a missing binding when a selected workflow needs a credential owned by another package project', async () => {
+		const projectA = projectFile(await createTeamProject('Alpha', owner));
+		const beta = { id: 'proj-beta', name: 'Beta' };
+		await writePackage({
+			'projects/alpha/project.json': projectA,
+			'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', [
+				credentialNode('Cross', 'githubApi', 'cred-cross'),
+			]),
+			'projects/beta/project.json': beta,
+			'projects/beta/credentials/cross/credential.json': {
+				id: 'cred-cross',
+				name: 'Cross',
+				type: 'githubApi',
+			},
+		});
+		const before = await snapshot();
+
+		const result = await service.checkDirectory({
+			sourceDir,
+			selection: { selectedProjectId: projectA.id, selectedWorkflowIds: ['w1'] },
+		});
+
+		expect(result.missingProjects).toEqual([]);
+		expect(result.missingBindings).toEqual([
+			{
+				kind: 'credential',
+				sourceId: 'cred-cross',
+				name: 'Cross',
+				credentialType: 'githubApi',
+				ownerProject: beta,
+				consumers: [{ project: projectA, workflows: [{ id: 'w1', name: 'Workflow w1' }] }],
+			},
+		]);
+		expect(result.conflicts).toEqual([]);
+		expect(promotionBindingPreflightResultSchema.parse(result)).toEqual(result);
+		expect(await snapshot()).toEqual(before);
+	});
+
 	it('matches credentials by id in the consuming project and variables by name in the project', async () => {
 		// `REGION` exists only in Beta, so Alpha's requirement stays unresolved.
 		const projectA = await createTeamProject('Alpha', owner);
