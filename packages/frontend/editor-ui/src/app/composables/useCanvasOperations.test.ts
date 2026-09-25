@@ -26,6 +26,7 @@ import type {
 	IUsedCredential,
 } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
@@ -6147,14 +6148,14 @@ describe('useCanvasOperations', () => {
 					name: 'Target',
 					type: SET_NODE_TYPE,
 				});
-				const workflowDataWithEmptyGroup = {
+				const workflowDataWithEmptyGroup: WorkflowDataUpdate = {
 					nodes: [sourceNode, anchorNode, targetNode],
 					connections: {
 						[sourceNode.name]: {
-							main: [[{ node: anchorNode.name, type: 'main', index: 0 }]],
+							main: [[{ node: anchorNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
 						},
 						[anchorNode.name]: {
-							main: [[{ node: targetNode.name, type: 'main', index: 0 }]],
+							main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
 						},
 					},
 					nodeGroups: [{ id: 'group', name: 'Group 2', nodeIds: [anchorNode.id] }],

@@ -3472,6 +3472,12 @@ export function useCanvasOperations() {
 
 		for (const node of nodes) {
 			const nodeSaveData = serializeNode(nodeTypesStore, node);
+			if (isEmptyGroupAnchor(node)) {
+				nodeSaveData.parameters = {
+					...nodeSaveData.parameters,
+					emptyGroupAnchor: true,
+				};
+			}
 			const pinDataForNode = pinDataToExecutionData(
 				workflowDocumentStore.value.pinnedDataByNodeName,
 			)[node.name];
