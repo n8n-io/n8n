@@ -55,12 +55,14 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
+	InstanceAiThreadTabsState,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { buildAgentTreeFromEvents, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import {
 	InstanceAiPersistPendingAgentRequest,
+	InstanceAiThreadTabsRequestDto,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
@@ -95,6 +97,7 @@ import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
 import type { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.service';
+import type { InstanceAiThreadTabsService } from '../instance-ai-thread-tabs.service';
 import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -144,6 +147,7 @@ describe('InstanceAiController', () => {
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
 	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
+	const threadTabsService = mock<InstanceAiThreadTabsService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -170,6 +174,7 @@ describe('InstanceAiController', () => {
 		publisher,
 		preferenceCardService,
 		globalConfig,
+		threadTabsService,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -2123,6 +2128,67 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('thread tabs', () => {
+		const tabsState: InstanceAiThreadTabsState = {
+			tabs: [{ type: 'workflow', id: 'wf-1', name: 'My Workflow', projectId: 'project-1' }],
+			closedTabs: [{ type: 'data-table', id: 'dt-1' }],
+			activeTab: { type: 'workflow', id: 'wf-1' },
+		};
+
+		// Later tests read the ownership mock without setting it, so leave it as found.
+		afterEach(() => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		});
+
+		it('should require instanceAi:message scope to read and save tabs', () => {
+			expect(scopeOf('getThreadTabs')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+			expect(scopeOf('saveThreadTabs')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+
+		it('should return the stored tabs of the user', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			threadTabsService.getState.mockResolvedValue(tabsState);
+
+			const result = await controller.getThreadTabs(req, res, THREAD_ID);
+
+			expect(result).toEqual({ state: tabsState });
+			expect(threadTabsService.getState).toHaveBeenCalledWith(THREAD_ID, USER_ID);
+		});
+
+		it('should save the tabs of the user', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const payload = new InstanceAiThreadTabsRequestDto(tabsState);
+
+			const result = await controller.saveThreadTabs(req, res, THREAD_ID, payload);
+
+			expect(result).toEqual({ state: tabsState });
+			expect(threadTabsService.saveState).toHaveBeenCalledWith(THREAD_ID, USER_ID, tabsState);
+		});
+
+		it('should reject tabs of a thread that belongs to another user', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.getThreadTabs(req, res, THREAD_ID)).rejects.toThrow(ForbiddenError);
+			await expect(
+				controller.saveThreadTabs(
+					req,
+					res,
+					THREAD_ID,
+					new InstanceAiThreadTabsRequestDto(tabsState),
+				),
+			).rejects.toThrow(ForbiddenError);
+			expect(threadTabsService.getState).not.toHaveBeenCalled();
+			expect(threadTabsService.saveState).not.toHaveBeenCalled();
+		});
+
+		it('should reject tabs of a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.getThreadTabs(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+			expect(threadTabsService.getState).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getThreadMessages', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('getThreadMessages')).toEqual({
@@ -2674,6 +2740,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<Publisher>(),
 		mock<InstanceAiPreferenceCardService>(),
 		globalConfig,
+		mock<InstanceAiThreadTabsService>(),
 	);
 
 	beforeEach(() => {
