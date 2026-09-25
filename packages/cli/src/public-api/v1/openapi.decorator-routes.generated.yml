@@ -222,6 +222,12 @@ paths:
   /promotions/projects/{projectId}/promote:
     post:
       $ref: ./handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  /promotions/projects/{projectId}/apply:
+    post:
+      $ref: ./handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  /promotions/projects/{projectId}/apply/continue:
+    post:
+      $ref: ./handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
