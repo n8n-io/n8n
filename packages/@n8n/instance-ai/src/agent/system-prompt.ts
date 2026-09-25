@@ -23,6 +23,8 @@ interface SystemPromptOptions {
 	licenseHints?: string[];
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/** When true, data sharing is off: parameter values are hidden and workflow writes are blocked. */
+	parameterValuesHidden?: boolean;
 	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
@@ -212,6 +214,21 @@ If the user asks for a blocked operation, explain that the instance is in read-o
 `;
 }
 
+function getLimitedModeSection(parameterValuesHidden?: boolean): string {
+	if (!parameterValuesHidden) return '';
+	return `
+## Limited Mode
+
+Data sharing is turned off on this instance, so you run in **limited mode**. You cannot see node parameter values or execution data. You cannot create or edit workflows. The tools that save workflows will return errors, so do not write workflow code or call them.
+
+The following remains available:
+- Explaining n8n concepts and suggesting nodes
+- Finding workflows and describing them by their structure (nodes and connections)
+
+If the user asks for a blocked action, explain that data sharing is turned off. Tell them that an instance owner or admin can turn on "Send actual data values" in Settings > AI usage. On self-hosted instances, the \`N8N_AI_ALLOW_SENDING_PARAMETER_VALUES\` environment variable may also need to be removed.
+`;
+}
+
 /**
  * Setup panel v2 changes what `workflows(action="setup")` does: it announces the
  * checklist and returns instead of opening a card. Instance-wide flag, so the
@@ -233,6 +250,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		mcpToolSearchEnabled,
 		licenseHints,
 		branchReadOnly,
+		parameterValuesHidden,
 		projectId,
 		workspaceRoot,
 		conversationHistoryEnabled,
@@ -294,6 +312,7 @@ ${UNTRUSTED_CONTENT_DOCTRINE}
 ${getComputerUsePrompt({ state: computerUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}
+${getLimitedModeSection(parameterValuesHidden)}
 
 ## Reply language
 

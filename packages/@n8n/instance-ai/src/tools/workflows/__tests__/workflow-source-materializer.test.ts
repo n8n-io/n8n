@@ -166,6 +166,7 @@ describe('materializeWorkflowSource', () => {
 			workflowVersionId: 'v1',
 			workflowChecksum: 'c1',
 			sourceHash: hashWorkflowSource(CODE_V1),
+			parameterValuesIncluded: true,
 		});
 	});
 

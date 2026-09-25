@@ -235,8 +235,6 @@ function validateInstanceAiCredential(
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
 	enabled?: boolean;
-	/** False records a deliberate re-enable after the legacy opt-out was migrated. */
-	disabledByLegacyDataSharing?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
 	mcpAccessEnabled?: boolean;
@@ -290,10 +288,6 @@ export class InstanceAiSettingsService {
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
 
-	private disabledByLegacyDataSharing?: boolean;
-
-	private readonly legacyDataSharingRestricted: boolean;
-
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	private mcpAccessEnabled = true;
 
@@ -322,7 +316,6 @@ export class InstanceAiSettingsService {
 		private readonly eventService: EventService,
 	) {
 		this.config = globalConfig.instanceAi;
-		this.legacyDataSharingRestricted = !globalConfig.ai.allowSendingParameterValues;
 		this.deploymentConfig = globalConfig.deployment;
 		this.environmentSandboxProvider = this.sandboxSettingsService.getProvider();
 		this.environmentN8nSandboxServiceUrl = this.config.n8nSandboxServiceUrl;
@@ -345,7 +338,6 @@ export class InstanceAiSettingsService {
 			sandboxProvider: this.environmentSandboxProvider,
 		};
 
-		await this.migrateLegacyDataSharingOptOut();
 		await this.reloadFromDb();
 		// Surface the effective sandbox config so operators (and CI) can tell whether env vars
 		// or a persisted DB setting are in effect — these can silently disagree.
@@ -354,16 +346,6 @@ export class InstanceAiSettingsService {
 			c.sandboxEnabled !== envSnapshot.sandboxEnabled ||
 			c.sandboxProvider !== envSnapshot.sandboxProvider;
 		const logger = Container.get(Logger).scoped('instance-ai');
-		if (this.getDisabledReason()) {
-			logger.warn(
-				'n8n Assistant is disabled because this instance opted out of sharing data values. ' +
-					'The data-sharing setting is no longer available. ' +
-					(this.legacyDataSharingRestricted
-						? 'Remove N8N_AI_ALLOW_SENDING_PARAMETER_VALUES=false and restart n8n before enabling the Assistant. '
-						: '') +
-					'Enable it in Settings > n8n Assistant to allow it to send workflow data to the model.',
-			);
-		}
 		logger.info(
 			`Sandbox: enabled=${c.sandboxEnabled} provider=${c.sandboxProvider}` +
 				(overridden
@@ -377,34 +359,6 @@ export class InstanceAiSettingsService {
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
-
-	private async migrateLegacyDataSharingOptOut(): Promise<void> {
-		await this.withPersistedAdminSettings(async (ctx, persisted) => {
-			const legacy = await this.settingsRepository.findByKeyInContext(
-				'ai.allowSendingParameterValues',
-				ctx,
-			);
-			if (
-				!this.legacyDataSharingRestricted &&
-				(persisted.disabledByLegacyDataSharing !== undefined || legacy?.value !== 'false')
-			) {
-				return;
-			}
-			if (persisted.enabled === false && persisted.disabledByLegacyDataSharing === true) return;
-			await this.settingsRepository.upsertByKey(
-				ADMIN_SETTINGS_KEY,
-				JSON.stringify({ ...persisted, enabled: false, disabledByLegacyDataSharing: true }),
-				true,
-				ctx,
-			);
-		});
-	}
-
-	getDisabledReason(): InstanceAiAdminSettingsResponse['disabledReason'] {
-		if (this.legacyDataSharingRestricted) return 'legacy-data-sharing-env';
-		if (!this.enabled && this.disabledByLegacyDataSharing) return 'legacy-data-sharing';
-		return undefined;
-	}
 
 	async getAdminSettings(): Promise<InstanceAiAdminSettingsResponse> {
 		if (this.isCloud) {
@@ -476,8 +430,7 @@ export class InstanceAiSettingsService {
 				: c.sandboxProvider,
 		);
 		return {
-			enabled: this.isAgentEnabled(),
-			disabledReason: this.getDisabledReason(),
+			enabled: this.enabled,
 			permissions: { ...this.permissions },
 			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
@@ -536,11 +489,6 @@ export class InstanceAiSettingsService {
 		update: InstanceAiAdminSettingsUpdateRequest,
 		user?: User,
 	): Promise<InstanceAiAdminSettingsResponse> {
-		if (update.enabled && this.legacyDataSharingRestricted) {
-			throw new UnprocessableRequestError(
-				'Remove N8N_AI_ALLOW_SENDING_PARAMETER_VALUES=false and restart n8n before enabling the n8n Assistant.',
-			);
-		}
 		this.rejectEnvironmentManagedFields(update);
 		this.rejectManagedFields(
 			update,
@@ -755,9 +703,6 @@ export class InstanceAiSettingsService {
 				);
 				const previous = this.snapshotAdminSettings();
 				const next = this.mergeAdminSettings(current, settingsUpdate);
-				if (settingsUpdate.enabled === true && current.disabledByLegacyDataSharing !== undefined) {
-					next.disabledByLegacyDataSharing = false;
-				}
 				if (clearsSandboxConnection) delete next.sandboxProvider;
 
 				const nextModelCredentialId =
@@ -1311,7 +1256,7 @@ export class InstanceAiSettingsService {
 
 	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
 	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
-		if (!this.isAgentEnabled()) return true;
+		if (!this.enabled) return true;
 		if (this.config.localGatewayDisabled) return true;
 		const user = await this.userRepository.findOneBy({ id: userId });
 		if (!user) return true;
@@ -1320,21 +1265,7 @@ export class InstanceAiSettingsService {
 
 	/** Whether the n8n Agent is enabled by the admin. */
 	isAgentEnabled(): boolean {
-		return this.enabled && !this.legacyDataSharingRestricted;
-	}
-
-	hasMigratedLegacyDataSharingOptOut(): boolean {
-		return this.disabledByLegacyDataSharing !== undefined;
-	}
-
-	assertEnabled(options?: { forVerification: true }): void {
-		if (!this.isAgentEnabled() && (!options?.forVerification || this.getDisabledReason())) {
-			throw new ForbiddenError(
-				this.legacyDataSharingRestricted
-					? 'Remove N8N_AI_ALLOW_SENDING_PARAMETER_VALUES=false and restart n8n before enabling the n8n Assistant.'
-					: 'The n8n Assistant is disabled. An instance owner can enable it in Settings > n8n Assistant.',
-			);
-		}
+		return this.enabled;
 	}
 
 	/** Whether the local gateway is disabled globally by the admin. */
@@ -1374,7 +1305,7 @@ export class InstanceAiSettingsService {
 
 	/** Whether Instance AI chat and main UI are enabled (settings always available when module loads). */
 	isInstanceAiEnabled(): boolean {
-		return this.isAgentEnabled();
+		return this.enabled;
 	}
 
 	/** Public, detail-free setup state used to gate member-facing entry points. */
@@ -1799,7 +1730,6 @@ export class InstanceAiSettingsService {
 	private applyAdminSettings(persisted: PersistedAdminSettings): void {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
-		this.disabledByLegacyDataSharing = persisted.disabledByLegacyDataSharing;
 		if (persisted.permissions) {
 			this.permissions = resolveInstanceAiPermissions(persisted.permissions);
 		}
@@ -1841,7 +1771,6 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		return {
 			enabled: this.enabled,
-			disabledByLegacyDataSharing: this.disabledByLegacyDataSharing,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
 			mcpAccessEnabled: this.mcpAccessEnabled,

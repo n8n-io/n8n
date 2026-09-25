@@ -76,6 +76,7 @@ import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
+import LimitedModeNotice from './components/LimitedModeNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import ProjectSelect from './components/ProjectSelect.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -666,6 +667,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						@dismiss="creditBanner.dismiss()"
 					/>
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+					<LimitedModeNotice />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
@@ -704,6 +706,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							@dismiss="creditBanner.dismiss()"
 						/>
 						<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+						<LimitedModeNotice />
 						<InstanceAiInput
 							ref="chatInputRef"
 							:is-submitting="isStartingThread"
@@ -745,6 +748,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						@dismiss="creditBanner.dismiss()"
 					/>
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+					<LimitedModeNotice />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"

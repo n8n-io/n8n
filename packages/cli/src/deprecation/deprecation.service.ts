@@ -32,11 +32,6 @@ const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed
 export class DeprecationService {
 	private readonly deprecations: Deprecation[] = [
 		{
-			envVar: 'N8N_AI_ALLOW_SENDING_PARAMETER_VALUES',
-			message:
-				'This variable will be removed in v4. False now disables the n8n Assistant. Remove the variable and restart n8n, then manage the Assistant in Settings > n8n Assistant. Removing the variable does not re-enable the Assistant.',
-		},
-		{
 			envVar: 'N8N_BINARY_DATA_STORAGE_PATH',
 			message: 'Use N8N_STORAGE_PATH instead.',
 		},
@@ -148,6 +143,13 @@ export class DeprecationService {
 			message:
 				'This variable exists only for backward compatibility and will be removed in a future version. Remove it and list every internal endpoint that must be reached directly in NO_PROXY. Until that is in place, `main-only` keeps the historical behavior where only the main process routes its default outbound HTTP through the proxy environment variables (HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, NO_PROXY).',
 			checkValue: (value?: string) => value === 'main-only',
+		},
+		{
+			envVar: 'N8N_AI_ALLOW_SENDING_PARAMETER_VALUES',
+			message:
+				'This variable is deprecated and will be removed in v4. While it is set to `false`, n8n Assistant cannot create or edit workflows.',
+			checkValue: (value?: string) =>
+				value !== undefined && !['true', '1'].includes(value.toLowerCase()),
 		},
 		{
 			envVar: 'EXECUTIONS_PROCESS',

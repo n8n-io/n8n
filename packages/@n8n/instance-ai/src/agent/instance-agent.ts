@@ -211,6 +211,7 @@ export async function createInstanceAgent(
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,
 			branchReadOnly: context.branchReadOnly,
+			parameterValuesHidden: context.allowSendingParameterValues === false,
 			projectId: context.projectId,
 			// Presence of the service IS the experiment gate — the host only wires it
 			// for flagged-in users on project-bound runs.

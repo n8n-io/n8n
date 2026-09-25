@@ -187,7 +187,7 @@ describe('FrontendService', () => {
 	});
 
 	const aiUsageService = mock<AiUsageService>({
-		getAiUsageSettings: vi.fn().mockResolvedValue(true),
+		isParameterValueSharingAllowed: vi.fn().mockResolvedValue(true),
 	});
 
 	const workflowRepository = mock<WorkflowRepository>({

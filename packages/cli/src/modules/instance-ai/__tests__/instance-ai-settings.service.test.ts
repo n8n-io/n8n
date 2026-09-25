@@ -12,7 +12,6 @@ import type {
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { EventService } from '@/events/event.service';
 import type { AiService } from '@/services/ai.service';
@@ -38,11 +37,9 @@ type CredentialOperationContext = NonNullable<
 
 describe('InstanceAiSettingsService', () => {
 	const globalConfig = mock<{
-		ai: { allowSendingParameterValues: boolean };
 		instanceAi: InstanceAiConfig;
 		deployment: { type: string };
 	}>({
-		ai: { allowSendingParameterValues: true },
 		instanceAi: {
 			model: 'openai/gpt-4',
 			modelUrl: '',
@@ -118,7 +115,6 @@ describe('InstanceAiSettingsService', () => {
 			vertexLocation: '',
 			vertexServiceAccountJson: '',
 		});
-		globalConfig.ai.allowSendingParameterValues = true;
 		globalConfig.deployment.type = 'default';
 		instanceCredentialBroker.listForUse.mockResolvedValue([]);
 		instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue(null);
@@ -159,145 +155,6 @@ describe('InstanceAiSettingsService', () => {
 
 	afterEach(() => {
 		vi.unstubAllEnvs();
-	});
-
-	describe('enablement', () => {
-		const savedSettings = new Map<string, string>();
-
-		beforeEach(() => {
-			savedSettings.clear();
-			settingsRepository.findByKey.mockImplementation(async (key) => {
-				const value = savedSettings.get(key);
-				return value === undefined ? null : { key, value, loadOnStartup: true };
-			});
-			settingsRepository.upsertByKey.mockImplementation(async (key, value) => {
-				savedSettings.set(key, value);
-			});
-		});
-
-		it.each([undefined, 'true'])('stays enabled when the legacy setting is %s', async (value) => {
-			if (value !== undefined) savedSettings.set('ai.allowSendingParameterValues', value);
-
-			await service.loadFromDb();
-
-			expect(service.isAgentEnabled()).toBe(true);
-			expect(service.getDisabledReason()).toBeUndefined();
-			expect(service.hasMigratedLegacyDataSharingOptOut()).toBe(false);
-			expect(() => service.assertEnabled()).not.toThrow();
-			expect(() => service.assertEnabled({ forVerification: true })).not.toThrow();
-			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
-		});
-
-		it('preserves a saved disabled choice across restarts and keeps other settings', async () => {
-			savedSettings.set('ai.allowSendingParameterValues', 'false');
-			savedSettings.set('instanceAi.settings', JSON.stringify({ mcpAccessEnabled: false }));
-
-			await service.loadFromDb();
-
-			await expect(service.getAdminSettings()).resolves.toMatchObject({
-				enabled: false,
-				disabledReason: 'legacy-data-sharing',
-				mcpAccessEnabled: false,
-			});
-			expect(service.hasMigratedLegacyDataSharingOptOut()).toBe(true);
-			expect(() => service.assertEnabled()).toThrow(ForbiddenError);
-			expect(() => service.assertEnabled({ forVerification: true })).toThrow(ForbiddenError);
-			expect(savedSettings.get('instanceAi.settings')).toContain(
-				'"disabledByLegacyDataSharing":true',
-			);
-			expect(savedSettings.get('instanceAi.settings')).toContain('"enabled":false');
-
-			service = createService();
-			await service.loadFromDb();
-
-			expect(service.isAgentEnabled()).toBe(false);
-			expect(service.getDisabledReason()).toBe('legacy-data-sharing');
-			expect(service.isMcpAccessEnabled()).toBe(false);
-			expect(settingsRepository.upsertByKey).toHaveBeenCalledTimes(1);
-		});
-
-		it('stays disabled after the environment restriction is removed and the instance restarts', async () => {
-			globalConfig.ai.allowSendingParameterValues = false;
-			service = createService();
-
-			await service.loadFromDb();
-
-			await expect(service.getAdminSettings()).resolves.toMatchObject({
-				enabled: false,
-				disabledReason: 'legacy-data-sharing-env',
-			});
-			expect(savedSettings.get('instanceAi.settings')).toContain(
-				'"disabledByLegacyDataSharing":true',
-			);
-			expect(savedSettings.get('instanceAi.settings')).toContain('"enabled":false');
-			expect(savedSettings.has('ai.allowSendingParameterValues')).toBe(false);
-
-			globalConfig.ai.allowSendingParameterValues = true;
-			service = createService();
-			await service.loadFromDb();
-
-			expect(service.isAgentEnabled()).toBe(false);
-			expect(service.getDisabledReason()).toBe('legacy-data-sharing');
-			expect(() => service.assertEnabled()).toThrow(ForbiddenError);
-			expect(() => service.assertEnabled({ forVerification: true })).toThrow(ForbiddenError);
-		});
-
-		it('keeps explicit enablement across restarts without changing the legacy setting', async () => {
-			savedSettings.set('ai.allowSendingParameterValues', 'false');
-			await service.loadFromDb();
-
-			await expect(service.updateAdminSettings({ enabled: true })).resolves.toMatchObject({
-				enabled: true,
-				disabledReason: undefined,
-			});
-
-			expect(savedSettings.get('ai.allowSendingParameterValues')).toBe('false');
-			expect(savedSettings.get('instanceAi.settings')).toContain(
-				'"disabledByLegacyDataSharing":false',
-			);
-			service = createService();
-			await service.loadFromDb();
-
-			expect(service.isAgentEnabled()).toBe(true);
-			expect(service.getDisabledReason()).toBeUndefined();
-			expect(service.hasMigratedLegacyDataSharingOptOut()).toBe(true);
-			expect(() => service.assertEnabled()).not.toThrow();
-			expect(() => service.assertEnabled({ forVerification: true })).not.toThrow();
-			expect(savedSettings.get('ai.allowSendingParameterValues')).toBe('false');
-		});
-
-		it('requires removing the environment restriction before enabling or verifying', async () => {
-			savedSettings.set(
-				'instanceAi.settings',
-				JSON.stringify({ enabled: true, disabledByLegacyDataSharing: false }),
-			);
-			globalConfig.ai.allowSendingParameterValues = false;
-			service = createService();
-			await service.loadFromDb();
-			const persisted = savedSettings.get('instanceAi.settings');
-			const message =
-				'Remove N8N_AI_ALLOW_SENDING_PARAMETER_VALUES=false and restart n8n before enabling the n8n Assistant.';
-
-			expect(service.isAgentEnabled()).toBe(false);
-			expect(service.getDisabledReason()).toBe('legacy-data-sharing-env');
-			await expect(service.updateAdminSettings({ enabled: true })).rejects.toThrow(
-				UnprocessableRequestError,
-			);
-			expect(savedSettings.get('instanceAi.settings')).toBe(persisted);
-			expect(() => service.assertEnabled()).toThrow(message);
-			expect(() => service.assertEnabled({ forVerification: true })).toThrow(message);
-		});
-
-		it('permits verification for an ordinary disabled instance', async () => {
-			await service.updateAdminSettings({ enabled: false });
-			service = createService();
-			await service.loadFromDb();
-
-			expect(service.isAgentEnabled()).toBe(false);
-			expect(service.getDisabledReason()).toBeUndefined();
-			expect(() => service.assertEnabled()).toThrow(ForbiddenError);
-			expect(() => service.assertEnabled({ forVerification: true })).not.toThrow();
-		});
 	});
 
 	describe('updateAdminSettings', () => {

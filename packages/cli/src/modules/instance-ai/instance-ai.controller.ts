@@ -1106,7 +1106,6 @@ export class InstanceAiController {
 		@Param('workflowId') workflowId: string,
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
-		this.requireInstanceAiEnabled();
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
@@ -1119,7 +1118,6 @@ export class InstanceAiController {
 		@Param('agentId') agentId: string,
 		@Body payload: InstanceAiEvalAgentExecutionRequest,
 	) {
-		this.requireInstanceAiEnabled();
 		return await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload);
 	}
 

@@ -1597,9 +1597,6 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
-
-const instanceAiSettings = mock<InstanceAiSettingsService>();
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -1662,7 +1659,7 @@ function createNodeAdapterServiceForTests(
 		{
 			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
-		instanceAiSettings,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{ isLicensed: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
@@ -2084,7 +2081,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		mockInstanceWriteAccess as unknown as InstanceWriteAccessService,
-		instanceAiSettings,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{ isLicensed: vi.fn().mockReturnValue(false) } as unknown as License,
@@ -2307,7 +2304,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	// simulate a run with no bound project.
 	projectId?: string | null;
 	// Mirrors `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES`, which defaults to true in
-	// production. This harness leaves it off, so opt in to read real parameters.
+	// production. Writes are blocked while it is off, so this harness defaults to on.
 	allowSendingParameterValues?: boolean;
 }) {
 	const mockProjectRepository = {
@@ -2397,7 +2394,9 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const service = new InstanceAiAdapterService(
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
-		globalConfigStub({ allowSendingParameterValues: overrides?.allowSendingParameterValues }),
+		globalConfigStub({
+			allowSendingParameterValues: overrides?.allowSendingParameterValues ?? true,
+		}),
 		mockWorkflowService as unknown as WorkflowService,
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -2425,7 +2424,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{
 			isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
 		} as unknown as InstanceWriteAccessService,
-		instanceAiSettings,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		mockWorkflowHistoryService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[23],
@@ -2511,37 +2510,6 @@ const minimalWorkflowJSON = {
 	nodes: [],
 	connections: {},
 } as unknown as WorkflowJSON;
-
-describe('Assistant enablement', () => {
-	const user = mock<User>({ id: 'user-1' });
-	const disabled = new ForbiddenError('The n8n Assistant is disabled');
-
-	beforeEach(() => {
-		vi.clearAllMocks();
-		mockedUserHasScopes.mockResolvedValue(true);
-	});
-
-	it('rejects context creation when the Assistant is disabled', () => {
-		const settingsService = mock<InstanceAiSettingsService>();
-		settingsService.assertEnabled.mockImplementation(() => {
-			throw disabled;
-		});
-		const service = createAdapterWithGatewayMock(vi.fn(), { settingsService });
-
-		expect(() => service.createContext(user)).toThrow(disabled);
-	});
-
-	it.each([false, true])(
-		'sets the full-source requirement from migration state: %s',
-		(migrated) => {
-			const settingsService = mock<InstanceAiSettingsService>();
-			settingsService.hasMigratedLegacyDataSharingOptOut.mockReturnValue(migrated);
-			const service = createAdapterWithGatewayMock(vi.fn(), { settingsService });
-
-			expect(service.createContext(user).requireFullWorkflowSource).toBe(migrated);
-		},
-	);
-});
 
 describe('createWorkflowAdapter', () => {
 	beforeEach(() => {
@@ -4479,7 +4447,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{
 			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as InstanceWriteAccessService,
-		instanceAiSettings,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		mockLicense as unknown as License,
@@ -4748,7 +4716,7 @@ function createRunAdapterForTests(
 		{
 			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
-		instanceAiSettings,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		mockWorkflowHistoryService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[23],
@@ -5487,7 +5455,6 @@ function createAdapterWithGatewayMock(
 	args[21] = {
 		isReadOnly: vi.fn().mockReturnValue(false),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
-	args[22] = instanceAiSettings;
 	if (overrides?.settingsService) {
 		args[22] = overrides.settingsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService

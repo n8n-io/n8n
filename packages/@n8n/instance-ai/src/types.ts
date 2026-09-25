@@ -1596,8 +1596,6 @@ export interface InstanceAiContext {
 	 *  — e.g. raw execution-error text) to the LLM. Defaults to `true` when
 	 *  absent so package-only / test contexts behave unchanged. */
 	allowSendingParameterValues?: boolean;
-	/** Migrated opt-outs require a full source snapshot before replacing a saved workflow. */
-	requireFullWorkflowSource?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];

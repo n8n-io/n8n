@@ -175,6 +175,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const canManage = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } }),
 	);
+	const canManageAiUsage = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'aiAssistant:manage' } }),
+	);
 	const canManageInstanceCredentials = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'credential:manageInstance' } }),
 	);
@@ -633,6 +636,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 
 	return {
 		canManage,
+		canManageAiUsage,
 		canManageInstanceCredentials,
 		settings,
 		preferences,

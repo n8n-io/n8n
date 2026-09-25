@@ -302,8 +302,6 @@ import {
 import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiService } from '../instance-ai.service';
-import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
-import { mock } from 'vitest-mock-extended';
 import { buildThreadContextBlock } from '../internal-messages';
 import { InstanceAiSandboxService } from '../sandbox';
 import type {
@@ -311,10 +309,7 @@ import type {
 	ResumableOrphan,
 } from '../suspended-run-restorer.service';
 
-const enabledSettings = mock<InstanceAiSettingsService>({ isAgentEnabled: () => true });
-
 type StartRunServiceInternals = {
-	settingsService: InstanceAiSettingsService;
 	startRun: InstanceAiService['startRun'];
 	liveness: {
 		clearThreadState: MockedFunction<(threadId: string) => void>;
@@ -346,7 +341,6 @@ type StartRunServiceInternals = {
 
 function createStartRunService(): StartRunServiceInternals {
 	const service = Object.create(InstanceAiService.prototype) as unknown as StartRunServiceInternals;
-	service.settingsService = enabledSettings;
 	service.liveness = {
 		clearThreadState: vi.fn((_threadId: string) => {}),
 	};
@@ -795,35 +789,6 @@ describe('InstanceAiService — MCP connections availability', () => {
 });
 
 describe('InstanceAiService — runtime workspace setup', () => {
-	it('rejects environment creation before reading thread data when disabled', async () => {
-		const service = Object.create(InstanceAiService.prototype) as {
-			settingsService: InstanceAiSettingsService;
-			agentMemory: { getThreadProjectId: Mock };
-			createExecutionEnvironment: (
-				user: User,
-				threadId: string,
-				runId: string,
-				abortSignal: AbortSignal,
-			) => Promise<unknown>;
-		};
-		service.settingsService = mock<InstanceAiSettingsService>({
-			assertEnabled: () => {
-				throw new ForbiddenError('Assistant disabled');
-			},
-		});
-		service.agentMemory = { getThreadProjectId: vi.fn() };
-
-		await expect(
-			service.createExecutionEnvironment(
-				fakeUser,
-				'thread-1',
-				'run-1',
-				new AbortController().signal,
-			),
-		).rejects.toThrow(ForbiddenError);
-		expect(service.agentMemory.getThreadProjectId).not.toHaveBeenCalled();
-	});
-
 	beforeEach(() => {
 		vi.clearAllMocks();
 		(createSandbox as Mock).mockReset();
@@ -893,7 +858,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				};
 			}>;
 			settingsService: {
-				assertEnabled: Mock;
 				getAdminSettings: Mock;
 				getSandboxStatus: Mock;
 				isLocalGatewayDisabledForUser: Mock;
@@ -946,11 +910,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
 		service.settingsService = {
-			assertEnabled: enabledSettings.assertEnabled,
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
 				enabled: true,
@@ -1037,6 +1001,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		service.aiUsageService = { isParameterValueSharingAllowed: vi.fn(async () => true) };
 		service.creditService = {
 			claimRunUsage: vi.fn(),
 			ensureQuotaLockApplied: vi.fn(async () => {}),
@@ -1247,7 +1212,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				};
 			}>;
 			settingsService: {
-				assertEnabled: Mock;
 				getAdminSettings: Mock;
 				getSandboxStatus: Mock;
 				isLocalGatewayDisabledForUser: Mock;
@@ -1300,11 +1264,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
 		service.settingsService = {
-			assertEnabled: enabledSettings.assertEnabled,
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
 				enabled: true,
@@ -1385,6 +1349,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		service.aiUsageService = { isParameterValueSharingAllowed: vi.fn(async () => true) };
 		service.creditService = {
 			claimRunUsage: vi.fn(),
 			ensureQuotaLockApplied: vi.fn(async () => {}),
@@ -1510,19 +1475,6 @@ describe('InstanceAiService — memory task observer', () => {
 });
 
 describe('InstanceAiService — run start', () => {
-	it('rejects a new run when the Assistant is disabled', () => {
-		const service = createStartRunService();
-		service.settingsService = mock<InstanceAiSettingsService>({
-			assertEnabled: () => {
-				throw new ForbiddenError('Assistant disabled');
-			},
-		});
-
-		expect(() => service.startRun(fakeUser, 'thread-a', 'hello')).toThrow(ForbiddenError);
-		expect(service.runState.startRun).not.toHaveBeenCalled();
-		expect(service.executeRun).not.toHaveBeenCalled();
-	});
-
 	describe('concurrency admission', () => {
 		it('refuses a new turn when the user is at their limit', () => {
 			const service = createStartRunService();
@@ -1973,7 +1925,6 @@ describe('InstanceAiService — expired thread pruning', () => {
 });
 
 type RevalidationServiceInternals = {
-	settingsService: InstanceAiSettingsService;
 	revalidateActiveUser: (userId: string) => Promise<User | null>;
 	userRepository: { findOne: Mock };
 	logger: { debug: Mock; warn: Mock; error: Mock };
@@ -1983,7 +1934,6 @@ function createRevalidationService(): RevalidationServiceInternals {
 	const service = Object.create(
 		InstanceAiService.prototype,
 	) as unknown as RevalidationServiceInternals;
-	service.settingsService = enabledSettings;
 	service.userRepository = { findOne: vi.fn() };
 	service.logger = { debug: vi.fn(), warn: vi.fn(), error: vi.fn() };
 	return service;
@@ -1999,14 +1949,6 @@ function userWithScopes(scopes: string[], overrides: Partial<User> = {}): User {
 }
 
 describe('InstanceAiService — revalidateActiveUser', () => {
-	it('does not resume a user when the Assistant is disabled', async () => {
-		const service = createRevalidationService();
-		service.settingsService = mock<InstanceAiSettingsService>({ isAgentEnabled: () => false });
-
-		await expect(service.revalidateActiveUser('user-1')).resolves.toBeNull();
-		expect(service.userRepository.findOne).not.toHaveBeenCalled();
-	});
-
 	it('returns the user when active and scoped for n8n Assistant', async () => {
 		const service = createRevalidationService();
 		const fresh = userWithScopes(['instanceAi:message']);
@@ -6436,7 +6378,6 @@ describe('InstanceAiService — routeCancelRun zombie fallback', () => {
 });
 
 type FollowUpStreakServiceInternals = {
-	settingsService: InstanceAiSettingsService;
 	failedInternalFollowUpStreaks: Map<string, number>;
 	updateInternalFollowUpFailureStreak: (
 		threadId: string,
@@ -6461,7 +6402,6 @@ function createFollowUpStreakService(): FollowUpStreakServiceInternals {
 	const service = Object.create(
 		InstanceAiService.prototype,
 	) as unknown as FollowUpStreakServiceInternals;
-	service.settingsService = enabledSettings;
 
 	service.failedInternalFollowUpStreaks = new Map();
 	service.startExecuteRun = vi.fn();
@@ -6521,17 +6461,6 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 	});
 
 	describe('startInternalFollowUpRun circuit breaker', () => {
-		it('does not start a follow-up when the Assistant is disabled', async () => {
-			const service = createFollowUpStreakService();
-			service.settingsService = mock<InstanceAiSettingsService>({ isAgentEnabled: () => false });
-
-			await expect(service.startInternalFollowUpRun(fakeUser, 'thread-a', 'verify')).resolves.toBe(
-				'',
-			);
-			expect(service.runState.startRun).not.toHaveBeenCalled();
-			expect(service.startExecuteRun).not.toHaveBeenCalled();
-		});
-
 		it('starts the follow-up while the streak is below the cap', async () => {
 			const service = createFollowUpStreakService();
 			service.failedInternalFollowUpStreaks.set('thread-a', 2);

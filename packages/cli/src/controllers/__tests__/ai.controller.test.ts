@@ -5,6 +5,7 @@ import type {
 	AiBuilderChatRequestDto,
 	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
+import type { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { APIResponseError, NetworkError, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
@@ -14,6 +15,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
@@ -24,12 +26,15 @@ describe('AiController', () => {
 	const aiService = mock<AiService>();
 	const workflowBuilderService = mock<WorkflowBuilderService>();
 	const freeAiCreditsService = mock<FreeAiCreditsService>();
+	const aiUsageService = mock<AiUsageService>();
 	const aiGatewayService = mock<AiGatewayService>();
 	const controller = new AiController(
 		aiService,
 		workflowBuilderService,
 		freeAiCreditsService,
+		aiUsageService,
 		aiGatewayService,
+		mock<GlobalConfig>(),
 	);
 
 	const request = mock<AuthenticatedRequest>({

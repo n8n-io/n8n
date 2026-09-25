@@ -17,8 +17,8 @@ export class AiConfig {
 	timeout: number = 1 * Time.hours.toMilliseconds;
 
 	/**
-	 * Deprecated; planned for removal in v4. False disables the n8n Assistant and persists that choice.
-	 * Older AI features still use this value to omit parameter values.
+	 * Whether workflow and node parameter values may be sent to AI providers.
+	 * When false, only structure or placeholders are sent.
 	 */
 	@Env('N8N_AI_ALLOW_SENDING_PARAMETER_VALUES')
 	allowSendingParameterValues: boolean = true;

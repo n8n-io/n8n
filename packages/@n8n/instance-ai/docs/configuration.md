@@ -21,7 +21,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 | `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
-| `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` | boolean | `true` | Deprecated. `false` disables the n8n Assistant and persists that choice. Removal is planned for v4. |
+| `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` | boolean | `true` | Deprecated; removal is planned for v4. Allow Instance AI to receive workflow and node parameter values. The effective value is `true` only when this variable and the "Send actual data values" setting in Settings > AI usage are both on. Instance AI reads it at the start of each run. When it is `false`, the adapter hides parameter values and execution data, and the Assistant runs in a limited mode: it cannot create or edit workflows. This is a global n8n AI setting. |
 
 For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 `COHERE_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`,
@@ -178,21 +178,6 @@ these values from the managed service instead.
 The `instance-ai` module is in the default module set. It does not need to be
 listed in `N8N_ENABLED_MODULES`. `N8N_AI_ENABLED` controls older global AI
 features and does not gate Instance AI.
-
-Owners and admins can enable or disable the Assistant in **Settings > n8n Assistant**.
-Disabling blocks new and resumed Assistant runs. Work already in progress may finish.
-The AI usage page and its data-sharing controls are no longer available.
-
-On startup, either a saved `ai.allowSendingParameterValues=false` setting or
-`N8N_AI_ALLOW_SENDING_PARAMETER_VALUES=false` disables the Assistant. This state
-persists after restarts and after removal of the environment variable.
-To re-enable the Assistant, remove the environment restriction and restart n8n.
-Then select **Enable** in **Settings > n8n Assistant**. This permits the Assistant
-to send workflow data to the model. Closing connection setup does not undo this choice.
-Use **Disable** in Assistant settings to turn it off again.
-The Assistant must refresh older workflow source
-files before it can rebuild existing workflows. Normal workflow execution and AI nodes
-are unchanged.
 
 Chat and the main UI are gated by `InstanceAiSettingsService.isInstanceAiEnabled()`.
 Member-facing entry points are additionally gated by `isSetupCompleted()`, which

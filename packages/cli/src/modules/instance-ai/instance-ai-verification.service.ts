@@ -116,7 +116,6 @@ export class InstanceAiVerificationService {
 		user: User,
 		request: InstanceAiVerifyModelRequest,
 	): Promise<InstanceAiVerificationResponse> {
-		this.settingsService.assertEnabled({ forVerification: true });
 		let provider: string | null = null;
 		try {
 			const connection = request.connection

@@ -1,6 +1,8 @@
+import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
 
 const KEY = 'ai.allowSendingParameterValues';
@@ -10,7 +12,17 @@ export class AiUsageService {
 	constructor(
 		private readonly settingsRepository: SettingsRepository,
 		private readonly cacheService: CacheService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	/**
+	 * Whether AI features may send parameter values. Both the
+	 * `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` env var and the stored setting must allow it.
+	 */
+	async isParameterValueSharingAllowed(): Promise<boolean> {
+		if (!this.globalConfig.ai.allowSendingParameterValues) return false;
+		return await this.getAiUsageSettings();
+	}
 
 	/**
 	 * Get the current value of the AI usage (privacy) setting for sending parameter data.
@@ -26,5 +38,17 @@ export class AiUsageService {
 		const allowSending = (row?.value ?? 'true') === 'true';
 		await this.cacheService.set(KEY, allowSending.toString());
 		return allowSending;
+	}
+
+	/**
+	 * Update the AI usage setting for sending parameter data.
+	 */
+	async updateAiUsageSettings(allowSendingActualData: boolean): Promise<void> {
+		await this.settingsRepository.upsert(
+			{ key: KEY, value: allowSendingActualData.toString(), loadOnStartup: true },
+			['key'],
+		);
+		await this.cacheService.set(KEY, allowSendingActualData.toString());
+		config.set(KEY, allowSendingActualData);
 	}
 }
