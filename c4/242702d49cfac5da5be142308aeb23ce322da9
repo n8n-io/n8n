@@ -13,6 +13,10 @@ packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
   s_c5954c3047b5ed::t_e1ea113788a34f 8977,8979,8985-8999,9256-9257,9264-9278
 packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-runner.ts
   s_c5954c3047b5ed::t_6d856bdc8dbf0b 421
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_e5a64625bc5cd1::t_f7a1d7a8a57293 182,187
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_c5954c3047b5ed::t_61633e7b02c038 444
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -24,6 +28,14 @@ packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-runner.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e5a64625bc5cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4bf-db56-7bb1-9663-032c49d21015",
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
