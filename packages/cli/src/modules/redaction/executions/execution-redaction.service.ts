@@ -1,4 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import {
 	channelsToPolicy,
@@ -17,6 +18,7 @@ import type {
 	RedactableExecution,
 } from '@/executions/execution-redaction';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
+import { CacheService } from '@/services/cache/cache.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type {
@@ -26,6 +28,8 @@ import type {
 import { FullItemRedactionStrategy } from './strategies/full-item-redaction.strategy';
 
 const MANUAL_MODES: ReadonlySet<WorkflowExecuteMode> = new Set(['manual']);
+
+const CREDENTIAL_USABILITY_CACHE_TTL_MS = 10 * Time.seconds.toMilliseconds;
 
 /**
  * Orchestrates the execution redaction pipeline with batch permission resolution.
@@ -48,6 +52,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		private readonly eventService: EventService,
 		private readonly fullItemRedactionStrategy: FullItemRedactionStrategy,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly cacheService: CacheService,
 	) {}
 
 	async init(): Promise<void> {
@@ -294,8 +299,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	}
 
 	/**
-	 * Batched, single-call check for whether the viewer can use every credential
-	 * each execution's workflow references, independent of dynamic credentials.
+	 * Batched check for whether the viewer can use every credential each
+	 * execution's workflow references, independent of dynamic credentials.
 	 * Gated behind {@link isCredSharingEnabled}: while the flag is off this makes
 	 * no DB call and returns an empty set, so redaction behaves exactly as before.
 	 *
@@ -325,13 +330,9 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		}
 		if (allCredentialIds.size === 0) return new Set();
 
-		const inaccessibleIds = new Set(
-			await this.credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser(
-				userId,
-				[...allCredentialIds],
-				{ ignoreGlobalUseScope: true },
-			),
-		);
+		const inaccessibleIds = await this.getInaccessibleCredentialIdsCached(userId, [
+			...allCredentialIds,
+		]);
 		if (inaccessibleIds.size === 0) return new Set();
 
 		const result = new Set<RedactableExecution>();
@@ -339,6 +340,57 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			if (credentialIds.some((id) => inaccessibleIds.has(id))) result.add(execution);
 		}
 		return result;
+	}
+
+	/**
+	 * Cache-first wrapper around `resolveInaccessibleCredentialIdsForUser`, keyed
+	 * per (user, credential) so a verdict is reusable across executions and across
+	 * the repeated per-node-completion pushes of a single live run alike.
+	 *
+	 * Only the ids missing from cache reach the DB, in one batched call; every id
+	 * (hit or freshly resolved) is a boolean, so `false` is cached too — a viewer
+	 * who *can* use a credential must not re-trigger the DB on every push either.
+	 */
+	private async getInaccessibleCredentialIdsCached(
+		userId: string,
+		credentialIds: string[],
+	): Promise<Set<string>> {
+		const keys = credentialIds.map((id) => this.credentialUsabilityCacheKey(userId, id));
+		const cached = await this.cacheService.getMany<boolean>(keys);
+
+		const inaccessible = new Set<string>();
+		const uncachedIds: string[] = [];
+		credentialIds.forEach((id, i) => {
+			const value = cached[i];
+			if (value === undefined) uncachedIds.push(id);
+			else if (value) inaccessible.add(id);
+		});
+
+		if (uncachedIds.length > 0) {
+			const freshlyInaccessible = new Set(
+				await this.credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser(
+					userId,
+					uncachedIds,
+					{ ignoreGlobalUseScope: true },
+				),
+			);
+
+			await this.cacheService.setMany(
+				uncachedIds.map((id) => [
+					this.credentialUsabilityCacheKey(userId, id),
+					freshlyInaccessible.has(id),
+				]),
+				CREDENTIAL_USABILITY_CACHE_TTL_MS,
+			);
+
+			for (const id of freshlyInaccessible) inaccessible.add(id);
+		}
+
+		return inaccessible;
+	}
+
+	private credentialUsabilityCacheKey(userId: string, credentialId: string): string {
+		return `credential-usability:${userId}:${credentialId}`;
 	}
 
 	/**

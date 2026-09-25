@@ -360,28 +360,30 @@ export class CredentialsFinderService {
 			}
 		}
 
-		// Also include global credentials if scopes allow read-only access
-		if (this.hasGlobalReadOnlyAccess(scopes)) {
-			for (const chunk of chunkIds(credentialIds)) {
-				const globalCreds = await this.credentialsRepository.find({
-					where: { id: In(chunk), isGlobal: true, usageScope: 'project' },
-					select: ['id'],
-				});
-				for (const gc of globalCreds) result.add(gc.id);
-			}
-		} else if (this.hasGlobalConnectAccess(scopes)) {
-			// Only end-user (resolvable) global credentials grant connect access.
-			for (const chunk of chunkIds(credentialIds)) {
-				const globalCreds = await this.credentialsRepository.find({
-					where: {
-						id: In(chunk),
-						isGlobal: true,
-						usageScope: 'project',
-						isResolvable: true,
-					},
-					select: ['id'],
-				});
-				for (const gc of globalCreds) result.add(gc.id);
+		// Also include global credentials if scopes allow read-only access.
+		if (!options.ignoreGlobalOverride) {
+			if (this.hasGlobalReadOnlyAccess(scopes)) {
+				for (const chunk of chunkIds(credentialIds)) {
+					const globalCreds = await this.credentialsRepository.find({
+						where: { id: In(chunk), isGlobal: true, usageScope: 'project' },
+						select: ['id'],
+					});
+					for (const gc of globalCreds) result.add(gc.id);
+				}
+			} else if (this.hasGlobalConnectAccess(scopes)) {
+				// Only end-user (resolvable) global credentials grant connect access.
+				for (const chunk of chunkIds(credentialIds)) {
+					const globalCreds = await this.credentialsRepository.find({
+						where: {
+							id: In(chunk),
+							isGlobal: true,
+							usageScope: 'project',
+							isResolvable: true,
+						},
+						select: ['id'],
+					});
+					for (const gc of globalCreds) result.add(gc.id);
+				}
 			}
 		}
 
