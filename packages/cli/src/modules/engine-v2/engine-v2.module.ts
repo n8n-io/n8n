@@ -18,7 +18,8 @@ import { randomBytes } from 'node:crypto';
  * `InMemoryWorkQueue`, so its work does not survive the process and cannot be
  * shared with other mains or workers. In `remote` mode (`N8N_ENGINE_MODE`) a
  * separate `n8n engine` process hosts the data plane; this module then starts
- * only the control plane server and the client that dials the engine.
+ * only the control plane server, the client that dials the engine, and a Redis
+ * receiver for execution responses.
  */
 @BackendModule({ name: 'engine-v2', instanceTypes: ['main'] })
 export class EngineV2Module implements ModuleInterface {
@@ -45,33 +46,30 @@ export class EngineV2Module implements ModuleInterface {
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).start();
 
+		const logger = Container.get(Logger).scoped('engine-v2');
+		const { EngineV2WebhookResponder } = await import(
+			'@/services/engine-v2-webhook-responder.service.js'
+		);
+
 		if (engineConfig.mode === 'in-process') {
 			// Hand both endpoints over before the engine starts. A short run can answer
 			// before `startExecution` returns, and responses are not replayed.
-			const { InMemoryExecutionResponseChannel } = await import(
-				'./response-channel/in-memory-execution-response-channel.js'
-			);
-			const { InMemoryExecutionResponseSender } = await import(
-				'./response-channel/in-memory-execution-response-sender.js'
-			);
-			const { InMemoryExecutionResponseReceiver } = await import(
-				'./response-channel/in-memory-execution-response-receiver.js'
-			);
-			const { EngineV2WebhookResponder } = await import(
-				'@/services/engine-v2-webhook-responder.service.js'
-			);
-			// In-memory for now because both planes share this process. Redis endpoints
-			// can use the same response contracts when the planes run separately.
-			const responseChannel = new InMemoryExecutionResponseChannel();
-			const scopedLogger = Container.get(Logger).scoped('engine-v2');
-			const responseSender = new InMemoryExecutionResponseSender(responseChannel, scopedLogger);
-			const responseReceiver = new InMemoryExecutionResponseReceiver(responseChannel, scopedLogger);
+			const { responseSender, responseReceiver } = await this.initInMemoryResponseChannel(logger);
 			Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
 			this.responseSender = responseSender;
 			this.responseReceiver = responseReceiver;
 
 			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
 			await Container.get(EngineV2Runtime).init(responseSender);
+		} else {
+			// The remote data plane publishes responses over Redis, so only the
+			// receiving end runs here.
+			const { startRedisExecutionResponseReceiver } = await import(
+				'./response-channel/redis-execution-response-channel.js'
+			);
+			const responseReceiver = await startRedisExecutionResponseReceiver(logger);
+			Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
+			this.responseReceiver = responseReceiver;
 		}
 
 		const { EngineDataPlaneClient } = await import('./engine-data-plane-client.js');
@@ -83,15 +81,35 @@ export class EngineV2Module implements ModuleInterface {
 		);
 	}
 
+	private async initInMemoryResponseChannel(logger: Logger) {
+		const { InMemoryExecutionResponseChannel } = await import(
+			'./response-channel/in-memory-execution-response-channel.js'
+		);
+		const { InMemoryExecutionResponseSender } = await import(
+			'./response-channel/in-memory-execution-response-sender.js'
+		);
+		const { InMemoryExecutionResponseReceiver } = await import(
+			'./response-channel/in-memory-execution-response-receiver.js'
+		);
+		const responseChannel = new InMemoryExecutionResponseChannel();
+
+		return {
+			responseSender: new InMemoryExecutionResponseSender(responseChannel, logger),
+			responseReceiver: new InMemoryExecutionResponseReceiver(responseChannel, logger),
+		};
+	}
+
 	@OnShutdown()
 	async shutdown() {
-		if (Container.get(EngineConfig).mode === 'in-process') {
-			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-			try {
+		try {
+			if (Container.get(EngineConfig).mode === 'in-process') {
+				const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
 				await Container.get(EngineV2Runtime).shutdown();
-			} finally {
-				await Promise.all([this.responseSender?.stop(), this.responseReceiver?.stop()]);
 			}
+		} finally {
+			// After the engine, so a final response still has somewhere to go.
+			// A failed runtime shutdown must still release both endpoints.
+			await Promise.all([this.responseSender?.stop(), this.responseReceiver?.stop()]);
 		}
 
 		// After the engine, so its final flush still has somewhere to land.

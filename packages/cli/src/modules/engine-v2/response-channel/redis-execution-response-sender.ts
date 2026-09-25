@@ -9,15 +9,21 @@ import { createResultError, createResultOk, type Result } from '@n8n/utils/resul
 import { UnexpectedError } from 'n8n-workflow';
 
 import { serializeExecutionResponse } from './execution-response-frame';
-import type { InMemoryExecutionResponseChannel } from './in-memory-execution-response-channel';
+import type { RedisExecutionResponseChannelNameGenerator } from './redis-execution-response-channel';
 
-export class InMemoryExecutionResponseSender implements ExecutionResponseSender {
+export interface RedisResponsePublisher {
+	publish(channel: string, message: string): Promise<unknown>;
+	disconnect(): void;
+}
+
+/** Publishes serialized execution responses to execution-specific Redis channels. */
+export class RedisExecutionResponseSender implements ExecutionResponseSender {
 	private stopped = false;
 
 	constructor(
-		private readonly channel: InMemoryExecutionResponseChannel,
+		private readonly publisher: RedisResponsePublisher,
+		private readonly getChannelName: RedisExecutionResponseChannelNameGenerator,
 		private readonly logger: Logger,
-		private readonly maxFrameBytes?: number,
 	) {}
 
 	send(response: ExecutionResponse): Result<void, Error> {
@@ -25,13 +31,20 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 			return createResultError(new UnexpectedError('The execution response sender has stopped.'));
 		}
 
-		const frameResult = serializeExecutionResponse(response, this.logger, this.maxFrameBytes);
-		this.channel.publish(response.executionId, frameResult.frame);
+		const frameResult = serializeExecutionResponse(response, this.logger);
+
+		void this.publisher
+			.publish(this.getChannelName(response.executionId), frameResult.frame)
+			.catch((error: unknown) => {
+				this.logger.error('Failed to publish an execution response', {
+					executionId: response.executionId,
+					error,
+				});
+			});
 
 		return frameResult.ok ? createResultOk(undefined) : createResultError(frameResult.error);
 	}
 
-	/** Gives one step a response sender without exposing execution routing. */
 	emitterFor(executionId: string): ResponseEmitter {
 		return {
 			send: (payload: JsonValue) => this.send({ type: 'response', executionId, payload }),
@@ -39,6 +52,9 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 	}
 
 	async stop(): Promise<void> {
+		if (this.stopped) return;
+
 		this.stopped = true;
+		this.publisher.disconnect();
 	}
 }

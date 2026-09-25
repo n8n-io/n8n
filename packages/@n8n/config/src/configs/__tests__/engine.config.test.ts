@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { MockInstance } from 'vitest';
 
-import { EngineConfig } from '../src/index';
+import { EngineConfig } from '../engine.config';
 
 describe('EngineConfig', () => {
 	const originalEnv = process.env;
