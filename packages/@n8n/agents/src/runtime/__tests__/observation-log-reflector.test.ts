@@ -617,6 +617,39 @@ describe('runObservationLogReflector', () => {
 		).resolves.toMatchObject([{ tokenCount: 6 }]);
 	});
 
+	it('never fails reflection when onUsage throws synchronously or rejects', async () => {
+		// Pricing is best-effort: a misbehaving onUsage callback must not abort
+		// the reflector or surface an unhandled rejection. Reflection still
+		// applies its drop instruction.
+		const syncThrow = vi.fn(() => {
+			throw new Error('pricing sync boom');
+		});
+		const rejecting = vi.fn(async () => {
+			throw new Error('pricing async boom');
+		});
+
+		for (const onUsage of [syncThrow, rejecting]) {
+			const store = new InMemoryMemory();
+			const [stale] = await store.appendObservationLogEntries([
+				{
+					observationScopeId: 'thread-1',
+					marker: 'info',
+					text: 'Tiny aside',
+					tokenCount: 12,
+				},
+			]);
+			const result = await runObservationLogReflector({
+				memory: store,
+				observationScopeId: 'thread-1',
+				reflectorThresholdTokens: 10,
+				reflect: async () => await Promise.resolve(JSON.stringify({ drop: [stale.id], merge: [] })),
+				onUsage,
+			});
+			expect(result).toMatchObject({ status: 'ran' });
+			expect(onUsage).toHaveBeenCalledTimes(1);
+		}
+	});
+
 	it('warns but still applies reflection output that remains over budget', async () => {
 		const store = new InMemoryMemory();
 		const [critical, stale] = await store.appendObservationLogEntries([

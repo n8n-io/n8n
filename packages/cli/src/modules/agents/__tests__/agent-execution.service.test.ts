@@ -191,6 +191,34 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
 		});
 
+		it('coalesces concurrent deliveries of the same reportId onto one transaction', async () => {
+			// Two deliveries of the same reportId racing past the duplicate
+			// check must not double-count: the second delivery awaits the
+			// in-flight attempt instead of starting its own transaction.
+			let resolveIncrement!: () => void;
+			agentExecutionRepository.incrementCost.mockImplementationOnce(async () => {
+				await new Promise<void>((resolve) => {
+					resolveIncrement = resolve;
+				});
+			});
+			const report = {
+				task: 'observer',
+				model: 'openai/gpt-4o',
+				cost: 0.0007,
+				reportId: 'race-1',
+			};
+
+			const a = service.recordSideCallUsage('execution-1', 'thread-1', report);
+			const b = service.recordSideCallUsage('execution-1', 'thread-1', report);
+			// The first transaction is in flight; release it so both settle.
+			resolveIncrement();
+			await Promise.all([a, b]);
+
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
+		});
+
 		it('applies two different reportIds separately', async () => {
 			await service.recordSideCallUsage('execution-1', 'thread-1', {
 				task: 'title',

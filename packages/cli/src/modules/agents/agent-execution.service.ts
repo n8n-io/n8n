@@ -149,6 +149,15 @@ export class AgentExecutionService {
 	 */
 	private readonly appliedSideCallReportIds = new Set<string>();
 
+	/**
+	 * Side-call cost report ids with an in-flight transaction. Concurrent
+	 * deliveries of the same `reportId` coalesce onto the in-flight promise
+	 * instead of each running its own transaction, which would double-count.
+	 * The entry is removed when the attempt settles; a failed attempt is not
+	 * claimed, so a later replay can retry.
+	 */
+	private readonly sideCallReportInFlight = new Map<string, Promise<void>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
@@ -901,7 +910,9 @@ export class AgentExecutionService {
 	 * Both totals are updated in one transaction, and the `reportId` is
 	 * claimed only after the transaction commits — a partial failure can never
 	 * commit one total while suppressing the replay, so the execution and
-	 * thread costs cannot diverge for this report.
+	 * thread costs cannot diverge for this report. Concurrent deliveries of the
+	 * same `reportId` coalesce onto a single in-flight transaction so they
+	 * cannot both pass the duplicate check and double-count.
 	 */
 	async recordSideCallUsage(
 		executionId: string,
@@ -909,6 +920,30 @@ export class AgentExecutionService {
 		report: { task: string; model?: string; cost: number; reportId: string },
 	): Promise<void> {
 		if (this.appliedSideCallReportIds.has(report.reportId)) return;
+		// Register the in-flight promise synchronously (before any await) so a
+		// concurrent delivery observes it and waits on the same attempt rather
+		// than starting a second transaction that would double-count.
+		let attempt = this.sideCallReportInFlight.get(report.reportId);
+		if (attempt === undefined) {
+			attempt = this.applySideCallUsage(executionId, threadId, report);
+			this.sideCallReportInFlight.set(report.reportId, attempt);
+		}
+		try {
+			await attempt;
+		} finally {
+			// Only the caller that created the attempt clears the slot, so a
+			// coalesced delivery does not delete a later attempt's entry.
+			if (this.sideCallReportInFlight.get(report.reportId) === attempt) {
+				this.sideCallReportInFlight.delete(report.reportId);
+			}
+		}
+	}
+
+	private async applySideCallUsage(
+		executionId: string,
+		threadId: string,
+		report: { task: string; model?: string; cost: number; reportId: string },
+	): Promise<void> {
 		try {
 			await this.txRunner.run({}, async (ctx) => {
 				await this.agentExecutionRepository.incrementCost(executionId, report.cost, ctx);

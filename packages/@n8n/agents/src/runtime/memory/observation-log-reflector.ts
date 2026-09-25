@@ -2,6 +2,7 @@ import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
+import { reportSideCallUsage } from './forward-usage';
 import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type {
@@ -206,8 +207,9 @@ export async function runObservationLogReflector(
 	const reflectModel = typeof reflectResult === 'string' ? undefined : reflectResult.model;
 	// Forward usage immediately after the model call, before parsing or
 	// persistence, so a billed reflector turn is priced even when the
-	// post-processing below throws. Fire-and-forget: never block on pricing.
-	void opts.onUsage?.(reflectModel, reflectUsage);
+	// post-processing below throws. Fire-and-forget: never block on pricing,
+	// and never let a callback throw or rejection abort reflection.
+	reportSideCallUsage(opts.onUsage, reflectModel, reflectUsage);
 	const normalized = normalizeObservationLogReflection(
 		activeObservationLog,
 		withCreatedAt(parseObservationLogReflectionJson(output), now),

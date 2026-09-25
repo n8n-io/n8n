@@ -480,6 +480,39 @@ describe('runObservationLogObserver', () => {
 		});
 	});
 
+	it('never fails observation when onUsage throws synchronously or rejects', async () => {
+		// Pricing is best-effort: a misbehaving onUsage callback (sync throw or
+		// rejected promise) must not abort the observer or surface an unhandled
+		// rejection. Observation still completes and writes entries.
+		const syncThrow = vi.fn(() => {
+			throw new Error('pricing sync boom');
+		});
+		const rejecting = vi.fn(async () => {
+			throw new Error('pricing async boom');
+		});
+
+		for (const onUsage of [syncThrow, rejecting]) {
+			const store = new InMemoryMemory();
+			await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+			await store.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [message('m1', 'user', 'I need this remembered.', new Date(2026, 4, 12, 14, 30))],
+			});
+			const result = await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 20,
+				tokenCounter: async () => await Promise.resolve(5),
+				now: new Date(2026, 4, 12, 14, 31),
+				observe: async () => await Promise.resolve('* CRITICAL (14:31) Durable fact.'),
+				onUsage,
+			});
+			expect(result).toMatchObject({ status: 'ran', observationsWritten: 1 });
+			expect(onUsage).toHaveBeenCalledTimes(1);
+		}
+	});
+
 	it.each([
 		'',
 		'   \nnot a bullet line\n',

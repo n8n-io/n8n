@@ -11,6 +11,7 @@ import {
 } from './episodic-memory';
 import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from './episodic-memory-defaults';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
+import { reportSideCallUsage } from './forward-usage';
 import { saveMessagesToThread } from './memory-store';
 import { redactText } from '../../sdk/guardrails';
 import { Tool } from '../../sdk/tool';
@@ -365,8 +366,11 @@ async function saveCandidateEntries(
 			);
 			usageReport = embedded.report;
 			// Forward the embed usage before the save loop, so a billed embed
-			// call is priced even when a later saveEntryWithSources throws.
-			if (embedded.report) void opts.onUsage?.(embedded.report.model, embedded.report.usage);
+			// call is priced even when a later saveEntryWithSources throws. The
+			// callback is best-effort: a throw or rejection never fails candidate
+			// processing.
+			if (embedded.report)
+				reportSideCallUsage(opts.onUsage, embedded.report.model, embedded.report.usage);
 			const embeddings = embedded.embeddings;
 			for (const [index, candidate] of candidates.entries()) {
 				const saved = await opts.memory.episodic.saveEntryWithSources(
@@ -435,8 +439,9 @@ async function runEpisodicMemoryReflection(
 		});
 		// Forward the reflect usage before applyReflection, so a billed
 		// reflect call is priced even when a later merge embed or
-		// applyReflection throws.
-		void opts.onUsage?.(reflectionResult.model, reflectionResult.usage);
+		// applyReflection throws. The callback is best-effort: a throw or
+		// rejection never fails reflection.
+		reportSideCallUsage(opts.onUsage, reflectionResult.model, reflectionResult.usage);
 	}
 	const reflection = normalizeEpisodicMemoryReflection(cluster, reflectionResult.reflection);
 	if (reflection.drop.length === 0 && reflection.merge.length === 0) return reports;
@@ -447,8 +452,9 @@ async function runEpisodicMemoryReflection(
 		const mergeEmbedded = await embedTexts(config, mergeContents, opts.executionCounter);
 		if (mergeEmbedded.report) {
 			reports.push(mergeEmbedded.report);
-			// Forward the merge-embed usage before applyReflection.
-			void opts.onUsage?.(mergeEmbedded.report.model, mergeEmbedded.report.usage);
+			// Forward the merge-embed usage before applyReflection. Best-effort:
+			// a callback throw or rejection never fails reflection.
+			reportSideCallUsage(opts.onUsage, mergeEmbedded.report.model, mergeEmbedded.report.usage);
 		}
 		mergeEmbeddings = mergeEmbedded.embeddings;
 	}

@@ -1,6 +1,7 @@
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 
 import { renderObservationLog } from './observation-log-renderer';
+import { reportSideCallUsage } from './forward-usage';
 import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
@@ -244,8 +245,9 @@ export async function runObservationLogObserver(
 	const observeModel = typeof observeResult === 'string' ? undefined : observeResult.model;
 	// Forward usage immediately after the model call, before parsing or
 	// persistence, so a billed observer turn is priced even when the
-	// post-processing below throws. Fire-and-forget: never block on pricing.
-	void opts.onUsage?.(observeModel, observeUsage);
+	// post-processing below throws. Fire-and-forget: never block on pricing,
+	// and never let a callback throw or rejection abort observation.
+	reportSideCallUsage(opts.onUsage, observeModel, observeUsage);
 
 	const noObservations = markdown.trim() === 'NO_OBSERVATIONS';
 	const parsed = noObservations
