@@ -16,7 +16,7 @@ COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins /usr/local/libexec/
 RUN npm install --global "pnpm@${PNPM_VERSION}" \
     && npm install --prefix /opt/ci-playwright --ignore-scripts --no-save "playwright@${PLAYWRIGHT_VERSION}" \
     && apt-get update \
-    && apt-get install -y --no-install-recommends git jq rsync sudo \
+    && apt-get install -y --no-install-recommends git iproute2 jq rsync sudo zstd \
     && node /opt/ci-playwright/node_modules/playwright/cli.js install chromium --with-deps \
     && rm -rf /var/lib/apt/lists/* /root/.npm
 

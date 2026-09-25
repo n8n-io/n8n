@@ -2,7 +2,7 @@ name: 'Build: CI Toolchain Image'
 
 on:
   push:
-    branches: [master, ci/seed-toolchain-image]
+    branches: [master, ci/seed-toolchain-image, ci/pilot-toolchain-pr]
     paths:
       - .github/ci-toolchain/Dockerfile
       - .github/workflows/build-ci-toolchain-image.yml
@@ -16,10 +16,11 @@ permissions:
   contents: read
 
 env:
-  IMAGE: ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1
+  IMAGE: ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v2
 
 jobs:
   build:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -73,7 +74,7 @@ jobs:
       contents: read
       packages: read
     container:
-      image: ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1
+      image: ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v2
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
@@ -88,6 +89,8 @@ jobs:
           node -e 'const { chromium } = require("/opt/ci-playwright/node_modules/playwright"); chromium.launch().then(async browser => { console.log(await browser.version()); await browser.close(); }).catch(error => { console.error(error); process.exitCode = 1; });'
           docker info --format '{{.ServerVersion}}'
           docker buildx version
+          ip -Version
+          zstd --version
       - name: Activate SafeChain
         run: |
           mkdir -p "$HOME/.safe-chain/bin"

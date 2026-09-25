@@ -690,10 +690,10 @@ store.
 `build-ci-toolchain-image.yml` publishes one Node, pnpm, SafeChain and Chromium
 image to GHCR on `master`. The build does not install n8n dependencies. A
 Blacksmith job pulls the image to seed the shared container cache. A job in
-the image then checks its tools, browser, Docker access, SafeChain and a
-lockfile-driven root install. Manual dispatch runs the smoke job without
-republishing the image, so it can check a warm pull. Update the image tag in
-the publish workflow when a tool pin changes.
+the image then checks its tools, browser, Docker access, `ip`, `zstd`,
+SafeChain and a lockfile-driven root install. Manual dispatch runs the smoke
+job without republishing the image, so it can check a warm pull. Update the
+image tag in the publish workflow and its consumers when a tool pin changes.
 
 The `ci/pilot-toolchain-pr` branch tests the image in the PR Node jobs: build,
 format, unit, lint, typecheck, packaging, declarations, database, workflow
