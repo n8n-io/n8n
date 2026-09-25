@@ -182,7 +182,6 @@ describe('resolveImportPackageUpload', () => {
 		);
 
 		it('leaves the default field set unchanged', () => {
-			// A selection-only field is rejected by the default (whole-scope) validation.
 			expect(() =>
 				resolveImportPackageUpload({
 					files: [makeFile('package', packageBuffer)],

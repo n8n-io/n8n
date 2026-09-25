@@ -38,7 +38,7 @@ import { executeWorkflowNode } from './utils/test-builders';
 
 const licenseMocker = new LicenseMocker();
 
-// The publish path touches the active workflow manager; mock it so no real infra is needed.
+// Mock the active workflow manager to avoid starting triggers during publication.
 mockInstance(ActiveWorkflowManager);
 
 /** Trigger node, needed so a workflow can be published. */
@@ -103,7 +103,6 @@ describe('importPackageSelectionFromDirectory', () => {
 		);
 	});
 
-	/** Writes an unpacked package into a fresh temp directory and returns its path. */
 	async function packageDir(options: EntityPackageOptions): Promise<string> {
 		const dir = await mkdtemp(path.join(tmpdir(), 'n8n-import-selection-'));
 		createdDirs.push(dir);
@@ -123,7 +122,6 @@ describe('importPackageSelectionFromDirectory', () => {
 		);
 	}
 
-	/** Project P1 carrying two root workflows, WFA and WFB. */
 	const twoWorkflowPackage: EntityPackageOptions = {
 		projects: [{ target: 'projects/p1', project: serializedProject({ id: 'P1', name: 'p1' }) }],
 		workflows: [
@@ -146,9 +144,8 @@ describe('importPackageSelectionFromDirectory', () => {
 
 		expect(result.workflows).toHaveLength(1);
 		expect(result.workflows[0]).toMatchObject({ sourceWorkflowId: 'WFA', status: 'created' });
-		// workflowIdPolicy defaults to `source`, so the localId is the source id.
+		// The default ID policy preserves source IDs in the destination.
 		expect(await findWorkflow('WFA')).not.toBeNull();
-		// WFB was in the package but not selected, so it is never written.
 		expect(await findWorkflow('WFB')).toBeNull();
 		expect(await findProject('P1')).not.toBeNull();
 	});
@@ -161,7 +158,6 @@ describe('importPackageSelectionFromDirectory', () => {
 		const project = await Container.get(ProjectRepository).findOneOrFail({ where: { id: 'P1' } });
 		const keeper = await createWorkflow({ name: 'Keeper' }, project);
 
-		// Re-import the same selection with a renamed WFA to prove it updates in place under merge.
 		const renamedDir = await packageDir({
 			projects: [{ target: 'projects/p1', project: serializedProject({ id: 'P1', name: 'p1' }) }],
 			workflows: [
@@ -178,7 +174,6 @@ describe('importPackageSelectionFromDirectory', () => {
 
 		expect(result.workflows[0]).toMatchObject({ sourceWorkflowId: 'WFA', status: 'updated' });
 		expect((await findWorkflow('WFA'))?.name).toBe('wfa renamed');
-		// merge never reconciles by absence, so the pre-existing target workflow is untouched.
 		expect(result.removedWorkflows).toEqual([]);
 		const survivor = await findWorkflow(keeper.id);
 		expect(survivor?.isArchived).toBe(false);
@@ -213,10 +208,8 @@ describe('importPackageSelectionFromDirectory', () => {
 
 		expect(result.projects.map((p) => p.localId)).toEqual(['P1']);
 		expect(await findProject('P1')).not.toBeNull();
-		// The unselected package project is never created.
 		expect(await findProject('P2')).toBeNull();
 		expect(await findWorkflow('WFB')).toBeNull();
-		// A target-only project is out of scope entirely.
 		expect((await findWorkflow(untouched.id))?.isArchived).toBe(false);
 	});
 
@@ -238,7 +231,6 @@ describe('importPackageSelectionFromDirectory', () => {
 			],
 		});
 
-		// WFB lives in P2, outside the scoped project, so it is dropped rather than imported.
 		const result = await importSelection(sourceDir, {
 			selectedProjectId: 'P1',
 			selectedWorkflowIds: ['WFA', 'WFB'],
@@ -298,7 +290,6 @@ describe('importPackageSelectionFromDirectory', () => {
 
 		const summary = result.workflows[0];
 		expect(summary.sourceWorkflowId).toBe('WFA');
-		// `new` mints a fresh local id rather than reusing the source id.
 		expect(summary.localId).not.toBe('WFA');
 		expect(await findWorkflow(summary.localId)).not.toBeNull();
 		expect(await findWorkflow('WFA')).toBeNull();
@@ -327,7 +318,6 @@ describe('importPackageSelectionFromDirectory', () => {
 		);
 
 		expect(result.workflows[0]).toMatchObject({ sourceWorkflowId: 'WFA', status: 'skipped' });
-		// skip leaves the matched workflow's stored content unchanged.
 		expect((await findWorkflow('WFA'))?.name).toBe('wfa');
 	});
 
@@ -355,7 +345,6 @@ describe('importPackageSelectionFromDirectory', () => {
 			},
 		});
 
-		// Select only the parent: its sub-workflow dependency is neither selected nor on the target.
 		const result = await importSelection(sourceDir, {
 			selectedProjectId: 'P1',
 			selectedWorkflowIds: ['CHEDDAR'],
@@ -363,12 +352,9 @@ describe('importPackageSelectionFromDirectory', () => {
 
 		const parentSummary = result.workflows.find((w) => w.sourceWorkflowId === 'CHEDDAR');
 		expect(parentSummary?.status).toBe('created');
-		// The reference is kept (broken, not dropped): the id still points at the absent sub-workflow.
 		const importedParent = await findWorkflow(parentSummary!.localId);
 		expect(subWorkflowRefOf(importedParent!)).toBe('BRIE');
-		// The unselected sub-workflow is never imported.
 		expect(await findWorkflow('BRIE')).toBeNull();
-		// Publish fails softly (reported, not thrown) because the sub-workflow is not published.
 		expect(parentSummary?.publishing.state).toBe('failed');
 		expect(parentSummary?.publishing.error).toMatch(/BRIE.*not published/);
 	});
@@ -395,7 +381,6 @@ describe('importPackageSelectionFromDirectory', () => {
 
 		expect(result.workflows.map((w) => w.sourceWorkflowId)).toEqual([wfOne.id]);
 		expect(await findWorkflow(wfOne.id)).not.toBeNull();
-		// WF Two was in the exported directory but not selected, so it is not recreated.
 		expect(await findWorkflow(wfTwo.id)).toBeNull();
 	});
 
@@ -514,7 +499,6 @@ describe('importPackageSelectionFromDirectory', () => {
 			expect(subWorkflowRefOf((await findWorkflow('WFA'))!)).toBe('WFB');
 		});
 
-		/** Seeds the destination project P1 with both WFA and WFB by importing them. */
 		async function seedBothWorkflows() {
 			await importSelection(await packageDir(twoWorkflowPackage), {
 				selectedProjectId: 'P1',
@@ -532,7 +516,6 @@ describe('importPackageSelectionFromDirectory', () => {
 				deletedWorkflowIds: ['WFB'],
 			});
 
-			// The locked profile deletes by archiving, so the row survives but is archived.
 			expect(result.removedWorkflows).toEqual([
 				{
 					workflowId: 'WFB',
@@ -543,14 +526,12 @@ describe('importPackageSelectionFromDirectory', () => {
 				},
 			]);
 			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
-			// The selected workflow is imported and left active; merge never reconciled it away.
 			expect((await findWorkflow('WFA'))?.isArchived).toBe(false);
 		});
 
 		it('tolerates deleting an already-archived or absent workflow as a no-op', async () => {
 			await seedBothWorkflows();
 
-			// First delete archives WFB.
 			await importSelection(await packageDir(twoWorkflowPackage), {
 				selectedProjectId: 'P1',
 				selectedWorkflowIds: ['WFA'],
@@ -558,7 +539,6 @@ describe('importPackageSelectionFromDirectory', () => {
 			});
 			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
 
-			// A second import deleting the now-archived WFB and a never-seen id removes nothing.
 			const result = await importSelection(await packageDir(twoWorkflowPackage), {
 				selectedProjectId: 'P1',
 				selectedWorkflowIds: ['WFA'],
@@ -574,7 +554,6 @@ describe('importPackageSelectionFromDirectory', () => {
 			const bystander = await createTeamProject('Bystander', owner);
 			const outsider = await createWorkflow({ name: 'Outsider' }, bystander);
 
-			// The delete id names a workflow in another project, so it is dropped rather than archived.
 			const result = await importSelection(await packageDir(twoWorkflowPackage), {
 				selectedProjectId: 'P1',
 				selectedWorkflowIds: ['WFA'],
@@ -593,7 +572,7 @@ describe('importPackageSelectionFromDirectory', () => {
 			const project = await projectRepository.findOneOrFail({ where: { id: 'P1' } });
 			const protectedWorkflow = await createWorkflow({ name: 'Protected' }, project);
 
-			// A member who may import into P1 but has no workflow:delete scope there.
+			// Grant import permissions without workflow:delete to test the project permission check.
 			const member = await createMember();
 			const importOnlyRole = await createCustomRoleWithScopeSlugs(
 				[
@@ -650,7 +629,6 @@ describe('importPackageSelectionFromDirectory', () => {
 				projectId: 'P1',
 			});
 
-			// The whole import is refused before any write: WFA is not created and the target survives.
 			expect(await findWorkflow('WFA')).toBeNull();
 			expect((await findWorkflow(protectedWorkflow.id))?.isArchived).toBe(false);
 		});

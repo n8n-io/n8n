@@ -366,7 +366,6 @@ export interface EntityPackageOptions {
 	sourceId?: string;
 }
 
-/** Writes the manifest and every entity file for {@link EntityPackageOptions} through a writer. */
 async function writeEntityPackage(
 	writer: PackageWriter,
 	options: EntityPackageOptions,
@@ -467,10 +466,7 @@ export async function buildEntityPackageBuffer(options: EntityPackageOptions): P
 	return await streamToBuffer(writer.finalize());
 }
 
-/**
- * The directory (unzipped) counterpart of {@link buildEntityPackageBuffer}, for tests that exercise
- * the directory import path. Writes the same layout as loose files under `targetDir`.
- */
+/** Use the same package layout for directory and tar imports. */
 export async function buildEntityPackageDirectory(
 	targetDir: string,
 	options: EntityPackageOptions,

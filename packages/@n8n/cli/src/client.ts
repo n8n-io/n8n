@@ -32,14 +32,12 @@ export interface ImportPackageFields {
 	tagConflictPolicy?: string;
 }
 
-/**
- * Fields of a cherry-pick selection import. It carries the selection (a single source project plus
- * the workflow ids to import and, optionally, destination ids to delete) and only the two
- * overridable policies; the locked cherry-pick policies are fixed inside the endpoint.
- */
 export interface ImportPackageSelectionFields {
+	/** Source project ID from the package. */
 	selectedProjectId: string;
+	/** Source workflow IDs from the selected project. */
 	selectedWorkflowIds: string[];
+	/** Destination workflow IDs to remove. */
 	deletedWorkflowIds?: string[];
 	workflowConflictPolicy?: string;
 	workflowIdPolicy?: string;
@@ -748,7 +746,7 @@ export class N8nClient {
 		for (const [key, value] of Object.entries(stringFields)) {
 			if (typeof value === 'string' && value !== '') form.append(key, value);
 		}
-		// The endpoint parses the id lists as JSON-string arrays (the `bindings` precedent).
+		// The endpoint expects ID arrays encoded as JSON in multipart text fields.
 		form.append('selectedWorkflowIds', JSON.stringify(fields.selectedWorkflowIds));
 		if (fields.deletedWorkflowIds !== undefined) {
 			form.append('deletedWorkflowIds', JSON.stringify(fields.deletedWorkflowIds));

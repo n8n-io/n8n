@@ -7,8 +7,7 @@ import PackageImportSelection from '../commands/package/import-selection';
 
 vi.mock('node:fs');
 
-// Tests run with the package directory as cwd (see AGENTS.md), so this is the
-// @n8n/cli package root oclif needs to read the command manifest.
+// oclif needs the package root to load the command manifest.
 const packageRoot = process.cwd();
 
 interface ImportSelectionFlags {
@@ -20,7 +19,6 @@ interface ImportSelectionFlags {
 	workflowIdPolicy?: string;
 }
 
-/** The command methods we stub to isolate behaviour from oclif/networking. */
 interface ImportSelectionInternals {
 	parse: () => Promise<{ flags: ImportSelectionFlags }>;
 	getClient: () => N8nClient;
@@ -35,7 +33,6 @@ function stubCommand(
 	vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from('pkg'));
 	const command = new PackageImportSelection([], {} as Config);
 	const internals = command as unknown as ImportSelectionInternals;
-	// Bypass oclif arg parsing, connection setup, and the output path.
 	vi.spyOn(internals, 'parse').mockResolvedValue({ flags });
 	vi.spyOn(internals, 'getClient').mockReturnValue({
 		importPackageSelection,
@@ -105,8 +102,7 @@ describe('package import-selection command', () => {
 		expect(idPolicy.default).toBeUndefined();
 	});
 
-	// Real oclif parsing exercises the flag defaults, aliases, and array parsing,
-	// which the stubbed `parse` above cannot.
+	// Use the real parser to verify flag defaults, aliases, and array parsing.
 	describe('flag resolution (real parse)', () => {
 		async function runWithArgv(argv: string[]) {
 			vi.mocked(fs.existsSync).mockReturnValue(true);

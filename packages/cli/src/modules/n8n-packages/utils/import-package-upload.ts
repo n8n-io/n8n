@@ -16,7 +16,7 @@ export const IMPORT_PACKAGE_BODY_FIELD_SET = new Set<string>([
 	'package',
 ]);
 
-/** The smaller field set a selection import accepts; `package` included for the same reason. */
+/** Include `package` because express-openapi-validator adds a placeholder for the file part. */
 export const IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET = new Set<string>([
 	...IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 	'package',

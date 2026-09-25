@@ -84,7 +84,7 @@ export interface ImportOrchestrationInput {
 	/** Sub-workflow dependency graph from the manifest, used to order the import. */
 	subWorkflowRequirements?: PackageWorkflowRequirement[];
 	importSource?: PackageImportSource;
-	/** DESTINATION ids to remove by explicit request (cherry-pick), removed even under `merge`. */
+	/** Destination workflow IDs to remove, even under `merge`. */
 	explicitDeleteWorkflowIds?: string[];
 }
 

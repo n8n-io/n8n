@@ -141,8 +141,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {
-			// Unknown keys are stripped: a selection import derives its destination from the package's
-			// own project, so a target projectId/folderId and the locked policies never reach the service.
+			// The DTO strips unknown fields instead of rejecting the request.
 			expect(result.data).not.toHaveProperty('projectId');
 			expect(result.data).not.toHaveProperty('folderId');
 			expect(result.data).not.toHaveProperty('folderConflictPolicy');

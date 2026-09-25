@@ -29,7 +29,6 @@ const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
-/** A project package: project `projectId` with two root workflows, WFA and WFB. */
 async function buildProjectPackage(projectId: string): Promise<Buffer> {
 	return await buildEntityPackageBuffer({
 		sourceId: 'http-selection-source',
@@ -105,14 +104,12 @@ describe('POST /n8n-packages/import-selection', () => {
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
-		// Only WFA is imported; the unselected WFB never appears in the result.
 		expect(response.body.workflows).toHaveLength(1);
 		expect(response.body.workflows[0]).toMatchObject({
 			sourceWorkflowId: 'WFA',
 			status: 'created',
 			projectId: project.id,
 		});
-		// The user-facing tar path emits the import telemetry event.
 		expect(emitSpy).toHaveBeenCalledWith('n8n-package-imported', expect.any(Object));
 	});
 
@@ -162,8 +159,8 @@ describe('POST /n8n-packages/import-selection', () => {
 		const project = await createTeamProject('Target', owner);
 		const protectedWorkflow = await createWorkflow({ name: 'Protected' }, project);
 
-		// The API key carries the delete scope, so the request clears the API-key gate; the 422 comes
-		// from the member's project role, which grants import but not workflow:delete.
+		// Grant the API key delete scope so the request reaches the project permission check.
+		// The project role must cause the 422 response.
 		const member = await createMemberWithApiKey({
 			scopes: ['project:create', 'project:update', 'workflow:import', 'workflow:delete'],
 		});

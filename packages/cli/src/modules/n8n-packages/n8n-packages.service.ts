@@ -85,12 +85,7 @@ type DirectoryProjectPackage =
 	| { status: 'empty'; result: ImportResult }
 	| { status: 'project'; reader: PackageReader; manifest: PackageManifest };
 
-/**
- * The locked policy profile a selection import runs under (D6). `folderConflictPolicy=merge` keeps
- * the import additive — nothing the package omits is reconciled away — and `tagConflictPolicy=skip`
- * never mutates a shared tag. The rest mirror the promotion apply context. `workflowConflictPolicy`
- * and `workflowIdPolicy` are the only overridable policies, so they are set by the caller, not here.
- */
+/** Merge preserves workflows omitted from the selection. Skip preserves existing shared tags. */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
 	folderConflictPolicy: 'merge',
@@ -472,12 +467,7 @@ export class N8nPackagesService {
 		return result;
 	}
 
-	/**
-	 * Tar counterpart of {@link importPackageSelectionFromDirectory}: the public (user-facing)
-	 * selection import. A tar package may be a workflow package, so it re-checks project-package-ness
-	 * itself (the directory path relies on {@link readDirectoryProjectPackage}). Being user-facing, it
-	 * emits `n8n-package-imported`, mirroring {@link importPackage}; the directory path stays silent.
-	 */
+	/** Emit import telemetry for public API requests. Directory imports use the Git pull path. */
 	async importPackageSelection(
 		request: ImportPackageSelectionRequest,
 		selection: ImportSelection,
@@ -504,10 +494,7 @@ export class N8nPackagesService {
 		return result;
 	}
 
-	/**
-	 * Reads a directory package. Directory import accepts only a project package.
-	 * A package with content and no projects is rejected. An empty package is a no-op.
-	 */
+	/** An empty working copy needs no import. Reject content without a project. */
 	private async readDirectoryProjectPackage(source: {
 		sourceDir: string;
 	}): Promise<DirectoryProjectPackage> {
@@ -523,11 +510,7 @@ export class N8nPackagesService {
 		return { status: 'empty', result: emptyImportResult(manifest) };
 	}
 
-	/**
-	 * Validates a selection import and routes it to {@link ProjectPackageImporter} with the locked
-	 * cherry-pick profile. The caller guarantees a project package; a selected project the manifest
-	 * does not contain is rejected up front.
-	 */
+	/** The caller must validate that the manifest describes a project package. */
 	private async dispatchSelectionImport(
 		request: ImportSelectionRequest,
 		reader: PackageReader,
@@ -547,7 +530,6 @@ export class N8nPackagesService {
 			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,
-			// The only two policies the caller may steer; every other policy is locked above.
 			workflowConflictPolicy: request.workflowConflictPolicy ?? WorkflowConflictPolicy.NewVersion,
 			workflowIdPolicy: request.workflowIdPolicy ?? WorkflowIdPolicy.Source,
 			selection,

@@ -255,10 +255,7 @@ export type ImportRequest = {
 	folderId?: string;
 	bindings?: Partial<PackageImportBindings>;
 	apiKeyScopes?: string[];
-	/**
-	 * When present, imports only the named subset from one source project (cherry-pick),
-	 * instead of the whole package. Undefined means a whole-scope import.
-	 */
+	/** Omit to import the whole package. */
 	selection?: ImportSelection;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
@@ -273,27 +270,23 @@ export type ImportPackageRequest = ImportRequest & {
 };
 
 /**
- * A cherry-pick subset to import: only `selectedWorkflowIds` (SOURCE ids) from the single source
- * project `selectedProjectId`. It is a pure filter applied before the pipeline — no dependency
- * closure and no auto-pull of referenced sub-workflows.
+ * Import only the selected workflows. Do not add referenced sub-workflows to the selection.
  *
- * `deletedWorkflowIds` (DESTINATION ids) are removed even under the additive `merge` profile, via a
- * thin explicit-delete path. Deletes are confined to the scoped project; an already-archived or
- * absent id is a tolerated no-op. A referenced workflow may still be deleted (broken-but-preserved,
- * symmetric with an out-of-subset sub-workflow reference).
+ * Delete only within the destination project, even under `merge`. Ignore absent or archived IDs.
+ * References to deleted workflows remain unchanged.
  */
 export interface ImportSelection {
+	/** Source project ID from the package. */
 	selectedProjectId: string;
+	/** Source workflow IDs from the selected project. */
 	selectedWorkflowIds: string[];
+	/** Destination workflow IDs to remove. */
 	deletedWorkflowIds?: string[];
 }
 
 /**
- * The narrow request a selection import accepts. It carries the actor, optional bindings, and only
- * the two overridable policies; every other policy is locked to the cherry-pick profile inside the
- * service entry point. A selection import writes into the project the package's own source project
- * matches (or creates), so it takes no target `projectId`/`folderId`. Contrast with
- * {@link ImportRequest}, the whole-scope shape.
+ * Match or create the destination project from the package. Callers cannot override its location.
+ * The service fixes all policies except `workflowConflictPolicy` and `workflowIdPolicy`.
  */
 export type ImportSelectionRequest = {
 	user: User;
@@ -303,10 +296,6 @@ export type ImportSelectionRequest = {
 	workflowIdPolicy?: WorkflowIdPolicy;
 };
 
-/**
- * The tar variant of {@link ImportSelectionRequest}: carries the package as a buffer, for the
- * public (user-facing) selection import. The directory variant reads loose files instead.
- */
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
 	packageBuffer: Buffer;
 };

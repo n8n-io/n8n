@@ -38,8 +38,7 @@ export class WorkflowRemover {
 			occupiedFolderIds: [],
 		};
 
-		// Explicit deletes (cherry-pick) run independently of reconciliation, so they take their own
-		// path even under `merge` where reconcile-by-absence removes nothing.
+		// Explicit deletions must apply even when the folder policy disables reconciliation.
 		if (request.explicitDeleteIds?.length) {
 			return await this.planExplicitDeletes(context, request);
 		}
@@ -86,14 +85,6 @@ export class WorkflowRemover {
 		};
 	}
 
-	/**
-	 * Plans the removal of an explicit, caller-named set of DESTINATION workflows (cherry-pick). It
-	 * reuses the reconcile path's permission check and archive/hard-delete apply, but skips its
-	 * reconcile-by-absence logic entirely: only the named ids go. A selected target becomes a conflict.
-	 * Other absent or archived ids are no-ops; a named id the caller may not delete becomes a failure
-	 * (surfaced as the existing `workflow-removal-forbidden` blocking issue). No reverse-reference
-	 * guard — deleting a workflow another one references is allowed, leaving a broken-but-preserved ref.
-	 */
 	private async planExplicitDeletes(
 		context: ImportContext,
 		request: WorkflowRemovalRequest,
@@ -146,7 +137,7 @@ export class WorkflowRemover {
 				.filter(({ id }) => !authorized.has(id))
 				.map(({ id, name }) => ({ workflowId: id, name, projectId: context.projectId })),
 			deletionPolicy: request.deletionPolicy,
-			// Explicit deletes never drive folder reconciliation, so no folder is emptied by them.
+			// Selection imports use `merge`, so folder reconciliation does not read these placements.
 			occupiedFolderIds: [],
 		};
 	}

@@ -9,7 +9,7 @@ import type {
 
 /** What the package accounts for in one project scope, against which the target is reconciled. */
 export interface WorkflowRemovalRequest {
-	/** Decides whether reconciliation applies at all; only `overwrite` removes anything. */
+	/** Only `overwrite` removes workflows omitted from the package. */
 	folderConflictPolicy: FolderConflictPolicy;
 	deletionPolicy: OverwriteDeletionPolicy;
 	/** The decided plan for the package's own workflows; their target ids are retained. */
@@ -23,9 +23,8 @@ export interface WorkflowRemovalRequest {
 	/** Git pulls reconcile all folders; package imports preserve folders they do not represent. */
 	importSource?: PackageImportSource;
 	/**
-	 * DESTINATION ids to remove by explicit request (cherry-pick), independent of reconciliation.
-	 * When present, these are the only removals — the reconcile-by-absence path is skipped, so a
-	 * delete runs even under the additive `merge` profile.
+	 * A non-empty list limits removal to these destination workflow IDs, regardless of the folder
+	 * conflict policy. An empty list uses the normal reconciliation rules.
 	 */
 	explicitDeleteIds?: string[];
 }

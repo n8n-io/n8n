@@ -281,7 +281,6 @@ describe('WorkflowRemover.planExplicitDeletes', () => {
 		const plan = await remover.plan(context, {
 			workflowItems: [],
 			packageFolderIds: [],
-			// merge never reconciles by absence, yet the explicit delete still goes.
 			folderConflictPolicy: 'merge',
 			deletionPolicy: 'archive',
 			explicitDeleteIds: ['target', 'target'],
@@ -289,13 +288,11 @@ describe('WorkflowRemover.planExplicitDeletes', () => {
 
 		expect(plan.removals).toEqual([{ id: 'target', name: 'Target', parentFolderId: 'F1' }]);
 		expect(plan.failures).toEqual([]);
-		// Explicit deletes never drive folder reconciliation.
 		expect(plan.occupiedFolderIds).toEqual([]);
 		expect(
 			workflowFinderService.findOwnedWorkflowRemovalCandidates,
 		).toHaveBeenCalledExactlyOnceWith('proj-1', ['target']);
 		expect(workflowFinderService.findOwnedWorkflowPlacementsInProject).not.toHaveBeenCalled();
-		// Only the named id is scope-checked, not the bystander.
 		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledExactlyOnceWith(
 			['target'],
 			user,

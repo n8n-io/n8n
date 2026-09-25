@@ -73,8 +73,6 @@ export class ProjectPackageImporter {
 		this.assertAdequatePermissions(request, manifest);
 
 		const { selection } = request;
-		// A selection cherry-picks one source project, so plan and write only that project's shell;
-		// every other package project is left untouched.
 		const selectedProjects = selection
 			? (manifest.projects ?? []).filter((project) => project.id === selection.selectedProjectId)
 			: (manifest.projects ?? []);
@@ -259,9 +257,7 @@ export class ProjectPackageImporter {
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
 		const allWorkflows = await this.packageParser.getWorkflows(reader, basePrefix);
 
-		// Cherry-pick is a pure literal filter over the source id — no closure, no auto-pull of
-		// referenced sub-workflows. An id that names a workflow in another project matches nothing
-		// here (this scope is `basePrefix`-bound) and is simply dropped.
+		// Do not expand the selection to include referenced sub-workflows.
 		const workflows = request.selection
 			? allWorkflows.filter((workflow) =>
 					request.selection!.selectedWorkflowIds.includes(workflow.sourceWorkflowId),
@@ -326,7 +322,6 @@ export class ProjectPackageImporter {
 			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
-			// Explicit deletes name DESTINATION ids and apply only to the scoped project.
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
 		};
 	}
@@ -359,18 +354,13 @@ export class ProjectPackageImporter {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete', 'folder:delete']);
 		}
 
-		// An explicit-delete selection removes workflows without touching folders, so it needs the
-		// workflow removal scope only.
+		// Selection imports preserve folders, so explicit deletions need only workflow:delete.
 		if (request.selection?.deletedWorkflowIds?.length) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete']);
 		}
 	}
 }
 
-/**
- * The DESTINATION ids to delete within one project scope. Deletes are confined to the selected
- * project, so a bystander project (matched by another manifest entry) never inherits them.
- */
 function deletesForProject(
 	selection: ImportSelection | undefined,
 	projectId: string,

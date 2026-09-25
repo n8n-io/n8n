@@ -119,12 +119,6 @@ export class ImportPackageRequestDto extends Z.class({
 	tagConflictPolicy: optionalEnum(['skip', 'fail', 'rename'], 'skip'),
 }) {}
 
-// ---------------------------------------------------------------------------
-// Selection (cherry-pick) import — a special case of the whole-scope import
-// above. It imports only a chosen subset of workflows from one source project
-// and reuses the same multipart-field helpers.
-// ---------------------------------------------------------------------------
-
 /** Multipart text field names validated by {@link ImportPackageSelectionRequestDto}. */
 export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
 	'selectedProjectId',
@@ -141,7 +135,6 @@ const DELETED_WORKFLOW_IDS_ERROR_MESSAGE =
 
 const idArraySchema = z.array(z.string().min(1));
 
-/** Parses a non-blank JSON-string array of ids, reporting `errorMessage` on any failure. */
 function parseIdArray(value: string, ctx: z.RefinementCtx, errorMessage: string): string[] {
 	let parsed: unknown;
 	try {
@@ -161,8 +154,8 @@ function parseIdArray(value: string, ctx: z.RefinementCtx, errorMessage: string)
 }
 
 /**
- * A required JSON-string array of ids, as it arrives in a multipart text field (the `bindings`
- * precedent). A blank / omitted field is an error; an empty array (`"[]"`) is accepted.
+ * Multipart fields carry arrays as JSON text.
+ * Reject blank or omitted fields, but accept `[]`.
  */
 const requiredJsonStringIdArray = (errorMessage: string) =>
 	z
@@ -176,7 +169,7 @@ const requiredJsonStringIdArray = (errorMessage: string) =>
 			return parseIdArray(value, ctx, errorMessage);
 		});
 
-/** Like {@link requiredJsonStringIdArray} but a blank / omitted field becomes `undefined`. */
+/** Treat blank or omitted fields as `undefined`. */
 const optionalJsonStringIdArray = (errorMessage: string) =>
 	z
 		.string()
@@ -186,12 +179,6 @@ const optionalJsonStringIdArray = (errorMessage: string) =>
 			return parseIdArray(value, ctx, errorMessage);
 		});
 
-/**
- * The multipart request for a cherry-pick selection import. It carries the selection (a single
- * source project plus the workflow ids to import and, optionally, destination ids to delete) and
- * only the two overridable policies. The locked cherry-pick policies (folder, tag, project, deletion
- * mode) and `bindings` are fixed inside the service and are NOT accepted here.
- */
 export class ImportPackageSelectionRequestDto extends Z.class({
 	selectedProjectId: z.string().min(1),
 	selectedWorkflowIds: requiredJsonStringIdArray(SELECTED_WORKFLOW_IDS_ERROR_MESSAGE),
