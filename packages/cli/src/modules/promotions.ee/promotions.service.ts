@@ -17,7 +17,7 @@ import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, UnprocessableRequestError } from '@n8n/errors';
 import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
 import { PackageDirectoryInventoryReader } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
@@ -498,17 +498,26 @@ export class PromotionsService {
 				.filter((workflow) => workflow.projectId === projectId)
 				.map(({ id }) => id),
 		);
+		const packageWorkflowIds = new Set(inventory.workflows.map(({ id }) => id));
 		const ownerProjects =
 			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 
 		const selectedWorkflowIds: string[] = [];
 		const deletedWorkflowIds: string[] = [];
+		const movedWorkflowIds: string[] = [];
 		const invalidWorkflowIds: string[] = [];
 		for (const id of workflowIds) {
 			if (branchWorkflowIds.has(id)) {
 				selectedWorkflowIds.push(id);
 			} else if (ownerProjects.get(id)?.id === projectId) {
-				deletedWorkflowIds.push(id);
+				// The instance still owns it here. If the package holds it under another
+				// project it is a cross-project move, which a selective apply cannot make;
+				// otherwise the package dropped it, so it is a deletion.
+				if (packageWorkflowIds.has(id)) {
+					movedWorkflowIds.push(id);
+				} else {
+					deletedWorkflowIds.push(id);
+				}
 			} else {
 				invalidWorkflowIds.push(id);
 			}
@@ -517,6 +526,12 @@ export class PromotionsService {
 		if (invalidWorkflowIds.length > 0) {
 			throw new BadRequestError(
 				`The following workflows are not in this project's branch or instance: ${invalidWorkflowIds.join(', ')}`,
+			);
+		}
+
+		if (movedWorkflowIds.length > 0) {
+			throw new UnprocessableRequestError(
+				`These workflows moved to another project: ${movedWorkflowIds.join(', ')}. A selective apply cannot move them. Apply all projects instead.`,
 			);
 		}
 
