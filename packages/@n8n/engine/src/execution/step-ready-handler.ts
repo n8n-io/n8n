@@ -79,8 +79,10 @@ export class StepReadyHandler {
 		if (!isLiveExecutionStatus(execution.status)) {
 			// The execution has ended, so we don't run the step. The step is left
 			// `running` for reconciliation (CAT-2938) or internal consistency
-			// checks (CAT-3930) to resolve. A `waiting` execution passes: this step
-			// resumed, and nothing refreshes the execution's status until it settles.
+			// checks (CAT-3930) to resolve.
+			// A `waiting` execution passes. The only step that becomes ready under
+			// one is a step that just resumed, and the execution keeps reading
+			// `waiting` until that step settles.
 			return;
 		}
 
@@ -143,8 +145,10 @@ export class StepReadyHandler {
 		// reports `waiting` once this was the last step that could run.
 		// TODO(CAT-2928): publish `step:waiting` so the UI can show it.
 		if (run.kind === 'wait') {
-			// Re-arm first: a deadline can be nearer than the status write's round
-			// trip. Either order is correct, because the sweeper reads the step rows.
+			// Tell the sweeper first, so it re-arms its timer on this new deadline.
+			// The status write below is a database round trip, and a short wait can
+			// come due inside it. Either order is correct: the sweeper reads the
+			// step rows, not this status.
 			this.onStepSuspended();
 			await this.executionStore.refreshLiveStatus(execution.id);
 			return;

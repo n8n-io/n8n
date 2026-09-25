@@ -69,9 +69,10 @@ export interface ExecutionStore {
 	 * call it, so the row still reads `waiting` while the resumed step runs. The
 	 * settlement that follows corrects it.
 	 *
-	 * The status is a projection, and it is not written under a lock. A refresh
-	 * can lose a race with a step that changes under it, and mislabel a live
-	 * execution until the next call re-derives the value.
+	 * The value can be briefly wrong. The refresh takes no lock, so it can lose
+	 * a race with a step that changes under it. Read this status as a report.
+	 * Never decide what runs next from it: the step rows decide that, and the
+	 * next call derives the status from them again.
 	 *
 	 * Writes only to a live execution. An execution with no unsettled step is
 	 * left alone, because `finishExecution` owns the end.

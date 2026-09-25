@@ -2,7 +2,10 @@ import type { JsonObject, JsonValue } from '../common';
 
 /**
  * Lifecycle status of an execution. `waiting` means every step it owes is
- * suspended: a step still owes an outcome. The stored value lags a resume. See
+ * suspended: a step still owes an outcome.
+ *
+ * A resume does not update this value. When a waiting step runs again, the
+ * execution still reads `waiting` until that step settles. See
  * `ExecutionStore.refreshLiveStatus`.
  */
 export type ExecutionStatus =
