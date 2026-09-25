@@ -3812,30 +3812,32 @@ export function useCanvasOperations() {
 
 			const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
 
-			return [{
-				source: fromNode.id,
-				sourceHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Output,
-					type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
-					index: from.outputIndex ?? 0,
-				}),
-				target: toNode.id,
-				targetHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Input,
-					type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
-					index: to.inputIndex ?? 0,
-				}),
-				data: {
-					source: {
+			return [
+				{
+					source: fromNode.id,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
 						index: from.outputIndex ?? 0,
-						type,
-					},
-					target: {
+					}),
+					target: toNode.id,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
 						index: to.inputIndex ?? 0,
-						type,
+					}),
+					data: {
+						source: {
+							index: from.outputIndex ?? 0,
+							type,
+						},
+						target: {
+							index: to.inputIndex ?? 0,
+							type,
+						},
 					},
 				},
-			}];
+			];
 		});
 
 		await addConnections(connections, { trackHistory, trackBulk: false });

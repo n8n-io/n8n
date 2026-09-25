@@ -1841,10 +1841,7 @@ describe('useCanvasOperations', () => {
 
 			const { addNodesAndConnections } = useCanvasOperations();
 			const { addedNodes } = await addNodesAndConnections(
-				[
-					{ type: failedType, isAutoAdd: true },
-					{ type: replacementType },
-				],
+				[{ type: failedType, isAutoAdd: true }, { type: replacementType }],
 				[],
 				{ replaceNodeId: anchor.id, trackHistory: false, trackBulk: false },
 			);
