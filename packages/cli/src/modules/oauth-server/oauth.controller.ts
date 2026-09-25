@@ -19,6 +19,7 @@ import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
+import { oauthClientAuth } from './oauth-client-auth.middleware';
 import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';
 import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
@@ -111,6 +112,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
+		middlewares: [oauthClientAuth],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitToken,
 			5 * Time.minutes.toMilliseconds,
@@ -120,6 +122,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/revoke`,
 		router: revokeRouter,
 		skipAuth: true,
+		middlewares: [oauthClientAuth],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitRevoke,
 			5 * Time.minutes.toMilliseconds,
