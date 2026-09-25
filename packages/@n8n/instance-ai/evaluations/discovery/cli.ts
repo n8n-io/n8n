@@ -6,13 +6,19 @@
 //   pnpm eval:discovery                                # run all scenarios, 3 trials each
 //   pnpm eval:discovery --filter slack-oauth --verbose
 //   pnpm eval:discovery --trials 5
+//   pnpm eval:discovery --filter slack-oauth --trials 5 --output-dir .output/edd/before
 //
 // Loads scenarios from evaluations/data/discovery/, runs each scenario × N
 // trials via the in-process runner, reports per-scenario pass-rates, exits
 // non-zero on any scenario below threshold, or on any scenario with zero passes
 // when --fail-on-zero-pass is set.
+//
+// With --output-dir it also writes an eval-results.json in the workflow lane's
+// shape, so `pnpm eval:compare-local` can diff two discovery runs the same way
+// it diffs two workflow runs.
 // ---------------------------------------------------------------------------
 
+import { writeDiscoveryEvalResults } from './results-artifact';
 import { runDiscoveryScenario, type DiscoveryRunResult } from './runner';
 import type { DiscoveryTestCase } from './types';
 import { loadDiscoveryTestCasesWithFiles } from '../data/discovery';
@@ -33,6 +39,8 @@ interface CliArgs {
 	concurrency: number;
 	nodesJsonPath?: string;
 	failOnZeroPass: boolean;
+	/** When set, write an eval-results.json here for `eval:compare-local`. */
+	outputDir?: string;
 }
 
 const DEFAULT_MODEL = process.env.N8N_INSTANCE_AI_EVAL_MODEL ?? 'anthropic/claude-sonnet-4-6';
@@ -125,6 +133,9 @@ function parseArgs(argv: string[]): CliArgs {
 			case '--fail-on-zero-pass':
 				args.failOnZeroPass = true;
 				break;
+			case '--output-dir':
+				args.outputDir = argv[++i];
+				break;
 			default:
 				break;
 		}
@@ -139,12 +150,15 @@ function parseArgs(argv: string[]): CliArgs {
 
 interface ScenarioAggregate {
 	scenario: DiscoveryTestCase;
+	/** Case filename without .json — the key the comparison joins on. */
+	fileSlug: string;
 	results: DiscoveryRunResult[];
 	passCount: number;
 	passRate: number;
 }
 
 async function runLocalMode(args: CliArgs): Promise<void> {
+	const startedAt = Date.now();
 	const cases = loadDiscoveryTestCasesWithFiles(args.filter);
 
 	if (cases.length === 0) {
@@ -211,10 +225,21 @@ async function runLocalMode(args: CliArgs): Promise<void> {
 			}
 		}
 
-		aggregates.push({ scenario: testCase, results: trialResults, passCount, passRate });
+		aggregates.push({ scenario: testCase, fileSlug, results: trialResults, passCount, passRate });
 	}
 
 	printSummary(aggregates, args);
+
+	if (args.outputDir !== undefined) {
+		const written = writeDiscoveryEvalResults(
+			args.outputDir,
+			aggregates,
+			args.trials,
+			Date.now() - startedAt,
+		);
+		console.log(`\nWrote ${written}`);
+		console.log('Compare two runs with: pnpm eval:compare-local --before <dir> --after <dir>');
+	}
 
 	const failingScenarios = aggregates.filter((a) => a.passRate < args.passThreshold);
 	const zeroPassScenarios = aggregates.filter((a) => a.passCount === 0);
