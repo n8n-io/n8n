@@ -1306,6 +1306,19 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBe('wf-1');
 		});
 
+		test('reorders the tabs and keeps the active tab', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			registerWorkflow(ctx.thread, 'wf-3');
+			ctx.selectTab('wf-2');
+
+			ctx.reorderTab('wf-3', 0);
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-3', 'wf-1', 'wf-2']);
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
 		test('shows a resource picked from the project in a new tab', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');

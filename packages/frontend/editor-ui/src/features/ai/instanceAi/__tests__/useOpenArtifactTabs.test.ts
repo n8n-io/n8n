@@ -171,6 +171,23 @@ describe('useOpenArtifactTabs', () => {
 		expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'wf-2']);
 	});
 
+	it('moves a tab to a new position and keeps the closed tabs', () => {
+		const { tabs } = setup([
+			workflowTab('wf-1'),
+			workflowTab('wf-2'),
+			workflowTab('wf-3'),
+			workflowTab('wf-4'),
+		]);
+		tabs.closeTab('wf-4');
+
+		tabs.moveTab('wf-3', 0);
+		expect(ids(tabs.openTabs.value)).toEqual(['wf-3', 'wf-1', 'wf-2']);
+
+		tabs.moveTab('wf-3', 99);
+		expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'wf-2', 'wf-3']);
+		expect(tabs.reopenTab('wf-4')).toBe(true);
+	});
+
 	it('waits for the save delay and sends one save for many changes', async () => {
 		const { storage, save, finishLoad } = createStorage();
 		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2')], storage);
