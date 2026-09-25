@@ -159,8 +159,9 @@ export function engineContainerEnv(
 		N8N_ENGINE_DATABASE_URL: databaseUrl,
 		N8N_ENGINE_AUTH_SECRET: authSecret,
 		N8N_ENGINE_CONTROL_PLANE_BASE_URL: `http://${mainHostname(projectName)}:${ENGINE_CONTROL_PLANE_PORT}`,
-		// The main dials this port and the stack probes it, so a caller's `env`
-		// must not move it.
+		// The main dials this address and the stack probes it, so a caller's `env`
+		// must not move it or bind it to loopback.
+		N8N_ENGINE_HOST: '0.0.0.0',
 		N8N_ENGINE_PORT: String(ENGINE_PORT),
 	};
 }

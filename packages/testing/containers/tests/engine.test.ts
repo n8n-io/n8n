@@ -205,12 +205,13 @@ describe('engineContainerEnv', () => {
 		);
 	});
 
-	test('serves on the port the main dials and the stack probes, whatever the caller set', () => {
+	test('serves on the address the main dials and the stack probes, whatever the caller set', () => {
 		const env = engineContainerEnv(
-			{ ...dedicatedEngineEnv, N8N_ENGINE_PORT: '4000' },
+			{ ...dedicatedEngineEnv, N8N_ENGINE_HOST: '127.0.0.1', N8N_ENGINE_PORT: '4000' },
 			engineOptions,
 		);
 
+		expect(env.N8N_ENGINE_HOST).toBe('0.0.0.0');
 		expect(env.N8N_ENGINE_PORT).toBe('3000');
 	});
 });

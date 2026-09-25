@@ -1,5 +1,5 @@
 import getPort from 'get-port';
-import { randomBytes } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { Network } from 'testcontainers';
 
@@ -151,7 +151,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	assertEngineSupported({ engine, mains, isQueueMode, usePostgres });
 
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
-	const engineAuthSecret = engine === 'container' ? randomBytes(32).toString('hex') : undefined;
+	// Derived from the project name, not random, so a rerun with the same name
+	// reuses the engine and main containers instead of changing their env.
+	const engineAuthSecret =
+		engine === 'container'
+			? createHash('sha256').update(`${uniqueProjectName}:engine-auth`).digest('hex')
+			: undefined;
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
