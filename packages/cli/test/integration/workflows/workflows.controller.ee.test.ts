@@ -1805,7 +1805,9 @@ describe('PUT /:workflowId/transfer', () => {
 		expect(response.body).toEqual({});
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 	});
 
 	test('should move workflow to project root if `destinationParentFolderId` is not provided', async () => {
@@ -1935,7 +1937,9 @@ describe('PUT /:workflowId/transfer', () => {
 		});
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
 		expect(workflowFromDB.active).toBe(false);

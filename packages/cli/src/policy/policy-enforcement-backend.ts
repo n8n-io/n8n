@@ -10,7 +10,7 @@ import type {
 	WorkflowTransferContext,
 } from '@n8n/decorators';
 
-import type { UserLike } from '@/events/maps/relay.event-map';
+import type { UserLike } from '@/types/user-like.types';
 
 /** Which context each point is called with, mirroring `RegisteredPolicyCheck`. */
 type PolicyContexts = {
@@ -25,9 +25,9 @@ type PolicyContexts = {
 
 export type PolicyContext<Point extends EnforcementPoint> = PolicyContexts[Point];
 
-/** Why no user asked for the policed action. */
+/** Why the actor is not a user. */
 export type PolicySystemReason =
-	/** A run no user started: a trigger, a schedule, a webhook, or an agent's workflow tool. */
+	/** Inside a run. Runs are not attributed to the user who started them. */
 	| 'execution'
 	| 'cli-import'
 	/** Trigger registration at startup or on a leadership change. */
@@ -44,7 +44,7 @@ export type PolicySystemReason =
  */
 export type PolicyActor =
 	| { kind: 'user'; user: UserLike }
-	| { kind: 'system'; reason: PolicySystemReason };
+	| { kind: 'system'; reason: PolicySystemReason; executionId?: string };
 
 /**
  * What the policy infrastructure module registers into the proxy.

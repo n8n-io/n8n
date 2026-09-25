@@ -43,6 +43,7 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DCR_MANAGED_CREDENTIAL_FIELDS, OAUTH_PINNED_FIELDS } from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -99,6 +100,13 @@ const mockNode = {
 const { nodeTypes: mockNodeTypes } = createMockNodeTypes();
 
 const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
+
+/** A run names no user: the starter is not known reliably on every path, so a run never guesses. */
+function decryptActor({ executionId, userId }: IWorkflowExecuteAdditionalData): PolicyActor {
+	if (executionId) return { kind: 'system', reason: 'execution', executionId };
+	if (userId) return { kind: 'user', user: { id: userId } };
+	return { kind: 'system', reason: 'execution' };
+}
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
@@ -585,9 +593,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				consumer: consumerNode ? { nodeType: consumerNode.type } : null,
 				projectId: additionalData.projectId ?? null,
 			},
-			additionalData.userId
-				? { kind: 'user', user: { id: additionalData.userId } }
-				: { kind: 'system', reason: 'execution' },
+			decryptActor(additionalData),
 		);
 
 		const credentials = new Credentials(

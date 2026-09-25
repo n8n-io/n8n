@@ -599,7 +599,7 @@ describe('PolicyDecisionService', () => {
 			expect(JSON.stringify(payload)).not.toContain('policy store');
 		});
 
-		it('sends a null user and the reason when no user asked for the action', async () => {
+		it('sends a null user and the reason for a system actor', async () => {
 			const { service, emit } = auditedServiceWith(SlackCheck);
 
 			await service.enforce('workflowSave', saveContext, unattended);

@@ -44,8 +44,6 @@ export type WorkflowExecuteBeforeContext = {
 	workflowInstance: Workflow | undefined;
 	executionData?: IRunExecutionData;
 	executionId: string;
-	/** The user who started the run. Unset for trigger, webhook and schedule runs. */
-	userId?: string;
 };
 
 export type WorkflowExecuteAfterContext = {

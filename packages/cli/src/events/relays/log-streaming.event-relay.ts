@@ -1,3 +1,4 @@
+import { UserRepository } from '@n8n/db';
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -8,7 +9,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
-import type { PolicyDecisionAudit } from '@/modules/policy-infrastructure/policy-decision-audit';
 import type {
 	PolicyAttachment,
 	PolicyRule,
@@ -63,24 +63,13 @@ function attachmentsContentToJson(content: {
 	};
 }
 
-/** Every key on every violation, `null` when absent, so a SIEM can map fixed fields. */
-function violationsToJson(violations: PolicyDecisionAudit['violations']): JsonValue {
-	return violations.map(({ checkId, kind, subject, subjectType, scope, matchedRuleId }) => ({
-		checkId,
-		kind,
-		subject: subject ?? null,
-		subjectType: subjectType ?? null,
-		scope: scope ?? null,
-		matchedRuleId: matchedRuleId ?? null,
-	}));
-}
-
 @Service()
 export class LogStreamingEventRelay extends EventRelay {
 	constructor(
 		readonly eventService: EventService,
 		private readonly eventBus: MessageEventBus,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly userRepository: UserRepository,
 	) {
 		super(eventService);
 	}
@@ -925,10 +914,30 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Policy enforcement
 
+	/** Hosts that know only the user id pass `{ id }`, so read the rest to keep the fields uniform. */
+	private policyDecisionBlocked(event: RelayEventMap['policy-decision-blocked']) {
+		if (event.actorType === 'system' || event.user.email !== undefined) {
+			this.sendPolicyDecisionBlocked(event);
+			return;
+		}
+
+		void this.findAuditedUser(event.user).then((user) =>
+			this.sendPolicyDecisionBlocked({ ...event, user }),
+		);
+	}
+
+	/** Falls back to the id alone, so a failed lookup never drops the event. */
+	private async findAuditedUser(user: UserLike): Promise<UserLike> {
+		try {
+			return (await this.userRepository.findByIdWithRole(user.id)) ?? user;
+		} catch {
+			return user;
+		}
+	}
+
 	@Redactable()
-	private policyDecisionBlocked({
+	private sendPolicyDecisionBlocked({
 		user,
-		violations,
 		policyVersions,
 		...rest
 	}: RelayEventMap['policy-decision-blocked']) {
@@ -937,7 +946,6 @@ export class LogStreamingEventRelay extends EventRelay {
 			payload: {
 				...(user ?? { userId: null }),
 				...rest,
-				violations: violationsToJson(violations),
 				policyVersions: policyVersions?.map((version) => ({ ...version })) ?? [],
 			},
 		});

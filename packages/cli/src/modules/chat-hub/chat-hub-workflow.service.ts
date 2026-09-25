@@ -50,7 +50,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { UserLike } from '@/events/maps/relay.event-map';
+import type { UserLike } from '@/types/user-like.types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

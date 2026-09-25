@@ -1263,10 +1263,10 @@ export class CredentialsService {
 	}
 
 	/** A create binds to its type: the row has no committed id yet, whatever the payload claims. */
-	private async enforceCredentialCreate(type: string, projectId: string | null, actor: User) {
+	private async enforceCredentialCreate(type: string, projectId: string | null, user: User) {
 		return await this.policyEnforcementService.enforceCredentialSave(
 			{ credential: { id: null, type }, storedCredential: null, projectId },
-			{ kind: 'user', user: actor },
+			{ kind: 'user', user },
 		);
 	}
 

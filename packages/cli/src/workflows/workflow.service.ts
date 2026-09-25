@@ -791,7 +791,9 @@ export class WorkflowService {
 	): Promise<void> {
 		let didPublish = false;
 		try {
-			await this.activeWorkflowManager.add(workflowId, mode);
+			await this.activeWorkflowManager.add(workflowId, mode, undefined, {
+				actor: { kind: 'user', user },
+			});
 			didPublish = true;
 		} catch (error) {
 			// Activation failed partway through. It may already have registered triggers

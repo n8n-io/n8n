@@ -35,6 +35,7 @@ import type {
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -46,15 +47,7 @@ export type WorkflowActionSource =
 	| 'import'
 	| 'review-approval';
 
-export type UserLike = {
-	id: string;
-	email?: string;
-	firstName?: string;
-	lastName?: string;
-	role?: {
-		slug: string;
-	};
-};
+export type { UserLike };
 
 /**
  * Which write path produced a policy document event. A composed save emits a document event

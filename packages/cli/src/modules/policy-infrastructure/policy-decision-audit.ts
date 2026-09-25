@@ -8,7 +8,7 @@ import type {
 	PolicyVersionRef,
 } from '@n8n/decorators';
 
-import type { UserLike } from '@/events/maps/relay.event-map';
+import type { UserLike } from '@/types/user-like.types';
 import type {
 	PolicyActor,
 	PolicyContext,
@@ -18,11 +18,15 @@ import type {
 /** Every context, as one union — a generic `PolicyContext<Point>` narrows against none. */
 type AnyPolicyContext = PolicyContext<EnforcementPoint>;
 
-/** The violation as the audit line records it. No `message`: free text saying what the fields say. */
-type AuditedViolation = Pick<
-	PolicyViolation,
-	'checkId' | 'kind' | 'subject' | 'subjectType' | 'scope' | 'matchedRuleId'
->;
+type OptionalAuditedKey = 'subject' | 'subjectType' | 'scope' | 'matchedRuleId';
+
+/**
+ * The violation as the audit line records it. Every key is present, `null` when the check left
+ * it out, so a SIEM can map fixed fields. No `message`: free text saying what the fields say.
+ */
+type AuditedViolation = Pick<PolicyViolation, 'checkId' | 'kind'> & {
+	[Key in OptionalAuditedKey]-?: Exclude<PolicyViolation[Key], undefined> | null;
+};
 
 /**
  * One decision-audit line.
@@ -59,20 +63,13 @@ export type PolicyDecisionAudit = {
 	projectId: string | null;
 };
 
-const auditedViolation = ({
-	checkId,
-	kind,
-	subject,
-	subjectType,
-	scope,
-	matchedRuleId,
-}: PolicyViolation): AuditedViolation => ({
-	checkId,
-	kind,
-	subject,
-	subjectType,
-	scope,
-	matchedRuleId,
+const auditedViolation = (violation: PolicyViolation): AuditedViolation => ({
+	checkId: violation.checkId,
+	kind: violation.kind,
+	subject: violation.subject ?? null,
+	subjectType: violation.subjectType ?? null,
+	scope: violation.scope ?? null,
+	matchedRuleId: violation.matchedRuleId ?? null,
 });
 
 /**
@@ -152,10 +149,15 @@ export function decisionAudit({
  */
 export type AuditedActor =
 	| { actorType: 'user'; user: UserLike }
-	| { actorType: 'system'; user: null; systemReason: PolicySystemReason };
+	| { actorType: 'system'; user: null; systemReason: PolicySystemReason; executionId?: string };
 
 export function auditedActor(actor: PolicyActor): AuditedActor {
-	return actor.kind === 'user'
-		? { actorType: 'user', user: actor.user }
-		: { actorType: 'system', user: null, systemReason: actor.reason };
+	if (actor.kind === 'user') return { actorType: 'user', user: actor.user };
+
+	return {
+		actorType: 'system',
+		user: null,
+		systemReason: actor.reason,
+		...(actor.executionId !== undefined && { executionId: actor.executionId }),
+	};
 }

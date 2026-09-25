@@ -656,7 +656,9 @@ export class EnterpriseWorkflowService {
 
 	private async attemptWorkflowReactivation(workflowId: string, versionId: string, userId: string) {
 		try {
-			await this.activeWorkflowManager.add(workflowId, 'update');
+			await this.activeWorkflowManager.add(workflowId, 'update', undefined, {
+				actor: { kind: 'user', user: { id: userId } },
+			});
 
 			return;
 		} catch (error) {

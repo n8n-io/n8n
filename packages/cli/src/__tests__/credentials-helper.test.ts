@@ -3051,6 +3051,7 @@ describe('CredentialsHelper', () => {
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				projectId: 'proj-1',
+				executionId: 'exec-1',
 				userId: 'user-1',
 			});
 
@@ -3070,6 +3071,28 @@ describe('CredentialsHelper', () => {
 					consumer: { nodeType: 'n8n-nodes-base.slack' },
 					projectId: 'proj-1',
 				},
+				{ kind: 'system', reason: 'execution', executionId: 'exec-1' },
+			);
+		});
+
+		test('names the user when the decrypt is outside a run, e.g. an OAuth flow', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				projectId: undefined,
+				executionId: undefined,
+				userId: 'user-1',
+			});
+
+			await helper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'testApi',
+				'internal',
+				undefined,
+				true,
+			);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				expect.anything(),
 				{ kind: 'user', user: { id: 'user-1' } },
 			);
 		});
@@ -3077,6 +3100,7 @@ describe('CredentialsHelper', () => {
 		test('passes a null consumer when no node is asking, e.g. a credential test', async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				projectId: undefined,
+				executionId: undefined,
 				userId: undefined,
 			});
 

@@ -45,6 +45,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -540,7 +541,10 @@ export class ActiveWorkflowManager {
 		workflowId: WorkflowId,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
-		{ shouldPublish } = { shouldPublish: true },
+		{
+			shouldPublish = true,
+			actor = { kind: 'system', reason: 'activation' },
+		}: { shouldPublish?: boolean; actor?: PolicyActor } = {},
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
@@ -605,7 +609,7 @@ export class ActiveWorkflowManager {
 				this.policyEnforcementService,
 				this.ownershipService,
 				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
-				{ kind: 'system', reason: 'activation' },
+				actor,
 			);
 
 			workflow = new Workflow({

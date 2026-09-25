@@ -196,14 +196,20 @@ SIEM sees every block. The payload is the audit line plus the actor. It does not
 the log format or on `N8N_LOG_SCOPES`.
 
 - **The host names the actor.** Every `enforce*` call takes a `PolicyActor` as its second
-  argument. Checks never see it. It is a user, or the system with a reason when no user
-  asked: `execution`, `cli-import`, `activation`, `publication` or `integration`.
+  argument. Checks never see it. It is a user when the host is a request with an
+  authenticated user. Otherwise it is the system with a reason: `execution`, `cli-import`,
+  `activation`, `publication` or `integration`.
+- **A run never names a user.** Not every execution path knows reliably who started the
+  run, so a block inside a run is `execution` and carries the `executionId`. Use the
+  execution to find who started it. This includes manual runs and sub-workflows.
 - **The payload says which.** `actorType` is `user` or `system`. A system actor adds
   `systemReason` and has `userId: null`.
 - **`userId` always means the accountable human.** A future agent actor adds its own
   fields and fills `userId` with the user it acts for, so SIEM rules on `userId` keep
   their meaning.
-- **The user is redactable**, the same as on every other `n8n.audit.*` event.
+- **The user fields are the same on every block.** A host that knows only the user id
+  passes `{ id }`, and the relay reads the rest of the user before it sends the event. The
+  fields are redactable, the same as on every other `n8n.audit.*` event.
 - **Violations have fixed keys.** A field a check left out is `null`, not missing.
 - **Workers and webhook processes send it too.** The log streaming module runs on
   every instance type, so an event from a worker goes straight to the destinations.
