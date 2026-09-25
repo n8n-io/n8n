@@ -35,9 +35,7 @@ export class PolicyLifecycleHandler {
 
 		await this.policyEnforcementService.enforceWorkflowStart(
 			{ workflow: ctx.workflow, projectId: project.id },
-			ctx.userId
-				? { kind: 'user', user: { id: ctx.userId } }
-				: { kind: 'system', reason: 'execution' },
+			{ kind: 'system', reason: 'execution', executionId: ctx.executionId },
 		);
 	}
 }
