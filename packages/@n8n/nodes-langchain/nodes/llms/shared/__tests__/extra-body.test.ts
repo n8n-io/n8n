@@ -47,16 +47,52 @@ describe('parseExtraBody', () => {
 		expect(() => parse(value)).toThrow('must be a JSON object');
 	});
 
-	// The whole shared blocklist, not just the two names the node tests happen to use.
+	// These pass a bare "is it an object" check but have no enumerable own keys, so accepting one
+	// would merge nothing and the field would look ignored rather than rejected.
+	it.each([
+		['a Date', new Date('2026-01-01')],
+		['a Map', new Map([['top_k', 40]])],
+		['a Set', new Set([1, 2])],
+		['a RegExp', /x/],
+		['a class instance', new (class Thing {})()],
+	])('should reject %s, which is an object but not an object literal', (_, value) => {
+		expect(() => parse(value)).toThrow('must be a JSON object');
+	});
+
+	it('should accept a null-prototype object, which is still plain data', () => {
+		const bare = Object.assign(Object.create(null), { top_k: 40 });
+
+		expect(parse(bare)).toEqual({ top_k: 40 });
+	});
+
+	// The whole shared denylist, not a sample: this test is what claims the policy is locked down,
+	// so it has to fail if n8n-workflow adds a name and this parser silently stops covering it.
 	it.each([
 		'__proto__',
-		'constructor',
 		'prototype',
-		'__defineGetter__',
-		'caller',
-		'arguments',
+		'constructor',
+		'getPrototypeOf',
+		'setPrototypeOf',
+		'getOwnPropertyDescriptor',
+		'getOwnPropertyDescriptors',
+		'defineProperty',
+		'defineProperties',
 		'mainModule',
+		'binding',
+		'_linkedBinding',
+		'_load',
 		'prepareStackTrace',
+		'__lookupGetter__',
+		'__lookupSetter__',
+		'__defineGetter__',
+		'__defineSetter__',
+		'caller',
+		'callee',
+		'arguments',
+		'getBuiltinModule',
+		'dlopen',
+		'execve',
+		'loadEnvFile',
 	])('should refuse the reserved key %s', (key) => {
 		expect(() => parse(JSON.stringify({ [key]: 1 }))).toThrow(
 			`The "Extra Body" field cannot set "${key}"`,
