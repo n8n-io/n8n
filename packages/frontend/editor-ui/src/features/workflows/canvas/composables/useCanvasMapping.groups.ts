@@ -1,7 +1,11 @@
-import type { ExecutionStatus, IWorkflowGroup } from 'n8n-workflow';
+import {
+	computeGroupFrameRects,
+	type ExecutionStatus,
+	type IWorkflowGroup,
+	type NodeGroupRect,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type {
-	BoundingBox,
 	CanvasConnection,
 	CanvasGroupNode,
 	CanvasGroupNodeData,
@@ -16,23 +20,15 @@ import {
 } from '../canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
-	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_NODE_Z_INDEX_COLLAPSED,
 	GROUP_NODE_Z_INDEX_EXPANDED,
-	GROUP_PADDING_X,
-	GROUP_PADDING_Y_BOTTOM,
-	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
 import { applyOffset, createCanvasConnectionId } from '../canvas.utils';
 import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
-export interface NodesRect {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-}
+export type NodesRect = NodeGroupRect;
+export { computeGroupFrameRects };
 
 /**
  * Size lookup for nodes that aren't the default size
@@ -59,28 +55,6 @@ function resolveNodeDimensions(
 	return {
 		width: supplied?.width ?? sticky?.width ?? DEFAULT_NODE_SIZE[0],
 		height: supplied?.height ?? sticky?.height ?? DEFAULT_NODE_SIZE[1],
-	};
-}
-
-/**
- * Collapsed (chip) and expanded frame rects for a group, in unsnapped store
- * space. Expanded width is floored at the chip width so a tight cluster never
- * shrinks the frame below it.
- */
-export function computeGroupFrameRects(nodesRect: NodesRect): {
-	collapsed: BoundingBox;
-	expanded: BoundingBox;
-} {
-	const x = nodesRect.x - GROUP_PADDING_X;
-	const y = nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
-	return {
-		collapsed: { x, y, width: GROUP_HEADER_WIDTH_COLLAPSED, height: GROUP_HEADER_HEIGHT },
-		expanded: {
-			x,
-			y,
-			width: Math.max(nodesRect.width + 2 * GROUP_PADDING_X, GROUP_HEADER_WIDTH_COLLAPSED),
-			height: GROUP_HEADER_HEIGHT + nodesRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
-		},
 	};
 }
 
