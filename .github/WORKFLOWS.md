@@ -710,8 +710,9 @@ wider rollout.
 The pilot also runs an independent `Pilot pnpm sticky disk` job on Blacksmith.
 It mounts a pnpm store inside the container and installs without lifecycle
 scripts. Blacksmith branch protection discards writes from pull request jobs.
-Seed the disk from a trusted default-branch job before measuring package reuse
-on the pilot PR. Compare mount and install time with the cold container install.
+The pilot `Install & Build` job reads the same store. Seed it with
+`ci-seed-pnpm-sticky-disk.yml` on `master` before measuring the full PR run.
+Compare mount and install time with the cold container install.
 
 Build and check the image locally with:
 
