@@ -90,6 +90,22 @@ describe('undo_user_preference MCP tool', () => {
 		});
 	});
 
+	test('closes the confirmation the write opened, as a refusal', async () => {
+		const { telemetry, tool } = createMocks();
+
+		await tool.handler({ id: 'pref-1' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
+			{
+				surface: 'mcp',
+				outcome: 'rejected',
+				scope_type: 'user',
+				text_length: 'Keep replies short.'.length,
+			},
+		);
+	});
+
 	test.each([
 		[new NotFoundError('not saved by mcp for you'), 'not_found', 'not saved by mcp for you'],
 		[new ForbiddenError('no'), 'not_permitted', 'no'],
