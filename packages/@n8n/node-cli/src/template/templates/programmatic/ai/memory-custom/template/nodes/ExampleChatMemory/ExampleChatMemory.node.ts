@@ -19,7 +19,7 @@ export class ExampleChatMemory implements INodeType {
 			name: 'Example Memory',
 		},
 		codex: {
-			categories: ['assistant'],
+			categories: ['AI'],
 			subcategories: {
 				AI: ['Memory', 'Root Nodes'],
 				Memory: ['Other memories'],
