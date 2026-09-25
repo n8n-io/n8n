@@ -144,7 +144,12 @@ const plugins: UserConfig['plugins'] = [
 			return ctx.server
 				? html
 						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', `//localhost:${devBackendPort}`)
+						.replace(
+							'<script src="/{{BASE_PATH}}/static/base-path.js" type="text/javascript"></script>',
+							'<script type="text/javascript">window.BASE_PATH = "/";</script>',
+						)
+						.replaceAll('/{{BASE_PATH}}/', '/')
+						.replaceAll('/{{BASE_PATH}}', '')
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},

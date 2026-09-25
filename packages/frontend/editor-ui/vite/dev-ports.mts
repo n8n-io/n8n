@@ -32,8 +32,7 @@ export const resolveDevPorts = (env: NodeJS.ProcessEnv) => ({
  * Windows too (`cross-env` cannot expand `${N8N_PORT:-5678}`).
  *
  * `apply: 'serve'` skips builds; the mode/isPreview check skips `vite preview`
- * (serve/production) and vitest (serve/test). Builds must leave
- * VUE_APP_URL_BASE_API unset so the app falls back to window.BASE_PATH.
+ * (serve/production) and vitest (serve/test).
  */
 export const devServerPlugin = (env: NodeJS.ProcessEnv): Plugin => ({
 	name: 'n8n-dev-server-topology',
@@ -42,14 +41,21 @@ export const devServerPlugin = (env: NodeJS.ProcessEnv): Plugin => ({
 		if (mode !== 'development' || isPreview) return;
 
 		const { backendPort, editorPort } = resolveDevPorts(env);
+		const backendOrigin = `http://localhost:${backendPort}`;
 
-		// Vite's loadEnv reads VUE_* straight out of process.env and runs after
-		// this hook, so the assignment still reaches import.meta.env.
-		// Truthiness, not ??=: an explicitly empty value counts as unset.
-		if (!env.VUE_APP_URL_BASE_API) {
-			env.VUE_APP_URL_BASE_API = `http://localhost:${backendPort}/`;
-		}
-
-		return { server: { host: '0.0.0.0', port: editorPort, strictPort: true } };
+		return {
+			server: {
+				host: '0.0.0.0',
+				port: editorPort,
+				strictPort: true,
+				proxy: {
+					'^/(rest|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)': {
+						target: backendOrigin,
+						changeOrigin: true,
+						ws: true,
+					},
+				},
+			},
+		};
 	},
 });

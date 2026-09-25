@@ -38,20 +38,40 @@ describe('devServerPlugin', () => {
 		expect(devServerPlugin({}).apply).toBe('serve');
 	});
 
-	it('binds the editor port and derives the REST base from N8N_PORT', () => {
+	it('binds the editor port and proxies backend routes to N8N_PORT', () => {
 		const env: NodeJS.ProcessEnv = { N8N_PORT: '5699', N8N_EDITOR_PORT: '8082' };
 
 		expect(runConfigHook(env, DEV)).toEqual({
-			server: { host: '0.0.0.0', port: 8082, strictPort: true },
+			server: {
+				host: '0.0.0.0',
+				port: 8082,
+				strictPort: true,
+				proxy: {
+					'^/(rest|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)': {
+						target: 'http://localhost:5699',
+						changeOrigin: true,
+						ws: true,
+					},
+				},
+			},
 		});
-		expect(env.VUE_APP_URL_BASE_API).toBe('http://localhost:5699/');
+		expect(env.VUE_APP_URL_BASE_API).toBeUndefined();
 	});
 
 	it('falls back to the default ports', () => {
 		const env: NodeJS.ProcessEnv = {};
 
-		expect(runConfigHook(env, DEV)?.server).toMatchObject({ port: 8080 });
-		expect(env.VUE_APP_URL_BASE_API).toBe('http://localhost:5678/');
+		expect(runConfigHook(env, DEV)?.server).toMatchObject({
+			port: 8080,
+			proxy: {
+				'^/(rest|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)': {
+					target: 'http://localhost:5678',
+					changeOrigin: true,
+					ws: true,
+				},
+			},
+		});
+		expect(env.VUE_APP_URL_BASE_API).toBeUndefined();
 	});
 
 	it('keeps an explicitly set REST base URL', () => {
@@ -60,14 +80,6 @@ describe('devServerPlugin', () => {
 		runConfigHook(env, DEV);
 
 		expect(env.VUE_APP_URL_BASE_API).toBe('https://tunnel.example/');
-	});
-
-	it('treats an empty REST base URL as unset', () => {
-		const env: NodeJS.ProcessEnv = { VUE_APP_URL_BASE_API: '' };
-
-		runConfigHook(env, DEV);
-
-		expect(env.VUE_APP_URL_BASE_API).toBe('http://localhost:5678/');
 	});
 
 	// A build that inherits VUE_APP_URL_BASE_API would ship a localhost REST base
