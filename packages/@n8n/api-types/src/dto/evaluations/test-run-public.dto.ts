@@ -102,3 +102,8 @@ export class ListTestCasesQueryPublicDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),
 }) {}
+
+export class CancelledTestRunPublicDto extends Z.class({
+	id: z.string().openapi(testRunFieldDocs.id),
+	status: z.literal('cancelled'),
+}) {}
