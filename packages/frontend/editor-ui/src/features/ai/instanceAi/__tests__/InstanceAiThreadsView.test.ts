@@ -1,4 +1,4 @@
-import { N8nActionDropdown, N8nInput } from '@n8n/design-system';
+import { N8nInput } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { shallowMount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -121,7 +121,7 @@ describe('InstanceAiThreadsView', () => {
 		];
 		store.threadHistory.hasMore = false;
 		await nextTick();
-		wrapper.findComponent(N8nActionDropdown).vm.$emit('select', 'rename');
+		wrapper.findComponent({ name: 'ActionDropdown' }).vm.$emit('select', 'rename');
 		await nextTick();
 		await nextTick();
 		const input = wrapper.find<HTMLInputElement>('input[type="text"]');
