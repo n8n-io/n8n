@@ -3,6 +3,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 import { createInfoBoxRenderer } from '@/features/shared/editors/plugins/codemirror/completions/infoBoxRenderer';
 import { luxonStaticDocs } from '@/features/shared/editors/plugins/codemirror/completions/nativesAutocompleteDocs/luxon.static.docs';
 import { luxonInstanceDocs } from '@/features/shared/editors/plugins/codemirror/completions/nativesAutocompleteDocs/luxon.instance.docs';
+import { matchBeforeCursor } from './utils';
 
 export function useLuxonCompletions() {
 	/**
@@ -14,9 +15,8 @@ export function useLuxonCompletions() {
 	): CompletionResult | null => {
 		const pattern = new RegExp(`${escape(matcher)}\..*`);
 
-		const preCursor = context.matchBefore(pattern);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, pattern);
+		if (!preCursor) return null;
 
 		return {
 			from: preCursor.from,
@@ -33,9 +33,8 @@ export function useLuxonCompletions() {
 	): CompletionResult | null => {
 		const pattern = new RegExp(`${escape(matcher)}\..*`);
 
-		const preCursor = context.matchBefore(pattern);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, pattern);
+		if (!preCursor) return null;
 
 		return {
 			from: preCursor.from,
@@ -52,9 +51,8 @@ export function useLuxonCompletions() {
 	): CompletionResult | null => {
 		const pattern = new RegExp(`${escape(matcher)}\..*`);
 
-		const preCursor = context.matchBefore(pattern);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, pattern);
+		if (!preCursor) return null;
 
 		const options: Completion[] = Object.entries(luxonStaticDocs.functions)
 			.filter(([_, { doc }]) => doc && !doc.hidden)

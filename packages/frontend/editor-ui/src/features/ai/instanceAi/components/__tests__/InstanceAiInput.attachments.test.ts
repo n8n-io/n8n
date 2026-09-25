@@ -3,10 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { defineComponent, h } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../InstanceAiInput.vue';
 import AttachmentPreview from '../AttachmentPreview.vue';
 import { useInstanceAiStore } from '../../instanceAi.store';
+import type { AssistantMentionSelection } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
 // The plus menu asks for a router; keep the rest of vue-router real.
 vi.mock('vue-router', async (importOriginal) => ({
@@ -158,5 +160,161 @@ describe('AttachmentPreview — nodes attachment delegation', () => {
 		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
 		expect(container.querySelector('[class*="chatFile"]')).not.toBeInTheDocument();
 		expect(getByTestId('nodes-chip-node')).toBeInTheDocument();
+	});
+
+	it('lets a removable workflow chip emit resource removal', async () => {
+		const { getByTestId, emitted } = renderAttachmentPreview({
+			props: {
+				attachment: { type: 'workflow', id: 'w1', name: 'Orders' },
+				isRemovable: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('attachment-preview-remove-resource'));
+		expect(emitted()['remove-resource']).toHaveLength(1);
+	});
+});
+
+const workflowMentionSelection: AssistantMentionSelection = {
+	item: {
+		key: 'workflow:w1:w1',
+		kind: 'workflow',
+		source: 'workflows',
+		label: 'Orders',
+		breadcrumbs: ['Orders'],
+		workflowId: 'w1',
+		entityId: 'w1',
+		workflowName: 'Orders',
+	},
+	attachment: { type: 'workflow', id: 'w1', name: 'Orders' },
+	truncated: false,
+};
+
+const nodeMentionSelection: AssistantMentionSelection = {
+	item: {
+		key: 'node:w1:n1',
+		kind: 'node',
+		source: 'artifacts',
+		label: 'Validate',
+		breadcrumbs: ['Orders', 'Validate'],
+		workflowId: 'w1',
+		entityId: 'n1',
+		workflowName: 'Orders',
+	},
+	attachment: {
+		type: 'nodes',
+		workflowId: 'w1',
+		workflowName: 'Orders',
+		sets: [{ nodes: [{ id: 'n1', name: 'Validate' }] }],
+	},
+	truncated: false,
+};
+
+const MentionPickerStub = defineComponent({
+	name: 'AssistantAtMentionPicker',
+	emits: ['select'],
+	setup(_props, { emit }) {
+		return () =>
+			h('div', [
+				h(
+					'button',
+					{
+						'data-test-id': 'mention-picker-select',
+						onClick: () => emit('select', workflowMentionSelection),
+					},
+					'Select workflow',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'mention-picker-select-node',
+						onClick: () => emit('select', nodeMentionSelection),
+					},
+					'Select node',
+				),
+			]);
+	},
+});
+
+const renderMentionsInput = createComponentRenderer(InstanceAiInput, {
+	props: {
+		...defaultProps(),
+		mentionsEnabled: true,
+		mentionProjectId: 'project-1',
+	},
+	global: { stubs: { AssistantAtMentionPicker: MentionPickerStub } },
+});
+
+describe('InstanceAiInput — mention attachments', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	it('inserts quoted text, attaches the workflow, and registers a transient reference', async () => {
+		const { getByRole, getByTestId, emitted } = renderMentionsInput();
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Compare ');
+		await userEvent.click(getByTestId('mention-picker-select'));
+
+		expect(textbox).toHaveValue('Compare "Orders"');
+		expect(getByTestId('attachment-preview-resource')).toHaveTextContent('Orders');
+		expect(emitted()['mention-reference-added']).toHaveLength(1);
+		expect(emitted()['mention-workflow-open']?.[0]).toEqual(['w1']);
+	});
+
+	it('keeps mention context on failed send and releases it after an accepted send', async () => {
+		const { getByTestId, findByTestId, emitted } = renderMentionsInput();
+		await userEvent.click(getByTestId('mention-picker-select'));
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+
+		const firstSubmit = emitted().submit?.[0] as [
+			string,
+			unknown[],
+			() => boolean,
+			unknown,
+			number,
+			() => void,
+		];
+		expect(firstSubmit[1]).toEqual([{ type: 'workflow', id: 'w1', name: 'Orders' }]);
+		expect(firstSubmit[2]()).toBe(true);
+		await findByTestId('attachment-preview-resource');
+		expect(emitted()['mention-reference-removed']).toBeUndefined();
+
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+		const secondSubmit = emitted().submit?.[1] as [
+			string,
+			unknown[],
+			() => boolean,
+			unknown,
+			number,
+			() => void,
+		];
+		secondSubmit[5]();
+		expect(emitted()['mention-reference-removed']).toHaveLength(1);
+	});
+
+	it('adds node context with parent workflow metadata', async () => {
+		const { getByTestId, getByRole, emitted } = renderMentionsInput();
+		await userEvent.click(getByTestId('mention-picker-select-node'));
+
+		expect(getByRole('textbox')).toHaveValue('"Validate"');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+		const submit = emitted().submit?.[0] as [string, unknown[]];
+		expect(submit[1]).toEqual([
+			{
+				type: 'nodes',
+				workflowId: 'w1',
+				workflowName: 'Orders',
+				sets: [{ nodes: [{ id: 'n1', name: 'Validate' }] }],
+			},
+		]);
+	});
+
+	it('removes the transient reference with the workflow chip', async () => {
+		const { getByTestId, emitted } = renderMentionsInput();
+		await userEvent.click(getByTestId('mention-picker-select'));
+		await userEvent.click(getByTestId('attachment-preview-remove-resource'));
+
+		expect(emitted()['mention-reference-removed']).toHaveLength(1);
 	});
 });

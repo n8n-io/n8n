@@ -27,6 +27,13 @@ function makeConsumer(
 
 const thread = mock<Thread<unknown, unknown>>();
 
+const SUSPENDED_CHUNK = {
+	type: 'tool-call-suspended',
+	runId: 'run-1',
+	toolCallId: 'tool-1',
+	suspendPayload: {},
+} as unknown as StreamChunk;
+
 describe('AgentChatStreamConsumer — rate-limit fallback', () => {
 	it('posts a fallback error after a RATE_LIMIT_EXCEEDED tool result', async () => {
 		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
@@ -110,5 +117,39 @@ describe('AgentChatStreamConsumer — rate-limit fallback', () => {
 		);
 
 		expect(postErrorToThread).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentChatStreamConsumer — suspension routing', () => {
+	function makeSuspensionConsumer(disableStreaming: boolean) {
+		const handleSuspension = vi.fn().mockResolvedValue('posted');
+		const consumer = new AgentChatStreamConsumer({
+			disableStreaming,
+			logger: mock<Logger>(),
+			postErrorToThread: vi.fn().mockResolvedValue(undefined),
+			handleSuspension,
+			handleMessage: vi.fn().mockResolvedValue(false),
+			isIntegrationActionTool: () => true,
+		});
+		return { consumer, handleSuspension };
+	}
+
+	it.each([
+		['streaming', false],
+		['buffered', true],
+	])('passes the acting user to the suspension handler (%s)', async (_name, disableStreaming) => {
+		const { consumer, handleSuspension } = makeSuspensionConsumer(disableStreaming);
+
+		await consumer.consume(makeStream([SUSPENDED_CHUNK]), thread, { actingUserId: 'user-1' });
+
+		expect(handleSuspension).toHaveBeenCalledWith(SUSPENDED_CHUNK, thread, 'user-1');
+	});
+
+	it('leaves the acting user unset on a turn no user drove', async () => {
+		const { consumer, handleSuspension } = makeSuspensionConsumer(true);
+
+		await consumer.consume(makeStream([SUSPENDED_CHUNK]), thread);
+
+		expect(handleSuspension).toHaveBeenCalledWith(SUSPENDED_CHUNK, thread, undefined);
 	});
 });

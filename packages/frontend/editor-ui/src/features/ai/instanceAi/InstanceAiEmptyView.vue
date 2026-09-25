@@ -78,6 +78,10 @@ import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import ProjectSelect from './components/ProjectSelect.vue';
+
+const props = withDefaults(defineProps<{ mentionsEnabled?: boolean }>(), {
+	mentionsEnabled: false,
+});
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
@@ -553,6 +557,7 @@ async function handleSubmit(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
+	acceptDraft: () => void = () => {},
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -624,6 +629,7 @@ async function handleSubmit(
 			node_count: nodeCount,
 		});
 	}
+	acceptDraft();
 
 	try {
 		await router.replace({
@@ -670,6 +676,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+						:mentions-enabled="props.mentionsEnabled"
+						:mention-project-id="selectedProject"
 						@submit="handleSubmit"
 						@content-change="composerHasContent = $event"
 					>
@@ -708,6 +716,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							ref="chatInputRef"
 							:is-submitting="isStartingThread"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+							:mentions-enabled="props.mentionsEnabled"
+							:mention-project-id="selectedProject"
 							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
 							:preview-prompt-key="composerHasContent ? null : splitPreviewPromptKey"
 							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
@@ -749,6 +759,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+						:mentions-enabled="props.mentionsEnabled"
+						:mention-project-id="selectedProject"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"

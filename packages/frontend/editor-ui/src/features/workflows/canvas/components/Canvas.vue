@@ -14,11 +14,14 @@ import {
 	MODAL_CONFIRM,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
+import { findGroupIdsWithTrigger } from '../nodeGroups.utils';
+import { useNodeGroupRules } from '@/app/composables/useNodeGroupRules';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';
@@ -218,6 +221,7 @@ const props = withDefaults(
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const message = useMessage();
 const toast = useToast();
@@ -451,6 +455,20 @@ const {
 });
 
 const { isSelectionExtractable } = useSelectionValidation();
+const { allowTriggerInGroup } = useNodeGroupRules();
+
+// Groups that start the workflow themselves
+const groupIdsWithTrigger = computed(() => {
+	if (!allowTriggerInGroup.value) {
+		return new Set<string>();
+	}
+
+	return findGroupIdsWithTrigger(
+		workflowDocumentStore.value.allGroups,
+		(nodeId) => workflowDocumentStore.value.getNodeById(nodeId),
+		(nodeType) => nodeTypesStore.isTriggerNode(nodeType),
+	);
+});
 
 // Groups that can be extracted to sub-workflows
 const extractableGroupIds = computed(() => {
@@ -1926,6 +1944,7 @@ defineExpose({
 				:autofocus-group-id="autofocusGroupTitleId"
 				:read-only="readOnly || suppressInteraction"
 				:can-extract="extractableGroupIds.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
+				:has-trigger="groupIdsWithTrigger.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
 				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
 				@update:description="onCanvasGroupDescriptionUpdate"

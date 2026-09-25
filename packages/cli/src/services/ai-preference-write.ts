@@ -3,7 +3,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { AiPreferenceService } from '@/services/ai-preference.service';
@@ -21,27 +22,38 @@ export type AiPreferenceWriteRejection =
 	| 'blocked_by_admin'
 	| 'failed';
 
+/** A cap refusal always carries the cap and the measured value, so the model can fit under it. */
+export type AiPreferenceWriteRefusal =
+	| { reason: 'too_long' | 'scope_full'; message: string; limit: number; actual: number }
+	| { reason: Exclude<AiPreferenceWriteRejection, 'too_long' | 'scope_full'>; message: string };
+
 export type AiPreferenceWriteResult =
 	| { ok: true; preference: AiPreferenceDto }
-	| { ok: false; reason: AiPreferenceWriteRejection; message: string };
+	| ({ ok: false } & AiPreferenceWriteRefusal);
 
 /** The surfaces that write on the user's behalf. The settings area is a person writing. */
 export type AssistantSurface = Exclude<AiPreferenceSource, 'ui'>;
 
-/**
- * The service refuses with HTTP error classes; an assistant surface speaks in reasons. Only
- * `scope: 'user'` reaches the service from an assistant, so the one BadRequestError it can raise
- * is the per-scope cap. The three mapped classes carry user-facing text, so their message passes
- * through; anything else is an unexpected fault, so its message stays internal.
- */
-export function toAiPreferenceWriteRejection(error: unknown): {
-	reason: AiPreferenceWriteRejection;
-	message: string;
-} {
+/** The service refuses with HTTP error classes; an assistant surface speaks in reasons.
+ *  A 4xx message is written for a person and passes through; anything else stays internal. */
+export function toAiPreferenceWriteRejection(error: unknown): AiPreferenceWriteRefusal {
+	if (error instanceof AiPreferenceScopeFullError) {
+		return { reason: 'scope_full', message: error.message, ...error.meta };
+	}
 	if (error instanceof ConflictError) return { reason: 'duplicate', message: error.message };
-	if (error instanceof BadRequestError) return { reason: 'scope_full', message: error.message };
 	if (error instanceof ForbiddenError) return { reason: 'not_permitted', message: error.message };
+	if (isExpectedAiPreferenceRefusal(error)) return { reason: 'failed', message: error.message };
 	return { reason: 'failed', message: 'The preference could not be saved.' };
+}
+
+/** A client error the service raised on purpose, not a fault in the code. */
+export function isExpectedAiPreferenceRefusal(error: unknown): error is ResponseError {
+	return error instanceof ResponseError && error.httpStatusCode < 500;
+}
+
+/** Whole seconds between the write and now, for the undo-rate reading. */
+export function secondsSinceSaved(preference: AiPreferenceDto, now = Date.now()): number {
+	return Math.max(0, Math.round((now - new Date(preference.createdAt).getTime()) / 1000));
 }
 
 export type AssistantPreferenceWrite = {
@@ -79,9 +91,8 @@ export async function writeAssistantPreference({
 		preference = await aiPreferenceService.create(user, { content, scope }, surface);
 	} catch (error) {
 		const rejection = toAiPreferenceWriteRejection(error);
-		// The mapped classes are expected outcomes with their own user-facing text. Anything else
-		// is a real fault whose message stays internal, so it must not go unlogged.
-		if (rejection.reason === 'failed') {
+		// An unexpected fault keeps its message internal, so log it here.
+		if (!isExpectedAiPreferenceRefusal(error)) {
 			logger.error('Saving an AI preference from the assistant failed', { error });
 		}
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {

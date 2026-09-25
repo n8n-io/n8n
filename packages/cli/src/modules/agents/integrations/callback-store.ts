@@ -7,12 +7,11 @@ import type { CacheService } from '@/services/cache/cache.service';
 export interface CallbackPayload {
 	actionId: string;
 	value: string;
-	kind?: 'approval';
 	groupId?: string;
 	label?: string;
 }
 
-export type CallbackMetadata = Pick<CallbackPayload, 'kind' | 'groupId'>;
+export type CallbackMetadata = Pick<CallbackPayload, 'groupId'>;
 type CallbackStoreMetadata = CallbackMetadata & Pick<CallbackPayload, 'label'>;
 
 const DEFAULT_TTL_MS = 60 * 60 * 1000;

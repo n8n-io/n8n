@@ -260,6 +260,13 @@ export {
 	tagPublicSchema,
 } from './tag/tag-public.dto';
 
+export {
+	CommunityPackageListPublicDto,
+	ListCommunityPackagesQueryDto,
+	communityPackagePublicSchema,
+	type CommunityPackagePublic,
+} from './community-packages/community-package-public.dto';
+
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
 export {
@@ -424,6 +431,8 @@ export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.d
 export {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+	ImportPackageSelectionRequestDto,
+	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
 
@@ -562,6 +571,7 @@ export {
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
 	promoteRequestSchema,
+	PromoteSelectionRequestDto,
 	promotionChangesSchema,
 	type PromotableResource,
 	type PromotableResourceStatus,

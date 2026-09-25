@@ -1,5 +1,5 @@
 import type { ResponseEmitter, StepExecutionRequest } from '@n8n/engine';
-import { ExecutionLifecycleHooks } from 'n8n-core';
+import { ENCODED_BUFFER_KEY, ExecutionLifecycleHooks } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -66,17 +66,68 @@ describe('attachResponseHooks', () => {
 		expect(respond.send).toHaveBeenCalledOnce();
 	});
 
+	describe('a Buffer body', () => {
+		const headers = { 'content-type': 'application/octet-stream', 'content-length': 5 };
+
+		it('is sent as a base64 envelope, with its headers and status code', async () => {
+			const { request, respond } = newRequest();
+			const additionalData = newAdditionalData();
+
+			attachResponseHooks(additionalData, request);
+			await additionalData.hooks?.runHook('sendResponse', [
+				{ body: Buffer.from('hello'), headers, statusCode: 201 },
+			]);
+
+			expect(respond.send).toHaveBeenCalledWith({
+				body: { [ENCODED_BUFFER_KEY]: 'aGVsbG8=' },
+				headers,
+				statusCode: 201,
+			});
+		});
+
+		it('leaves the response the node produced untouched', async () => {
+			const { request } = newRequest();
+			const additionalData = newAdditionalData();
+			const body = Buffer.from('hello');
+			const response = { body, headers, statusCode: 200 };
+
+			attachResponseHooks(additionalData, request);
+			await additionalData.hooks?.runHook('sendResponse', [response]);
+
+			expect(response.body).toBe(body);
+		});
+	});
+
+	describe('a stored binary reference body', () => {
+		it('is sent as is, with its headers and status code', async () => {
+			const { request, respond } = newRequest();
+			const additionalData = newAdditionalData();
+			const response = {
+				body: { binaryData: { id: 'filesystem-v2:file-1', mimeType: 'image/png', data: '' } },
+				headers: { 'content-type': 'image/png' },
+				statusCode: 200,
+			};
+
+			attachResponseHooks(additionalData, request);
+			await additionalData.hooks?.runHook('sendResponse', [response]);
+
+			expect(respond.send).toHaveBeenCalledWith(response);
+		});
+	});
+
 	it.each([
-		['a buffer body', { body: Buffer.from('hi') }],
 		['a stream body', { body: { pipe: () => {} } }],
-		['a binary reference', { body: { binaryData: { id: 'file-1' } } }],
+		['a binary reference without an id', { body: { binaryData: { data: 'aGk=' } } }],
+		['a binary reference with an empty id', { body: { binaryData: { id: '', data: 'aGk=' } } }],
+		['a binaryData value that is not an object', { body: { binaryData: 'file-1' } }],
+		['a bare Buffer in place of a response', Buffer.from('hi')],
 	])('refuses %s, which has no JSON form', async (_name, response) => {
 		const { request } = newRequest();
 		const additionalData = newAdditionalData();
 		attachResponseHooks(additionalData, request);
 
 		await expect(additionalData.hooks?.runHook('sendResponse', [response])).rejects.toThrow(
-			/Engine 2.0 cannot/,
+			/Engine v2 cannot/,
 		);
 	});
 });

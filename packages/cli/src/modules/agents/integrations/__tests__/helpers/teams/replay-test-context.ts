@@ -9,13 +9,12 @@ import type { AgentRepository } from '../../../../repositories/agent.repository'
 import type { ChatInstance } from '../../../chat-integration.service';
 import { ComponentMapper } from '../../../component-mapper';
 import type { IntegrationMessageContext } from '../../../integration-tools';
-import { TeamsIntegration } from '../../../platforms/teams-integration';
+import { TeamsIntegration } from '../../../platforms/teams/teams-integration';
 import {
 	createReplayContextSetup,
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 import {
 	TEAMS_APP_ID,
@@ -43,6 +42,7 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	latestThreadId: () => string | undefined;
 	lastPost: () => ReplayApiCall | undefined;
 	lastEdit: () => ReplayApiCall | undefined;
+	lastDelete: () => ReplayApiCall | undefined;
 	lastPostedMessageId: () => string | undefined;
 }
 
@@ -124,6 +124,14 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 
 	nock(serviceUrl.origin)
 		.persist()
+		.delete(/\/v3\/conversations\/.+\/activities\/.+/)
+		.reply(function (uri) {
+			apiCalls.push({ method: 'deleteActivity', body: { uri } });
+			return [200, {}];
+		});
+
+	nock(serviceUrl.origin)
+		.persist()
 		.put(/\/v3\/conversations\/.+\/activities\/.+/)
 		.reply(function (_uri, body) {
 			apiCalls.push({
@@ -172,7 +180,7 @@ export async function createTeamsReplayContext(
 
 	const webhooks = chat.webhooks as unknown as Record<string, ReplayWebhookHandler>;
 	const post = async (payload: unknown, headers: Headers) =>
-		await sendJsonWebhook(
+		await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.teams(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/teams',
 			payload,
@@ -197,6 +205,7 @@ export async function createTeamsReplayContext(
 		latestThreadId: setup.latestThreadId,
 		lastPost: () => lastCall('sendActivity'),
 		lastEdit: () => lastCall('updateActivity'),
+		lastDelete: () => lastCall('deleteActivity'),
 		lastPostedMessageId: () => stub.postedMessageIds.at(-1),
 		shutdown: async () => {
 			stub.restore();

@@ -20,7 +20,7 @@ type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
  *
  * TODO(CAT-2878 follow-up): carry the real failure through and drop this.
  */
-const STEP_FAILURE_DESCRIPTION = 'Engine 2.0 does not report error detail yet.';
+const STEP_FAILURE_DESCRIPTION = 'Engine v2 does not report error detail yet.';
 
 /**
  * Relays engine lifecycle events to the editor as push messages.

@@ -105,6 +105,8 @@
     "@types/xml2js": "catalog:",
     "@types/yargs-parser": "21.0.0",
     "@vvo/tzdb": "^6.141.0",
+    "ajv": "^8.18.0",
+    "ajv-draft-04": "^1.0.0",
     "axios": "catalog:",
     "concurrently": "^8.2.0",
     "esbuild": "catalog:",

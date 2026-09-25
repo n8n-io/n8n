@@ -9,6 +9,7 @@ import PromotionConnectionDelete from '../commands/promotion-connection/delete';
 import PromotionConnectionDeleteConfig from '../commands/promotion-connection/delete-config';
 import PromotionConnectionDisconnect from '../commands/promotion-connection/disconnect';
 import PromotionConnectionGet from '../commands/promotion-connection/get';
+import PromotionConnectionListChanges from '../commands/promotion-connection/list-changes';
 import PromotionConnectionListProjects from '../commands/promotion-connection/list-projects';
 import PromotionConnectionRemoveProject from '../commands/promotion-connection/remove-project';
 import PromotionConnectionSetConfig from '../commands/promotion-connection/set-config';
@@ -136,6 +137,13 @@ const CASES: WiringCase[] = [
 		args: { id: 'conn-1' },
 		method: 'listPromotionConnectionProjects',
 		callArgs: ['conn-1'],
+	},
+	{
+		title: 'promotion-connection list-changes',
+		commandClass: PromotionConnectionListChanges,
+		args: { projectId: 'proj-1', direction: 'promote' },
+		method: 'listProjectPromotionChanges',
+		callArgs: ['proj-1', 'promote'],
 	},
 	{
 		title: 'promotion-connection add-project',
