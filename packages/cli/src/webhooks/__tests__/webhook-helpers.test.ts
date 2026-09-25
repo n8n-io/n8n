@@ -84,6 +84,7 @@ import {
 	invokeWebhook,
 	handleImmediateWebhookResponse,
 } from '../webhook-helpers';
+import { WebhookResponder } from '../webhook-responder';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
 
@@ -295,7 +296,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -323,7 +324,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -355,7 +356,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -377,7 +378,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -407,7 +408,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -430,7 +431,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -454,7 +455,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -474,7 +475,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -498,7 +499,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -520,7 +521,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -540,7 +541,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -562,7 +563,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -592,7 +593,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -613,25 +614,18 @@ describe('handleHostedChatResponse', () => {
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const responseMode = 'hostedChat';
-		const didSendResponse = false;
 		const executionId = '123';
 		const resumeToken = 'a'.repeat(64);
 
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
-		const result = handleHostedChatResponse(
-			res,
-			responseMode,
-			didSendResponse,
-			executionId,
-			responseCallback,
-			resumeToken,
-		);
+		handleHostedChatResponse(res, responseMode, executionId, responder, resumeToken);
 
 		expect(res.send).toHaveBeenCalledWith({ executionStarted: true, executionId, resumeToken });
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(res.end).toHaveBeenCalled();
-		expect(result).toBe(true);
+		expect(responder.hasResponded).toBe(true);
 		// The contract callers depend on: writing the response is not enough,
 		// the callback is what settles their promise and frees the isolate.
 		expect(responseCallback).toHaveBeenCalledTimes(1);
@@ -644,45 +638,34 @@ describe('handleHostedChatResponse', () => {
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		const didSendResponse = false;
 		const responseMode = 'responseNode';
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
-		const result = handleHostedChatResponse(
-			res,
-			responseMode,
-			didSendResponse,
-			executionId,
-			responseCallback,
-		);
+		handleHostedChatResponse(res, responseMode, executionId, responder);
 
 		expect(res.send).not.toHaveBeenCalled();
 		expect(res.end).not.toHaveBeenCalled();
-		expect(result).toBe(false);
+		expect(responder.hasResponded).toBe(false);
 		expect(responseCallback).not.toHaveBeenCalled();
 	});
 
-	it('should not send response when didSendResponse is true', () => {
+	it('should not send response when a response was already sent', () => {
 		const res = {
 			send: vi.fn(),
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		const didSendResponse = true;
 		const responseMode = 'hostedChat';
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
+		responder.markResponded();
 
-		const result = handleHostedChatResponse(
-			res,
-			responseMode,
-			didSendResponse,
-			executionId,
-			responseCallback,
-		);
+		handleHostedChatResponse(res, responseMode, executionId, responder);
 
 		expect(res.send).not.toHaveBeenCalled();
 		expect(res.end).not.toHaveBeenCalled();
-		expect(result).toBe(true);
+		expect(responder.hasResponded).toBe(true);
 		// Someone else already responded and already called back.
 		expect(responseCallback).not.toHaveBeenCalled();
 	});
@@ -1228,6 +1211,7 @@ describe('invokeWebhook', () => {
 		const webhookResultData = { workflowData: [[{ json: { ok: true } }]] };
 		webhookService.runWebhook.mockResolvedValue(webhookResultData);
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
 		const result = await invokeWebhook({
 			workflow,
@@ -1237,7 +1221,7 @@ describe('invokeWebhook', () => {
 			executionMode: 'webhook',
 			runExecutionData: undefined,
 			webhookType: 'Webhook',
-			responseCallback,
+			responder,
 		});
 
 		expect(webhookService.runWebhook).toHaveBeenCalledWith(
@@ -1250,10 +1234,10 @@ describe('invokeWebhook', () => {
 		);
 		expect(result).toEqual({
 			webhookResultData,
-			didSendResponse: false,
 			runExecutionDataChanges: {},
 		});
 		expect(responseCallback).not.toHaveBeenCalled();
+		expect(responder.hasResponded).toBe(false);
 		expect(workflowStatisticsService.emit).toHaveBeenCalledWith('nodeFetchedData', {
 			workflowId: WORKFLOW_ID,
 			node: workflowStartNode,
@@ -1274,6 +1258,7 @@ describe('invokeWebhook', () => {
 	])('$name', async ({ error, expectedMessage }) => {
 		webhookService.runWebhook.mockRejectedValue(error);
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
 		const result = await invokeWebhook({
 			workflow,
@@ -1283,14 +1268,14 @@ describe('invokeWebhook', () => {
 			executionMode: 'webhook',
 			runExecutionData: undefined,
 			webhookType: 'Webhook',
-			responseCallback,
+			responder,
 		});
 
 		expect(responseCallback).toHaveBeenCalledWith(
 			expect.objectContaining({ message: expect.stringContaining(expectedMessage) }),
 			{},
 		);
-		expect(result.didSendResponse).toBe(true);
+		expect(responder.hasResponded).toBe(true);
 		expect(result.webhookResultData).toEqual({
 			noWebhookResponse: true,
 			workflowData: [[{ json: {} }]],
@@ -1315,7 +1300,7 @@ describe('invokeWebhook', () => {
 			executionMode: 'webhook',
 			runExecutionData: undefined,
 			webhookType: 'Webhook',
-			responseCallback: vi.fn(),
+			responder: new WebhookResponder(vi.fn()),
 		});
 
 		expect(Container.get(ErrorReporter).error).toHaveBeenCalledWith(
@@ -1335,20 +1320,18 @@ describe('handleImmediateWebhookResponse', () => {
 		{ name: 'stops without workflow data', workflowData: undefined, shouldContinue: false },
 	])('reports a no-response result once and $name', ({ workflowData, shouldContinue }) => {
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
-		const result = handleImmediateWebhookResponse({
+		const shouldContinueWorkflowExecution = handleImmediateWebhookResponse({
 			webhookResultData: { noWebhookResponse: true, workflowData },
-			didSendResponse: false,
 			responseCode: 200,
-			responseCallback,
+			responder,
 		});
 
 		expect(responseCallback).toHaveBeenCalledOnce();
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
-		expect(result).toEqual({
-			didSendResponse: true,
-			shouldContinueWorkflowExecution: shouldContinue,
-		});
+		expect(responder.hasResponded).toBe(true);
+		expect(shouldContinueWorkflowExecution).toBe(shouldContinue);
 	});
 
 	it.each([
@@ -1362,19 +1345,17 @@ describe('handleImmediateWebhookResponse', () => {
 		'does not call back for $name when a response was already sent',
 		({ webhookResultData, shouldContinue }) => {
 			const responseCallback = vi.fn();
+			const responder = new WebhookResponder(responseCallback);
+			responder.markResponded();
 
-			const result = handleImmediateWebhookResponse({
+			const shouldContinueWorkflowExecution = handleImmediateWebhookResponse({
 				webhookResultData,
-				didSendResponse: true,
 				responseCode: 200,
-				responseCallback,
+				responder,
 			});
 
 			expect(responseCallback).not.toHaveBeenCalled();
-			expect(result).toEqual({
-				didSendResponse: true,
-				shouldContinueWorkflowExecution: shouldContinue,
-			});
+			expect(shouldContinueWorkflowExecution).toBe(shouldContinue);
 		},
 	);
 
@@ -1396,22 +1377,20 @@ describe('handleImmediateWebhookResponse', () => {
 		},
 	])('sends $name and stops execution', ({ webhookResultData, expectedData }) => {
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
-		const result = handleImmediateWebhookResponse({
+		const shouldContinueWorkflowExecution = handleImmediateWebhookResponse({
 			webhookResultData,
-			didSendResponse: false,
 			responseCode: 201,
-			responseCallback,
+			responder,
 		});
 
 		expect(responseCallback).toHaveBeenCalledWith(null, {
 			data: expectedData,
 			responseCode: 201,
 		});
-		expect(result).toEqual({
-			didSendResponse: true,
-			shouldContinueWorkflowExecution: false,
-		});
+		expect(responder.hasResponded).toBe(true);
+		expect(shouldContinueWorkflowExecution).toBe(false);
 	});
 });
 
