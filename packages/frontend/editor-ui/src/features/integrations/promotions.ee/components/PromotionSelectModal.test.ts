@@ -219,6 +219,30 @@ describe('PromotionSelectModal', () => {
 		emitSpy.mockRestore();
 	});
 
+	it('should say a new branch when promote created a promotion branch', async () => {
+		api.promoteProjectSelection.mockResolvedValueOnce(
+			promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
+		);
+		const { findAllByTestId, findByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+
+		await userEvent.click((await findAllByTestId('promotion-change-row'))[0]);
+		await userEvent.click(await findByTestId('promotion-submit'));
+
+		await waitFor(() =>
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Changes have been pushed to a new branch.',
+				}),
+			),
+		);
+	});
+
 	it('should show an error and keep the selection when promote fails', async () => {
 		const failure = new Error('git is unreachable');
 		api.promoteProjectSelection.mockRejectedValueOnce(failure);

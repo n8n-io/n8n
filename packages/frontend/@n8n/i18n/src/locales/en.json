@@ -8961,6 +8961,7 @@
 	"promotions.modal.promoteError.workflowsMovedCrossProject": "These workflows moved to another project: {workflows}. A selective push cannot move them. Push all projects instead.",
 	"promotions.modal.toast.success.title": "Changes promoted",
 	"promotions.modal.toast.success.message": "Changes have been pushed to {branch}.",
+	"promotions.modal.toast.success.messageNewBranch": "Changes have been pushed to a new branch.",
 	"promotions.modal.close": "Close",
 	"promotions.modal.promote": "Promote {count} changes",
 	"promotions.modal.promoteSingle": "Promote 1 change",
