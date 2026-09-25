@@ -59,32 +59,14 @@ describe('InstanceMonitoringReportRepository', () => {
 			await expect(repository.findOneByOrFail({ id })).resolves.toMatchObject({ reportDate });
 		});
 
-		test('returns the pending report already created that UTC day instead of a second one', async () => {
+		test('returns null for a second report on the same UTC day and keeps the first', async () => {
 			const first = await createOn('2026-03-25T07:42:00.000Z');
-			const second = await repository.createPending(
-				[{ kind: 'cumulative', name: 'billableExecutions', value: 900 }],
-				new Date('2026-03-25T23:59:00.000Z'),
-			);
 
-			expect(second).toMatchObject({ id: first.id, dataPoints: DATA_POINTS });
-			await expect(repository.count()).resolves.toBe(1);
+			await expect(
+				repository.createPending(DATA_POINTS, new Date('2026-03-25T23:59:00.000Z')),
+			).resolves.toBeNull();
+			await expect(repository.find()).resolves.toEqual([expect.objectContaining({ id: first.id })]);
 		});
-
-		test.each([
-			['delivered', async (id: string) => await repository.markDelivered(id, new Date())],
-			['skipped', async (id: string) => await repository.markSkipped(id)],
-		])(
-			'returns null when the report already created that UTC day was %s',
-			async (_status, settle) => {
-				const first = await createOn('2026-03-25T07:42:00.000Z');
-				await settle(first.id);
-
-				await expect(
-					repository.createPending(DATA_POINTS, new Date('2026-03-25T23:59:00.000Z')),
-				).resolves.toBeNull();
-				await expect(repository.count()).resolves.toBe(1);
-			},
-		);
 
 		test('creates a report on the next UTC day', async () => {
 			await createOn('2026-03-25T23:59:00.000Z');
@@ -272,6 +254,29 @@ describe('InstanceMonitoringReportRepository', () => {
 			const lastDelivery = await repository.findLastDeliveryTime();
 
 			expect(lastDelivery?.toISOString()).toBe(deliveredAt.toISOString());
+		});
+	});
+
+	describe('markSkipped', () => {
+		test('settles a pending report as skipped', async () => {
+			const { id } = await createOn(new Date());
+
+			await repository.markSkipped(id);
+
+			await expect(repository.findOneByOrFail({ id })).resolves.toMatchObject({
+				status: 'skipped_after_max_retries',
+			});
+		});
+
+		test('leaves a report delivered when another process delivered it first', async () => {
+			const { id } = await createOn(new Date());
+			await repository.markDelivered(id, new Date());
+
+			await repository.markSkipped(id);
+
+			await expect(repository.findOneByOrFail({ id })).resolves.toMatchObject({
+				status: 'delivered',
+			});
 		});
 	});
 

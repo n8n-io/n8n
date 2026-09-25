@@ -77,6 +77,13 @@ describe('AddReportDateToInstanceMonitoringReport Migration', () => {
 		return Object.fromEntries(rows.map((row) => [row.id, row.reportDate]));
 	}
 
+	async function statuses(context: TestMigrationContext): Promise<Record<string, Status>> {
+		const rows = (await context.queryRunner.query(
+			`SELECT "id", "status" FROM ${context.escape.tableName(TABLE)}`,
+		)) as Array<{ id: string; status: Status }>;
+		return Object.fromEntries(rows.map((row) => [row.id, row.status]));
+	}
+
 	async function columnNames(context: TestMigrationContext): Promise<string[]> {
 		if (context.isSqlite) {
 			const rows = (await context.queryRunner.query(
@@ -151,6 +158,28 @@ describe('AddReportDateToInstanceMonitoringReport Migration', () => {
 				[ids.delivered]: '2026-03-25',
 				[ids.skippedAlone]: '2026-03-26',
 				[ids.pendingNextToSkipped]: null,
+			});
+		});
+
+		it('settles a pending row that loses its day, so it is not sent again', async () => {
+			const ids = await withContext(async (context) => ({
+				delivered: await insertReport(context, { createdAt: '2026-03-25 07:00:00.000+00:00' }),
+				pending: await insertReport(context, {
+					createdAt: '2026-03-25 09:00:00.000+00:00',
+					status: 'pending',
+				}),
+				pendingAlone: await insertReport(context, {
+					createdAt: '2026-03-26 09:00:00.000+00:00',
+					status: 'pending',
+				}),
+			}));
+
+			await runSingleMigration(MIGRATION_NAME);
+
+			await expect(withContext(statuses)).resolves.toEqual({
+				[ids.delivered]: 'delivered',
+				[ids.pending]: 'skipped_after_max_retries',
+				[ids.pendingAlone]: 'pending',
 			});
 		});
 

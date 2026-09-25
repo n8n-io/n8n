@@ -667,90 +667,34 @@ describe('instance reporting retries', () => {
 		expect(new Set(dates).size).toBe(dates.length);
 	});
 
-	describe('two processes reporting on one database', () => {
-		const OTHER_POINTS: InstanceReportDataPoint[] = [
+	test('retries after the delay and sends the report of a process that created it first and stopped', async () => {
+		const otherPoints: InstanceReportDataPoint[] = [
 			{ kind: 'cumulative', name: 'billableExecutions', value: 999 },
 		];
+		let other: InstanceMonitoringReport | undefined;
 
-		/** Run `between` after this process found nothing pending but before it inserts. */
-		function onMeasure(between: () => Promise<void>) {
-			const insights = Container.get(InsightsService);
-			const measure = insights.getInsightsByTime.bind(insights);
-			vi.spyOn(insights, 'getInsightsByTime').mockImplementation(async (args) => {
-				await between();
-				return await measure(args);
-			});
-		}
-
-		async function createAsOtherProcess() {
-			const report = await repository.createPending(OTHER_POINTS, new Date());
-			if (!report) throw new Error('The other process found a report already');
-			return report;
-		}
-
-		test('sends the report the other process created when that process stopped before sending', async () => {
-			let other: InstanceMonitoringReport | undefined;
-			onMeasure(async () => {
-				other ??= await createAsOtherProcess();
-			});
-
-			const harness = makeHarness([accepted()]);
-			harness.scheduler.start();
-			await armed(harness, 1);
-
-			expect(harness.httpRequest).toHaveBeenCalledTimes(1);
-			expect(sentPayload(harness, 0)).toMatchObject({
-				batchId: other?.id,
-				dataPoints: OTHER_POINTS,
-			});
-			await expect(repository.find()).resolves.toEqual([
-				expect.objectContaining({ id: other?.id, status: 'delivered' }),
-			]);
+		// Another process inserts today's report after this one found nothing pending.
+		const insights = Container.get(InsightsService);
+		const measure = insights.getInsightsByTime.bind(insights);
+		vi.spyOn(insights, 'getInsightsByTime').mockImplementation(async (args) => {
+			other = await createPendingOn(new Date(), otherPoints);
+			return await measure(args);
 		});
 
-		test('sends nothing when the other process delivered the report meanwhile', async () => {
-			let other: InstanceMonitoringReport | undefined;
-			onMeasure(async () => {
-				if (other) return;
-				other = await createAsOtherProcess();
-				await repository.markDelivered(other.id, new Date());
-			});
+		const harness = makeHarness([accepted()]);
+		harness.scheduler.start();
+		await armed(harness, 1);
 
-			const harness = makeHarness([accepted()]);
-			harness.scheduler.start();
-			await armed(harness, 1);
+		expect(harness.httpRequest).not.toHaveBeenCalled();
+		expect(harness.scheduleNext).toHaveBeenLastCalledWith(RETRY_DELAY_MS);
 
-			expect(harness.httpRequest).not.toHaveBeenCalled();
-			await expect(repository.find()).resolves.toEqual([
-				expect.objectContaining({ id: other?.id, status: 'delivered' }),
-			]);
-		});
+		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
+		await armed(harness, 2);
 
-		test('two passes that measure at the same time create one report and send only its batchId', async () => {
-			let arrived = 0;
-			let releaseBoth = () => {};
-			const bothMeasuring = new Promise<void>((resolve) => (releaseBoth = resolve));
-			onMeasure(async () => {
-				if (++arrived === 2) releaseBoth();
-				await bothMeasuring;
-			});
-
-			const first = makeHarness([accepted()]);
-			const second = makeHarness([accepted()]);
-			first.scheduler.start();
-			second.scheduler.start();
-			await armed(first, 1);
-			await armed(second, 1);
-
-			const reports = await repository.find();
-			expect(reports).toEqual([expect.objectContaining({ status: 'delivered' })]);
-			const batchIds = [first, second].flatMap(({ httpRequest }) =>
-				httpRequest.mock.calls.map(
-					([options]) => (options.body as unknown as ReportPayload).batchId,
-				),
-			);
-			expect(batchIds.length).toBeGreaterThanOrEqual(1);
-			expect(new Set(batchIds)).toEqual(new Set([reports[0].id]));
-		});
+		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
+		expect(sentPayload(harness, 0)).toMatchObject({ batchId: other?.id, dataPoints: otherPoints });
+		await expect(repository.find()).resolves.toEqual([
+			expect.objectContaining({ id: other?.id, status: 'delivered' }),
+		]);
 	});
 });

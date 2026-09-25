@@ -340,11 +340,13 @@ describe('InstanceReportingService', () => {
 			expect(reportRepository.markDelivered).toHaveBeenCalledWith(BATCH_ID, expect.any(Date));
 		});
 
-		test('sends nothing when the report for today has already settled', async () => {
+		test('throws without sending when another process already created the report for today', async () => {
 			const { service, reportRepository, http } = makeHarness();
 			reportRepository.createPending.mockResolvedValue(null);
 
-			await expect(service.sendReport()).resolves.toBeUndefined();
+			await expect(service.sendReport()).rejects.toThrow(
+				'Another process already created the instance report for today',
+			);
 
 			expect(http.request).not.toHaveBeenCalled();
 			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
@@ -504,16 +506,6 @@ describe('InstanceReportingService', () => {
 
 			expect(http.request).not.toHaveBeenCalled();
 			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
-			expect(reportRepository.markSkipped).toHaveBeenCalledWith(BATCH_ID);
-		});
-
-		test("skips another process's report for today without attempting it when its attempts ran out", async () => {
-			const { service, reportRepository, http } = makeHarness();
-			reportRepository.createPending.mockResolvedValue(makeReport({ attempts: 3 }));
-
-			await expect(service.sendReport()).resolves.toBeUndefined();
-
-			expect(http.request).not.toHaveBeenCalled();
 			expect(reportRepository.markSkipped).toHaveBeenCalledWith(BATCH_ID);
 		});
 	});

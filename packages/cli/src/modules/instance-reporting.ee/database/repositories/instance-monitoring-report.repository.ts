@@ -55,8 +55,7 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	 * Record a freshly measured report, with its data points, before any attempt
 	 * to deliver it. A row therefore always carries the measurement it stands for.
 	 *
-	 * When a report was already created on `now`'s UTC day, returns that one while
-	 * it is still pending, and `null` once it has settled.
+	 * `null` when a report was already created on `now`'s UTC day.
 	 */
 	async createPending(
 		dataPoints: InstanceReportDataPoint[],
@@ -73,9 +72,8 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 				}),
 			);
 		} catch (error) {
-			if (!isUniqueConstraintError(error)) throw error;
-
-			return await this.findOneBy({ reportDate: utcDay(now), status: 'pending' });
+			if (isUniqueConstraintError(error)) return null;
+			throw error;
 		}
 	}
 
@@ -128,9 +126,12 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 		await this.update({ id }, { lastAttemptAt: failedAt, lastError: error });
 	}
 
-	/** Stop trying to deliver this report. Its days are covered by the next one. */
+	/**
+	 * Stop trying to deliver this report. Its days are covered by the next one.
+	 * Already delivered report stays delivered.
+	 */
 	async markSkipped(id: string): Promise<void> {
-		await this.update({ id }, { status: 'skipped_after_max_retries' });
+		await this.update({ id, status: 'pending' }, { status: 'skipped_after_max_retries' });
 	}
 }
 

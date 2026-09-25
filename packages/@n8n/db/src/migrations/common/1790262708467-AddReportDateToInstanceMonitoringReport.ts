@@ -51,7 +51,10 @@ export class AddReportDateToInstanceMonitoringReport1790262708467 implements Rev
 		const createdAt = escape.columnName('createdAt');
 
 		await runQuery(
-			`UPDATE ${table} SET ${reportDate} = NULL WHERE ${id} IN (
+			`UPDATE ${table}
+			SET ${reportDate} = NULL,
+				${status} = CASE ${status} WHEN 'pending' THEN 'skipped_after_max_retries' ELSE ${status} END
+			WHERE ${id} IN (
 				SELECT ${id} FROM (
 					SELECT ${id}, ROW_NUMBER() OVER (
 						PARTITION BY ${reportDate}
