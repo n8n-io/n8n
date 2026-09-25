@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { N8nHoverCard, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	ContextMenuContent,
 	ContextMenuItem,
@@ -11,13 +10,14 @@ import {
 	TabsList,
 	TabsTrigger,
 } from 'reka-ui';
-import { computed, nextTick, reactive, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
-import { getWorkflow } from '@/app/api/workflows';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import { HOVER_DELAY } from '@/app/constants/durations';
 import type { ArtifactTab } from '../useCanvasPreview';
+import { useWorkflowTabSummaries } from '../useWorkflowTabSummaries';
 
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
@@ -45,7 +45,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const clipboard = useClipboard();
 const toast = useToast();
-const rootStore = useRootStore();
 const tabListRef = ref<HTMLElement | null>(null);
 const sizeToggleLabel = computed(() =>
 	i18n.baseText(
@@ -122,44 +121,33 @@ function handleOpenInEditor(tab: ArtifactTab) {
 	window.open(href, '_blank', 'noopener');
 }
 
-type WorkflowSummary = { updatedAt: string; published: boolean };
 type HoverTarget = { tab: ArtifactTab; reference: HTMLElement };
 
-// The AI and the user can both edit a workflow while its tab is open, so each
-// hover refetches. The cached value shows until the fresh one arrives.
-const workflowSummaries = reactive(new Map<string, WorkflowSummary>());
+const { summaries: workflowSummaries, refresh: refreshWorkflowSummaries } = useWorkflowTabSummaries(
+	() => props.tabs,
+);
 const hoveredTab = shallowRef<HoverTarget | null>(null);
 const hoveredSummary = computed(() =>
 	hoveredTab.value ? workflowSummaries.get(hoveredTab.value.tab.id) : undefined,
 );
-
-async function loadWorkflowSummary(workflowId: string) {
-	try {
-		const workflow = await getWorkflow(rootStore.restApiContext, workflowId);
-		workflowSummaries.set(workflowId, {
-			updatedAt: String(workflow.updatedAt),
-			published: workflow.activeVersionId !== null,
-		});
-	} catch {
-		// The card still shows the full name without the metadata.
-	}
-}
-
-const TAB_HOVER_CARD_OPEN_DELAY_MS = 250;
-// Long enough to cross the gap between two tabs, so the open card moves to the
-// next tab instead of closing and waiting for the open delay again.
-const TAB_HOVER_CARD_CLOSE_GRACE_MS = 100;
+const isHoveredSummaryLoading = computed(
+	() =>
+		hoveredTab.value?.tab.type === 'workflow' &&
+		!hoveredTab.value.tab.pending &&
+		hoveredSummary.value === undefined,
+);
 
 function setHoveredTab(target: HoverTarget) {
 	hoveredTab.value = target;
+	// Keep the stored details on screen while this refresh runs.
 	if (target.tab.type === 'workflow' && !target.tab.pending) {
-		void loadWorkflowSummary(target.tab.id);
+		void refreshWorkflowSummaries([target.tab.id]);
 	}
 }
 
 const { start: startOpenTimer, stop: stopOpenTimer } = useTimeoutFn(
 	setHoveredTab,
-	TAB_HOVER_CARD_OPEN_DELAY_MS,
+	HOVER_DELAY.SHOW,
 	{ immediate: false },
 );
 
@@ -167,7 +155,9 @@ const { start: startCloseTimer, stop: stopCloseTimer } = useTimeoutFn(
 	() => {
 		hoveredTab.value = null;
 	},
-	TAB_HOVER_CARD_CLOSE_GRACE_MS,
+	// The grace lets the pointer cross the gap between tabs, so the open card
+	// moves to the next tab instead of closing and waiting to open again.
+	HOVER_DELAY.LEAVE,
 	{ immediate: false },
 );
 
@@ -286,9 +276,19 @@ async function handleCopyLink(tab: ArtifactTab) {
 							{{ i18n.baseText('instanceAi.previewTabBar.edited') }}
 							<TimeAgo :date="hoveredSummary.updatedAt" />
 						</span>
+						<!-- Placeholders keep the card size stable until the first load ends. -->
+						<span
+							v-else-if="isHoveredSummaryLoading"
+							:class="[$style.hoverCardMeta, $style.placeholder, $style.placeholderMeta]"
+							data-test-id="instance-ai-tab-hover-card-placeholder"
+						/>
 					</div>
 					<span
-						v-if="hoveredSummary"
+						v-if="isHoveredSummaryLoading"
+						:class="[$style.statusTag, $style.placeholder, $style.placeholderTag]"
+					/>
+					<span
+						v-else-if="hoveredSummary"
 						:class="[$style.statusTag, { [$style.statusTagPublished]: hoveredSummary.published }]"
 						data-test-id="instance-ai-tab-hover-card-status"
 					>
@@ -469,6 +469,24 @@ async function handleCopyLink(tab: ArtifactTab) {
 .hoverCardMeta {
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
+}
+
+.placeholder {
+	border-radius: var(--radius);
+	background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
+
+	// Keeps the line box of the text it replaces, so the card does not resize.
+	&::before {
+		content: '\00a0';
+	}
+}
+
+.placeholderMeta {
+	width: 60%;
+}
+
+.placeholderTag {
+	width: 4rem;
 }
 
 // N8nBadge always renders a medium-weight label, but the design uses regular weight.
