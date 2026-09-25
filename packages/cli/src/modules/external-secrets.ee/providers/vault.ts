@@ -382,7 +382,7 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	private setupTokenRefresh() {
-		// A failed lookup keeps the chain that exists. A token that is not renewable drops it.
+		// A failed lookup keeps the chain that exists.
 		if (!this.#tokenInfo) {
 			return;
 		}
@@ -391,14 +391,25 @@ export class VaultProvider extends SecretsProvider {
 		if (this.#tokenInfo.expire_time === null) {
 			return;
 		}
-		// Token can't be renewed
-		if (!this.#tokenInfo.renewable) {
+		// A configured token cannot be replaced by logging in again.
+		if (!this.#tokenInfo.renewable && this.settings.authMethod === 'token') {
 			return;
 		}
 
 		const expireDate = new Date(this.#tokenInfo.expire_time);
-		this.refreshTimeout = setTimeout(this.tokenRefresh, (expireDate.valueOf() - Date.now()) / 2);
+		this.refreshTimeout = setTimeout(
+			this.#tokenInfo.renewable ? this.tokenRefresh : this.tokenReauthenticate,
+			(expireDate.valueOf() - Date.now()) / 2,
+		);
 	}
+
+	private tokenReauthenticate = async () => {
+		this.refreshTimeout = null;
+		if (this.refreshAbort.signal.aborted) {
+			return;
+		}
+		await this.connect();
+	};
 
 	private tokenRefresh = async () => {
 		this.refreshTimeout = null;
