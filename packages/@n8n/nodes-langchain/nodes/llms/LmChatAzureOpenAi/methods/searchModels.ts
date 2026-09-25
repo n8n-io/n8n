@@ -31,6 +31,14 @@ function classicCredentialError(node: INode): NodeOperationError {
 	);
 }
 
+// Without this, the list call reports `Project "" was not found`.
+function missingProjectError(node: INode): NodeOperationError {
+	return new NodeOperationError(
+		node,
+		'Enter the Project to list its deployments. Or select By ID and enter the deployment name.',
+	);
+}
+
 export async function searchModels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -53,6 +61,7 @@ export async function searchModels(
 			throw classicCredentialError(this.getNode());
 		}
 		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
+		if (!project) throw missingProjectError(this.getNode());
 		headers = { 'api-key': credential.apiKey };
 	} else {
 		const credential = await this.getCredentials<AzureEntraCognitiveServicesOAuth2ApiCredential>(
@@ -62,6 +71,8 @@ export async function searchModels(
 			throw classicCredentialError(this.getNode());
 		}
 		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
+		// Checked before the token request, so an empty Project does not cost a call to Entra.
+		if (!project) throw missingProjectError(this.getNode());
 		// Mints a token for the Foundry audience, which this call needs.
 		const token = await new N8nOAuth2TokenCredential(
 			this.getNode(),
@@ -73,14 +84,6 @@ export async function searchModels(
 			throw new NodeOperationError(this.getNode(), 'Failed to retrieve access token');
 		}
 		headers = { Authorization: `Bearer ${token.token}` };
-	}
-
-	// Without this, the list call reports `Project "" was not found`.
-	if (!project) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Enter the Project to list its deployments. Or select By ID and enter the deployment name.',
-		);
 	}
 
 	const models = await listAzureOpenAiModels({
