@@ -250,6 +250,8 @@ describe('test-workflow MCP tool', () => {
 			const runCall = (workflowRunner.run as Mock).mock
 				.calls[0][0] as IWorkflowExecutionDataProcess;
 			expect(runCall.startNodes).toEqual([{ name: 'MyWebhook', sourceData: null }]);
+			// A queue worker reads the user from here.
+			expect(runCall.executionData?.manualData?.userId).toBe(user.id);
 		});
 
 		test('finds specific trigger node when triggerNodeName is provided', async () => {

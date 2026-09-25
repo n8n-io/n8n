@@ -1227,6 +1227,8 @@ describe('OauthService', () => {
 			// Flow state read from cache and consumed (replay protection)
 			expect(result[4]).toEqual({ csrfSecret: 'csrf-secret', codeVerifier: 'code-verifier' });
 			expect(cacheService.delete).toHaveBeenCalledWith(`oauth:flow:${stateToken}`);
+			// Names the user on a policy block while the credential is decrypted.
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({ userId: 'user-id' });
 		});
 
 		it('should reject the callback when the flow state is missing (replay / unknown state)', async () => {
@@ -2039,6 +2041,7 @@ describe('OauthService', () => {
 			});
 
 			expect(authUri).toContain('https://example.domain/oauth2/auth');
+			expect(service.getOAuthCredentials).toHaveBeenCalledWith(credential, 'user-id');
 			// CSRF/PKCE state must not be persisted to the credential; it lives in the cache.
 			expect(service.encryptAndSaveData).not.toHaveBeenCalled();
 			expect(cacheService.set).toHaveBeenCalledWith(

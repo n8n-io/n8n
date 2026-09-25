@@ -247,6 +247,8 @@ export async function testWorkflow(
 				pinData: normalizedPinData,
 				runData: {},
 			},
+			// A queue worker reads the user from here, not from `userId` above.
+			manualData: { userId: user.id },
 			executionData: {
 				contextData: {},
 				metadata: {},

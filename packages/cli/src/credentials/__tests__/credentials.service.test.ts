@@ -48,6 +48,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialUseRegistry } from '@/credentials/instance-credential-use.registry';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
@@ -70,6 +71,7 @@ import type { RoleService } from '@/services/role.service';
 import { mockExistingCredential } from './credentials.test-data';
 
 const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+const ownerActor: PolicyActor = { kind: 'user', user: ownerUser };
 const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 /** A custom instance role that can see every credential but not use one. */
 const viewOnlyUser = mock<User>({
@@ -240,13 +242,18 @@ describe('CredentialsService', () => {
 				.mockResolvedValue(mock<ICredentialsDb>());
 			const updateSpy = vi.spyOn(service, 'update').mockResolvedValue(mock<CredentialsEntity>());
 
-			await service.clearOauthTokenData(credential);
+			await service.clearOauthTokenData(credential, ownerActor);
 
 			const passedData = createEncryptedDataSpy.mock.calls[0][0].data;
 			expect(passedData).not.toHaveProperty('oauthTokenData');
 			expect(passedData).not.toHaveProperty('accountIdentifier');
 			expect(passedData).toHaveProperty('clientId', 'abc');
-			expect(updateSpy).toHaveBeenCalledWith(credential.id, expect.anything(), passedData);
+			expect(updateSpy).toHaveBeenCalledWith(
+				credential.id,
+				expect.anything(),
+				ownerActor,
+				passedData,
+			);
 		});
 
 		it('aborts without persisting when the credential cannot be decrypted', async () => {
@@ -257,7 +264,9 @@ describe('CredentialsService', () => {
 			const updateSpy = vi.spyOn(service, 'update');
 
 			// Must propagate the failure rather than overwrite the credential with empty data.
-			await expect(service.clearOauthTokenData(credential)).rejects.toThrow(decryptionError);
+			await expect(service.clearOauthTokenData(credential, ownerActor)).rejects.toThrow(
+				decryptionError,
+			);
 			expect(updateSpy).not.toHaveBeenCalled();
 		});
 	});
@@ -1541,7 +1550,7 @@ describe('CredentialsService', () => {
 				return [];
 			});
 
-			const update = service.update(credential.id, encrypted, undefined, {
+			const update = service.update(credential.id, encrypted, ownerActor, undefined, {
 				instanceCredential: credential,
 			});
 			await vi.waitFor(() => expect(dbLockService.withLock).toHaveBeenCalledOnce());
@@ -1570,7 +1579,7 @@ describe('CredentialsService', () => {
 				data: 'encrypted',
 			});
 
-			await expect(service.update(credential.id, encrypted)).resolves.toBe(credential);
+			await expect(service.update(credential.id, encrypted, ownerActor)).resolves.toBe(credential);
 
 			expect(repositoryTransaction).toHaveBeenCalledExactlyOnceWith(
 				{ policyCleared: cleared },
@@ -1595,7 +1604,7 @@ describe('CredentialsService', () => {
 			setRepositoryTransaction(transactionManager);
 			const encrypted = mock<ICredentialsDb>({ id: credential.id, type: 'slackApi' });
 
-			await service.update(credential.id, encrypted);
+			await service.update(credential.id, encrypted, ownerActor);
 
 			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
 				{
@@ -1603,7 +1612,7 @@ describe('CredentialsService', () => {
 					storedCredential: { id: credential.id, type: 'githubApi' },
 					projectId: 'project-1',
 				},
-				{ kind: 'system', reason: 'integration' },
+				ownerActor,
 			);
 		});
 
@@ -1611,7 +1620,7 @@ describe('CredentialsService', () => {
 			credentialsRepository.findOneBy.mockResolvedValue(null);
 
 			await expect(
-				service.update('missing', mock<ICredentialsDb>({ id: 'missing' })),
+				service.update('missing', mock<ICredentialsDb>({ id: 'missing' }), ownerActor),
 			).resolves.toBeNull();
 
 			expect(policyEnforcementService.enforceCredentialSave).not.toHaveBeenCalled();
@@ -1627,7 +1636,11 @@ describe('CredentialsService', () => {
 			);
 
 			await expect(
-				service.update('project-credential', mock<ICredentialsDb>({ id: 'project-credential' })),
+				service.update(
+					'project-credential',
+					mock<ICredentialsDb>({ id: 'project-credential' }),
+					ownerActor,
+				),
 			).rejects.toThrow(PolicyViolationError);
 
 			expect(credentialsRepository.runInTransaction).not.toHaveBeenCalled();
@@ -1648,7 +1661,7 @@ describe('CredentialsService', () => {
 				new Map([[credential.id, { accountIdentifier: 'me@gmail.com' }]]),
 			);
 
-			const result = await service.update(credential.id, encrypted, undefined, {
+			const result = await service.update(credential.id, encrypted, ownerActor, undefined, {
 				user: ownerUser,
 			});
 
@@ -1672,7 +1685,7 @@ describe('CredentialsService', () => {
 			setRepositoryTransaction(transactionManager);
 			const encrypted = mock<ICredentialsDb>({ id: credential.id });
 
-			await service.update(credential.id, encrypted);
+			await service.update(credential.id, encrypted, ownerActor);
 
 			expect(connectionStatusProxy.findMyConnections).not.toHaveBeenCalled();
 		});
