@@ -111,6 +111,52 @@ describe('active skills', () => {
 		]);
 	});
 
+	it('restores a reference loaded by its owner file path and adds its tool dependencies', async () => {
+		const referenceSource = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Build one workflow.',
+			},
+			{
+				id: 'models',
+				name: 'models',
+				description: 'Load before choosing a model.',
+				instructions: 'Model rules.',
+				parents: ['builder'],
+				reference: { owner: 'builder', path: 'references/models.md' },
+				dependencies: { tools: ['searchModels'] },
+			},
+		]);
+		const memory = new InMemoryMemory();
+		const list = new AgentMessageList();
+		list.addHistory([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'load_skill',
+						toolCallId: 'reference-load',
+						input: { skillId: 'builder', filePath: 'references/models.md' },
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'Model rules.' }] },
+					},
+				],
+			},
+		]);
+		const active = new ActiveSkills(referenceSource, 'assistant', memory.skillState);
+
+		await active.restore(list, scope);
+
+		expect(list.activeSkillIds).toEqual(['models']);
+		expect(active.toolDependencies()).toEqual(['searchModels']);
+		expect(JSON.stringify(active.modelMessages(list.forLlm('').messages, list))).toContain(
+			'[Reference of: \\"builder\\"]',
+		);
+	});
+
 	it('recovers a skill into the system block once observation masks its load', async () => {
 		const memory = new InMemoryMemory();
 		const list = new AgentMessageList();

@@ -303,6 +303,45 @@ describe('buildSystemMessages — volatile tool-instruction fragments', () => {
 		});
 	});
 
+	it('places skill instructions in their own cached message between base and volatile', () => {
+		const cacheOptions = {
+			anthropic: { cacheControl: { type: 'ephemeral' as const } },
+		};
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			cacheOptions,
+			undefined,
+			undefined,
+			true,
+			'<active_skill>Skill body</active_skill>',
+		);
+
+		expect(system).toEqual([
+			{ role: 'system', content: 'Base instructions', providerOptions: cacheOptions },
+			{
+				role: 'system',
+				content: '\n\n<active_skill>Skill body</active_skill>',
+				providerOptions: cacheOptions,
+			},
+			{ role: 'system', content: '\n\n<observations>\n* Some memory.\n</observations>' },
+		]);
+	});
+
+	it('merges skill instructions after the base when split messages are unsupported', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			false,
+			'Skill body',
+		);
+
+		expect(system).toEqual({ role: 'system', content: 'Base instructions\n\nSkill body' });
+	});
+
 	it('keeps the single-message shape when neither observation memory nor volatile instructions are present', () => {
 		const system = buildSystemMessages('Base instructions', undefined, undefined, undefined);
 
