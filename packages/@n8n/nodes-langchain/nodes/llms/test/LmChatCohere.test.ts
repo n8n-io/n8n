@@ -1,4 +1,4 @@
-import { HumanMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -84,5 +84,44 @@ describe('LmChatCohere', () => {
 		// Cohere requires `/v2/chat` for current models; `/v1/chat` returns a 400
 		// "this model is not supported with '/v1/chat', please use '/v2/chat'".
 		expect(new URL(chatUrl ?? '').pathname).toBe('/v2/chat');
+	});
+
+	it('should preserve tool calls and results in the Cohere v2 request', async () => {
+		const context = setupMockContext();
+		let requestBody: unknown;
+		const fetchSpy = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+			requestBody = JSON.parse(init?.body?.toString() ?? '{}');
+			return new Response(JSON.stringify({ text: 'The calculator returned 4.' }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' },
+			});
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { response } = await lmChatCohere.supplyData.call(context, 0);
+		await (response as { invoke: (input: unknown) => Promise<unknown> }).invoke([
+			new HumanMessage('What is 2 + 2?'),
+			new AIMessage({
+				content: '',
+				tool_calls: [{ id: 'call_1', name: 'calculator', args: { expression: '2 + 2' } }],
+			}),
+			new ToolMessage({ content: '4', tool_call_id: 'call_1' }),
+		]);
+
+		expect(requestBody).toMatchObject({
+			messages: [
+				{ role: 'user', content: 'What is 2 + 2?' },
+				{
+					role: 'assistant',
+					tool_calls: [
+						{
+							id: 'tool_call_1_0',
+							function: { name: 'calculator', arguments: '{"expression":"2 + 2"}' },
+						},
+					],
+				},
+				{ role: 'tool', tool_call_id: 'tool_call_1_0', content: '[{"output":"4"}]' },
+			],
+		});
 	});
 });
