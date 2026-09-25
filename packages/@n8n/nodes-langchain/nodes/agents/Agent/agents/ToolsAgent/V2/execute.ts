@@ -429,6 +429,10 @@ export async function toolsAgentExecute(
 			// This is only used to check if the output parser is connected
 			// so we can parse the output if needed. Actual output parsing is done in the loop above
 			const outputParser = await getOptionalOutputParser(this, 0);
+			// Deferred until every settled result in the batch has run onItemFinished,
+			// so a rejection early in the batch does not skip the observer callback
+			// for items that follow it.
+			let batchError: NodeOperationError | undefined;
 			for (const [index, result] of batchResults.entries()) {
 				const itemIndex = i + index;
 				if (result.status === 'rejected') {
@@ -445,7 +449,8 @@ export async function toolsAgentExecute(
 						});
 						continue;
 					} else {
-						throw new NodeOperationError(this.getNode(), error);
+						batchError ??= new NodeOperationError(this.getNode(), error);
+						continue;
 					}
 				}
 				const { response, toolCallsCounted } = result.value;
@@ -474,6 +479,7 @@ export async function toolsAgentExecute(
 				returnData.push(itemResult);
 				await hooks.onItemFinished?.(itemIndex);
 			}
+			if (batchError) throw batchError;
 
 			if (i + batchSize < items.length && delayBetweenBatches > 0) {
 				await sleep(delayBetweenBatches);

@@ -372,6 +372,64 @@ describe('toolsAgentExecute', () => {
 		});
 	});
 
+	it('flushes onItemFinished for every settled batch result before throwing when continueOnFail is false', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([
+			{ json: { text: 'test input 1' } },
+			{ json: { text: 'test input 2' } },
+		]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		const mockTools = [mock<Tool>()];
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'options.batching.batchSize') return 2;
+			if (param === 'options.batching.delayBetweenBatches') return 0;
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		mockContext.continueOnFail.mockReturnValue(false);
+
+		const mockExecutor = {
+			invoke: vi
+				.fn()
+				.mockRejectedValueOnce(new Error('Test error'))
+				.mockResolvedValueOnce({ output: { text: 'success' } }),
+		};
+
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		const onItemFinished = vi.fn().mockResolvedValue(undefined);
+
+		await expect(toolsAgentExecute.call(mockContext, { onItemFinished })).rejects.toThrow(
+			'Test error',
+		);
+
+		// Item 0 rejected and item 1 settled successfully; both are in the same
+		// batch, so the observer callback must still run for item 1 even though
+		// the batch as a whole throws because item 0 failed.
+		expect(onItemFinished).toHaveBeenCalledWith(0);
+		expect(onItemFinished).toHaveBeenCalledWith(1);
+	});
+
 	it('should surface a useful message when a tool throws a plain Error("Error") with continueOnFail', async () => {
 		const mockNode = mock<INode>();
 		mockNode.typeVersion = 2;

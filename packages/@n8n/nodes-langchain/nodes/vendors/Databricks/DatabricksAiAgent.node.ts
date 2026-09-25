@@ -121,7 +121,10 @@ export class DatabricksAiAgent implements INodeType {
 		name: 'databricksAiAgent',
 		icon: { light: 'file:databricks.svg', dark: 'file:databricks.dark.svg' },
 		group: ['transform'],
-		version: [1],
+		// The shared ToolsAgent executor only takes the streaming branch at
+		// typeVersion >= 2.1 (see execute.ts); this node exposes "Enable
+		// Streaming" default-on, so it must declare at least that version.
+		version: [2.1],
 		hidden: true,
 		description: 'An AI agent that exports its runs to MLflow Tracing in Databricks',
 		defaults: {
