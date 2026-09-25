@@ -104,6 +104,22 @@ export class ContinueApplyPackageDto extends Z.class(
 	{ strict: true },
 ) {}
 
+export class ApplySelectionDto extends Z.class(
+	{
+		workflowIds: z.array(n8nIdSchema).min(1),
+		expectedSource: expectedSourceSchema.optional(),
+	},
+	{ strict: true },
+) {}
+
+export class ContinueApplySelectionDto extends Z.class(
+	{
+		workflowIds: z.array(n8nIdSchema).min(1),
+		expectedSource: expectedSourceSchema,
+	},
+	{ strict: true },
+) {}
+
 const applyPackageIdentitySchema = z.object({
 	connectionId: n8nIdSchema,
 	configId: n8nIdSchema,
