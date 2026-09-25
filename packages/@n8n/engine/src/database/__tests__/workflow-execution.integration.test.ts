@@ -269,5 +269,18 @@ describe('workflow_execution table (integration)', () => {
 			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe(expected);
 		});
+
+		it('does not write when the status already holds', async () => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const id = await seed('running', ['running']);
+			const before = await repo.findOneOrFail({ where: { id } });
+
+			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+
+			// The timestamp is the only trace of the write. A settling step must not
+			// take the execution row's lock to store the status it already has.
+			const after = await repo.findOneOrFail({ where: { id } });
+			expect(after.updatedAt).toEqual(before.updatedAt);
+		});
 	});
 });
