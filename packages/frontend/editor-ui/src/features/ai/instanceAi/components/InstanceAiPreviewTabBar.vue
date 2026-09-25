@@ -12,6 +12,7 @@ import {
 	TabsTrigger,
 } from 'reka-ui';
 import { computed, nextTick, reactive, ref, shallowRef, watch } from 'vue';
+import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import { getWorkflow } from '@/app/api/workflows';
@@ -122,11 +123,12 @@ function handleOpenInEditor(tab: ArtifactTab) {
 }
 
 type WorkflowSummary = { updatedAt: string; published: boolean };
+type HoverTarget = { tab: ArtifactTab; reference: HTMLElement };
 
 // The AI and the user can both edit a workflow while its tab is open, so each
 // hover refetches. The cached value shows until the fresh one arrives.
 const workflowSummaries = reactive(new Map<string, WorkflowSummary>());
-const hoveredTab = shallowRef<{ tab: ArtifactTab; reference: HTMLElement } | null>(null);
+const hoveredTab = shallowRef<HoverTarget | null>(null);
 const hoveredSummary = computed(() =>
 	hoveredTab.value ? workflowSummaries.get(hoveredTab.value.tab.id) : undefined,
 );
@@ -143,13 +145,52 @@ async function loadWorkflowSummary(workflowId: string) {
 	}
 }
 
+const TAB_HOVER_CARD_OPEN_DELAY_MS = 250;
+// Long enough to cross the gap between two tabs, so the open card moves to the
+// next tab instead of closing and waiting for the open delay again.
+const TAB_HOVER_CARD_CLOSE_GRACE_MS = 100;
+
+function setHoveredTab(target: HoverTarget) {
+	hoveredTab.value = target;
+	if (target.tab.type === 'workflow' && !target.tab.pending) {
+		void loadWorkflowSummary(target.tab.id);
+	}
+}
+
+const { start: startOpenTimer, stop: stopOpenTimer } = useTimeoutFn(
+	setHoveredTab,
+	TAB_HOVER_CARD_OPEN_DELAY_MS,
+	{ immediate: false },
+);
+
+const { start: startCloseTimer, stop: stopCloseTimer } = useTimeoutFn(
+	() => {
+		hoveredTab.value = null;
+	},
+	TAB_HOVER_CARD_CLOSE_GRACE_MS,
+	{ immediate: false },
+);
+
 function showTabHoverCard(tab: ArtifactTab, event: MouseEvent) {
 	if (!(event.currentTarget instanceof HTMLElement)) return;
-	hoveredTab.value = { tab, reference: event.currentTarget };
-	if (tab.type === 'workflow' && !tab.pending) void loadWorkflowSummary(tab.id);
+	const target = { tab, reference: event.currentTarget };
+	stopCloseTimer();
+
+	if (hoveredTab.value) {
+		setHoveredTab(target);
+	} else {
+		startOpenTimer(target);
+	}
+}
+
+function scheduleHideTabHoverCard() {
+	stopOpenTimer();
+	if (hoveredTab.value) startCloseTimer();
 }
 
 function hideTabHoverCard() {
+	stopOpenTimer();
+	stopCloseTimer();
 	hoveredTab.value = null;
 }
 
@@ -191,7 +232,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 						:data-tab-id="tab.id"
 						:class="$style.tab"
 						@mouseenter="showTabHoverCard(tab, $event)"
-						@mouseleave="hideTabHoverCard"
+						@mouseleave="scheduleHideTabHoverCard"
 						@contextmenu="hideTabHoverCard"
 					>
 						<N8nIcon
