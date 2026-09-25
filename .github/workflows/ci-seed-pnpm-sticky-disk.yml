@@ -19,28 +19,14 @@ jobs:
     permissions:
       contents: read
       packages: read
-    container:
-      image: ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v2
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ github.token }}
-      options: --privileged
-      env:
-        VM_ID: ${{ env.VM_ID }}
-        GITHUB_REPO_NAME: ${{ env.GITHUB_REPO_NAME }}
-        BLACKSMITH_STICKYDISK_TOKEN: ${{ env.BLACKSMITH_STICKYDISK_TOKEN }}
-        BLACKSMITH_INSTALLATION_MODEL_ID: ${{ env.BLACKSMITH_INSTALLATION_MODEL_ID }}
-        BLACKSMITH_REGION: ${{ env.BLACKSMITH_REGION }}
     steps:
-      - name: Trust checkout directory
-        run: |
-          {
-            echo 'GIT_CONFIG_COUNT=1'
-            echo 'GIT_CONFIG_KEY_0=safe.directory'
-            echo "GIT_CONFIG_VALUE_0=$GITHUB_WORKSPACE"
-          } >> "$GITHUB_ENV"
-
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+
+      - name: Set up pinned tools without installing dependencies
+        uses: ./.github/actions/setup-nodejs
+        with:
+          install-command: ''
+          build-command: ''
 
       - name: Mount pnpm store
         uses: useblacksmith/stickydisk@94697d49e77d0dd78b77deb85ad3de63a28b4b8a # v1
@@ -56,13 +42,6 @@ jobs:
           test "$(pnpm --version)" = 12.4.2
           test "$(pnpm --store-dir /pnpm-sticky-store store path --silent)" = /pnpm-sticky-store/v11
           du -sh /pnpm-sticky-store
-
-      - name: Activate SafeChain
-        run: |
-          mkdir -p "$HOME/.safe-chain/bin"
-          cp "$GITHUB_WORKSPACE/.github/actions/setup-nodejs/safe-chain.config.json" "$HOME/.safe-chain/config.json"
-          cp /opt/ci-toolchain/safe-chain "$HOME/.safe-chain/bin/safe-chain"
-          "$HOME/.safe-chain/bin/safe-chain" setup-ci
 
       - name: Verify SafeChain and fill store
         env:

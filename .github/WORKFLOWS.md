@@ -714,9 +714,10 @@ once new-disk retention works.
 disk. Dispatch it manually on `master` before rerunning the container pilot PR.
 The workflow mounts `/pnpm-sticky-store` under key
 `n8n-io-n8n-pnpm-pilot-linux-amd64-v11`, then installs the lockfile without
-lifecycle scripts. Blacksmith branch protection permits this default-branch
-dispatch to commit the store. Pull request jobs can read it, but cannot commit
-their changes. This workflow does not run during regular CI.
+lifecycle scripts. The seed runs on the host so the sticky-disk action can read
+the runner diagnostics before it commits. Blacksmith branch protection permits
+this default-branch dispatch to commit the store. Pull request jobs can read it,
+but cannot commit their changes. This workflow does not run during regular CI.
 
 ### run-workflow-script
 
