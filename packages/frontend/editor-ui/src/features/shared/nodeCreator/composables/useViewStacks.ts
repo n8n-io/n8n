@@ -585,17 +585,24 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const hasTriggerGroup = item.properties.group.includes('trigger');
 		const hasActions = getFilteredActions(stack, item, nodeCreatorStore.actions).length > 0;
 
-		if (hasTriggerGroup && hasActions) {
-			if (item.properties?.codex) {
-				// Store the original name in the alias so we can search for it
-				item.properties.codex.alias = [
-					...(item.properties.codex?.alias || []),
-					item.properties.displayName,
-				];
-			}
-			item.properties.displayName = item.properties.displayName.replace(' Trigger', '');
-		}
-		return item;
+		if (!hasTriggerGroup || !hasActions) return item;
+
+		// Items are cached and share `codex` with the node types, so copy before changing them
+		const { properties } = item;
+		return {
+			...item,
+			properties: {
+				...properties,
+				displayName: properties.displayName.replace(' Trigger', ''),
+				...(properties.codex && {
+					// Store the original name in the alias so we can search for it
+					codex: {
+						...properties.codex,
+						alias: [...(properties.codex.alias ?? []), properties.displayName],
+					},
+				}),
+			},
+		};
 	}
 
 	function subcategoryStack(item: SubcategoryCreateElement, rootView?: NodeFilterType): ViewStack {
