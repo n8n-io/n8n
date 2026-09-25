@@ -1,11 +1,15 @@
 packages/@n8n/cli/README.md
   s_7d92849ff15ae6::t_55d552511f3110 66
+  s_05d5af644e740b::t_7f219775e6d26c 66
 packages/@n8n/cli/docs/commands/package.md
   s_7d92849ff15ae6::t_71d1a5a622dac8 125-144,150-153,156-158,163-164,166,173-179
+  s_05d5af644e740b::t_7f219775e6d26c 125-144,150-153,156-158,163-164,166,173-179
 packages/@n8n/cli/src/__tests__/client.test.ts
   s_7d92849ff15ae6::t_bb28e8db86bc06 335-405
+  s_05d5af644e740b::t_e369a697560564 335-405
 packages/@n8n/cli/src/commands/package/import-selection.ts
   s_7d92849ff15ae6::t_d8aee70dc07d0c 10,20,35
+  s_05d5af644e740b::t_7f219775e6d26c 10,20,35
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -13,6 +17,14 @@ packages/@n8n/cli/src/commands/package/import-selection.ts
   "base_commit_sha": "ebb3723c0a6b1a0be52b7d821443f7bd1bff8e7c",
   "prompts": {},
   "sessions": {
+    "s_05d5af644e740b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d73c-24f8-7b72-a2ea-cd66a75489cb",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_7d92849ff15ae6": {
       "agent_id": {
         "tool": "claude",
