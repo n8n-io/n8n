@@ -27,6 +27,7 @@
     "@n8n/stores": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@vueuse/core": "catalog:frontend",
+    "n8n-workflow": "workspace:*",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend"
   },

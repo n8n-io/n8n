@@ -105,7 +105,7 @@ It implements all seven points:
 
 | Point               | What it reads                                      |
 | ------------------- | -------------------------------------------------- |
-| the five workflow points | the keys of every node's `credentials` map    |
+| the five workflow points | the keys of every node's `credentials` map, the type HTTP Request names by parameter, and `extendsCredential` |
 | `credentialSave`    | the type of the credential being written           |
 | `credentialDecrypt` | `credentialType` — the credential's own type       |
 
@@ -126,6 +126,25 @@ else about the shape matches the node check.
 Workflow-point grandfathering works the same way, one level down: the save diff compares
 credential **types**, so swapping which `slackApi` credential a node uses, or copying the node,
 adds nothing to police.
+
+### Credential-only nodes
+
+The VirusTotal, Sysdig and Zabbix nodes, and every other node the editor generates from a
+credential type with `httpRequestNode`, are HTTP Request with one credential type attached. The
+editor names them `n8n-creds-base.<credentialType>` and stores them as
+`n8n-nodes-base.httpRequest` with `extendsCredential: '<credentialType>'`. No package registers
+the generated name, so the backend never sees it.
+
+Both kinds agree on such a node: it is available when `n8n-nodes-base.httpRequest` is available
+under the node kind **and** its credential type is available under the credential kind. The node
+check judges the stored `httpRequest` node; this check judges `extendsCredential` (and the
+parameter and `credentials` sources, which name the same type once configured). The frontend
+module composes the same two verdicts for the nodes panel, so a credential type rule on
+`virusTotalApi` hides the VirusTotal node and leaves HTTP Request and Sysdig in place.
+
+A node type rule on `n8n-creds-base.*` would match nothing, so the service refuses it at every
+write and names the credential type rule to write instead. Blocking HTTP Request itself still
+hides every credential-only node, as before.
 
 ### What the second kind costs
 
