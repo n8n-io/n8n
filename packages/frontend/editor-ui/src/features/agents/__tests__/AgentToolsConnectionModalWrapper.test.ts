@@ -1219,7 +1219,6 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			render();
 			await flushPromises();
 
-			// The wrapper marks; ToolsConnectionModal owns the order and the row treatment.
 			expect(restrictedSlackItem()).toMatchObject({
 				restriction: { available: false, scope: 'instance' },
 			});

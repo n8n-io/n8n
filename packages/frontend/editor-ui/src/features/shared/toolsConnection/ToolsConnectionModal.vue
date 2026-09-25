@@ -225,7 +225,6 @@ function tabCount(category: ToolCategoryKey): string {
 
 type ListRow = FlattenedRow | { key: 'suggestion' };
 
-/** Restricted tools stay findable but sit after every usable tool, on every tab. */
 const toolRows = computed<FlattenedRow[]>(() =>
 	partitionLast(itemsForCategory(activeCategory.value).filter(matchesQuery), isRestrictedItem).map(
 		(item) => ({ key: `item:${item.id}`, item }),

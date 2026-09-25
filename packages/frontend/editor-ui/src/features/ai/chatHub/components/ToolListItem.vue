@@ -18,7 +18,6 @@ const props = defineProps<{
 	installing?: boolean;
 	/** Non-admin cannot install; button is disabled with contact-admin tooltip. */
 	installDisabled?: boolean;
-	/** A node type policy blocks this type: greyed, a lock with the explanation, no Add action. */
 	restriction?: NodeTypeAvailability;
 }>();
 
@@ -55,7 +54,6 @@ const actionDisabled = computed(
 	() => props.communityPreview && (props.installing || props.installDisabled),
 );
 
-// The popover anchors to the whole row and opens while the lock has keyboard focus.
 const rowRef = ref<HTMLElement | null>(null);
 </script>
 
@@ -203,7 +201,6 @@ const rowRef = ref<HTMLElement | null>(null);
 	}
 }
 
-// Fade the row body, not the trailing lock, so the explanation keeps full strength.
 .restricted {
 	cursor: not-allowed;
 

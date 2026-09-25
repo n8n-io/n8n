@@ -1,8 +1,4 @@
-/**
- * Stable partition: items that match `predicate` move after every other item, and both groups
- * keep their original order. Returns the input array itself when nothing matches, so callers can
- * rely on reference equality to detect "no change".
- */
+/** Stable: moves matches to the end. Returns `items` itself when nothing matches. */
 export function partitionLast<T>(items: T[], predicate: (item: T) => boolean): T[] {
 	const rest: T[] = [];
 	const last: T[] = [];

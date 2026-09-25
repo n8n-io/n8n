@@ -101,8 +101,6 @@ const restriction = computed(() =>
 	props.item.kind === 'node' ? props.item.restriction : undefined,
 );
 
-// The popover anchors to the whole row and opens while the row has keyboard focus, so the main
-// button stays focusable and only its click is inert.
 const rowRef = ref<HTMLElement | null>(null);
 
 /**
@@ -341,7 +339,6 @@ function handleConnect() {
 	}
 }
 
-// Fade the row body, not the trailing lock, so the explanation keeps full strength.
 .rowRestricted {
 	.mainAction {
 		cursor: not-allowed;

@@ -63,10 +63,7 @@ export interface BaseConnectionItem {
 export interface NodeConnectionItem extends BaseConnectionItem {
 	kind: 'node';
 	nodeTypeName: string;
-	/**
-	 * Set when a node type policy blocks this type. The row greys out, shows a lock with the
-	 * explanation, and ignores activation. The consumer decides; the row only renders.
-	 */
+	/** Set when a node type policy blocks this type. */
 	restriction?: NodeTypeAvailability;
 }
 

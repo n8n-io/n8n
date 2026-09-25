@@ -227,7 +227,6 @@ const matchingAvailableTools = computed(() => {
 	return [...base, ...previews];
 });
 
-/** Restricted tools stay findable but sit after every usable tool. */
 const filteredAvailableTools = computed(() =>
 	partitionLast(matchingAvailableTools.value, (nodeType) => isNodeItemRestricted(nodeType.name)),
 );

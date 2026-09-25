@@ -295,7 +295,6 @@ onMounted(() => {
 	}
 });
 
-// The policy store is passive and per project; the agent's tools run in this project.
 watch(
 	() => props.data.projectId,
 	(projectId) => {
@@ -342,8 +341,7 @@ function commit() {
 }
 
 function addToolRef(savedRef: AgentJsonToolRef) {
-	// The policy can finish loading while the config form is open, so re-check here
-	// rather than trusting the picker-time check that opened it.
+	// The policy can finish loading while the config form is open.
 	if (savedRef.type === 'node' && getNodeItemRestriction(savedRef.node.nodeType)) return;
 
 	workingToolEntries.value = [...workingToolEntries.value, { localId: uuidv4(), ref: savedRef }];

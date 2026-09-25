@@ -12,10 +12,7 @@ const props = defineProps<{
 	scope?: NodeTypeAvailabilityScope;
 	/** The list row the popover explains. It opens beside this element, not beside the lock. */
 	anchor?: MaybeElement;
-	/**
-	 * The row is the keyboard-active item without holding DOM focus (a virtual list selection),
-	 * which opens the popover like a hover does. Real focus inside `anchor` is tracked here.
-	 */
+	/** Keyboard-active without DOM focus, such as a virtual list selection. */
 	active?: boolean;
 }>();
 
@@ -34,9 +31,8 @@ const contentRef = ref<HTMLElement | null>(null);
 const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
 const isContactAdminOpen = ref(false);
-// Content is teleported, so tabbing into it leaves the anchor's focus-within; track both.
-// The contact-admin dialog closes this: the popover stacks above modals, so it would
-// otherwise float over the dialog while the pointer or focus is still on it.
+// Content is teleported, so focus in it is outside the anchor.
+// Close for the contact-admin dialog, which this would otherwise cover.
 const { focused: anchorFocused } = useFocusWithin(anchorElement);
 const { focused: contentFocused } = useFocusWithin(contentRef);
 const open = computed(
@@ -58,7 +54,7 @@ const scopeKey = computed<BaseTextKey>(
 
 <template>
 	<span :class="$style.root">
-		<!-- The tool pickers render this inside a modal, so the default z-index puts it behind the backdrop. -->
+		<!-- The tool pickers render this inside a modal. -->
 		<N8nPopover
 			:open="open"
 			side="left"
