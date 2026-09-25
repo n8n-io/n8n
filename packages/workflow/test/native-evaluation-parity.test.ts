@@ -114,6 +114,16 @@ const RUNTIME_BAILOUT_CORPUS: string[] = [
 	"={{ $json.item.name.replace($json.item.re, 'X') }}",
 	'={{ $json.item.name.includes($json.item.re) }}',
 	'={{ $json.item.name.slice($json.item.my_object) }}',
+	// Object arguments to array methods: coercion hooks, or a live-reference
+	// comparison where the isolate compares copies.
+	'={{ $json.item.names.includes($json.item.my_object) }}',
+	'={{ $json.item.names.concat($json.item.my_object) }}',
+	'={{ $json.item.names.slice($json.item.my_object) }}',
+	// Sparse arrays: holes do not cross the bridge the way they exist here.
+	'={{ $json.item.sparse }}',
+	'={{ $json.item.sparse.flat() }}',
+	'={{ $json.item.sparse.slice(0) }}',
+	'={{ $json.item.names.concat($json.item.sparse) }}',
 ];
 
 const DECLINED_CORPUS: string[] = [
@@ -207,6 +217,8 @@ describe('Expression - fast native evaluation parity', () => {
 				big: 'y'.repeat(20_000),
 				manyEmpty: new Array<string>(20_000).fill(''),
 				re: /o/g,
+				// eslint-disable-next-line no-sparse-arrays
+				sparse: [1, , 3] as unknown[],
 			},
 		},
 	});
@@ -320,7 +332,9 @@ describe('Expression - fast native evaluation parity', () => {
 	// Pinned so a change in either direction is visible.
 	describe('known divergences from the legacy engine on non-JSON data', () => {
 		const exotic = {
-			json: { item: { fn: () => 1, dt: DateTime.fromISO('2026-01-02T03:04:05Z') } },
+			json: {
+				item: { fn: () => 1, sym: Symbol('s'), dt: DateTime.fromISO('2026-01-02T03:04:05Z') },
+			},
 		};
 		const exoticRunData = runDataFor([exotic as never]);
 		const evaluateExotic = (expr: string, native: boolean) =>
@@ -334,6 +348,14 @@ describe('Expression - fast native evaluation parity', () => {
 			if (legacy)
 				expect(() => evaluateExotic('={{ $json.item.fn }}', false)).toThrow('this is a function');
 			else expect(evaluateExotic('={{ $json.item.fn }}', false)).toBeUndefined();
+		});
+
+		test('a symbol-valued read is undefined natively; legacy returns the symbol', () => {
+			const legacy = isLegacy();
+			expect(evaluateExotic('={{ $json.item.sym }}', true)).toBeUndefined();
+			const viaEngine = evaluateExotic('={{ $json.item.sym }}', false);
+			if (legacy) expect(typeof viaEngine).toBe('symbol');
+			else expect(viaEngine).toBeUndefined();
 		});
 
 		test('a whole-value DateTime read is a copy natively; legacy returns the instance', () => {

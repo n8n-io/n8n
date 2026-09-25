@@ -298,6 +298,8 @@ const isIndexable = (value: unknown): value is Record<string | number, unknown> 
 const isPrimitive = (value: unknown): boolean =>
 	value === null || (typeof value !== 'object' && typeof value !== 'function');
 
+const hasHoles = (array: unknown[]): boolean => Object.keys(array).length !== array.length;
+
 function bounded<T>(value: T): T {
 	if ((typeof value === 'string' || Array.isArray(value)) && value.length > MAX_RESULT_LENGTH) {
 		throw new EngineFallbackError();
@@ -342,11 +344,10 @@ function evalMember(
 		throw new TypeError(`Cannot read properties of ${String(object)} (reading '${node.key}')`);
 	}
 	const value = object[node.key];
-	// Never surface functions: matches the VM bridge, whose getValueAtPath
-	// returns undefined for function-typed values. (The legacy engine returns
-	// the function and the caller throws "this is a function" - a pre-existing
-	// engine divergence; we side with the default engine.)
-	return typeof value === 'function' ? undefined : value;
+	// Never surface functions or symbols: matches the VM bridge, whose transfer
+	// drops both. (The legacy engine returns them - a pre-existing engine
+	// divergence; we side with the isolated engines.)
+	return typeof value === 'function' || typeof value === 'symbol' ? undefined : value;
 }
 
 function evalCall(
@@ -371,11 +372,16 @@ function evalCall(
 	const method: unknown = Reflect.get(proto, node.method);
 	if (typeof method !== 'function') throw new EngineFallbackError();
 	const args = node.args.map((argument) => evalNode(argument, data));
-	// String and number methods only take primitives here. An object argument
+	// Arguments are primitives, plus arrays for concat. An object argument
 	// could be a RegExp (a live pattern with no isolate timeout, and one the
-	// engines never see as a regex) or trigger a coercion hook. Array methods
-	// keep object arguments: concat needs them and none invokes a protocol.
-	if (proto !== Array.prototype && !args.every(isPrimitive)) throw new EngineFallbackError();
+	// engines never see as a regex), trigger a coercion hook, or compare by
+	// live reference where the isolate compares copies (includes/indexOf).
+	const argOk = (arg: unknown) =>
+		isPrimitive(arg) || (node.method === 'concat' && Array.isArray(arg) && !hasHoles(arg));
+	if (!args.every(argOk)) throw new EngineFallbackError();
+	// Holes survive here and not across the bridge, so a sparse receiver is the
+	// engine's.
+	if (Array.isArray(receiver) && hasHoles(receiver)) throw new EngineFallbackError();
 	preflightSize(receiver, node.method, args);
 	return bounded(method.apply(receiver, args) as unknown);
 }
@@ -545,6 +551,7 @@ export function evaluateNatively(
 // The `$parameter` root is a Proxy and cannot be cloned: the engine owns it.
 function copyResult(value: unknown): unknown {
 	if (!isObj(value)) return value;
+	if (Array.isArray(value) && hasHoles(value)) throw new EngineFallbackError();
 	try {
 		return structuredClone(value);
 	} catch {
