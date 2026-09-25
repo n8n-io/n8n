@@ -100,12 +100,7 @@ export class EngineV2WebhookResponder {
 		const pending: PendingWebhook = { response, unsubscribe: () => {} };
 		this.pendingWebhooks.set(executionId, pending);
 
-		try {
-			pending.unsubscribe = await this.subscribe(receiver, response);
-		} catch (error) {
-			response.release();
-			throw error;
-		}
+		pending.unsubscribe = await this.subscribe(receiver, response);
 
 		return response;
 	}
@@ -114,6 +109,8 @@ export class EngineV2WebhookResponder {
 	 * A transport can wait for its broker, for example Redis while it reconnects.
 	 * A separate timer bounds that wait, so the request cannot stay open while
 	 * the broker is down. The run is not started when the wait runs out.
+	 *
+	 * If the subscription fails or times out, this releases the slot.
 	 */
 	private async subscribe(
 		receiver: ExecutionResponseReceiver,
@@ -128,10 +125,18 @@ export class EngineV2WebhookResponder {
 			timeoutTimer = setTimeout(() => resolve('timed-out'), SUBSCRIBE_TIMEOUT_MS).unref();
 		});
 
-		const result = await Promise.race([subscription, timedOut]).finally(() =>
-			clearTimeout(timeoutTimer),
-		);
+		let result: UnsubscribeExecutionResponse | 'timed-out';
+		try {
+			result = await Promise.race([subscription, timedOut]);
+		} catch (error) {
+			response.release();
+			throw error;
+		} finally {
+			clearTimeout(timeoutTimer);
+		}
+
 		if (result === 'timed-out') {
+			response.release();
 			// The subscription can still complete. It must not outlive the request.
 			void subscription.then(
 				(unsubscribe) => unsubscribe(),

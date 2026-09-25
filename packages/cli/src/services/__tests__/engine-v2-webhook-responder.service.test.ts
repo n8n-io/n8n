@@ -363,13 +363,14 @@ describe('EngineV2WebhookResponder while the receiver subscribes', () => {
 		await rejection;
 		expect(vi.getTimerCount()).toBe(0);
 
+		// The slot is free before the late subscription completes.
+		const retried = responder.waitForResponse(executionId);
+		await vi.waitFor(() => expect(subscriptions).toHaveLength(2));
+
 		const unsubscribe = vi.fn();
 		subscriptions[0].resolve(unsubscribe);
 		await vi.waitFor(() => expect(unsubscribe).toHaveBeenCalledTimes(1));
 
-		// The slot is free again.
-		const retried = responder.waitForResponse(executionId);
-		await vi.waitFor(() => expect(subscriptions).toHaveLength(2));
 		subscriptions[1].resolve(() => {});
 		await expect(retried).resolves.toBeDefined();
 	});
