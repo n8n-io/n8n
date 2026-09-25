@@ -2912,6 +2912,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
       zod:
         specifier: 3.25.76
         version: 3.25.76
