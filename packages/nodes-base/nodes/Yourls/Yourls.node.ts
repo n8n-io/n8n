@@ -55,11 +55,14 @@ export class Yourls implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
+			// Built fresh per item: this used to be declared once outside the loop and reused,
+			// so a key set for one item (e.g. from Additional Fields) stayed set on the shared
+			// object and silently leaked into every later item's request.
+			const qs: IDataObject = {};
 			try {
 				if (resource === 'url') {
 					if (operation === 'shorten') {
