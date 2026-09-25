@@ -18,7 +18,6 @@ import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-id
 import {
 	extractAskUserAnswers,
 	extractAskUserQuestions,
-	extractPlanTasks,
 	extractSetupCardRequests,
 	extractSetupWizardOutcome,
 } from '../outcome/transcript-from-events';
@@ -563,7 +562,7 @@ interface SeedToolCall {
 	output?: Record<string, unknown>;
 }
 
-/** Maps a seeded tool-call to its special transcript step (ask-user/plan/setup),
+/** Maps a seeded tool-call to its special transcript step (ask-user/setup),
  *  mirroring the live SSE transcript. Returns null to fall through. */
 type SeedStepInterpreter = (call: SeedToolCall) => TranscriptStep | null;
 
@@ -577,13 +576,6 @@ const interpretAskUser: SeedStepInterpreter = (call) => {
 		? extractAskUserAnswers(call.output.answers)
 		: undefined;
 	return { kind: 'ask-user', questions: parsed, answers };
-};
-
-const interpretPlan: SeedStepInterpreter = (call) => {
-	const tasks = call.input?.tasks;
-	if (call.toolName !== ORCHESTRATION_TOOL_IDS.CREATE_TASKS || !Array.isArray(tasks)) return null;
-	const parsed = extractPlanTasks(tasks);
-	return parsed.length > 0 ? { kind: 'plan', tasks: parsed } : null;
 };
 
 // The applied setup outcome: which nodes were configured / skipped (same
@@ -640,7 +632,6 @@ const interpretConfirmation: SeedStepInterpreter = (call) => {
 
 const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
 	interpretAskUser,
-	interpretPlan,
 	interpretSetupWizard,
 	interpretSetupCard,
 	interpretConfirmation,

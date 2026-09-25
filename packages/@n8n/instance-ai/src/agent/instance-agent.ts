@@ -22,7 +22,7 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
+import { ALWAYS_LOADED_TOOL_NAMES } from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -58,18 +58,12 @@ function resolveModalSessionModelId(
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
-function splitDeferredTools(
-	tools: InstanceAiToolRegistry,
-	options: { isCheckpointFollowUp?: boolean } = {},
-) {
+function splitDeferredTools(tools: InstanceAiToolRegistry) {
 	const coreTools = createToolRegistry();
 	const deferredTools = createToolRegistry();
 
 	for (const [name, tool] of tools) {
-		if (
-			ALWAYS_LOADED_TOOL_NAMES.has(name) ||
-			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOL_NAMES.has(name))
-		) {
+		if (ALWAYS_LOADED_TOOL_NAMES.has(name)) {
 			coreTools.set(name, tool);
 		} else {
 			deferredTools.set(name, tool);
@@ -193,9 +187,7 @@ export async function createInstanceAgent(
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
 		}) ?? allOrchestratorTools;
-	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools, {
-		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
-	});
+	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools);
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));

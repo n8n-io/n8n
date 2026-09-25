@@ -1124,9 +1124,6 @@ function classifyToolCategory(name: string): string {
 	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
 	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
 	if (name.includes('research')) return 'research';
-	if (name.includes('plan') || name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) {
-		return 'planning';
-	}
 	if (name.startsWith('workspace_')) return 'workspace';
 	if (name.includes('file') || name.includes('filesystem')) return 'filesystem';
 	return 'other';

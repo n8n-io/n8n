@@ -13,8 +13,6 @@ import type {
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './liveness-policy';
-import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
-import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
 import type { SuspendedInstanceContext } from './instance-context-state';
 
 export interface ActiveRunState {
@@ -46,20 +44,6 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	suspendPayload?: Record<string, unknown>;
 	requestId: string;
 	createdAt: number;
-	/** Set when the suspended run was a planned-task checkpoint follow-up.
-	 *  Preserved across suspend/resume so the resumed run's finalizer can
-	 *  run the deadlock fallback and reschedule. */
-	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
-	/** Set when the suspended run was a planned build-workflow follow-up. */
-	plannedBuild?: {
-		isPlannedBuildFollowUp: true;
-		buildTaskId: string;
-		workItemId: string;
-		isSupportingWorkflowTask?: boolean;
-		savedOutcome?: WorkflowBuildOutcome;
-	};
-	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
-	runHandoff?: OrchestratorRunHandoffState;
 	/** Keep the injection and gate results across suspension. Resumed segments build no new block. */
 	instanceContext?: SuspendedInstanceContext;
 }
@@ -89,8 +73,6 @@ export interface ConfirmationData {
 	}>;
 	/** User's resource-access decision (e.g. 'allowForSession'). */
 	resourceDecision?: string;
-	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
-	denied?: boolean;
 	/** `'session'` means the user chose "always allow": the resuming tool should
 	 *  persist a thread-level grant so the same action isn't re-asked. */
 	scope?: 'once' | 'session';

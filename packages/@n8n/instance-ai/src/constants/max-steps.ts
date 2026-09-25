@@ -5,7 +5,7 @@
  * based on task complexity.
  */
 export const MAX_STEPS = {
-	/** Main orchestrator — coordinates tools and planned-task follow-ups. */
+	/** Main orchestrator — coordinates tools and background follow-ups. */
 	ORCHESTRATOR: 100,
 	/** Legacy limit retained for compatibility; browser work runs in the orchestrator. */
 	BROWSER: 300,

@@ -34,7 +34,6 @@ import {
 	formatWarning,
 	getBuildFailureTrackingKey,
 	grantSessionWorkflowUpdate,
-	isApprovedBuildContext,
 	canSkipWorkflowUpdateHitl,
 	markSourceBuildFailed,
 	recordSessionOwnedWorkflow,
@@ -197,7 +196,7 @@ export const buildWorkflowInputSchema = z
 			.optional()
 			.describe(
 				'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
-					'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
+					'Save the main workflow later.',
 			),
 		preferNewCredentials: z
 			.array(z.string())
@@ -437,7 +436,6 @@ interface ValidationFailureArgs {
 	filePath: string;
 	resolvedWorkItemId: string;
 	resolvedTaskId: string;
-	plannedTaskId?: string;
 	owner: WorkflowBuildOutcome['owner'];
 	isSupportingWorkflow?: boolean;
 	isAuxiliarySupportingWorkflow?: boolean;
@@ -493,7 +491,6 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		filePath,
 		resolvedWorkItemId,
 		resolvedTaskId,
-		plannedTaskId,
 		owner,
 		isSupportingWorkflow = false,
 		isAuxiliarySupportingWorkflow = false,
@@ -518,7 +515,6 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		sourceFilePath: filePath,
 		workItemId: resolvedWorkItemId,
 		taskId: resolvedTaskId,
-		plannedTaskId,
 		owner,
 		remediation,
 		errors: formattedErrors,
@@ -776,7 +772,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			if (
 				targetWorkflowId &&
 				!canSkipUpdateHitl &&
-				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
 				if (ctx.resumeData && !ctx.resumeData.approved) {
@@ -931,18 +926,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const { name } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
 			const buildContext = context.workflowBuildContext;
-			const {
-				isAuxiliarySupportingWorkflow,
-				plannedTaskId,
-				owner,
-				resolvedWorkItemId,
-				resolvedTaskId,
-			} = resolveBuildIdentifiers({
-				context,
-				filePath,
-				inputWorkItemId: input.workItemId,
-				isSupportingWorkflow,
-			});
+			const { isAuxiliarySupportingWorkflow, owner, resolvedWorkItemId, resolvedTaskId } =
+				resolveBuildIdentifiers({
+					context,
+					filePath,
+					inputWorkItemId: input.workItemId,
+					isSupportingWorkflow,
+				});
 			const workItemKey = getBuildFailureTrackingKey({
 				workItemId: resolvedWorkItemId,
 				workflowId: targetWorkflowId,
@@ -1047,7 +1037,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					sourceFilePath: filePath,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
-					plannedTaskId,
 					owner,
 					remediation,
 					errors,
@@ -1106,7 +1095,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					filePath,
 					resolvedWorkItemId,
 					resolvedTaskId,
-					plannedTaskId,
 					owner,
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
@@ -1129,7 +1117,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					sourceFilePath: filePath,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
-					plannedTaskId,
 					owner,
 					remediation,
 					errors: [
@@ -1222,7 +1209,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					filePath,
 					resolvedWorkItemId,
 					resolvedTaskId,
-					plannedTaskId,
 					owner,
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
@@ -1333,7 +1319,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						filePath,
 						resolvedWorkItemId,
 						resolvedTaskId,
-						plannedTaskId,
 						owner,
 						isSupportingWorkflow,
 						isAuxiliarySupportingWorkflow,
@@ -1499,7 +1484,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						...(runId ? { runId } : {}),
 						taskId: resolvedTaskId,
 						owner,
-						plannedTaskId,
 						workflowId: saved.id,
 						sourceFilePath: filePath,
 						submitted: true,
@@ -1542,7 +1526,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					await promoteMainWorkflow(context, saved.id);
 					await reportWorkflowBuildOutcome(context, outcome, {
 						storeOnRunContext: !isAuxiliarySupportingWorkflow,
-						markPlannedTaskSucceeded: !isAuxiliarySupportingWorkflow,
 					});
 
 					failureTracker.clear(workItemKey);
@@ -1673,7 +1656,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						sourceFilePath: filePath,
 						workItemId: resolvedWorkItemId,
 						taskId: resolvedTaskId,
-						plannedTaskId,
 						owner,
 						remediation,
 						errors: [message],
@@ -1709,7 +1691,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					sourceFilePath: filePath,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
-					plannedTaskId,
 					owner,
 					remediation,
 					errors: [`Workflow save failed: ${message}`],

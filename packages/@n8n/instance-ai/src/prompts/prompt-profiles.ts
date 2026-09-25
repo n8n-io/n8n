@@ -4,7 +4,6 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { SkillVariant } from './skill-variants';
 import { getSystemPrompt } from '../agent/system-prompt';
-import { ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 
 export interface PromptProfile {
 	version: string;
@@ -23,8 +22,6 @@ const progressiveBuilding: SkillVariant = {
 		{ skillId: 'workflow-builder', appendFrom: 'progressive-building', useDescription: true },
 		{ skillId: 'post-build-flow', appendFrom: 'progressive-building' },
 	],
-	disabledSkills: ['planning'],
-	disabledTools: [ORCHESTRATION_TOOL_IDS.CREATE_TASKS],
 };
 
 /** Published versions are immutable. Add a new entry to change a profile. */

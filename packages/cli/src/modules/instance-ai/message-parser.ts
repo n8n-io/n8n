@@ -86,7 +86,6 @@ function isRenderableTree(tree: InstanceAiAgentNode): boolean {
 		tree.timeline.length > 0 ||
 		tree.textContent.length > 0 ||
 		tree.reasoning.length > 0 ||
-		(tree.planItems?.length ?? 0) > 0 ||
 		!!tree.tasks ||
 		!!tree.setupItemsByWorkflowId ||
 		!!tree.statusMessage ||
@@ -288,9 +287,9 @@ export function parseStoredMessages(
 	// Propagate messageGroupId across assistant rows in the same conversational
 	// turn so the dedup pass below collapses them into a single rendered message.
 	//
-	// Planned-task follow-ups (build → checkpoint → synthesize) produce one
-	// real user message followed by several orchestrator sub-runs separated by
-	// internal `<planned-task-follow-up>` user messages (filtered out earlier).
+	// Internal follow-ups (background-task completion, verification, setup) produce
+	// one real user message followed by several orchestrator sub-runs separated by
+	// internal follow-up user messages (filtered out earlier).
 	// `takeSnapshotForAssistant` only pairs the sub-runs whose snapshot
 	// timestamp lines up — the intra-turn text rows ("On it!", "The trigger
 	// is…") stay unpaired and their text is also embedded in the final paired

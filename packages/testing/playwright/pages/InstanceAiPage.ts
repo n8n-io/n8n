@@ -250,12 +250,6 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByText(text, { exact: false });
 	}
 
-	// ── Plan Review ───────────────────────────────────────────────────
-
-	getPlanApproveButton(): Locator {
-		return this.container.getByTestId('instance-ai-plan-approve');
-	}
-
 	/**
 	 * Returns a locator that matches ANY type of approve/continue button.
 	 * Uses Playwright's `or()` to race between confirmation types.
@@ -263,7 +257,6 @@ export class InstanceAiPage extends BasePage {
 	getAnyApproveButton(): Locator {
 		return this.getConfirmApproveButton()
 			.or(this.getDomainAccessApprove())
-			.or(this.getPlanApproveButton())
 			.or(this.getCredentialContinue());
 	}
 
@@ -362,7 +355,6 @@ export class InstanceAiPage extends BasePage {
 						this.getConfirmAlwaysAllowButton(),
 						this.getDomainAccessAlwaysAllow(),
 						this.getConfirmApproveButton(),
-						this.getPlanApproveButton(),
 						this.getDomainAccessApprove(),
 						this.getGatewayDecisionApprove(),
 						this.getCredentialContinue(),
@@ -476,17 +468,5 @@ export class InstanceAiPage extends BasePage {
 
 	async waitForRunComplete(timeoutMs = 180_000): Promise<void> {
 		await this.getStopButton().waitFor({ state: 'hidden', timeout: timeoutMs });
-	}
-
-	/**
-	 * Wait for the plan-review panel to appear and approve it. Since the
-	 * planning guardrails (#31984), the planner only engages for coordinated
-	 * multi-artifact work or when the prompt explicitly asks to review a plan
-	 * first — single-workflow builds skip plan review entirely, so only call
-	 * this from tests whose prompt requests a plan.
-	 */
-	async approveBuildPlan(timeout = 120_000): Promise<void> {
-		await this.getPlanApproveButton().waitFor({ state: 'visible', timeout });
-		await this.getPlanApproveButton().click();
 	}
 }

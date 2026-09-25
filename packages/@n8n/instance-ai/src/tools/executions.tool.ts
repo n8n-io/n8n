@@ -293,39 +293,6 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 	return await context.executionService.getStatus(input.executionId);
 }
 
-function normalizeWorkflowName(name: string): string {
-	return name.trim().toLowerCase();
-}
-
-function hasWorkflowName(
-	allowList: ReadonlySet<string>,
-	workflowName: string | undefined,
-): boolean {
-	if (!workflowName) return false;
-
-	const normalizedWorkflowName = normalizeWorkflowName(workflowName);
-	for (const allowedName of allowList) {
-		if (normalizeWorkflowName(allowedName) === normalizedWorkflowName) return true;
-	}
-
-	return false;
-}
-
-async function findAllowedWorkflowByName(
-	context: InstanceAiContext,
-	allowList: ReadonlySet<string> | undefined,
-): Promise<{ id: string; name: string } | undefined> {
-	if (process.env.E2E_TESTS !== 'true' || allowList === undefined) return undefined;
-
-	for (const allowedName of allowList) {
-		const { workflows } = await context.workflowService.list({ query: allowedName, limit: 10 });
-		const match = workflows.find((workflow) => hasWorkflowName(allowList, workflow.name));
-		if (match) return { id: match.id, name: match.name };
-	}
-
-	return undefined;
-}
-
 async function handleRun(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'run' }>,
@@ -342,61 +309,26 @@ async function handleRun(
 		};
 	}
 
-	// `always_allow` is only honored for the workflow IDs the caller pre-authorized.
-	// Checkpoint follow-ups pass an explicit allow-list (the workflows the checkpoint is
-	// verifying). When the allow-list is unset (e.g. planned-build follow-ups, which grant
-	// `runWorkflow: 'always_allow'` without one), the bypass is scoped to the workflows the
-	// agent created during the active plan cycle. Running any other pre-existing workflow
-	// still requires HITL approval, so a prompt injection can't silently run arbitrary
-	// workflows under the user's authority.
-	const allowList = context.allowedRunWorkflowIds;
-	const workflowNameAllowList = context.allowedRunWorkflowNames;
-	let workflowName: string | undefined;
-	let workflowId = input.workflowId;
-	const getWorkflowName = async () => {
-		workflowName ??= await context.workflowService
-			.get(workflowId)
-			.then((wf) => wf.name)
-			.catch(() => undefined);
-		return workflowName;
-	};
-	let allowedByName =
-		context.permissions?.runWorkflow === 'always_allow' &&
-		workflowNameAllowList !== undefined &&
-		hasWorkflowName(workflowNameAllowList, await getWorkflowName());
-	if (
-		context.permissions?.runWorkflow === 'always_allow' &&
-		workflowNameAllowList !== undefined &&
-		!allowedByName &&
-		workflowName === undefined
-	) {
-		const fallbackWorkflow = await findAllowedWorkflowByName(context, workflowNameAllowList);
-		if (fallbackWorkflow) {
-			workflowId = fallbackWorkflow.id;
-			workflowName = fallbackWorkflow.name;
-			allowedByName = true;
-		}
-	}
-	const allowedByList =
-		allowList !== undefined
-			? allowList.has(workflowId)
-			: (context.aiCreatedWorkflowIds?.has(workflowId) ?? false);
+	// `always_allow` is only honored for workflows the agent created in this session.
+	// Running any other pre-existing workflow still requires HITL approval, so a prompt
+	// injection can't silently run arbitrary workflows under the user's authority.
+	const workflowId = input.workflowId;
 	const allowedByScope =
-		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
-		(allowedByList || allowedByName);
+		(context.aiCreatedWorkflowIds?.has(workflowId) ?? false);
 
-	// A per-workflow "always allow" grant skips HITL for the rest of the session, but an
-	// admin's `requireRunWorkflowApproval` always wins - same gate as `allowedByScope`.
+	// A per-workflow "always allow" grant skips HITL for the rest of the session.
 	const grantKey = buildRunWorkflowSessionGrantKey(workflowId);
-	const allowedBySessionGrant =
-		context.requireRunWorkflowApproval !== true &&
-		context.sessionApprovedToolKeys?.has(grantKey) === true;
+	const allowedBySessionGrant = context.sessionApprovedToolKeys?.has(grantKey) === true;
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const workflowName = (await getWorkflowName()) ?? input.workflowId;
+		const workflowName =
+			(await context.workflowService
+				.get(workflowId)
+				.then((wf) => wf.name)
+				.catch(() => undefined)) ?? workflowId;
 		return await suspend({
 			requestId: nanoid(),
 			message: formatApprovalMessage(
@@ -479,26 +411,18 @@ async function handleRunStep(
 		};
 	}
 
-	// Same pre-authorization the full run uses: the checkpoint's allow-list when
-	// there is one, otherwise the workflows this plan cycle created.
-	const allowList = context.allowedRunWorkflowIds;
-	const allowedByList =
-		allowList !== undefined
-			? allowList.has(input.workflowId)
-			: (context.aiCreatedWorkflowIds?.has(input.workflowId) ?? false);
+	// Same pre-authorization the full run uses: the workflows this session created.
 	const allowedByScope =
-		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
-		allowedByList;
+		(context.aiCreatedWorkflowIds?.has(input.workflowId) ?? false);
 
 	// A per-node grant keeps a debug loop from re-prompting on every attempt. A
 	// whole-workflow run grant also covers a single node of that workflow.
 	const stepGrantKey = buildRunStepSessionGrantKey(input.workflowId, input.nodeName);
 	const allowedBySessionGrant =
-		context.requireRunWorkflowApproval !== true &&
-		(context.sessionApprovedToolKeys?.has(stepGrantKey) === true ||
-			context.sessionApprovedToolKeys?.has(buildRunWorkflowSessionGrantKey(input.workflowId)) ===
-				true);
+		context.sessionApprovedToolKeys?.has(stepGrantKey) === true ||
+		context.sessionApprovedToolKeys?.has(buildRunWorkflowSessionGrantKey(input.workflowId)) ===
+			true;
 
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 

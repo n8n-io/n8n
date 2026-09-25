@@ -30,11 +30,10 @@ describe('prompt profiles', () => {
 		);
 	});
 
-	it('selects skills and tool exclusions together', async () => {
+	it('selects the progressive skill variants', async () => {
 		const selected = resolvePromptProfile({ mode: 'progressive' });
 		const result = await loadInstanceAiPromptSkills(selected.profile);
-		expect(result.disabledTools).toEqual(['create-tasks']);
-		await expect(result.source.loadSkill('planning')).resolves.toBeNull();
+		expect(result.disabledTools).toEqual([]);
 		await expect(result.source.loadSkill('progressive-building')).resolves.toBeNull();
 		expect((await result.source.loadSkill('workflow-builder'))?.version).toBe(
 			'progressive-building@1',

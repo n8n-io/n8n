@@ -13,7 +13,7 @@ import { disabledInstanceAiSkillIds } from '../skill-gates';
 const logger = mock<Logger>();
 
 describe('progressive workflow skill variants', () => {
-	it('excludes planning and changes only the workflow-building and post-build instructions', async () => {
+	it('changes only the workflow-building and post-build instructions', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const originalRegistry = structuredClone(source.registry);
 		const progressive = await loadInstanceAiRuntimeSkillSourceForBuildMode('progressive');
@@ -24,7 +24,7 @@ describe('progressive workflow skill variants', () => {
 			const original = await source.loadSkill(entry.id);
 			const selected = await progressive.loadSkill(entry.id);
 			const selectedEntry = progressive.registry.skills.find(({ id }) => id === entry.id);
-			if (entry.id === 'planning' || entry.id === 'progressive-building') {
+			if (entry.id === 'progressive-building') {
 				expect(original).not.toBeNull();
 				expect(selected).toBeNull();
 				expect(selectedEntry).toBeUndefined();
@@ -32,9 +32,6 @@ describe('progressive workflow skill variants', () => {
 				expect(selected?.instructions).toContain(original?.instructions);
 				expect(selected?.instructions).toContain(policy.instructions);
 				expect(selectedEntry?.hash).not.toBe(entry.hash);
-			} else if (entry.id === 'planned-task-runtime') {
-				expect(selected?.instructions).toBe(original?.instructions);
-				expect(selected?.recommendedTools).not.toContain('create-tasks');
 			} else {
 				expect(selected).toEqual(original);
 				expect(selectedEntry).toEqual(entry);
@@ -86,13 +83,13 @@ describe('progressive workflow skill variants', () => {
 		const reference = `${root}/skills/post-build-flow/references/trigger-input-data-shapes.md`;
 		expect(progressiveBundle.files.get(reference)).toBeTruthy();
 		expect(progressiveBundle.files.get(reference)).toBe(controlBundle.files.get(reference));
-		expect(controlBundle.files.has(`${root}/skills/planning/SKILL.md`)).toBe(true);
-		expect(progressiveBundle.files.has(`${root}/skills/planning/SKILL.md`)).toBe(false);
-		await expect(progressive.loadSkill('planning')).resolves.toBeNull();
-		await expect(
-			createSkillLoadTool(progressiveBundle.source).handler?.({ skillId: 'planning' }, {}),
-		).resolves.toMatchObject({ success: false });
 		await expect(progressive.loadSkill('progressive-building')).resolves.toBeNull();
+		await expect(
+			createSkillLoadTool(progressiveBundle.source).handler?.(
+				{ skillId: 'progressive-building' },
+				{},
+			),
+		).resolves.toMatchObject({ success: false });
 		expect(progressiveBundle.files.has(`${root}/skills/progressive-building/SKILL.md`)).toBe(false);
 	});
 

@@ -37,7 +37,6 @@ export interface TerminalResponseDecision {
 		| 'errored-silent'
 		| 'errored-after-text'
 		| 'completed-after-error'
-		| 'completed-silent-suppressed'
 		| 'confirmation-visible'
 		| 'confirmation-invalid';
 	event?: InstanceAiEvent;
@@ -80,7 +79,6 @@ export class InstanceAiTerminalResponseGuard {
 			workSummary?: WorkSummary;
 			errorMessage?: string;
 			errorCode?: InstanceAiErrorCode;
-			suppressCompletedFallback?: boolean;
 		} = {},
 	): TerminalResponseDecision {
 		const visibility = this.getVisibility(events);
@@ -118,15 +116,6 @@ export class InstanceAiTerminalResponseGuard {
 					visibilitySource: 'root-text',
 					action: 'none',
 					reason: 'already-visible',
-				};
-			}
-			// Only suppress when some agent already produced text; a turn with no text at all must still emit.
-			if (options.suppressCompletedFallback && visibility.hasAgentText) {
-				return {
-					status,
-					visibilitySource: 'none',
-					action: 'none',
-					reason: 'completed-silent-suppressed',
 				};
 			}
 			return this.emitText(
@@ -222,7 +211,6 @@ export class InstanceAiTerminalResponseGuard {
 		hasRootError: boolean;
 		hasMessageGroupRootText: boolean;
 		hasCurrentRunFallback: boolean;
-		hasAgentText: boolean;
 	} {
 		const currentRunEvents = events.filter((event) => event.runId === this.options.runId);
 		// The loop runs another turn for every tool call, so the turn that ends the
@@ -240,8 +228,6 @@ export class InstanceAiTerminalResponseGuard {
 				(event, index) =>
 					index > lastRootToolCall && event.agentId === this.options.rootAgentId && hasText(event),
 			),
-			// Any agent's text this run. Tool calls don't count — internal calls (e.g. complete-checkpoint) aren't a visible answer.
-			hasAgentText: currentRunEvents.some((event) => hasText(event)),
 			hasRootError: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && event.type === 'error',
 			),

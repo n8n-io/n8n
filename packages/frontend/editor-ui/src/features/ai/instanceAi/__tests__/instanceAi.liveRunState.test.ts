@@ -184,7 +184,6 @@ describe('instanceAi.liveRunState', () => {
 
 		test('does not re-arm on terminal confirm kinds', () => {
 			expect(shouldRearmRunAfterConfirm({ kind: 'domainAccessDeny' })).toBe(false);
-			expect(shouldRearmRunAfterConfirm({ kind: 'planDeny' })).toBe(false);
 		});
 	});
 });

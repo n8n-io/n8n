@@ -51,7 +51,7 @@ type ListWorkflowsInput = z.infer<typeof listWorkflowsActionSchema>;
 ```
 
 This applies to tool schemas, event payloads, API request/response bodies,
-and plan state.
+and task checklist state.
 
 ### Discriminated unions for events
 
@@ -179,7 +179,7 @@ One canonical location per concept, everything else imports or references it.
 | Event types | `@n8n/api-types` TypeScript unions | Backend, frontend, docs |
 | Tool ids | `src/tools/tool-ids.ts` | Agent, tests, docs |
 | Tool schemas | Zod schemas in `src/tools/` | Agent, tests, docs |
-| Plan schema | Zod schema in `src/tools/orchestration/` | Agent, frontend, docs |
+| Task checklist schema | `taskListSchema` in `@n8n/api-types` | Backend, frontend, docs |
 | Config vars | `@n8n/config` class | Backend, docs |
 | Replay rule | `streaming-protocol.md` canonical table | Frontend, backend, tickets |
 

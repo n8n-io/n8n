@@ -763,8 +763,8 @@ describe('parseStoredMessages', () => {
 		});
 	});
 
-	describe('multi-run conversational turn (planned-task follow-ups)', () => {
-		// Mirrors the real flow: user sends a message, orchestrator suspends at a
+	describe('multi-run conversational turn (legacy planned-task follow-ups)', () => {
+		// Mirrors a legacy stored flow: user sends a message, orchestrator suspends at a
 		// HITL plan-approval, user approves, planned tasks dispatch a builder, the
 		// orchestrator restarts internally (skipped <planned-task-follow-up> user
 		// rows) for checkpoint and synthesize sub-runs, and a snapshot is saved
@@ -1036,14 +1036,14 @@ describe('confirmation expiration helpers', () => {
 				reasoning: '',
 				toolCalls: requestIds.map((requestId, idx) => ({
 					toolCallId: `tc-${idx}`,
-					toolName: 'create-tasks',
+					toolName: 'workflows',
 					args: {},
 					isLoading: true,
 					confirmation: {
 						requestId,
 						severity: 'info' as const,
 						message: '',
-						inputType: 'plan-review' as const,
+						inputType: 'approval' as const,
 					},
 				})),
 				children: [
@@ -1063,7 +1063,7 @@ describe('confirmation expiration helpers', () => {
 									requestId: 'req-sub',
 									severity: 'info' as const,
 									message: '',
-									inputType: 'plan-review' as const,
+									inputType: 'approval' as const,
 								},
 							},
 						],
@@ -1105,7 +1105,7 @@ describe('confirmation expiration helpers', () => {
 		markExpiredConfirmations(messages, new Set());
 	});
 
-	/** Build a single assistant message carrying one plan-review confirmation
+	/** Build a single assistant message carrying one approval confirmation
 	 *  card, with overridable actionability fields. */
 	function makeCardMessage(
 		overrides: Partial<{ isLoading: boolean; confirmationStatus: 'approved' | 'denied' }>,
@@ -1127,7 +1127,7 @@ describe('confirmation expiration helpers', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-0',
-						toolName: 'create-tasks',
+						toolName: 'workflows',
 						args: {},
 						isLoading: overrides.isLoading ?? true,
 						...(overrides.confirmationStatus
@@ -1137,7 +1137,7 @@ describe('confirmation expiration helpers', () => {
 							requestId: 'req-resolved',
 							severity: 'info' as const,
 							message: '',
-							inputType: 'plan-review' as const,
+							inputType: 'approval' as const,
 						},
 					},
 				],
@@ -1147,9 +1147,9 @@ describe('confirmation expiration helpers', () => {
 		};
 	}
 
-	// Regression: a resolved plan card reloaded after the user approved/denied it
+	// Regression: a resolved confirmation card reloaded after the user approved/denied it
 	// has no pending-confirmation row (claim() deleted it), but that absence must
-	// NOT relabel the historical card as "Plan (expired)".
+	// NOT relabel the historical card as expired.
 	it('does not mark a settled (no longer loading) card expired even with no live row', () => {
 		const messages = [makeCardMessage({ isLoading: false })];
 		markExpiredConfirmations(messages, new Set());

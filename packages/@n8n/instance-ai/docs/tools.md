@@ -56,7 +56,6 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `nodes` | 7 |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
-| `task-control` | 3 |
 | `research` | 2 |
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
@@ -67,122 +66,6 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
-
-### `create-tasks`
-
-Persist a dependency-aware task plan for detached multi-step execution. For
-initial plan-worthy work, the orchestrator loads the `planning` skill, performs
-discovery with normal domain tools, loads `create-tasks` via `load_tool`, then
-calls `create-tasks` with
-`planningContext.source: "planning-skill"`. For
-`<planned-task-follow-up type="replan">` turns, use
-`planningContext.source: "replan"` when multiple dependent tasks still need
-scheduling. Clear single-workflow builds, including new and one-off workflows,
-use `workflow-builder`, workspace file tools, and `build-workflow` directly.
-The plan is shown to the user for approval before execution starts.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tasks` | array | yes | Dependency-aware execution plan (see schema below) |
-| `planningContext` | object | yes | `{ source: "planning-skill" \| "replan", summary: string, assumptions?: string[] }` |
-
-**Task schema**:
-
-```typescript
-{
-  id: string;          // Stable identifier used by dependency edges
-  title: string;       // Short user-facing task title
-  kind: 'build-workflow' | 'checkpoint';
-  spec: string;        // Detailed executor briefing for this task
-  deps: string[];      // Task IDs that must succeed before this task can start
-  workflowId?: string; // Existing workflow ID for the builder to hydrate before saving
-  isSupportingWorkflow?: boolean; // Build task completes after saving a supporting sub-workflow
-}
-```
-
-**Returns**: `{ result: string, taskCount: number }`
-
-**Behavior**:
-- First call persists the plan, publishes `tasks-update` event, and **suspends**
-  for user approval
-- On approval: calls `schedulePlannedTasks()` to start detached execution
-- On rejection: returns feedback for the LLM to revise the plan
-- On denial: cancels the graph and blocks same-turn resubmission
-
-**Task kinds** map to executors:
-- `build-workflow` → orchestrator follow-up run using the workflow-builder skill
-- `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
-
-Standalone data-table work is handled directly by the orchestrator with the
-`data-table-manager` skill and the `data-tables` / `parse-file` tools. Single
-workflow-local table requirements belong in the builder task spec; plan only
-when the table schema is shared, independently durable, or creates real
-dependency coordination.
-
-### `task-control`
-
-Progress tracking and background-task control. One tool, three actions.
-
-#### `task-control(action="update-checklist")`
-
-Update a visible task checklist for the user. Lightweight progress tracking
-during synchronous work.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tasks` | array | yes | List of `{id, description, status, detail?}` items |
-
-**Returns**: `{ saved: true }`
-
-**Behavior**: Saves to storage, publishes `tasks-update` event for live UI refresh.
-
-#### `task-control(action="cancel-task")`
-
-Cancel a running background task by its ID.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `taskId` | string | yes | Background task ID (from `<running-tasks>` context) |
-
-**Returns**: `{ result: "Background task {taskId} cancelled." }`
-
-**Cancellation flow** (three surfaces converge):
-```
-User clicks stop button  -> POST /chat/:threadId/tasks/:taskId/cancel ---+
-User says "stop that"    -> orchestrator calls task-control -------------+
-cancelRun (global stop)  -> cancelBackgroundTasks(threadId) -------------+
-                                                                        v
-                                            service.cancelBackgroundTask()
-```
-
-#### `task-control(action="correct-task")`
-
-Send a course correction to a running background task.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `taskId` | string | yes | Background task ID |
-| `correction` | string | yes | Correction message |
-
-**Returns**: `{ result: string }`. The string says whether the correction was
-sent, the task already completed, the task was not found, or delivery is not
-available.
-
-### `complete-checkpoint`
-
-Close out a `checkpoint` planned task with its verdict. The tool is registered
-for the orchestrator and is intended only for checkpoint follow-up turns. The
-task must exist, have kind `checkpoint`, and be in the `running` state.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `taskId` | string | yes | Checkpoint task ID from the planned-task follow-up |
-| `status` | `"succeeded" \| "failed"` | yes | Checkpoint verdict |
-| `result` | string | no | Short user-visible outcome note |
-| `error` | string | no | Failure message when `status` is `failed` |
-| `outcome` | object | no | Structured evidence such as an execution ID, failed node, or data excerpt |
-
-**Returns**: `{ result: string, ok: boolean }`
 
 ### `get-session` *(conditional)*
 
@@ -241,8 +124,7 @@ retry requires explicit acknowledgement through `acknowledgeUnverified: true`.
 
 **Writes on success/failure**: the tool persists a structured `verification`
 record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt }`) onto
-the build outcome so workflow-verification follow-ups and exceptional checkpoint
-turns can reuse it without re-running verify.
+the build outcome. Later turns and the publish gate reuse it without re-running verify.
 
 **Returns**: `{ executionId?, success, status?, data?, error?, simulationNote?, resolvedParameterWarnings?, skippedParameterChecks?, skippedParameterCheckCount? }`
 
@@ -611,6 +493,12 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 
 **Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim? }`
 
+**Approval**: the admin `runWorkflow` policy controls this action. `blocked`
+denies the run. `always_allow` skips the prompt only for workflows that the
+agent created in the session (`aiCreatedWorkflowIds`). All other workflows
+require approval. "Always allow" on the card persists a per-workflow session
+grant (`executions:run:<workflowId>`).
+
 **Live test evidence**: `verify-built-workflow` always simulates destructive
 nodes, so a live test runs through this action. When a successful run reaches
 every planned node of the latest build, with no saved pins and no injected
@@ -774,7 +662,7 @@ instead. `mockInput` does not change this: only the input is invented, the node
 still runs. See the `debugging-executions` skill.
 
 **Approval**: the same gate as `action="run"` — the admin `runWorkflow` policy,
-the pre-authorized workflow list, and session grants. The session grant is per
+the workflows that the agent created in the session, and session grants. The session grant is per
 node (`executions:run-step:<workflowId>:<nodeName>`), so a debug loop on one
 node stops prompting while the rest of the workflow still asks. A whole-workflow
 run grant covers a step of that workflow too.
@@ -1075,9 +963,7 @@ at runtime, so the node can still run and cause side effects.
 equivalent to running a one-node workflow, so the same `runWorkflow` admin
 policy applies (`blocked` denies; `always_allow` skips the prompt — a
 standalone node request is always agent-authored, the analog of an AI-created
-workflow). A *scoped* `always_allow` — the checkpoint follow-up override, which
-names the workflow IDs it covers — does not skip the prompt: a standalone node
-run has no workflow ID to match. Under the default `require_approval`, the tool suspends with
+workflow). Under the default `require_approval`, the tool suspends with
 severity `warning`; "Always allow" persists a session grant scoped by node
 type + resource + operation (`nodes:execute:<type>:<resource>:<operation>`) —
 the same split the generated node TS types use, so a future per-operation
@@ -1606,9 +1492,7 @@ existing domain.
 4. Register it in `src/tools/index.ts` with `createOrchestratorDomainTools` or
    `createOrchestrationTools`
 5. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
-   that set is normally reached through `search_tools` + `load_tool`. Tools in
-   `CHECKPOINT_FOLLOW_UP_TOOL_NAMES` are also loaded directly during checkpoint
-   follow-ups. Deferral is the right default, but a tool whose job is to reveal
+   that set is normally reached through `search_tools` + `load_tool`. Deferral is the right default, but a tool whose job is to reveal
    an absence, or to redirect the model's attention, cannot be found by
    searching for it
 6. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles

@@ -11,7 +11,6 @@ import {
 /**
  * Plain approval/denial. Also carries optional `userInput` for:
  *   - text-input confirmations (inputType='text')
- *   - plan-review feedback accompanying approve/request-changes
  *   - deferring/skipping credential or workflow setup wizards (`approved: false`)
  *
  * Payload fields (minus `kind`) are shared with tool `.resume()` schemas via
@@ -66,12 +65,6 @@ const domainAccessDenySchema = z.object({
 	kind: z.literal('domainAccessDeny'),
 });
 
-/** Plan-review denial — user rejected the proposed plan outright. Distinct from
- *  `approval` with `approved: false + userInput`, which asks the agent to revise. */
-const planDenySchema = z.object({
-	kind: z.literal('planDeny'),
-});
-
 /** Gateway resource-access decision (inputType='resource-decision'). Approval is implied. */
 const resourceDecisionConfirmSchema = z.object({
 	kind: z.literal('resourceDecision'),
@@ -115,7 +108,6 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	credentialDestinationConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
-	planDenySchema,
 	resourceDecisionConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,

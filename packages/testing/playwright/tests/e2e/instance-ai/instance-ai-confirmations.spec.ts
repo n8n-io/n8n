@@ -1,4 +1,3 @@
-import type { Locator } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect, instanceAiTestConfig } from './fixtures';
@@ -125,35 +124,6 @@ async function countExecutionsForNode(
 	return count;
 }
 
-async function approveBuildPlanIfRequested({
-	n8n,
-	nodeName,
-}: {
-	n8n: {
-		api: { workflows: WorkflowApiForAssertions };
-		instanceAi: { getPlanApproveButton(): Locator };
-	};
-	nodeName: string;
-}): Promise<void> {
-	let clickedApprove = false;
-	const approveButton = n8n.instanceAi.getPlanApproveButton();
-
-	await expect
-		.poll(
-			async () => {
-				if (!clickedApprove && (await approveButton.isVisible().catch(() => false))) {
-					await approveButton.click();
-					clickedApprove = true;
-					return true;
-				}
-
-				return await hasSuccessfulExecutionForNode(n8n.api.workflows, nodeName);
-			},
-			{ intervals: [1_000, 2_000, 5_000], timeout: 150_000 },
-		)
-		.toBe(true);
-}
-
 async function expectApprovedExecutionComplete({
 	n8n,
 	nodeName,
@@ -235,10 +205,9 @@ test.describe(
 			}
 		});
 
-		// Skipped: the replay recording predates the create-tasks load_tool
-		// deferral (#33815), so the recorded direct create-tasks call fails as an
-		// unloaded tool and the approval panel never appears. Unskip once the
-		// recordings are updated (#34055 or a re-record).
+		// Skipped: the replay recording calls the removed create-tasks tool and
+		// uses an older prompt, so the approval panel never appears. Unskip after
+		// a re-record.
 		test.skip(
 			'should show approval panel and approve workflow execution',
 			{
@@ -258,10 +227,9 @@ test.describe(
 				await n8n.navigate.toInstanceAi();
 
 				await n8n.instanceAi.sendMessage(
-					'Create a plan to build and run a simple workflow with a manual trigger and a set node called "approval test". Show me the plan for approval before building it.',
+					'Build and run a simple workflow with a manual trigger and a set node called "approval test".',
 				);
 
-				await approveBuildPlanIfRequested({ n8n, nodeName: 'approval test' });
 				await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 				await n8n.instanceAi.getConfirmApproveButton().click();
 
@@ -273,7 +241,7 @@ test.describe(
 			},
 		);
 
-		// Skipped: same broken recording as the approve variant above (#33815).
+		// Skipped: same broken recording as the approve variant above.
 		test.skip(
 			'should show approval panel and deny workflow execution',
 			{
@@ -288,10 +256,9 @@ test.describe(
 				await n8n.navigate.toInstanceAi();
 
 				await n8n.instanceAi.sendMessage(
-					'Create a plan to build and run a simple workflow with a manual trigger and a set node called "deny test". Show me the plan for approval before building it.',
+					'Build and run a simple workflow with a manual trigger and a set node called "deny test".',
 				);
 
-				await approveBuildPlanIfRequested({ n8n, nodeName: 'deny test' });
 				await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
 				// Build verification may already have run the workflow; denying must not add a run.
 				const executionsBeforeDeny = await countExecutionsForNode(n8n.api.workflows, 'deny test');

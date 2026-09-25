@@ -32,9 +32,6 @@ export const COMPILED_WORKFLOW_TRACE_RUN_NAME = 'compiled-workflow';
 export const AGENT_SNAPSHOT_TRACE_RUN_NAME = 'agent-snapshot';
 
 export const ORCHESTRATION_TOOL_IDS = {
-	CREATE_TASKS: 'create-tasks',
-	TASK_CONTROL: 'task-control',
-	COMPLETE_CHECKPOINT: 'complete-checkpoint',
 	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
@@ -98,9 +95,4 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// improvised as a workflow. Deferring it costs a search_tools + load_tool
 	// round-trip and lets the model fall back to workflow assumptions first.
 	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES] : []),
-]);
-
-export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([
-	ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
-	DOMAIN_TOOL_IDS.EXECUTIONS,
 ]);

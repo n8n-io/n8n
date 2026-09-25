@@ -216,7 +216,7 @@ LibSQL file is required.
 The same storage backend is used for:
 - Message history
 - Observational memory (observation log, cursors, and task locks)
-- Plan storage (thread-scoped in thread metadata)
+- Task checklist storage (thread-scoped in thread metadata)
 - Checkpoints (separate table)
 
 ## Event Bus

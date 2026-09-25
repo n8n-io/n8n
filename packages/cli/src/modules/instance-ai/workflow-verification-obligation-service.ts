@@ -1,13 +1,9 @@
 import {
 	deriveWorkflowVerificationObligation,
-	deriveWorkflowVerificationObligationFromOutcome,
 	isPlannedWorkflowBuildOwner,
-	isWorkflowVerificationObligationUnsettled,
 	resolveWorkflowBuildOwner,
 	WorkflowLoopStorage,
 	workflowBuildOutcomeSchema,
-	type PlannedTaskGraph,
-	type PlannedWorkflowVerification,
 	type WorkflowBuildOutcome,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowVerificationObligation,
@@ -33,6 +29,7 @@ export class WorkflowVerificationObligationService {
 		return new WorkflowLoopStorage(this.agentMemory);
 	}
 
+	/** Records from builds of the removed planned-task flow. They are never verified again. */
 	isPlannedRecord(record: WorkflowLoopWorkItemRecord): boolean {
 		return isPlannedWorkflowBuildOwner(
 			resolveWorkflowBuildOwner(record.state, record.lastBuildOutcome),
@@ -42,7 +39,7 @@ export class WorkflowVerificationObligationService {
 	async getObligation(
 		threadId: string,
 		workItemId: string,
-		options: { source: WorkflowVerificationObligationSource; plannedTaskId?: string },
+		options: { source: WorkflowVerificationObligationSource },
 	): Promise<WorkflowVerificationObligation | undefined> {
 		const record = await this.storage().getWorkItem(threadId, workItemId);
 		if (!record) return undefined;
@@ -52,61 +49,11 @@ export class WorkflowVerificationObligationService {
 	obligationFromRecord(
 		threadId: string,
 		record: WorkflowLoopWorkItemRecord,
-		options: { source: WorkflowVerificationObligationSource; plannedTaskId?: string },
+		options: { source: WorkflowVerificationObligationSource },
 	): WorkflowVerificationObligation {
 		return deriveWorkflowVerificationObligation(threadId, record, {
 			...options,
 			setupPanelEnabled: this.isSetupPanelEnabled(threadId),
 		});
-	}
-
-	async findPendingPlannedWorkflowVerification(
-		threadId: string,
-		graph: PlannedTaskGraph,
-	): Promise<PlannedWorkflowVerification | undefined> {
-		for (const task of graph.tasks) {
-			if (task.kind !== 'build-workflow' || task.status !== 'succeeded') continue;
-
-			const verification = await this.pendingPlannedWorkflowVerificationFromTask(threadId, task);
-			if (verification) return verification;
-		}
-
-		return undefined;
-	}
-
-	async revalidatePlannedWorkflowVerification(
-		threadId: string,
-		verification: PlannedWorkflowVerification,
-	): Promise<PlannedWorkflowVerification | undefined> {
-		return await this.pendingPlannedWorkflowVerificationFromTask(
-			threadId,
-			verification.task,
-			verification.outcome,
-		);
-	}
-
-	private async pendingPlannedWorkflowVerificationFromTask(
-		threadId: string,
-		task: PlannedTaskGraph['tasks'][number],
-		fallbackOutcome?: WorkflowBuildOutcome,
-	): Promise<PlannedWorkflowVerification | undefined> {
-		const taskOutcome = parseWorkflowBuildOutcome(task.outcome);
-		const baseOutcome = taskOutcome ?? fallbackOutcome;
-		if (!baseOutcome) return undefined;
-
-		const options = {
-			source: 'planned',
-			plannedTaskId: task.id,
-			setupPanelEnabled: this.isSetupPanelEnabled(threadId),
-		} satisfies Parameters<typeof deriveWorkflowVerificationObligation>[2];
-		const record = await this.storage().getWorkItem(threadId, baseOutcome.workItemId);
-		const outcome = record?.lastBuildOutcome ?? baseOutcome;
-		const obligation = record?.lastBuildOutcome
-			? this.obligationFromRecord(threadId, record, options)
-			: deriveWorkflowVerificationObligationFromOutcome(threadId, outcome, options);
-
-		if (!isWorkflowVerificationObligationUnsettled(obligation)) return undefined;
-
-		return { task, obligation, outcome };
 	}
 }

@@ -2508,7 +2508,6 @@ describe('createBuildWorkflowTool', () => {
 		const reportBuildOutcome = vi.fn<
 			(outcome: WorkflowBuildOutcome) => Promise<{ type: 'verify'; workflowId: string }>
 		>(async () => await Promise.resolve({ type: 'verify', workflowId: 'wf-1' }));
-		const markSucceeded = vi.fn(async () => await Promise.resolve(null));
 		const onBuildOutcome = vi.fn<(outcome: WorkflowBuildOutcome) => void>();
 		const { context, filePath } = makeContext({
 			overrides: {
@@ -2516,10 +2515,7 @@ describe('createBuildWorkflowTool', () => {
 					threadId: 'thread-1',
 					runId: 'run-1',
 					taskId: 'task-1',
-					workItemId: 'wi-planned',
-					plannedTaskService: { markSucceeded } as unknown as NonNullable<
-						InstanceAiContext['workflowBuildContext']
-					>['plannedTaskService'],
+					workItemId: 'wi-1',
 					workflowTaskService: { reportBuildOutcome } as unknown as NonNullable<
 						InstanceAiContext['workflowBuildContext']
 					>['workflowTaskService'],
@@ -2535,15 +2531,13 @@ describe('createBuildWorkflowTool', () => {
 		expect(result).toMatchObject({
 			success: true,
 			workflowId: 'wf-1',
-			workItemId: 'wi-planned',
+			workItemId: 'wi-1',
 		});
-		expect(result.postBuildFlow).toBeUndefined();
 		const storedOutcome = onBuildOutcome.mock.calls[0]?.[0] as WorkflowBuildOutcome | undefined;
 		expect(storedOutcome).toMatchObject({
-			workItemId: 'wi-planned',
+			workItemId: 'wi-1',
 			taskId: 'task-1',
-			owner: { type: 'planned', taskId: 'task-1' },
-			plannedTaskId: 'task-1',
+			owner: { type: 'direct' },
 			sourceFilePath: filePath,
 			verificationProgress: disabled ? undefined : {},
 		});
@@ -2556,11 +2550,10 @@ describe('createBuildWorkflowTool', () => {
 			| WorkflowBuildOutcome
 			| undefined;
 		expect(reportedOutcome).toMatchObject({
-			workItemId: 'wi-planned',
+			workItemId: 'wi-1',
 			sourceFilePath: filePath,
 		});
 		expect(reportedOutcome).not.toHaveProperty('sourceArtifact');
-		expect(markSucceeded).toHaveBeenCalledWith('thread-1', 'task-1', expect.any(Object));
 	});
 
 	it('routes source-declared node outputs through the simulation plan', async () => {

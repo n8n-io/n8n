@@ -7,7 +7,7 @@ does not read feature flags.
 
 The initial profiles are `default@1` and `progressive@1`. The general system
 prompt is the same in both. The progressive profile changes the workflow
-skills and removes the planning skill and `create-tasks` tool.
+skills. It does not disable skills or tools.
 
 ## Selection and recovery
 

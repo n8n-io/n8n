@@ -430,11 +430,11 @@ function inferResumeReason(
 function inferApproval(response: InstanceAiConfirmRequest | undefined): boolean | undefined {
 	if (!response) return undefined;
 	if (response.kind === 'approval') return response.approved;
-	if (response.kind === 'planDeny' || response.kind === 'domainAccessDeny') return false;
+	if (response.kind === 'domainAccessDeny') return false;
 	return true;
 }
 
-/** Free-text the user attached to their decision (e.g. plan-review feedback via userInput). */
+/** Free-text the user attached to their decision (e.g. text input via userInput). */
 function inferFeedback(response: InstanceAiConfirmRequest | undefined): string | undefined {
 	if (response?.kind === 'approval' && response.userInput) return response.userInput;
 	return undefined;

@@ -275,10 +275,9 @@ also emit `tool-error` if its resume path throws.
 
 | Field | Type | When used |
 |-------|------|-----------|
-| `inputType` | `'approval'` \| `'text'` \| `'questions'` \| `'plan-review'` | Controls which UI component renders. Default: `approval` |
+| `inputType` | `'approval'` \| `'text'` \| `'questions'` \| `'resource-decision'` | Controls which UI component renders. Default: `approval` |
 | `questions` | `[{id, question, type, options?}]` | Structured Q&A wizard (`inputType=questions`) |
-| `tasks` | `TaskList` | Plan approval checklist (`inputType=plan-review`) |
-| `introMessage` | string | Intro text shown above questions or plan review |
+| `introMessage` | string | Intro text shown above questions |
 | `credentialRequests` | array | Credential setup requests |
 | `credentialFlow` | `{stage: 'generic' \| 'finalize'}` | Controls credential picker UX |
 | `setupRequests` | `WorkflowSetupNode[]` | Per-node setup cards for workflow credential/parameter config |
@@ -289,7 +288,9 @@ also emit `tool-error` if its resume path throws.
 ### `tasks-update`
 
 A task checklist has been created or updated. The frontend renders a live
-progress indicator from this data.
+progress indicator from this data. The CLI `WorkflowVerificationTaskProjector`
+publishes the checklist. It shows a build row and a verify row for each direct
+workflow build.
 
 ```json
 {
@@ -298,9 +299,8 @@ progress indicator from this data.
   "agentId": "agent-001",
   "payload": {
     "tasks": [
-      {"id": "t1", "description": "Build weather workflow", "status": "completed"},
-      {"id": "t2", "description": "Set up Slack credential", "status": "in_progress"},
-      {"id": "t3", "description": "Test end-to-end", "status": "pending"}
+      {"id": "wi-1", "description": "Build workflow", "status": "done"},
+      {"id": "wi-1:verify", "description": "Verify workflow", "status": "in_progress", "detail": "Verifying workflow"}
     ]
   }
 }
@@ -604,7 +604,7 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
 ├── 🔧 credentials → [slack-bot, weather-api]
-├── 📋 create-tasks: build → verify
+├── 🔧 build-workflow → wf-123
 ├── 🔧 build-agent → agent-123
 │
 ├── 🤖 Agent Builder

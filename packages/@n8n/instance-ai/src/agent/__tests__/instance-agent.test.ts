@@ -80,8 +80,7 @@ vi.mock('../../tools', () => ({
 	createOrchestrationTools: vi.fn(
 		(context: { runId: string }) =>
 			new Map([
-				['create-tasks', mockBuiltTool(`create-tasks-${context.runId}`)],
-				['complete-checkpoint', mockBuiltTool(`complete-checkpoint-${context.runId}`)],
+				['get-session', mockBuiltTool(`get-session-${context.runId}`)],
 				['verify-built-workflow', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
 			]),
 	),
@@ -195,9 +194,8 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 		const secondRunAttachedTools = getAttachedTools(1);
-		expect(attachedTools['create-tasks-run-1']).toBeUndefined();
-		expect(deferredTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
-		expect(attachedTools['plan-run-1']).toBeUndefined();
+		expect(attachedTools['get-session-run-1']).toBeUndefined();
+		expect(deferredTools['get-session-run-1']).toMatchObject({ name: 'get-session-run-1' });
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
 		expect(attachedTools['build-workflow-run-1']).toMatchObject({
 			name: 'build-workflow-run-1',
@@ -233,12 +231,12 @@ describe('createInstanceAgent', () => {
 			context: { runLabel: 'profile' },
 			orchestrationContext: {
 				runId: 'profile',
-				disabledToolNames: new Set(['create-tasks', 'nodes']),
+				disabledToolNames: new Set(['get-session', 'nodes']),
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
-		expect(getDeferredTools()).not.toHaveProperty('create-tasks-profile');
+		expect(getDeferredTools()).not.toHaveProperty('get-session-profile');
 		expect(getAttachedTools()).not.toHaveProperty('nodes-profile');
 		expect(getAttachedTools()).toHaveProperty('build-workflow-profile');
 	});
@@ -278,32 +276,6 @@ describe('createInstanceAgent', () => {
 			mcpManager: noPermissionsManager,
 		} as never);
 		expect(noPermissionsManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
-	});
-
-	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {
-				runLabel: 'checkpoint-run',
-				computerUseState: undefined,
-				licenseHints: undefined,
-				localMcpServer: undefined,
-			},
-			orchestrationContext: {
-				runId: 'checkpoint-run',
-				isCheckpointFollowUp: true,
-			},
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(),
-		} as never);
-
-		const attachedTools = getAttachedTools();
-		const deferredTools = getDeferredTools();
-
-		expect(attachedTools['complete-checkpoint-checkpoint-run']).toMatchObject({
-			name: 'complete-checkpoint-checkpoint-run',
-		});
-		expect(deferredTools['complete-checkpoint-checkpoint-run']).toBeUndefined();
 	});
 
 	it('keeps workflow-builder skill tool names always loaded', async () => {

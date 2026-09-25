@@ -10,8 +10,6 @@ import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
 import type * as StructuredFileParserMod from './parsers/structured-file-parser';
 import type * as ValidateAttachmentsMod from './parsers/validate-attachments';
-import type * as PlannedTaskPermissionsMod from './planned-tasks/planned-task-permissions';
-import type * as PlannedTaskServiceMod from './planned-tasks/planned-task-service';
 import type * as PromptProfilesMod from './prompts/prompt-profiles';
 import type * as BackgroundTaskManagerMod from './runtime/background-task-manager';
 import type * as InstanceContextStateMod from './runtime/instance-context-state';
@@ -181,12 +179,6 @@ const loadWorkflowLoop = lazyModule(() => require('./workflow-loop') as typeof W
 const loadWorkflowLoopRuntime = lazyModule(
 	() => require('./workflow-loop/runtime') as typeof WorkflowLoopRuntimeMod,
 );
-const loadPlannedTaskService = lazyModule(
-	() => require('./planned-tasks/planned-task-service') as typeof PlannedTaskServiceMod,
-);
-const loadPlannedTaskPermissions = lazyModule(
-	() => require('./planned-tasks/planned-task-permissions') as typeof PlannedTaskPermissionsMod,
-);
 const loadStructuredFileParser = lazyModule(
 	() => require('./parsers/structured-file-parser') as typeof StructuredFileParserMod,
 );
@@ -203,11 +195,6 @@ export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
 export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error';
 export { FolderResolutionError } from './errors/folder-resolution.error';
-export {
-	LEGACY_PLANNED_TASK_KINDS,
-	PLANNED_TASK_KINDS,
-	STORED_PLANNED_TASK_KINDS,
-} from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export {
@@ -387,10 +374,6 @@ export type ThreadTaskStorage = StorageMod.ThreadTaskStorage;
 export const ThreadTaskStorage: typeof StorageMod.ThreadTaskStorage = lazyClass(
 	() => loadStorage().ThreadTaskStorage,
 );
-export type PlannedTaskStorage = StorageMod.PlannedTaskStorage;
-export const PlannedTaskStorage: typeof StorageMod.PlannedTaskStorage = lazyClass(
-	() => loadStorage().PlannedTaskStorage,
-);
 export const getThread: typeof StorageMod.getThread = lazyFunction(() => loadStorage().getThread);
 export type TerminalOutcomeStorage = StorageMod.TerminalOutcomeStorage;
 export const TerminalOutcomeStorage: typeof StorageMod.TerminalOutcomeStorage = lazyClass(
@@ -486,10 +469,6 @@ defineLazyExport(
 defineLazyExport('attemptRecordSchema', () => loadWorkflowLoop().attemptRecordSchema);
 defineLazyExport('workflowLoopStateSchema', () => loadWorkflowLoop().workflowLoopStateSchema);
 defineLazyExport('verificationResultSchema', () => loadWorkflowLoop().verificationResultSchema);
-defineLazyExport(
-	'PLANNED_TASK_PERMISSION_OVERRIDES',
-	() => loadPlannedTaskPermissions().PLANNED_TASK_PERMISSION_OVERRIDES,
-);
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export const buildAgentTreeFromEvents: typeof AgentTreeMod.buildAgentTreeFromEvents = lazyFunction(
 	() => loadAgentTree().buildAgentTreeFromEvents,
@@ -655,10 +634,6 @@ export type WorkflowLoopRuntime = WorkflowLoopRuntimeMod.WorkflowLoopRuntime;
 export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRuntime = lazyClass(
 	() => loadWorkflowLoopRuntime().WorkflowLoopRuntime,
 );
-export type PlannedTaskCoordinator = PlannedTaskServiceMod.PlannedTaskCoordinator;
-export const PlannedTaskCoordinator: typeof PlannedTaskServiceMod.PlannedTaskCoordinator =
-	lazyClass(() => loadPlannedTaskService().PlannedTaskCoordinator);
-export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermissionsMod.PLANNED_TASK_PERMISSION_OVERRIDES;
 export type {
 	InstanceAiContext,
 	InstanceAiToolRegistry,
@@ -695,16 +670,6 @@ export type {
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
 	TaskStorage,
-	PlannedTask,
-	PlannedTaskKind,
-	StoredPlannedTaskKind,
-	PlannedTaskStatus,
-	PlannedTaskRecord,
-	PlannedTaskGraph,
-	PlannedTaskGraphStatus,
-	PlannedWorkflowVerification,
-	PlannedTaskSchedulerAction,
-	PlannedTaskService,
 	OrchestrationContext,
 	BackgroundTaskResult,
 	InstanceAiToolTraceOptions,
@@ -774,13 +739,6 @@ export {
 	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
 } from './types';
 export { ASK_USER_TOOL_ID } from './tools/tool-ids';
-export type {
-	OrchestratorRunHandoffReason,
-	OrchestratorRunHandoffState,
-	OrchestratorRunStopSignal,
-} from './runtime/orchestrator-run-control';
-export { createOrchestratorRunControl } from './runtime/orchestrator-run-control';
-export { createOrchestratorRunControlForState } from './runtime/orchestrator-run-control';
 export const classifyAttachments: typeof StructuredFileParserMod.classifyAttachments = lazyFunction(
 	() => loadStructuredFileParser().classifyAttachments,
 );

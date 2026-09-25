@@ -118,42 +118,6 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		});
 	});
 
-	it('does not emit completed fallback when silence is expected and an agent already produced text', () => {
-		const decision = guard().evaluateTerminal([runStart(), childText()], 'completed', {
-			workSummary: {
-				totalToolCalls: 3,
-				totalToolErrors: 0,
-				toolCalls: [],
-				askedClarifyingQuestion: false,
-			},
-			suppressCompletedFallback: true,
-		});
-
-		expect(decision.action).toBe('none');
-		expect(decision.reason).toBe('completed-silent-suppressed');
-		expect(decision.event).toBeUndefined();
-	});
-
-	it('emits fallback for a suppressed completed run that produced no text', () => {
-		const decision = guard().evaluateTerminal([runStart()], 'completed', {
-			suppressCompletedFallback: true,
-		});
-
-		expect(decision.action).toBe('emit');
-		expect(decision.reason).toBe('completed-silent');
-		expect(decision.event?.type).toBe('text-delta');
-	});
-
-	it('emits fallback for a suppressed completed run that only made internal tool calls', () => {
-		const decision = guard().evaluateTerminal([runStart(), toolCall()], 'completed', {
-			suppressCompletedFallback: true,
-		});
-
-		expect(decision.action).toBe('emit');
-		expect(decision.reason).toBe('completed-silent');
-		expect(decision.event?.type).toBe('text-delta');
-	});
-
 	it('emits fallback when a completed run only produced a preamble before its tool calls', () => {
 		const decision = guard().evaluateTerminal(
 			[runStart(), rootText('Let me read the current source first.'), toolCall()],
@@ -302,7 +266,7 @@ describe('InstanceAiTerminalResponseGuard', () => {
 					payload: { content: 'Previous attempt failed.' },
 				},
 			],
-			confirmation({ inputType: 'plan-review', message: 'message-only plan' }),
+			confirmation({ inputType: 'questions', message: 'message-only questions' }),
 		);
 
 		expect(decision.action).toBe('emit');
@@ -319,7 +283,7 @@ describe('InstanceAiTerminalResponseGuard', () => {
 	it('emits deterministic error for malformed confirmation payloads', () => {
 		const decision = guard().evaluateWaiting(
 			[runStart()],
-			confirmation({ inputType: 'plan-review', message: 'message-only plan' }),
+			confirmation({ inputType: 'questions', message: 'message-only questions' }),
 		);
 
 		expect(decision.action).toBe('emit');
@@ -330,7 +294,7 @@ describe('InstanceAiTerminalResponseGuard', () => {
 	it('does not let prior root text hide a malformed confirmation payload', () => {
 		const decision = guard().evaluateWaiting(
 			[runStart(), rootText()],
-			confirmation({ inputType: 'plan-review', message: 'message-only plan' }),
+			confirmation({ inputType: 'questions', message: 'message-only questions' }),
 		);
 
 		expect(decision.action).toBe('emit');
@@ -341,7 +305,7 @@ describe('InstanceAiTerminalResponseGuard', () => {
 	it('does not let prior root errors hide a malformed confirmation payload', () => {
 		const decision = guard().evaluateWaiting(
 			[runStart(), rootError()],
-			confirmation({ inputType: 'plan-review', message: 'message-only plan' }),
+			confirmation({ inputType: 'questions', message: 'message-only questions' }),
 		);
 
 		expect(decision.action).toBe('emit');

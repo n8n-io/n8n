@@ -23,8 +23,8 @@ import type { ConfirmationData } from './run-state-registry';
  *  relevant to the submitted kind are populated — everything else stays undefined.
  *
  *  Most kinds carry implicit approval (you wouldn't be submitting answers,
- *  selected credentials, or a setup action otherwise) — only `approval`,
- *  `domainAccessDeny`, and `planDeny` carry a denial path. */
+ *  selected credentials, or a setup action otherwise) — only `approval` and
+ *  `domainAccessDeny` carry a denial path. */
 export function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
 	switch (request.kind) {
 		case 'approval':
@@ -33,8 +33,6 @@ export function toConfirmationData(request: InstanceAiConfirmRequest): Confirmat
 			return { approved: true, domainAccessAction: request.domainAccessAction };
 		case 'domainAccessDeny':
 			return { approved: false };
-		case 'planDeny':
-			return { approved: false, denied: true };
 		case 'questions':
 			return { approved: true, answers: request.answers };
 		case 'credentialSelection':
@@ -94,7 +92,6 @@ export function buildResumeData(data: ConfirmationData): Record<string, unknown>
 		...(data.scope ? { scope: data.scope } : {}),
 		...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 		...(data.credentialDestination ? { credentialDestination: data.credentialDestination } : {}),
-		...(data.denied ? { denied: true } : {}),
 		...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
 	};
 }

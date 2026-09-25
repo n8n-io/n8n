@@ -6,9 +6,8 @@ description: >-
   and workflow-local data tables. Write or edit a workspace source file, run
   workflow-sdk validate via workspace_execute_command, then call build-workflow
   with filePath. When the workflow creates or writes Data Tables, load
-  data-table-manager first, then this skill. Do not load planning or
-  create-tasks first. Load planning only when multiple coordinated workflows
-  or shared cross-task data tables require a dependency-aware task graph.
+  data-table-manager first, then this skill. For several workflows, build
+  them one at a time with this skill, dependencies first.
   Don't use this skill for explicit one-off tasks that can be done by a single
   node execution: load one-off-operations and run the node with
   nodes(action="execute").
@@ -47,10 +46,12 @@ lines you need, apply the edit with `workspace_str_replace_file`, then call
 `build-workflow({ filePath })` — the file is already bound, so no `workflowId`
 is needed. Never re-emit the whole source with `workspace_write_file`, and do
 not fetch the same unchanged workflow again in another format. All edits go
-through the workspace source file and `build-workflow`. Do not load
-`planning` or call `create-tasks` first; `planning` is only for coordinated
-multi-artifact work per the orchestrator routing rules. Do not create a plan
-just for verification.
+through the workspace source file and `build-workflow`.
+
+When the request needs several workflows (for example a main workflow and a
+sub-workflow it calls), build them one at a time in dependency order: build
+and save each dependency first, then reference its saved workflow ID from the
+next one.
 
 When the needed node types are already obvious from the request, batch
 `nodes(action="type-definition")` — object form with resource/operation or mode
@@ -246,9 +247,6 @@ follow its build → publish → assign steps.
    `build-workflow` will succeed (no full node-type registry in the sandbox CLI),
    so still call `build-workflow`.
 8. Call `build-workflow` with the `filePath` you wrote.
-   For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
-   pass `isSupportingWorkflow: true`; that saved supporting workflow is the
-   task's final deliverable.
    When the tool offers `folderPath` and the new workflow has a home — the user
    named a folder, or you chose one from the project's folders because the
    related workflows live there — pass it on the create call, named the way the
@@ -293,17 +291,10 @@ Do not produce visible output until the final step, unless blocked.
 
 ## Verification Contract
 
-Use the current turn's higher-priority instructions to decide who verifies:
-
-- Direct builds and existing-workflow edits: after `build-workflow` succeeds,
-  follow the inlined `postBuildFlow.instructions` when
-  `postBuildFlow.required: true` is present in the tool output. Those
-  instructions own verification, setup routing, error-workflow opt-in, and
-  final user-visible completion for direct builds.
-- Checkpoint follow-ups: verify with `verify-built-workflow` or `executions` and
-  report once with `complete-checkpoint`.
-- Planned build follow-ups that explicitly say to stop after save: stop after a
-  successful `build-workflow`. The checkpoint task owns verification.
+After `build-workflow` succeeds for a new build or an existing-workflow edit,
+follow the inlined `postBuildFlow.instructions` when `postBuildFlow.required:
+true` is present in the tool output. Those instructions own verification, setup
+routing, error-workflow opt-in, and final user-visible completion.
 
 Build/save success is not workflow-quality evidence. When this turn is
 responsible for verification or repair, inspect the persisted workflow before

@@ -33,7 +33,6 @@ import { useThread, useInstanceAiStore } from '../instanceAi.store';
 import { getAgentBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { isPendingItemFloating } from '../confirmationKinds';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
 import {
 	clearPendingAgentAttachment,
@@ -358,16 +357,13 @@ watch(
 	},
 );
 
-watch(
-	[chatInputRef, pendingComposerDraft, () => thread.pendingPlanReview],
-	([input, draft, planReview]) => {
-		if (!input || !draft || planReview) return;
-		input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
-		generatedComposerDraft.value = draft.text;
-		pendingComposerDraft.value = null;
-		void nextTick(focusChatInputIfFocusIsIdle);
-	},
-);
+watch([chatInputRef, pendingComposerDraft], ([input, draft]) => {
+	if (!input || !draft) return;
+	input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
+	generatedComposerDraft.value = draft.text;
+	pendingComposerDraft.value = null;
+	void nextTick(focusChatInputIfFocusIsIdle);
+});
 
 function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(thread.id) === thread;
@@ -486,16 +482,6 @@ function restoreFailedSubmission(restoreDraft: () => boolean) {
 	restoreDraft();
 }
 
-/**
- * A plan change request is in flight. `confirmAction` never touches the send
- * counter, so without this the composer stays live for the round trip and a
- * second Enter is dropped by the runtime's duplicate guard without a trace.
- */
-const isPlanChangeInFlight = computed(() => {
-	const requestId = thread.pendingPlanReview?.requestId;
-	return requestId !== undefined && thread.updatingPlanRequestIds.has(requestId);
-});
-
 // --- Message handlers ---
 async function handleSubmit(
 	message: string,
@@ -524,38 +510,6 @@ async function handleSubmit(
 
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
-
-	// While a plan review is pending every message is feedback on that plan —
-	// the user does not have to click "Ask for edits" first.
-	const planReview = thread.pendingPlanReview;
-	if (planReview) {
-		void thread.requestPlanChanges(planReview.requestId, message).then((sent) => {
-			if (!sent) {
-				restoreFailedSubmission(restoreDraft);
-				return;
-			}
-			// Only an accepted request revises the plan. Tracking up front would
-			// also count a dropped or failed submit the run never saw.
-			telemetry.track('User finished providing input', {
-				thread_id: thread.id,
-				input_thread_id: planReview.inputThreadId ?? '',
-				instance_id: rootStore.instanceId,
-				type: 'plan-review',
-				provided_inputs: [
-					{
-						label: 'plan',
-						options: ['approve', 'ask-for-edits', 'deny'],
-						option_chosen: 'ask-for-edits',
-					},
-				],
-				skipped_inputs: [],
-				num_tasks: planReview.taskCount,
-				feedback: scrubSecretsInText(message),
-				plan_feedback_type: 'changes_requested',
-			});
-		});
-		return;
-	}
 
 	const handoffContext = pendingComposerContext.value ?? undefined;
 	const submittedGeneratedDraft = generatedComposerDraft.value;
@@ -668,9 +622,7 @@ function applyHandoff(context: InstanceAiHandoffContext, initialDraft?: PendingC
 		clearGeneratedDraft();
 	}
 
-	if (!thread.pendingPlanReview) {
-		void nextTick(() => chatInputRef.value?.focus());
-	}
+	void nextTick(() => chatInputRef.value?.focus());
 }
 
 function clearPendingComposerHandoff() {
@@ -804,7 +756,7 @@ defineExpose({
 							:agent-node="builder"
 						/>
 					</div>
-					<!-- Inline confirmations (plan review, text, setup, credential,
+					<!-- Inline confirmations (text, setup, credential,
 						 gateway resource-decision, continue) render in
 						 the chat flow. Floating-eligible items take over the chat
 						 input slot below instead - see `hasFloatingConfirmation`. -->
@@ -874,12 +826,10 @@ defineExpose({
 										:is-streaming="thread.isStreaming"
 										:is-submitting="
 											thread.isSendingMessage ||
-											isPlanChangeInFlight ||
 											thread.hydrationStatus === 'idle' ||
 											thread.isHydratingThread
 										"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-										:is-awaiting-plan-review="thread.pendingPlanReview !== null"
 										:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"

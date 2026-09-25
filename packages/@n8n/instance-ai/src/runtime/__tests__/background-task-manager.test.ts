@@ -50,7 +50,7 @@ describe('BackgroundTaskManager', () => {
 						await new Promise(() => {});
 						return 'never';
 					},
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
 					onFailed,
 					onSettled,
 				}),
@@ -80,7 +80,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'task-2',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
 				}),
 			);
 
@@ -338,12 +338,12 @@ describe('BackgroundTaskManager', () => {
 	});
 
 	describe('single-flight dedupe', () => {
-		it('returns duplicate when plannedTaskId matches a running task', () => {
+		it('returns duplicate when workflowId + role matches a running task', () => {
 			const first = manager.spawn(
 				makeSpawnOptions({
 					taskId: 'first',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
 				}),
 			);
 			expect(first.status).toBe('started');
@@ -353,7 +353,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'second',
 					run,
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
 				}),
 			);
 
@@ -370,7 +370,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'first',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-trace' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-trace' },
 				}),
 			);
 			const createTraceContext = vi.fn();
@@ -379,7 +379,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'second',
 					createTraceContext,
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-trace' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-trace' },
 				}),
 			);
 
@@ -387,13 +387,13 @@ describe('BackgroundTaskManager', () => {
 			expect(createTraceContext).not.toHaveBeenCalled();
 		});
 
-		it('allows a new spawn once the first planned-task settles', async () => {
+		it('allows a new spawn once the first task settles', async () => {
 			const { promise, resolve } = createDeferred<string>();
 			manager.spawn(
 				makeSpawnOptions({
 					taskId: 'first',
 					run: async () => await promise,
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-2' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-2' },
 				}),
 			);
 
@@ -404,68 +404,10 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'second',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-2' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-2' },
 				}),
 			);
 			expect(second.status).toBe('started');
-		});
-
-		it('returns duplicate when workflowId + role matches a running task without plannedTaskId', () => {
-			manager.spawn(
-				makeSpawnOptions({
-					taskId: 'first',
-					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
-				}),
-			);
-
-			const run = vi.fn(async (): Promise<string> => await new Promise(() => {}));
-			const second = manager.spawn(
-				makeSpawnOptions({
-					taskId: 'second',
-					run,
-					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
-				}),
-			);
-
-			expect(second.status).toBe('duplicate');
-			expect(run).not.toHaveBeenCalled();
-		});
-
-		it('does not collapse two distinct plannedTaskIds that target the same workflowId', () => {
-			// A plan may include two work items for the same workflow — e.g.,
-			// initial build (planned-A) followed by a patch (planned-B). They are
-			// distinct planned tasks and must both run; collapsing them on
-			// workflowId would skip work the user approved.
-			const first = manager.spawn(
-				makeSpawnOptions({
-					taskId: 'task-A',
-					run: async () => await new Promise(() => {}),
-					dedupeKey: {
-						role: 'workflow-builder',
-						plannedTaskId: 'planned-A',
-						workflowId: 'wf-shared',
-					},
-				}),
-			);
-			expect(first.status).toBe('started');
-
-			const run = vi.fn(async (): Promise<string> => await new Promise(() => {}));
-			const second = manager.spawn(
-				makeSpawnOptions({
-					taskId: 'task-B',
-					run,
-					dedupeKey: {
-						role: 'workflow-builder',
-						plannedTaskId: 'planned-B',
-						workflowId: 'wf-shared',
-					},
-				}),
-			);
-
-			expect(second.status).toBe('started');
-			expect(run).toHaveBeenCalledTimes(1);
-			expect(manager.getRunningTasks('thread-1')).toHaveLength(2);
 		});
 
 		it('does not dedupe across roles for the same workflowId', () => {
@@ -502,7 +444,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 't4',
 					onLimitReached,
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-fresh' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-fresh' },
 				}),
 			);
 			expect(result.status).toBe('limit-reached');
@@ -514,7 +456,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'first',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-3' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-3' },
 				}),
 			);
 			manager.cancelTask('thread-1', 'first');
@@ -523,7 +465,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'second',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-3' },
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-3' },
 				}),
 			);
 			expect(second.status).toBe('started');
@@ -733,70 +675,6 @@ describe('BackgroundTaskManager', () => {
 			await flushPromises();
 
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(0);
-		});
-	});
-
-	describe('getRunningTasksByParentCheckpoint', () => {
-		it('returns running tasks tagged with the given checkpoint id', () => {
-			manager.spawn(
-				makeSpawnOptions({
-					taskId: 'child-1',
-					run: async () => await new Promise(() => {}),
-					parentCheckpointId: 'cp-verify-1',
-				}),
-			);
-			manager.spawn(
-				makeSpawnOptions({
-					taskId: 'child-2',
-					run: async () => await new Promise(() => {}),
-					parentCheckpointId: 'cp-verify-1',
-				}),
-			);
-			manager.spawn(
-				makeSpawnOptions({
-					taskId: 'unrelated',
-					run: async () => await new Promise(() => {}),
-				}),
-			);
-
-			const children = manager.getRunningTasksByParentCheckpoint('thread-1', 'cp-verify-1');
-			expect(children.map((c) => c.taskId).sort()).toEqual(['child-1', 'child-2']);
-		});
-
-		it('excludes tasks tagged under a different checkpoint', () => {
-			manager.spawn(
-				makeSpawnOptions({
-					taskId: 'child-a',
-					run: async () => await new Promise(() => {}),
-					parentCheckpointId: 'cp-A',
-				}),
-			);
-			manager.spawn(
-				makeSpawnOptions({
-					taskId: 'child-b',
-					run: async () => await new Promise(() => {}),
-					parentCheckpointId: 'cp-B',
-				}),
-			);
-
-			const childrenA = manager.getRunningTasksByParentCheckpoint('thread-1', 'cp-A');
-			expect(childrenA.map((c) => c.taskId)).toEqual(['child-a']);
-		});
-
-		it('excludes tasks that have already settled', async () => {
-			const { promise, resolve } = createDeferred<string>();
-			manager.spawn(
-				makeSpawnOptions({
-					taskId: 'child-done',
-					parentCheckpointId: 'cp-verify-1',
-					run: async () => await promise,
-				}),
-			);
-
-			resolve('done');
-			await flushPromises();
-
-			expect(manager.getRunningTasksByParentCheckpoint('thread-1', 'cp-verify-1')).toHaveLength(0);
 		});
 	});
 });

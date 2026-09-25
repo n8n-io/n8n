@@ -25,28 +25,17 @@ export interface ManagedBackgroundTask {
 	onCorrectionQueued?: () => void;
 	messageGroupId?: string;
 	outcome?: Record<string, unknown>;
-	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;
 	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/** Identity used for single-flight dedupe lookups; copied from the spawn options. */
 	dedupeKey?: BackgroundTaskDedupeKey;
-	/**
-	 * The checkpoint task id this background task was spawned under, when the
-	 * orchestrator called a detached sub-agent tool inside a
-	 * `<planned-task-follow-up type="checkpoint">` turn. The checkpoint safety
-	 * net uses this to tell "orchestrator exited silently" apart from
-	 * "orchestrator handed off to an in-flight patch builder".
-	 */
-	parentCheckpointId?: string;
 }
 
 export interface BackgroundTaskDedupeKey {
-	/** Planned-task graph ID this background task is dispatched for. Primary dedupe key. */
-	plannedTaskId?: string;
-	/** Target workflow ID for this background task. Fallback dedupe key when there is no planned task. */
+	/** Target workflow ID for this background task. */
 	workflowId?: string;
-	/** Agent role (e.g. 'workflow-builder'). Scopes the workflowId fallback so different roles against the same workflow don't collide. */
+	/** Agent role (e.g. 'workflow-builder'). Scopes the workflowId key so different roles against the same workflow don't collide. */
 	role: string;
 }
 
@@ -57,26 +46,15 @@ export interface SpawnManagedBackgroundTaskOptions {
 	role: string;
 	agentId: string;
 	messageGroupId?: string;
-	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;
 	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/**
-	 * Identity for single-flight dedupe. When supplied, a spawn with the same `plannedTaskId`
-	 * (primary) or `role + workflowId` (fallback) as a currently-running task returns
+	 * Identity for single-flight dedupe. When supplied, a spawn with the same
+	 * `role + workflowId` as a currently-running task returns
 	 * `{ status: 'duplicate', existing }` instead of launching a second task.
 	 */
 	dedupeKey?: BackgroundTaskDedupeKey;
-	/**
-	 * Link this background task to a running checkpoint in the planned-task
-	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * delegate) from inside a
-	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
-	 * net defers failing the checkpoint while any child with this id is still
-	 * running, and the settlement path re-emits the checkpoint follow-up when
-	 * the last child settles.
-	 */
-	parentCheckpointId?: string;
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],
@@ -110,16 +88,7 @@ export class BackgroundTaskManager {
 		string,
 		Pick<SpawnManagedBackgroundTaskOptions, 'onCompleted' | 'onFailed' | 'onSettled'>
 	>();
-	/** plannedTaskId → taskId for the currently-running task. Populated only when the caller provides a dedupeKey with plannedTaskId. */
-	private readonly byPlannedTaskId = new Map<string, string>();
-	/**
-	 * `${role}:${workflowId}` → taskId for the currently-running task. Only
-	 * populated (and only consulted) when the caller provides a dedupeKey
-	 * WITHOUT a plannedTaskId. When both keys are present we treat
-	 * plannedTaskId as the canonical identity — two distinct planned tasks may
-	 * legitimately target the same workflow (e.g., build + later patch) and
-	 * must not collapse into each other.
-	 */
+	/** `${role}:${workflowId}` → taskId for the currently-running task. */
 	private readonly byRoleAndWorkflowId = new Map<string, string>();
 
 	constructor(
@@ -140,17 +109,6 @@ export class BackgroundTaskManager {
 		dedupeKey: BackgroundTaskDedupeKey | undefined,
 	): ManagedBackgroundTask | undefined {
 		if (!dedupeKey) return undefined;
-		if (dedupeKey.plannedTaskId) {
-			// plannedTaskId is the canonical identity when present — we must NOT
-			// fall back to the workflowId index, otherwise distinct planned tasks
-			// targeting the same (role, workflowId) would falsely collapse.
-			const existingId = this.byPlannedTaskId.get(dedupeKey.plannedTaskId);
-			if (existingId) {
-				const existing = this.tasks.get(existingId);
-				if (existing?.status === 'running') return existing;
-			}
-			return undefined;
-		}
 		if (dedupeKey.workflowId) {
 			const existingId = this.byRoleAndWorkflowId.get(
 				this.workflowKey(dedupeKey.role, dedupeKey.workflowId),
@@ -180,24 +138,6 @@ export class BackgroundTaskManager {
 			if (task.status === 'running') count++;
 		}
 		return count;
-	}
-
-	/**
-	 * Return all running background tasks on this thread that were spawned
-	 * under the given checkpoint task id. Used by the checkpoint safety net to
-	 * defer failing a checkpoint while a detached patch sub-agent it just
-	 * launched is still in-flight.
-	 */
-	getRunningTasksByParentCheckpoint(
-		threadId: string,
-		checkpointTaskId: string,
-	): ManagedBackgroundTask[] {
-		return [...this.tasks.values()].filter(
-			(task) =>
-				task.threadId === threadId &&
-				task.status === 'running' &&
-				task.parentCheckpointId === checkpointTaskId,
-		);
 	}
 
 	queueCorrection(
@@ -318,11 +258,9 @@ export class BackgroundTaskManager {
 			abortController: new AbortController(),
 			corrections: [],
 			messageGroupId: options.messageGroupId,
-			plannedTaskId: options.plannedTaskId,
 			workItemId: options.workItemId,
 			traceContext: options.traceContext,
 			dedupeKey: options.dedupeKey,
-			parentCheckpointId: options.parentCheckpointId,
 		};
 
 		this.tasks.set(options.taskId, task);
@@ -331,12 +269,7 @@ export class BackgroundTaskManager {
 			onFailed: options.onFailed,
 			onSettled: options.onSettled,
 		});
-		if (options.dedupeKey?.plannedTaskId) {
-			this.byPlannedTaskId.set(options.dedupeKey.plannedTaskId, options.taskId);
-		} else if (options.dedupeKey?.workflowId) {
-			// Only index by (role, workflowId) when there is no plannedTaskId.
-			// Otherwise a later spawn for a different planned task targeting the
-			// same workflow would be wrongly matched against this one.
+		if (options.dedupeKey?.workflowId) {
 			this.byRoleAndWorkflowId.set(
 				this.workflowKey(options.dedupeKey.role, options.dedupeKey.workflowId),
 				options.taskId,
@@ -349,12 +282,6 @@ export class BackgroundTaskManager {
 	private releaseDedupeIndices(task: ManagedBackgroundTask): void {
 		const key = task.dedupeKey;
 		if (!key) return;
-		if (key.plannedTaskId) {
-			if (this.byPlannedTaskId.get(key.plannedTaskId) === task.taskId) {
-				this.byPlannedTaskId.delete(key.plannedTaskId);
-			}
-			return;
-		}
 		if (key.workflowId) {
 			const wfKey = this.workflowKey(key.role, key.workflowId);
 			if (this.byRoleAndWorkflowId.get(wfKey) === task.taskId) {

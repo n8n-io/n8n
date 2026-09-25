@@ -191,8 +191,8 @@ export async function reconcileSimulationPlan(args: {
 		simulationFixtures,
 	};
 
-	// The mocked-credentials requirement is settled; complete-checkpoint
-	// re-analyzes the live workflow, so any other pending setup still blocks.
+	// The mocked-credentials requirement is settled; setup re-analyzes the
+	// live workflow, so any other pending setup still blocks.
 	if (
 		!hasRemainingMocks &&
 		!buildOutcome.hasUnresolvedPlaceholders &&

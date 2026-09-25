@@ -561,8 +561,8 @@ pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fai
 
 Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
-and `data-tables(action="list")`, and verify there are no planning,
-workflow-builder, or spawned-agent entries in the spawned-agent section.
+and `data-tables(action="list")`, and verify there are no workflow-builder or
+spawned-agent entries in the spawned-agent section.
 
 ## Pairwise evals
 
@@ -660,7 +660,7 @@ The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
 - `askUserCount` — `ask-user` tool was invoked (eval responds with `{ approved: false }`)
-- `planToolCount` — `create-tasks` was invoked (single-prompt dataset shouldn't trigger planning)
+- `planToolCount` — calls to the removed `create-tasks` tool. The agent no longer has this tool, so the count is always 0 for new runs. It stays for comparison with older result files
 - `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data-tables` create); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 

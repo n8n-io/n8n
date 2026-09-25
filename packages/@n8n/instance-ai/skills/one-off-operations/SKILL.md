@@ -103,8 +103,8 @@ cannot write to external services directly) — the intent changes the
    future run time, it is not a one-off — reclassify it as a reusable
    automation or a scheduled task and use the normal flow. Pass
    `executionIntent: "one-off"` to `build-workflow`. This marks verification
-   as optional in the build outcome — no verification follow-up is scheduled,
-   and the completion criterion becomes a live run whose output you read back.
+   as optional in the build outcome, and the completion criterion becomes a
+   live run whose output you read back.
 2. **Setup** is unchanged: if the build outcome requires credential or value
    setup, route it through `workflows(action="setup")` as usual. A one-off
    still needs real credentials before it can run live.

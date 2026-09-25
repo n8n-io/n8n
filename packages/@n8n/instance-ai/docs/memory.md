@@ -16,7 +16,7 @@ Embedded specialist agents do not share the orchestrator's observational memory.
 
 ### Tier 1: Storage Backend
 
-The persistence layer. Stores all messages, observational memory, plan state,
+The persistence layer. Stores all messages, observational memory, task checklist state,
 and event history.
 
 Memory persists in the main n8n database via TypeORM — the same PostgreSQL or
@@ -24,7 +24,7 @@ SQLite instance n8n already uses, selected automatically from n8n's own database
 configuration.
 
 That backend holds message history, observational memory (observation log,
-cursors and task locks), plan state in thread metadata, and checkpoints in
+cursors and task locks), the task checklist in thread metadata, and checkpoints in
 their own table.
 
 ### Tier 2: Observational Memory
@@ -59,11 +59,12 @@ Both jobs use the configured Instance AI model.
 Observational memory is **thread-scoped** — it tracks the operational history
 of the current task.
 
-### Tier 3: Plan Storage
+### Tier 3: Task Checklist Storage
 
-The `create-tasks` tool stores execution plans in thread-scoped storage. Plans
-are structured task graphs that persist across reconnects within a conversation.
-See the [tools](./tools.md) documentation for the task graph schema.
+`ThreadTaskStorage` stores the thread task checklist (`TaskList`) in
+thread-scoped storage. The CLI `WorkflowVerificationTaskProjector` writes it.
+The checklist shows the build and verify rows for direct workflow builds. It
+persists across reconnects within a conversation.
 
 ## Scoping Model
 
@@ -71,7 +72,7 @@ All memory is thread-scoped (isolated per conversation):
 
 - **Message history** — the stored conversation
 - **Observational memory** — compressed operational history
-- **Plan** — the current execution plan
+- **Task checklist** — the build and verify rows of the current workflow builds
 
 ### Embedded agent memory
 

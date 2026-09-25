@@ -121,9 +121,6 @@ vi.mock('../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 		props: ['requestId', 'setupRequests', 'workflowId', 'message', 'projectId', 'credentialFlow'],
 	},
 }));
-vi.mock('../components/PlanReviewPanel.vue', () => ({
-	default: { template: '<div />', props: ['plannedTasks', 'message', 'readOnly'] },
-}));
 
 const renderComponent = createThreadComponentRenderer(InstanceAiConfirmationPanel);
 

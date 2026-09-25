@@ -183,7 +183,6 @@ function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
 		(node.timeline?.length ?? 0) > 0 ||
 		(node.toolCalls?.length ?? 0) > 0 ||
 		(node.children?.length ?? 0) > 0 ||
-		(node.planItems?.length ?? 0) > 0 ||
 		!!node.statusMessage ||
 		!!node.result ||
 		!!node.error ||
@@ -505,9 +504,6 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.tasks = event.payload.tasks;
-				if (event.payload.planItems) {
-					agent.planItems = event.payload.planItems;
-				}
 			}
 			break;
 		}

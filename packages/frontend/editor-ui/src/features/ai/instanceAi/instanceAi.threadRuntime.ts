@@ -80,14 +80,6 @@ import {
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
 import { instanceAiResponseNow } from './instanceAi.responseTiming';
-import { resolvePlanTasks } from './planReview.utils';
-
-/** The plan review the composer is currently collecting feedback for. */
-export interface PendingPlanReview {
-	requestId: string;
-	inputThreadId?: string;
-	taskCount: number;
-}
 
 /**
  * State the editor handed off, snapshotted before its stores are torn down so
@@ -233,8 +225,8 @@ function getAgentPreviewTargetFromThreadMetadata(
 /**
  * Walk an agent tree, collecting every tool call whose confirmation the user can
  * still act on. Callers split the result by where it renders: the confirmation
- * panel takes most kinds, while plan review and the MCP connect card render
- * inline in the timeline.
+ * panel takes most kinds, while the MCP connect card renders inline in the
+ * timeline.
  *
  * Expired cards are left out entirely — they render as a terminal "this action
  * has expired" state in their inline slot, and treating one as actionable would
@@ -243,7 +235,7 @@ function getAgentPreviewTargetFromThreadMetadata(
 function collectActionableConfirmations(
 	node: InstanceAiAgentNode,
 	messageId: string,
-	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
 	out: PendingConfirmationItem[],
 ): void {
 	for (const tc of node.toolCalls) {
@@ -270,7 +262,7 @@ function collectActionableConfirmations(
 /** Confirmations the panel owns: everything except the timeline-rendered kinds. */
 function isPanelConfirmation(item: PendingConfirmationItem): boolean {
 	const conf = item.toolCall.confirmation;
-	return conf.inputType !== 'plan-review' && !conf.mcpConnectRequest;
+	return !conf.mcpConnectRequest;
 }
 
 /**
@@ -280,7 +272,7 @@ function isPanelConfirmation(item: PendingConfirmationItem): boolean {
  */
 function hasUnresolvedConfirmation(
 	node: InstanceAiAgentNode,
-	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
 ): boolean {
 	for (const tc of node.toolCalls) {
 		if (
@@ -479,9 +471,7 @@ export function createThreadRuntime(
 	 */
 	const appliedPreferences = ref<AiPreferencesAppliedPayload | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
-	const resolvedConfirmationIds = reactive(
-		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
-	);
+	const resolvedConfirmationIds = reactive(new Map<string, 'approved' | 'denied' | 'deferred'>());
 	const pendingMessageCount = ref(0);
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
@@ -493,7 +483,6 @@ export function createThreadRuntime(
 	// the disconnect. Not reactive: only consulted inside onSSEMessage.
 	const seenEventIds = new Set<number>();
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
-	const updatingPlanRequestIds = reactive(new Set<string>());
 
 	// Workflow + execution the editor was showing at hand-off, to load once when
 	// the artifact first opens. Transient (never persisted): set by the editor
@@ -736,7 +725,7 @@ export function createThreadRuntime(
 
 	// --- Telemetry: 'Builder generation stalled' ---
 	// Fires when the active run has produced nothing on the stream for a minute.
-	// A run paused on user input (confirmation, plan review) isn't stalled, so
+	// A run paused on user input (confirmation) isn't stalled, so
 	// the watchdog disarms for those. Every received SSE event re-arms it, so it
 	// fires at most once per silent stretch.
 	let generationStallTimer: ReturnType<typeof setTimeout> | null = null;
@@ -813,41 +802,12 @@ export function createThreadRuntime(
 		actionableConfirmations.value.filter(isPanelConfirmation),
 	);
 
-	/**
-	 * The plan review the composer currently routes messages into, if any.
-	 *
-	 * Newest wins: a revised plan stacks a fresh card on top of the superseded
-	 * one, so the last card is the one the user is looking at. This is the
-	 * opposite of the panel, which queues oldest-first.
-	 *
-	 * Only a card in the transcript tail counts. A later turn strands the older
-	 * card — a suspended run keeps its confirmation row alive and releases its
-	 * concurrency slot, so a new turn starts without settling it. Resuming that
-	 * requestId would revive an abandoned run, and a revision never appends a
-	 * message of its own, so "still the last message" holds for the whole review.
-	 */
-	const pendingPlanReview = computed((): PendingPlanReview | null => {
-		for (let i = actionableConfirmations.value.length - 1; i >= 0; i--) {
-			const item = actionableConfirmations.value[i];
-			const conf = item.toolCall.confirmation;
-			if (conf.inputType !== 'plan-review') continue;
-			// Newest-first: an older card sits even further back in the transcript.
-			if (item.messageId !== messages.value.at(-1)?.id) return null;
-			return {
-				requestId: conf.requestId,
-				inputThreadId: conf.inputThreadId,
-				taskCount: resolvePlanTasks(item.toolCall).length,
-			};
-		}
-		return null;
-	});
-
 	/** True while the run is paused awaiting the user to resolve a confirmation. */
 	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
 
 	function resolveConfirmation(
 		requestId: string,
-		action: 'approved' | 'changes-requested' | 'denied' | 'deferred',
+		action: 'approved' | 'denied' | 'deferred',
 	): void {
 		resolvedConfirmationIds.set(requestId, action);
 	}
@@ -1661,70 +1621,6 @@ export function createThreadRuntime(
 		amendContext.value = { agentId, role };
 	}
 
-	// --- Plan review ---
-
-	/**
-	 * Send the user's typed feedback as a request to revise the plan.
-	 *
-	 * Deliberately adds nothing to the transcript. A revision does not re-arm the
-	 * run (`shouldRearmRunAfterConfirm` is false for `approved: false`), so the
-	 * revised card merges into the assistant message that already sits above the
-	 * transcript tail — a user bubble appended here would read as if the feedback
-	 * came after the revision it caused. The card's "Changes requested" and
-	 * "Updating plan…" states are the in-flight affordance instead.
-	 */
-	async function requestPlanChanges(requestId: string, message: string): Promise<boolean> {
-		// A second submit landing mid-flight would POST the same requestId again, and
-		// the rejection would clear the "Updating plan…" state of the accepted one.
-		if (updatingPlanRequestIds.has(requestId)) return false;
-		markPlanUpdatePending(requestId);
-
-		const ok = await confirmAction(requestId, {
-			kind: 'approval',
-			approved: false,
-			userInput: message,
-		});
-
-		if (!ok) {
-			clearPlanUpdatePending(requestId);
-			return false;
-		}
-
-		resolveConfirmation(requestId, 'changes-requested');
-		return true;
-	}
-
-	function markPlanUpdatePending(requestId: string): void {
-		updatingPlanRequestIds.add(requestId);
-	}
-
-	function clearPlanUpdatePending(requestId: string): void {
-		updatingPlanRequestIds.delete(requestId);
-	}
-
-	// A revised card takes over the review, so the card it supersedes is no longer
-	// updating. Nothing else retires that marker: request-changes never re-arms the
-	// run, so the stream below stays live for the whole revision. A null review is
-	// not a supersede — the old call settles before the revised card suspends, and
-	// that gap is the wait itself.
-	watch(
-		() => pendingPlanReview.value?.requestId,
-		(requestId) => {
-			if (!requestId) return;
-			for (const id of updatingPlanRequestIds) {
-				if (id !== requestId) updatingPlanRequestIds.delete(id);
-			}
-		},
-	);
-
-	// Defensive cleanup: if a stream ends without a matching clear, drop the
-	// pending markers so we don't leave a card stuck in "Updating plan…".
-	watch(isStreaming, (streaming) => {
-		if (!streaming && updatingPlanRequestIds.size > 0) {
-			updatingPlanRequestIds.clear();
-		}
-	});
-
 	// --- Confirmations ---
 
 	async function confirmAction(
@@ -1813,10 +1709,8 @@ export function createThreadRuntime(
 		sseState,
 		lastEventId,
 		amendContext,
-		updatingPlanRequestIds,
 
 		// computeds
-		pendingPlanReview,
 		isStreaming,
 		isSendingMessage,
 		hasMessages,
@@ -1856,9 +1750,6 @@ export function createThreadRuntime(
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,
-		requestPlanChanges,
-		markPlanUpdatePending,
-		clearPlanUpdatePending,
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,

@@ -733,29 +733,6 @@ describe('transcriptPrefixFromSeed', () => {
 		]);
 	});
 
-	it('renders a seeded create-tasks block as a plan step', () => {
-		const turns = transcriptPrefixFromSeed([
-			{
-				id: 'a1',
-				type: 'llm',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'create-tasks',
-						state: 'resolved',
-						input: { tasks: [{ title: 'Add trigger', description: 'schedule' }] },
-						output: {},
-					},
-				],
-				createdAt: '2026-01-01T00:00:00Z',
-			},
-		]);
-		expect(turns[0].steps).toEqual([
-			{ kind: 'plan', tasks: [{ title: 'Add trigger', description: 'schedule' }] },
-		]);
-	});
-
 	it('skips custom messages and tolerates a history starting with an assistant turn', () => {
 		const turns = transcriptPrefixFromSeed([
 			{ id: 'c1', type: 'custom', data: { widget: 'card' }, createdAt: '2026-01-01T00:00:00Z' },

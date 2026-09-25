@@ -59,14 +59,6 @@ vi.mock('../orchestration/list-agent-capabilities.tool', () => ({
 	createListAgentCapabilitiesTool: vi.fn(() => ({ id: 'list-agent-capabilities' })),
 }));
 
-vi.mock('../orchestration/complete-checkpoint.tool', () => ({
-	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
-}));
-
-vi.mock('../orchestration/plan.tool', () => ({
-	createPlanTool: vi.fn(() => ({ id: 'create-tasks' })),
-}));
-
 vi.mock('../orchestration/report-verification-verdict.tool', () => ({
 	createReportVerificationVerdictTool: vi.fn(() => ({ id: 'report-verification-verdict' })),
 }));
@@ -82,10 +74,6 @@ vi.mock('../research.tool', () => ({
 vi.mock('../shared/ask-user.tool', () => ({
 	ASK_USER_TOOL_ID: 'ask-user',
 	createAskUserTool: vi.fn(() => ({ id: 'ask-user' })),
-}));
-
-vi.mock('../task-control.tool', () => ({
-	createTaskControlTool: vi.fn(() => ({ id: 'task-control' })),
 }));
 
 vi.mock('../workflows/apply-workflow-credentials.tool', () => ({
@@ -260,12 +248,14 @@ describe('domain tool construction', () => {
 		);
 	});
 
-	it('constructs create-tasks for the agent to apply profile exclusions', () => {
+	it('does not construct retired orchestration tools', () => {
 		const context = mock<OrchestrationContext>();
 
 		const orchestrationTools = createOrchestrationTools(context);
 
-		expect(orchestrationTools.has('create-tasks')).toBe(true);
+		expect(orchestrationTools.has('create-tasks')).toBe(false);
+		expect(orchestrationTools.has('task-control')).toBe(false);
+		expect(orchestrationTools.has('complete-checkpoint')).toBe(false);
 		expect(orchestrationTools.has('plan')).toBe(false);
 		expect(orchestrationTools.has('delegate')).toBe(false);
 		expect(orchestrationTools.has('eval-setup-with-agent')).toBe(false);

@@ -37,16 +37,13 @@ type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
  *
  * A `thinking` block is a maximal run of trace content — reasoning segments,
  * generic tool calls, and the intermediate narration text the model emits
- * between them — split only by user-facing content (answer text, plan
- * reviews, answered questions, task checklists, child agents). Invisible
- * entries (hidden tools, builder/planner hints, pending questions) are
- * dropped without splitting a run.
+ * between them — split only by user-facing content (answer text, answered
+ * questions, child agents). Invisible entries (hidden tools, builder hints,
+ * pending questions) are dropped without splitting a run.
  */
 export type TimelineBlock =
 	| { type: 'thinking'; key: string; entries: InstanceAiTimelineEntry[]; active: boolean }
 	| { type: 'text'; key: string; entry: TextEntry }
-	| { type: 'tasks'; key: string; toolCall: InstanceAiToolCallState }
-	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'preference'; key: string; toolCall: InstanceAiToolCallState }
@@ -55,8 +52,6 @@ export type TimelineBlock =
 
 type ToolCallKind =
 	| 'hidden'
-	| 'tasks'
-	| 'plan-review'
 	| 'mcp-connect'
 	| 'questions'
 	| 'questions-pending'
@@ -65,7 +60,7 @@ type ToolCallKind =
 
 /**
  * How a tool call renders in the timeline. `trace` rows join thinking blocks;
- * `tasks`/`plan-review`/`mcp-connect`/`questions`/`preference` render standalone
+ * `mcp-connect`/`questions`/`preference` render standalone
  * UI; `hidden` calls are dropped without splitting a run.
  *
  * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
@@ -74,7 +69,6 @@ type ToolCallKind =
  */
 function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (HIDDEN_TOOLS.has(tc.toolName)) return 'hidden';
-	if (tc.renderHint === 'tasks') return 'tasks';
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
 	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
 	// The card is the whole render for a finished preference write, saved or refused.
@@ -82,9 +76,7 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (tc.toolName === SAVE_USER_PREFERENCE_TOOL_NAME) {
 		return isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
 	}
-	if (tc.confirmation?.inputType === 'plan-review') return 'plan-review';
 	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
-	if (tc.renderHint === 'planner') return 'hidden';
 	if (tc.confirmation?.inputType === 'questions') {
 		return tc.isLoading ? 'questions-pending' : 'questions';
 	}
@@ -231,12 +223,6 @@ export function buildTimelineBlocks(
 			return;
 		}
 		switch (classifyToolCall(tc)) {
-			case 'tasks':
-				pushStandalone({ type: 'tasks', key: `tasks-${idx}`, toolCall: tc });
-				return;
-			case 'plan-review':
-				pushStandalone({ type: 'plan-review', key: `plan-${idx}`, toolCall: tc });
-				return;
 			case 'mcp-connect':
 				pushStandalone({ type: 'mcp-connect', key: `mcp-connect-${idx}`, toolCall: tc });
 				return;

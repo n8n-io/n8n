@@ -36,11 +36,11 @@ import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-
 import { InstanceAiService } from '../instance-ai.service';
 
 /**
- * Regression: planned-task workflow runs (build agent, checkpoint verifications)
- * dispatch AFTER the orchestrator's main run finishes. They look up the iframe
- * `pushRef` from `threadPushRef` to route execution push events back to the user's
- * session. If a finally block in `executeRun` deletes the map before planned-task
- * dispatch, those events never reach the frontend.
+ * Regression: follow-up runs (e.g. the workflow setup follow-up) start AFTER the
+ * orchestrator's main run finishes. They look up the iframe `pushRef` from
+ * `threadPushRef` to route execution push events back to the user's session. If a
+ * finally block in `executeRun` deletes the map before the follow-up starts, those
+ * events never reach the frontend.
  *
  * Locking down:
  *   1. `executeRun` and `executeRunResume` MUST NOT call `threadPushRef.delete`
@@ -57,7 +57,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 	it('executeRun does not delete threadPushRef in its run-finally', () => {
 		// The map is now cleared via clearThreadState (thread teardown) and
 		// overwritten via startRun on each new chat send. Adding a delete here
-		// kills push-event routing for any planned tasks that dispatch after
+		// kills push-event routing for any follow-up run that starts after
 		// the run.
 		const source = getMethodSource('executeRun' as keyof InstanceAiService);
 		expect(source).not.toContain('threadPushRef.delete');
@@ -74,10 +74,8 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		// dependencies clearThreadState reaches.
 		type Internals = {
 			threadPushRef: Map<string, string>;
-			planRequestsByThread: Map<string, number>;
 			runState: { clearThread: Mock };
 			backgroundTasks: { cancelThread: Mock };
-			schedulerLocks: Map<string, unknown>;
 			failedInternalFollowUpStreaks: Map<string, number>;
 			liveness: { clearThreadState: Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
@@ -100,12 +98,10 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 
 		service.threadPushRef = new Map<string, string>([['thread-a', 'push-ref-a']]);
-		service.planRequestsByThread = new Map<string, number>([['thread-a', 2]]);
 		service.runState = {
 			clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })),
 		};
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
-		service.schedulerLocks = new Map();
 		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
@@ -128,13 +124,12 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		await service.clearThreadState('thread-a');
 
 		expect(service.threadPushRef.has('thread-a')).toBe(false);
-		expect(service.planRequestsByThread.has('thread-a')).toBe(false);
 		expect(service.evalCredentialAllowlists.get('thread-a')).toBeUndefined();
 	});
 
 	it('startRun overwrites the threadPushRef entry on each new run', () => {
-		// The map persists across a single thread's lifetime to keep planned-task
-		// dispatch wired up. New chat sends overwrite (rather than appending) so
+		// The map persists across a single thread's lifetime to keep follow-up
+		// runs wired up. New chat sends overwrite (rather than appending) so
 		// a refreshed iframe with a new pushRef is picked up immediately.
 		const source = getMethodSource('startRun' as keyof InstanceAiService);
 		expect(source).toContain('threadPushRef.set');

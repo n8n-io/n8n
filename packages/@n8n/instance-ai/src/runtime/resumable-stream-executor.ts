@@ -6,10 +6,6 @@ import { randomUUID } from 'node:crypto';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
-import type {
-	OrchestratorRunHandoffReason,
-	OrchestratorRunStopSignal,
-} from './orchestrator-run-control';
 import { isQuotaExhaustedError, mapAgentChunkToEvent } from '../stream/map-chunk';
 import { UsageAccumulator, type RunTokenUsage } from '../stream/usage-accumulator';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
@@ -38,8 +34,6 @@ export interface ResumableStreamContext {
 	signal: AbortSignal;
 	logger: Logger;
 	onActivity?: () => void;
-	/** Stop consuming after the current chunk has been mapped and published. */
-	stopSignal?: () => OrchestratorRunStopSignal | undefined;
 }
 
 export interface ManualSuspensionControl {
@@ -83,8 +77,6 @@ export interface ExecuteResumableStreamResult {
 	workSummary: WorkSummary;
 	/** Accumulated token usage and cost, when the stream emitted usage. */
 	usage?: RunTokenUsage;
-	/** Reason this stream stopped early after publishing the current chunk. */
-	stopReason?: OrchestratorRunHandoffReason;
 	/** Terminal `finish` chunk's reason; `'max-iterations'` means the agent ran out of steps. */
 	finishReason?: FinishReason;
 }
@@ -298,7 +290,6 @@ function publishEvents(
 interface StreamPassResult {
 	cancelled: boolean;
 	finishReason?: FinishReason;
-	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	hasError: boolean;
 	error?: unknown;
@@ -451,23 +442,6 @@ async function consumeStreamPass(args: {
 			publishCorrections(options.context, corrections);
 			drainedCorrectionsForResume.push(...corrections);
 		}
-
-		const stopSignal = options.context.stopSignal?.();
-		if (stopSignal) {
-			return {
-				cancelled: false,
-				stopReason: stopSignal.reason,
-				finishReason,
-				suspension,
-				hasError,
-				error,
-				pendingConfirmation,
-				confirmationEvent,
-				drainedCorrectionsForResume,
-				currentResponseId,
-				nativeStepIndex,
-			};
-		}
 	}
 
 	return {
@@ -518,19 +492,6 @@ export async function executeResumableStream(
 
 		if (options.context.signal.aborted) {
 			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
-		}
-
-		if (pass.stopReason) {
-			return {
-				status: hasError ? 'errored' : 'completed',
-				agentRunId: activeAgentRunId,
-				text,
-				...(error !== undefined ? { error } : {}),
-				finishReason: pass.finishReason,
-				workSummary: workSummaryAccumulator.toSummary(),
-				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
-				stopReason: pass.stopReason,
-			};
 		}
 
 		if (!suspension) {

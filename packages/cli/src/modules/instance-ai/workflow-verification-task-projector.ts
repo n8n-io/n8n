@@ -1,13 +1,10 @@
 import type { TaskList } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
-	deriveWorkflowVerificationObligationFromOutcome,
 	orchestratorAgentId,
 	ThreadTaskStorage,
 	WorkflowLoopStorage,
 	type ManagedBackgroundTask,
-	type PlannedTaskGraph,
-	type PlannedTaskRecord,
 	type WorkflowBuildOutcome,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
@@ -101,32 +98,6 @@ function obligationStatus(obligation: WorkflowVerificationObligation): TaskStatu
 	}
 }
 
-function projectedPlannedStatus(status: PlannedTaskRecord['status']): TaskStatus {
-	switch (status) {
-		case 'planned':
-			return 'todo';
-		case 'running':
-			return 'in_progress';
-		case 'succeeded':
-			return 'done';
-		case 'failed':
-			return 'failed';
-		case 'cancelled':
-			return 'cancelled';
-	}
-}
-
-function plannedBuildDetail(task: PlannedTaskRecord): string | undefined {
-	if (task.kind !== 'build-workflow') return undefined;
-	if (task.status === 'running') return DETAIL.building;
-	if (task.status === 'failed') return task.error ?? DETAIL.blocked;
-	if (task.status === 'cancelled') return task.error ?? DETAIL.cancelled;
-
-	const outcome = parseWorkflowBuildOutcome(task.outcome);
-	if (!outcome) return task.status === 'succeeded' ? DETAIL.submitted : undefined;
-	return outcome.submitted || outcome.workflowId ? DETAIL.submitted : undefined;
-}
-
 /** Render the synthetic "Verify workflow" row for a settled obligation. */
 function verifyRow(buildTaskId: string, obligation: WorkflowVerificationObligation): TaskItem {
 	if (obligation.status === 'pending_build') {
@@ -145,7 +116,7 @@ function verifyRow(buildTaskId: string, obligation: WorkflowVerificationObligati
 	};
 }
 
-/** Render the "Build workflow" row for a direct (non-planned) build. */
+/** Render the "Build workflow" row for a build. */
 function buildRow(
 	buildTaskId: string,
 	outcome: WorkflowBuildOutcome | undefined,
@@ -210,9 +181,9 @@ function taskItemsEqual(first: TaskItem, second: TaskItem): boolean {
 /**
  * Projects workflow build/verification lifecycle into the thread task checklist.
  *
- * Both direct builds and planned workflow tasks render the same way: a build row
- * plus a synthetic "Verify workflow" row derived from the workflow verification
- * obligation. The obligation → {detail, status} mapping lives here exactly once.
+ * Each build renders as a build row plus a synthetic "Verify workflow" row
+ * derived from the workflow verification obligation. The obligation →
+ * {detail, status} mapping lives here exactly once.
  */
 export class WorkflowVerificationTaskProjector {
 	constructor(
@@ -222,68 +193,9 @@ export class WorkflowVerificationTaskProjector {
 		private readonly obligations: WorkflowVerificationObligationService,
 	) {}
 
-	/** Project a planned-task graph into a checklist, adding a verify row per build task. */
-	async projectPlannedTaskList(threadId: string, graph: PlannedTaskGraph): Promise<TaskList> {
-		const tasks: TaskItem[] = [];
-		for (const task of graph.tasks) {
-			tasks.push({
-				id: task.id,
-				description: task.title,
-				detail: plannedBuildDetail(task),
-				status: projectedPlannedStatus(task.status),
-			});
-
-			if (task.kind === 'build-workflow') {
-				tasks.push(await this.projectPlannedVerifyRow(threadId, task));
-			}
-		}
-
-		return { tasks };
-	}
-
-	private async projectPlannedVerifyRow(
-		threadId: string,
-		task: PlannedTaskRecord,
-	): Promise<TaskItem> {
-		const id = verifyRowId(task.id);
-
-		if (task.status === 'planned' || task.status === 'running') {
-			return {
-				id,
-				description: VERIFY_DESCRIPTION,
-				detail: DETAIL.waitingForBuild,
-				status: 'todo',
-			};
-		}
-		if (task.status === 'failed' || task.status === 'cancelled') {
-			return {
-				id,
-				description: VERIFY_DESCRIPTION,
-				detail: DETAIL.buildIncomplete,
-				status: 'cancelled',
-			};
-		}
-
-		const outcome = parseWorkflowBuildOutcome(task.outcome);
-		if (!outcome) {
-			return {
-				id,
-				description: VERIFY_DESCRIPTION,
-				detail: DETAIL.verificationPending,
-				status: 'in_progress',
-			};
-		}
-
-		const options = { source: 'planned', plannedTaskId: task.id } as const;
-		const obligation =
-			(await this.obligations.getObligation(threadId, outcome.workItemId, options)) ??
-			deriveWorkflowVerificationObligationFromOutcome(threadId, outcome, options);
-		return verifyRow(task.id, obligation);
-	}
-
 	/** Sync a direct builder's checklist rows from its background-task lifecycle. */
 	async syncFromBackgroundTask(task: ManagedBackgroundTask): Promise<void> {
-		if (task.plannedTaskId || task.parentCheckpointId || task.role !== 'workflow-builder') return;
+		if (task.role !== 'workflow-builder') return;
 
 		const items = await this.directItemsFromTask(task);
 		if (!items) return;

@@ -2,9 +2,9 @@
 name: post-build-flow
 description: >-
   Handles workflow verification and setup after build-workflow succeeds, or when
-  the message contains workflow-verification-follow-up or workflow-setup-required.
-  Load after direct builds, when verificationReadiness requires action, or on
-  orchestrator verify/setup follow-up turns.
+  the message contains workflow-setup-required. Load after direct builds, when
+  verificationReadiness requires action, or on orchestrator setup follow-up
+  turns.
 recommended_tools:
   - ask-user
   - verify-built-workflow
@@ -17,8 +17,7 @@ recommended_tools:
 
 Use this skill after `build-workflow` succeeds on a direct orchestrator build,
 especially when the build result contains `postBuildFlow.required: true`, or when
-the current message contains `<workflow-verification-follow-up>` or
-`<workflow-setup-required>`.
+the current message contains `<workflow-setup-required>`.
 
 One-off builds (`postBuildFlow.reason: "direct-one-off-build-succeeded"`) hand
 off to the `one-off-operations` skill instead — verification is optional there
@@ -79,17 +78,6 @@ setup returns `announced: true`, or the current user input contains
 
 A setup card that was already open keeps its apply and trigger-test resume
 flow. Its result is not a panel announcement unless it has `announced: true`.
-
-## Verification follow-up
-
-When the current message contains `<workflow-verification-follow-up>`, verify
-immediately from the payload's `obligation` — do not acknowledge first. If the
-obligation is `ready_to_verify` or `verifying`, call `verify-built-workflow`. Do
-**not** call `workflows(action="setup")` in this turn and do **not** declare the
-workflow finished if `outcome.setupRequirement.status === "required"` — setup is
-routed automatically as a separate `<workflow-setup-required>` step after
-verification. For a multi-trigger outcome, verify every trigger that does not
-yet have a recorded successful verification. Make all of these calls in this turn.
 
 ## Setup follow-up
 
@@ -506,8 +494,8 @@ Skip this follow-up when:
 
 - The workflow you just built is itself an error workflow or starts with an
   Error Trigger.
-- The build is a supporting workflow, repair, small edit, planned-task
-  subtask, or workflow-level settings patch.
+- The build is a supporting workflow, repair, small edit, or workflow-level
+  settings patch.
 - The user already asked for an error workflow in the original request, already
   declined one, or the target workflow already has the desired error workflow
   set.

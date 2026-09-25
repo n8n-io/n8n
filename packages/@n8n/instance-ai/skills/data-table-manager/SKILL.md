@@ -6,8 +6,8 @@ description: >-
   columns are in this table?", and whenever the user asks to list, show,
   create, inspect, import, seed, query, update, clean up, rename columns in, or
   delete data tables and rows, especially from CSV/XLSX/JSON attachments. Also
-  load before building or planning workflows that create or write to Data
-  Tables (then load workflow-builder before build-workflow).
+  load before building workflows that create or write to Data Tables (then
+  load workflow-builder before build-workflow).
 recommended_tools:
   - data-tables
   - parse-file
@@ -23,12 +23,12 @@ For workflow builds that create or write Data Tables, load this skill, then
 `workflow-builder`, before `build-workflow`.
 
 Use this skill to build and maintain n8n Data Tables in the current turn with
-`data-tables` and, for attachments, `parse-file`. Do not spawn another agent or
-create a background plan for data-table-only work.
+`data-tables` and, for attachments, `parse-file`. Do not spawn another agent for
+data-table-only work.
 
-Also load this skill before planning or building a workflow whose trigger,
-processing steps, or outputs create, inspect, or write Data Table records, then
-pass the relevant schema/row-handling guidance to the planning skill or builder.
+Also load this skill before building a workflow whose trigger, processing
+steps, or outputs create, inspect, or write Data Table records, then apply the
+relevant schema/row-handling guidance to the build.
 
 n8n Data Tables are flat, workflow-friendly stores. Design them so future
 workflow expressions can read predictable field names and so updates/deletes
@@ -46,8 +46,7 @@ can target rows with narrow filters.
    know it so approval cards show a recognizable label.
 4. Inspect schema before writes, deletes, column changes, imports into an
    existing table, and workflow-facing summaries.
-5. Execute the smallest direct tool sequence. Prefer read -> decide -> write;
-   never use create-tasks for standalone table work.
+5. Execute the smallest direct tool sequence. Prefer read -> decide -> write.
 6. Close with facts: table name, table ID when available, project if relevant,
    columns changed, row counts inserted/updated/deleted, skipped rows, and any
    approval or permission blocker.

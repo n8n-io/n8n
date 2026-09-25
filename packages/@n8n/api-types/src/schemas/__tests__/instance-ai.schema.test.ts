@@ -586,15 +586,6 @@ describe('isDisplayableConfirmationRequest', () => {
 		expect(
 			isDisplayableConfirmationRequest(
 				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					planItems: [{ id: 'task-1', title: 'Task', kind: 'delegate', spec: 'Do it', deps: [] }],
-				}),
-			),
-		).toBe(true);
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
 					inputType: 'resource-decision',
 					message: '',
 					resourceDecision: {
@@ -665,57 +656,16 @@ describe('isDisplayableConfirmationRequest', () => {
 		).toBe(false);
 	});
 
-	it('does not treat lightweight task lists as displayable plan reviews', () => {
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					tasks: {
-						tasks: [{ id: 'task-1', description: 'Do it', status: 'todo' }],
-					},
-				}),
-			),
-		).toBe(false);
-	});
-
-	it('recognizes only renderable task args for plan reviews', () => {
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					args: {
-						tasks: [{ id: 'task-1', title: 'Task', kind: 'delegate', spec: 'Do it', deps: [] }],
-					},
-				}),
-			),
-		).toBe(true);
-
-		expect(
-			isDisplayableConfirmationRequest(
-				makeConfirmation({
-					inputType: 'plan-review',
-					message: 'Ignored for displayability',
-					args: {
-						tasks: [{ id: 'task-1', description: 'Do it', status: 'todo' }],
-					},
-				}),
-			),
-		).toBe(false);
-	});
-
 	it('keeps the input type switch exhaustive', () => {
 		const handled = {
 			approval: true,
 			text: true,
 			questions: true,
-			'plan-review': true,
 			'resource-decision': true,
 			continue: true,
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
-		expect(Object.keys(handled)).toHaveLength(6);
+		expect(Object.keys(handled)).toHaveLength(5);
 	});
 });
 

@@ -62,6 +62,7 @@ export class InstanceAiPendingConfirmation extends WithTimestamps {
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	checkpointKey: string | null;
 
+	/** No longer written: the planned-task checkpoint flow was removed. Old rows may still hold a value. */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	checkpointTaskId: string | null;
 

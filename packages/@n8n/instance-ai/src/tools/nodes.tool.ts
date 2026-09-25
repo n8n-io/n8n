@@ -587,17 +587,9 @@ async function handleExecute(
 	}
 
 	const grantKey = buildExecuteNodeSessionGrantKey(input.type, input.config.parameters);
-	const requireApproval = context.requireRunWorkflowApproval === true;
-	// A scoped `always_allow` names the workflow IDs it covers, and a standalone node run has no
-	// workflow ID to match, so a scoped override never covers this call.
-	const scopedRunOverride =
-		context.allowedRunWorkflowIds !== undefined || context.allowedRunWorkflowNames !== undefined;
-	const allowedByScope =
-		!requireApproval && !scopedRunOverride && context.permissions?.executeNode === 'always_allow';
+	const allowedByScope = context.permissions?.executeNode === 'always_allow';
 	const allowedBySessionGrant =
-		!requireApproval &&
-		grantKey !== null &&
-		context.sessionApprovedToolKeys?.has(grantKey) === true;
+		grantKey !== null && context.sessionApprovedToolKeys?.has(grantKey) === true;
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {

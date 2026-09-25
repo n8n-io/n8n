@@ -389,13 +389,16 @@ describe('instanceAi.reducer', () => {
 	describe('tool execution', () => {
 		test('tool-call adds entry with isLoading=true and correct renderHint', () => {
 			const state = stateWithRun('run-1', 'agent-root');
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'task-control'));
+			handleEvent(
+				state,
+				makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'build-workflow-with-agent'),
+			);
 
 			const tc = state.messages[0].agentTree!.toolCalls[0];
 			expect(tc.toolCallId).toBe('tc-1');
-			expect(tc.toolName).toBe('task-control');
+			expect(tc.toolName).toBe('build-workflow-with-agent');
 			expect(tc.isLoading).toBe(true);
-			expect(tc.renderHint).toBe('tasks');
+			expect(tc.renderHint).toBe('builder');
 		});
 
 		test('tool-call assigns skill render hint for skill tools', () => {
@@ -765,7 +768,7 @@ describe('instanceAi.reducer', () => {
 		test('tool-call with unsafe toolCallId is ignored', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', '__proto__', 'task-control'));
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', '__proto__', 'workflows'));
 
 			expect(state.messages[0].agentTree?.toolCalls).toHaveLength(0);
 			expectReducerMapsNotPolluted(state);
@@ -784,38 +787,6 @@ describe('instanceAi.reducer', () => {
 			});
 
 			expect(runState).toBeUndefined();
-		});
-
-		test('createRunStateFromTree preserves planItems', () => {
-			const runState = createRunStateFromTree({
-				agentId: 'agent-root',
-				role: 'orchestrator',
-				status: 'completed',
-				textContent: '',
-				reasoning: '',
-				toolCalls: [],
-				children: [],
-				timeline: [],
-				planItems: [
-					{
-						id: 'task-1',
-						title: 'Build workflow',
-						kind: 'build-workflow',
-						spec: 'Create the workflow',
-						deps: [],
-					},
-				],
-			});
-
-			expect(runState?.agentsById['agent-root']?.planItems).toEqual([
-				{
-					id: 'task-1',
-					title: 'Build workflow',
-					kind: 'build-workflow',
-					spec: 'Create the workflow',
-					deps: [],
-				},
-			]);
 		});
 	});
 
@@ -862,10 +833,6 @@ describe('instanceAi.reducer', () => {
 	});
 
 	describe('getRenderHint', () => {
-		test('returns tasks for "task-control"', () => {
-			expect(getRenderHint('task-control')).toBe('tasks');
-		});
-
 		test('returns default for removed delegate tool', () => {
 			expect(getRenderHint('delegate')).toBe('default');
 		});
@@ -880,10 +847,6 @@ describe('instanceAi.reducer', () => {
 
 		test('returns eval-setup for eval setup tool', () => {
 			expect(getRenderHint('eval-setup-with-agent')).toBe('eval-setup');
-		});
-
-		test('returns planner render hint for create-tasks', () => {
-			expect(getRenderHint('create-tasks')).toBe('planner');
 		});
 
 		test.each(['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'])(
