@@ -2,6 +2,8 @@
 import {
 	N8nAvatar,
 	N8nButton,
+	N8nCheckbox,
+	N8nCombobox2,
 	N8nDialog,
 	N8nDialogFooter,
 	N8nDialogHeader,
@@ -10,11 +12,12 @@ import {
 	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
-	N8nOption,
 	N8nSegmentControl,
-	N8nSelect,
 	N8nSelect2,
 	N8nText,
+	N8nTooltip,
+	type ComboboxItem,
+	type ComboboxValue,
 	type IUser,
 	type SegmentOption,
 	type SelectValue,
@@ -28,6 +31,7 @@ import ProjectIcon from '@/features/collaboration/projects/components/ProjectIco
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
+import { useSubWorkflowScope } from '../composables/useSubWorkflowScope';
 import { useSelfHealingStore } from '../selfHealing.store';
 import type {
 	SelfHealingAutonomy,
@@ -82,6 +86,8 @@ function emptyForm(): SelfHealingConfigInput {
 		autonomy: 'review',
 		scope: 'all',
 		selectedWorkflowIds: [],
+		includeSubWorkflows: true,
+		subWorkflowIds: [],
 		customInstructions: '',
 		notifyProjectMembers: true,
 		reviewerIds: [],
@@ -94,6 +100,8 @@ function formFrom(config: SelfHealingConfig): SelfHealingConfigInput {
 		autonomy: config.autonomy,
 		scope: config.scope,
 		selectedWorkflowIds: [...config.selectedWorkflowIds],
+		includeSubWorkflows: config.includeSubWorkflows,
+		subWorkflowIds: [...config.subWorkflowIds],
 		customInstructions: config.customInstructions,
 		notifyProjectMembers: config.notifyProjectMembers,
 		reviewerIds: [...config.reviewerIds],
@@ -102,7 +110,6 @@ function formFrom(config: SelfHealingConfig): SelfHealingConfigInput {
 }
 
 const form = ref<SelfHealingConfigInput>(emptyForm());
-const loadingWorkflows = ref(false);
 
 const isEditing = computed(() => props.config !== null);
 
@@ -119,16 +126,49 @@ const pickableWorkflows = computed(() =>
 	),
 );
 
-const selectedWorkflows = computed(() =>
-	form.value.selectedWorkflowIds.flatMap((id) => {
-		const workflow = workflowsListStore.getWorkflowById(id);
-		return workflow ? [{ id, name: workflow.name }] : [];
-	}),
+const projectWorkflowNames = computed(
+	() => new Map(projectWorkflows.value.map((workflow) => [workflow.id, workflow.name])),
+);
+
+const subWorkflowScope = useSubWorkflowScope({
+	selectedIds: computed(() => form.value.selectedWorkflowIds),
+	projectWorkflowNames,
+	includeSubWorkflows: computed(() => form.value.includeSubWorkflows),
+});
+const selectedRows = subWorkflowScope.rows;
+
+/** Workflows whose sub-workflow list is open. Collapsed by default to keep the list short. */
+const expandedIds = ref(new Set<string>());
+
+function toggleExpanded(workflowId: string) {
+	const next = new Set(expandedIds.value);
+	if (next.has(workflowId)) next.delete(workflowId);
+	else next.add(workflowId);
+	expandedIds.value = next;
+}
+
+const workflowPickerItems = computed<ComboboxItem[]>(() =>
+	pickableWorkflows.value.map((workflow) => ({
+		value: workflow.id,
+		label: workflow.name,
+		icon: 'workflow',
+	})),
 );
 
 function addWorkflow(workflowId: string) {
 	if (!workflowId || form.value.selectedWorkflowIds.includes(workflowId)) return;
 	form.value.selectedWorkflowIds = [...form.value.selectedWorkflowIds, workflowId];
+	void subWorkflowScope.load([workflowId]);
+}
+
+/** The pickers never keep a value: choosing an entry adds it to the list below. */
+function pickedValue(value: ComboboxValue | ComboboxValue[] | undefined): string | undefined {
+	return typeof value === 'string' && value !== '' ? value : undefined;
+}
+
+function onWorkflowPick(value: ComboboxValue | ComboboxValue[] | undefined) {
+	const workflowId = pickedValue(value);
+	if (workflowId) addWorkflow(workflowId);
 }
 
 function removeWorkflow(workflowId: string) {
@@ -170,6 +210,22 @@ const pickableUsers = computed<IUser[]>(() =>
 	candidateUsers.value.filter((user) => !form.value.reviewerIds.includes(user.id)),
 );
 
+const usersById = computed(() => new Map(candidateUsers.value.map((user) => [user.id, user])));
+
+const peoplePickerItems = computed<ComboboxItem[]>(() => [
+	...(form.value.notifyProjectMembers
+		? []
+		: [
+				{
+					value: PROJECT_MEMBERS_OPTION,
+					label: i18n.baseText('selfHealing.people.projectMembers', {
+						interpolate: { project: projectName.value },
+					}),
+				},
+			]),
+	...pickableUsers.value.map((user) => ({ value: user.id, label: reviewerName(user) })),
+]);
+
 const selectedReviewers = computed<IUser[]>(() =>
 	form.value.reviewerIds.flatMap((id) => {
 		const user =
@@ -179,13 +235,10 @@ const selectedReviewers = computed<IUser[]>(() =>
 );
 
 async function loadProjectWorkflows() {
-	loadingWorkflows.value = true;
 	try {
 		await workflowsListStore.fetchAllWorkflows(props.projectId);
 	} catch {
 		// The opt-out list is a convenience; the form works without it.
-	} finally {
-		loadingWorkflows.value = false;
 	}
 }
 
@@ -194,7 +247,9 @@ watch(
 	(open) => {
 		if (!open) return;
 		form.value = props.config ? formFrom(props.config) : emptyForm();
+		expandedIds.value = new Set();
 		void loadProjectWorkflows();
+		void subWorkflowScope.load(form.value.selectedWorkflowIds, { refresh: true });
 	},
 	{ immediate: true },
 );
@@ -204,8 +259,9 @@ function addReviewer(userId: string) {
 	form.value.reviewerIds = [...form.value.reviewerIds, userId];
 }
 
-/** The picker never keeps a value: choosing an entry adds it to the list below. */
-function onPick(value: string) {
+function onPick(pick: ComboboxValue | ComboboxValue[] | undefined) {
+	const value = pickedValue(pick);
+	if (!value) return;
 	if (value === PROJECT_MEMBERS_OPTION) {
 		form.value.notifyProjectMembers = true;
 		return;
@@ -231,6 +287,7 @@ function close() {
 function save() {
 	const input: SelfHealingConfigInput = {
 		...form.value,
+		subWorkflowIds: subWorkflowScope.coveredSubWorkflowIds.value,
 		customInstructions: form.value.customInstructions.trim(),
 	};
 
@@ -287,49 +344,131 @@ function save() {
 					data-test-id="self-healing-scope-control"
 				/>
 				<template v-if="form.scope === 'selected'">
-					<N8nSelect
+					<!-- Both pickers stop Enter: with no option highlighted it would submit the dialog. -->
+					<N8nCombobox2
 						id="self-healing-selected-workflows"
 						model-value=""
-						filterable
-						:teleported="false"
-						:loading="loadingWorkflows"
+						:items="workflowPickerItems"
+						size="large"
 						:placeholder="i18n.baseText('selfHealing.dialog.scope.select.placeholder')"
 						:class="$style.scopeSelect"
 						data-test-id="self-healing-selected-workflows"
-						@update:model-value="addWorkflow"
-					>
-						<N8nOption
-							v-for="workflow in pickableWorkflows"
-							:key="workflow.id"
-							:label="workflow.name"
-							:value="workflow.id"
-						/>
-					</N8nSelect>
+						@update:model-value="onWorkflowPick"
+						@keydown.enter.prevent
+					/>
 					<ul
-						v-if="selectedWorkflows.length > 0"
-						:class="$style.entries"
+						v-if="selectedRows.length > 0"
+						:class="$style.scopeList"
 						data-test-id="self-healing-selected-workflow-list"
 					>
 						<li
-							v-for="workflow in selectedWorkflows"
+							v-for="workflow in selectedRows"
 							:key="workflow.id"
-							:class="$style.entry"
+							:class="$style.scopeRow"
 							:data-test-id="`self-healing-selected-workflow-${workflow.id}`"
 						>
-							<span :class="$style.circleIcon">
-								<N8nIcon icon="workflow" size="small" color="text-base" />
-							</span>
-							<N8nText size="medium" color="text-dark" :class="$style.entryName">
-								{{ workflow.name }}
-							</N8nText>
-							<N8nIconButton
-								icon="x"
-								variant="ghost"
-								size="small"
-								:title="i18n.baseText('selfHealing.dialog.people.remove')"
-								data-test-id="self-healing-selected-workflow-remove"
-								@click="removeWorkflow(workflow.id)"
-							/>
+							<div :class="$style.scopeRowHeader">
+								<N8nIcon
+									icon="workflow"
+									size="large"
+									color="text-base"
+									:class="$style.scopeRowIcon"
+								/>
+								<N8nText size="medium" color="text-dark" :class="$style.entryName">
+									{{ workflow.name }}
+								</N8nText>
+								<N8nIconButton
+									icon="x"
+									variant="ghost"
+									size="small"
+									:title="i18n.baseText('selfHealing.dialog.people.remove')"
+									data-test-id="self-healing-selected-workflow-remove"
+									@click="removeWorkflow(workflow.id)"
+								/>
+							</div>
+							<div
+								v-if="workflow.checking || workflow.subWorkflows.length > 0"
+								:class="$style.scopeRowBody"
+							>
+								<span
+									v-if="workflow.checking"
+									:class="$style.entryMeta"
+									data-test-id="self-healing-sub-workflows-checking"
+								>
+									<N8nIcon icon="loader" size="xsmall" spin />
+									{{ i18n.baseText('selfHealing.dialog.scope.subWorkflows.checking') }}
+								</span>
+								<template v-else>
+									<button
+										type="button"
+										:class="[$style.entryMeta, $style.subWorkflowSummary]"
+										:aria-expanded="expandedIds.has(workflow.id)"
+										data-test-id="self-healing-sub-workflow-summary"
+										@click="toggleExpanded(workflow.id)"
+									>
+										<span>
+											{{
+												i18n.baseText('selfHealing.dialog.scope.subWorkflows.count', {
+													adjustToNumber: workflow.subWorkflows.length,
+													interpolate: { count: String(workflow.subWorkflows.length) },
+												})
+											}}
+										</span>
+										<span v-if="workflow.uncoveredCount > 0" :class="$style.uncovered">
+											·
+											{{
+												i18n.baseText('selfHealing.dialog.scope.subWorkflows.uncovered', {
+													interpolate: { count: String(workflow.uncoveredCount) },
+												})
+											}}
+										</span>
+										<N8nIcon
+											:icon="expandedIds.has(workflow.id) ? 'chevron-up' : 'chevron-down'"
+											size="xsmall"
+										/>
+									</button>
+									<ul
+										v-if="expandedIds.has(workflow.id)"
+										:class="$style.subEntries"
+										data-test-id="self-healing-sub-workflow-list"
+									>
+										<li
+											v-for="sub in workflow.subWorkflows"
+											:key="sub.id"
+											:class="$style.subEntry"
+											:style="{ '--sub-workflow--depth': sub.depth - 1 }"
+											:data-test-id="`self-healing-sub-workflow-${sub.id}`"
+											:data-status="sub.status"
+										>
+											<N8nIcon
+												icon="workflow"
+												size="medium"
+												:color="sub.status === 'covered' ? 'text-base' : 'text-light'"
+												:class="$style.scopeRowIcon"
+											/>
+											<N8nText
+												size="medium"
+												:color="sub.status === 'covered' ? 'text-dark' : 'text-light'"
+												:class="$style.entryName"
+											>
+												{{ sub.name }}
+											</N8nText>
+											<N8nTooltip
+												v-if="sub.status === 'external'"
+												:content="
+													i18n.baseText('selfHealing.dialog.scope.subWorkflows.external.tooltip')
+												"
+												placement="top"
+											>
+												<span :class="$style.externalLabel">
+													{{ i18n.baseText('selfHealing.dialog.scope.subWorkflows.external') }}
+													<N8nIcon icon="info" size="xsmall" />
+												</span>
+											</N8nTooltip>
+										</li>
+									</ul>
+								</template>
+							</div>
 						</li>
 					</ul>
 					<N8nText
@@ -341,6 +480,13 @@ function save() {
 					>
 						{{ i18n.baseText('selfHealing.dialog.scope.empty') }}
 					</N8nText>
+					<N8nCheckbox
+						v-if="selectedRows.length > 0"
+						v-model="form.includeSubWorkflows"
+						:label="i18n.baseText('selfHealing.dialog.scope.subWorkflows.toggle')"
+						:class="$style.subWorkflowToggle"
+						data-test-id="self-healing-include-sub-workflows"
+					/>
 				</template>
 			</N8nInputLabel>
 
@@ -364,51 +510,28 @@ function save() {
 				:label="i18n.baseText('selfHealing.dialog.people.label')"
 				data-test-id="self-healing-people-label"
 			>
-				<N8nSelect
+				<N8nCombobox2
 					id="self-healing-reviewers"
 					model-value=""
-					filterable
-					:teleported="false"
+					:items="peoplePickerItems"
+					size="large"
 					:placeholder="i18n.baseText('selfHealing.dialog.people.placeholder')"
 					data-test-id="self-healing-reviewer-select"
 					@update:model-value="onPick"
+					@keydown.enter.prevent
 				>
-					<N8nOption
-						v-if="!form.notifyProjectMembers"
-						:value="PROJECT_MEMBERS_OPTION"
-						:label="
-							i18n.baseText('selfHealing.people.projectMembers', {
-								interpolate: { project: projectName },
-							})
-						"
-						data-test-id="self-healing-pick-project-members"
-					>
-						<div :class="$style.pickRow">
-							<span :class="$style.circleIcon">
-								<ProjectIcon :icon="projectIcon" size="small" round border-less />
-							</span>
-							<span>
-								{{
-									i18n.baseText('selfHealing.people.projectMembers', {
-										interpolate: { project: projectName },
-									})
-								}}
-							</span>
-						</div>
-					</N8nOption>
-					<N8nOption
-						v-for="user in pickableUsers"
-						:key="user.id"
-						:value="user.id"
-						:label="reviewerName(user)"
-						:data-test-id="`self-healing-pick-${user.id}`"
-					>
-						<div :class="$style.pickRow">
-							<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="small" />
-							<span>{{ reviewerName(user) }}</span>
-						</div>
-					</N8nOption>
-				</N8nSelect>
+					<template #item-leading="{ item }">
+						<span v-if="item.value === PROJECT_MEMBERS_OPTION" :class="$style.circleIcon">
+							<ProjectIcon :icon="projectIcon" size="small" round border-less />
+						</span>
+						<N8nAvatar
+							v-else
+							:first-name="usersById.get(item.value)?.firstName"
+							:last-name="usersById.get(item.value)?.lastName"
+							size="small"
+						/>
+					</template>
+				</N8nCombobox2>
 				<ul
 					v-if="hasAnyoneToNotify"
 					:class="$style.entries"
@@ -564,6 +687,106 @@ function save() {
 	white-space: nowrap;
 }
 
+// The selected workflows: one bordered section each, with the sub-workflows
+// it calls under its name. Long selections scroll instead of growing the dialog.
+.scopeList {
+	margin: var(--spacing--xs) 0 0;
+	padding: 0;
+	list-style: none;
+	max-height: var(--spacing--5xl);
+	overflow-y: auto;
+	border: var(--border-width) var(--border-style) var(--border-color);
+	border-radius: var(--radius);
+}
+
+.scopeRow {
+	padding: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs) var(--spacing--xs);
+
+	& + & {
+		border-top: var(--border-width) var(--border-style) var(--border-color);
+	}
+}
+
+.scopeRowHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.scopeRowIcon {
+	flex-shrink: 0;
+}
+
+// Starts where the workflow name starts: the large icon is 16px wide.
+.scopeRowBody {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	padding-left: calc(var(--spacing--sm) + var(--spacing--2xs));
+}
+
+// The quiet second line under a selected workflow.
+.entryMeta {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--lg);
+	color: var(--text-color--subtle);
+}
+
+.subWorkflowSummary {
+	padding: 0;
+	border: 0;
+	background: none;
+	font-family: inherit;
+	cursor: pointer;
+
+	&:hover {
+		color: var(--text-color);
+	}
+}
+
+.uncovered {
+	color: var(--text-color--warning);
+}
+
+// A guide line ties the sub-workflows to the workflow that calls them.
+.subEntries {
+	display: flex;
+	flex-direction: column;
+	align-self: stretch;
+	gap: var(--spacing--4xs);
+	margin: var(--spacing--2xs) 0 var(--spacing--4xs);
+	padding: 0 0 0 var(--spacing--xs);
+	list-style: none;
+	border-left: var(--border-width) var(--border-style) var(--border-color);
+}
+
+// Deeper calls step in further.
+.subEntry {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-height: var(--spacing--lg);
+	padding-left: calc(var(--sub-workflow--depth, 0) * var(--spacing--md));
+}
+
+.externalLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex-shrink: 0;
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+	cursor: default;
+}
+
+.subWorkflowToggle {
+	margin-top: var(--spacing--xs);
+}
+
 // Same footprint as the small person avatar next to it.
 .circleIcon {
 	display: inline-flex;
@@ -574,14 +797,5 @@ function save() {
 	height: 28px;
 	border-radius: 50%;
 	background-color: var(--color--background--light-3);
-}
-
-// A picker entry: same avatar and name layout as the rows below the picker.
-.pickRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) 0;
-	white-space: normal;
 }
 </style>

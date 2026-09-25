@@ -22,6 +22,14 @@ export interface SelfHealingConfig {
 	scope: SelfHealingScope;
 	/** Only read when `scope` is `selected`. */
 	selectedWorkflowIds: string[];
+	/** Also cover the sub-workflows that the selected workflows call. Only read when `scope` is `selected`. */
+	includeSubWorkflows: boolean;
+	/**
+	 * The sub-workflows `includeSubWorkflows` covered when the configuration
+	 * was saved. The prototype stores them because it has no backend; a real
+	 * backend resolves them from the dependency index when a failure occurs.
+	 */
+	subWorkflowIds: string[];
 	customInstructions: string;
 	/** Notify every member of the project, on top of `reviewerIds`. */
 	notifyProjectMembers: boolean;
@@ -88,8 +96,23 @@ export type SelfHealingInboxKind = 'fix' | 'needs_you' | 'could_not_fix';
 
 export interface SelfHealingOutcome {
 	kind: Exclude<SelfHealingInboxKind, 'fix'>;
+	/** Why no fix was prepared, in a sentence or two. Leads the notice at the top of the description. */
+	reason: string | null;
 	/** Where the next step happens. `null` falls back to "Continue in chat". */
 	action: { type: 'open_credential'; credentialName: string } | null;
+}
+
+/** What the Assistant needs to continue an investigation in a new chat. */
+export interface SelfHealingChatHandoff {
+	kind: SelfHealingInboxKind;
+	/** `null` when the workflow does not exist on this instance, as for demo items. */
+	workflowId: string | null;
+	workflowName: string;
+	/** `null` when the project does not exist on this instance, as for demo items. */
+	projectId: string | null;
+	executionId: string | null;
+	/** The Assistant's own write-up: what failed, what it found, what comes next. */
+	report: string;
 }
 
 /** What an investigation cost. `null` when the pre-check stopped it before any AI ran. */
@@ -126,7 +149,7 @@ export interface SelfHealingReview {
 	item: WorkflowReviewInboxItem;
 	detail: WorkflowReviewRequestDetail;
 	activity: WorkflowReviewActivityEntry[];
-	/** "What failed → what changed", shown under the title in the inbox. */
+	/** "What failed → what changed", in one or two sentences. */
 	summary: string;
 	/** Name of the node the fix touched. */
 	changedNode: string;

@@ -43,6 +43,7 @@ import type {
 	SelfHealingConfigStatus,
 	SelfHealingFixJob,
 	SelfHealingInboxKind,
+	SelfHealingChatHandoff,
 	SelfHealingOutcome,
 	SelfHealingReview,
 	SelfHealingTraceEntry,
@@ -219,6 +220,11 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 
 	// -- Per-workflow status --------------------------------------------------
 
+	function coversSelectedWorkflow(config: SelfHealingConfig, workflowId: string): boolean {
+		if (config.selectedWorkflowIds.includes(workflowId)) return true;
+		return config.includeSubWorkflows && config.subWorkflowIds.includes(workflowId);
+	}
+
 	function getWorkflowStatus(
 		workflowId: string,
 		projectId: string | null | undefined,
@@ -227,7 +233,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 
 		const config = getActiveConfig(projectId);
 		if (!config) return { enrolled: false, config: getProjectConfigs(projectId)[0] ?? null };
-		if (config.scope === 'selected' && !config.selectedWorkflowIds.includes(workflowId)) {
+		if (config.scope === 'selected' && !coversSelectedWorkflow(config, workflowId)) {
 			return { enrolled: false, config };
 		}
 
@@ -442,6 +448,28 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		return findReview(reviewId)?.outcome ?? null;
 	}
 
+	/**
+	 * What a new Assistant chat needs to take over an investigation. Demo items
+	 * point at workflows and a project that do not exist, so `workflowId` and
+	 * `projectId` are `null` for them.
+	 */
+	function getChatHandoff(reviewId: string): SelfHealingChatHandoff | null {
+		const review = findReview(reviewId);
+		if (!review) return null;
+		const isDemo = review.item.projectId === SEED_PROJECT_ID;
+		const analysis = review.activity
+			.flatMap((entry) => (entry.type === 'comment.created' ? entry.messages : []))
+			.find((message) => message.id === `${reviewId}-analysis`)?.body;
+		return {
+			kind: review.kind,
+			workflowId: isDemo ? null : (review.detail.workflows[0]?.workflowId ?? null),
+			workflowName: review.item.workflowName ?? review.item.title,
+			projectId: isDemo ? null : review.item.projectId,
+			executionId: review.executionId,
+			report: analysis ?? review.detail.description ?? review.summary,
+		};
+	}
+
 	function getTrace(reviewId: string): SelfHealingTraceEntry[] {
 		return findReview(reviewId)?.trace ?? [];
 	}
@@ -593,6 +621,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		getReviewSummary,
 		getInboxKind,
 		getOutcome,
+		getChatHandoff,
 		getUsage,
 		getTrace,
 		decide,

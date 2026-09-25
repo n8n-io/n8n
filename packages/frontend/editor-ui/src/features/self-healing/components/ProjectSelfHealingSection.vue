@@ -91,11 +91,15 @@ const headers = computed<Array<TableHeader<SelfHealingConfig>>>(() => [
 ]);
 
 function scopeLabel(config: SelfHealingConfig): string {
-	return config.scope === 'all'
-		? i18n.baseText('selfHealing.scope.all')
-		: i18n.baseText('selfHealing.scope.selected', {
-				interpolate: { count: String(config.selectedWorkflowIds.length) },
-			});
+	if (config.scope === 'all') return i18n.baseText('selfHealing.scope.all');
+	const count = String(config.selectedWorkflowIds.length);
+	const subCount = config.includeSubWorkflows ? config.subWorkflowIds.length : 0;
+	return subCount > 0
+		? i18n.baseText('selfHealing.scope.selectedWithSubWorkflows', {
+				adjustToNumber: subCount,
+				interpolate: { count, subCount: String(subCount) },
+			})
+		: i18n.baseText('selfHealing.scope.selected', { interpolate: { count } });
 }
 
 function autonomyLabel(config: SelfHealingConfig): string {

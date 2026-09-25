@@ -99,6 +99,8 @@ describe('useSelfHealingStore', () => {
 				autonomy: 'deploy',
 				scope: 'selected',
 				selectedWorkflowIds: ['wf-9'],
+				includeSubWorkflows: true,
+				subWorkflowIds: [],
 				customInstructions: '',
 				notifyProjectMembers: false,
 				reviewerIds: ['user-2'],
@@ -268,8 +270,13 @@ describe('useSelfHealingStore', () => {
 				return store.getDetail(item?.id ?? '')?.description?.split('\n')[0] ?? '';
 			};
 			expect(leadOf('fix')).toMatch(/^Fix ready for review/);
-			expect(leadOf('needs_you')).toMatch(/^Action needed:/);
-			expect(leadOf('could_not_fix')).toMatch(/^No fix prepared/);
+			// The other kinds lead with their notice, so the reason sits on the outcome.
+			const reasonOf = (kind: string) => {
+				const item = store.getInboxItems('open').find((i) => store.getInboxKind(i.id) === kind);
+				return store.getOutcome(item?.id ?? '')?.reason ?? '';
+			};
+			expect(reasonOf('needs_you')).toMatch(/^Reconnect the credential/);
+			expect(reasonOf('could_not_fix')).toMatch(/stopped rather than guess/);
 		});
 
 		it('offers no decision on outcome items', () => {

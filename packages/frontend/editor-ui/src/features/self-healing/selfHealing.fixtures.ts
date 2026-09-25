@@ -56,6 +56,8 @@ export function createDefaultConfig(
 		autonomy: 'review',
 		scope: 'all',
 		selectedWorkflowIds: [],
+		includeSubWorkflows: true,
+		subWorkflowIds: [],
 		customInstructions:
 			'Prefer adding retries and guards over changing business logic. Never edit credentials or webhook paths. Keep the fix to the failing branch.',
 		notifyProjectMembers: true,
@@ -843,7 +845,7 @@ export function createSeedReviews(
 			{
 				id: `${SELF_HEALING_REVIEW_ID_PREFIX}seed-deal-alerts`,
 				description:
-					'Action needed: reconnect the credential "HubSpot – Sales". No fix was attempted because nothing in the workflow has to change.\n\nImpact: every hourly run fails, so no new deals reach #sales in Slack.\nCause: the credential\'s OAuth token expired, so "Get new deals" is refused with 401 Unauthorized.\nNext: reconnect the credential, then run the failed execution again or wait for the next run.',
+					'Impact: every hourly run fails, so no new deals reach #sales in Slack.\nCause: the credential\'s OAuth token expired, so "Get new deals" is refused with 401 Unauthorized.\nNext: reconnect the credential, then run the failed execution again or wait for the next run.',
 				title: 'Reconnect the HubSpot credential in Deal alerts to Slack',
 				summary:
 					'Failed: "Get new deals" was refused with 401 Unauthorized. The credential "HubSpot – Sales" has expired; reconnect it to resume.',
@@ -858,6 +860,8 @@ export function createSeedReviews(
 					'What failed: execution #48377 stopped at "Get new deals" with "Authorization failed. Please check your credentials (401 Unauthorized)".\n\nWhat I found: the pre-check matched this error to an expired OAuth token on the credential "HubSpot – Sales". The workflow has not changed since its last successful run, so there is nothing in it to fix.\n\nWhat to do next:\n1. Reconnect the credential "HubSpot – Sales" under Credentials.\n2. Run the failed execution again, or wait for the next hourly run.',
 				outcome: {
 					kind: 'needs_you',
+					reason:
+						'Reconnect the credential "HubSpot – Sales". No fix was attempted because nothing in the workflow has to change.',
 					action: { type: 'open_credential', credentialName: 'HubSpot – Sales' },
 				},
 				usage: null,
@@ -882,7 +886,7 @@ export function createSeedReviews(
 			{
 				id: `${SELF_HEALING_REVIEW_ID_PREFIX}seed-order-sync`,
 				description:
-					'No fix prepared. The Assistant could not work out what replaced the field "shipping_method_v1" and stopped rather than guess.\n\nImpact: paid orders since yesterday at 22:10 have no shipment in the warehouse.\nCause: the warehouse API now rejects "shipping_method_v1" in "Create shipment" with HTTP 400. The workflow did not change.\nNext: find the new field in the vendor\'s API changelog and update "Create shipment", or continue in chat with the changelog link.',
+					'Impact: paid orders since yesterday at 22:10 have no shipment in the warehouse.\nCause: the warehouse API now rejects "shipping_method_v1" in "Create shipment" with HTTP 400. The workflow did not change.\nNext: find the new field in the vendor\'s API changelog and update "Create shipment", or continue in chat with the changelog link.',
 				title: 'Could not fix "Create shipment" in Order sync to warehouse',
 				summary:
 					'Failed: the warehouse API rejected "shipping_method_v1", a field this workflow has always sent. The Assistant could not find the replacement.',
@@ -897,6 +901,8 @@ export function createSeedReviews(
 					'What failed: execution #48311 stopped at "Create shipment" with HTTP 400 "Unknown field shipping_method_v1".\n\nWhat I found: the same request succeeded until yesterday at 22:10 and nothing in the workflow changed since, so the warehouse API has renamed or removed the field.\n\nWhy I stopped: the error does not say what replaced the field, and the API reference I can reach still lists the old name. Guessing a field name could create shipments with wrong data.\n\nWhat to do next:\n1. Check the warehouse vendor\'s API changelog for the new shipping method field.\n2. Update the field mapping in "Create shipment", then run the failed execution again.\n3. Or continue in chat with the changelog link and I will prepare the fix.',
 				outcome: {
 					kind: 'could_not_fix',
+					reason:
+						'The Assistant could not work out what replaced the field "shipping_method_v1" and stopped rather than guess.',
 					action: null,
 				},
 				usage: { credits: 9, turns: 6, durationSeconds: 170 },

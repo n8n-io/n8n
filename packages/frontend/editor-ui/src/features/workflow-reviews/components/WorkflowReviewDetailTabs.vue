@@ -158,6 +158,7 @@ const tabOptions = computed(() => [
 							<N8nText tag="h3" bold color="text-light" size="medium">
 								{{ i18n.baseText('workflowReviews.detail.activity.description') }}
 							</N8nText>
+							<slot name="description-header" />
 							<N8nText
 								v-if="detail?.description"
 								color="text-base"
@@ -175,7 +176,6 @@ const tabOptions = computed(() => [
 							>
 								{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
 							</N8nText>
-							<slot name="description-footer" />
 						</div>
 					</template>
 					<template v-if="showApprovedAndPublished" #footer>

@@ -59,10 +59,6 @@ function formatInput(input: Record<string, unknown>): string {
 
 <template>
 	<div :class="$style.trace" data-test-id="self-healing-trace">
-		<N8nText size="medium" color="text-light">{{
-			i18n.baseText('selfHealing.trace.intro')
-		}}</N8nText>
-
 		<div :class="$style.summary" data-test-id="self-healing-trace-summary">
 			<div v-for="item in summary" :key="item.label" :class="$style.stat">
 				<N8nText size="small" color="text-light">{{ item.label }}</N8nText>

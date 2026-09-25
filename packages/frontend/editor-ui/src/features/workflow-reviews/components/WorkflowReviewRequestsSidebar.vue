@@ -17,7 +17,6 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
 import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 import { getSelfHealingStatusDisplay } from '@/features/self-healing/selfHealingStatus';
-import SelfHealingInboxKindBadge from '@/features/self-healing/components/SelfHealingInboxKindBadge.vue';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
@@ -59,11 +58,6 @@ const i18n = useI18n();
 const usersStore = useUsersStore();
 const selfHealingStore = useSelfHealingStore();
 const { isCollapsed, toggleSection } = useReviewInboxSectionCollapse();
-
-/** Reviews the assistant submitted carry a one-line "what failed → what changed". */
-function autoFixSummary(item: WorkflowReviewInboxItem): string | null {
-	return isSelfHealingAssistant(item.requester) ? selfHealingStore.getReviewSummary(item.id) : null;
-}
 
 function inboxKind(item: WorkflowReviewInboxItem) {
 	return isSelfHealingAssistant(item.requester) ? selfHealingStore.getInboxKind(item.id) : null;
@@ -274,17 +268,7 @@ function onListBackgroundClick() {
 										:display="statusDisplay(item)"
 									/>
 								</div>
-								<N8nText
-									v-if="autoFixSummary(item)"
-									size="xsmall"
-									color="text-light"
-									:class="$style.cardSummary"
-									data-test-id="workflow-review-request-auto-fix-summary"
-								>
-									{{ autoFixSummary(item) }}
-								</N8nText>
 								<div :class="$style.cardMeta">
-									<SelfHealingInboxKindBadge v-if="inboxKind(item)" :kind="inboxKind(item)!" />
 									<N8nBadge
 										v-if="item.workflowName"
 										theme="tertiary"
@@ -496,15 +480,6 @@ function onListBackgroundClick() {
 
 .assistantAvatar {
 	flex-shrink: 0;
-}
-
-.cardSummary {
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-	min-width: 0;
-	width: 100%;
 }
 
 .cardMeta {

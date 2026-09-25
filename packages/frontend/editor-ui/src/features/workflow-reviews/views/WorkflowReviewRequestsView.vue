@@ -24,7 +24,7 @@ import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsS
 import type { ReviewInboxSidebarSection } from '../components/WorkflowReviewRequestsSidebar.vue';
 import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
-import SelfHealingOutcomeActions from '@/features/self-healing/components/SelfHealingOutcomeActions.vue';
+import SelfHealingOutcomeNotice from '@/features/self-healing/components/SelfHealingOutcomeNotice.vue';
 import SelfHealingTrace from '@/features/self-healing/components/SelfHealingTrace.vue';
 import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
 import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
@@ -422,8 +422,8 @@ onUnmounted(() => {
 						@update:tab="onDetailTabChange"
 						@decide="onDecide(selectedItem.id, $event)"
 					>
-						<template v-if="selectedOutcome" #description-footer>
-							<SelfHealingOutcomeActions :review-id="selectedItem.id" />
+						<template v-if="selectedOutcome" #description-header>
+							<SelfHealingOutcomeNotice :review-id="selectedItem.id" />
 						</template>
 						<template v-if="selectedHasTrace" #trace>
 							<SelfHealingTrace :review-id="selectedItem.id" />

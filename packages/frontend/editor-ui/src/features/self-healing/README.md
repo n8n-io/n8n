@@ -28,7 +28,8 @@ window.featureFlags.override('self_healing_workflows_prototype', 'control');
 | --- | --- | --- |
 | Project settings section | `components/ProjectSelfHealingSection.vue`, `components/SelfHealingConfigDialog.vue` | `ProjectSettings.vue` |
 | Read-only trace of the Assistant's work | `components/SelfHealingTrace.vue` | Trace tab in `WorkflowReviewDetailTabs.vue` |
-| Three inbox kinds: Fix ready, Action needed, Could not fix | `components/SelfHealingInboxKindBadge.vue`, `components/SelfHealingOutcomeActions.vue` | `WorkflowReviewRequestsSidebar.vue`, `WorkflowReviewDetailTabs.vue` (next step in the description, Review disabled, no Changes tab) |
+| Three inbox kinds: Fix ready, Action needed, Could not fix | `components/SelfHealingOutcomeNotice.vue` (notice with the reason and the next step), `components/SelfHealingOutcomeActions.vue`, `selfHealingStatus.ts` | `WorkflowReviewRequestsSidebar.vue` (status colour only), `WorkflowReviewDetailTabs.vue` (next step in the description, Review disabled, no Changes tab) |
+| Sub-workflows of selected workflows | `SelfHealingConfigDialog.vue`, `composables/useSubWorkflowScope.ts` | Selected-workflows scope (reads the real workflow dependency index) |
 | Reviewers per configuration | `SelfHealingConfigDialog.vue` (project members picker) | seeded and live reviews list them as reviewers |
 | Workflow list badge | `components/SelfHealingWorkflowBadge.vue` | `WorkflowCard.vue` |
 | Failed execution banner | `components/SelfHealingExecutionBanner.vue` | `WorkflowExecutionsPreview.vue` |
@@ -43,6 +44,12 @@ Workflow Reviews backend feature is off. See `isReviewInboxEnabled` in
 
 1. Turn the flag on and open a project's **Settings**. The **Self-healing**
    section lists one default configuration. Edit it, add another, pause it.
+   In a new configuration, choose **Selected workflows** and add a workflow
+   that calls sub-workflows. Its row reads "Calls 3 sub-workflows"; click it
+   to see them. **Include sub-workflows** is on by default,
+   so the configuration covers them too. A sub-workflow in another project
+   shows as **Other project** and is not covered. This step reads real
+   Execute Workflow nodes, so the project must have such workflows.
 2. Open the project's **Workflows**. Enrolled workflows show a chip:
    "Monitoring" or "Healed 3 hours ago". Workflows outside the scope show nothing.
 3. Open the project's **Executions** tab. A coachmark points at the newest
@@ -51,9 +58,13 @@ Workflow Reviews backend feature is off. See `isReviewInboxEnabled` in
    **Let AI Assistant fix this**. After a short delay the banner links to the
    new review, and the workflow's chip reads "Fix in review".
 4. Open **Reviews**. Two seeded auto-fix reviews plus the one you started sit
-   in the inbox with the assistant avatar and a one-line summary. Open one:
+   in the inbox with the assistant avatar. Open one:
    the Activity tab explains the fix and the Changes tab shows the diff.
    Approve it; the workflow's chip flips to "Healed just now".
+   On the "Could not fix" item, **Continue in chat** opens a new Assistant
+   chat. Its first message carries the Assistant's report, so it can take
+   over. Demo items open the chat in your personal project and attach no
+   workflow, because their workflows do not exist.
 5. Switch the configuration to **Deploy fixes automatically** and repeat
    step 3. The fix lands already approved and published. Switch it to
    **Diagnose and notify** instead and the banner shows a root-cause summary
