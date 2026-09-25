@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_b47696a0daf590::t_7f1db0507352df 120-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "973e6fbe3c648b63eea46af71244b9a591810d03",
+  "prompts": {},
+  "sessions": {
+    "s_b47696a0daf590": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fdebe205-0110-433d-90de-91dd6d98b21b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
