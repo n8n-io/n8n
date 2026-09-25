@@ -74,7 +74,7 @@ function formatIssue(issue: unknown): string {
 		return `project "${it.name}" (source ${it.sourceProjectId}) already exists on this instance`;
 	}
 	if (it.type === 'workflow-removal-forbidden') {
-		return `workflow "${it.name}" (${it.workflowId}) in project ${it.projectId} is not in the package and would be removed, but you lack permission to remove it`;
+		return `workflow "${it.name}" (${it.workflowId}) in project ${it.projectId} could not be removed — not in the package or selected for deletion, and you lack permission`;
 	}
 	if (it.type === 'workflow-removal-conflict') {
 		return `Workflow ${it.workflowId} (source ${it.sourceWorkflowId}) in project ${it.projectId} is selected for both import and deletion. Remove it from one selection.`;
