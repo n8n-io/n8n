@@ -1,0 +1,28 @@
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_2f8e12c8ef524c::t_751c9381d28c9a 4,6,654-705
+  s_2f8e12c8ef524c::t_7e7094099d3902 706
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_2f8e12c8ef524c::t_3bf7eb9446495a 292-297
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_2f8e12c8ef524c::t_a411a308bbb0d8 1-74
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_2f8e12c8ef524c::t_9a62dacd5dd14c 1-75
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_2f8e12c8ef524c::t_8e9f46605eb7af 213-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9515cd48e20be3a1de40bc0ccc65c66651f9f7ed",
+  "prompts": {},
+  "sessions": {
+    "s_2f8e12c8ef524c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d794-351a-7251-a5c4-8039f0109ab6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
