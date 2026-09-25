@@ -372,7 +372,7 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	from {
 		opacity: 0;
 		transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
-		filter: blur(var(--animation--fade-in-up--blur, 2px));
+		filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
 	}
 	to {
 		opacity: 1;
