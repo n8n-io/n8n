@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import type { AgentTaskDto } from '@n8n/api-types';
 import { beforeEach, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,13 +20,15 @@ vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 function makeService() {
 	const agentsService = mock<AgentsService>();
+	const agentSkillsService = mock<AgentSkillsService>();
+	const agentTaskService = mock<AgentTaskService>();
 	const agentExecutionService = mock<AgentExecutionService>();
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentsToolsService = mock<AgentsToolsService>();
 	const service = new InstanceAiAgentContextAdapterService(
 		agentsService,
-		mock<AgentSkillsService>(),
-		mock<AgentTaskService>(),
+		agentSkillsService,
+		agentTaskService,
 		agentExecutionService,
 		mock<AgentIntegrationPersistenceService>(),
 		mock<AttachableWorkflowsService>(),
@@ -35,6 +38,8 @@ function makeService() {
 	return {
 		service,
 		agentsService,
+		agentSkillsService,
+		agentTaskService,
 		agentExecutionService,
 		mcpRegistryService,
 		agentsToolsService,
@@ -80,6 +85,78 @@ describe('InstanceAiAgentContextAdapterService', () => {
 				activeVersionId: 'published-1',
 			},
 		});
+	});
+
+	it('lists configurable fields without an Agent id', async () => {
+		const { service, agentsService } = makeService();
+
+		const result = await service.createReader(user, 'project-1').lookup({
+			type: 'config-schema',
+		});
+
+		expect(result.configurableProperties).toContain('maxIterations?: integer [1..200]');
+		expect(result.configurableProperties).toContain('skills?:');
+		expect(result.configurableProperties).toContain('tools?:');
+		expect(agentsService.findById).not.toHaveBeenCalled();
+	});
+
+	it('reads skill references through the shared projection', async () => {
+		const { service, agentsService, agentSkillsService } = makeService();
+		agentsService.findById.mockResolvedValue(agent);
+		agentSkillsService.getSkill.mockResolvedValue({
+			name: 'Support',
+			description: 'Handle support requests',
+			instructions: 'Read the support guide.',
+			references: [
+				{ path: 'guide.md', content: 'Guide' },
+				{ path: 'notes.md', content: 'Notes' },
+			],
+		});
+
+		const result = await service.createReader(user, 'project-1').lookup({
+			type: 'skill',
+			agentId: 'agent-1',
+			skillId: 'support',
+			referencePaths: ['guide.md'],
+		});
+
+		expect(result).toMatchObject({
+			id: 'support',
+			skill: {
+				references: [
+					{ path: 'guide.md', characterCount: 5, content: 'Guide' },
+					{ path: 'notes.md', characterCount: 5 },
+				],
+			},
+		});
+	});
+
+	it('reads task enabled state from the current Agent config', async () => {
+		const { service, agentsService, agentTaskService } = makeService();
+		agentsService.findById.mockResolvedValue({
+			...agent,
+			schema: {
+				...agent.schema,
+				name: 'Support Agent',
+				model: '',
+				instructions: 'Help users.',
+				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+			},
+		});
+		agentTaskService.list.mockResolvedValue([
+			mock<AgentTaskDto>({ id: 'task-1', name: 'Daily' }),
+			mock<AgentTaskDto>({ id: 'task-2', name: 'Weekly' }),
+		]);
+
+		const result = await service.createReader(user, 'project-1').lookup({
+			type: 'tasks',
+			agentId: 'agent-1',
+		});
+
+		expect(result.tasks).toMatchObject([
+			{ id: 'task-1', enabled: true },
+			{ id: 'task-2', enabled: false },
+		]);
 	});
 
 	it('scopes session filters to the bound project and Agent', async () => {

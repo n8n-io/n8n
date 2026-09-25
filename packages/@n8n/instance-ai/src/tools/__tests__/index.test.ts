@@ -59,10 +59,6 @@ vi.mock('../orchestration/build-agent.tool', () => ({
 	createBuildAgentTool: vi.fn(() => ({ id: 'build-agent' })),
 }));
 
-vi.mock('../orchestration/list-agent-capabilities.tool', () => ({
-	createListAgentCapabilitiesTool: vi.fn(() => ({ id: 'list-agent-capabilities' })),
-}));
-
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
@@ -287,7 +283,6 @@ describe('domain tool construction', () => {
 			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
 		);
 		expect(withoutDelegate.has('build-agent')).toBe(false);
-		expect(withoutDelegate.has('list-agent-capabilities')).toBe(false);
 
 		const withDelegate = createOrchestrationTools(
 			makeContext({

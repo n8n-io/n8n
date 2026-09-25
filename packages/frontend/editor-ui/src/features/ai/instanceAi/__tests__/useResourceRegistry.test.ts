@@ -669,6 +669,77 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.has('agent-1')).toBe(false);
 		});
 
+		test('keeps project links for two changed Agents after the thread reloads', async () => {
+			const { messages, producedArtifacts } = setup(undefined, () => ({
+				agentId: 'agent-2',
+				projectId: 'project-1',
+				name: 'Second Agent',
+			}));
+
+			messages.value = [
+				makeMessage({
+					id: 'msg-1',
+					agentTree: makeAgentNode({
+						activity: 'creating',
+						targetResource: {
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Draft name',
+							projectId: 'project-1',
+						},
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: {
+									ok: true,
+									agentId: 'agent-1',
+									agentName: 'First Agent',
+									agentChange: 'created',
+								},
+							}),
+						],
+					}),
+				}),
+				makeMessage({
+					id: 'msg-2',
+					agentTree: makeAgentNode({
+						activity: 'editing',
+						targetResource: {
+							type: 'agent',
+							id: 'agent-2',
+							name: 'Old name',
+							projectId: 'project-1',
+						},
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: {
+									ok: true,
+									agentId: 'agent-2',
+									agentName: 'Second Agent',
+									agentChange: 'updated',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'First Agent',
+				projectId: 'project-1',
+			});
+			expect(producedArtifacts.get('agent-2')).toMatchObject({
+				type: 'agent',
+				id: 'agent-2',
+				name: 'Second Agent',
+				projectId: 'project-1',
+			});
+		});
+
 		test('a later build-agent result without agentName does not regress a known name', async () => {
 			const { messages, producedArtifacts } = setup();
 

@@ -59,6 +59,7 @@ import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentConfigService } from '../agent-config.service';
+import { listAgentTasks, readAgentSkill } from '../agent-context-readers';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
@@ -97,7 +98,7 @@ import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { getAgentConfigHash, getAgentSkillHash } from '../utils/agent-config-hash';
+import { getAgentConfigHash } from '../utils/agent-config-hash';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -1077,21 +1078,17 @@ export class AgentsBuilderToolsService {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
 				try {
-					const before = (await this.agentTaskService.list(agentId)).find(
-						(task) => task.id === taskId,
+					const { task, changed } = await this.agentTaskService.updateWithChange(
+						agentId,
+						projectId,
+						taskId,
+						updates,
+						{
+							user,
+							modifiedBy: 'builder',
+						},
 					);
-					const updated = await this.agentTaskService.update(agentId, projectId, taskId, updates, {
-						user,
-						modifiedBy: 'builder',
-					});
-					const changed =
-						before === undefined ||
-						(updates.name !== undefined && updates.name !== before.name) ||
-						(updates.objective !== undefined && updates.objective !== before.objective) ||
-						(updates.cronExpression !== undefined &&
-							updates.cronExpression !== before.cronExpression) ||
-						(updates.timezone !== undefined && updates.timezone !== before.timezone);
-					return { ok: true, id: updated.id, name: updated.name, ...(changed ? {} : { changed }) };
+					return { ok: true, id: task.id, name: task.name, ...(changed ? {} : { changed }) };
 				} catch (e) {
 					return {
 						ok: false,
@@ -1116,20 +1113,17 @@ export class AgentsBuilderToolsService {
 					const agent = await this.agentsService.findById(agentId, projectId);
 					if (!agent) throw new Error('Agent not found');
 
-					const tasks = await this.agentTaskService.list(agentId);
-					const enabledByTaskId = new Map(
-						(composeJsonConfig(agent)?.tasks ?? []).map((task) => [task.id, task.enabled]),
-					);
+					const tasks = await listAgentTasks(this.agentTaskService, agent);
 					return {
 						ok: true,
-						tasks: tasks.map(({ id, name, objective, cronExpression, timezone }) => ({
+						tasks: tasks.map(({ id, name, objective, cronExpression, timezone, enabled }) => ({
 							id,
 							name,
 							objective,
 							cronExpression,
 							// Null means the task runs on the instance timezone.
 							timezone,
-							enabled: enabledByTaskId.get(id) ?? false,
+							enabled,
 						})),
 					};
 				} catch (e) {
@@ -1229,33 +1223,15 @@ export class AgentsBuilderToolsService {
 			.input(readSkillInputSchema)
 			.handler(async ({ skillId, referencePaths = [] }: ReadSkillInput) => {
 				try {
-					const skill = await this.agentSkillsService.getSkill(agentId, projectId, skillId);
-					const skillHash = getAgentSkillHash(skill);
-					const { references, ...body } = skill;
-					const requestedPaths = new Set(referencePaths);
-					const knownPaths = new Set(references?.map((reference) => reference.path) ?? []);
-					const missingPaths = referencePaths.filter((path) => !knownPaths.has(path));
-					if (missingPaths.length > 0) {
-						return {
-							ok: false,
-							errors: [
-								{
-									message: `Reference path${missingPaths.length === 1 ? '' : 's'} not found: ${missingPaths.join(', ')}`,
-								},
-							],
-						};
-					}
-
-					const visibleReferences = references?.map((reference) => ({
-						path: reference.path,
-						characterCount: reference.content.length,
-						...(requestedPaths.has(reference.path) ? { content: reference.content } : {}),
-					}));
 					return {
 						ok: true,
-						id: skillId,
-						skillHash,
-						skill: { ...body, ...(visibleReferences ? { references: visibleReferences } : {}) },
+						...(await readAgentSkill(
+							this.agentSkillsService,
+							agentId,
+							projectId,
+							skillId,
+							referencePaths,
+						)),
 					};
 				} catch (e) {
 					return {

@@ -15,9 +15,11 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	AgentExecutionService,
+	toSessionStatus,
 	type ThreadDetail,
 	type ThreadListItem,
 } from './agent-execution.service';
+import { listAgentTasks, readAgentSkill } from './agent-context-readers';
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentTaskService } from './agent-task.service';
@@ -28,7 +30,7 @@ import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
 import { formatPreviewSessionContext } from './builder/format-preview-context';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { jsonSchemaToCompactText } from './json-config/schema-text-serializer';
-import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
+import { getAgentConfigHash } from './utils/agent-config-hash';
 
 const toSessionSummary = (thread: ThreadListItem): AgentSessionSummary => ({
 	threadId: thread.id,
@@ -52,12 +54,7 @@ const toSessionDetailSummary = (detail: ThreadDetail): AgentSessionSummary => {
 		0,
 	);
 	const latestStatus = detail.executions.at(-1)?.status;
-	const status: AgentSessionSummary['status'] =
-		latestStatus === 'success'
-			? failureCount > 0
-				? 'error'
-				: 'succeeded'
-			: (latestStatus ?? null);
+	const status = toSessionStatus(latestStatus, failureCount > 0);
 
 	return {
 		threadId: detail.thread.id,
@@ -187,35 +184,16 @@ export class InstanceAiAgentContextAdapterService {
 				};
 			}
 			case 'skill': {
-				const skill = await this.agentSkillsService.getSkill(agent.id, projectId, input.skillId);
-				const requestedPaths = new Set(input.referencePaths ?? []);
-				const knownPaths = new Set(skill.references?.map((reference) => reference.path) ?? []);
-				const missingPaths = [...requestedPaths].filter((path) => !knownPaths.has(path));
-				if (missingPaths.length > 0) {
-					throw new UserError(`Skill reference not found: ${missingPaths.join(', ')}`);
-				}
-				return {
-					id: input.skillId,
-					skillHash: getAgentSkillHash(skill),
-					skill: {
-						...skill,
-						references: skill.references?.map((reference) => ({
-							path: reference.path,
-							characterCount: reference.content.length,
-							...(requestedPaths.has(reference.path) ? { content: reference.content } : {}),
-						})),
-					},
-				};
+				return await readAgentSkill(
+					this.agentSkillsService,
+					agent.id,
+					projectId,
+					input.skillId,
+					input.referencePaths,
+				);
 			}
 			case 'tasks': {
-				const enabledById = new Map((config?.tasks ?? []).map((ref) => [ref.id, ref.enabled]));
-				const tasks = await this.agentTaskService.list(agent.id);
-				return {
-					tasks: tasks.map((task) => ({
-						...task,
-						enabled: enabledById.get(task.id) ?? false,
-					})),
-				};
+				return { tasks: await listAgentTasks(this.agentTaskService, agent) };
 			}
 			case 'custom-tools':
 				return {

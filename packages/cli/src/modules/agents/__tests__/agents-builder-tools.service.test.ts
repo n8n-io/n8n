@@ -2197,23 +2197,27 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('updates only supplied fields while preserving the task id', async () => {
 			const { service, agentTaskService } = makeService();
-			agentTaskService.list.mockResolvedValue([makeTaskDto()]);
-			agentTaskService.update.mockResolvedValue(
-				makeTaskDto({ cronExpression: '0 10 * * *', updatedAt: '2026-01-02T00:00:00.000Z' }),
-			);
+			agentTaskService.updateWithChange.mockResolvedValue({
+				task: makeTaskDto({
+					cronExpression: '0 10 * * *',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+				}),
+				changed: true,
+			});
 
 			const result = await getUpdateTaskTool(service).handler!(
 				{ taskId: 'task-1', updates: { cronExpression: '0 10 * * *' } },
 				ctx,
 			);
 
-			expect(agentTaskService.update).toHaveBeenCalledWith(
+			expect(agentTaskService.updateWithChange).toHaveBeenCalledWith(
 				agentId,
 				projectId,
 				'task-1',
 				{ cronExpression: '0 10 * * *' },
 				{ user, modifiedBy: 'builder' },
 			);
+			expect(agentTaskService.list).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				ok: true,
 				id: 'task-1',
@@ -2225,8 +2229,10 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('does not mark an unchanged task as a config mutation', async () => {
 			const { service, agentTaskService } = makeService();
-			agentTaskService.list.mockResolvedValue([makeTaskDto()]);
-			agentTaskService.update.mockResolvedValue(makeTaskDto());
+			agentTaskService.updateWithChange.mockResolvedValue({
+				task: makeTaskDto(),
+				changed: false,
+			});
 
 			const result = await getUpdateTaskTool(service).handler!(
 				{ taskId: 'task-1', updates: { cronExpression: '0 9 * * *' } },

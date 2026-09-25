@@ -15,10 +15,8 @@ import type {
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
-	AgentSessionOrigin,
 	AgentSessionStatus,
 	AgentSkill,
-	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiPromptConfiguration,
@@ -48,6 +46,7 @@ import type { WorkflowCodeSnapshotInput } from './debug/run-debug-buffer';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
+import type { AgentContextInput } from './tools/agent-context.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
@@ -1388,19 +1387,6 @@ export interface BuilderOpenSuspension {
  * builder's questions survive a process restart.
  */
 
-/** Capabilities and limitations the orchestrator surfaces to plan an agent
- *  build, sourced from the agents module via `InstanceAiBuilderDelegate.listAgentCapabilities`
- *  so they stay aligned with the agent config schema and business rules as
- * they evolve — the orchestrator never hardcodes these. */
-export interface AgentCapabilitiesSummary {
-	/** Supported chat-channel integrations; absence from this list means unsupported. */
-	channels: ChatIntegrationDescriptor[];
-	/** What an n8n Agent can do beyond chat channels — brief, for planning. */
-	agentCapabilities: string[];
-	/** Agent-level limitations the orchestrator must respect when planning a build. */
-	limitations: string[];
-}
-
 export interface InstanceAiBuilderDelegate {
 	/**
 	 * `options.id` creates the agent under an id the frontend already minted for
@@ -1438,15 +1424,6 @@ export interface InstanceAiBuilderDelegate {
 	): Promise<BuilderOpenSuspension[]>;
 	/** Expire the builder checkpoint for `runId` so a failed cascade leaves no orphaned open suspension. */
 	cancelOpenSuspension(agentId: string, runId: string): Promise<void>;
-	/** Agents in the bound project, most recently updated first. */
-	listAgents(): Promise<
-		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
-	>;
-	/** Capabilities and limitations the orchestrator surfaces to plan an agent
-	 *  build, sourced from the agents module via `listAgentCapabilities` so they
-	 *  stay aligned with the agent config schema and business rules as they
-	 *  evolve — the orchestrator never hardcodes these. */
-	listAgentCapabilities(): Promise<AgentCapabilitiesSummary>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
 	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
@@ -1528,29 +1505,11 @@ export interface AgentSessionSummary {
 	totalDuration: number;
 }
 
-export type AgentContextLookup =
-	| { type: 'agents' }
-	| { type: 'config-schema' }
-	| { type: 'config'; agentId: string }
-	| { type: 'skills'; agentId: string }
-	| { type: 'skill'; agentId: string; skillId: string; referencePaths?: string[] }
-	| { type: 'tasks'; agentId: string }
-	| { type: 'custom-tools'; agentId: string }
-	| { type: 'custom-tool'; agentId: string; toolId: string }
-	| {
-			type: 'sessions';
-			agentId: string;
-			limit?: number;
-			cursor?: string;
-			status?: AgentSessionStatus;
-			origin?: AgentSessionOrigin;
-			updatedAfter?: string;
-			updatedBefore?: string;
-	  }
-	| { type: 'session'; agentId: string; threadId: string; executionId?: string }
-	| { type: 'capabilities' }
-	| { type: 'integrations'; queries?: string[] }
-	| { type: 'attachable-workflows'; searchTerm?: string };
+type WithResolvedAgentId<T> = T extends { agentId?: string }
+	? Omit<T, 'agentId'> & { agentId: string }
+	: T;
+
+export type AgentContextLookup = WithResolvedAgentId<AgentContextInput>;
 
 /** Read-only Agent context. The host binds this reader to one user and project. */
 export interface InstanceAiAgentContextReader {

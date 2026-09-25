@@ -147,7 +147,10 @@ function entryFromAgentBuilderTarget(
 	const entry: ResourceEntry = {
 		type: 'agent',
 		id: target.id,
-		name: optionalString(target.name) ?? existing?.name ?? fallbackName,
+		name:
+			(existing && !existing.pending && existing.name !== 'Untitled' ? existing.name : undefined) ??
+			optionalString(target.name) ??
+			fallbackName,
 	};
 	const projectId = optionalString(target.projectId) ?? existing?.projectId;
 	if (projectId !== undefined) entry.projectId = projectId;
@@ -327,7 +330,7 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	if (target.type === 'agent') {
 		// New events report the target before the result is known. Only the
 		// build-agent result can confirm that this Agent changed.
-		if (node.activity !== undefined) return;
+		if (node.activity !== undefined && !existing) return;
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
 		if (entry) recordProduced(col, entry);
 		return;
@@ -336,10 +339,12 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 }
 
 function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
-	extractFromTargetResource(node, col);
+	const deferAgentTarget = node.targetResource?.type === 'agent' && node.activity !== undefined;
+	if (!deferAgentTarget) extractFromTargetResource(node, col);
 	for (const tc of node.toolCalls) {
 		extractFromToolCall(tc, col);
 	}
+	if (deferAgentTarget) extractFromTargetResource(node, col);
 	for (const child of node.children) {
 		collectFromAgentNode(child, col);
 	}

@@ -59,10 +59,17 @@ const inputRuntimeSchema = z.discriminatedUnion('type', [
 	}),
 ]);
 
-type AgentContextInput = z.infer<typeof inputRuntimeSchema>;
+export type AgentContextInput = z.infer<typeof inputRuntimeSchema>;
+const projectScopedLookupTypes = [
+	'agents',
+	'config-schema',
+	'capabilities',
+	'integrations',
+	'attachable-workflows',
+] as const satisfies ReadonlyArray<AgentContextInput['type']>;
 type AgentScopedContextInput = Exclude<
 	AgentContextInput,
-	{ type: 'agents' | 'config-schema' | 'capabilities' | 'integrations' | 'attachable-workflows' }
+	{ type: (typeof projectScopedLookupTypes)[number] }
 >;
 
 export interface AgentContextToolOptions {
@@ -72,9 +79,7 @@ export interface AgentContextToolOptions {
 }
 
 const needsAgentId = (input: AgentContextInput): input is AgentScopedContextInput =>
-	!['agents', 'config-schema', 'capabilities', 'integrations', 'attachable-workflows'].includes(
-		input.type,
-	);
+	!projectScopedLookupTypes.some((type) => type === input.type);
 
 export function createAgentContextTool(options: AgentContextToolOptions) {
 	return new Tool(DOMAIN_TOOL_IDS.AGENT_CONTEXT)

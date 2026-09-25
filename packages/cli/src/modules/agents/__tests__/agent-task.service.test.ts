@@ -466,6 +466,28 @@ describe('AgentTaskService', () => {
 			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 
+		it('reports whether a task body changed', async () => {
+			arrangeUpdate();
+
+			const first = await service.updateWithChange(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{ name: 'Renamed task' },
+				telemetryContext,
+			);
+			const second = await service.updateWithChange(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{ name: 'Renamed task' },
+				telemetryContext,
+			);
+
+			expect(first).toMatchObject({ task: { name: 'Renamed task' }, changed: true });
+			expect(second).toMatchObject({ task: { name: 'Renamed task' }, changed: false });
+		});
+
 		it('moves the schedule to another timezone', async () => {
 			const task = arrangeUpdate();
 

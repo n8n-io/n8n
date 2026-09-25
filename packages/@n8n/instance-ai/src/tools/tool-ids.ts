@@ -39,7 +39,6 @@ export const ORCHESTRATION_TOOL_IDS = {
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
 	BUILD_AGENT: 'build-agent',
-	LIST_AGENT_CAPABILITIES: 'list-agent-capabilities',
 	GET_SESSION: 'get-session',
 } as const;
 

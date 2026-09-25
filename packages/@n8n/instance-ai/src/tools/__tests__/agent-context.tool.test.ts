@@ -38,8 +38,10 @@ describe('agent-context tool', () => {
 		});
 
 		await executeTool(tool, { type: 'agents' });
+		await executeTool(tool, { type: 'config-schema' });
 
 		expect(reader.lookup).toHaveBeenCalledWith({ type: 'agents' });
+		expect(reader.lookup).toHaveBeenCalledWith({ type: 'config-schema' });
 		expect(resolveDefaultAgentId).not.toHaveBeenCalled();
 	});
 

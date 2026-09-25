@@ -379,7 +379,6 @@ export const createSubAgentResourceIdPrefix: typeof AgentPersistenceMod.createSu
 	lazyFunction(() => loadAgentPersistence().createSubAgentResourceIdPrefix);
 export const createAgentContextTool: typeof AgentContextToolMod.createAgentContextTool =
 	lazyFunction(() => loadAgentContextTool().createAgentContextTool);
-export type AgentContextToolOptions = AgentContextToolMod.AgentContextToolOptions;
 export declare const SUB_AGENT_RESOURCE_PREFIX: typeof AgentPersistenceMod.SUB_AGENT_RESOURCE_PREFIX;
 
 export declare const iterationEntrySchema: typeof StorageMod.iterationEntrySchema;
@@ -760,7 +759,6 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 	InstanceAiBuilderDelegate,
-	AgentCapabilitiesSummary,
 	BuilderDelegateSession,
 	BuilderTurnStream,
 	BuilderOpenSuspension,
@@ -782,7 +780,6 @@ export type {
 export {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
 	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
-	AGENT_SESSION_MAX_LIST_LIMIT,
 } from './types';
 export { ASK_USER_TOOL_ID } from './tools/tool-ids';
 export type {
