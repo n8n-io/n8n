@@ -48,7 +48,6 @@ describe('LmChatAnthropic', () => {
 			apiKey: 'test-api-key',
 		});
 		mockContext.getNode = vi.fn().mockReturnValue(node);
-		//@ts-expect-error - Mocking
 		mockContext.getNodeParameter = vi.fn();
 
 		// Mock the constructors/functions properly
