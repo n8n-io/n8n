@@ -6,7 +6,6 @@ import type { MockInstance } from 'vitest';
 import type { DatabaseConfig } from '../src/index';
 import {
 	DEFAULT_CONTENT_SECURITY_POLICY,
-	EngineConfig,
 	GlobalConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from '../src/index';
@@ -1103,21 +1102,6 @@ describe('GlobalConfig', () => {
 
 			const globalConfig = Container.get(GlobalConfig);
 			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
-		});
-
-		it('should accept the redis engine response transport', () => {
-			process.env = { N8N_ENGINE_RESPONSE_TRANSPORT: 'redis' };
-
-			expect(Container.get(EngineConfig).responseTransport).toEqual('redis');
-		});
-
-		it('should warn and fall back to default for an invalid engine response transport', () => {
-			process.env = { N8N_ENGINE_RESPONSE_TRANSPORT: 'rediss' };
-
-			expect(Container.get(EngineConfig).responseTransport).toEqual('memory');
-			expect(consoleWarnMock).toHaveBeenCalledWith(
-				expect.stringContaining('Invalid value for N8N_ENGINE_RESPONSE_TRANSPORT'),
-			);
 		});
 	});
 

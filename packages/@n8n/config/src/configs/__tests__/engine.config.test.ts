@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { MockInstance } from 'vitest';
 
-import { EngineConfig } from '../src/index';
+import { EngineConfig } from '../engine.config';
 
 describe('EngineConfig', () => {
 	const originalEnv = process.env;
@@ -57,5 +57,20 @@ describe('EngineConfig', () => {
 		process.env.N8N_ENGINE_CONTROL_PLANE_BASE_URL = 'http://cp.internal:5678';
 
 		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('http://cp.internal:5678');
+	});
+
+	it('should accept the redis engine response transport', () => {
+		process.env.N8N_ENGINE_RESPONSE_TRANSPORT = 'redis';
+
+		expect(Container.get(EngineConfig).responseTransport).toEqual('redis');
+	});
+
+	it('should warn and fall back to default for an invalid engine response transport', () => {
+		process.env.N8N_ENGINE_RESPONSE_TRANSPORT = 'rediss';
+
+		expect(Container.get(EngineConfig).responseTransport).toEqual('memory');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('Invalid value for N8N_ENGINE_RESPONSE_TRANSPORT'),
+		);
 	});
 });
