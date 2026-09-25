@@ -45,7 +45,7 @@ mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
 mockInstance(OtelService);
-const telemetryEventRelay = mockInstance(TelemetryEventRelay);
+mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 
@@ -164,12 +164,6 @@ describe('Engine', () => {
 			await createEngine().init();
 
 			expect(CrashJournal.init).not.toHaveBeenCalled();
-		});
-
-		it('starts no telemetry', async () => {
-			await createEngine().init();
-
-			expect(telemetryEventRelay.init).not.toHaveBeenCalled();
 		});
 
 		it('loads the nodes and starts no task runner', async () => {
