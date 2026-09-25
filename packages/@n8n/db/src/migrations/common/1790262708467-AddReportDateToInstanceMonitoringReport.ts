@@ -22,7 +22,13 @@ export class AddReportDateToInstanceMonitoringReport1790262708467 implements Rev
 		await this.backfillReportDate(context);
 		await this.clearDuplicateDays(context);
 
-		await createIndex(TABLE_NAME, [COLUMN_NAME], true, undefined, `"${COLUMN_NAME}" IS NOT NULL`);
+		await createIndex(
+			TABLE_NAME,
+			[COLUMN_NAME],
+			true,
+			undefined,
+			`${context.escape.columnName(COLUMN_NAME)} IS NOT NULL`,
+		);
 	}
 
 	async down({ schemaBuilder: { dropIndex, dropColumns } }: MigrationContext) {
