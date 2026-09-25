@@ -56,7 +56,34 @@ export class WaitingWebhooks implements IWebhookManager {
 		private readonly endpointsConfig: EndpointsConfig,
 	) {}
 
-	// TODO: implement `getWebhookMethods` for CORS support
+	async getWebhookMethods(executionId: string) {
+		const execution = await this.getExecution(executionId);
+		if (!execution) return [];
+
+		const lastNodeExecuted = execution.data.resultData?.lastNodeExecuted;
+		if (!lastNodeExecuted) return [];
+
+		const workflow = this.createWorkflow(execution.workflowData);
+		const workflowStartNode = workflow.getNode(lastNodeExecuted);
+		if (!workflowStartNode) return [];
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+		});
+		await workflow.expression.acquireIsolate();
+		try {
+			return this.webhookService
+				.getNodeWebhooks(workflow, workflowStartNode, additionalData)
+				.filter(
+					(webhook) =>
+						webhook.webhookDescription.restartWebhook === true &&
+						(webhook.webhookDescription.nodeType === 'form' || false) === this.includeForms,
+				)
+				.map((webhook) => webhook.httpMethod);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
+	}
 
 	async findAccessControlOptions() {
 		// waiting webhooks do not support cors configuration options
