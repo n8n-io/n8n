@@ -375,6 +375,7 @@ describe('NodeView', () => {
 		const existing = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'Existing' });
 		const pasted = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'Pasted' });
 		const pastedJson = JSON.stringify({ nodes: [pasted], connections: {} });
+		const pastedNodeArrayJson = JSON.stringify([pasted]);
 
 		let deferred: (() => void | Promise<void>) | undefined;
 		// jsdom has no clipboard API. With `navigator.clipboard` present but no write
@@ -466,6 +467,41 @@ describe('NodeView', () => {
 					'Pasted',
 				]),
 			);
+		});
+
+		it('pastes a top-level array of nodes', async () => {
+			renderNodeView();
+
+			pasteText(pastedNodeArrayJson);
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
+			);
+
+			await deferred?.();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual([
+					'Existing',
+					'Pasted',
+				]),
+			);
+		});
+
+		it.each([
+			['an empty array', []],
+			['an array with a non-object value', [null]],
+			['an array with an incomplete node object', [{}]],
+		])('rejects %s as node data', async (_, clipboardData) => {
+			renderNodeView();
+
+			pasteText(JSON.stringify(clipboardData));
+
+			// Give the async paste handler a tick to settle before asserting nothing happened.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
+			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
 		});
 
 		it('does not open the paste nudge for clipboard text that is not workflow JSON', async () => {
