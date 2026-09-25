@@ -34,7 +34,7 @@ export const ONBOARDING_OPENING: OnboardingOpening = {
 		"Hi {{firstName}}, I'm your Assistant. Think of me as your n8n expert.",
 		"I'll ask 2 questions to finish your setup and suggest automations based on real workflows.",
 	].join('\n\n'),
-	followUp: "Nice. Tell me how you use {{apps}}. Is there a task you'd like to automate?",
+	followUp: 'Got it! Tell me a little about how you use {{apps}}.',
 	questions: [
 		// The n8n Cloud signup form's team labels, so the answers stay comparable with the Cloud
 		// metadata (`what_team_are_you_on`). The card hides options that start with "other"; its
