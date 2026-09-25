@@ -62,7 +62,8 @@ describe('http-error-serializers', () => {
 		expect(serializePublicApiError(descriptor)).toEqual({
 			status: 400,
 			body: {
-				message: 'Workflows moved to another project',
+				message:
+					'These workflows moved to another project: wf-moved. A selective push cannot move them. Push all projects instead.',
 				meta: {
 					code: 'promotions-workflows-moved-cross-project',
 					workflowIds: ['wf-moved'],

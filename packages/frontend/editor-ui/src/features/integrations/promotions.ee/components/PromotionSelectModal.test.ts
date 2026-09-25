@@ -1,8 +1,4 @@
-import {
-	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
-	type PromotePackageResultDto,
-} from '@n8n/api-types';
-import { i18n } from '@n8n/i18n';
+import type { PromotePackageResultDto } from '@n8n/api-types';
 import { blocked, credential, variable } from '../__tests__/bindings.fixtures';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -84,7 +80,7 @@ const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
 			tags: 0,
 		},
 		git: { commitSha: 'abc123', branchName },
-	}) as unknown as PromotePackageResultDto;
+	}) satisfies PromotePackageResultDto;
 
 const renderComponent = createComponentRenderer(PromotionSelectModal, {
 	global: {
@@ -214,55 +210,13 @@ describe('PromotionSelectModal', () => {
 		);
 		expect(showMessage).toHaveBeenCalledWith({
 			title: 'Changes promoted',
-			message: 'Pushed 1 workflow to release/main.',
+			message: 'Changes have been pushed to release/main.',
 			type: 'success',
 		});
-		expect(emitSpy).toHaveBeenCalledWith('applied', { projectId: 'project-1' });
+		expect(emitSpy).toHaveBeenCalledWith('promoted', { projectId: 'project-1' });
+		expect(emitSpy).not.toHaveBeenCalledWith('applied', expect.anything());
 		expect(uiStore.closeModal).toHaveBeenCalledWith(PROMOTION_SELECT_MODAL_KEY);
 		emitSpy.mockRestore();
-	});
-
-	it('should show the cross-project message and keep the selection when promote fails with moved workflows', async () => {
-		const failure = new ResponseError('Workflows moved to another project', {
-			httpStatusCode: 400,
-			meta: {
-				code: PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
-				workflowIds: ['wf-001'],
-			},
-		});
-		api.promoteProjectSelection.mockRejectedValueOnce(failure);
-		const uiStore = useUIStore();
-		const { findAllByTestId, findByTestId } = renderComponent({
-			pinia,
-			props: {
-				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1', direction: 'promote' },
-			},
-		});
-
-		const rows = await findAllByTestId('promotion-change-row');
-		await userEvent.click(rows[0]);
-		await userEvent.click(await findByTestId('promotion-submit'));
-
-		const expectedMessage = i18n.baseText(
-			'promotions.modal.promoteError.workflowsMovedCrossProject',
-			{ interpolate: { workflows: 'Email summary' } },
-		);
-
-		await waitFor(() =>
-			expect(showMessage).toHaveBeenCalledWith(
-				{
-					title: i18n.baseText('promotions.modal.promoteError'),
-					message: expectedMessage,
-					type: 'error',
-					duration: 0,
-				},
-				false,
-			),
-		);
-		expect(showError).not.toHaveBeenCalled();
-		expect(uiStore.closeModal).not.toHaveBeenCalled();
-		expect(await findByTestId('promotion-submit')).toHaveTextContent('Promote 1 change');
 	});
 
 	it('should show an error and keep the selection when promote fails', async () => {

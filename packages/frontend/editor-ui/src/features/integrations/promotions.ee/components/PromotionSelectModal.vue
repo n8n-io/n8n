@@ -140,31 +140,23 @@ function onClose() {
 	uiStore.closeModal(props.modalName);
 }
 
-function getSuccessToastMessage(branch: string, workflowCount: number): string {
-	if (workflowCount === 1) {
-		return i18n.baseText('promotions.modal.toast.success.messageSingle', {
-			interpolate: { branch },
-		});
-	}
+function getSuccessToastMessage(branch: string): string {
 	return i18n.baseText('promotions.modal.toast.success.message', {
-		interpolate: { count: String(workflowCount), branch },
+		interpolate: { branch },
 	});
 }
 
 async function onPromote() {
 	if (isPromoteDisabled.value) return;
 
-	const workflowCount = selectedCount.value;
-
 	try {
 		const result = await submitSelection();
 		if (!result) return;
 
-		// Refresh the project banners so the promoted changes drop out of the count.
-		promotionEventBus.emit('applied', { projectId: props.data.projectId });
+		promotionEventBus.emit('promoted', { projectId: props.data.projectId });
 		toast.showMessage({
 			title: i18n.baseText('promotions.modal.toast.success.title'),
-			message: getSuccessToastMessage(result.git.branchName, workflowCount),
+			message: getSuccessToastMessage(result.git.branchName),
 			type: 'success',
 		});
 		onClose();
