@@ -14,8 +14,10 @@ export function createLeaveOnboardingTool() {
 		new Tool(DOMAIN_TOOL_IDS.LEAVE_ONBOARDING)
 			.description(
 				'End the onboarding flow. Call it when the user wants to stop the onboarding, explore n8n ' +
-					'on their own, or asks for something unrelated to picking a first automation. Then help ' +
-					'them with what they asked. Not needed before a build: a build ends the onboarding by itself.',
+					'on their own, or asks for something unrelated to picking a first automation. After the call, ' +
+					'reply with one sentence that invites the user to explore the app and to come back with a ' +
+					'task, then help them with what they asked. Not needed before a build: a build ends the ' +
+					'onboarding by itself.',
 			)
 			.input(z.object({}))
 			.output(z.object({ left: z.boolean(), note: z.string() }))

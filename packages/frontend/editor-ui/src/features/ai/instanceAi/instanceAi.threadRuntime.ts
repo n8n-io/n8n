@@ -140,7 +140,7 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
-	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`). */
+	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`), or a failed run. */
 	onOnboardingLeft?: (threadId: string) => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
@@ -1096,10 +1096,14 @@ export function createThreadRuntime(
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
 			}
-			if (
-				parsed.data.type === 'tool-call' &&
-				ONBOARDING_EXIT_TOOL_NAMES.has(parsed.data.payload.toolName)
-			) {
+			// A failed or interrupted run (provider down, key rejected, crash, ...) ends the onboarding
+			// too, so the user gets the normal chrome back instead of a stuck flow.
+			const endsOnboarding =
+				(parsed.data.type === 'tool-call' &&
+					ONBOARDING_EXIT_TOOL_NAMES.has(parsed.data.payload.toolName)) ||
+				(parsed.data.type === 'run-finish' &&
+					(parsed.data.payload.status === 'error' || parsed.data.payload.status === 'interrupted'));
+			if (endsOnboarding) {
 				hooks.onOnboardingLeft?.(threadId);
 			}
 			if (parsed.data.type === 'run-finish') {

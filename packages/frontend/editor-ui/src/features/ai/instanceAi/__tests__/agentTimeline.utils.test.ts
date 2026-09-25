@@ -416,6 +416,20 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
 	});
 
+	test('the reply before a leave-onboarding call stays user-facing and the call is hidden', () => {
+		const blocks = blocksOf(
+			[
+				reasoning('r1'),
+				text('Explore the app and come back with a task.', 'r1'),
+				toolEntry('tc-leave', 'r1'),
+			],
+			[makeToolCall({ toolCallId: 'tc-leave', toolName: 'leave-onboarding' })],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(1);
+	});
+
 	test('text before a tool call that suspended on a setup card stays user-facing', () => {
 		const setupCard = makeToolCall({
 			toolCallId: 'tc-setup',
