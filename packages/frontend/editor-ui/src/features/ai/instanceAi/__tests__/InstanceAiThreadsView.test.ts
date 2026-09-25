@@ -1,4 +1,5 @@
-import { N8nInput } from '@n8n/design-system';
+import { N8nActionDropdown, N8nInput } from '@n8n/design-system';
+import userEvent from '@testing-library/user-event';
 import { shallowMount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, reactive } from 'vue';
@@ -22,7 +23,12 @@ const store = reactive({
 
 vi.mock('../instanceAi.store', () => ({ useInstanceAiStore: () => store }));
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
-vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError: vi.fn() }) }));
+const { showError, showMessage } = vi.hoisted(() => ({
+	showError: vi.fn(),
+	showMessage: vi.fn(),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError, showMessage }) }));
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
 }));
@@ -32,6 +38,7 @@ vi.mock('@/app/composables/useIntersectionObserver', () => ({
 
 function mountView() {
 	return shallowMount(InstanceAiThreadsView, {
+		attachTo: document.body,
 		global: {
 			renderStubDefaultSlot: true,
 			stubs: { RouterLink: { template: '<a><slot /></a>' } },
@@ -105,5 +112,49 @@ describe('InstanceAiThreadsView', () => {
 		mountView().unmount();
 		expect(store.resetThreadHistory).toHaveBeenCalledTimes(1);
 		expect(store.threadHistory.search).toBe('');
+	});
+
+	async function startRename() {
+		const wrapper = mountView();
+		store.threadHistory.threads = [
+			{ id: 'a', title: 'Alpha', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+		];
+		store.threadHistory.hasMore = false;
+		await nextTick();
+		wrapper.findComponent(N8nActionDropdown).vm.$emit('select', 'rename');
+		await nextTick();
+		await nextTick();
+		const input = wrapper.find<HTMLInputElement>('input[type="text"]');
+		return { wrapper, input };
+	}
+
+	it('keeps every typed character in the rename input and saves on Enter', async () => {
+		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+		const { wrapper, input } = await startRename();
+		expect(input.element).toHaveFocus();
+
+		await user.keyboard('Invoices');
+		expect(input.element.value).toBe('Invoices');
+
+		await user.keyboard('{Enter}');
+		expect(store.renameThread).toHaveBeenCalledWith('a', 'Invoices');
+		await vi.waitFor(() => {
+			expect(showMessage).toHaveBeenCalledWith({ type: 'success', title: 'Chat renamed' });
+		});
+		wrapper.unmount();
+	});
+
+	it('saves the rename when the input loses focus', async () => {
+		const { wrapper, input } = await startRename();
+
+		await input.setValue('Invoices');
+		await input.trigger('blur');
+
+		expect(store.renameThread).toHaveBeenCalledTimes(1);
+		expect(store.renameThread).toHaveBeenCalledWith('a', 'Invoices');
+		await vi.waitFor(() => {
+			expect(showMessage).toHaveBeenCalledWith({ type: 'success', title: 'Chat renamed' });
+		});
+		wrapper.unmount();
 	});
 });
