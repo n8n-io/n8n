@@ -1,0 +1,21 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_9bc57599ab1b69::t_70d37a1a531cae 667-668
+  s_9bc57599ab1b69::t_7bc6de843fc0fa 1111-1112
+  s_9bc57599ab1b69::t_1aa578beda2062 638-642
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "393e80e35e9947bb5680008d5d2e48da5cea8560",
+  "prompts": {},
+  "sessions": {
+    "s_9bc57599ab1b69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b6c18cc-c535-4afd-b4bf-40ce980f1a38",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}
