@@ -1,5 +1,5 @@
 import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
-import type { ExternalDependencies, IStepExecutor } from '../dependencies';
+import type { ExternalDependencies, IStepExecutor, StepExecutionResult } from '../dependencies';
 import {
 	deriveLoops,
 	isBatchStepConfig,
@@ -8,16 +8,21 @@ import {
 	type WorkflowLoop,
 } from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { ExecutionResponseSender } from '../response-channel';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
+	isLiveExecutionStatus,
 	isSettledStatus,
+	hasResumeCondition,
+	type ResumeCause,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
+	type WaitDeclaration,
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
@@ -27,8 +32,13 @@ import { validateStepContext } from './validate-step-context';
 
 /**
  * Handles the `step:ready` step event: claims the step (`queued -> running`),
- * runs it through the executor for its step type, records the outcome, and
+ * runs it through the executor for its step type, records what came back, and
  * reports back to the orchestration worker with `step:settled`.
+ *
+ * What comes back is an outcome or a wait. An outcome — outputs or an error —
+ * settles the step, and is announced. A wait suspends it instead
+ * (`running -> waiting`): the step still owes the execution a settlement, so
+ * nothing is announced and no successor is planned until it resumes.
  *
  * A step that cannot run — no executor, an input shape we don't support yet —
  * makes the handler throw, leaving the step `running` for reconciliation
@@ -41,6 +51,9 @@ export class StepReadyHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly responseSender: ExecutionResponseSender,
+		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
+		private readonly onStepSuspended: () => void = () => {},
 	) {}
 
 	async handle(event: StepReadyEvent): Promise<void> {
@@ -56,42 +69,67 @@ export class StepReadyHandler {
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
 
-		// The engine runs a batch step itself, so it has no executor to look up.
-		const executor = node.type === 'batch' ? undefined : this.executorFor(step, node);
+		// The engine runs a batch step itself, and a resume emits outputs that
+		// already exist, so neither needs an executor. Looking one up for either
+		// would fail a step that this worker can serve: a resume is announced to
+		// every worker, including one that carries no shim.
+		const executor =
+			node.type === 'batch' || step.resumeCause !== null ? undefined : this.executorFor(step, node);
 
-		if (execution.status !== 'running') {
-			// The execution is no longer running, so we don't run the step.
-			// The step is left `running` for reconciliation (CAT-2938) or
-			// internal consistency checks (CAT-3930) to resolve.
+		if (!isLiveExecutionStatus(execution.status)) {
+			// The execution has ended, so we don't run the step. The step is left
+			// `running` for reconciliation (CAT-2938) or internal consistency
+			// checks (CAT-3930) to resolve.
 			return;
 		}
 
 		// This worker won the claim, so it is the one that announces the start.
 		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
-		// NOTE: an unexpected error in gathering inputs will leave the step
-		// running. In the future, this will be handled by either:
+		// A resume emits outputs that already exist. The node does not run again,
+		// so it has no inputs to gather. Every other dispatch gathers.
+		//
+		// The gather stays outside the `try` below on purpose. Its errors are the
+		// engine's own bookkeeping, not the node's, so they leave the step
+		// `running` instead of recording it failed. In the future one of these
+		// resolves that:
 		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
 		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
-		const inputs = await this.gatherInputs(execution, step);
+		const dispatch: { kind: 'resume'; cause: ResumeCause } | { kind: 'run'; inputs: StepSlots } =
+			step.resumeCause
+				? { kind: 'resume', cause: step.resumeCause }
+				: { kind: 'run', inputs: await this.gatherInputs(execution, step) };
 
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
-		let run: { ok: true; outputs: StepSlots } | { ok: false; error: unknown };
+		let run:
+			| { kind: 'outputs'; outputs: StepSlots }
+			| { kind: 'wait'; wait: WaitDeclaration }
+			| { kind: 'error'; error: unknown };
 		try {
-			run = {
-				ok: true,
-				outputs: executor
-					? await this.runStep(step, execution, node, inputs, executor)
-					: await this.runBatchNode(step, execution, node),
-			};
+			let result: StepExecutionResult;
+			if (dispatch.kind === 'resume') {
+				result = { outputs: resumedOutputs(step, dispatch.cause) };
+			} else if (executor) {
+				result = await this.runStep(step, execution, node, dispatch.inputs, executor);
+			} else {
+				result = { outputs: await this.runBatchNode(step, execution, node) };
+			}
+			run = result.wait
+				? { kind: 'wait', wait: result.wait }
+				: { kind: 'outputs', outputs: result.outputs };
 		} catch (error) {
-			run = { ok: false, error };
+			run = { kind: 'error', error };
 		}
 
-		const recorded = run.ok
-			? await this.stepStore.completeStep(event.stepId, run.outputs)
-			: await this.stepStore.failStep(event.stepId, toStepError(run.error));
+		let recorded: boolean;
+		if (run.kind === 'outputs') {
+			recorded = await this.stepStore.completeStep(event.stepId, run.outputs);
+		} else if (run.kind === 'wait') {
+			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
+		} else {
+			recorded = await this.stepStore.failStep(event.stepId, toStepError(run.error));
+		}
 
 		// Recording is a CAS on `running`, so losing it means something else took the
 		// step over while we ran — announce only outcomes we actually wrote, and let
@@ -99,10 +137,21 @@ export class StepReadyHandler {
 		// only thing that can take a step over, and it doesn't exist yet.
 		if (!recorded) return;
 
+		// A wait is no outcome: nothing settled, so nothing is announced and no
+		// planning follows.
+		// TODO(CAT-2928): publish `step:waiting` so the UI can show it.
+		if (run.kind === 'wait') {
+			// Nudge first, so the sweeper's re-arm read runs beside the status
+			// write rather than after it. Either order is correct.
+			this.onStepSuspended();
+			await this.executionStore.refreshLiveStatus(execution.id);
+			return;
+		}
+
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.
 		this.lifecycleEventPublisher.publish(
-			run.ok
+			run.kind === 'outputs'
 				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
 				: { type: 'step:failed', ...stepEventFields(step, node) },
 		);
@@ -120,10 +169,13 @@ export class StepReadyHandler {
 		node: GraphNode,
 		inputs: StepSlots,
 		executor: IStepExecutor,
-	): Promise<StepSlots> {
-		// Outputs are stored without inspection. Which slots fired (including
-		// none) is the settlement handler's concern when it plans successors.
-		const { outputs } = await executor.execute({
+	): Promise<StepExecutionResult> {
+		// The slots are stored without inspection: which ones fired is the
+		// settlement handler's concern. A declaration is not opaque in the same
+		// way. The engine reads three of its fields to suspend and resume the
+		// step, so it checks them here, where the step can still record as
+		// failed. What the wait is for stays the node's.
+		const result = await executor.execute({
 			node,
 			inputs,
 			context: {
@@ -134,8 +186,12 @@ export class StepReadyHandler {
 				iteration: step.iteration,
 				callerContext: execution.callerContext,
 			},
+			respond: this.responseSender.emitterFor(execution.id),
 		});
-		return outputs;
+
+		if (result.wait) validateWaitDeclaration(step.id, result.wait);
+
+		return result;
 	}
 
 	/** Runs one pass of a batch node, in place of an executor. */
@@ -327,4 +383,54 @@ function toStepError(error: unknown): StepError {
 		return { name: error.name, message: error.message, stack: error.stack };
 	}
 	return { name: 'Error', message: String(error) };
+}
+
+/**
+ * The outputs a resume emits. No node code runs on a resume: a request's
+ * outputs were produced where the request arrived, and a deadline's were
+ * captured when the step suspended.
+ *
+ * `WaitDeclaration` pairs a deadline with its outputs, so an absent one means
+ * the row disagrees with the contract — and a row is a write from outside the
+ * type system.
+ */
+function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
+	if (cause.kind === 'request') return cause.outputs;
+
+	const outputs = step.waitDeclaration?.outputsAtDeadline;
+	if (!outputs) {
+		throw new UnexpectedError(
+			`step ${step.id} resumes at its deadline but its declaration captured no outputs`,
+		);
+	}
+	return outputs;
+}
+
+/**
+ * Rejects a declaration that would strand the execution. Throwing records the
+ * step as failed, which a wait nothing can end would never do on its own.
+ */
+function validateWaitDeclaration(stepId: string, wait: WaitDeclaration): void {
+	if (!hasResumeCondition(wait)) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait that can never resume: it names neither a deadline nor a resume request`,
+		);
+	}
+
+	// `suspendStep` derives `wait_till` from this value, so one no date can be
+	// made from fails that write and leaves the claimed step running.
+	if (wait.resumeAt !== undefined && Number.isNaN(Date.parse(wait.resumeAt))) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait with a deadline that is not a date: ${wait.resumeAt}`,
+		);
+	}
+
+	// The engine emits these when the deadline fires, and it never runs the step
+	// again to produce them. Without this check the wait suspends, and the sweep
+	// finds the gap at the deadline instead, with the step already `queued`.
+	if (wait.resumeAt !== undefined && wait.outputsAtDeadline === undefined) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait with a deadline but no outputs to emit at it`,
+		);
+	}
 }

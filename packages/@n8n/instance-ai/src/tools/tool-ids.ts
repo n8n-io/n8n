@@ -14,10 +14,11 @@ export const DOMAIN_TOOL_IDS = {
 	ASK_USER: 'ask-user',
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',
-	AGENTS: 'agents',
+	AGENT_CONTEXT: 'agent-context',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
+	SAVE_USER_PREFERENCE: 'save_user_preference',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -38,7 +39,6 @@ export const ORCHESTRATION_TOOL_IDS = {
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
 	BUILD_AGENT: 'build-agent',
-	LIST_AGENT_CAPABILITIES: 'list-agent-capabilities',
 	GET_SESSION: 'get-session',
 } as const;
 
@@ -70,7 +70,9 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// search_tools + load_tool while web search stayed one call away — so the agent
 	// web-searched things the docs answer (INS-749).
 	DOMAIN_TOOL_IDS.N8N_DOCS,
-	DOMAIN_TOOL_IDS.AGENTS,
+	// Agent research and session diagnosis are direct operations. Deferring this
+	// tool causes the model to hand read-only work to the builder sub-agent.
+	DOMAIN_TOOL_IDS.AGENT_CONTEXT,
 	// Deferring this one defeats its purpose: it exists for the case where
 	// nothing is connected, which is exactly when `search_tools` has no MCP tool
 	// to surface and the agent concludes the integration is unavailable.
@@ -80,18 +82,17 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// this would price every expand at search_tools + load_tool. It is only registered when the
 	// reader is enabled, so an instance without the feature pays nothing for the entry.
 	DOMAIN_TOOL_IDS.ACTIVITY,
+	// A user can state a preference at any point in a conversation. Deferring this
+	// behind search_tools would mean the model has to know the tool exists before it
+	// can react, which is exactly the moment it does not. Registered only when the
+	// preferences service is wired, so an instance without the feature pays nothing.
+	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 	'web-search',
 	'fetch-url',
 	// build-agent is the primary route for agent-anchored intents; deferring it
 	// costs 2 LLM rounds (search_tools + load_tool) and a prompt-cache rewrite
 	// on every agent build.
 	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.BUILD_AGENT] : []),
-	// Paired with build-agent: the model must be able to check supported agent
-	// channels/capabilities during intent recognition — before committing to a
-	// path — so an unsupported channel (e.g. WhatsApp) is explained rather than
-	// improvised as a workflow. Deferring it costs a search_tools + load_tool
-	// round-trip and lets the model fall back to workflow assumptions first.
-	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES] : []),
 ]);
 
 export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([

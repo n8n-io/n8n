@@ -1,4 +1,4 @@
-import { getLastSuccessfulExecution, getNewWorkflowData } from './workflows';
+import { getLastSuccessfulExecution, getNewWorkflowData, getWorkflows } from './workflows';
 import { DEFAULT_NEW_WORKFLOW_NAME, DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import * as apiUtils from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -8,6 +8,44 @@ import type { MockInstance } from 'vitest';
 vi.mock('@n8n/rest-api-client');
 
 describe('API: workflows', () => {
+	describe('getWorkflows', () => {
+		const mockContext = {
+			baseUrl: 'http://test-base-url',
+			sessionId: 'test-session',
+			pushRef: 'test-ref',
+		} as IRestApiContext;
+
+		it('should include scopes by default', async () => {
+			const getFullApiResponseSpy = vi.spyOn(apiUtils, 'getFullApiResponse');
+
+			await getWorkflows(mockContext, { query: 'Orders' });
+
+			expect(getFullApiResponseSpy).toHaveBeenCalledWith(mockContext, 'GET', '/workflows', {
+				includeScopes: true,
+				filter: { query: 'Orders' },
+			});
+		});
+
+		it('should forward list options and omit disabled scope enrichment', async () => {
+			const getFullApiResponseSpy = vi.spyOn(apiUtils, 'getFullApiResponse');
+
+			await getWorkflows(
+				mockContext,
+				{ projectId: 'project-1', ids: ['workflow-1'] },
+				{ take: 10, skip: 0, sortBy: 'updatedAt:desc', includeScopes: false },
+				['id', 'name', 'updatedAt'],
+			);
+
+			expect(getFullApiResponseSpy).toHaveBeenCalledWith(mockContext, 'GET', '/workflows', {
+				filter: { projectId: 'project-1', ids: ['workflow-1'] },
+				take: 10,
+				skip: 0,
+				sortBy: 'updatedAt:desc',
+				select: JSON.stringify(['id', 'name', 'updatedAt']),
+			});
+		});
+	});
+
 	describe('getLastSuccessfulExecution', () => {
 		let mockContext: IRestApiContext;
 		let makeRestApiRequestSpy: MockInstance;

@@ -1,5 +1,5 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { ActionEvent, Thread } from 'chat';
+import type { ActionEvent, Author, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type {
@@ -8,7 +8,7 @@ import type {
 	PlatformAgentContext,
 	SettleActionMessage,
 } from './agent-chat-integration';
-import { onceStatusHandle } from './agent-chat-integration';
+import { onceStatusHandle, postToUserOrThread } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
@@ -18,7 +18,14 @@ import type {
 	AgentExecutionOrchestratorService,
 } from '../agent-execution-orchestrator.service';
 
-type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'>;
+type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> & {
+	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
+	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
+};
+
+/** Covers both an expired callback key and a checkpoint that is gone. */
+const STALE_ACTION_NOTICE =
+	'This action is no longer available. The link may have expired or already been used.';
 
 interface AgentChatHitlResumeHandlerOptions {
 	agentId: string;
@@ -62,11 +69,29 @@ export class AgentChatHitlResumeHandler {
 			return;
 		}
 
-		const callbackData = await this.resolveCallbackData(event.actionId, event.value, thread);
+		const callbackData = await this.resolveCallbackData(
+			event.actionId,
+			event.value,
+			thread,
+			event.user,
+		);
 		if (!callbackData) return;
 
 		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
 		if (!parsed) return;
+
+		// Resuming a gone run reports it as an agent misconfiguration, which it is
+		// not. Check before the card is settled, so a stale one is answered rather
+		// than relabelled with a decision that never took effect.
+		if (!(await this.isRunResumable(parsed.runId))) {
+			// Settling is not an option here: there is no decision to name.
+			if (this.options.deleteActionMessageBeforeResume) await this.deleteActionMessage(event);
+			await postToUserOrThread(thread, event.user, STALE_ACTION_NOTICE);
+			return;
+		}
+		// Persist the interacting user / messageId into the thread's message
+		// context so tools running on resume can read it via the message
+		// context store — no need to bolt a duplicate copy onto resumeData.
 		const platformThreadId = this.options.resolvePlatformThreadId(thread);
 		const threadId = this.options.toAgentThreadId(platformThreadId);
 		const messageContext = this.options.messageContextBridge.capture(thread, {
@@ -80,6 +105,7 @@ export class AgentChatHitlResumeHandler {
 		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData, {
 			messageContext,
 			contextConversation: { threadId: threadId.id, resourceId: event.user.userId },
+			actingUser: event.user,
 		});
 	}
 
@@ -127,10 +153,10 @@ export class AgentChatHitlResumeHandler {
 		actionId: string,
 		value: string | undefined,
 		thread: Thread<unknown, unknown>,
+		user: Author,
 	): Promise<{
 		actionId: string;
 		value: string | undefined;
-		kind?: 'approval';
 		label?: string;
 	} | null> {
 		if (!this.options.callbackStore) return { actionId, value };
@@ -138,15 +164,12 @@ export class AgentChatHitlResumeHandler {
 		const resolved = await this.options.callbackStore.resolve(actionId);
 		if (!resolved) {
 			this.options.logger.warn('[AgentChatBridge] Callback key not found or expired', { actionId });
-			await thread.post(
-				'This action is no longer available. The link may have expired or already been used.',
-			);
+			await postToUserOrThread(thread, user, STALE_ACTION_NOTICE);
 			return null;
 		}
 		return {
 			actionId: resolved.actionId,
 			value: resolved.value,
-			kind: resolved.kind,
 			label: resolved.label,
 		};
 	}
@@ -155,22 +178,18 @@ export class AgentChatHitlResumeHandler {
 	private async cleanUpBeforeResume(
 		event: ActionEvent,
 		resumeData: unknown,
-		callbackData: { kind?: 'approval'; label?: string },
+		callbackData: { label?: string },
 	): Promise<void> {
 		if (this.options.deleteActionMessageBeforeResume) {
-			try {
-				await event.adapter.deleteMessage(event.threadId, event.messageId);
-			} catch (deleteError) {
-				this.options.logger.warn('[AgentChatBridge] Failed to delete card message', {
-					error: deleteError instanceof Error ? deleteError.message : String(deleteError),
-				});
-			}
+			await this.deleteActionMessage(event);
 			return;
 		}
 
 		try {
-			const approved =
-				callbackData.kind === 'approval' ? this.getApprovalDecision(resumeData) : undefined;
+			// Read the decision off the payload, not off store metadata: the button
+			// value already carries `{ approved }` whenever the tool's resume schema
+			// declares it, so platforms without a CallbackStore get it too.
+			const approved = this.getApprovalDecision(resumeData);
 			const message = this.options.formatActionDecisionMessage?.({
 				...(approved !== undefined ? { approved } : {}),
 				...(callbackData.label !== undefined ? { selectedLabel: callbackData.label } : {}),
@@ -194,6 +213,33 @@ export class AgentChatHitlResumeHandler {
 			this.options.logger.warn('[AgentChatBridge] Failed to settle action card', {
 				error: editError instanceof Error ? editError.message : String(editError),
 			});
+		}
+	}
+
+	private async deleteActionMessage(event: ActionEvent): Promise<void> {
+		try {
+			await event.adapter.deleteMessage(event.threadId, event.messageId);
+		} catch (deleteError) {
+			this.options.logger.warn('[AgentChatBridge] Failed to delete card message', {
+				error: deleteError instanceof Error ? deleteError.message : String(deleteError),
+			});
+		}
+	}
+
+	private async isRunResumable(runId: string): Promise<boolean> {
+		if (!this.options.agentService.isResumable) return true;
+		try {
+			return await this.options.agentService.isResumable({
+				agentId: this.options.agentId,
+				runId,
+			});
+		} catch (error) {
+			// A failed lookup must not swallow the click: let the resume decide.
+			this.options.logger.warn('[AgentChatBridge] Could not check whether a run is resumable', {
+				runId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return true;
 		}
 	}
 
@@ -223,13 +269,26 @@ export class AgentChatHitlResumeHandler {
 		toolCallId: string,
 		resumeData: unknown,
 		options: Pick<ResumeForChatConfig, 'messageContext' | 'contextConversation'> & {
-			notifyOnDuplicate?: boolean;
+			/**
+			 * The user who clicked. The duplicate-click notice goes to them, and a
+			 * card the resumed turn raises is addressed to them.
+			 */
+			actingUser?: Author;
+			/**
+			 * Addressee for a card the resumed turn raises, where no user clicked.
+			 * A server-driven resume names one so the card stays private, but it
+			 * must not speak to them, so it never triggers the notice.
+			 */
+			cardRecipientId?: string;
 		} = {},
 	): Promise<void> {
-		const { notifyOnDuplicate = true, ...context } = options;
+		const { actingUser, cardRecipientId, ...context } = options;
+		const cardUserId = actingUser?.userId ?? cardRecipientId;
 		if (this.activeResumedRuns.has(runId)) {
 			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
-			if (notifyOnDuplicate) await thread.post('This action has already been handled');
+			if (actingUser) {
+				await postToUserOrThread(thread, actingUser, 'This action has already been handled');
+			}
 			return;
 		}
 
@@ -250,6 +309,7 @@ export class AgentChatHitlResumeHandler {
 				await this.options.streamConsumer.consume(stream, thread, {
 					...resumeExecutionContext,
 					statusHandle,
+					...(cardUserId ? { actingUserId: cardUserId } : {}),
 				});
 			} finally {
 				// The stream consumer clears the status right before the first response;

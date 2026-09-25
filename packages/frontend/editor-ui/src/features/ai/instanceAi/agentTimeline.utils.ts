@@ -4,6 +4,7 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
+import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user. */
 export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
@@ -48,6 +49,7 @@ export type TimelineBlock =
 	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'preference'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'child'; key: string; child: InstanceAiAgentNode }
 	| { type: 'activity'; key: string };
 
@@ -58,12 +60,13 @@ type ToolCallKind =
 	| 'mcp-connect'
 	| 'questions'
 	| 'questions-pending'
+	| 'preference'
 	| 'trace';
 
 /**
  * How a tool call renders in the timeline. `trace` rows join thinking blocks;
- * `tasks`/`plan-review`/`mcp-connect`/`questions` render standalone UI; `hidden`
- * calls are dropped without splitting a run.
+ * `tasks`/`plan-review`/`mcp-connect`/`questions`/`preference` render standalone
+ * UI; `hidden` calls are dropped without splitting a run.
  *
  * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
  * child agent section represents them. In-thread builds (`build-workflow`)
@@ -74,6 +77,11 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (tc.renderHint === 'tasks') return 'tasks';
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
 	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
+	// The card is the whole render for a finished preference write, saved or refused.
+	// A call still in flight drops instead of joining the thinking block.
+	if (tc.toolName === SAVE_USER_PREFERENCE_TOOL_NAME) {
+		return isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
+	}
 	if (tc.confirmation?.inputType === 'plan-review') return 'plan-review';
 	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
 	if (tc.renderHint === 'planner') return 'hidden';
@@ -191,6 +199,12 @@ export function buildTimelineBlocks(
 			return;
 		}
 
+		// Keep the context summary inside the trace, not in a separate message.
+		if (entry.type === 'instance-context') {
+			pushTrace(entry, idx);
+			return;
+		}
+
 		if (entry.type === 'text') {
 			if (isIntermediateText(entry, idx)) pushTrace(entry, idx);
 			else pushStandalone({ type: 'text', key: `text-${idx}`, entry });
@@ -228,6 +242,9 @@ export function buildTimelineBlocks(
 				return;
 			case 'questions':
 				pushStandalone({ type: 'questions', key: `questions-${idx}`, toolCall: tc });
+				return;
+			case 'preference':
+				pushStandalone({ type: 'preference', key: `preference-${idx}`, toolCall: tc });
 				return;
 			case 'trace':
 				pushTrace(entry, idx);
@@ -307,7 +324,14 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	const seenIds = new Set<string>();
 
 	// Check targetResource first (single-resource agents)
-	if (node.targetResource?.id && node.targetResource.type) {
+	if (
+		node.targetResource?.id &&
+		node.targetResource.type &&
+		(node.targetResource.type !== 'agent' ||
+			node.agentChange === 'created' ||
+			node.agentChange === 'updated' ||
+			node.agentChange === undefined)
+	) {
 		const type = node.targetResource.type;
 		if (type === 'workflow' || type === 'data-table' || type === 'agent') {
 			seenIds.add(node.targetResource.id);

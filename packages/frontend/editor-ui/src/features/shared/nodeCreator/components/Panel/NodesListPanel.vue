@@ -332,6 +332,7 @@ function onBackButton() {
 			<CommunityNodeFooter
 				v-if="communityNodeDetails && !isCommunityNodeActionsMode"
 				:package-name="communityNodeDetails.packageName"
+				:node-type-name="communityNodeDetails.key"
 				:show-manage="communityNodeDetails.installed && isAdminOrOwner"
 			/>
 		</aside>

@@ -28,6 +28,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		loadExecution: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
+		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};
 }
@@ -43,8 +44,12 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		loadStep: vi.fn(),
 		claimStep: vi.fn(),
 		completeStep: vi.fn(),
+		suspendStep: vi.fn(),
+		resumeStep: vi.fn(),
+		resumeDueSteps: vi.fn().mockResolvedValue([]),
+		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failStep: vi.fn(),
-		cancelQueuedSteps: vi.fn(),
+		cancelPendingSteps: vi.fn(),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
@@ -63,7 +68,7 @@ function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}):
 		graph,
 		workflow: {},
 		triggerOutputs: null,
-		callerContext: {},
+		callerContext: { hostMode: 'trigger' },
 		...overrides,
 	};
 }
@@ -220,10 +225,12 @@ describe('ExecutionStartHandler lifecycle events', () => {
 		edges: [],
 	};
 
-	it('announces execution:started once it wins the claim', async () => {
+	it('announces execution:started with the engine and host modes', async () => {
 		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const executionStore = makeExecutionStore({
-			loadExecution: vi.fn().mockResolvedValue(record(graph, { mode: 'manual' })),
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue(record(graph, { callerContext: { hostMode: 'webhook' } })),
 		});
 		const handler = makeHandler(
 			executionStore,
@@ -238,7 +245,8 @@ describe('ExecutionStartHandler lifecycle events', () => {
 			type: 'execution:started',
 			executionId: 'exec-1',
 			workflowId: 'wf-1',
-			mode: 'manual',
+			mode: 'production',
+			hostMode: 'webhook',
 			at: expect.any(String) as string,
 		});
 	});

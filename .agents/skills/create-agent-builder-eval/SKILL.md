@@ -91,7 +91,7 @@ Start with this shape:
     "The final response ..."
   ],
   "outcomeExpectations": [
-    "A standalone Agent was created and no workflow was created.",
+    "A standalone Agent is the deliverable; any workflow created exists only as a tool the Agent calls.",
     "The Agent ..."
   ],
   "datasets": ["agents"]

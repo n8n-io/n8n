@@ -1,6 +1,5 @@
-import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { CheckService } from './check.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
@@ -14,16 +13,17 @@ import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 export class InstanceRegistryReconciliationTask implements SystemTask {
 	readonly name = 'instance-registry-reconciliation';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS / Time.seconds.toMilliseconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(
+		REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS,
+	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
-
-	readonly runOnTakeover = true;
+	readonly placement: SystemTaskPlacement = {
+		scope: 'cluster',
+		durable: false,
+		runOnTakeover: true,
+	};
 
 	constructor(private readonly checkService: CheckService) {}
 

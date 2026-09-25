@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
-import { SpanStatusCode, trace } from '@opentelemetry/api';
+import type { TextMapPropagator } from '@opentelemetry/api';
+import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
 import { hrTimeToMilliseconds } from '@opentelemetry/core';
 import { mock } from 'vitest-mock-extended';
 
@@ -21,7 +22,7 @@ describe('ExecutionLevelTracer', () => {
 	};
 
 	beforeAll(() => {
-		otel = OtelTestProvider.create();
+		otel = OtelTestProvider.create({ withContextManager: true });
 	});
 
 	afterAll(async () => {
@@ -30,7 +31,7 @@ describe('ExecutionLevelTracer', () => {
 
 	beforeEach(() => {
 		otel.reset();
-		tracer = new ExecutionLevelTracer(makeOtelSettingsService(), logger);
+		tracer = new ExecutionLevelTracer(otel.asOtelService(), makeOtelSettingsService(), logger);
 	});
 
 	const inboundTracingContext = {
@@ -89,37 +90,52 @@ describe('ExecutionLevelTracer', () => {
 			expect(span.attributes['n8n.project.custom.team']).toBe('platform');
 		});
 
-		it('should not attach project custom attributes to node spans', () => {
-			tracer.startWorkflow({
-				executionId: 'exec-node-no-tags',
-				workflow: defaultWorkflow,
-				project: {
-					id: 'proj-tags',
-					customAttributes: { env: 'staging' },
-				},
-			});
+		const runSingleNodeExecution = (
+			executionId: string,
+			project?: { id: string; customAttributes?: Record<string, string> },
+		) => {
+			tracer.startWorkflow({ executionId, workflow: defaultWorkflow, project });
 			const node = { id: 'n1', name: 'MyNode', type: 'test', typeVersion: 1 };
-			tracer.startNode({ executionId: 'exec-node-no-tags', node });
-			tracer.endNode({
-				executionId: 'exec-node-no-tags',
-				node,
-				inputItemCount: 1,
-				outputItemCount: 1,
-			});
-			tracer.endWorkflow({
-				executionId: 'exec-node-no-tags',
-				status: 'success',
-				mode: 'manual',
-				isRetry: false,
-			});
+			tracer.startNode({ executionId, node });
+			tracer.endNode({ executionId, node, inputItemCount: 1, outputItemCount: 1 });
+			tracer.endWorkflow({ executionId, status: 'success', mode: 'manual', isRetry: false });
 
 			const spans = otel.getFinishedSpans();
-			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
-			// No project custom attributes should appear on the node span
-			const projectCustomKeys = Object.keys(nodeSpan.attributes).filter((k) =>
-				k.startsWith('n8n.project.custom.'),
+			return {
+				workflowSpan: spans.find((s) => s.name === 'workflow.execute')!,
+				nodeSpan: spans.find((s) => s.name === 'node.execute')!,
+			};
+		};
+
+		const projectCustomKeys = (attributes: Record<string, unknown>) =>
+			Object.keys(attributes).filter((k) => k.startsWith('n8n.project.custom.'));
+
+		it('should attach project id and custom attributes to node spans', () => {
+			const { workflowSpan, nodeSpan } = runSingleNodeExecution('exec-node-tags', {
+				id: 'proj-tags',
+				customAttributes: { env: 'staging' },
+			});
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('proj-tags');
+			expect(nodeSpan.attributes['n8n.project.custom.env']).toBe('staging');
+			expect(nodeSpan.attributes['n8n.project.id']).toBe(workflowSpan.attributes['n8n.project.id']);
+			expect(nodeSpan.attributes['n8n.project.custom.env']).toBe(
+				workflowSpan.attributes['n8n.project.custom.env'],
 			);
-			expect(projectCustomKeys).toHaveLength(0);
+		});
+
+		it('should attach only project id to node spans when the project has no custom attributes', () => {
+			const { nodeSpan } = runSingleNodeExecution('exec-node-no-tags', { id: 'proj-no-tags' });
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('proj-no-tags');
+			expect(projectCustomKeys(nodeSpan.attributes)).toHaveLength(0);
+		});
+
+		it('should omit project attributes on node spans when project is not provided', () => {
+			const { nodeSpan } = runSingleNodeExecution('exec-node-no-project');
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBeUndefined();
+			expect(projectCustomKeys(nodeSpan.attributes)).toHaveLength(0);
 		});
 
 		it('should omit project id attribute when project is not provided', () => {
@@ -901,6 +917,7 @@ describe('ExecutionLevelTracer', () => {
 
 		it('should no-op when injectOutbound is false', () => {
 			const noInjectTracer = new ExecutionLevelTracer(
+				otel.asOtelService(),
 				makeOtelSettingsService({ injectOutbound: false }),
 				logger,
 			);
@@ -944,6 +961,59 @@ describe('ExecutionLevelTracer', () => {
 				mode: 'webhook',
 				isRetry: false,
 			});
+		});
+	});
+
+	describe('trace context ownership', () => {
+		const traceparentPattern = /^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/;
+
+		it('should start a new trace when no tracing context is given, even inside an active foreign span', () => {
+			const foreignSpan = trace.getTracer('foreign').startSpan('GET /webhook');
+
+			context.with(trace.setSpan(context.active(), foreignSpan), () => {
+				tracer.startWorkflow({ executionId: 'exec-root', workflow: defaultWorkflow });
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-root',
+				status: 'success',
+				mode: 'webhook',
+				isRetry: false,
+			});
+			foreignSpan.end();
+
+			const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
+			expect(workflowSpan.parentSpanContext).toBeUndefined();
+			expect(workflowSpan.spanContext().traceId).not.toBe(foreignSpan.spanContext().traceId);
+		});
+
+		it('should emit W3C trace context while another library owns the global propagator', () => {
+			const foreignPropagator: TextMapPropagator = {
+				inject: (_ctx, carrier, setter) => setter.set(carrier, 'sentry-trace', 'foreign'),
+				extract: (ctx) => ctx,
+				fields: () => ['sentry-trace'],
+			};
+			propagation.setGlobalPropagator(foreignPropagator);
+
+			try {
+				const persisted = tracer.startWorkflow({
+					executionId: 'exec-w3c',
+					workflow: defaultWorkflow,
+				});
+				const headers: Record<string, string> = {};
+				tracer.injectTraceHeaders('exec-w3c', undefined, headers);
+				tracer.endWorkflow({
+					executionId: 'exec-w3c',
+					status: 'success',
+					mode: 'webhook',
+					isRetry: false,
+				});
+
+				expect(persisted.traceparent).toMatch(traceparentPattern);
+				expect(headers.traceparent).toMatch(traceparentPattern);
+				expect(headers['sentry-trace']).toBeUndefined();
+			} finally {
+				propagation.disable();
+			}
 		});
 	});
 

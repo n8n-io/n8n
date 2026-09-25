@@ -3,6 +3,8 @@ import { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { TransactionRunner } from '@n8n/db';
+import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
@@ -48,9 +50,13 @@ describe('Agent conversation state', () => {
 			dropSchema: false,
 		}).initialize();
 		peerStorage = new N8NCheckpointStorage(
-			new AgentCheckpointRepository(peer),
+			new AgentCheckpointRepository(peer, Container.get(TransactionRunner)),
 			Container.get(Logger),
 			Container.get(AgentsConfig),
+			Container.get(TransactionRunner),
+			Container.get(AgentExecutionRepository),
+			Container.get(AgentExecutionThreadRepository),
+			Container.get(AgentMessageQueueRepository),
 		);
 	});
 
@@ -104,13 +110,15 @@ describe('Agent conversation state', () => {
 				agentId: agent.id,
 				threadId: 'thread-1',
 				expired: false,
-				updatedAt: new Date(Date.UTC(2026, 0, index + 1)),
+				updatedAt: new Date(Date.now() - (rows.length - index) * 1000),
 				...row,
 			})),
 		);
 
 		expect(
-			(await checkpoints.findActiveForThread(agent.id, 'thread-1')).map(({ runId }) => runId),
+			(await checkpoints.findActiveForThread(agent.id, 'thread-1', new Date(0))).map(
+				({ runId }) => runId,
+			),
 		).toEqual(['cancelled', 'running', 'child', 'parent', 'older']);
 		expect(await storage.findSuspendedForThread(agent.id, 'thread-1')).toEqual(parent);
 	});

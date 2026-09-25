@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, shallowRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -17,6 +17,8 @@ import type { PromotableResourceStatus, PromotionDirection } from '@n8n/api-type
 import { usePromotionChanges } from '../composables/usePromotionChanges';
 import { promotionEventBus } from '../promotions.eventBus';
 import { applyPromotion } from '../promotionsSettings.api';
+import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
+import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 
 interface Props {
 	modalName: string;
@@ -42,6 +44,7 @@ const modalBus = createEventBus();
 const { direction } = props.data;
 const isIncoming = direction === 'apply';
 const isApplying = ref(false);
+const blockedResult = shallowRef<BlockedApplyResult>();
 
 const {
 	changes,
@@ -50,6 +53,7 @@ const {
 	isLoading,
 	error,
 	searchQuery,
+	lastRefreshedAt,
 	selectedIds,
 	selectedCount,
 	allSelected,
@@ -143,6 +147,42 @@ async function announceApplied() {
 	}
 }
 
+async function onApplied(result: AppliedResult) {
+	const { workflows } = result.counts;
+	const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
+	const summary = i18n.baseText('promotions.modal.incoming.applied.message', {
+		interpolate: {
+			created: String(workflows.created),
+			updated: String(workflows.updated),
+			archived: String(workflows.archived),
+			deleted: String(workflows.deleted),
+		},
+	});
+	// A workflow can be imported and still fail to publish, so success alone would mislead.
+	toast.showMessage({
+		title: i18n.baseText('promotions.modal.incoming.applied.title'),
+		message: notPublished
+			? `${summary} ${i18n.baseText('promotions.modal.incoming.applied.notPublished', {
+					interpolate: { count: String(notPublished) },
+				})}`
+			: summary,
+		type: notPublished ? 'warning' : 'success',
+	});
+	// Close before the project lookup, so the stale change list does not show again.
+	onClose();
+	await announceApplied();
+}
+
+async function onSourceChanged() {
+	blockedResult.value = undefined;
+	await fetchChanges();
+	toast.showMessage({
+		title: i18n.baseText('promotions.modal.incoming.paused.title'),
+		message: i18n.baseText('promotions.modal.incoming.paused.source-changed'),
+		type: 'warning',
+	});
+}
+
 /** Applies the whole branch. The selection is kept for the selective apply that follows. */
 async function onApplyAll() {
 	const { apply } = props.data;
@@ -169,34 +209,17 @@ async function onApplyAll() {
 			expectedSource && { expectedSource },
 		);
 		if (result.status === 'applied') {
-			const { workflows } = result.counts;
-			const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
-			const summary = i18n.baseText('promotions.modal.incoming.applied.message', {
-				interpolate: {
-					created: String(workflows.created),
-					updated: String(workflows.updated),
-					archived: String(workflows.archived),
-					deleted: String(workflows.deleted),
-				},
-			});
-			// A workflow can be imported and still fail to publish, so success alone would mislead.
-			toast.showMessage({
-				title: i18n.baseText('promotions.modal.incoming.applied.title'),
-				message: notPublished
-					? `${summary} ${i18n.baseText('promotions.modal.incoming.applied.notPublished', {
-							interpolate: { count: String(notPublished) },
-						})}`
-					: summary,
-				type: notPublished ? 'warning' : 'success',
-			});
-			await announceApplied();
-			onClose();
+			await onApplied(result);
 			return;
 		}
-		// Apply pauses on unresolved bindings or a moved source. The binding screen comes with LIGO-1058.
+		if (result.status === 'blocked') {
+			blockedResult.value = result;
+			return;
+		}
+		// A changed source needs a fresh review.
 		toast.showMessage({
 			title: i18n.baseText('promotions.modal.incoming.paused.title'),
-			message: i18n.baseText(`promotions.modal.incoming.paused.${result.status}`),
+			message: i18n.baseText('promotions.modal.incoming.paused.source-changed'),
 			type: 'warning',
 		});
 	} catch (applyError) {
@@ -215,6 +238,8 @@ onMounted(async () => {
 
 <template>
 	<Modal
+		v-if="!blockedResult"
+		:before-close="() => !isApplying"
 		:name="modalName"
 		:title="title"
 		:event-bus="modalBus"
@@ -240,6 +265,16 @@ onMounted(async () => {
 						data-test-id="promotion-search"
 						:class="$style.searchInput"
 					/>
+					<N8nText
+						v-if="lastRefreshedAt"
+						size="small"
+						color="text-light"
+						:class="$style.lastRefreshed"
+						data-test-id="promotion-last-refreshed"
+					>
+						{{ i18n.baseText('promotions.modal.lastRefreshed') }}
+						<TimeAgo :date="lastRefreshedAt" live />
+					</N8nText>
 					<N8nButton
 						variant="subtle"
 						size="small"
@@ -395,6 +430,18 @@ onMounted(async () => {
 			</div>
 		</template>
 	</Modal>
+	<PromotionBindingsFlow
+		v-else
+		:open="true"
+		:blocked-result="blockedResult"
+		@update:open="
+			(open) => {
+				if (!open) blockedResult = undefined;
+			}
+		"
+		@applied="onApplied"
+		@source-changed="onSourceChanged"
+	/>
 </template>
 
 <style lang="scss">
@@ -451,6 +498,11 @@ onMounted(async () => {
 .searchInput {
 	flex: 1;
 	margin-inline: calc(var(--input--padding) * -1) 0 0;
+}
+
+.lastRefreshed {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .loading {

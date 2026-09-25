@@ -198,6 +198,10 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
 
 In langtracer mode, `--dataset` / `--baseline-prefix` default to a suite-scoped, eval-tagged name (`instance-ai-langtracer-<suite>`) so runs don't touch the shared `instance-ai-workflow-evals` cohort and re-runs of a suite upsert one stable dataset. `--filter` / `--exclude` / `--tier` still narrow within the suite. The MCP manifest builder (`eval:build-mcp-manifest`) accepts the same `--source langtracer --suite` flags.
 
+#### Pushing cases to a suite (`eval:langtracer-push`)
+
+`pnpm eval:langtracer-push --suite <slug|id> <slugs...> [--dry-run]` upserts on-disk cases into a suite: create missing, update changed, leave unchanged. Select with exact slugs, `--changed` (git-new or modified case files), `--filter <csv>` or `--tier <name>`. Validation is selective: exact slugs and `--changed` read only the named files, so an unrelated invalid file in `data/workflows` (a case authored on a newer branch) never blocks a push. `--filter` parses only the files whose slug matches; `--tier` reads the tier from inside each file, so it parses them all. An invalid file either one parses is reported as a warning and skipped. A file you named still fails the push when it is invalid.
+
 ### Outputs
 
 Every run produces:
@@ -310,12 +314,13 @@ The harness remaps that ID and sends the normal chat request with the workflow
 attachment and structured handoff context. The transcript records the Execute
 action so process expectations can check the response.
 
-Start each panel eval instance with `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED=true`.
+Start each panel eval instance with
+`N8N_FEATURE_FLAG_OVERRIDES='{"118_instance_ai_setup_overhaul":"variant"}'`.
 Set this variable on the n8n server process or in the lane's environment file.
 Setting it only on the eval client does not enable the server feature.
-Run the normal PR tier with the flag on and off. For panel cases, load the
+Run the normal PR tier with `control` and `variant`. For panel cases, load the
 external suite with `--source langtracer --suite <suite-id>`, or stage a local
-case and select it with `--filter <case-slug>`. Run those cases with the flag on.
+case and select it with `--filter <case-slug>`. Run those cases with `variant`.
 The repository does not include a `setup-panel-v2` tier.
 
 Remote Execute cases require LangTracer to preserve `attach.source` when it

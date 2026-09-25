@@ -45,6 +45,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 			'CredentialTypePolicyInstanceController',
 			'CredentialTypePolicyProjectController',
 			'AvailableTypesController',
+			'AvailableCredentialTypesController',
 		]) {
 			expect(routeCountByName.get(name)).toBeGreaterThan(0);
 		}
@@ -56,7 +57,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 	// Asserted by class name, because importing the check to compare identities would run
 	// `@PolicyCheck()` here and register it, and reading `id` off an instance would construct
 	// its repositories. Either one would make this pass with `init()` no longer importing it.
-	it('registers the node type policy check on init', async () => {
+	it('registers both policy checks on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
@@ -66,6 +67,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 			.map((checkClass) => checkClass.name);
 
 		expect(registered).toContain('NodeTypePolicyCheck');
+		expect(registered).toContain('CredentialTypePolicyCheck');
 	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {

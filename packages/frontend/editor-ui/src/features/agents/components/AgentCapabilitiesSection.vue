@@ -12,6 +12,8 @@ import { computed, onMounted, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
+import { useCreateAgent } from '../composables/useCreateAgent';
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
@@ -85,8 +87,10 @@ const i18n = useI18n();
 const toast = useToast();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const { createAgent } = useCreateAgent();
 
 const projectIdRef = computed(() => props.projectId);
+const { canCreate: canCreateAgent } = useAgentPermissions(projectIdRef);
 const {
 	list: projectAgents,
 	ensureLoaded: ensureProjectAgentsLoaded,
@@ -100,9 +104,7 @@ const selectedSubAgentIds = computed(() =>
 );
 const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
 const availableSubAgents = computed(() =>
-	(projectAgents.value ?? []).filter(
-		(agent) => agent.id !== props.agentId && !selectedSubAgentIdSet.value.has(agent.id),
-	),
+	(projectAgents.value ?? []).filter((agent) => agent.id !== props.agentId),
 );
 const selectedSubAgents = computed(() =>
 	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
@@ -396,14 +398,33 @@ async function openSubAgentsModal() {
 	uiStore.openModalWithData({
 		name: AGENT_SUB_AGENTS_MODAL_KEY,
 		data: {
-			agents: availableSubAgents.value.map(({ id, name }) => ({
-				id,
-				name,
-			})),
+			agents: availableSubAgents.value.map(({ id, name }) => {
+				const selectedRef = selectedSubAgentRefs.value.find((ref) => ref.agentId === id);
+				return {
+					id,
+					name,
+					added: Boolean(selectedRef),
+					useWhen: selectedRef?.useWhen,
+					invalidReasons: subAgentIssueMessages.value.get(id) ?? [],
+					agentHref: `/projects/${encodeURIComponent(props.projectId)}/agents/${encodeURIComponent(id)}`,
+				};
+			}),
+			onCreateAgent: canCreateAgent.value
+				? () => createAgent('button', props.projectId)
+				: undefined,
 			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
-				if (selectedSubAgentIdSet.value.has(agentId)) return;
+				const nextRef = toSubAgentRef(agentId, useWhen);
+				if (selectedSubAgentIdSet.value.has(agentId)) {
+					emitSubAgentRefs(
+						selectedSubAgentRefs.value.map((ref) => (ref.agentId === agentId ? nextRef : ref)),
+					);
+					return;
+				}
 
-				emitSubAgentRefs([...selectedSubAgentRefs.value, toSubAgentRef(agentId, useWhen)]);
+				emitSubAgentRefs([...selectedSubAgentRefs.value, nextRef]);
+			},
+			onRemove: (agentId: string) => {
+				emitSubAgentRefs(selectedSubAgentRefs.value.filter((ref) => ref.agentId !== agentId));
 			},
 		},
 	});

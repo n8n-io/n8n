@@ -66,7 +66,7 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 
 import {
-	N8nActionPill,
+	N8nBadge,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
@@ -998,6 +998,7 @@ function editCredential(credentialType: string): void {
 		...(isToolContext ? { appendToBody: true } : {}),
 		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
 		workflowId: telemetryWorkflowId.value || undefined,
+		contextNode: props.node,
 	});
 
 	telemetry.track('User opened Credential modal', {
@@ -1311,13 +1312,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										{{ i18n.baseText('aiGateway.picker.readyToRun') }}
 									</N8nText>
 								</span>
-								<N8nActionPill
+								<N8nBadge
 									v-if="balancePill"
-									size="small"
-									:type="balancePill.type"
-									:text="balancePill.text"
+									size="xxsmall"
+									:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
 									:class="$style.entryPill"
-								/>
+								>
+									{{ balancePill.text }}
+								</N8nBadge>
 							</div>
 						</N8nOption>
 						<template #empty> </template>
@@ -1404,12 +1406,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									<N8nText :class="$style.optionName">
 										{{ N8N_CREDITS_LABEL }}
 									</N8nText>
-									<N8nActionPill
+									<N8nBadge
 										v-if="balancePill"
-										size="small"
-										:type="balancePill.type"
-										:text="balancePill.text"
-									/>
+										size="xxsmall"
+										:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
+									>
+										{{ balancePill.text }}
+									</N8nBadge>
 									<N8nIcon
 										v-if="isAiGatewayManagedCredentials(type.name)"
 										icon="check"
@@ -1492,7 +1495,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							<span :class="$style.balanceLabelSizer" aria-hidden="true">{{
 								N8N_CREDITS_LABEL
 							}}</span>
-							<N8nActionPill size="small" :type="balancePill?.type" :text="balancePill?.text" />
+							<N8nBadge
+								size="xxsmall"
+								:variant="balancePill?.type === 'danger' ? 'danger' : 'success'"
+							>
+								{{ balancePill?.text }}
+							</N8nBadge>
 						</div>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
@@ -1852,6 +1860,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .entryPill {
 	padding: var(--spacing--5xs) var(--spacing--3xs);
 	border-radius: var(--radius);
+	// N8nBadge draws a 1px border tinted to its variant; keep it transparent so the
+	// re-skinned pill stays fully neutral (box size unchanged).
+	border-color: transparent;
 	background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
 	color: light-dark(var(--color--neutral-750), var(--color--neutral-150));
 	font-size: var(--font-size--3xs);

@@ -166,7 +166,7 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 30;
 
-	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
+	/** Interval in milliseconds between scheduled pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
 	pruneInterval: number = 1 * Time.hours.toMilliseconds;
 
@@ -198,15 +198,6 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED')
 	canvasNodeContextEnabled: boolean = false;
-
-	/**
-	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
-	 * the chat input replaces the suspending setup wizard. Env-settable so eval
-	 * lanes can exercise both paths; a managed rollout flag may layer on top
-	 * later behind the same accessors.
-	 */
-	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
-	instanceAiSetupPanelEnabled: boolean = false;
 
 	/**
 	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and

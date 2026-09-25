@@ -10,6 +10,6 @@ export class VersionsPage extends BasePage {
 	}
 
 	getSecurityBadge() {
-		return this.getVersionCard().first().locator('.el-tag--danger').getByText('Security update');
+		return this.getVersionCard().first().getByTestId('security-update-badge');
 	}
 }

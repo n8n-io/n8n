@@ -1,3 +1,4 @@
+import { blocked, credential, variable } from '../__tests__/bindings.fixtures';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -58,6 +59,7 @@ const changesBody = (changes: unknown[]) => ({ commitSha: 'a'.repeat(40), change
 const renderComponent = createComponentRenderer(PromotionSelectModal, {
 	global: {
 		stubs: {
+			N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
 			Modal: {
 				template: `
 					<div>
@@ -112,6 +114,21 @@ describe('PromotionSelectModal', () => {
 			expect(getByText('Moved / renamed')).toBeInTheDocument();
 			expect(getByText('Moved / renamed and modified')).toBeInTheDocument();
 		});
+	});
+
+	it('should show when the changes were last refreshed', async () => {
+		const { findByTestId, findByText } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+		await findByText('Payment Handler');
+
+		expect(await findByTestId('promotion-last-refreshed')).toHaveTextContent(
+			'Last refreshed just now',
+		);
 	});
 
 	it('should disable promote button when nothing selected', async () => {
@@ -442,12 +459,25 @@ describe('PromotionSelectModal', () => {
 			);
 		});
 
+		it('opens all blocked bindings and keeps Apply paused', async () => {
+			const result = blocked({ missingBindings: [credential, variable] });
+			server.post('/api/v1/promotions/connections/connection-1/apply', () => result);
+			const { findByTestId, findAllByText, findByText } = renderComponent({
+				pinia,
+				props: applyProps,
+			});
+			await findByText('Payment Handler');
+			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await findByText('Resolve bindings');
+			await findAllByText(credential.name);
+			await findAllByText(variable.name);
+			await findAllByText('Team B');
+			expect(useUIStore().closeModal).not.toHaveBeenCalled();
+			expect(applied).not.toHaveBeenCalled();
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
 		it.each([
-			{
-				result: { status: 'blocked', preflight: {} },
-				message:
-					'Some credentials or variables are not set up on this instance yet. Nothing was changed.',
-			},
 			{
 				result: { status: 'source-changed' },
 				message: 'The source changed since this preview. Refresh and review the changes again.',

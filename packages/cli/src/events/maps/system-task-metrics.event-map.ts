@@ -6,8 +6,11 @@
  * `prom-client`.
  */
 
-/** Where a system task runs: an in-memory timer on the leader, or the durable scheduler. */
-export type SystemTaskMode = 'in_memory' | 'durable';
+/**
+ * What drives a system task's occurrences: the leader-gated timer, a timer in
+ * every eligible instance, or the durable scheduler.
+ */
+export type SystemTaskMode = 'leader_timer' | 'instance_timer' | 'durable';
 
 /**
  * How a run settled. A rejection after the run's abort signal fired is the task

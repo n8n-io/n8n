@@ -2,11 +2,13 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { LockedError } from '@/errors/response-errors/locked.error';
 
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentPublishController } from '../agent-publish.controller';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentValidationService } from '../agent-validation.service';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -16,10 +18,12 @@ function makeController({
 	agentPublishService = mock<AgentPublishService>(),
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
+	collaborationService = mock<CollaborationService>(),
 }: {
 	agentPublishService?: Mocked<AgentPublishService>;
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
+	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -28,9 +32,14 @@ function makeController({
 	);
 
 	return {
-		controller: new AgentPublishController(agentPublishService, agentRunnableStateService),
+		controller: new AgentPublishController(
+			agentPublishService,
+			agentRunnableStateService,
+			collaborationService,
+		),
 		agentPublishService,
 		agentValidationService,
+		collaborationService,
 	};
 }
 
@@ -119,5 +128,59 @@ describe('AgentPublishController revert to version', () => {
 				isRunnable: true,
 			}),
 		);
+	});
+
+	it('validates the write lock before reverting to a version', async () => {
+		const { controller, collaborationService, agentPublishService, agentValidationService } =
+			makeController();
+		agentPublishService.revertToVersion.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+		} as never);
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
+
+		await controller.revertToVersion(
+			{
+				params: { projectId: 'project-1' },
+				user: { id: 'user-1' },
+				headers: { 'push-ref': 'push-ref-1' },
+			} as never,
+			undefined as never,
+			'agent-1',
+			{ versionId: 'v1' } as never,
+		);
+
+		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+			'user-1',
+			'push-ref-1',
+			'project-1',
+			'agent-1',
+			'revert to version',
+		);
+	});
+
+	it('propagates a LockedError from validateAgentWriteLock', async () => {
+		const { controller, collaborationService, agentPublishService } = makeController();
+		collaborationService.validateAgentWriteLock.mockRejectedValue(
+			new LockedError('Cannot revert to version agent - another user currently has write access'),
+		);
+
+		await expect(
+			controller.revertToVersion(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					headers: { 'push-ref': 'push-ref-1' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ versionId: 'v1' } as never,
+			),
+		).rejects.toThrow(LockedError);
+
+		expect(agentPublishService.revertToVersion).not.toHaveBeenCalled();
 	});
 });

@@ -41,6 +41,7 @@ const snapshot = (overrides: Partial<ExecutionSnapshot> = {}): ExecutionSnapshot
 	workflowId: WORKFLOW_ID,
 	status: 'completed',
 	mode: 'manual',
+	hostMode: 'manual',
 	graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [] },
 	workflow: workflowDocument(),
 	createdAt: '2026-08-25T10:00:00.000Z',
@@ -65,17 +66,20 @@ describe('EngineV2ExecutionReader', () => {
 			'forwards the mode %s without conversion',
 			async (mode) => {
 				await reader.findMany({ ...query, mode }, ['wf-1']);
-				expect(dataPlane.searchExecutions).toHaveBeenCalledWith(expect.objectContaining({ mode }));
+				expect(dataPlane.searchExecutions).toHaveBeenCalledWith(
+					expect.objectContaining({ hostMode: mode }),
+				);
 			},
 		);
 
 		it('maps supported statuses and drops statuses that the DP cannot match', async () => {
 			await reader.findMany({ ...query, status: ['success', 'crashed', 'waiting'] }, 'all');
 			expect(dataPlane.searchExecutions).toHaveBeenCalledWith(
-				expect.objectContaining({ status: ['completed'] }),
+				expect.objectContaining({ status: ['waiting', 'completed'] }),
 			);
 			dataPlane.searchExecutions.mockClear();
-			await reader.findMany({ ...query, status: ['crashed', 'waiting'] }, 'all');
+			// `crashed` has no v2 counterpart, so nothing is left to search for
+			await reader.findMany({ ...query, status: ['crashed'] }, 'all');
 			expect(dataPlane.searchExecutions).not.toHaveBeenCalled();
 		});
 
@@ -223,6 +227,7 @@ describe('EngineV2ExecutionReader', () => {
 		it.each<[ExecutionStatus, ExecutionStatusV1, boolean]>([
 			['queued', 'new', false],
 			['running', 'running', false],
+			['waiting', 'waiting', false],
 			['completed', 'success', true],
 			['failed', 'error', false],
 			['cancelled', 'canceled', false],
@@ -235,13 +240,18 @@ describe('EngineV2ExecutionReader', () => {
 			expect(result?.finished).toBe(finished);
 		});
 
-		it('should map a production run onto the v1 trigger mode', async () => {
-			dataPlane.getExecution.mockResolvedValue(snapshot({ mode: 'production' }));
+		it.each(['manual', 'webhook', 'trigger'] as const)(
+			'should preserve the %s execution mode',
+			async (mode) => {
+				dataPlane.getExecution.mockResolvedValue(
+					snapshot({ mode: mode === 'manual' ? 'manual' : 'production', hostMode: mode }),
+				);
 
-			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+				const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
 
-			expect(result?.mode).toBe('trigger');
-		});
+				expect(result?.mode).toBe(mode);
+			},
+		);
 
 		it('should leave stoppedAt unset while the execution is unfinished', async () => {
 			dataPlane.getExecution.mockResolvedValue(snapshot({ status: 'running', finishedAt: null }));

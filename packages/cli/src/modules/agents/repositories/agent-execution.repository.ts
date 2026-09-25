@@ -1,9 +1,10 @@
+import type { AgentExecutionStatus } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThanOrEqual, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
+import { AgentExecution } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 
 export type RunningAgentExecution = Pick<
@@ -44,12 +45,31 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		});
 	}
 
-	async existsRunningByThread(threadId: string): Promise<boolean> {
-		return await this.existsBy({ threadId, status: 'running' });
+	async existsRunningByThread(threadId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(AgentExecution, { threadId, status: 'running' });
 	}
 
-	async touchRunning(executionId: string): Promise<void> {
-		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	async findRunningByThread(threadId: string, ctx: OperationContext): Promise<AgentExecution[]> {
+		return await this.managerFor(ctx).findBy(AgentExecution, { threadId, status: 'running' });
+	}
+
+	async findExecution(
+		executionId: string,
+		ctx: OperationContext = {},
+	): Promise<AgentExecution | null> {
+		return await this.managerFor(ctx).findOneBy(AgentExecution, { id: executionId });
+	}
+
+	async findLatestByThreadId(threadId: string): Promise<AgentExecution | null> {
+		return await this.findOne({ where: { threadId }, order: { createdAt: 'DESC', id: 'DESC' } });
+	}
+
+	async touchRunning(executionId: string): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status: 'running' },
+			{ updatedAt: new Date() },
+		);
+		return result.affected === 1;
 	}
 
 	async updateTimelineIfRunning(
@@ -66,9 +86,16 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	async updateIfRunning(
 		executionId: string,
 		values: AgentExecutionFinalizationValues,
+		staleBefore?: Date,
+		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const result = await this.update(
-			{ id: executionId, status: 'running' },
+		const result = await this.managerFor(ctx).update(
+			AgentExecution,
+			{
+				id: executionId,
+				status: 'running',
+				...(staleBefore ? { updatedAt: LessThanOrEqual(staleBefore) } : {}),
+			},
 			values as QueryDeepPartialEntity<AgentExecution>,
 		);
 		return result.affected === 1;

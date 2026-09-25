@@ -88,6 +88,15 @@ describe('extractArtifacts', () => {
 		]);
 	});
 
+	test('does not return an unchanged Agent target as an artifact', () => {
+		const node = makeAgentNode({
+			agentChange: 'none',
+			targetResource: { id: 'agent-1', type: 'agent', name: 'SEO Auditor' },
+		});
+
+		expect(extractArtifacts(node)).toEqual([]);
+	});
+
 	test('falls back to subtitle when targetResource has no name', () => {
 		const node = makeAgentNode({
 			subtitle: 'Sub Title',
@@ -817,6 +826,40 @@ describe('buildTimelineBlocks', () => {
 		const completed = blocksOf([reasoning('r1')], [], 'completed');
 		expect(completed[0].type === 'thinking' && completed[0].active).toBe(false);
 	});
+
+	describe('save_user_preference', () => {
+		const base: Partial<InstanceAiToolCallState> = {
+			toolCallId: 'tc-1',
+			toolName: 'save_user_preference',
+		};
+
+		test('renders a preference block once the result is a saved preference', () => {
+			const tc = makeToolCall({
+				...base,
+				result: { ok: true, preference: { id: 'p', content: 'x', scope: 'user' } },
+			});
+			const blocks = blocksOf([toolEntry('tc-1', 'r1')], [tc]);
+
+			expect(blocks).toEqual([{ type: 'preference', key: 'preference-0', toolCall: tc }]);
+		});
+
+		// A refusal the person cannot see is a silent failure, so it renders as a card too.
+		test('renders a preference block when the write was rejected or the tool threw', () => {
+			for (const tc of [
+				makeToolCall({ ...base, result: { ok: false, reason: 'duplicate', message: 'dup' } }),
+				makeToolCall({ ...base, error: 'boom' }),
+			]) {
+				expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([
+					{ type: 'preference', key: 'preference-0', toolCall: tc },
+				]);
+			}
+		});
+
+		test('hides the call while it is still running', () => {
+			const tc = makeToolCall({ ...base, isLoading: true });
+			expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([]);
+		});
+	});
 });
 
 describe('isStreamingTimelineEntry', () => {
@@ -851,5 +894,50 @@ describe('isStreamingTimelineEntry', () => {
 		const node = makeAgentNode({ status: 'active', timeline: [tail] });
 
 		expect(isStreamingTimelineEntry(node, { ...tail })).toBe(false);
+	});
+});
+
+describe('buildTimelineBlocks — instance context', () => {
+	const contextEntry: InstanceAiTimelineEntry = {
+		type: 'instance-context',
+		runId: 'run-1',
+		injection: {
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 2, events: 1, runs: 0 },
+			chars: 90,
+		},
+	};
+
+	/** Inside the collapsible trace, not beside it — standalone it reads as its own message. */
+	test('puts the entry inside a thinking block rather than standing it alone', () => {
+		const blocks = buildTimelineBlocks([contextEntry], {}, {}, 'completed');
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type).toBe('thinking');
+		if (blocks[0].type !== 'thinking') throw new Error('unreachable');
+		expect(blocks[0].entries).toEqual([contextEntry]);
+	});
+
+	test('keeps it in the same block as the reasoning that follows it', () => {
+		const reasoning: InstanceAiTimelineEntry = {
+			type: 'reasoning',
+			content: 'checking the failed run',
+			responseId: 'r1',
+		};
+
+		const blocks = buildTimelineBlocks([contextEntry, reasoning], {}, {}, 'completed');
+
+		expect(blocks).toHaveLength(1);
+		if (blocks[0].type !== 'thinking') throw new Error('unreachable');
+		expect(blocks[0].entries).toEqual([contextEntry, reasoning]);
+	});
+
+	test('leads the trace, so the turn reads in the order things happened', () => {
+		const answer: InstanceAiTimelineEntry = { type: 'text', content: 'Here is what failed.' };
+
+		const blocks = buildTimelineBlocks([contextEntry, answer], {}, {}, 'completed');
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
 	});
 });

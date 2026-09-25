@@ -8,7 +8,7 @@ import type { IUpdateInformation } from '@/Interface';
 import CopyInput from '@/app/components/CopyInput.vue';
 import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { computed, reactive, useId } from 'vue';
+import { computed, useId } from 'vue';
 
 import { N8nInput, N8nInputLabel, N8nNotice, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -24,12 +24,9 @@ type Props = {
 const props = defineProps<Props>();
 const i18n = useI18n();
 const inputId = useId();
-const touched = reactive(new Set<string>());
 function hasRequiredError(parameter: INodeProperties) {
 	return (
-		parameter.required &&
-		(touched.has(parameter.name) || props.showValidationWarnings) &&
-		!props.credentialData[parameter.name]
+		parameter.required && props.showValidationWarnings && !props.credentialData[parameter.name]
 	);
 }
 
@@ -112,7 +109,6 @@ function valueChanged(parameterData: IUpdateInformation) {
 					:required="parameter.required"
 					:autocomplete="parameter.typeOptions?.password ? 'new-password' : 'off'"
 					size="small"
-					@blur="touched.add(parameter.name)"
 					@update:model-value="valueChanged({ name: parameter.name, value: $event })"
 				/>
 				<N8nText

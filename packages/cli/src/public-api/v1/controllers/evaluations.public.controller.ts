@@ -1,11 +1,17 @@
 import {
+	CancelledTestRunPublicDto,
 	CreatedTestRunPublicDto,
+	ListTestCasesQueryPublicDto,
 	ListTestRunsQueryPublicDto,
+	TestCaseExecutionListPublicDto,
+	TestCaseExecutionPublicDto,
 	TestRunListPublicDto,
+	TestRunSummaryPublicDto,
+	testRunIdParamSchema,
 	workflowIdParamSchema,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, TestCaseExecution, TestRun } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -29,7 +35,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EvaluationTestRunService } from '@/evaluation.ee/evaluation-test-run.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
-import { toTestRunSummaryDto } from '@/public-api/v1/handlers/evaluations/evaluations.mapper';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -37,6 +42,53 @@ import {
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const tags = ['Evaluation'];
+
+type TestRunSummarySource = Pick<
+	TestRun,
+	| 'id'
+	| 'status'
+	| 'runAt'
+	| 'completedAt'
+	| 'metrics'
+	| 'errorCode'
+	| 'errorDetails'
+	| 'finalResult'
+	| 'createdAt'
+	| 'updatedAt'
+> & { testCaseCount: number };
+
+const toTestRunSummaryPublicDto = (run: TestRunSummarySource): TestRunSummaryPublicDto => ({
+	id: run.id,
+	status: run.status,
+	runAt: run.runAt?.toISOString() ?? null,
+	completedAt: run.completedAt?.toISOString() ?? null,
+	metrics: run.metrics ?? null,
+	errorCode: run.errorCode ?? null,
+	errorDetails: run.errorDetails ?? null,
+	finalResult: run.finalResult ?? null,
+	testCaseCount: run.testCaseCount,
+	createdAt: run.createdAt.toISOString(),
+	updatedAt: run.updatedAt.toISOString(),
+});
+
+const toTestCaseExecutionPublicDto = (testCase: TestCaseExecution): TestCaseExecutionPublicDto => {
+	// The entity types executionId as a string, but the column is an integer and the route has
+	// always published the number the driver returns.
+	const executionId = testCase.executionId ?? null;
+
+	return {
+		id: testCase.id,
+		status: testCase.status,
+		runAt: testCase.runAt?.toISOString() ?? null,
+		completedAt: testCase.completedAt?.toISOString() ?? null,
+		metrics: testCase.metrics ?? null,
+		errorCode: testCase.errorCode ?? null,
+		errorDetails: testCase.errorDetails ?? null,
+		inputs: testCase.inputs ?? null,
+		outputs: testCase.outputs ?? null,
+		executionId: executionId === null ? null : Number(executionId),
+	};
+};
 
 @PublicApiController('/workflows/:workflowId/test-runs')
 export class EvaluationsPublicController {
@@ -72,7 +124,7 @@ export class EvaluationsPublicController {
 		);
 
 		return {
-			data: testRuns.map(toTestRunSummaryDto),
+			data: testRuns.map(toTestRunSummaryPublicDto),
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
 		};
 	}
@@ -128,6 +180,94 @@ export class EvaluationsPublicController {
 			status: testRun.status,
 			createdAt: testRun.createdAt.toISOString(),
 		};
+	}
+
+	@Get('/:runId')
+	@ApiKeyScope('testRun:read')
+	@ProjectScope('workflow:read')
+	@ApiSummary('Retrieve a test run')
+	@ApiDescription(
+		'Retrieve a single evaluation test run of a workflow, including its aggregated metrics and ' +
+			'final result.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, TestRunSummaryPublicDto)
+	@ApiErrorResponse(404)
+	async getTestRun(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Param('runId', testRunIdParamSchema) runId: string,
+	): Promise<TestRunSummaryPublicDto> {
+		const summary = await this.evaluationTestRunService.findSummaryByWorkflowId(runId, workflowId);
+		if (!summary) throw new NotFoundError('Test run not found');
+
+		return toTestRunSummaryPublicDto({
+			...summary,
+			testCaseCount: summary.testCaseExecutions?.length ?? 0,
+		});
+	}
+
+	@Get('/:runId/test-cases')
+	@ApiKeyScope('testRun:read')
+	@ProjectScope('workflow:read')
+	@ApiSummary('Retrieve test run cases')
+	@ApiDescription('Retrieve the per-case results of an evaluation test run.')
+	@ApiTags(tags)
+	@ApiResponse(200, TestCaseExecutionListPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	async getTestCases(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Param('runId', testRunIdParamSchema) runId: string,
+		@Query query: ListTestCasesQueryPublicDto,
+	): Promise<TestCaseExecutionListPublicDto> {
+		const { offset, limit } = resolveOffsetPagination(query);
+
+		const result = await this.evaluationTestRunService.findTestCasesAndCount(runId, workflowId, {
+			offset,
+			limit,
+		});
+		if (!result) throw new NotFoundError('Test run not found');
+
+		return {
+			data: result.testCases.map(toTestCaseExecutionPublicDto),
+			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: result.count }),
+		};
+	}
+
+	@Post('/:runId/cancel')
+	@ApiKeyScope('testRun:cancel')
+	@ProjectScope('workflow:execute')
+	@ApiSummary('Cancel a test run')
+	@ApiDescription(
+		'Cancel a running evaluation test run of a workflow. Requires the `workflow:execute` project ' +
+			'scope in addition to the `testRun:cancel` API key scope.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(202, CancelledTestRunPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async cancelTestRun(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Param('runId', testRunIdParamSchema) runId: string,
+	): Promise<CancelledTestRunPublicDto> {
+		this.assertEvaluationsEnabled();
+
+		const testRun = await this.evaluationTestRunService.findOneByIdAndWorkflowId(runId, workflowId);
+		if (!testRun) throw new NotFoundError('Test run not found');
+
+		if (this.testRunnerService.canBeCancelled(testRun)) {
+			throw new ConflictError(`The test run "${runId}" cannot be cancelled`);
+		}
+
+		await this.testRunnerService.cancelTestRun(runId);
+
+		return { id: runId, status: 'cancelled' };
 	}
 
 	// The quota doubles as the feature flag: 0 = disabled. Cheap in-memory gate.

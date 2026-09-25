@@ -12,6 +12,8 @@ import type { AgentChannelStatusReporter } from '../integrations/agent-channel-s
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -26,6 +28,7 @@ function makeController({
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
+	collaborationService = mock<CollaborationService>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -33,6 +36,7 @@ function makeController({
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
+	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -45,12 +49,14 @@ function makeController({
 			chatIntegrationRegistry,
 			channelStatusRepository,
 			statusReporter,
+			collaborationService,
 		),
 		managementService,
 		chatIntegrationService,
 		agentRepository,
 		channelStatusRepository,
 		statusReporter,
+		collaborationService,
 	};
 }
 
@@ -214,6 +220,65 @@ describe('AgentIntegrationsController integration management', () => {
 			}),
 		);
 		expect(result).toEqual({ status: 'disconnected' });
+	});
+
+	it('validates the write lock before connecting an integration', async () => {
+		const { controller, collaborationService, agentRepository, managementService } =
+			makeController();
+		const integration = {
+			type: 'slack',
+			credentialId: 'credential-1',
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: integration,
+				headers: { 'push-ref': 'push-ref-1' },
+			} as never,
+			undefined as never,
+			agent.id,
+			integration as never,
+		);
+
+		expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+			'user-1',
+			'push-ref-1',
+			agent.projectId,
+			agent.id,
+			'connect integration for',
+		);
+	});
+
+	it('propagates a LockedError from validateAgentWriteLock on connect', async () => {
+		const { controller, collaborationService, agentRepository } = makeController();
+		const integration = {
+			type: 'slack',
+			credentialId: 'credential-1',
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		collaborationService.validateAgentWriteLock.mockRejectedValue(
+			new LockedError(
+				'Cannot connect integration for agent - another user currently has write access',
+			),
+		);
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: agent.projectId },
+					user,
+					body: integration,
+					headers: { 'push-ref': 'push-ref-1' },
+				} as never,
+				undefined as never,
+				agent.id,
+				integration as never,
+			),
+		).rejects.toThrow(LockedError);
 	});
 
 	it('returns a platform webhook rejection without looking up a handler', async () => {

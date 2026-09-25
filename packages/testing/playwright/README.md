@@ -210,17 +210,22 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 | `@chaostest` | Chaos engineering tests | Tests that intentionally break things |
 | `@auth:X` | Authentication role (owner, admin, member, none) | Tests requiring specific user role |
 | `@db:reset` | Reset database before each test (container-only) | Tests that need fresh DB state per test (e.g., MFA tests) |
-| `@engine:v2` | Must pass on engine 2.0 as well | Runs under the `engine-v2:e2e` project (see below) |
-| `@engine:v1-only` | Engine 2.0 will never support this | Skipped under `engine-v2:e2e`; tracking only |
-| `@engine:v2-pending` | Engine 2.0 will support this, but not yet | Expected to fail under `engine-v2:e2e`; an unexpected pass tells you to promote it to `@engine:v2` |
+| `@engine:v2` | Must pass on engine v2 as well | Runs under the `engine-v2:e2e` project (see below) |
+| `@engine:v1-only` | Engine v2 will never support this | Skipped under `engine-v2:e2e`; tracking only |
+| `@engine:v2-pending` | Engine v2 will support this, but not yet | Expected to fail under `engine-v2:e2e`; an unexpected pass tells you to promote it to `@engine:v2` |
 
-### Engine 2.0 parity
+### Engine v2 parity
 
 The `engine-v2:e2e` project runs the regular `tests/e2e` specs against a stack
-that runs engine 2.0 in the main process (`containerConfig.engine:
-'in-process'`, Postgres, single main). Under that stack every workflow the API
-helpers create gets `settings.engineType = 'v2'`, so a spec proves parity
-without changes.
+that runs engine v2 in its own container (`containerConfig.engine:
+'container'`, Postgres, single main). The main runs the `engine-v2` module in
+remote mode and dials the engine over the stack network. The engine container
+runs `n8n engine`, has no `DB_*` env and no encryption key, resolves
+credentials through the main's control plane server, and keeps its own
+`n8n_engine` database on the dedicated `engine-postgres` service. Execution
+responses travel back to the main over the stack's Redis. Under that stack
+every workflow the API helpers create gets `settings.engineType = 'v2'`, so a
+spec proves parity without changes.
 
 `@db:reset` clears the control plane only, so data plane execution rows live
 on inside a worker. The engine database is emptied once, when the worker takes
@@ -229,12 +234,14 @@ its container.
 A workflow built in the UI does not get the setting, and a workflow without it
 runs on the legacy engine. A tagged spec must therefore create its workflow
 through `api.workflows` and run it through `api.workflows.runManually`, which
-fails the test when the run did not reach engine 2.0. A tag the parity buckets
-do not know also fails the test, and names the three valid tags.
+fails the test when the run did not reach engine v2. A spec that starts the
+run from the UI instead calls `api.workflows.assertLatestExecutionRoutedToEngine`
+after the run, which checks the same thing. A tag the parity buckets do not
+know also fails the test, and names the three valid tags.
 
 The project only picks up specs with an `@engine:*` tag for now. Tag a spec
 `@engine:v2` once it passes on both engines; use the other two tags to track
-specs that engine 2.0 does not run yet:
+specs that engine v2 does not run yet:
 
 ```bash
 pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/api/manual-run-outcome.spec.ts

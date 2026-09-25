@@ -1,6 +1,7 @@
 import * as AgentsRuntime from '@n8n/agents';
 import type { AgentSnapshot, BuiltProviderTool, BuiltTool, ToolDescriptor } from '@n8n/agents';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	AgentJsonConfigSchema,
 	RunnableAgentJsonConfigSchema,
 	SUB_AGENT_TASK_DIFFICULTIES,
@@ -322,7 +323,7 @@ describe('buildFromJson()', () => {
 		const instructions = agent.snapshot.instructions ?? '';
 		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'agent-context')).toBe(false);
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
@@ -977,6 +978,126 @@ describe('buildFromJson()', () => {
 				},
 			),
 		).rejects.toThrow('Web search is enabled but no search credential is configured.');
+	});
+
+	it('adds fallback web search tool for the n8n Connect managed credential (brave)', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getLocalToolNames(agent)).toContain('web_search');
+	});
+
+	it('routes managed brave web search through the AI gateway proxy', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+			ok: true,
+			status: 200,
+			statusText: 'OK',
+			json: async () => ({ web: { results: [] } }),
+		} as unknown as Response);
+
+		const credentialProvider = {
+			resolve: vi.fn().mockResolvedValue({ apiKey: 'model-key' }),
+			list: vi.fn().mockResolvedValue([]),
+			resolveAiGatewaySearchCredential: vi.fn().mockResolvedValue({
+				apiKey: 'jwt-123',
+				baseUrl: 'https://gw.example/v1/gateway/exec/agent/a%7Cp/brave-search/res/v1',
+			}),
+		};
+
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		expect(webSearchTool).toBeDefined();
+
+		await webSearchTool!.handler!({ query: 'hello' }, {} as never);
+
+		expect(credentialProvider.resolveAiGatewaySearchCredential).toHaveBeenCalledWith(
+			'braveSearchApi',
+		);
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		const [requestUrl, requestInit] = fetchSpy.mock.calls[0] as [string, RequestInit];
+		// The gateway base ends in `/res/v1`; braveSearch re-appends `/res/v1/web/search`,
+		// so the stripped base must join into a single `/res/v1/web/search`.
+		expect(requestUrl).toContain(
+			'https://gw.example/v1/gateway/exec/agent/a%7Cp/brave-search/res/v1/web/search',
+		);
+		expect(requestUrl).not.toContain('/res/v1/res/v1');
+		expect((requestInit.headers as Record<string, string>)['X-Subscription-Token']).toBe('jwt-123');
+	});
+
+	it('rejects the managed credential for a non-brave web search provider', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'searxng', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		await expect(webSearchTool!.handler!({ query: 'hello' }, {} as never)).rejects.toThrow(
+			'Gateway credits web search is only available for Brave Search.',
+		);
+	});
+
+	it('rejects the managed credential when the provider cannot mint a gateway credential', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		await expect(webSearchTool!.handler!({ query: 'hello' }, {} as never)).rejects.toThrow(
+			'This credential provider cannot resolve Gateway credits web search credentials.',
+		);
 	});
 
 	it('sets toolCallConcurrency', async () => {

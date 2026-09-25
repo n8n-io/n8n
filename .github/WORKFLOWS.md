@@ -575,14 +575,15 @@ out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.
 
 ## ci-master.yml
 
-Runs on push to `master` or `1.x`:
+Runs on push to `master`:
 
 ```
-Push to master/1.x
-├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.23.2, 24.18.1)
+Push to master
+├─ build-and-format (Blacksmith: build, then format check; populate master cache)
+├─ unit-test (matrix: Node 24.18.1, 26.5.1)
 │   └─ Coverage only on 24.18.1
 ├─ lint
+├─ performance (CodSpeed benchmarks)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```

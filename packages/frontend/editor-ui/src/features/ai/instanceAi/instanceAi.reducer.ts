@@ -199,7 +199,12 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 	// Mid-run replay guard: if we receive events for a runId that has no
 	// message yet (e.g., reconnect missed the run-start), create the message
 	// on the fly so subsequent events aren't dropped.
-	if (event.type !== 'run-start') {
+	//
+	// A thread-level fact carries an empty runId, because it belongs to the
+	// thread and not to a run (the title refinement after the opening turn is
+	// one). It must not invent a turn: the placeholder would sit after the real
+	// message and make the transcript tail the wrong one.
+	if (event.type !== 'run-start' && event.runId !== '') {
 		const { msg, groupId } = resolveTarget(state, event.runId);
 		if (!msg) {
 			const rootAgentId = event.type === 'agent-spawned' ? event.payload.parentId : event.agentId;
@@ -296,6 +301,9 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'confirmation-request':
 		case 'tasks-update':
 		case 'setup-items':
+		// Apply context events during live runs as well as history replay.
+		case 'instance-context':
+		case 'preference-card':
 		case 'status': {
 			const { runState } = resolveTarget(state, event.runId);
 			if (runState) {
@@ -334,8 +342,8 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
-		// `preferences-applied` names the saved preferences the turn carried. A later
-		// ticket renders it from the event log. It changes no run state.
+		// `preferences-applied` names the saved preferences the turn carried. The thread
+		// runtime keeps the latest payload for the plus menu. It changes no run state.
 		case 'filesystem-request':
 		case 'thread-title-updated':
 		case 'preferences-applied':

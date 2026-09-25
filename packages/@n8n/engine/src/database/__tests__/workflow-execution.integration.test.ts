@@ -4,6 +4,7 @@ import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ExecutionNotFoundError } from '../../execution/execution-store';
+import type { ExecutionStatus, StepStatus } from '../../execution/execution.types';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
@@ -41,6 +42,7 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			workflow: {},
 			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: { hostMode: 'trigger' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -55,6 +57,7 @@ describe('workflow_execution table (integration)', () => {
 		expect(found.status).toBe('running');
 		expect(found.mode).toBe('production');
 		expect(found.triggerOutputs).toEqual([{ foo: 'bar' }]);
+		expect(found.callerContext).toEqual({ hostMode: 'trigger' });
 		expect(found.finishedAt).toBeNull();
 		expect(found.createdAt).toBeInstanceOf(Date);
 		expect(found.updatedAt).toBeInstanceOf(Date);
@@ -71,6 +74,7 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: { hostMode: 'manual' },
 			finishedAt,
 		});
 		await repo.save(created);
@@ -86,6 +90,7 @@ describe('workflow_execution table (integration)', () => {
 			workflowId: 'wf-3',
 			status: 'completed',
 			mode: 'manual',
+			hostMode: 'manual',
 			graph: { nodes: [], edges: [] },
 			workflow: sampleWorkflow,
 			createdAt: expect.any(Date) as Date,
@@ -104,6 +109,7 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: { hostMode: 'trigger' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -118,7 +124,7 @@ describe('workflow_execution table (integration)', () => {
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
 			triggerOutputs: [{ foo: 'bar' }],
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 	});
 
@@ -148,6 +154,7 @@ describe('workflow_execution table (integration)', () => {
 				graph: { nodes: [], edges: [] },
 				workflow: {},
 				triggerOutputs: null,
+				callerContext: { hostMode: 'trigger' },
 				finishedAt: null,
 			}),
 		);
@@ -160,6 +167,7 @@ describe('workflow_execution table (integration)', () => {
 				graph: { nodes: [], edges: [] },
 				workflow: {},
 				triggerOutputs: null,
+				callerContext: { hostMode: 'trigger' },
 				finishedAt: new Date(),
 			}),
 		);
@@ -169,5 +177,135 @@ describe('workflow_execution table (integration)', () => {
 		});
 
 		expect(runningForWf2).toBe(1);
+	});
+
+	it('TypeOrmExecutionStore.finishExecution ends a waiting execution', async () => {
+		const repo = dataSource.getRepository(WorkflowExecution);
+		const created = await repo.save(
+			repo.create({
+				id: generateId(),
+				workflowId: 'wf-5',
+				status: 'waiting',
+				mode: 'production',
+				callerContext: { hostMode: 'trigger' },
+				graph: { nodes: [], edges: [] },
+				workflow: {},
+				triggerOutputs: null,
+				finishedAt: null,
+			}),
+		);
+
+		const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
+
+		expect(finished).toBe(true);
+		const row = await repo.findOneOrFail({ where: { id: created.id } });
+		expect(row.status).toBe('failed');
+		expect(row.finishedAt).toBeInstanceOf(Date);
+	});
+
+	it.each<ExecutionStatus>(['completed', 'queued'])(
+		'TypeOrmExecutionStore.finishExecution leaves a %j execution alone',
+		async (status) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const finishedAt = status === 'completed' ? new Date('2099-01-01T00:00:00.000Z') : null;
+			const created = await repo.save(
+				repo.create({
+					id: generateId(),
+					workflowId: 'wf-6',
+					status,
+					mode: 'production',
+					callerContext: { hostMode: 'trigger' },
+					graph: { nodes: [], edges: [] },
+					workflow: {},
+					triggerOutputs: null,
+					finishedAt,
+				}),
+			);
+
+			const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
+
+			expect(finished).toBe(false);
+			const row = await repo.findOneOrFail({ where: { id: created.id } });
+			expect(row.status).toBe(status);
+			expect(row.finishedAt).toEqual(finishedAt);
+		},
+	);
+
+	describe('TypeOrmExecutionStore.refreshLiveStatus', () => {
+		/** One execution with one step for each status given. */
+		async function seed(status: ExecutionStatus, stepStatuses: StepStatus[]): Promise<string> {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const execution = await repo.save(
+				repo.create({
+					id: generateId(),
+					workflowId: 'wf-live',
+					status,
+					mode: 'production',
+					callerContext: { hostMode: 'trigger' },
+					graph: { nodes: [], edges: [] },
+					workflow: {},
+					triggerOutputs: null,
+					finishedAt: null,
+				}),
+			);
+			const stepRepo = dataSource.getRepository(WorkflowStepExecution);
+			await stepRepo.save(
+				// one iteration for each, so they are distinct rows of the same node
+				stepStatuses.map((stepStatus, iteration) =>
+					stepRepo.create({
+						id: generateId(),
+						executionId: execution.id,
+						nodeId: 'a',
+						iteration,
+						status: stepStatus,
+						outputs: null,
+						error: null,
+						waitDeclaration: null,
+						waitTill: null,
+						resumeCause: null,
+					}),
+				),
+			);
+			return execution.id;
+		}
+
+		it.each<[string, ExecutionStatus, StepStatus[], ExecutionStatus]>([
+			[
+				'reports waiting when every step it still owes is suspended',
+				'running',
+				['completed', 'waiting'],
+				'waiting',
+			],
+			['reports running again once a step can run', 'waiting', ['waiting', 'queued'], 'running'],
+			['reports running while a step runs', 'waiting', ['waiting', 'running'], 'running'],
+			[
+				'leaves an execution whose steps have all settled to finishExecution',
+				'running',
+				['completed'],
+				'running',
+			],
+			['leaves an execution with no steps alone', 'running', [], 'running'],
+			['leaves an execution that already ended alone', 'completed', ['waiting'], 'completed'],
+		])('%s', async (_case, from, stepStatuses, expected) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const id = await seed(from, stepStatuses);
+
+			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+
+			const row = await repo.findOneOrFail({ where: { id } });
+			expect(row.status).toBe(expected);
+		});
+
+		it('does not write when the status already holds', async () => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const id = await seed('running', ['running']);
+			const before = await repo.findOneOrFail({ where: { id } });
+
+			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+
+			// The timestamp is the only trace of the write: the status is the same.
+			const after = await repo.findOneOrFail({ where: { id } });
+			expect(after.updatedAt).toEqual(before.updatedAt);
+		});
 	});
 });

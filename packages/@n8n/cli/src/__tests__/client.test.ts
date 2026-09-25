@@ -78,6 +78,69 @@ describe('N8nClient packages', () => {
 			});
 		});
 
+		const expectedSource = {
+			configId: 'cfg-2',
+			branchName: 'release',
+			commitSha: 'a'.repeat(40),
+		};
+
+		it.each([
+			{
+				title: 'posts apply with no body when no expected source is given',
+				send: async () => await client.applyPackage('conn-1'),
+				path: 'apply',
+				body: undefined,
+			},
+			{
+				title: 'posts apply with the expected source in the body',
+				send: async () => await client.applyPackage('conn-1', expectedSource),
+				path: 'apply',
+				body: { expectedSource },
+			},
+			{
+				title: 'posts continue to apply/continue with the expected source in the body',
+				send: async () => await client.continueApplyPackage('conn-1', expectedSource),
+				path: 'apply/continue',
+				body: { expectedSource },
+			},
+		])('$title', async ({ send, path, body }) => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { status: 'applied' }));
+
+			await send();
+
+			expect(requestLines(fetchMock)).toEqual([
+				`POST https://n8n.example.com/api/v1/promotions/connections/conn-1/${path}`,
+			]);
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(typeof init.body === 'string' ? JSON.parse(init.body) : init.body).toEqual(body);
+		});
+
+		describe('list changes', () => {
+			beforeEach(() => {
+				fetchMock.mockResolvedValue(jsonResponse(200, { commitSha: null, changes: [] }));
+			});
+
+			it('sends no query parameters when no options are given', async () => {
+				await client.listProjectPromotionChanges('proj-1', 'apply');
+
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/projects/proj-1/changes/apply',
+				]);
+			});
+
+			it('sends search, sort, and order as query parameters', async () => {
+				await client.listProjectPromotionChanges('proj-1', 'promote', {
+					search: 'checkout',
+					sort: 'updatedAt',
+					order: 'desc',
+				});
+
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/projects/proj-1/changes/promote?search=checkout&sort=updatedAt&order=desc',
+				]);
+			});
+		});
+
 		it('clones and disconnects one direction of a connection', async () => {
 			const checkout = {
 				connectionId: 'conn-1',
@@ -329,6 +392,77 @@ describe('N8nClient packages', () => {
 			expect(second.body).toBe(
 				JSON.stringify({ workflowIds: ['a'], includeArchivedWorkflows: true }),
 			);
+		});
+	});
+
+	describe('importPackageSelection', () => {
+		it('sends the package, JSON ID arrays, and policies in a multipart request', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [] }));
+			const buffer = Buffer.from([0, 1, 127, 128, 255]);
+
+			await client.importPackageSelection(
+				{ buffer, filename: 'project.n8np' },
+				{
+					selectedProjectId: 'project-1',
+					selectedWorkflowIds: ['workflow-1', 'workflow-2'],
+					deletedWorkflowIds: ['workflow-3', 'workflow-4'],
+					workflowConflictPolicy: 'skip',
+					workflowIdPolicy: 'new',
+				},
+			);
+
+			expect(fetchMock).toHaveBeenCalledOnce();
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/import-selection');
+			expect(init.method).toBe('POST');
+			expect(init.body).toBeInstanceOf(FormData);
+
+			const form = init.body as FormData;
+			expect(form.get('selectedProjectId')).toBe('project-1');
+			expect(form.get('selectedWorkflowIds')).toBe('["workflow-1","workflow-2"]');
+			expect(form.get('deletedWorkflowIds')).toBe('["workflow-3","workflow-4"]');
+			expect(form.get('workflowConflictPolicy')).toBe('skip');
+			expect(form.get('workflowIdPolicy')).toBe('new');
+
+			const pkg = form.get('package') as File;
+			expect(pkg).toBeInstanceOf(Blob);
+			expect(pkg.name).toBe('project.n8np');
+			expect(Buffer.from(await pkg.arrayBuffer())).toEqual(buffer);
+			// Let fetch set the multipart content type and boundary.
+			expect((init.headers as Headers).get('content-type')).toBeNull();
+		});
+
+		it('sends an empty selection and omits unspecified optional fields', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [] }));
+
+			await client.importPackageSelection(
+				{ buffer: Buffer.from('package-bytes'), filename: 'project.n8np' },
+				{ selectedProjectId: 'project-1', selectedWorkflowIds: [] },
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('selectedProjectId')).toBe('project-1');
+			expect(form.get('selectedWorkflowIds')).toBe('[]');
+			expect(form.has('deletedWorkflowIds')).toBe(false);
+			expect(form.has('workflowConflictPolicy')).toBe(false);
+			expect(form.has('workflowIdPolicy')).toBe(false);
+		});
+
+		it('preserves an explicit empty deletion list', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [] }));
+
+			await client.importPackageSelection(
+				{ buffer: Buffer.from('package-bytes'), filename: 'project.n8np' },
+				{
+					selectedProjectId: 'project-1',
+					selectedWorkflowIds: [],
+					deletedWorkflowIds: [],
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('selectedWorkflowIds')).toBe('[]');
+			expect(form.get('deletedWorkflowIds')).toBe('[]');
 		});
 	});
 
