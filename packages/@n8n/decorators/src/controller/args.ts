@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import type { ZodTypeAny } from 'zod';
 
 import { ControllerRegistryMetadata } from './controller-registry-metadata';
-import type { Arg, Controller } from './types';
+import type { Arg, Controller, MultipartUploadLimits } from './types';
 
 const ArgDecorator =
 	(arg: Arg): ParameterDecorator =>
@@ -14,9 +14,15 @@ const ArgDecorator =
 		routeMetadata.args[parameterIndex] = arg;
 	};
 
-export interface BodyOptions {
-	required?: boolean;
-}
+/** The bare `@Body` / `@Body()` forms keep today's JSON behaviour. */
+export type BodyOptions = { required?: boolean } & (
+	| { mediaType?: 'application/json' }
+	| {
+			mediaType: 'multipart/form-data';
+			/** Read once, when the registry activates the route, so it can read config. */
+			uploadLimits: () => MultipartUploadLimits;
+	  }
+);
 
 /** Injects the request body into the handler */
 export function Body(
@@ -40,6 +46,8 @@ export function Body(
 	return ArgDecorator({
 		type: 'body',
 		...(options?.required !== undefined && { required: options.required }),
+		...(options?.mediaType !== undefined && { mediaType: options.mediaType }),
+		...(options?.mediaType === 'multipart/form-data' && { uploadLimits: options.uploadLimits }),
 	});
 }
 

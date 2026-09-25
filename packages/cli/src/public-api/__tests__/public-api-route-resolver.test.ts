@@ -61,7 +61,9 @@ describe('public-api-route-resolver', () => {
 				method(@Body _body: WidgetBodyDto) {}
 			}
 
-			expect(resolve(TestController as Controller)).toEqual([{ type: 'body', dto: WidgetBodyDto }]);
+			expect(resolve(TestController as Controller)).toEqual([
+				{ type: 'body', dto: WidgetBodyDto, mediaType: 'application/json' },
+			]);
 		});
 
 		it('resolves a query arg to its Zod DTO via design:paramtypes reflection', () => {
@@ -80,7 +82,7 @@ describe('public-api-route-resolver', () => {
 			}
 
 			expect(resolve(TestController as Controller)).toEqual([
-				{ type: 'body', dto: WidgetArrayResponseDto },
+				{ type: 'body', dto: WidgetArrayResponseDto, mediaType: 'application/json' },
 			]);
 		});
 
@@ -95,7 +97,7 @@ describe('public-api-route-resolver', () => {
 
 			expect(resolve(TestController as Controller)).toEqual([
 				{ type: 'param', key: 'id' },
-				{ type: 'body', dto: WidgetBodyDto },
+				{ type: 'body', dto: WidgetBodyDto, mediaType: 'application/json' },
 				{ type: 'query', dto: WidgetQueryDto },
 			]);
 		});
@@ -151,6 +153,18 @@ describe('public-api-route-resolver', () => {
 			expect(() => resolve(TestController as Controller)).toThrow(
 				'Public API route TestController.method is missing a Zod DTO for @query',
 			);
+		});
+
+		it('resolves a multipart body arg with its mediaType and uploadLimits', () => {
+			const uploadLimits = () => ({ fileSize: 1024, files: 1 });
+
+			class TestController {
+				method(@Body({ mediaType: 'multipart/form-data', uploadLimits }) _body: WidgetBodyDto) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual([
+				{ type: 'body', dto: WidgetBodyDto, mediaType: 'multipart/form-data', uploadLimits },
+			]);
 		});
 	});
 
@@ -312,6 +326,7 @@ describe('public-api-route-resolver', () => {
 
 			expect(route.controllerClass).toBe(WidgetsPublicController);
 			expect(route.requestBodyDto).toBe(WidgetBodyDto);
+			expect(route.requestBodyMediaType).toBe('application/json');
 			expect(route.requestQueryDto).toBe(WidgetQueryDto);
 			expect(route.responseDto).toBe(WidgetResponseDto);
 			expect(route.apiKeyScope).toEqual({ anyOf: ['tag:create', 'tag:update'] });
@@ -321,6 +336,42 @@ describe('public-api-route-resolver', () => {
 			expect(route.errorResponses).toEqual([{ status: 409 }]);
 			expect(route.successStatus).toBe(201);
 			expect(route.deprecated).toEqual({ since });
+		});
+
+		it('resolves the multipart body media type, upload limits, and successResponse options', () => {
+			const uploadLimits = () => ({ fileSize: 1024, files: 1 });
+
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200, {
+					binaryMediaType: 'application/gzip',
+					headers: { 'X-Widget-Count': { description: 'Number of widgets.' } },
+				})
+				method(@Body({ mediaType: 'multipart/form-data', uploadLimits }) _body: WidgetBodyDto) {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const [route] = resolvePublicApiRoutes();
+
+			expect(route.requestBodyMediaType).toBe('multipart/form-data');
+			expect(route.successResponse).toEqual({
+				binaryMediaType: 'application/gzip',
+				headers: { 'X-Widget-Count': { description: 'Number of widgets.' } },
+			});
+		});
+
+		it('leaves requestBodyMediaType and successResponse unset when there is no body or options', () => {
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				method() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const [route] = resolvePublicApiRoutes();
+
+			expect(route.requestBodyMediaType).toBeUndefined();
+			expect(route.successResponse).toBeUndefined();
 		});
 
 		it('resolves no deprecation info when @Deprecated is absent', () => {

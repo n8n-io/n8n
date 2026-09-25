@@ -1,4 +1,4 @@
-import { Z } from '@n8n/api-types';
+import { publicApiUploadedFileSchema, Z } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
@@ -13,7 +13,7 @@ import {
 	Post,
 	RequiresUserQuota,
 } from '@n8n/decorators';
-import type { Controller } from '@n8n/decorators';
+import type { Controller, MultipartUploadLimits } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
 import request from 'supertest';
@@ -29,6 +29,11 @@ import {
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
+
+class WidgetImportBodyDto extends Z.class(
+	{ name: z.string(), package: publicApiUploadedFileSchema },
+	{ strict: true },
+) {}
 
 describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
@@ -491,6 +496,217 @@ describe('PublicApiControllerRegistry', () => {
 			const response = await request(activate()).get('/api/v1/widgets').expect(403);
 
 			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+	});
+
+	describe('multipart bodies', () => {
+		function registerMultipartRoute(uploadLimits: () => MultipartUploadLimits = () => ({})) {
+			const handler = vi.fn((body: WidgetImportBodyDto) => ({
+				name: body.name,
+				originalname: body.package.originalname,
+				content: Buffer.from(body.package.buffer).toString('utf8'),
+			}));
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method(
+					_req: unknown,
+					_res: unknown,
+					@Body({ mediaType: 'multipart/form-data', uploadLimits }) body: WidgetImportBodyDto,
+				) {
+					return handler(body);
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			return handler;
+		}
+
+		it('hands the text fields and the uploaded file to the handler through the DTO', async () => {
+			registerMultipartRoute();
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('name', 'my-widget')
+				.attach('package', Buffer.from('package bytes'), 'export.n8np')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				name: 'my-widget',
+				originalname: 'export.n8np',
+				content: 'package bytes',
+			});
+		});
+
+		it('rejects application/json on a multipart route with 415', async () => {
+			registerMultipartRoute();
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Content-Type', 'application/json')
+				.send({ name: 'a' })
+				.expect(415);
+
+			expect(response.body.message).toBe('unsupported media type application/json');
+		});
+
+		it('rejects a request with no Content-Type when the multipart body is required', async () => {
+			registerMultipartRoute();
+
+			const response = await request(activate()).post('/api/v1/widgets').expect(415);
+
+			expect(response.body.message).toBe('unsupported media type undefined');
+		});
+
+		it('rejects a missing file part with the eov-style required-property message', async () => {
+			registerMultipartRoute();
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('name', 'my-widget')
+				.expect(400);
+
+			expect(response.body.message).toBe("request/body must have required property 'package'");
+		});
+
+		it('rejects an unrecognized text field on the strict DTO', async () => {
+			registerMultipartRoute();
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('name', 'my-widget')
+				.field('unexpected', 'value')
+				.attach('package', Buffer.from('package bytes'), 'export.n8np')
+				.expect(400);
+
+			expect(response.body.message).toBe(
+				"request/body Unrecognized key(s) in object: 'unexpected'",
+			);
+		});
+
+		it("returns 413 with multer's message when the file exceeds fileSize", async () => {
+			registerMultipartRoute(() => ({ fileSize: 4 }));
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('name', 'my-widget')
+				.attach('package', Buffer.from('package bytes'), 'export.n8np')
+				.expect(413);
+
+			expect(response.body.message).toBe('File too large');
+		});
+
+		it("returns 413 with multer's message when a second file exceeds the files limit", async () => {
+			registerMultipartRoute(() => ({ files: 1 }));
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('name', 'my-widget')
+				.attach('package', Buffer.from('one'), 'one.n8np')
+				.attach('package', Buffer.from('two'), 'two.n8np')
+				.expect(413);
+
+			expect(response.body.message).toBe('Too many files');
+		});
+
+		it("returns 400 with multer's message when a text field exceeds fieldSize", async () => {
+			registerMultipartRoute(() => ({ fieldSize: 2 }));
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('name', 'a-name-longer-than-two-bytes')
+				.attach('package', Buffer.from('package bytes'), 'export.n8np')
+				.expect(400);
+
+			expect(response.body.message).toBe('Field value too long');
+		});
+
+		it('returns 401 and never runs the parser or the handler when unauthenticated', async () => {
+			authStrategyRegistry.authenticate.mockResolvedValue(false);
+			const handler = registerMultipartRoute();
+
+			await request(activate())
+				.post('/api/v1/widgets')
+				.field('name', 'my-widget')
+				.attach('package', Buffer.from('package bytes'), 'export.n8np')
+				.expect(401);
+
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it('returns 403 before parsing when the API-key scope is missing', async () => {
+			authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
+				req.user = authenticatedUser;
+				req.tokenGrant = { scopes: [], apiKeyScopes: [], subject: authenticatedUser };
+				return true;
+			});
+
+			const handler = vi.fn((body: WidgetImportBodyDto) => body);
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				@ApiKeyScope('workflow:create')
+				method(
+					_req: unknown,
+					_res: unknown,
+					@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) })
+					body: WidgetImportBodyDto,
+				) {
+					return handler(body);
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('name', 'my-widget')
+				.attach('package', Buffer.from('package bytes'), 'export.n8np')
+				.expect(403);
+
+			expect(response.body).toEqual({ message: 'Forbidden' });
+			expect(handler).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('binary responses', () => {
+		it('streams the bytes and headers the handler writes, unchanged', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, {
+					binaryMediaType: 'application/gzip',
+					headers: { 'X-Widget-Count': { description: 'Number of widgets.' } },
+				})
+				method(_req: express.Request, res: express.Response) {
+					res.status(200).set('X-Widget-Count', '3').send(Buffer.from('gzip bytes'));
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(200);
+
+			expect(response.headers['x-widget-count']).toBe('3');
+			expect(response.body).toEqual(Buffer.from('gzip bytes'));
+		});
+
+		it('returns 500 when the handler declares a binary response but sends nothing', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { binaryMediaType: 'application/gzip' })
+				method() {
+					// Bug: never writes to `res`.
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(500);
+
+			expect(response.body.message).toBe('Internal server error');
 		});
 	});
 });

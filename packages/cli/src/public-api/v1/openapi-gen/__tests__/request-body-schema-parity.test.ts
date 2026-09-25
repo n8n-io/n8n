@@ -33,7 +33,11 @@ function schemaInSpecFile(handlerName: string): unknown {
 }
 
 describe('buildRequestBodyJsonSchema', () => {
-	const routesWithBody = resolvePublicApiRoutes().filter((route) => route.requestBodyDto);
+	// A multipart route has no `application/json` request schema in the spec (nor at `/discover`);
+	// `buildRequestBodyJsonSchema` returns `undefined` for one, so it's out of scope for this check.
+	const routesWithBody = resolvePublicApiRoutes().filter(
+		(route) => route.requestBodyDto && route.requestBodyMediaType === 'application/json',
+	);
 
 	it.each(routesWithBody)('$handlerName matches its committed spec file', (route) => {
 		expect(buildRequestBodyJsonSchema(route)).toEqual(schemaInSpecFile(route.handlerName));

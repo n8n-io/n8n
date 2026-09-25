@@ -1,3 +1,5 @@
+import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
+import { publicApiUploadedFileSchema, Z } from '@n8n/api-types';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -28,7 +30,17 @@ import {
 	WidgetResponseDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
 
-import { getDecoratorGeneratedOperations, getSharedResponseSchemas } from '../decorator-routes';
+import {
+	buildRequestBodyJsonSchema,
+	getDecoratorGeneratedOperations,
+	getSharedResponseSchemas,
+} from '../decorator-routes';
+import { resolvePublicApiRoutes } from '../../../public-api-route-resolver';
+
+class WidgetImportBodyDto extends Z.class({
+	name: z.string(),
+	package: publicApiUploadedFileSchema,
+}) {}
 
 describe('getDecoratorGeneratedOperations', () => {
 	beforeEach(() => {
@@ -340,5 +352,109 @@ describe('getDecoratorGeneratedOperations', () => {
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
 		expect(getSharedResponseSchemas().has(WidgetResponseDto)).toBe(false);
+	});
+
+	describe('multipart and binary responses', () => {
+		it('documents a multipart body under its own content key, with the file field binary and required', () => {
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method(
+					@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) })
+					_body: WidgetImportBodyDto,
+				) {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const [operation] = getDecoratorGeneratedOperations();
+
+			const body = operation.config.request?.body as {
+				required?: boolean;
+				content: Record<string, { schema: z.ZodTypeAny }>;
+			};
+			expect(Object.keys(body.content)).toEqual(['multipart/form-data']);
+			expect(body.content['multipart/form-data'].schema).toBe(WidgetImportBodyDto.schema);
+			expect(body.required).toBe(true);
+
+			const registry = new OpenAPIRegistry();
+			registry.registerPath(operation.config);
+			const document = new OpenApiGeneratorV3(registry.definitions).generateDocument({
+				openapi: '3.0.0',
+				info: { title: 'test', version: '0.0.0' },
+			});
+			expect(document.paths['/widgets']?.post?.requestBody).toEqual({
+				required: true,
+				content: {
+					'multipart/form-data': {
+						schema: {
+							type: 'object',
+							properties: {
+								name: { type: 'string' },
+								package: { type: 'string', format: 'binary' },
+							},
+							required: ['name', 'package'],
+						},
+					},
+				},
+			});
+		});
+
+		it('buildRequestBodyJsonSchema returns undefined for a multipart body', () => {
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method(
+					@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) })
+					_body: WidgetImportBodyDto,
+				) {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const [route] = resolvePublicApiRoutes();
+
+			expect(buildRequestBodyJsonSchema(route)).toBeUndefined();
+		});
+
+		it('documents a binary response with a header and a custom description', () => {
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, {
+					binaryMediaType: 'application/gzip',
+					description: 'The exported package.',
+					headers: { 'X-N8n-Export-Counts': { description: 'Per-entity export counts.' } },
+				})
+				method() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const [operation] = getDecoratorGeneratedOperations();
+
+			expect(operation.config.responses[200]).toEqual({
+				description: 'The exported package.',
+				headers: {
+					'X-N8n-Export-Counts': {
+						description: 'Per-entity export counts.',
+						schema: { type: 'string' },
+					},
+				},
+				content: { 'application/gzip': { schema: { type: 'string', format: 'binary' } } },
+			});
+		});
+
+		it('documents a JSON 200 with a custom description, without a binary body', () => {
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, WidgetResponseDto, { description: 'The widget list.' })
+				method() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const [operation] = getDecoratorGeneratedOperations();
+
+			expect(operation.config.responses[200]).toEqual({
+				description: 'The widget list.',
+				content: { 'application/json': { schema: WidgetResponseDto.schema } },
+			});
+		});
 	});
 });

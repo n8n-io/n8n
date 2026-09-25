@@ -22,10 +22,37 @@ export interface ErrorResponse {
 	description?: string;
 }
 
+export interface ApiResponseOptions {
+	/** Replaces the generated 'Operation successful.' description. */
+	description?: string;
+	/** Documents a non-JSON body, e.g. 'application/gzip'. The handler writes it to `res` itself. */
+	binaryMediaType?: string;
+	/** Response headers the route sets on success. Values are always strings. */
+	headers?: Record<string, { description: string }>;
+}
+
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
+/** A route's request body media type. Defaults to `application/json` when unset. */
+export type BodyMediaType = 'application/json' | 'multipart/form-data';
+
+/** Multer limits for a `multipart/form-data` `@Body`. Every field is optional, as multer's are. */
+export interface MultipartUploadLimits {
+	fileSize?: number;
+	files?: number;
+	parts?: number;
+	fields?: number;
+	fieldSize?: number;
+}
+
 export type Arg =
-	| { type: 'body'; required?: boolean }
+	| {
+			type: 'body';
+			required?: boolean;
+			mediaType?: BodyMediaType;
+			/** Set only for a multipart body. Read once, when the registry activates the route. */
+			uploadLimits?: () => MultipartUploadLimits;
+	  }
 	| { type: 'query' }
 	| { type: 'param'; key: string; schema?: ZodTypeAny };
 
@@ -74,6 +101,8 @@ export interface RouteMetadata {
 	responseDto?: ResponseDtoClass;
 	/** OpenAPI HTTP status sent on success, and documented as such. */
 	successStatus?: SuccessStatus;
+	/** Extra `@ApiResponse` options: custom description, response headers, or a binary body. */
+	successResponse?: ApiResponseOptions;
 	/** OpenAPI operation summary. */
 	summary?: string;
 	/** OpenAPI operation description. */
