@@ -30,7 +30,8 @@ const documentTitle = useDocumentTitle();
 const { showMessage, showError } = useToast();
 const store = useEncryptionKeysStore();
 
-const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/security/rotate-encryption-keys';
+const DOCS_URL =
+	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/security/rotate-encryption-keys';
 
 const SORT_FIELDS: readonly EncryptionKeySortField[] = ['createdAt', 'updatedAt', 'status'];
 
