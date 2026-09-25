@@ -34,6 +34,14 @@ export interface TransientWorkflowArtifactReference {
 	projectId?: string;
 }
 
+/**
+ * How a produced artifact first entered the thread: the agent built or edited
+ * it (`built`), a message or the editor hand-off attached it (`attached`), or
+ * the user mentioned it from the composer (`mentioned`). Telemetry only; the
+ * panel does not show it.
+ */
+export type ArtifactOrigin = 'built' | 'attached' | 'mentioned';
+
 // ---------------------------------------------------------------------------
 // Internal helpers (defined before use to satisfy no-use-before-define)
 // ---------------------------------------------------------------------------
@@ -45,6 +53,10 @@ interface Collections {
 	byName: Map<string, ResourceEntry>;
 	/** Produced resources keyed by lowercased name; safe for markdown auto-linking. */
 	linkableByName: Map<string, ResourceEntry>;
+	/** Origin of each produced resource, set by its first intake and never overwritten. */
+	origins: Map<string, ArtifactOrigin>;
+	/** Origin the current collection phase stamps on resources it records for the first time. */
+	intake: ArtifactOrigin;
 }
 
 /**
@@ -103,6 +115,7 @@ function recordProduced(
 			}
 		: entry;
 	col.produced.set(entry.id, merged);
+	if (!col.origins.has(entry.id)) col.origins.set(entry.id, col.intake);
 	if (existing && existing.name.toLowerCase() !== merged.name.toLowerCase()) {
 		col.byName.delete(existing.name.toLowerCase());
 		if (wasLinkable) col.linkableByName.delete(existing.name.toLowerCase());
@@ -530,6 +543,12 @@ function enrichAgentFromPendingTarget(
  * - `linkableResourceNameIndex` (keyed by lowercased name) — only resources
  *   produced or mutated by the agent. Used for markdown name→link replacement
  *   so passive list/search results cannot rewrite ordinary prose.
+ *
+ * - `producedArtifactOrigins` (keyed by resource id) — how each produced
+ *   artifact first entered the thread. Sticky for the life of this registry:
+ *   a mention keeps `mentioned` after its send turns it into a plain message
+ *   attachment. A reload has only the messages, so an earlier mention then
+ *   reads as `attached`.
  */
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
@@ -546,6 +565,7 @@ export function useResourceRegistry(
 	const producedArtifacts = reactive(new Map<string, ResourceEntry>());
 	const resourceNameIndex = reactive(new Map<string, ResourceEntry>());
 	const linkableResourceNameIndex = reactive(new Map<string, ResourceEntry>());
+	const producedArtifactOrigins = reactive(new Map<string, ArtifactOrigin>());
 
 	// Derived from `messages` so every state-arrival path (hydration, run-sync
 	// replacement, rollback, reset) self-heals on the next derivation. Must
@@ -557,12 +577,19 @@ export function useResourceRegistry(
 				produced: new Map<string, ResourceEntry>(),
 				byName: new Map<string, ResourceEntry>(),
 				linkableByName: new Map<string, ResourceEntry>(),
+				origins: new Map<string, ArtifactOrigin>(),
+				intake: 'attached',
 			};
 
+			// Messages run in order, and within one turn the user's attachments
+			// precede the agent's work, so the first record of an id is its origin.
 			for (const msg of messages()) {
+				col.intake = 'attached';
 				collectFromMessageAttachments(msg, col);
+				col.intake = 'built';
 				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
 			}
+			col.intake = 'attached';
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
 			for (const target of agentBuilderTargets?.() ?? []) {
@@ -573,6 +600,7 @@ export function useResourceRegistry(
 			}
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
+			col.intake = 'mentioned';
 			enrichWorkflowsFromTransientReferences(col, transientWorkflowReferences?.() ?? []);
 
 			if (workflowNameLookup) {
@@ -594,11 +622,35 @@ export function useResourceRegistry(
 			reconcileMap(producedArtifacts, col.produced);
 			reconcileMap(resourceNameIndex, col.byName);
 			reconcileMap(linkableResourceNameIndex, col.linkableByName);
+			reconcileOrigins(producedArtifactOrigins, col.origins);
 		},
 		{ immediate: true },
 	);
 
-	return { producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
+	return {
+		producedArtifacts,
+		resourceNameIndex,
+		linkableResourceNameIndex,
+		producedArtifactOrigins,
+	};
+}
+
+/**
+ * Forget artifacts that left the thread and adopt the origin of new ones. An
+ * artifact already known keeps its origin, whatever this pass derived: the
+ * transient reference a mention created vanishes on send while the message
+ * attachment that replaces it would read as `attached`.
+ */
+function reconcileOrigins(
+	target: Map<string, ArtifactOrigin>,
+	next: Map<string, ArtifactOrigin>,
+): void {
+	for (const key of [...target.keys()]) {
+		if (!next.has(key)) target.delete(key);
+	}
+	for (const [key, origin] of next) {
+		if (!target.has(key)) target.set(key, origin);
+	}
 }
 
 /** Sync `target` to `next` with minimal writes — unchanged entries trigger no subscribers. */

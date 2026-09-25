@@ -3,12 +3,13 @@ import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import type { IWorkflowDb } from '@/Interface';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { sleep } from '@n8n/utils/sleep';
 
 import AssistantAtMentionPicker from './AssistantAtMentionPicker.vue';
 import type {
@@ -450,5 +451,54 @@ describe('AssistantAtMentionPicker', () => {
 		expect(await findByText("Workflows couldn't load. Try again.")).toBeVisible();
 		await userEvent.click(getByRole('menuitem', { name: 'Retry' }));
 		expect(recentWorkflowsStore.resolveRecentWorkflows).toHaveBeenCalledTimes(2);
+	});
+
+	describe('empty search reporting', () => {
+		// Shrinks the search debounce and the settle delay to a few milliseconds so a
+		// test observes the settled state without waiting out a real second.
+		const DEBOUNCE_MULTIPLIER = 0.02;
+		const settle = async () => await sleep(DEBOUNCE_MULTIPLIER * 1000 * 3);
+
+		async function renderEmptySearch(query: string) {
+			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', String(DEBOUNCE_MULTIPLIER));
+			setActivePinia(createTestingPinia());
+			const { useWorkflowsListStore } = await import('@/app/stores/workflowsList.store');
+			vi.mocked(useWorkflowsListStore().searchWorkflows).mockResolvedValue([]);
+			return renderComponent({ props: { modelValue: true, query, projectId: 'project-1' } });
+		}
+
+		afterEach(() => sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER'));
+
+		it('reports a query once its empty state settles, and each distinct query once per open', async () => {
+			const { emitted, rerender } = await renderEmptySearch('zzz');
+
+			await waitFor(() => expect(emitted()['empty-search']).toEqual([['zzz']]));
+
+			await rerender({ query: 'zz' });
+			await waitFor(() => expect(emitted()['empty-search']).toEqual([['zzz'], ['zz']]));
+
+			await rerender({ query: 'zzz' });
+			await settle();
+			expect(emitted()['empty-search']).toEqual([['zzz'], ['zz']]);
+		});
+
+		it('skips a prefix the user typed straight through', async () => {
+			const { emitted, rerender } = await renderEmptySearch('z');
+
+			await rerender({ query: 'zz' });
+			await waitFor(() => expect(emitted()['empty-search']).toEqual([['zz']]));
+			await settle();
+
+			expect(emitted()['empty-search']).toEqual([['zz']]);
+		});
+
+		it('reports an empty state the picker closes on before it settles', async () => {
+			const { emitted, rerender, findByText } = await renderEmptySearch('zzz');
+			await findByText('No results');
+
+			await rerender({ modelValue: false });
+
+			expect(emitted()['empty-search']).toEqual([['zzz']]);
+		});
 	});
 });

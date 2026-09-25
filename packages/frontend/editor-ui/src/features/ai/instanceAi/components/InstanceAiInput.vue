@@ -349,10 +349,16 @@ const mentions = useAssistantAtMentions({
 	onOpened: mentionTelemetry.trackPickerOpened,
 	onClosed: (info) => {
 		// Synchronous on purpose: the picker still shows what the user looked at.
+		// An empty state left before it settled reports first, in the order seen.
+		mentionPickerRef.value?.flushEmptySearch();
 		const metrics = mentionPickerRef.value?.getOpenMetrics();
 		if (metrics) mentionTelemetry.trackPickerDismissed(info, metrics);
 	},
 });
+
+function handleMentionEmptySearch(query: string): void {
+	mentionTelemetry.trackEmptySearch(query, { artifactCount: props.mentionArtifacts.length });
+}
 const mentionMenuOpen = mentions.menuOpen;
 const mentionQuery = mentions.query;
 watch(canUseMentions, (enabled, wasEnabled) => {
@@ -371,7 +377,8 @@ const mentionAttachments = useAssistantMentionAttachments({
 });
 
 async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
-	const alreadyArtifact = props.mentionArtifacts.some(
+	// Read before the pick stages anything: a workflow mention opens its own tab.
+	const existingArtifact = props.mentionArtifacts.find(
 		(artifact) => artifact.id === selection.item.workflowId,
 	);
 	const result = mentionAttachments.select(selection);
@@ -383,7 +390,7 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 		return;
 	}
 	// A duplicate pick stages nothing, but it is still the pick that ends this open.
-	mentionTelemetry.trackMentionSelected(selection, alreadyArtifact);
+	mentionTelemetry.trackMentionSelected(selection, existingArtifact);
 
 	if (result.truncated) {
 		toast.showError(
@@ -952,6 +959,7 @@ const resizable = computed(() => {
 					:disabled="!canUseMentions"
 					@update:model-value="mentions.handleMenuOpenChange"
 					@select="handleMentionSelection"
+					@empty-search="handleMentionEmptySearch"
 				/>
 			</template>
 		</ChatInputBase>

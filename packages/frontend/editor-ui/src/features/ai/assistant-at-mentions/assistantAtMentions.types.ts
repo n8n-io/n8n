@@ -1,6 +1,8 @@
 import type { Ref } from 'vue';
 import type { InstanceAiResourceAttachment } from '@n8n/api-types';
 
+import type { ArtifactOrigin } from '@/features/ai/instanceAi/useResourceRegistry';
+
 export type AssistantMentionKind = 'workflow' | 'node' | 'group';
 
 export type AssistantMentionSourceId = 'artifacts' | 'workflows';
@@ -68,6 +70,8 @@ export interface MentionSourceProvider {
 export interface WorkflowArtifactReference {
 	id: string;
 	name: string;
+	/** How the artifact entered the thread. Telemetry only; absent when the host does not know. */
+	origin?: ArtifactOrigin;
 }
 
 export interface WorkflowArtifactIndexNode {

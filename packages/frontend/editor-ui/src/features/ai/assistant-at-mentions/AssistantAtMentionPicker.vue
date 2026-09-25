@@ -12,7 +12,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn, useElementSize } from '@vueuse/core';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { DEBOUNCE_TIME } from '@/app/constants';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -74,6 +74,11 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:modelValue': [open: boolean];
 	select: [selection: AssistantMentionSelection];
+	/**
+	 * The "No results" state stayed on screen for this search query until it
+	 * settled, or the picker closed on it. Once per distinct query per open.
+	 */
+	'empty-search': [query: string];
 }>();
 
 const i18n = useI18n();
@@ -304,6 +309,61 @@ watch(
 		}
 	},
 );
+
+// "No results" is on screen: a finished search with nothing to pick. A source
+// error shows its own state instead and is not the resource being missing.
+const isEmptySearchShown = computed(
+	() =>
+		props.modelValue &&
+		props.query.trim().length > 0 &&
+		!isLoading.value &&
+		menuItems.value.length === 0 &&
+		sources.providerErrors.value.size === 0,
+);
+const reportedEmptyQueries = new Set<string>();
+let pendingEmptyQuery: string | undefined;
+let emptySearchTimer: ReturnType<typeof setTimeout> | undefined;
+
+function reportEmptySearch(query: string): void {
+	if (reportedEmptyQueries.has(query)) return;
+	reportedEmptyQueries.add(query);
+	emit('empty-search', query);
+}
+
+function clearPendingEmptySearch(): void {
+	if (emptySearchTimer !== undefined) clearTimeout(emptySearchTimer);
+	emptySearchTimer = undefined;
+	pendingEmptyQuery = undefined;
+}
+
+/** Report an empty state the user is leaving before it settled: they still saw it. */
+function flushEmptySearch(): void {
+	if (pendingEmptyQuery !== undefined) reportEmptySearch(pendingEmptyQuery);
+	clearPendingEmptySearch();
+}
+
+// Every keystroke re-runs the search, so the empty state flickers through the
+// prefixes of what the user types. Only a query that stays empty for the settle
+// time counts, and a distinct query counts once per open.
+watch(
+	[() => props.modelValue, isEmptySearchShown, () => props.query.trim()],
+	([open, shown, query]) => {
+		if (!open) {
+			flushEmptySearch();
+			reportedEmptyQueries.clear();
+			return;
+		}
+		clearPendingEmptySearch();
+		if (!shown) return;
+		pendingEmptyQuery = query;
+		emptySearchTimer = setTimeout(() => {
+			emptySearchTimer = undefined;
+			pendingEmptyQuery = undefined;
+			reportEmptySearch(query);
+		}, getDebounceTime(DEBOUNCE_TIME.TELEMETRY.TRACK));
+	},
+);
+onBeforeUnmount(flushEmptySearch);
 watch(menuItems, (items) => {
 	if (!props.modelValue || highlightedForCurrentOpen || items.length === 0) return;
 	highlightedForCurrentOpen = true;
@@ -382,7 +442,7 @@ function getOpenMetrics(): AssistantMentionPickerOpenMetrics {
 	};
 }
 
-defineExpose({ handleExternalKeydown, getOpenMetrics });
+defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 </script>
 
 <template>
