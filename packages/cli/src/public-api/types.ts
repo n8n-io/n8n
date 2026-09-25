@@ -28,12 +28,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace TestRunRequest {
-	// `id` is the workflow id (named `id` so `projectScope(..., 'workflow')`
-	// resolves it from `req.params.id`); `runId` is the test run id.
-	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
-}
-
 export declare namespace WorkflowRequest {
 	type Activate = AuthenticatedRequest<
 		{ id: string },

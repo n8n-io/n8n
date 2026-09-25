@@ -7,7 +7,7 @@ export function getConfigMutationPrompt(): string {
 ### Purpose
 
 Use this after deciding a config change is needed and before calling
-\`read_config\`, \`write_config\`, or \`patch_config\`.
+\`agent-context({ type: "config" })\`, \`write_config\`, or \`patch_config\`.
 
 ### Workflow
 
@@ -15,7 +15,7 @@ Follow Config Freshness for authoritative reads, hashes, and stale recovery.
 - For \`write_config\`, send the complete config JSON string plus \`baseConfigHash\`.
 - For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
 - Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
-- On parse, patch, or schema errors, fix the payload, call \`read_config\`
+- On parse, patch, or schema errors, fix the payload, call \`agent-context({ type: "config" })\`
   again, and retry from the fresh \`configHash\`.
 
 ### Rules
@@ -68,7 +68,7 @@ Use \`patch_config\` with:
 #### Remove An Existing Chat Integration
 
 - Chat-channel removal is a config edit, not a \`configure_channel\` action.
-- Call \`read_config\` first and inspect \`config.integrations\`.
+- Call \`agent-context({ type: "config" })\` first and inspect \`config.integrations\`.
 - If you know the exact array index to remove, prefer:
 \`\`\`json
 [{ "op": "remove", "path": "/integrations/1" }]
@@ -153,8 +153,8 @@ Bad: replacing \`config\` while dropping unrelated settings
 ### Error Recovery
 
 - \`stage: "stale"\`: follow Config Freshness.
-- \`stage: "parse"\`: fix JSON syntax, then call \`read_config\` before retrying.
-- \`stage: "patch"\`: fix JSON Pointer paths or operation shape, then call \`read_config\` before retrying.
-- \`stage: "schema"\`: compare the payload against the Config schema reference, then call \`read_config\` before retrying.
+- \`stage: "parse"\`: fix JSON syntax, then call \`agent-context({ type: "config" })\` before retrying.
+- \`stage: "patch"\`: fix JSON Pointer paths or operation shape, then call \`agent-context({ type: "config" })\` before retrying.
+- \`stage: "schema"\`: compare the payload against the Config schema reference, then call \`agent-context({ type: "config" })\` before retrying.
 - \`ask_credential\` skipped: omit or disable the feature that required it.`;
 }

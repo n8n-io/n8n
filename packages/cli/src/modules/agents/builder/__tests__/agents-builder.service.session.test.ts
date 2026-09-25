@@ -380,8 +380,8 @@ describe('AgentsBuilderService session isolation', () => {
 
 	it('registers all standard tools returned by the tools service', async () => {
 		const { service, user, credentialProvider, credentialService } = setup({
-			json: [fakeTool('resolve_llm'), fakeTool('read_config')],
-			shared: [fakeTool('ask_credential')],
+			json: [fakeTool('resolve_llm')],
+			shared: [fakeTool('agent-context'), fakeTool('ask_credential')],
 		});
 
 		await drain(
@@ -397,7 +397,7 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
-			expect.arrayContaining(['resolve_llm', 'read_config', 'ask_credential']),
+			expect.arrayContaining(['resolve_llm', 'agent-context', 'ask_credential']),
 		);
 	});
 
@@ -449,11 +449,11 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('does not let an MCP tool replace a native builder tool', async () => {
-		const nativeReadConfig = fakeTool('read_config');
-		const mcpReadConfig = fakeTool('read_config');
+		const nativeAgentContext = fakeTool('agent-context');
+		const mcpAgentContext = fakeTool('agent-context');
 		const { service, logger, user, credentialProvider, credentialService } = setup({
-			json: [nativeReadConfig],
-			shared: [],
+			json: [],
+			shared: [nativeAgentContext],
 		});
 
 		await drain(
@@ -466,17 +466,17 @@ describe('AgentsBuilderService session isolation', () => {
 				user,
 				{
 					...baseSession,
-					mcpTools: new Map([[mcpReadConfig.name, mcpReadConfig]]),
+					mcpTools: new Map([[mcpAgentContext.name, mcpAgentContext]]),
 				},
 			),
 		);
 
-		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'read_config')).toEqual([
-			'read_config',
+		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'agent-context')).toEqual([
+			'agent-context',
 		]);
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Skipped MCP tool that conflicts with an agent builder tool',
-			{ toolName: 'read_config', agentId: 'agent-1' },
+			{ toolName: 'agent-context', agentId: 'agent-1' },
 		);
 	});
 

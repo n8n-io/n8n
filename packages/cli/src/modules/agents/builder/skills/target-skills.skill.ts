@@ -13,21 +13,17 @@ export function targetSkillsSkill(): RuntimeSkill {
 		description:
 			'Use when designing, creating, or editing target-agent behavior that belongs in focused load-on-demand skills, including when the user describes a function without calling it a skill; not for builder guidance or universal target-agent instructions.',
 		recommendedTools: [
-			'list_skills',
-			'read_skill',
+			'agent-context',
 			'update_skill',
 			'create_skills',
 			'ask_questions',
-			'read_config',
 			'patch_config',
 		],
 		allowedTools: [
-			'list_skills',
-			'read_skill',
+			'agent-context',
 			'update_skill',
 			'create_skills',
 			'ask_questions',
-			'read_config',
 			'patch_config',
 			'write_config',
 		],
@@ -81,17 +77,17 @@ skill.
 - Classify requested behavior before writing: identity, overall purpose, and
   universal rules stay in main instructions; each distinct or conditional
   function becomes a focused skill.
-- Call \`read_config\` and use its \`skills\` refs as the authoritative set of
+- Call \`agent-context({ type: "config" })\` and use its \`skills\` refs as the authoritative set of
   skills attached to the target agent.
-- Call \`list_skills\` once and compare its metadata with the attached ids from
+- Call \`agent-context({ type: "skills" })\` once and compare its metadata with the attached ids from
   the config. Use each description as the routing contract to identify whether
   an attached skill already owns the capability. Do not read every skill body.
-- Call \`read_skill\` only for the relevant attached skill. Its default response
+- Call \`agent-context({ type: "skill", skillId: "<id>" })\` only for the relevant attached skill. Its default response
   includes reference paths and sizes but omits reference content; request
   specific \`referencePaths\` only when that content is needed.
 - Call \`update_skill\` for an existing capability, changing only the supplied
   fields and preserving its id and existing config reference. Pass the
-  \`skillHash\` from the \`read_skill\` result you based the change on as
+  \`skillHash\` from the \`agent-context({ type: "skill", skillId: "<id>" })\` result you based the change on as
   \`baseSkillHash\`; on a stale skill error, read the skill again and retry once.
   Do not create a replacement skill. Pass \`null\` for \`allowedTools\` to remove the tool
   restriction or for \`references\` to remove all references; do not pass empty
@@ -110,7 +106,7 @@ skill.
 - \`create_skills\` stores the skill bodies only; it does not attach them. The
   batch is all-or-nothing: an invalid or duplicate-named skill rejects the
   whole call.
-- After it returns an id per new skill, call \`read_config\` again for a fresh
+- After it returns an id per new skill, call \`agent-context({ type: "config" })\` again for a fresh
   config and hash.
 - Use \`patch_config\` or \`write_config\` to add a \`{ "type": "skill", "id": "<returned id>" }\`
   entry per skill to \`skills\`.

@@ -10,22 +10,19 @@ export function targetTasksSkill(): RuntimeSkill {
 			'Use when the user wants to create or change something the target agent runs on a recurring schedule (a "task"). Not for one-off requests, chat/event triggers, or config/tool/skill/model edits.',
 		recommendedTools: [
 			'create_tasks',
-			'list_tasks',
+			'agent-context',
 			'update_task',
 			'ask_questions',
-			'read_config',
 			'patch_config',
 			'publish_agent',
 		],
 		allowedTools: [
 			'create_tasks',
-			'list_tasks',
+			'agent-context',
 			'update_task',
 			'ask_questions',
-			'read_config',
 			'patch_config',
 			'write_config',
-			'list_workflows',
 			'search_nodes',
 			'get_node_types',
 			'ask_credential',
@@ -35,7 +32,7 @@ export function targetTasksSkill(): RuntimeSkill {
 ## Purpose
 
 Use this to create recurring scheduled tasks with \`create_tasks\`, discover
-them with \`list_tasks\`, and edit their saved bodies with \`update_task\`.
+them with \`agent-context({ type: "tasks" })\`, and edit their saved bodies with \`update_task\`.
 A task = a name + an objective (what the agent does each run) + a cron schedule,
 stored as a \`{ type: "task", id, enabled }\` ref in the agent config
 (\`config.tasks\`) plus a saved body. The config is the source of truth for
@@ -83,7 +80,7 @@ Initial Build rules in your system prompt. Never create a placeholder or
 
 ## Workflow
 
-- For an existing task, call \`list_tasks\` to resolve its current id and body.
+- For an existing task, call \`agent-context({ type: "tasks" })\` to resolve its current id and body.
   Then call \`update_task\` with only the fields the user asked to change. Never
   rewrite the objective for a name-only or schedule-only edit.
 - For each new or replacement objective, fill every template section with

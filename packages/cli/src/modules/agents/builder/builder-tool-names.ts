@@ -12,7 +12,6 @@
  * alongside the suspend/resume schemas they share with instance AI's FE cards.
  */
 export const BUILDER_TOOLS = {
-	READ_CONFIG: 'read_config',
 	// WRITE_CONFIG / PATCH_CONFIG / PUBLISH_AGENT / UNPUBLISH_AGENT values must
 	// match `CONFIG_MUTATION_TOOL_NAMES` in `@n8n/api-types`
 	// (agents/agent-interaction.schema.ts).
@@ -20,23 +19,15 @@ export const BUILDER_TOOLS = {
 	PATCH_CONFIG: 'patch_config',
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	CREATE_SKILLS: 'create_skills',
-	LIST_SKILLS: 'list_skills',
-	READ_SKILL: 'read_skill',
 	UPDATE_SKILL: 'update_skill',
 	CREATE_TASKS: 'create_tasks',
-	LIST_TASKS: 'list_tasks',
 	UPDATE_TASK: 'update_task',
 	FINISH_SETUP: 'finish_setup',
 	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
-	LIST_WORKFLOWS: 'list_workflows',
-	LIST_INTEGRATION_TYPES: 'list_integration_types',
-	LIST_SUB_AGENTS: 'list_sub_agents',
 	CALL_AGENT: 'call_agent',
 	PUBLISH_AGENT: 'publish_agent',
 	UNPUBLISH_AGENT: 'unpublish_agent',
-	RESOLVE_INTEGRATION: 'resolve_integration',
 	RESOLVE_LLM: 'resolve_llm',
-	SEARCH_MCP_SERVERS: 'search_mcp_servers',
 	VERIFY_MCP_SERVER: 'verify_mcp_server',
 } as const;
 
