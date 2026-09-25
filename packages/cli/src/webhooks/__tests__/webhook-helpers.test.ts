@@ -65,6 +65,7 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -1199,6 +1200,7 @@ const engineV2Dispatcher = mockInstance(EngineV2Dispatcher);
 const engineDataPlaneProxy = mockInstance(EngineDataPlaneProxyService);
 const executionContextService = mockInstance(ExecutionContextService);
 const userRepository = mockInstance(UserRepository);
+const oauth2FlowProxy = mockInstance(OAuth2FlowProxy);
 mockInstance(AuthService);
 mockInstance(EventService);
 const workflowStatisticsService = mockInstance(WorkflowStatisticsService);
@@ -1820,12 +1822,12 @@ describe('executeWebhook establishTriggerIdentity', () => {
 	});
 });
 
-describe('executeWebhook getUserById', () => {
+describe('executeWebhook additional data', () => {
 	/**
 	 * Drives `executeWebhook` far enough for the node's `webhook()` to be called, and
-	 * hands back the lookup the webhook layer wired onto `additionalData`.
+	 * hands back the `additionalData` that the webhook layer extended.
 	 */
-	const resolveGetUserById = async () => {
+	const resolveAdditionalData = async () => {
 		resourceRegistry.getByResourceUrl.mockResolvedValue(undefined);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -1885,8 +1887,7 @@ describe('executeWebhook getUserById', () => {
 			{},
 		);
 
-		expect(additionalData.getUserById).toBeDefined();
-		return additionalData.getUserById!;
+		return additionalData;
 	};
 
 	beforeEach(() => {
@@ -1908,9 +1909,9 @@ describe('executeWebhook getUserById', () => {
 			}),
 		);
 
-		const getUserById = await resolveGetUserById();
+		const { getUserById } = await resolveAdditionalData();
 
-		await expect(getUserById('user-1')).resolves.toEqual({
+		await expect(getUserById!('user-1')).resolves.toEqual({
 			id: 'user-1',
 			email: 'user@example.com',
 			firstName: 'Test',
@@ -1922,9 +1923,26 @@ describe('executeWebhook getUserById', () => {
 	it('resolves undefined for an id that no longer maps to a user', async () => {
 		userRepository.findByIdWithRole.mockResolvedValue(null);
 
-		const getUserById = await resolveGetUserById();
+		const { getUserById } = await resolveAdditionalData();
 
-		await expect(getUserById('gone')).resolves.toBeUndefined();
+		await expect(getUserById!('gone')).resolves.toBeUndefined();
+	});
+
+	it('returns the OAuth flow proxy promises without replacement', async () => {
+		const beginPromise = new Promise<never>(() => {});
+		const completePromise = new Promise<never>(() => {});
+		const refreshPromise = new Promise<never>(() => {});
+		oauth2FlowProxy.begin.mockReturnValue(beginPromise);
+		oauth2FlowProxy.complete.mockReturnValue(completePromise);
+		oauth2FlowProxy.refreshVirtualClientToken.mockReturnValue(refreshPromise);
+
+		const additionalData = await resolveAdditionalData();
+
+		expect(additionalData.beginN8nOAuth2Flow!('resource-url')).toBe(beginPromise);
+		expect(additionalData.completeN8nOAuth2Flow!('code', 'state')).toBe(completePromise);
+		expect(additionalData.refreshN8nOAuth2Flow!('refresh-token', 'resource-url')).toBe(
+			refreshPromise,
+		);
 	});
 });
 
