@@ -1,0 +1,35 @@
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_13d0f2e1be0144::t_a56fd462cf86e9 363-366
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_13d0f2e1be0144::t_48377b3c7268bc 56
+packages/@n8n/engine/src/execution/__tests__/resume-request.service.test.ts
+  s_13d0f2e1be0144::t_c0b44db7a2b318 1-187
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_13d0f2e1be0144::t_8f0919ba1c0152 119
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_13d0f2e1be0144::t_d043c691cf8ed0 117
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  s_13d0f2e1be0144::t_da8d0b8fecd4e5 35
+packages/@n8n/engine/src/execution/index.ts
+  s_13d0f2e1be0144::t_25afa8b47c237b 42-43
+packages/@n8n/engine/src/execution/resume-request.service.ts
+  s_13d0f2e1be0144::t_6fd1f0384952aa 1-161
+packages/@n8n/engine/src/execution/step-store.ts
+  s_13d0f2e1be0144::t_24e48ee912aba9 233-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "90e57b07afcdab160891c04a37a27e4579c4f339",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
