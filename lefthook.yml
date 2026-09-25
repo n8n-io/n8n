@@ -1,3 +1,5 @@
+lefthook: '[ ! -x ./node_modules/.bin/lefthook ] || ./node_modules/.bin/lefthook'
+
 output:
   - execution_out
   - failure
