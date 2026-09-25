@@ -163,6 +163,8 @@ interface ProcessToolCallParams {
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
+	/** The call already suspended, so `beforeTool` already ran. */
+	previouslySuspended?: boolean;
 	/** Checkpointed suspend payload of the tool call being resumed. */
 	suspendPayload?: unknown;
 	/** Checkpointed private continuation of the tool call being resumed. */
@@ -671,6 +673,7 @@ export class ToolCallExecutor {
 				persistence,
 				telemetry: resolvedTelemetry,
 				executionCounter,
+				guardrails: ctx.guardrails,
 				abortSignal,
 				isAborted: ctx.isAborted,
 			});
@@ -731,9 +734,9 @@ export class ToolCallExecutor {
 			input,
 			runId: params.runId,
 		});
-		// First execution only: a resumed call carries resumeData and was
-		// checked before it suspended.
-		if (guardrails && guardCtx && resumeData === undefined) {
+		// Skip only a call that already suspended. An unexecuted pending call
+		// is still a first execution, even when resume data is present.
+		if (guardrails && guardCtx && !params.previouslySuspended) {
 			const stop = await guardrails.beforeTool(guardCtx);
 			if (stop) {
 				return await this.toolError(
@@ -877,6 +880,7 @@ export class ToolCallExecutor {
 			guardrails: ctx.guardrails,
 			abortSignal: ctx.abortSignal,
 			countToolCall: false,
+			previouslySuspended: entry.suspended,
 			...(entry.suspended
 				? {
 						suspendPayload: entry.suspendPayload,

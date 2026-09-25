@@ -1381,6 +1381,85 @@ describe('AgentRuntime — guardrails', () => {
 		const [, toolResult] = hook.afterTool.mock.calls[0];
 		expect(toolResult).toEqual({ deleted: 'rec-1' });
 	});
+
+	it('checks an unexecuted sibling when the suspended call resumes', async () => {
+		const suspendTool = makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const siblingHandler = vi.fn(async () => await Promise.resolve({ done: true }));
+		const siblingTool = makeMockTool('normal_tool', siblingHandler);
+		const { runtime } = createRuntimeWithTools([suspendTool, siblingTool], 1);
+		const hook = makeGuardrail();
+		const guardrails = guardrailsOption(hook);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+					{ toolCallId: 'tc-2', toolName: 'normal_tool', args: { value: 'b' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const first = await runtime.generate('run tools', { guardrails });
+
+		expect(first.finishReason).toBe('tool-calls');
+		expect(siblingHandler).not.toHaveBeenCalled();
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
+		expect(hook.beforeTool.mock.calls[0][0]).toMatchObject({ toolName: 'suspend_tool' });
+
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		const resumed = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId, toolCallId, guardrails },
+		);
+
+		expect(resumed.finishReason).toBe('stop');
+		expect(siblingHandler).toHaveBeenCalledTimes(1);
+		expect(hook.beforeTool).toHaveBeenCalledTimes(2);
+		expect(hook.beforeTool.mock.calls[1][0]).toMatchObject({
+			toolCallId: 'tc-2',
+			toolName: 'normal_tool',
+		});
+		expect(hook.afterTool).toHaveBeenCalledTimes(2);
+	});
+
+	it('checks an unexecuted pending tool when resume targets it', async () => {
+		const handler = vi.fn(async (_input: unknown, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const suspendTool = makeSuspendingTool('suspend_tool', handler);
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+		const hook = makeGuardrail();
+		const guardrails = guardrailsOption(hook);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools', { guardrails });
+
+		expect(first.finishReason).toBe('tool-calls');
+		expect(runtime.getState().pendingToolCalls['tc-2']?.suspended).toBe(false);
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
+
+		const resumed = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId: first.runId, toolCallId: 'tc-2', guardrails },
+		);
+
+		expect(resumed.finishReason).toBe('tool-calls');
+		expect(hook.beforeTool).toHaveBeenCalledTimes(2);
+		expect(hook.beforeTool.mock.calls[1][0]).toMatchObject({ toolCallId: 'tc-2' });
+		expect(handler).toHaveBeenCalledTimes(2);
+	});
 });
 
 describe('AgentRuntime — volatile instruction provider', () => {
