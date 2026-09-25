@@ -1,19 +1,21 @@
 <script lang="ts" setup>
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nBadge, N8nHoverCard, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	ContextMenuContent,
 	ContextMenuItem,
 	ContextMenuPortal,
 	ContextMenuRoot,
 	ContextMenuTrigger,
-	TabsIndicator,
 	TabsList,
 	TabsTrigger,
 } from 'reka-ui';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, reactive, ref, shallowRef, watch } from 'vue';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
+import { getWorkflow } from '@/app/api/workflows';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 
 // Experiment cleanup: remove with openWorkflowInAssistant.
@@ -42,6 +44,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const clipboard = useClipboard();
 const toast = useToast();
+const rootStore = useRootStore();
 const tabListRef = ref<HTMLElement | null>(null);
 const sizeToggleLabel = computed(() =>
 	i18n.baseText(
@@ -118,6 +121,42 @@ function handleOpenInEditor(tab: ArtifactTab) {
 	window.open(href, '_blank', 'noopener');
 }
 
+type WorkflowSummary = { updatedAt: string; published: boolean };
+
+// The AI and the user can both edit a workflow while its tab is open, so each
+// hover refetches. The cached value shows until the fresh one arrives.
+const workflowSummaries = reactive(new Map<string, WorkflowSummary>());
+const hoveredTab = shallowRef<{ tab: ArtifactTab; reference: HTMLElement } | null>(null);
+const hoveredSummary = computed(() =>
+	hoveredTab.value ? workflowSummaries.get(hoveredTab.value.tab.id) : undefined,
+);
+
+async function loadWorkflowSummary(workflowId: string) {
+	try {
+		const workflow = await getWorkflow(rootStore.restApiContext, workflowId);
+		workflowSummaries.set(workflowId, {
+			updatedAt: String(workflow.updatedAt),
+			published: workflow.activeVersionId !== null,
+		});
+	} catch {
+		// The card still shows the full name without the metadata.
+	}
+}
+
+function showTabHoverCard(tab: ArtifactTab, event: MouseEvent) {
+	if (!(event.currentTarget instanceof HTMLElement)) return;
+	hoveredTab.value = { tab, reference: event.currentTarget };
+	if (tab.type === 'workflow' && !tab.pending) void loadWorkflowSummary(tab.id);
+}
+
+function hideTabHoverCard() {
+	hoveredTab.value = null;
+}
+
+function handleHoverCardOpenChange(open: boolean) {
+	if (!open) hideTabHoverCard();
+}
+
 async function handleCopyLink(tab: ArtifactTab) {
 	const href = tabHref(tab);
 	if (!href) return;
@@ -145,20 +184,25 @@ async function handleCopyLink(tab: ArtifactTab) {
 			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
 			:class="$style.tabList"
 		>
-			<TabsIndicator :class="$style.tabsIndicator">
-				<div :class="$style.tabsIndicatorBar" />
-			</TabsIndicator>
 			<ContextMenuRoot v-for="tab in tabs" :key="tab.id">
 				<ContextMenuTrigger as-child>
-					<TabsTrigger :value="tab.id" :data-tab-id="tab.id" :class="$style.tab">
+					<TabsTrigger
+						:value="tab.id"
+						:data-tab-id="tab.id"
+						:class="$style.tab"
+						@mouseenter="showTabHoverCard(tab, $event)"
+						@mouseleave="hideTabHoverCard"
+						@contextmenu="hideTabHoverCard"
+					>
 						<N8nIcon
 							v-if="tab.building"
 							icon="spinner"
 							size="large"
 							spin
+							:class="$style.icon"
 							data-test-id="instance-ai-tab-building-spinner"
 						/>
-						<N8nIcon v-else :icon="tab.icon" size="large" />
+						<N8nIcon v-else :icon="tab.icon" size="large" :class="$style.icon" />
 						<span :class="$style.label">{{ tab.name }}</span>
 					</TabsTrigger>
 				</ContextMenuTrigger>
@@ -176,6 +220,47 @@ async function handleCopyLink(tab: ArtifactTab) {
 				</ContextMenuPortal>
 			</ContextMenuRoot>
 		</TabsList>
+		<!-- One shared card follows the hovered tab, so each tab does not mount its own. -->
+		<N8nHoverCard
+			:open="!!hoveredTab"
+			hide-trigger
+			:reference="hoveredTab?.reference"
+			side="bottom"
+			align="center"
+			:side-offset="4"
+			:open-delay="0"
+			:close-delay="0"
+			:content-class="$style.hoverCard"
+			@update:open="handleHoverCardOpenChange"
+		>
+			<template #content>
+				<div
+					v-if="hoveredTab"
+					:class="$style.hoverCardBody"
+					data-test-id="instance-ai-tab-hover-card"
+				>
+					<div :class="$style.hoverCardText">
+						<span :class="$style.hoverCardName">{{ hoveredTab.tab.name }}</span>
+						<span v-if="hoveredSummary" :class="$style.hoverCardMeta">
+							{{ i18n.baseText('instanceAi.previewTabBar.edited') }}
+							<TimeAgo :date="hoveredSummary.updatedAt" />
+						</span>
+					</div>
+					<N8nBadge
+						v-if="hoveredSummary"
+						:variant="hoveredSummary.published ? 'success' : 'filled'"
+						:class="$style.statusBadge"
+						data-test-id="instance-ai-tab-hover-card-status"
+					>
+						{{
+							hoveredSummary.published
+								? i18n.baseText('workflows.published')
+								: i18n.baseText('instanceAi.previewTabBar.draft')
+						}}
+					</N8nBadge>
+				</div>
+			</template>
+		</N8nHoverCard>
 		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
 		<ManualEditorButton :tabs="tabs" :active-tab-id="activeTabId" />
 		<N8nIconButton
@@ -198,6 +283,12 @@ async function handleCopyLink(tab: ArtifactTab) {
 	initial-value: 0;
 }
 
+@property --label--fade {
+	syntax: '<length>';
+	inherits: false;
+	initial-value: 0;
+}
+
 @keyframes scrollfade {
 	0%,
 	90% {
@@ -208,14 +299,23 @@ async function handleCopyLink(tab: ArtifactTab) {
 	}
 }
 
+// Only a label that overflows gets an active scroll timeline, so short labels stay unfaded.
+@keyframes labelfade {
+	from,
+	to {
+		--label--fade: var(--spacing--xl);
+	}
+}
+
 .header {
 	flex-shrink: 0;
-	height: 44px;
+	height: 49px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--3xs) 0 var(--spacing--4xs);
-	border-bottom: var(--border);
+	padding: 0 var(--spacing--3xs) 0 var(--spacing--2xs);
+	border-bottom: 1px solid var(--border-color--subtle);
+	background-color: var(--background--surface);
 }
 
 .tabList {
@@ -223,6 +323,9 @@ async function handleCopyLink(tab: ArtifactTab) {
 	min-width: 0;
 	height: 100%;
 	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--xs) 0 var(--spacing--2xs);
 	overflow-x: auto;
 	scrollbar-width: none;
 	position: relative;
@@ -237,58 +340,99 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 .tab {
+	--tab--background--hover: light-dark(var(--color--neutral-100), var(--color--neutral-900));
+	--tab--background--active: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+
 	flex: 0 1 auto;
 	min-width: 64px;
 	max-width: 270px;
+	height: var(--height--md);
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
-	color: var(--text-color--subtle);
-	background-color: transparent;
-	border: none;
-	font-size: var(--font-size--2xs);
+	gap: var(--spacing--3xs);
 	padding: 0 var(--spacing--xs);
+	border: none;
+	border-radius: var(--radius--2xs);
+	background-color: transparent;
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--lg);
 	cursor: pointer;
 
 	&:hover {
-		background-color: light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
-	}
-
-	:global(.n8n-icon) {
-		flex-shrink: 0;
+		background-color: var(--tab--background--hover);
 	}
 
 	&[data-state='active'] {
-		/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
 		color: var(--text-color);
+		background-color: var(--tab--background--active);
 	}
 
 	.label {
 		flex: 1 1 auto;
 		min-width: 0;
 		overflow: hidden;
-		text-overflow: ellipsis;
 		white-space: nowrap;
+
+		@supports (animation-timeline: scroll()) {
+			mask: linear-gradient(to left, #0000 0, #ffff var(--label--fade));
+			animation: labelfade linear;
+			animation-timeline: --labelfade;
+			scroll-timeline: --labelfade x;
+		}
+
+		@supports not (animation-timeline: scroll()) {
+			text-overflow: ellipsis;
+		}
 	}
 }
 
-.tabsIndicator {
-	position: absolute;
-	left: 0;
-	height: 2px;
-	bottom: 0;
-	width: var(--reka-tabs-indicator-size);
-	transform: translateX(var(--reka-tabs-indicator-position));
-	transition-property: width, transform;
-	transition-duration: 200ms;
+.icon {
+	flex-shrink: 0;
+
+	.tab:not([data-state='active']) & {
+		opacity: 0.6;
+	}
 }
 
-.tabsIndicatorBar {
-	width: 100%;
-	height: 100%;
-	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
-	background: var(--text-color);
+.hoverCard {
+	width: 238px;
+	padding: var(--spacing--2xs);
+	border: 1px solid var(--border-color--subtle);
+	border-radius: var(--radius--xl);
+	box-shadow: var(--shadow--sm);
+}
+
+.hoverCardBody {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
+}
+
+.hoverCardText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	padding: 0 var(--spacing--4xs);
+	line-height: var(--line-height--lg);
+	word-break: break-word;
+}
+
+.hoverCardName {
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+}
+
+.hoverCardMeta {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+}
+
+.hoverCard .statusBadge {
+	border-radius: var(--radius);
 }
 
 .contextMenu {
