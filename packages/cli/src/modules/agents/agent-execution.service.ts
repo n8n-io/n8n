@@ -897,6 +897,11 @@ export class AgentExecutionService {
 	 * usage, cost, reportId }`; the host only adds `cost`. Idempotent per
 	 * `reportId` so a replayed report does not double-count. Best-effort: a
 	 * failure logs a warning and never breaks the run.
+	 *
+	 * Both totals are updated in one transaction, and the `reportId` is
+	 * claimed only after the transaction commits — a partial failure can never
+	 * commit one total while suppressing the replay, so the execution and
+	 * thread costs cannot diverge for this report.
 	 */
 	async recordSideCallUsage(
 		executionId: string,
@@ -904,13 +909,21 @@ export class AgentExecutionService {
 		report: { task: string; model?: string; cost: number; reportId: string },
 	): Promise<void> {
 		if (this.appliedSideCallReportIds.has(report.reportId)) return;
-		this.appliedSideCallReportIds.add(report.reportId);
-
 		try {
-			await Promise.all([
-				this.agentExecutionRepository.incrementCost(executionId, report.cost),
-				this.agentExecutionThreadRepository.incrementUsage(threadId, 0, 0, report.cost, 0),
-			]);
+			await this.txRunner.run({}, async (ctx) => {
+				await this.agentExecutionRepository.incrementCost(executionId, report.cost, ctx);
+				await this.agentExecutionThreadRepository.incrementUsage(
+					threadId,
+					0,
+					0,
+					report.cost,
+					0,
+					ctx,
+				);
+			});
+			// Acknowledge the report only after both totals are durably committed,
+			// so a failed transaction is not suppressed on a later replay.
+			this.appliedSideCallReportIds.add(report.reportId);
 		} catch (error) {
 			this.logger.warn('Failed to record agent side-call usage', {
 				executionId,

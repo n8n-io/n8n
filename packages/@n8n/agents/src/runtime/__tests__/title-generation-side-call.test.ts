@@ -91,6 +91,46 @@ describe('generateThreadTitle side-call cost', () => {
 		expect(report.reportId).toEqual(expect.any(String));
 	});
 
+	it('forwards a priced title usage report even when the model returns no usable title', async () => {
+		// The model was called and billed, but produced empty text.
+		mockGenerateText.mockResolvedValue({
+			text: '',
+			usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+		});
+		mockGetModelCost.mockResolvedValue({ input: 5, output: 15 });
+
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+
+		const reports = await runTitle(memory);
+
+		expect(reports).toHaveLength(1);
+		expect(reports[0].task).toBe('title');
+		// The thread is not retitled when no title could be extracted.
+		const thread = await memory.getThread(THREAD_ID);
+		expect(thread?.title).toBeFalsy();
+	});
+
+	it('forwards a priced title usage report even when saveThread throws', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '{"title":"Berlin rain alert","emoji":"rain"}',
+			usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+		});
+		mockGetModelCost.mockResolvedValue({ input: 5, output: 15 });
+
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		// Force persistence to fail after the model call has already been billed.
+		vi.spyOn(memory, 'saveThread').mockRejectedValue(new Error('storage down'));
+
+		const reports = await runTitle(memory);
+
+		// The report is captured before persistence, so the billed turn is
+		// still priced even though saving the title failed.
+		expect(reports).toHaveLength(1);
+		expect(reports[0].task).toBe('title');
+	});
+
 	it('does not forward a report when the model has no catalog pricing', async () => {
 		mockGenerateText.mockResolvedValue({
 			text: '{"title":"Berlin rain alert","emoji":"rain"}',

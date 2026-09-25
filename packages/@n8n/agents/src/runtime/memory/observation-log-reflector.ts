@@ -49,6 +49,13 @@ export interface RunObservationLogReflectorOpts {
 	onWarning?: (warning: ObservationLogReflectorWarning) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/**
+	 * Receives the reflector model call's usage the moment it resolves, before
+	 * any parsing or persistence. Forwarding it here (rather than only on the
+	 * success return) keeps a billed reflector call priced even when later
+	 * post-processing throws. Fire-and-forget from the caller's perspective.
+	 */
+	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
 }
 
 export type RunObservationLogReflectorResult =
@@ -197,6 +204,10 @@ export async function runObservationLogReflector(
 	const output = typeof reflectResult === 'string' ? reflectResult : reflectResult.text;
 	const reflectUsage = typeof reflectResult === 'string' ? undefined : reflectResult.usage;
 	const reflectModel = typeof reflectResult === 'string' ? undefined : reflectResult.model;
+	// Forward usage immediately after the model call, before parsing or
+	// persistence, so a billed reflector turn is priced even when the
+	// post-processing below throws. Fire-and-forget: never block on pricing.
+	void opts.onUsage?.(reflectModel, reflectUsage);
 	const normalized = normalizeObservationLogReflection(
 		activeObservationLog,
 		withCreatedAt(parseObservationLogReflectionJson(output), now),

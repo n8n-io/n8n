@@ -83,6 +83,13 @@ export interface RunObservationLogObserverOpts {
 	onMalformedLine?: (line: string) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/**
+	 * Receives the observer model call's usage the moment it resolves, before
+	 * any parsing or persistence. Forwarding it here (rather than only on the
+	 * success return) keeps a billed observer call priced even when later
+	 * post-processing throws. Fire-and-forget from the caller's perspective.
+	 */
+	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
 }
 
 export type RunObservationLogObserverResult =
@@ -235,6 +242,10 @@ export async function runObservationLogObserver(
 	const markdown = typeof observeResult === 'string' ? observeResult : observeResult.text;
 	const observeUsage = typeof observeResult === 'string' ? undefined : observeResult.usage;
 	const observeModel = typeof observeResult === 'string' ? undefined : observeResult.model;
+	// Forward usage immediately after the model call, before parsing or
+	// persistence, so a billed observer turn is priced even when the
+	// post-processing below throws. Fire-and-forget: never block on pricing.
+	void opts.onUsage?.(observeModel, observeUsage);
 
 	const noObservations = markdown.trim() === 'NO_OBSERVATIONS';
 	const parsed = noObservations

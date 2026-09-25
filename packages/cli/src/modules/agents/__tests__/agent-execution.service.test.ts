@@ -135,7 +135,7 @@ describe('AgentExecutionService', () => {
 	}
 
 	describe('recordSideCallUsage', () => {
-		it('increments the execution cost and thread totalCost by the report cost', async () => {
+		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
 			await service.recordSideCallUsage('execution-1', 'thread-1', {
 				task: 'title',
 				model: 'openai/gpt-4o',
@@ -143,14 +143,42 @@ describe('AgentExecutionService', () => {
 				reportId: 'report-1',
 			});
 
-			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith('execution-1', 0.00125);
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			// Both increments run inside the same transaction context.
+			const txCtx = txRunner.run.mock.calls[0][0];
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith(
+				'execution-1',
+				0.00125,
+				txCtx,
+			);
 			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledWith(
 				'thread-1',
 				0,
 				0,
 				0.00125,
 				0,
+				txCtx,
 			);
+		});
+
+		it('claims the reportId only after the transaction commits', async () => {
+			// A failed transaction must not claim the reportId, so a later
+			// replay can reapply both totals atomically instead of being
+			// suppressed while one total already diverged.
+			agentExecutionRepository.incrementCost.mockRejectedValueOnce(new Error('db down'));
+			const report = { task: 'title', model: 'openai/gpt-4o', cost: 0.001, reportId: 'retry-1' };
+
+			await expect(
+				service.recordSideCallUsage('execution-1', 'thread-1', report),
+			).resolves.toBeUndefined();
+
+			// Not claimed: the failed transaction is replayable. The replay runs
+			// both increments again — `incrementCost` is retried (2 calls); the
+			// first attempt threw before reaching `incrementUsage`, so it runs
+			// only on the successful replay (1 call).
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
 		});
 
 		it('does not apply the same reportId twice (idempotent)', async () => {

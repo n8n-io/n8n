@@ -157,6 +157,14 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
 	agentName?: string;
+	/**
+	 * Receives each episodic model call's usage the moment it resolves — once
+	 * per embed call and once per reflect call — before any persistence.
+	 * Forwarding it here (rather than only on the success return) keeps a
+	 * billed embed/reflect turn priced even when later persistence throws.
+	 * Fire-and-forget from the caller's perspective.
+	 */
+	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
 }
 
 export type EpisodicMemoryUsageReport = {
@@ -356,6 +364,9 @@ async function saveCandidateEntries(
 				opts.executionCounter,
 			);
 			usageReport = embedded.report;
+			// Forward the embed usage before the save loop, so a billed embed
+			// call is priced even when a later saveEntryWithSources throws.
+			if (embedded.report) void opts.onUsage?.(embedded.report.model, embedded.report.usage);
 			const embeddings = embedded.embeddings;
 			for (const [index, candidate] of candidates.entries()) {
 				const saved = await opts.memory.episodic.saveEntryWithSources(
@@ -422,6 +433,10 @@ async function runEpisodicMemoryReflection(
 			model: reflectionResult.model,
 			usage: reflectionResult.usage,
 		});
+		// Forward the reflect usage before applyReflection, so a billed
+		// reflect call is priced even when a later merge embed or
+		// applyReflection throws.
+		void opts.onUsage?.(reflectionResult.model, reflectionResult.usage);
 	}
 	const reflection = normalizeEpisodicMemoryReflection(cluster, reflectionResult.reflection);
 	if (reflection.drop.length === 0 && reflection.merge.length === 0) return reports;
@@ -430,7 +445,11 @@ async function runEpisodicMemoryReflection(
 	let mergeEmbeddings: number[][] = [];
 	if (mergeContents.length > 0) {
 		const mergeEmbedded = await embedTexts(config, mergeContents, opts.executionCounter);
-		if (mergeEmbedded.report) reports.push(mergeEmbedded.report);
+		if (mergeEmbedded.report) {
+			reports.push(mergeEmbedded.report);
+			// Forward the merge-embed usage before applyReflection.
+			void opts.onUsage?.(mergeEmbedded.report.model, mergeEmbedded.report.usage);
+		}
 		mergeEmbeddings = mergeEmbedded.embeddings;
 	}
 	await opts.memory.episodic.applyReflection(opts.scope, {

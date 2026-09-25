@@ -42,14 +42,13 @@ describe('AgentExecutionRepository', () => {
 
 	describe('incrementCost', () => {
 		it('is a no-op for zero or negative cost and never issues an UPDATE', async () => {
-			const createQueryBuilderSpy = vi
-				.spyOn(repository, 'createQueryBuilder')
-				.mockReturnValue({} as never);
-
 			await repository.incrementCost('execution-1', 0);
 			await repository.incrementCost('execution-1', -1);
 
-			expect(createQueryBuilderSpy).not.toHaveBeenCalled();
+			// incrementCost builds the query from the context manager
+			// (`managerFor(ctx).createQueryBuilder()`), so the no-op guard
+			// must keep it from reaching the entity manager's query builder.
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
 		});
 
 		it('issues an atomic cost increment UPDATE for a positive cost', async () => {
@@ -61,7 +60,7 @@ describe('AgentExecutionRepository', () => {
 				setParameters: vi.fn().mockReturnThis(),
 				execute,
 			};
-			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(qb as never);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 
 			await repository.incrementCost('execution-1', 0.00125);
 

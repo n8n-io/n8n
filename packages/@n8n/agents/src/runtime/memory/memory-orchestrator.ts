@@ -695,11 +695,16 @@ export class MemoryOrchestrator {
 					tokenCounter: this.tokenCounter,
 					executionCounter,
 					telemetry,
+					// Usage is forwarded inside the observer right after the model
+					// call (before persistence), so a billed observer turn is
+					// priced even when post-processing throws.
+					onUsage: onSideCallUsage
+						? (model, usage) => {
+								void this.forwardSideCallUsage(onSideCallUsage, 'observer', model, usage);
+							}
+						: undefined,
 				});
 				if (result.status === 'ran' && !result.cursorAdvanced) run.disabled = true;
-				if (result.status === 'ran') {
-					await this.forwardSideCallUsage(onSideCallUsage, 'observer', result.model, result.usage);
-				}
 				return result;
 			},
 		);
@@ -759,10 +764,15 @@ export class MemoryOrchestrator {
 					tokenCounter: this.tokenCounter,
 					executionCounter,
 					telemetry,
+					// Usage is forwarded inside the reflector right after the model
+					// call (before persistence), so a billed reflector turn is
+					// priced even when post-processing throws.
+					onUsage: onSideCallUsage
+						? (model, usage) => {
+								void this.forwardSideCallUsage(onSideCallUsage, 'reflector', model, usage);
+							}
+						: undefined,
 				});
-				if (result.status === 'ran') {
-					await this.forwardSideCallUsage(onSideCallUsage, 'reflector', result.model, result.usage);
-				}
 				return result;
 			});
 		}
@@ -805,17 +815,16 @@ export class MemoryOrchestrator {
 					executionCounter,
 					telemetry,
 					agentName: this.config.name,
+					// Each embed/reflect usage is forwarded inside the processor
+					// the moment its model call resolves, before persistence, so a
+					// billed turn is priced even when a later save or applyReflection
+					// throws. Returning usageReports here would double-count.
+					onUsage: onSideCallUsage
+						? (model, usage) => {
+								void this.forwardSideCallUsage(onSideCallUsage, 'episodic', model, usage);
+							}
+						: undefined,
 				});
-				if (result.status === 'ran') {
-					for (const report of result.usageReports) {
-						await this.forwardSideCallUsage(
-							onSideCallUsage,
-							'episodic',
-							report.model,
-							report.usage,
-						);
-					}
-				}
 			} while (result.status === 'ran');
 		});
 	}
