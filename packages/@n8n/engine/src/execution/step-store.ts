@@ -241,6 +241,9 @@ export interface StepStore {
 	 */
 	loadAllSteps(executionId: string): Promise<StepRecord[]>;
 
+	/** The execution's steps in the `waiting` status, with their declarations. */
+	loadWaitingSteps(executionId: string): Promise<StepRecord[]>;
+
 	/**
 	 * How many of the execution's steps have settled (completed, failed,
 	 * skipped, or cancelled). Rows are unique per `(node, iteration)`, only exist
