@@ -1,0 +1,39 @@
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_9c30e64d236bdf::t_8ac330e20abf42 10-13,24-27,117-161
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_9c30e64d236bdf::t_6ccb135b9fea5b 10,18,53-61,122,130
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  s_9c30e64d236bdf::t_1f312c617e1d20 4-7,23-31,35-41,89-104
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_9c30e64d236bdf::t_afcaaa7a65a390 19,62,65-104
+packages/cli/src/services/engine-v2-resume-context.service.ts
+  s_9c30e64d236bdf::t_2fc1b278b7adbb 1-33
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_9c30e64d236bdf::t_db8fdb98aaf83c 40,98,108-109
+packages/cli/src/webhooks/waiting-forms.ts
+  s_9c30e64d236bdf::t_8462b42b255b38 9,63-83
+packages/cli/src/webhooks/waiting-webhooks.ts
+  s_9c30e64d236bdf::t_50d9576e398ee0 19-23,62-63,250-255,339-456
+packages/cli/src/workflow-runner.ts
+  s_9c30e64d236bdf::t_959b3b31d02c9b 420-425
+packages/testing/playwright/playwright-projects.ts
+  s_9c30e64d236bdf::t_5bf265f62d617c 211-217
+packages/testing/playwright/tests/e2e/api/waiting-endpoint-security.spec.ts
+  s_9c30e64d236bdf::t_1b111fe7e1b7ae 19-26,28-31,33-34,36-39,41-45,47-48,50-52,54-56,58-60,62-65,67-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "60764f74de00ae4d81ce0cdbeb9c1ac9ead80944",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
