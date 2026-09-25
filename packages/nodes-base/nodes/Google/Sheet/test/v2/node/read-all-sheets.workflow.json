@@ -1,0 +1,83 @@
+{
+	"name": "Google Sheets V2 Read All Sheets",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "sheet",
+				"operation": "read",
+				"documentId": {
+					"__rl": true,
+					"value": "spreadsheet-id",
+					"mode": "id"
+				},
+				"sheetSelectionMode": "all",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [200, 0],
+			"id": "read-all-sheets",
+			"name": "Read All Sheets",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Sheets OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Read All Sheets": [
+			{
+				"json": {
+					"sheet_name": "Q1",
+					"row_number": 2,
+					"name": "Ada",
+					"amount": 10
+				}
+			},
+			{
+				"json": {
+					"sheet_name": "Q1",
+					"row_number": 3,
+					"name": "Grace",
+					"amount": 20
+				}
+			},
+			{
+				"json": {
+					"sheet_name": "Q2",
+					"row_number": 2,
+					"name": "Alan",
+					"amount": 30
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Read All Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
