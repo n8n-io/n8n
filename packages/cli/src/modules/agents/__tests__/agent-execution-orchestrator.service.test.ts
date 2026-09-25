@@ -2032,7 +2032,13 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'credential-1');
-		expect(bridge.deliverWakeResponse).toHaveBeenCalledWith('slack:channel-1:1', chunks);
+		// The third argument keeps a card the woken turn raises addressed to the
+		// person the conversation belongs to, on platforms that can target one.
+		expect(bridge.deliverWakeResponse).toHaveBeenCalledWith(
+			'slack:channel-1:1',
+			chunks,
+			'selected-user',
+		);
 		expect(
 			readIntegrationMessageContext(runtime.agent.stream.mock.calls[0][1].persistence),
 		).toEqual(messageContext);
