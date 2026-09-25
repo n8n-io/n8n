@@ -18,8 +18,6 @@ import { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
 import { InsightsService } from '@/modules/insights/insights.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { createOwner } from '@test-integration/db/users';
 
 import type { InstanceReportDataPoint } from '../database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
@@ -99,13 +97,11 @@ describe('instance reporting retries', () => {
 		await testDb.truncate([
 			'InstanceMonitoringReport',
 			'Settings',
-			'User',
 			'InsightsByPeriod',
 			'InsightsMetadata',
 			'WorkflowEntity',
 			'Project',
 		]);
-		await createOwner();
 		await Container.get(SettingsRepository).upsertByKey(
 			CENTRAL_INSTANCE_MONITORING_SETTINGS_KEY,
 			JSON.stringify({ reportTime: REPORT_TIME }),
@@ -143,7 +139,6 @@ describe('instance reporting retries', () => {
 			repository,
 			Container.get(InsightsService),
 			instanceSettings,
-			Container.get(OwnershipService),
 			Container.get(LicenseMetricsRepository),
 			mock<License>({ loadCertStr: async () => 'license-cert' }),
 			mockLogger(),
@@ -452,7 +447,6 @@ describe('instance reporting retries', () => {
 			'2026-01-23': 5,
 			'2026-01-24': 6,
 			'2026-01-26': 7,
-			// The last day of the first 30-day read and the first day of the second.
 			'2026-02-24': 8,
 			'2026-02-25': 9,
 		});

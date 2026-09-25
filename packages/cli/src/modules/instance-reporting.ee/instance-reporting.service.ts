@@ -13,7 +13,6 @@ import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { INSIGHTS_MAX_AGE_DAYS_CAP } from '@/modules/insights/insights.constants';
 import { InsightsService } from '@/modules/insights/insights.service';
-import { OwnershipService } from '@/services/ownership.service';
 
 import type { InstanceReportDataPoint } from './database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
@@ -59,12 +58,6 @@ export const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
 const MAX_REPORT_DAYS = INSIGHTS_MAX_AGE_DAYS_CAP;
 
 /**
- * Insights buckets a range of up to 30 days by day and a longer one by week,
- * which cannot fill a daily point. A longer report reads in chunks of this size.
- */
-const MAX_DAYS_PER_INSIGHTS_READ = 30;
-
-/**
  * Measures and delivers one instance report. *When* that happens is
  * {@link InstanceReportingScheduler}'s concern.
  */
@@ -77,7 +70,6 @@ export class InstanceReportingService {
 		private readonly reportRepository: InstanceMonitoringReportRepository,
 		private readonly insightsService: InsightsService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly ownershipService: OwnershipService,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 		private readonly license: License,
 		private readonly logger: Logger,
@@ -319,7 +311,10 @@ export class InstanceReportingService {
 	 */
 	private async collectDataPoints(days: string[]): Promise<InstanceReportDataPoint[]> {
 		const [totals, { productionRootExecutions }] = await Promise.all([
-			this.dailyTotals(days),
+			this.insightsService.getDailyExecutionTotals({
+				startDate: new Date(`${days[0]}T00:00:00.000Z`),
+				endDate: new Date(`${days[days.length - 1]}T00:00:00.000Z`),
+			}),
 			// Same source as the `productionRootExecutions` license metric, so the
 			// reported total matches what the license server sees.
 			this.licenseMetricsRepository.getLicenseRenewalMetrics(),
@@ -336,34 +331,6 @@ export class InstanceReportingService {
 				date,
 			})),
 		];
-	}
-
-	/**
-	 * Billable executions for each of `days`, keyed by day. A day with no
-	 * executions has no entry.
-	 *
-	 * Reads one chunk at a time, so a long report still gets daily buckets and a
-	 * backfill holds only one database connection.
-	 */
-	private async dailyTotals(days: string[]): Promise<Map<string, number>> {
-		// Report instance-wide numbers, so read as the instance owner, whose global
-		// role grants access to every workflow.
-		const owner = await this.ownershipService.getInstanceOwner();
-		const totals = new Map<string, number>();
-
-		for (let start = 0; start < days.length; start += MAX_DAYS_PER_INSIGHTS_READ) {
-			const chunk = days.slice(start, start + MAX_DAYS_PER_INSIGHTS_READ);
-			const byDay = await this.insightsService.getInsightsByTime({
-				user: owner,
-				startDate: new Date(`${chunk[0]}T00:00:00.000Z`),
-				endDate: new Date(`${addUtcDays(chunk[chunk.length - 1], 1)}T00:00:00.000Z`),
-				timeZone: 'UTC',
-			});
-
-			for (const row of byDay) totals.set(row.date.slice(0, 10), row.values.total ?? 0);
-		}
-
-		return totals;
 	}
 }
 

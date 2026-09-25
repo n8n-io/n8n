@@ -310,6 +310,30 @@ export class InsightsService {
 		return await this.insightsByPeriodRepository.getDailyDataStart();
 	}
 
+	/**
+	 * Succeeded plus failed executions of all workflows for each UTC day from
+	 * `startDate` to `endDate`, both inclusive, keyed by `YYYY-MM-DD`. A day
+	 * without executions has no entry.
+	 *
+	 * Unlike {@link getInsightsByTime}, this buckets by day for any range length.
+	 */
+	async getDailyExecutionTotals({
+		startDate,
+		endDate,
+	}: { startDate: Date; endDate: Date }): Promise<Map<string, number>> {
+		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
+			periodUnit: 'day',
+			insightTypes: ['success', 'failure'],
+			startDate,
+			endDate,
+			timeZone: 'UTC',
+		});
+
+		return new Map(
+			rows.map((row) => [row.periodStart.slice(0, 10), (row.succeeded ?? 0) + (row.failed ?? 0)]),
+		);
+	}
+
 	private async queryInsightsByTime({
 		user,
 		startDate,
