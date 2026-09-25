@@ -67,9 +67,12 @@ describe('LmChatAzureOpenAi', () => {
 			expect(description.codex?.alias).toContain('Azure OpenAI');
 		});
 
-		it.each(['Azure AI Foundry', 'Foundry'])('should be findable by %s', (term) => {
-			expect(description.codex?.alias).toContain(term);
-		});
+		it.each(['Azure OpenAI Chat Model', 'Azure AI Foundry', 'Foundry'])(
+			'should be findable by %s',
+			(term) => {
+				expect(description.codex?.alias).toContain(term);
+			},
+		);
 	});
 
 	it.each([

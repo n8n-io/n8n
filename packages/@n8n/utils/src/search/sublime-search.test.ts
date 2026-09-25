@@ -44,14 +44,20 @@ describe('sublimeSearch', () => {
 	describe('the renamed Azure node stays findable', () => {
 		const AZURE = '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi';
 
-		it.each(['Azure OpenAI', 'Azure AI Foundry', 'Foundry', 'Azure'])(
-			'should find it by %s',
-			(term) => {
-				const keys = sublimeSearch(term, topLevel).map((r) => r.item.key);
+		// The full former label matters most and is the easiest to miss: fuzzy search matches a
+		// pattern into a target, so a query longer than the alias it should hit finds nothing.
+		it.each([
+			'Azure OpenAI Chat Model',
+			'Azure OpenAI',
+			'Azure AI Foundry',
+			'Foundry',
+			'Azure',
+			'openai',
+		])('should find it by %s', (term) => {
+			const keys = sublimeSearch(term, topLevel).map((r) => r.item.key);
 
-				expect(keys).toContain(AZURE);
-			},
-		);
+			expect(keys).toContain(AZURE);
+		});
 	});
 
 	it('should keep only the highest-scoring results when a limit is provided', () => {

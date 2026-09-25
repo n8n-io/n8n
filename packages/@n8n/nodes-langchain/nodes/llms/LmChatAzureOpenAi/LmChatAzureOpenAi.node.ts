@@ -51,9 +51,9 @@ export class LmChatAzureOpenAi implements INodeType {
 					},
 				],
 			},
-			// 'Azure OpenAI' keeps the old label findable. The rest are the Foundry catalog this
-			// node reaches beyond OpenAI models.
-			alias: ['Azure OpenAI', 'Azure AI Foundry', 'Foundry', 'Llama', 'Mistral', 'DeepSeek'],
+			// The old label, in full and in part. Fuzzy search matches a pattern into a target, so
+			// the full former name finds nothing unless it is here verbatim.
+			alias: ['Azure OpenAI Chat Model', 'Azure OpenAI', 'Azure AI Foundry', 'Foundry'],
 		},
 
 		inputs: [],

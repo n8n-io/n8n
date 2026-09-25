@@ -11640,7 +11640,7 @@
 						}
 					]
 				},
-				"alias": ["Azure OpenAI", "Azure AI Foundry", "Foundry", "Llama", "Mistral", "DeepSeek"]
+				"alias": ["Azure OpenAI Chat Model", "Azure OpenAI", "Azure AI Foundry", "Foundry"]
 			}
 		},
 		"type": "node"
