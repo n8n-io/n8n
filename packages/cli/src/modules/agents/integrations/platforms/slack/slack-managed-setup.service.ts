@@ -249,7 +249,12 @@ export class SlackManagedSetupService {
 			type: manager.credential.type,
 			data: manager.rawData,
 		});
-		await this.credentialsService.update(options.credentialId, encrypted, manager.rawData);
+		await this.credentialsService.update(
+			options.credentialId,
+			encrypted,
+			{ kind: 'user', user: options.user },
+			manager.rawData,
+		);
 	}
 
 	async installApp(
@@ -925,7 +930,12 @@ export class SlackManagedSetupService {
 			type: manager.credential.type,
 			data: updatedData,
 		});
-		await this.credentialsService.update(manager.credential.id, encrypted, updatedData);
+		await this.credentialsService.update(
+			manager.credential.id,
+			encrypted,
+			{ kind: 'system', reason: 'integration' },
+			updatedData,
+		);
 		manager.oauthTokenData = oauthTokenData;
 		manager.accessToken = refreshedAccessToken;
 	}

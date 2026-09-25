@@ -144,10 +144,7 @@ type UpdateOptions = {
 	deleteUserEntries?: boolean;
 	/** Existing instance credential whose hook-mutated payload must be revalidated. */
 	instanceCredential?: Pick<CredentialsEntity, 'id' | 'type'>;
-	/**
-	 * The user making the change. Named on a policy block, where no user means an integration,
-	 * and used to enrich the returned entity with `connectedByMe`.
-	 */
+	/** When provided, the returned entity is enriched with `connectedByMe` for this user. */
 	user?: User;
 };
 
@@ -953,7 +950,7 @@ export class CredentialsService {
 	 * deliberately carries `oauthTokenData` forward, so a "Disconnect" action on a
 	 * fixed OAuth credential needs this dedicated path.
 	 */
-	async clearOauthTokenData(credential: CredentialsEntity): Promise<void> {
+	async clearOauthTokenData(credential: CredentialsEntity, actor: PolicyActor): Promise<void> {
 		// Decrypt via the core credential so a decryption failure aborts the
 		// disconnect. `this.decrypt` swallows CredentialDataError and returns `{}`,
 		// which would otherwise overwrite the whole credential with empty data.
@@ -968,7 +965,7 @@ export class CredentialsService {
 			data: decryptedData,
 		});
 
-		await this.update(credential.id, newCredentialData, decryptedData);
+		await this.update(credential.id, newCredentialData, actor, decryptedData);
 	}
 
 	/**
@@ -1000,6 +997,7 @@ export class CredentialsService {
 	async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
+		actor: PolicyActor,
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
@@ -1007,13 +1005,7 @@ export class CredentialsService {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
 
-		const cleared = await this.enforceCredentialUpdate(
-			credentialId,
-			newCredentialData.type,
-			options?.user
-				? { kind: 'user', user: options.user }
-				: { kind: 'system', reason: 'integration' },
-		);
+		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type, actor);
 		if (cleared === null) return null;
 
 		const persist = async (transactionManager: EntityManager, ctx: OperationContext) => {
