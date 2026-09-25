@@ -17,6 +17,7 @@ import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import PromoteInstanceSection from '../components/PromoteInstanceSection.vue';
+import ApplyInstanceSection from '../components/ApplyInstanceSection.vue';
 import PromotionConnectionForm from '../components/PromotionConnectionForm.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
@@ -149,6 +150,8 @@ async function onDialogOpenChange(open: boolean) {
 		/>
 
 		<PromoteInstanceSection :connection="connection" />
+
+		<ApplyInstanceSection :connection="connection" />
 
 		<N8nSettingsSection
 			:title="i18n.baseText('settings.promotions.providers.title')"
