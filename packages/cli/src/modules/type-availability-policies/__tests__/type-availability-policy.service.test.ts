@@ -343,6 +343,44 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).resolves.toBeDefined();
 		});
+
+		it('rejects a node type rule naming a credential-only node, and names the rule to write instead', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-creds-base.virusTotalApi' },
+			};
+
+			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
+				'Node type rule names the credential-only node "n8n-creds-base.virusTotalApi", which is HTTP Request with a credential attached. Write a credential type rule on "virusTotalApi" instead.',
+			);
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+		});
+
+		it('accepts a credential type rule on the type a credential-only node wraps', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy({ kind: CREDENTIAL_TYPES_KIND }));
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'virusTotalApi' },
+			};
+
+			await expect(
+				service.createPolicyDocument(CREDENTIAL_TYPES_KIND, [rule], 'user-1'),
+			).resolves.toBeDefined();
+		});
+
+		it('rejects a package rule on the credential-only prefix, which no loader provides', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-creds-base' },
+			};
+
+			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
+				'Package rule names a package that is not installed: n8n-creds-base',
+			);
+		});
 	});
 
 	describe('updatePolicyDocument', () => {
@@ -364,6 +402,19 @@ describe('TypeAvailabilityPolicyService', () => {
 			).rejects.toThrow(
 				'Package rule names a package that is not installed: n8n-nodes-not-installed',
 			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a node type rule naming a credential-only node, before opening a transaction', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-creds-base.virusTotalApi' },
+			};
+
+			await expect(
+				service.updatePolicyDocument(KIND, 'policy-1', [rule], 1, 'user-1'),
+			).rejects.toThrow('Node type rule names the credential-only node');
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
@@ -750,6 +801,25 @@ describe('TypeAvailabilityPolicyService', () => {
 			).rejects.toThrow(
 				'Package rule names a package that is not installed: n8n-nodes-not-installed',
 			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a node type rule naming a credential-only node, before opening a transaction', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-creds-base.virusTotalApi' },
+			};
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					null,
+					{ rules: [rule], defaultAction: 'allow' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow('Node type rule names the credential-only node');
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 

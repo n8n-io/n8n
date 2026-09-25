@@ -10,7 +10,7 @@ import {
 	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockRestrictedCredentialTypes, mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import { useViewStacks } from '../../composables/useViewStacks';
 import NodeItem from './NodeItem.vue';
@@ -258,6 +258,24 @@ describe('NodeItem', () => {
 
 		it('treats a credential-only node like the HTTP Request node it wraps', () => {
 			mockRestrictedNodeTypes({ 'n8n-nodes-base.httpRequest': 'instance' });
+
+			const { queryByTestId } = render({
+				pinia,
+				props: {
+					nodeType: mockSimplifiedNodeType({
+						name: 'n8n-creds-base.sysdigApi',
+						displayName: 'Sysdig',
+						group: ['output'],
+					}),
+				},
+			});
+
+			expect(queryByTestId('node-creator-restricted-item')).toBeInTheDocument();
+		});
+
+		it('treats a credential-only node as restricted when its credential type is restricted', () => {
+			mockRestrictedNodeTypes();
+			mockRestrictedCredentialTypes({ sysdigApi: 'project' });
 
 			const { queryByTestId } = render({
 				pinia,

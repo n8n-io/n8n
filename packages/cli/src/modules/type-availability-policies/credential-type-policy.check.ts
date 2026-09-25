@@ -149,8 +149,13 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 
 	/**
 	 * The credential types a workflow's nodes ask for: the keys of each node's `credentials` map,
-	 * plus a type a node like HTTP Request names by parameter. A node that names a type without
-	 * selecting a credential still counts: the workflow is built around a type the policy refuses.
+	 * a type a node like HTTP Request names by parameter, and the type a credential-only node
+	 * extends. A node that names a type without selecting a credential still counts: the workflow
+	 * is built around a type the policy refuses.
+	 *
+	 * `extendsCredential` is read on its own because it needs no node description. It is how a
+	 * credential-only node (the VirusTotal node, say) is stored, so a rule on `virusTotalApi`
+	 * reaches that node even when HTTP Request's description is not installed here.
 	 */
 	private distinctCredentialTypes(nodes: PolicedWorkflow['nodes']): string[] {
 		// A Set keeps first-encounter order, so violations and audit lines stay deterministic.
@@ -159,6 +164,7 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		for (const node of nodes) {
 			for (const type of Object.keys(node.credentials ?? {})) types.add(type);
 			for (const type of this.parameterCredentialTypes(node)) types.add(type);
+			if (node.extendsCredential) types.add(node.extendsCredential);
 		}
 
 		return [...types];

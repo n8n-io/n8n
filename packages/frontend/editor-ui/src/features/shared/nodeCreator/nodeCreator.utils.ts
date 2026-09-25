@@ -42,13 +42,14 @@ import type { NodeViewItemSection } from './views/viewsData';
 
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { toPolicyNodeType } from '@/app/utils/credentialOnlyNodes';
-import { getNodeTypeRestriction } from '@n8n/frontend-module-type-availability-policies';
+import {
+	getNodeTypeRestriction,
+	type TypeRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
-import type { NodeTypeAvailability } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
@@ -259,9 +260,12 @@ export function searchNodes(
 export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateElement[] {
 	return items.map((item) => (item.type === 'section' ? item.children : item)).flat();
 }
-/** Restriction lookups for node creator items, with credential-only nodes following HTTP Request. */
-export function getNodeItemRestriction(nodeTypeName: string): NodeTypeAvailability | null {
-	return getNodeTypeRestriction(toPolicyNodeType(nodeTypeName));
+/**
+ * Restriction lookups for node creator items. The policy module composes the answer for a
+ * credential-only node from HTTP Request and the credential type it wraps.
+ */
+export function getNodeItemRestriction(nodeTypeName: string): TypeRestriction | null {
+	return getNodeTypeRestriction(nodeTypeName);
 }
 
 export function isNodeItemRestricted(nodeTypeName: string): boolean {

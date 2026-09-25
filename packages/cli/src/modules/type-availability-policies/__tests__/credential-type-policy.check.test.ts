@@ -346,6 +346,101 @@ describe('CredentialTypePolicyCheck', () => {
 		});
 	});
 
+	describe('a credential-only node', () => {
+		const VIRUS_TOTAL_API = 'virusTotalApi';
+		const SYSDIG_API = 'sysdigApi';
+
+		/** How the editor stores the VirusTotal node: HTTP Request extending the credential type. */
+		const credentialOnly = (credentialType: string, name = `${credentialType} node`): INode => ({
+			...node(HTTP_REQUEST, {}, name),
+			extendsCredential: credentialType,
+		});
+
+		const saveNew = async (nodes: INode[]) =>
+			await check.onWorkflowSave({
+				workflow: workflow(nodes, null),
+				storedWorkflow: null,
+				projectId: 'project-1',
+			});
+
+		beforeEach(() => {
+			denying([VIRUS_TOTAL_API]);
+		});
+
+		it('reports the extended type when no credential is selected and HTTP Request is not installed', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new Error('not installed');
+			});
+
+			const result = await saveNew([credentialOnly(VIRUS_TOTAL_API)]);
+
+			expect(result.violations).toHaveLength(1);
+			expect(result.violations[0]).toMatchObject({
+				subject: VIRUS_TOTAL_API,
+				subjectType: 'credentialType',
+			});
+		});
+
+		it('reports one violation when the extended type is also named by parameter and selected', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					credentials: [],
+					properties: [{ name: 'nodeCredentialType', type: 'credentialsSelect' }],
+				},
+			} as never);
+
+			const result = await saveNew([
+				{
+					...credentialOnly(VIRUS_TOTAL_API),
+					parameters: {
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: VIRUS_TOTAL_API,
+					},
+					credentials: { [VIRUS_TOTAL_API]: { id: 'cred-1', name: 'VirusTotal account' } },
+				},
+			]);
+
+			expect(result.violations).toHaveLength(1);
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
+				'credential-types',
+				'project-1',
+				[VIRUS_TOTAL_API],
+			);
+		});
+
+		it('grandfathers an extended type the stored workflow already carried', async () => {
+			const nodes = [credentialOnly(VIRUS_TOTAL_API)];
+
+			const result = await check.onWorkflowSave({
+				workflow: workflow(nodes),
+				storedWorkflow: workflow(nodes),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations).toEqual([]);
+			expect(service.evaluateComposedTypesFor).not.toHaveBeenCalled();
+		});
+
+		it('leaves plain HTTP Request alone', async () => {
+			const result = await saveNew([node(HTTP_REQUEST)]);
+
+			expect(result.violations).toEqual([]);
+			expect(service.evaluateComposedTypesFor).not.toHaveBeenCalled();
+		});
+
+		it('reports only the blocked type when two credential-only nodes share the HTTP Request base', async () => {
+			const result = await saveNew([credentialOnly(VIRUS_TOTAL_API), credentialOnly(SYSDIG_API)]);
+
+			expect(result.violations).toHaveLength(1);
+			expect(result.violations[0].subject).toBe(VIRUS_TOTAL_API);
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
+				'credential-types',
+				'project-1',
+				[VIRUS_TOTAL_API, SYSDIG_API],
+			);
+		});
+	});
+
 	describe('the points that report the full list', () => {
 		const nodes = [
 			node(SET),

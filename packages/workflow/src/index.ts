@@ -57,6 +57,7 @@ export * from './workflow-structure-validation';
 export * from './versioned-node-type';
 export * from './type-validation';
 export * from './credential-domain-restrictions';
+export * from './credential-only-nodes';
 export * from './schemas';
 export * from './run-execution-data/run-execution-data';
 export { WorkflowExpression } from './workflow-expression';
