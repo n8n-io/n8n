@@ -32,7 +32,7 @@ const defaultRuleSettings: RuleSettingsMap = {
 	'adr-conventions': {
 		enabled: true,
 		severity: 'error',
-		options: { allowedOwners: ['Catalysts'] },
+		options: { allowedOwners: ['Catalysts', 'Developer Platform'] },
 	},
 	'catalog-violations': {
 		enabled: true,
