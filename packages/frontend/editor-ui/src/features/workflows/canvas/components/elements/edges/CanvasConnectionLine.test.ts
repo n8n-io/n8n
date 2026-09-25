@@ -5,8 +5,8 @@ import { setActivePinia } from 'pinia';
 import type { ConnectionLineProps } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
 import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
+import { CANVAS_NODE_GROUP_OUTPUT_HANDLE } from '../../../canvas.types';
 import { waitFor } from '@testing-library/vue';
-import { NodeConnectionTypes } from 'n8n-workflow';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -32,7 +32,7 @@ const renderComponentFromInputHandle = createComponentRenderer(CanvasConnectionL
 			...createCanvasProvide({
 				connectingHandle: {
 					nodeId: 'group:g1',
-					handleId: `input/${NodeConnectionTypes.Main}/0`,
+					handleId: CANVAS_NODE_GROUP_OUTPUT_HANDLE,
 					handleType: 'target',
 				},
 			}),
