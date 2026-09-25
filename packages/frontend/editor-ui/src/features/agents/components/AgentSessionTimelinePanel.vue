@@ -31,6 +31,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
+import { useKeybindings } from '@/app/composables/useKeybindings';
 
 const props = defineProps<{
 	projectId: string;
@@ -367,23 +368,35 @@ onBeforeUnmount(() => {
 watch([() => props.projectId, () => props.agentId, () => props.threadId], loadThreadDetail, {
 	immediate: true,
 });
+
+const searchInput = useTemplateRef<HTMLInputElement | null>('searchInput');
+
+useKeybindings({
+	'/': {
+		disabled: () => searchInput.value?.disabled ?? false,
+		run: () => {
+			if (searchInput.value) searchInput.value.focus();
+		},
+	},
+});
 </script>
 
 <template>
 	<div ref="panel" :class="$style.panel">
 		<div v-if="!loading" :class="$style.subHeader">
-			<div :class="$style.search">
-				<N8nInput
-					v-model="searchQuery"
-					size="medium"
-					:placeholder="i18n.baseText('agentSessions.timeline.searchPlaceholder')"
-					clearable
-				>
-					<template #prefix>
-						<N8nIcon icon="search" :size="12" />
-					</template>
-				</N8nInput>
-			</div>
+			<N8nInput
+				ref="searchInput"
+				v-model="searchQuery"
+				size="large"
+				:class="$style.searchInput"
+				:placeholder="i18n.baseText('agentSessions.timeline.searchPlaceholder')"
+				clearable
+			>
+				<template #prefix>
+					<N8nIcon icon="search" :size="12" />
+				</template>
+			</N8nInput>
+
 			<SessionEventFilter
 				:available="filterOptions"
 				:selected="selectedFilters"
@@ -428,24 +441,26 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
-	/* Keep the timeline's own stacking below the preview dock, which overlays
-	   this column as a sibling. Without it, a z-index inside the chart competes
-	   with the dock and paints over the chat. */
-	isolation: isolate;
+	--n8n-session-panel--container-width: 75ch;
 }
 .subHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--md);
-	background-color: var(--background--surface);
-	border-bottom: var(--border);
+	padding-block: var(--spacing--md);
+	width: 100%;
 	flex-shrink: 0;
+	max-width: var(--n8n-session-panel--container-width, none);
+	margin: 0 auto;
 }
 .search {
 	flex: 1;
 	min-width: 0;
 }
+.searchInput {
+	box-shadow: var(--shadow--xs);
+}
+
 .section {
 	display: flex;
 	flex: 1;

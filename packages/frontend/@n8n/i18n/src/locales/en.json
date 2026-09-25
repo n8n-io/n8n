@@ -1592,7 +1592,7 @@
 	"agentSessions.timeline.events": "Events",
 	"agentSessions.timeline.scrollBackward": "Scroll timeline backward",
 	"agentSessions.timeline.scrollForward": "Scroll timeline forward",
-	"agentSessions.timeline.searchPlaceholder": "Search",
+	"agentSessions.timeline.searchPlaceholder": "Hit / to search the trace",
 	"agentSessions.timeline.emptyState.heading": "New session",
 	"agentSessions.timeline.emptyState.description": "Send a message to start this session's timeline.",
 	"agentSessions.timeline.triggeredVia": "Triggered via {source}",

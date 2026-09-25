@@ -102,8 +102,9 @@ function handleSelect(key: string): void {
 			<N8nTooltip :content="i18n.baseText('agentSessions.timeline.events')" placement="top">
 				<span :class="$style.trigger">
 					<N8nButton
-						variant="outline"
+						variant="subtle"
 						icon="funnel"
+						size="large"
 						icon-only
 						:aria-label="i18n.baseText('agentSessions.timeline.events')"
 						data-test-id="filter-trigger"
