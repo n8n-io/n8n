@@ -53,3 +53,6 @@ export const DEFAULT_SEMANTIC_SEARCH_SETTINGS: ChatHubSemanticSearchSettings = {
 	},
 	vectorStore: { credentialId: null, provider: chatHubVectorStoreProviderSchema.options[0] },
 };
+
+export const RESULT_CARD_COMMAND_OPEN = '<command:card>';
+export const RESULT_CARD_COMMAND_CLOSE = '</command:card>';

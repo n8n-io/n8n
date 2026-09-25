@@ -118,6 +118,69 @@ This is a test.
 			},
 		]);
 	});
+
+	describe('result cards', () => {
+		const card = {
+			type: 'email',
+			title: 'Sent to Anna Kowalski',
+			direction: 'sent',
+			to: ['anna@example.com'],
+			subject: 'Invoice <#1042> approved',
+		};
+		const command = `<command:card>${JSON.stringify(card).replace(/</g, '\\u003c')}</command:card>`;
+
+		it('parses a complete card command after text', () => {
+			const result = parseMessage({ type: 'ai', content: `Sent.\n\n${command}` });
+			expect(result).toEqual([
+				{ type: 'text', content: 'Sent.\n\n' },
+				{ type: 'card', content: command, card, isIncomplete: false },
+			]);
+		});
+
+		it('marks a card command incomplete while streaming and completes it on the next chunk', () => {
+			const [head, tail] = [command.slice(0, 40), command.slice(40)];
+			const first = appendChunkToParsedMessageItems([], head);
+			expect(first).toEqual([{ type: 'card', content: head, card: null, isIncomplete: true }]);
+			const second = appendChunkToParsedMessageItems(first, tail);
+			expect(second).toEqual([{ type: 'card', content: command, card, isIncomplete: false }]);
+		});
+
+		it('hides a partial opening tag at the end of a text chunk', () => {
+			expect(appendChunkToParsedMessageItems([], 'Done <command:ca')).toEqual([
+				{ type: 'text', content: 'Done ' },
+				{ type: 'hidden', content: '<command:ca' },
+			]);
+		});
+
+		it('drops a card command whose JSON does not match the schema', () => {
+			const bad = '<command:card>{"type":"email","title":""}</command:card>';
+			expect(parseMessage({ type: 'ai', content: `Hi ${bad} there` })).toEqual([
+				{ type: 'text', content: 'Hi  there' },
+			]);
+		});
+
+		it('parses a whole-message single card', () => {
+			const content = JSON.stringify(card);
+			expect(parseMessage({ type: 'ai', content })).toEqual([
+				{ type: 'card', content, card, isIncomplete: false },
+			]);
+		});
+
+		it('parses a whole-message cards envelope into text + cards', () => {
+			const content = JSON.stringify({ type: 'cards', text: 'This week', cards: [card, card] });
+			expect(parseMessage({ type: 'ai', content })).toEqual([
+				{ type: 'text', content: 'This week' },
+				{ type: 'card', content: JSON.stringify(card), card, isIncomplete: false },
+				{ type: 'card', content: JSON.stringify(card), card, isIncomplete: false },
+			]);
+		});
+
+		it('never parses cards out of human messages', () => {
+			expect(parseMessage({ type: 'human', content: command })).toEqual([
+				{ type: 'text', content: command },
+			]);
+		});
+	});
 });
 
 describe(appendChunkToParsedMessageItems, () => {

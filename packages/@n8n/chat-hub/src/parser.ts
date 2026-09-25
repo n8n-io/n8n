@@ -1,8 +1,20 @@
 import {
+	chatHubMessageCardsSchema,
 	chatHubMessageWithButtonsSchema,
+	resultCardSchema,
 	type ChatHubMessageType,
 	type ChatMessageContentChunk,
+	type ResultCard,
 } from '@n8n/api-types';
+
+import { RESULT_CARD_COMMAND_CLOSE, RESULT_CARD_COMMAND_OPEN } from './constants';
+
+const COMMAND_TAGS = [
+	{ kind: 'create', open: '<command:artifact-create>' },
+	{ kind: 'edit', open: '<command:artifact-edit>' },
+	{ kind: 'card', open: RESULT_CARD_COMMAND_OPEN },
+] as const;
+type CommandKind = (typeof COMMAND_TAGS)[number]['kind'];
 
 export interface MessageWithContent {
 	type: ChatHubMessageType;
@@ -24,7 +36,9 @@ export function appendChunkToParsedMessageItems(
 			remaining = lastItem.content + chunk;
 			result.pop(); // Remove it so we can re-parse
 		} else if (
-			(lastItem.type === 'artifact-create' || lastItem.type === 'artifact-edit') &&
+			(lastItem.type === 'artifact-create' ||
+				lastItem.type === 'artifact-edit' ||
+				lastItem.type === 'card') &&
 			lastItem.isIncomplete
 		) {
 			// Incomplete command - append chunk and re-parse
@@ -34,84 +48,59 @@ export function appendChunkToParsedMessageItems(
 		}
 	}
 
-	// Check if the chunk is button JSON (arrives as complete JSON in one chunk)
-	const buttonChunk = tryParseButtonsJson(remaining);
-	if (buttonChunk) {
-		result.push(buttonChunk);
+	// Check if the chunk is a whole-message JSON form (buttons or cards; arrives as complete JSON in one chunk)
+	const wholeMessageChunks = tryParseWholeMessageJson(remaining);
+	if (wholeMessageChunks) {
+		result.push(...wholeMessageChunks);
 		return result;
 	}
 
 	// Parse the remaining content
 	let currentPos = 0;
-	const createCommandRegex = /<command:artifact-create>/g;
-	const editCommandRegex = /<command:artifact-edit>/g;
 
 	while (currentPos < remaining.length) {
-		// Find the next command
-		createCommandRegex.lastIndex = currentPos;
-		editCommandRegex.lastIndex = currentPos;
+		const next = findNextCommand(remaining, currentPos);
 
-		const createMatch = createCommandRegex.exec(remaining);
-		const editMatch = editCommandRegex.exec(remaining);
-
-		let nextMatch: RegExpExecArray | null = null;
-		let commandType: 'create' | 'edit' | null = null;
-
-		if (createMatch && editMatch) {
-			// Both found, use the earlier one
-			if (createMatch.index < editMatch.index) {
-				nextMatch = createMatch;
-				commandType = 'create';
-			} else {
-				nextMatch = editMatch;
-				commandType = 'edit';
-			}
-		} else if (createMatch) {
-			nextMatch = createMatch;
-			commandType = 'create';
-		} else if (editMatch) {
-			nextMatch = editMatch;
-			commandType = 'edit';
-		}
-
-		if (!nextMatch || !commandType) {
-			// No more commands, rest is text
+		if (!next) {
 			const textContent = remaining.slice(currentPos);
 			if (textContent) {
-				// Split text and potential command prefix
 				const { text, hiddenPrefix } = splitPotentialCommandPrefix(textContent);
-				if (text) {
-					addTextToResult(result, text);
-				}
-				if (hiddenPrefix) {
-					result.push({ type: 'hidden', content: hiddenPrefix });
-				}
+				if (text) addTextToResult(result, text);
+				if (hiddenPrefix) result.push({ type: 'hidden', content: hiddenPrefix });
 			}
 			break;
 		}
 
-		// Add text before the command
-		if (nextMatch.index > currentPos) {
-			const textContent = remaining.slice(currentPos, nextMatch.index);
-			addTextToResult(result, textContent);
+		if (next.index > currentPos) {
+			addTextToResult(result, remaining.slice(currentPos, next.index));
 		}
 
-		// Parse the command
-		const commandStart = nextMatch.index;
-		const commandContent = remaining.slice(commandStart);
-
-		if (commandType === 'create') {
-			const parsed = parseArtifactCreateCommand(commandContent);
-			result.push(parsed.item);
-			currentPos = commandStart + parsed.consumed;
-		} else {
-			const parsed = parseArtifactEditCommand(commandContent);
-			result.push(parsed.item);
-			currentPos = commandStart + parsed.consumed;
-		}
+		const commandContent = remaining.slice(next.index);
+		const parsed =
+			next.kind === 'create'
+				? parseArtifactCreateCommand(commandContent)
+				: next.kind === 'edit'
+					? parseArtifactEditCommand(commandContent)
+					: parseCardCommand(commandContent);
+		if (parsed.item) result.push(parsed.item);
+		currentPos = next.index + parsed.consumed;
 	}
 
 	return result;
+}
+
+function findNextCommand(
+	content: string,
+	from: number,
+): { index: number; kind: CommandKind } | null {
+	let best: { index: number; kind: CommandKind } | null = null;
+	for (const tag of COMMAND_TAGS) {
+		const index = content.indexOf(tag.open, from);
+		if (index !== -1 && (best === null || index < best.index)) {
+			best = { index, kind: tag.kind };
+		}
+	}
+	return best;
 }
 
 function addTextToResult(result: ChatMessageContentChunk[], textContent: string): void {
@@ -135,7 +124,7 @@ function splitPotentialCommandPrefix(text: string): {
 	text: string;
 	hiddenPrefix: string;
 } {
-	const commandTags = ['<command:artifact-create>', '<command:artifact-edit>'];
+	const commandTags = COMMAND_TAGS.map((tag) => tag.open);
 
 	// Check if the end of text matches any prefix of a command tag
 	for (let len = 1; len <= Math.min(text.length, 30); len++) {
@@ -157,7 +146,7 @@ function splitPotentialCommandPrefix(text: string): {
 }
 
 function parseArtifactCreateCommand(content: string): {
-	item: ChatMessageContentChunk;
+	item: ChatMessageContentChunk | null;
 	consumed: number;
 } {
 	const closingTag = '</command:artifact-create>';
@@ -185,7 +174,7 @@ function parseArtifactCreateCommand(content: string): {
 }
 
 function parseArtifactEditCommand(content: string): {
-	item: ChatMessageContentChunk;
+	item: ChatMessageContentChunk | null;
 	consumed: number;
 } {
 	const closingTag = '</command:artifact-edit>';
@@ -212,6 +201,41 @@ function parseArtifactEditCommand(content: string): {
 		},
 		consumed: commandContent.length,
 	};
+}
+
+function parseCardCommand(content: string): {
+	item: ChatMessageContentChunk | null;
+	consumed: number;
+} {
+	const closingIndex = content.indexOf(RESULT_CARD_COMMAND_CLOSE);
+	const isIncomplete = closingIndex === -1;
+	const commandContent = isIncomplete
+		? content
+		: content.slice(0, closingIndex + RESULT_CARD_COMMAND_CLOSE.length);
+
+	if (isIncomplete) {
+		return {
+			item: { type: 'card', content: commandContent, card: null, isIncomplete: true },
+			consumed: commandContent.length,
+		};
+	}
+
+	const card = parseResultCardJson(
+		commandContent.slice(RESULT_CARD_COMMAND_OPEN.length, closingIndex),
+	);
+	return {
+		item: card ? { type: 'card', content: commandContent, card, isIncomplete: false } : null,
+		consumed: commandContent.length,
+	};
+}
+
+function parseResultCardJson(json: string): ResultCard | null {
+	try {
+		const result = resultCardSchema.safeParse(JSON.parse(json));
+		return result.success ? result.data : null;
+	} catch {
+		return null;
+	}
 }
 
 function extractTagContent(xml: string, tagName: string): string | null {
@@ -247,23 +271,43 @@ function extractTagContent(xml: string, tagName: string): string | null {
 	return xml.slice(contentStart, endIndex);
 }
 
-function tryParseButtonsJson(content: string): ChatMessageContentChunk | null {
+function tryParseWholeMessageJson(content: string): ChatMessageContentChunk[] | null {
 	if (!content.startsWith('{')) return null;
 
+	let parsed: unknown;
 	try {
-		const parsed: unknown = JSON.parse(content);
-		const result = chatHubMessageWithButtonsSchema.safeParse(parsed);
-		if (result.success) {
-			return {
-				type: 'with-buttons',
-				content: result.data.text,
-				buttons: result.data.buttons,
-				blockUserInput: result.data.blockUserInput,
-			};
-		}
+		parsed = JSON.parse(content);
 	} catch {
-		// Not valid JSON
+		return null;
 	}
+
+	const buttons = chatHubMessageWithButtonsSchema.safeParse(parsed);
+	if (buttons.success) {
+		return [
+			{
+				type: 'with-buttons',
+				content: buttons.data.text,
+				buttons: buttons.data.buttons,
+				blockUserInput: buttons.data.blockUserInput,
+			},
+		];
+	}
+
+	const cards = chatHubMessageCardsSchema.safeParse(parsed);
+	if (cards.success) {
+		const chunks: ChatMessageContentChunk[] = [];
+		if (cards.data.text) chunks.push({ type: 'text', content: cards.data.text });
+		for (const card of cards.data.cards) {
+			chunks.push({ type: 'card', content: JSON.stringify(card), card, isIncomplete: false });
+		}
+		return chunks;
+	}
+
+	const card = resultCardSchema.safeParse(parsed);
+	if (card.success) {
+		return [{ type: 'card', content, card: card.data, isIncomplete: false }];
+	}
+
 	return null;
 }
 
