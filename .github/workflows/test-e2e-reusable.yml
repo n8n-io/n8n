@@ -80,7 +80,7 @@ env:
 jobs:
   test:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
-    container: ${{ inputs.use-toolchain-pilot && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v1","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
+    container: ${{ inputs.use-toolchain-pilot && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v2","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read

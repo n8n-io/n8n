@@ -694,12 +694,15 @@ the image then checks its tools, browser, Docker access, `ip`, `zstd`,
 SafeChain and a lockfile-driven root install. Manual dispatch runs the smoke
 job without republishing the image, so it can check a warm pull. Update the
 image tag in the publish workflow and its consumers when a tool pin changes.
+The n8n test-image archive stays in the runner's Docker daemon and the
+SHA-keyed Actions cache. `zstd` lets host and container jobs read the same
+archive format.
 
 The `ci/pilot-toolchain-pr` branch tests the image in the PR Node jobs: build,
-format, unit, lint, typecheck, packaging, declarations, database, workflow
-scripts, dev-server smoke and E2E. Other PRs use their current setup. Docker
-image preparation and small gate jobs keep their host runners. The image jobs
-keep checkout, lockfile installation and build steps. The pilot selects one
+format, unit, lint, typecheck, packaging, declarations, workflow scripts,
+dev-server smoke and E2E. Other PRs use their current setup. Database tests,
+Docker image preparation and small gate jobs keep their host runners. The image
+jobs keep checkout, lockfile installation and build steps. The pilot selects one
 E2E spec because workflow changes have no impact-map specs. E2E uses Chromium
 in the image and checks browser lookup, Turbo cache setup and Docker access
 before tests.

@@ -163,20 +163,6 @@ runs:
           exit 1
         fi
 
-    - name: Resolve pnpm store path in toolchain image
-      if: inputs.preinstalled-toolchain == 'true' && inputs.install-command != ''
-      id: pnpm-image-store
-      shell: bash
-      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-    # setup-node owns the store cache in standard jobs. Keep it in image jobs.
-    - name: Restore pnpm store in toolchain image
-      if: inputs.preinstalled-toolchain == 'true' && inputs.install-command != ''
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ steps.pnpm-image-store.outputs.path }}
-        key: pnpm-image-store-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}-${{ hashFiles(inputs.cache-dependency-path) }}
-
     # To avoid setup-node cache failure.
     # see: https://github.com/actions/setup-node/issues/1137
     - name: Verify PNPM Cache Directory
