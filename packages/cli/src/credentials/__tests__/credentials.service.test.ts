@@ -1597,11 +1597,14 @@ describe('CredentialsService', () => {
 
 			await service.update(credential.id, encrypted);
 
-			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
-				credential: { id: credential.id, type: 'slackApi' },
-				storedCredential: { id: credential.id, type: 'githubApi' },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					credential: { id: credential.id, type: 'slackApi' },
+					storedCredential: { id: credential.id, type: 'githubApi' },
+					projectId: 'project-1',
+				},
+				{ kind: 'system', reason: 'integration' },
+			);
 		});
 
 		it('returns null without checking policy when the credential does not exist', async () => {
@@ -1726,11 +1729,14 @@ describe('CredentialsService', () => {
 
 			await service.updateInstanceCredential(ownerUser, 'instance-credential', payload, ctx);
 
-			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
-				credential: { id: 'instance-credential', type: 'openAiApi' },
-				storedCredential: { id: 'instance-credential', type: 'openAiApi' },
-				projectId: null,
-			});
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					credential: { id: 'instance-credential', type: 'openAiApi' },
+					storedCredential: { id: 'instance-credential', type: 'openAiApi' },
+					projectId: null,
+				},
+				{ kind: 'user', user: ownerUser },
+			);
 		});
 
 		it('writes nothing when policy refuses the update', async () => {
@@ -1874,11 +1880,14 @@ describe('CredentialsService', () => {
 		it('gates the create on a policy clearance for its type, with no project', async () => {
 			await service.createInstanceCredential(dto, ownerUser, {});
 
-			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
-				credential: { id: null, type: 'apiKey' },
-				storedCredential: null,
-				projectId: null,
-			});
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					credential: { id: null, type: 'apiKey' },
+					storedCredential: null,
+					projectId: null,
+				},
+				{ kind: 'user', user: ownerUser },
+			);
 			expect(credentialsRepository.saveInstanceCredential).toHaveBeenCalledWith(
 				expect.objectContaining({ type: 'apiKey', usageScope: 'instance' }),
 				{ policyCleared: cleared },
@@ -3480,11 +3489,14 @@ describe('CredentialsService', () => {
 				ownerUser,
 			);
 
-			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
-				credential: { id: null, type: credentialData.type },
-				storedCredential: null,
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					credential: { id: null, type: credentialData.type },
+					storedCredential: null,
+					projectId: 'project-1',
+				},
+				{ kind: 'user', user: ownerUser },
+			);
 			expect(credentialsRepository.runInTransaction).toHaveBeenCalledWith(
 				{ policyCleared: cleared },
 				expect.any(Function),
@@ -3774,11 +3786,14 @@ describe('CredentialsService', () => {
 				[],
 				{ policyCleared: cleared },
 			);
-			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
-				credential: { id: null, type: 'githubApi' },
-				storedCredential: null,
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					credential: { id: null, type: 'githubApi' },
+					storedCredential: null,
+					projectId: 'project-1',
+				},
+				{ kind: 'user', user: ownerUser },
+			);
 			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(ownerUser, 'project-1', [
 				'credential:create',
 			]);

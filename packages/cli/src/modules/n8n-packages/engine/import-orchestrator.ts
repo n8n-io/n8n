@@ -254,6 +254,7 @@ export class ImportOrchestrator {
 			workflowPlan.items,
 			context.projectId,
 			contentImportTransport(input.importSource),
+			{ kind: 'user', user: context.user },
 		);
 
 		const blockingIssues = this.collectBlockingIssues({

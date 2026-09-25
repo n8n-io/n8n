@@ -443,11 +443,12 @@ export class WorkflowPublicationApplier {
 		newVersion: WorkflowHistory,
 	): Promise<PublicationResult | null> {
 		try {
-			await enforceWorkflowPublishPolicy(this.policyEnforcementService, this.ownershipService, {
-				id: workflow.id,
-				name: workflow.name,
-				nodes: newVersion.nodes,
-			});
+			await enforceWorkflowPublishPolicy(
+				this.policyEnforcementService,
+				this.ownershipService,
+				{ id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
+				{ kind: 'system', reason: 'publication' },
+			);
 
 			return null;
 		} catch (e) {

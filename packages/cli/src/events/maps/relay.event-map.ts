@@ -26,6 +26,10 @@ import type {
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
 import type {
+	AuditedActor,
+	PolicyDecisionAudit,
+} from '@/modules/policy-infrastructure/policy-decision-audit';
+import type {
 	PolicyAction,
 	PolicyAttachment,
 	PolicyRule,
@@ -1399,6 +1403,12 @@ export type RelayEventMap = {
 		before: { attachments: readonly PolicyAttachment[]; version: number };
 		after: { attachments: readonly PolicyAttachment[]; version: number };
 	};
+
+	// #endregion
+
+	// #region Policy enforcement
+
+	'policy-decision-blocked': PolicyDecisionAudit & AuditedActor;
 
 	// #endregion
 } & AiEventMap;

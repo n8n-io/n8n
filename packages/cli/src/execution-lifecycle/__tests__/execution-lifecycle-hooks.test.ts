@@ -17,6 +17,7 @@ import {
 import { createRunExecutionData, ExpressionError, UnexpectedError } from 'n8n-workflow';
 import type {
 	IRunExecutionData,
+	IWorkflowExecutionDataProcess,
 	ITaskData,
 	Workflow,
 	IDataObject,
@@ -534,6 +535,52 @@ describe('Execution Lifecycle Hooks', () => {
 			} finally {
 				Container.set(LifecycleMetadata, original);
 			}
+		});
+
+		describe('the workflowExecuteBefore context', () => {
+			const seen = vi.fn();
+
+			class RecordingHandler {
+				async onWorkflowExecuteBefore(ctx: unknown) {
+					seen(ctx);
+				}
+			}
+
+			const runWith = async (data: Partial<IWorkflowExecutionDataProcess>) => {
+				const recording = new LifecycleMetadata();
+				recording.register({
+					handlerClass: RecordingHandler as unknown as HandlerClass,
+					methodName: 'onWorkflowExecuteBefore',
+					eventName: 'workflowExecuteBefore',
+				});
+				Container.set(RecordingHandler, new RecordingHandler());
+				const original = Container.get(LifecycleMetadata);
+				Container.set(LifecycleMetadata, recording);
+
+				try {
+					const hooks = getLifecycleHooksForRegularMain(
+						{ executionMode: 'manual', workflowData, ...data },
+						executionId,
+					);
+					await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				} finally {
+					Container.set(LifecycleMetadata, original);
+				}
+			};
+
+			beforeEach(() => seen.mockClear());
+
+			it('names the user who started the run', async () => {
+				await runWith({ userId });
+
+				expect(seen).toHaveBeenCalledWith(expect.objectContaining({ userId }));
+			});
+
+			it('carries no user for a run no user started', async () => {
+				await runWith({ executionMode: 'trigger' });
+
+				expect(seen).toHaveBeenCalledWith(expect.objectContaining({ userId: undefined }));
+			});
 		});
 	});
 

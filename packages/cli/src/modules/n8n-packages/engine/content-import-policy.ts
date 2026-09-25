@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { ContentImportTransport } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
@@ -36,6 +37,7 @@ export class ContentImportPolicyGate {
 		items: WorkflowPlanItem[],
 		projectId: string,
 		transport: ContentImportTransport,
+		actor: PolicyActor,
 	): Promise<BlockingIssue[]> {
 		// Skips the whole loop rather than paying a per-workflow guard: a package can hold
 		// hundreds, and having no policy at all is the common case.
@@ -50,15 +52,18 @@ export class ContentImportPolicyGate {
 				// The clearance is discarded: these writes still go through `WorkflowCreationService`
 				// and `WorkflowService`, which mint their own `workflowSave` one. Threading this token
 				// into them instead is its own change.
-				await this.policyEnforcementService.enforceContentImport({
-					workflow: {
-						id: item.action === 'create' ? item.decidedId : item.existing.id,
-						name: item.entity.name,
-						nodes: item.entity.nodes,
+				await this.policyEnforcementService.enforceContentImport(
+					{
+						workflow: {
+							id: item.action === 'create' ? item.decidedId : item.existing.id,
+							name: item.entity.name,
+							nodes: item.entity.nodes,
+						},
+						projectId,
+						transport,
 					},
-					projectId,
-					transport,
-				});
+					actor,
+				);
 			} catch (error) {
 				// Every refusal is collected, so the caller reports the whole package's worth at once.
 				// A check that broke is not scoped to one workflow, so it fails the import outright

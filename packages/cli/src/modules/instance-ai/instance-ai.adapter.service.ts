@@ -1628,11 +1628,14 @@ export class InstanceAiAdapterService {
 
 				// The shell has no nodes, so the real content check is the `update()` below.
 				// This call is still needed: `createContent` refuses to write without a clearance.
-				const cleared = await policyEnforcementService.enforceWorkflowSave({
-					workflow: { id: null, name: newWorkflow.name, nodes: newWorkflow.nodes },
-					storedWorkflow: null,
-					projectId,
-				});
+				const cleared = await policyEnforcementService.enforceWorkflowSave(
+					{
+						workflow: { id: null, name: newWorkflow.name, nodes: newWorkflow.nodes },
+						storedWorkflow: null,
+						projectId,
+					},
+					{ kind: 'user', user },
+				);
 
 				const saved = await workflowRepository.runInTransaction(
 					{ policyCleared: cleared },

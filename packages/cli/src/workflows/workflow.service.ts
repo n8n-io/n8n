@@ -607,15 +607,18 @@ export class WorkflowService {
 		// Gate the save on policy before persisting, so the author learns about a violation
 		// while editing rather than at runtime. Carries the stored workflow alongside the
 		// submitted one so a check can restrict its verdict to what this save adds.
-		const cleared = await this.policyEnforcementService.enforceWorkflowSave({
-			workflow: {
-				id: workflow.id,
-				name: workflowUpdateData.name ?? workflow.name,
-				nodes: workflowUpdateData.nodes ?? workflow.nodes,
+		const cleared = await this.policyEnforcementService.enforceWorkflowSave(
+			{
+				workflow: {
+					id: workflow.id,
+					name: workflowUpdateData.name ?? workflow.name,
+					nodes: workflowUpdateData.nodes ?? workflow.nodes,
+				},
+				storedWorkflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+				projectId: ownerProject.id,
 			},
-			storedWorkflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
-			projectId: ownerProject.id,
-		});
+			{ kind: 'user', user },
+		);
 
 		const fieldsToUpdate = [
 			'name',
@@ -1025,11 +1028,12 @@ export class WorkflowService {
 
 		// Polices what gets registered — the version row, not the hook's candidate.
 		// Enforced on a same-version republish too.
-		await enforceWorkflowPublishPolicy(this.policyEnforcementService, this.ownershipService, {
-			id: workflowId,
-			name: workflow.name,
-			nodes: nodesToPublish,
-		});
+		await enforceWorkflowPublishPolicy(
+			this.policyEnforcementService,
+			this.ownershipService,
+			{ id: workflowId, name: workflow.name, nodes: nodesToPublish },
+			{ kind: 'user', user },
+		);
 
 		// re-applying the already-published version (e.g. a settings-only update)
 		// publishes no new version, so the review gate must not block it.

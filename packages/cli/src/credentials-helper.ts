@@ -578,12 +578,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
 
 		// Validate against the executing project's policy before any decryption happens.
-		await this.policyEnforcementService.enforceCredentialDecrypt({
-			credentialType: type,
-			credentialId: credentialsEntity.id,
-			consumer: consumerNode ? { nodeType: consumerNode.type } : null,
-			projectId: additionalData.projectId ?? null,
-		});
+		await this.policyEnforcementService.enforceCredentialDecrypt(
+			{
+				credentialType: type,
+				credentialId: credentialsEntity.id,
+				consumer: consumerNode ? { nodeType: consumerNode.type } : null,
+				projectId: additionalData.projectId ?? null,
+			},
+			additionalData.userId
+				? { kind: 'user', user: { id: additionalData.userId } }
+				: { kind: 'system', reason: 'execution' },
+		);
 
 		const credentials = new Credentials(
 			{ id: credentialsEntity.id, name: credentialsEntity.name },

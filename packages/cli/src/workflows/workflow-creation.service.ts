@@ -291,11 +291,14 @@ export class WorkflowCreationService {
 		// while editing rather than at runtime. No stored workflow: this one is new.
 		// The clearance binds to the node hash while the row has no id, so nothing below
 		// may touch `newWorkflow.nodes` — the sealed write would reject it.
-		const cleared = await this.policyEnforcementService.enforceWorkflowSave({
-			workflow: { id: newWorkflow.id ?? null, name: newWorkflow.name, nodes: newWorkflow.nodes },
-			storedWorkflow: null,
-			projectId: effectiveProjectId,
-		});
+		const cleared = await this.policyEnforcementService.enforceWorkflowSave(
+			{
+				workflow: { id: newWorkflow.id ?? null, name: newWorkflow.name, nodes: newWorkflow.nodes },
+				storedWorkflow: null,
+				projectId: effectiveProjectId,
+			},
+			{ kind: 'user', user },
+		);
 
 		const floor = batchContext?.redactionFloor ?? (await this.readActiveRedactionFloor());
 

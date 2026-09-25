@@ -601,11 +601,12 @@ export class ActiveWorkflowManager {
 
 			// Trigger and poller nodes run code at registration, so this gates startup
 			// and leadership change too, not just the activate button.
-			await enforceWorkflowPublishPolicy(this.policyEnforcementService, this.ownershipService, {
-				id: dbWorkflow.id,
-				name: dbWorkflow.name,
-				nodes,
-			});
+			await enforceWorkflowPublishPolicy(
+				this.policyEnforcementService,
+				this.ownershipService,
+				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
+				{ kind: 'system', reason: 'activation' },
+			);
 
 			workflow = new Workflow({
 				id: dbWorkflow.id,

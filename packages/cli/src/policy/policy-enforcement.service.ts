@@ -21,7 +21,11 @@ import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { PolicyContext, PolicyEnforcementBackend } from './policy-enforcement-backend';
+import type {
+	PolicyActor,
+	PolicyContext,
+	PolicyEnforcementBackend,
+} from './policy-enforcement-backend';
 import { hasViolations, PolicyViolationError } from './policy-violation.error';
 
 /** Fresh each time — `violations` is mutable. */
@@ -57,14 +61,17 @@ export class PolicyEnforcementService {
 		return this.implementation?.hasChecksFor(point) ?? false;
 	}
 
-	async enforceWorkflowSave(context: WorkflowSaveContext): Promise<PolicyCleared<'workflowSave'>> {
+	async enforceWorkflowSave(
+		context: WorkflowSaveContext,
+		actor: PolicyActor,
+	): Promise<PolicyCleared<'workflowSave'>> {
 		// A create has no committed id to bind to, so it binds to its content — even when a client
 		// supplied an id, which is no proof of what was checked. An update binds to the row id.
 		const subject =
 			context.storedWorkflow === null
 				? workflowContentSubject(context.workflow)
 				: workflowSubject(context.workflow);
-		return await this.enforce('workflowSave', context, subject);
+		return await this.enforce('workflowSave', context, actor, subject);
 	}
 
 	async evaluateWorkflowSave(context: WorkflowSaveContext): Promise<PolicyDecision> {
@@ -73,8 +80,9 @@ export class PolicyEnforcementService {
 
 	async enforceWorkflowPublish(
 		context: WorkflowPublishContext,
+		actor: PolicyActor,
 	): Promise<PolicyCleared<'workflowPublish'>> {
-		return await this.enforce('workflowPublish', context, workflowSubject(context.workflow));
+		return await this.enforce('workflowPublish', context, actor, workflowSubject(context.workflow));
 	}
 
 	async evaluateWorkflowPublish(context: WorkflowPublishContext): Promise<PolicyDecision> {
@@ -83,8 +91,9 @@ export class PolicyEnforcementService {
 
 	async enforceWorkflowStart(
 		context: WorkflowStartContext,
+		actor: PolicyActor,
 	): Promise<PolicyCleared<'workflowStart'>> {
-		return await this.enforce('workflowStart', context, workflowSubject(context.workflow));
+		return await this.enforce('workflowStart', context, actor, workflowSubject(context.workflow));
 	}
 
 	async evaluateWorkflowStart(context: WorkflowStartContext): Promise<PolicyDecision> {
@@ -93,8 +102,14 @@ export class PolicyEnforcementService {
 
 	async enforceWorkflowTransfer(
 		context: WorkflowTransferContext,
+		actor: PolicyActor,
 	): Promise<PolicyCleared<'workflowTransfer'>> {
-		return await this.enforce('workflowTransfer', context, workflowSubject(context.workflow));
+		return await this.enforce(
+			'workflowTransfer',
+			context,
+			actor,
+			workflowSubject(context.workflow),
+		);
 	}
 
 	async evaluateWorkflowTransfer(context: WorkflowTransferContext): Promise<PolicyDecision> {
@@ -103,13 +118,14 @@ export class PolicyEnforcementService {
 
 	async enforceCredentialSave(
 		context: CredentialSaveContext,
+		actor: PolicyActor,
 	): Promise<PolicyCleared<'credentialSave'>> {
 		// Same rule as a workflow save: a create binds to its content, an update to the row id.
 		const subject =
 			context.storedCredential === null
 				? credentialContentSubject(context.credential)
 				: credentialSubject(context.credential);
-		return await this.enforce('credentialSave', context, subject);
+		return await this.enforce('credentialSave', context, actor, subject);
 	}
 
 	async evaluateCredentialSave(context: CredentialSaveContext): Promise<PolicyDecision> {
@@ -118,8 +134,9 @@ export class PolicyEnforcementService {
 
 	async enforceCredentialDecrypt(
 		context: CredentialDecryptContext,
+		actor: PolicyActor,
 	): Promise<PolicyCleared<'credentialDecrypt'>> {
-		return await this.enforce('credentialDecrypt', context, {
+		return await this.enforce('credentialDecrypt', context, actor, {
 			type: 'credential',
 			id: context.credentialId,
 		});
@@ -131,8 +148,9 @@ export class PolicyEnforcementService {
 
 	async enforceContentImport(
 		context: ContentImportContext,
+		actor: PolicyActor,
 	): Promise<PolicyCleared<'contentImport'>> {
-		return await this.enforce('contentImport', context, workflowSubject(context.workflow));
+		return await this.enforce('contentImport', context, actor, workflowSubject(context.workflow));
 	}
 
 	async evaluateContentImport(context: ContentImportContext): Promise<PolicyDecision> {
@@ -142,10 +160,11 @@ export class PolicyEnforcementService {
 	private async enforce<Point extends EnforcementPoint>(
 		point: Point,
 		context: PolicyContext<Point>,
+		actor: PolicyActor,
 		subject: PolicySubject,
 	): Promise<PolicyCleared<Point>> {
 		const decision = this.implementation
-			? await this.implementation.enforce(point, context)
+			? await this.implementation.enforce(point, context, actor)
 			: emptyDecision();
 
 		if (hasViolations(decision.violations)) {

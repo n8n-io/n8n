@@ -8,6 +8,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
+import type { PolicyDecisionAudit } from '@/modules/policy-infrastructure/policy-decision-audit';
 import type {
 	PolicyAttachment,
 	PolicyRule,
@@ -60,6 +61,18 @@ function attachmentsContentToJson(content: {
 		})) satisfies JsonValue,
 		version: content.version,
 	};
+}
+
+/** Every key on every violation, `null` when absent, so a SIEM can map fixed fields. */
+function violationsToJson(violations: PolicyDecisionAudit['violations']): JsonValue {
+	return violations.map(({ checkId, kind, subject, subjectType, scope, matchedRuleId }) => ({
+		checkId,
+		kind,
+		subject: subject ?? null,
+		subjectType: subjectType ?? null,
+		scope: scope ?? null,
+		matchedRuleId: matchedRuleId ?? null,
+	}));
 }
 
 @Service()
@@ -124,6 +137,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'node-type-policy-document-deleted': (event) => this.nodeTypePolicyDocumentDeleted(event),
 			'node-type-policy-attachments-updated': (event) =>
 				this.nodeTypePolicyAttachmentsUpdated(event),
+			'policy-decision-blocked': (event) => this.policyDecisionBlocked(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -903,6 +917,28 @@ export class LogStreamingEventRelay extends EventRelay {
 				scopeId: event.scopeId,
 				before: attachmentsContentToJson(event.before),
 				after: attachmentsContentToJson(event.after),
+			},
+		});
+	}
+
+	// #endregion
+
+	// #region Policy enforcement
+
+	@Redactable()
+	private policyDecisionBlocked({
+		user,
+		violations,
+		policyVersions,
+		...rest
+	}: RelayEventMap['policy-decision-blocked']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.policy.decision.blocked',
+			payload: {
+				...(user ?? { userId: null }),
+				...rest,
+				violations: violationsToJson(violations),
+				policyVersions: policyVersions?.map((version) => ({ ...version })) ?? [],
 			},
 		});
 	}

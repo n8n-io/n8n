@@ -83,6 +83,7 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-original', name: 'Daily digest', nodes: [makeNode()], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		expect(workflowRepo.createContent).toHaveBeenCalledTimes(1);
@@ -104,14 +105,18 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'Daily digest', nodes: [makeNode()], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		const saved = workflowRepo.create.mock.calls[0][0];
-		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-			workflow: { id: null, name: 'Daily digest', nodes: saved.nodes },
-			storedWorkflow: null,
-			projectId: 'project-1',
-		});
+		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+			{
+				workflow: { id: null, name: 'Daily digest', nodes: saved.nodes },
+				storedWorkflow: null,
+				projectId: 'project-1',
+			},
+			{ kind: 'user', user: evalUser },
+		);
 		expect(workflowRepo.runInTransaction).toHaveBeenCalledExactlyOnceWith(
 			{ policyCleared: cleared },
 			expect.any(Function),
@@ -131,6 +136,7 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		expect(credentialsRepo.findByNameAndTypeInProject).toHaveBeenCalledExactlyOnceWith(
@@ -160,6 +166,7 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		const saved = workflowRepo.create.mock.calls[0][0];
@@ -178,6 +185,7 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
 			'project-1',
+			evalUser,
 			new Map(),
 			new Set(['cred-this-thread']),
 		);
@@ -198,6 +206,7 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		expect(workflowRepo.create.mock.calls[0][0].nodes?.[0]).not.toHaveProperty('credentials');
@@ -210,6 +219,7 @@ describe('EvalThreadRestoreService', () => {
 			service.restoreWorkflows(
 				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
 				'project-1',
+				evalUser,
 			),
 		).rejects.toThrow(
 			'Seed workflow wf-live is published, but its slackApi credential "Slak" matched 0 project credentials (need exactly 1)',
@@ -228,6 +238,7 @@ describe('EvalThreadRestoreService', () => {
 			service.restoreWorkflows(
 				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
 				'project-1',
+				evalUser,
 			),
 		).rejects.toThrow(
 			'Seed workflow wf-live is published, but its slackApi credential "Slack" matched 2 project credentials (need exactly 1)',
@@ -243,6 +254,7 @@ describe('EvalThreadRestoreService', () => {
 			service.restoreWorkflows(
 				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
 				'project-1',
+				evalUser,
 			),
 		).rejects.toThrow(
 			'Seed workflow wf-live is published, but its slackApi credential reference has no name',
@@ -339,16 +351,20 @@ describe('EvalThreadRestoreService', () => {
 		const created = await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		expect(workflowRepo.findByIds).toHaveBeenCalledWith(['wf-1'], {
 			fields: ['id', 'name', 'nodes'],
 		});
-		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-			workflow: { id: 'wf-1', name: 'wf', nodes: expect.any(Array) },
-			storedWorkflow: { id: 'wf-1', name: 'Old name', nodes: storedNodes },
-			projectId: 'project-1',
-		});
+		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+			{
+				workflow: { id: 'wf-1', name: 'wf', nodes: expect.any(Array) },
+				storedWorkflow: { id: 'wf-1', name: 'Old name', nodes: storedNodes },
+				projectId: 'project-1',
+			},
+			{ kind: 'user', user: evalUser },
+		);
 		expect(workflowRepo.updateContent).toHaveBeenCalledExactlyOnceWith(
 			'wf-1',
 			expect.objectContaining({ name: 'wf', active: false, versionId: expect.any(String) }),
@@ -368,6 +384,7 @@ describe('EvalThreadRestoreService', () => {
 			service.restoreWorkflows(
 				[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
 				'project-1',
+				evalUser,
 			),
 		).rejects.toThrow(BadRequestError);
 		expect(policyEnforcementService.enforceWorkflowSave).not.toHaveBeenCalled();
@@ -379,6 +396,7 @@ describe('EvalThreadRestoreService', () => {
 			service.restoreWorkflows(
 				[{ id: 'wf-1', name: 'wf', nodes: [{ name: 'no type' }], connections: {} }],
 				'project-1',
+				evalUser,
 			),
 		).rejects.toThrow(BadRequestError);
 		expect(policyEnforcementService.enforceWorkflowSave).not.toHaveBeenCalled();
@@ -405,6 +423,7 @@ describe('EvalThreadRestoreService', () => {
 					{ id: 'wf-blocked', name: 'Blocked', nodes: [makeNode()], connections: {} },
 				],
 				'project-1',
+				evalUser,
 			);
 
 			await expect(restore).rejects.toThrow(PolicyViolationError);
@@ -427,6 +446,7 @@ describe('EvalThreadRestoreService', () => {
 				service.restoreWorkflows(
 					[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
 					'project-1',
+					evalUser,
 				),
 			).rejects.toBe(failure);
 			expect(workflowRepo.createContent).not.toHaveBeenCalled();
@@ -574,6 +594,7 @@ describe('EvalThreadRestoreService', () => {
 			await service.restoreWorkflows(
 				[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
 				'project-1',
+				evalUser,
 				new Map([['dt-old', 'dt-new']]),
 			);
 
@@ -847,6 +868,7 @@ describe('EvalThreadRestoreService', () => {
 					{ id: 'wf-1', name: 'Rooted', nodes: [makeNode()], connections: {} },
 				],
 				'project-1',
+				evalUser,
 				new Map(),
 				undefined,
 				new Map([['odwFolder0001', 'real-odw']]),
@@ -981,6 +1003,7 @@ describe('EvalThreadRestoreService', () => {
 					},
 				],
 				'project-1',
+				evalUser,
 				new Map(),
 				undefined,
 				new Map([['odwFolder0001', 'real-odw']]),
@@ -994,6 +1017,7 @@ describe('EvalThreadRestoreService', () => {
 			await service.restoreWorkflows(
 				[{ id: 'wf-1', name: 'Root', nodes: [makeNode()], connections: {} }],
 				'project-1',
+				evalUser,
 				new Map(),
 				undefined,
 				new Map([['odwFolder0001', 'real-odw']]),
@@ -1016,6 +1040,7 @@ describe('EvalThreadRestoreService', () => {
 						},
 					],
 					'project-1',
+					evalUser,
 				),
 			).rejects.toThrow(BadRequestError);
 

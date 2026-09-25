@@ -8,7 +8,12 @@ import type {
 	PolicyVersionRef,
 } from '@n8n/decorators';
 
-import type { PolicyContext } from '@/policy/policy-enforcement-backend';
+import type { UserLike } from '@/events/maps/relay.event-map';
+import type {
+	PolicyActor,
+	PolicyContext,
+	PolicySystemReason,
+} from '@/policy/policy-enforcement-backend';
 
 /** Every context, as one union — a generic `PolicyContext<Point>` narrows against none. */
 type AnyPolicyContext = PolicyContext<EnforcementPoint>;
@@ -139,4 +144,18 @@ export function decisionAudit({
 		}),
 		...targetOf(context),
 	};
+}
+
+/**
+ * The actor as the log streaming event records it. `user` is always the accountable human, or
+ * `null` when there is none, and stays a field of its own so the relay can redact it.
+ */
+export type AuditedActor =
+	| { actorType: 'user'; user: UserLike }
+	| { actorType: 'system'; user: null; systemReason: PolicySystemReason };
+
+export function auditedActor(actor: PolicyActor): AuditedActor {
+	return actor.kind === 'user'
+		? { actorType: 'user', user: actor.user }
+		: { actorType: 'system', user: null, systemReason: actor.reason };
 }

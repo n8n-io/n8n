@@ -305,6 +305,7 @@ export class CredentialsPublicController {
 			credentialId,
 			updatePayload,
 			decryptedDataForDeps,
+			{ user: req.user },
 		);
 
 		if (!updatedCredential) {

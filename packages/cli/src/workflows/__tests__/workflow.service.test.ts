@@ -1824,6 +1824,7 @@ describe('WorkflowService', () => {
 						},
 						projectId: 'project-1',
 					},
+					expect.anything(),
 				);
 			});
 
@@ -1849,6 +1850,7 @@ describe('WorkflowService', () => {
 					expect.objectContaining({
 						workflow: expect.objectContaining({ nodes: originalNodes }),
 					}),
+					expect.anything(),
 				);
 			});
 
@@ -1873,6 +1875,7 @@ describe('WorkflowService', () => {
 					expect.objectContaining({
 						workflow: expect.objectContaining({ nodes: versionToActivate.nodes }),
 					}),
+					expect.anything(),
 				);
 			});
 
@@ -2664,11 +2667,14 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 			);
 
-			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: WORKFLOW_ID, name: 'New name', nodes: submittedNodes },
-				storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: WORKFLOW_ID, name: 'New name', nodes: submittedNodes },
+					storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
+					projectId: 'project-1',
+				},
+				{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+			);
 		});
 
 		// A partial update (e.g. renaming only) omits `nodes` entirely. The check still needs
@@ -2680,11 +2686,14 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 			);
 
-			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
-				storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
+					storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
+					projectId: 'project-1',
+				},
+				{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+			);
 		});
 
 		it('updates the workflow unchanged when the check clears', async () => {
