@@ -1,0 +1,91 @@
+{
+	"name": "CustomerIo Customer Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "a1b2c3d4-0001-0001-0001-000000000001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "upsert",
+				"id": "1",
+				"jsonParameters": false,
+				"additionalFields": {
+					"email": "test@example.com"
+				}
+			},
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "a1b2c3d4-0001-0001-0001-000000000002",
+			"name": "CustomerIo - Customer - Upsert",
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "CustomerIo account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "delete",
+				"id": "1"
+			},
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "a1b2c3d4-0001-0001-0001-000000000003",
+			"name": "CustomerIo - Customer - Delete",
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "CustomerIo account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "findEmail",
+				"email": "test@example.com"
+			},
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "a1b2c3d4-0001-0001-0001-000000000004",
+			"name": "CustomerIo - Customer - FindEmail",
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "CustomerIo account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"CustomerIo - Customer - Upsert": [{ "json": { "id": "1", "email": "test@example.com" } }],
+		"CustomerIo - Customer - Delete": [{ "json": { "success": true } }],
+		"CustomerIo - Customer - FindEmail": [{ "json": { "id": "1", "email": "test@example.com" } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "CustomerIo - Customer - Upsert", "type": "main", "index": 0 },
+					{ "node": "CustomerIo - Customer - Delete", "type": "main", "index": 0 },
+					{ "node": "CustomerIo - Customer - FindEmail", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
