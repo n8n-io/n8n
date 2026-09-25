@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_2ed659fa6b1ae7::t_c37b59cefcb687 143,1101-1103,1106
+  s_2ed659fa6b1ae7::t_99e55962da8b71 1099-1100,1104-1105
+packages/@n8n/instance-ai/src/tools/shared/leave-onboarding.tool.ts
+  s_2ed659fa6b1ae7::t_f99c8e4674520a 17-20
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_2ed659fa6b1ae7::t_170b4c6e6e5cbf 8-11
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_cc7cd4c254df16::t_61609e64048c9f 419-432
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7b29f12245113e32bfac3fb7a78bfab159de3001",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_cc7cd4c254df16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1b6d36b-b221-4da7-9c07-0855816b2e25",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
