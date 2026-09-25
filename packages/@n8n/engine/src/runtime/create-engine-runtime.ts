@@ -2,6 +2,7 @@ import type { DataSource } from '@n8n/typeorm';
 import type { Application } from 'express';
 
 import type { AdmittanceService } from '../admittance';
+import { MIN_SECRET_LENGTH, type ResumeSecrets } from '../auth';
 import type { IdentityVerifier } from '../auth/identity.types';
 import { createStores } from '../database';
 import type { EngineStores } from '../database';
@@ -11,6 +12,7 @@ import {
 	ExecutionQueryService,
 	ExecutionStartHandler,
 	OrchestrationWorker,
+	ResumeRequestService,
 	StartExecutionService,
 	StepReadyHandler,
 	StepSettledHandler,
@@ -24,6 +26,7 @@ import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
 import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
+import { UnexpectedError } from '../common';
 
 export interface EngineRuntimeOptions {
 	/** The data plane database, already initialized and migrated. */
@@ -48,6 +51,11 @@ export interface EngineRuntimeOptions {
 	 * package, so only an integrated host can supply it.
 	 */
 	externalDependencies?: (stores: EngineStores) => ExternalDependencies;
+	/**
+	 * Sign and verify the tokens that resume URLs carry. Absent, the engine
+	 * accepts no resume request and both resume routes answer 501.
+	 */
+	resumeSecrets?: ResumeSecrets;
 	/** How often to fire waits whose deadline has passed. Defaults to a minute. */
 	waitSweepIntervalMs?: number;
 }
@@ -77,8 +85,20 @@ export function createEngineRuntime({
 	logger = createConsoleLogger(),
 	responseSender,
 	externalDependencies,
+	resumeSecrets,
 	waitSweepIntervalMs,
 }: EngineRuntimeOptions): EngineRuntime {
+	// Refused here and not at the first request: a weak secret would otherwise
+	// fail every resume without a word.
+	const allResumeSecrets = resumeSecrets
+		? [resumeSecrets.signing, ...(resumeSecrets.accepted ?? [])]
+		: [];
+	if (allResumeSecrets.some((secret) => secret.length < MIN_SECRET_LENGTH)) {
+		throw new UnexpectedError(
+			`Every resume secret must be at least ${MIN_SECRET_LENGTH} characters long`,
+		);
+	}
+
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger);
 	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger);
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
@@ -130,6 +150,10 @@ export function createEngineRuntime({
 			responseSender,
 		),
 		executionQuery: new ExecutionQueryService(executionViewStore),
+		resumeRequests:
+			resumeSecrets === undefined
+				? undefined
+				: new ResumeRequestService(executionStore, stepStore, stepQueue, resumeSecrets, logger),
 		identityVerifier,
 		logger,
 	});
