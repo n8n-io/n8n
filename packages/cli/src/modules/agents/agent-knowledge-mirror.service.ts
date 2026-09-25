@@ -4,7 +4,7 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { runSerially } from '@n8n/utils/run-serially';
 import escapeRegExp from 'lodash/escapeRegExp';
-import { OperationalError, safeRegex } from 'n8n-workflow';
+import { OperationalError, safeInternalRegex } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -575,7 +575,7 @@ function matchKnowledgeFilesByGlob(
 			throw new Error('Regular expression execution timed out');
 		}
 
-		const matches = safeRegex.test(source, fileName, flags);
+		const matches = safeInternalRegex.test(source, fileName, flags);
 		if (performance.now() >= deadline) {
 			throw new Error('Regular expression execution timed out');
 		}

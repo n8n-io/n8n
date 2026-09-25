@@ -8,7 +8,7 @@ import type {
 	IPairedItemData,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeOperationError, safeRegex, UserError } from 'n8n-workflow';
+import { NodeOperationError, safeInternalRegex, UserError } from 'n8n-workflow';
 import oracledb from 'oracledb';
 
 import { routeBinaryProperties } from '@utils/binary';
@@ -963,7 +963,12 @@ function generateBindVariablesList(
 	}
 
 	generatedSqlString = generatedSqlString.slice(0, -1) + ')'; //replace trailing comma with closing parenthesis.
-	return safeRegex.replace(`:${escapedName}(?![A-Za-z0-9_$#])`, query, 'g', generatedSqlString);
+	return safeInternalRegex.replace(
+		`:${escapedName}(?![A-Za-z0-9_$#])`,
+		query,
+		'g',
+		generatedSqlString,
+	);
 }
 
 function isSerializedBuffer(val: unknown): val is { type: 'Buffer'; data: number[] } {

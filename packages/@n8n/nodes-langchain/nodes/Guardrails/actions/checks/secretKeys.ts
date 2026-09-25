@@ -6,7 +6,7 @@
  * recognition, and a guardrail check_fn for runtime enforcement.
  */
 
-import { safeRegex } from 'n8n-workflow';
+import { safeInternalRegex } from 'n8n-workflow';
 
 import type { CreateCheckFn, GuardrailResult } from '../types';
 
@@ -187,7 +187,7 @@ function isSecretCandidate(
 	if (customRegex) {
 		for (const pattern of customRegex) {
 			try {
-				if (safeRegex.test(pattern, s)) {
+				if (safeInternalRegex.test(pattern, s)) {
 					return true;
 				}
 			} catch {

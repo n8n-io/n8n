@@ -8,7 +8,7 @@ import {
 	WorkflowOperationError,
 	executeFilter,
 	isFilterValue,
-	safeRegex,
+	safeInternalRegex,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
@@ -44,7 +44,7 @@ function executeRegexExtractValue(
 	parameterName: string,
 	parameterDisplayName: string,
 ): NodeParameterValueType | object {
-	const extracted = safeRegex.exec(regex, value, flags);
+	const extracted = safeInternalRegex.exec(regex, value, flags);
 	if (!extracted) {
 		throw new WorkflowOperationError(
 			`ERROR: ${parameterDisplayName} parameter's value is invalid. This is likely because the URL entered is incorrect`,
