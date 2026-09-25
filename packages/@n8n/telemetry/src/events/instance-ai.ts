@@ -477,4 +477,37 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			total: z.number().int().describe('Rows matching every filter, ignoring limit'),
 		}),
 	},
+	USER_STARTED_AI_ASSISTANT_ONBOARDING: {
+		name: 'User started AI Assistant onboarding',
+		description:
+			'An onboarding thread was created: the user arrived from the n8n Cloud signup survey (/assistant?source=onboarding) or opened the onboarding by hand. Fires once per thread, from the backend, when the seeded greeting and question card are stored.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			team: z
+				.string()
+				.nullable()
+				.describe(
+					'The signup survey answer to "What team are you on?". Null when the survey did not answer it, so the card asks',
+				),
+		}),
+	},
+	USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD: {
+		name: 'User answered AI Assistant onboarding card',
+		description:
+			'The user settled the question card an onboarding thread opens with. Fires once per thread, from the backend, when the answers are stored. Carries the picked apps and the free text as typed.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			team: z
+				.string()
+				.nullable()
+				.describe('From the signup survey or the card. Null when the card step was skipped'),
+			apps: z.array(z.string()).describe('Apps picked in the card, by their shown names'),
+			custom_text: z
+				.string()
+				.nullable()
+				.describe('Free text typed in the card, which starts the first model turn'),
+		}),
+	},
 });

@@ -11,12 +11,14 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	orchestratorAgentId,
 } from '@n8n/instance-ai';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { Telemetry } from '@/telemetry';
 
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
@@ -140,6 +142,7 @@ export class InstanceAiOnboardingService {
 		private readonly eventBus: InProcessEventBus,
 		private readonly eventLog: DurableEventLog,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	async ensureThread(
@@ -149,10 +152,8 @@ export class InstanceAiOnboardingService {
 		launchMetadata: InstanceAiThreadLaunchMetadata,
 	): Promise<InstanceAiEnsureThreadResponse> {
 		// Read the survey before the thread exists, so a bad survey creates nothing.
-		const { shown } = applySurvey(
-			ONBOARDING_OPENING.questions,
-			surveyOf(launchMetadata.sourceContext),
-		);
+		const survey = surveyOf(launchMetadata.sourceContext);
+		const { shown } = applySurvey(ONBOARDING_OPENING.questions, survey);
 		const response = await this.memoryService.ensureThread(
 			user.id,
 			threadId,
@@ -178,6 +179,11 @@ export class InstanceAiOnboardingService {
 			messageId: userMessageId,
 			text: greeting,
 			card: { title: ONBOARDING_OPENING.title, questions: shown },
+		});
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STARTED_AI_ASSISTANT_ONBOARDING, {
+			user_id: user.id,
+			thread_id: threadId,
+			team: survey.what_team_are_you_on?.trim() || null,
 		});
 		return response;
 	}
@@ -227,6 +233,23 @@ export class InstanceAiOnboardingService {
 		// Committed before the follow-up writes its rows, so the fold keeps the card under the
 		// greeting.
 		await this.eventLog.flush(row.threadId);
+		// A survey answer counts as a pick, so the funnel reads the same from both entry points.
+		const picked = (id: string) => {
+			const fromSurvey = answered.get(id);
+			if (fromSurvey) return [fromSurvey];
+			return given.find((answer) => answer.questionId === id)?.selectedOptions ?? [];
+		};
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD, {
+			user_id: userId,
+			thread_id: row.threadId,
+			team: picked('team')[0] ?? null,
+			apps: picked('apps'),
+			custom_text:
+				given
+					.map((answer) => answer.customText?.trim())
+					.filter(Boolean)
+					.join('\n') || null,
+		});
 		// The card showed only what the survey left open; the agent gets every line, in opening order.
 		const lines = questions.map((question) => {
 			const fromSurvey = answered.get(question.id);
