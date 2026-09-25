@@ -12,6 +12,11 @@ import { HOVER_DELAY } from '@/app/constants/durations';
 const mockCopy = vi.fn();
 const mockShowMessage = vi.fn();
 const mockSearchWorkflows = vi.hoisted(() => vi.fn());
+const mockFetchDataTablesApi = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/core/dataTable/dataTable.api', () => ({
+	fetchDataTablesApi: mockFetchDataTablesApi,
+}));
 
 vi.mock('@/app/stores/workflowsList.store', () => ({
 	useWorkflowsListStore: () => ({ searchWorkflows: mockSearchWorkflows }),
@@ -111,6 +116,8 @@ describe('InstanceAiPreviewTabBar', () => {
 		mockCopy.mockResolvedValue(undefined);
 		mockSearchWorkflows.mockReset();
 		mockSearchWorkflows.mockResolvedValue([]);
+		mockFetchDataTablesApi.mockReset();
+		mockFetchDataTablesApi.mockResolvedValue({ count: 0, data: [] });
 		vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
 
@@ -390,18 +397,45 @@ describe('InstanceAiPreviewTabBar', () => {
 			).toBeNull();
 		});
 
-		it('shows only the name for a data table tab', async () => {
+		it('shows the edited time and column count of a data table', async () => {
+			mockFetchDataTablesApi.mockResolvedValue({
+				count: 1,
+				data: [
+					{
+						id: 'dt-1',
+						name: 'My Table',
+						updatedAt: new Date().toISOString(),
+						columns: [{ id: 'col-1' }, { id: 'col-2' }],
+					},
+				],
+			});
 			const { container } = renderComponent({
 				props: { tabs: [dataTableTab], activeTabId: 'dt-1' },
 			});
 
 			await hoverTab(container, 'dt-1');
 
-			expect(getHoverCard()).toHaveTextContent('My Table');
+			expect(getHoverCard()).toHaveTextContent('Edited');
+			expect(
+				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
+			).toHaveTextContent('3 columns');
+			expect(mockSearchWorkflows).not.toHaveBeenCalled();
+		});
+
+		it('shows only the name for an agent tab', async () => {
+			const { container } = renderComponent({
+				props: { tabs: [agentTab], activeTabId: 'agent-1' },
+			});
+
+			await hoverTab(container, 'agent-1');
+
+			expect(getHoverCard()).toHaveTextContent('SEO Auditor');
 			expect(
 				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-placeholder"]'),
 			).toBeNull();
-			expect(mockSearchWorkflows).not.toHaveBeenCalled();
+			expect(
+				document.body.querySelector('[data-test-id="instance-ai-tab-hover-card-status"]'),
+			).toBeNull();
 		});
 
 		it('moves an open card to the next hovered tab without the delay', async () => {
