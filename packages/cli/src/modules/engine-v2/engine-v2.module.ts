@@ -8,7 +8,7 @@ import { UserError } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 
 /**
- * Runs the control plane side of engine 2.0, and in `in-process` mode the data
+ * Runs the control plane side of engine v2, and in `in-process` mode the data
  * plane too.
  *
  * Not a default module: enable it with `N8N_ENABLED_MODULES=engine-v2`. When it

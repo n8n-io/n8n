@@ -112,7 +112,7 @@ export const postgres: Service<PostgresResult> = {
 };
 
 /**
- * Gives the engine 2.0 data plane its own database, next to the n8n one. The
+ * Gives the engine v2 data plane its own database, next to the n8n one. The
  * separation is deliberate: neither plane can read the other's tables, so a
  * cross-plane query fails in a test instead of passing by accident.
  *
@@ -164,7 +164,7 @@ export class PostgresHelper {
 	}
 
 	/**
-	 * Empties the engine 2.0 data plane database. The E2E reset endpoint cannot:
+	 * Empties the engine v2 data plane database. The E2E reset endpoint cannot:
 	 * it runs on the control plane connection, and Postgres does not read across
 	 * databases. Every table but the migration bookkeeping, so a new engine table
 	 * needs no change here.

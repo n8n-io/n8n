@@ -110,7 +110,7 @@ export class TriggerExecutionContextFactory {
 	}
 
 	/**
-	 * Refuses an emit the engine 2.0 path cannot carry, settling the response
+	 * Refuses an emit the engine v2 path cannot carry, settling the response
 	 * promise on the way out. `runWorkflow` never receives that promise when the
 	 * emit is refused, and an unsettled deferred promise leaves the node waiting.
 	 * The done promise needs no help here: {@link settleDonePromise} rejects it
@@ -387,7 +387,7 @@ export class TriggerExecutionContextFactory {
 				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) => {
 					// The registration snapshot above can be stale by the time this
-					// resolves (e.g. the workflow was just republished onto engine 2.0),
+					// resolves (e.g. the workflow was just republished onto engine v2),
 					// so a payload that slipped past that check is guarded again here,
 					// against the copy that actually decides where this run goes.
 					const routesToV2 = this.engineV2ActiveTriggers.handles(freshWorkflowData, mode);
