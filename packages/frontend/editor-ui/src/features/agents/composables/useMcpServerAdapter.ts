@@ -123,7 +123,8 @@ function resolveCredentialId(credentials: INodeCredentials | undefined): string 
 
 function resolveAuthenticationFromNode(node: INode): string {
 	const authentication = toStringValue(node.parameters.authentication);
-	if (authentication) return authentication;
+	// for mcp registry nodes use credential name directly
+	if (authentication && !isMcpRegistryNodeType(node.type)) return authentication;
 
 	const credentialType = resolveCredentialType(node.credentials);
 	if (credentialType) return CREDENTIAL_TYPE_TO_AUTHENTICATION[credentialType] ?? credentialType;
@@ -228,6 +229,18 @@ export function nodeTypeToNewMcpServer(nodeType: INodeTypeDescription): AgentJso
 	};
 }
 
+function resolveAuthenticationParameterFromCredentialType(
+	credentialType: string,
+	nodeTypeDescription: INodeTypeDescription,
+) {
+	const credentials = nodeTypeDescription.credentials;
+	const credential = credentials?.find((credential) => credential.name === credentialType);
+	const showCondition = credential?.displayOptions?.show?.authentication?.[0];
+	// node type with authentication selector store the authentication option in the displayOptions.show.authentication
+	// single auth method nodes don't have "authentication" parameter
+	return showCondition ? showCondition : undefined;
+}
+
 export function mcpServerToNode(
 	server: AgentJsonMcpServerConfig,
 	nodeTypeDescription: INodeTypeDescription,
@@ -244,6 +257,9 @@ export function mcpServerToNode(
 			: undefined;
 	const toolFilterParams = resolveNodeToolFilter(server.toolFilter);
 	const options = server.connectionTimeoutMs ? { timeout: server.connectionTimeoutMs } : {};
+	const authentication = isMcpRegistryNodeType(nodeTypeDescription.name)
+		? resolveAuthenticationParameterFromCredentialType(server.authentication, nodeTypeDescription)
+		: server.authentication;
 
 	return {
 		id: uuidv4(),
@@ -253,7 +269,7 @@ export function mcpServerToNode(
 		parameters: {
 			endpointUrl: server.url,
 			serverTransport: toNodeTransport(server.transport),
-			authentication: server.authentication,
+			authentication,
 			...toolFilterParams,
 			options,
 		},

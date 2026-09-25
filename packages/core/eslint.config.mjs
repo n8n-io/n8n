@@ -1,29 +1,23 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 export default defineConfig(
-	nodeConfig,
+	backendConfig,
 	globalIgnores(['bin/*.js', 'nodes-testing/*.ts', 'nodes-testing/*.cjs', 'coverage/*']),
 	{
 		rules: {
 			// TODO: Lower the complexity threshold
 			complexity: ['error', 27],
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+			'n8n-local-rules/no-dynamic-regexp': 'error',
 
 			// TODO: Remove these
 			'no-prototype-builtins': 'warn',
-			'no-empty': 'warn',
 			'no-ex-assign': 'warn',
 			'no-useless-escape': 'warn',
 			'@typescript-eslint/no-require-imports': 'warn',
-			'@typescript-eslint/require-await': 'warn',
 			'@typescript-eslint/no-base-to-string': 'warn',
 			'@typescript-eslint/prefer-optional-chain': 'warn',
-			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
-			'@typescript-eslint/no-empty-object-type': 'warn',
-			'@typescript-eslint/naming-convention': 'warn',
 			'@typescript-eslint/no-array-delete': 'warn',
-			'@typescript-eslint/no-unsafe-member-access': 'warn',
 		},
 	},
 	{
@@ -41,6 +35,7 @@ export default defineConfig(
 			'@typescript-eslint/unbound-method': 'warn',
 			'@typescript-eslint/no-unused-expressions': 'warn',
 			'id-denylist': 'warn',
+			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
 );

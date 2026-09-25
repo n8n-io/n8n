@@ -8,6 +8,21 @@ import type { EventMessageQueue } from './event-message-queue';
 import type { EventMessageRunner } from './event-message-runner';
 import type { EventMessageWorkflow } from './event-message-workflow';
 
+/**
+ * Naming rules for log streaming events:
+ *
+ * Event names are a public contract with log streaming consumers and cannot be
+ * renamed once released. Events that record a user action (logins, grants,
+ * tool calls, settings changes) must be named under `n8n.audit.`: external
+ * pipelines filter the audit trail by that prefix, and the destination UI
+ * groups events by the first two name segments, so a new top-level prefix
+ * creates its own opt-in group outside the audit trail. A group can keep its
+ * own name list and message class while living under the audit prefix (see
+ * `eventNamesMcp`). Introducing a new operational group (like `n8n.runner.`)
+ * is a taxonomy decision that needs sign-off from the owning team; the guard
+ * test in `__tests__/event-names.test.ts` enforces this.
+ */
+
 export const eventNamesAiNodes = [
 	'n8n.ai.memory.get.messages',
 	'n8n.ai.memory.added.message',
@@ -51,6 +66,10 @@ export const eventNamesWorkflow = [
 	'n8n.workflow.cancelled',
 ] as const;
 export const eventNamesGeneric = ['n8n.worker.started', 'n8n.worker.stopped'] as const;
+export const eventNamesInstanceReporting = [
+	'n8n.instanceReporting.success',
+	'n8n.instanceReporting.failed',
+] as const;
 export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
 export const eventNamesExecution = [
 	'n8n.execution.throttled',
@@ -139,6 +158,18 @@ export const eventNamesAudit = [
 	'n8n.audit.cluster.instance-left',
 	'n8n.audit.oauth.callback.binding.rejected',
 	'n8n.audit.credentials.authorize.rejected',
+	'n8n.audit.workflow-reviews.enabled',
+	'n8n.audit.workflow-reviews.disabled',
+	'n8n.audit.workflow-review.requested',
+	'n8n.audit.workflow-review.version-updated',
+	'n8n.audit.workflow-review.approved',
+	'n8n.audit.workflow-review.changes-requested',
+	'n8n.audit.workflow-review.closed',
+	'n8n.audit.node-type-policy.scope.updated',
+	'n8n.audit.node-type-policy.document.created',
+	'n8n.audit.node-type-policy.document.updated',
+	'n8n.audit.node-type-policy.document.deleted',
+	'n8n.audit.node-type-policy.attachments.updated',
 ] as const;
 
 // Instance MCP server events. Kept as their own list and message class because the payload
@@ -156,6 +187,7 @@ export type EventNamesAuditType = (typeof eventNamesAudit)[number];
 export type EventNamesNodeType = (typeof eventNamesNode)[number];
 export type EventNamesExecutionType = (typeof eventNamesExecution)[number];
 export type EventNamesGenericType = (typeof eventNamesGeneric)[number];
+export type EventNamesInstanceReportingType = (typeof eventNamesInstanceReporting)[number];
 
 export type EventNamesTypes =
 	| EventNamesAuditType
@@ -163,6 +195,7 @@ export type EventNamesTypes =
 	| EventNamesNodeType
 	| EventNamesExecutionType
 	| EventNamesGenericType
+	| EventNamesInstanceReportingType
 	| EventNamesAiNodesType
 	| EventNamesRunnerType
 	| EventNamesQueueType
@@ -174,6 +207,7 @@ export const eventNamesAll = [
 	...eventNamesWorkflow,
 	...eventNamesNode,
 	...eventNamesGeneric,
+	...eventNamesInstanceReporting,
 	...eventNamesAiNodes,
 	...eventNamesRunner,
 	...eventNamesQueue,

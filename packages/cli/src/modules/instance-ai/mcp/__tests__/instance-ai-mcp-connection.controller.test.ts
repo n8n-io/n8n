@@ -168,6 +168,27 @@ describe('InstanceAiMcpConnectionController', () => {
 		});
 	});
 
+	describe('listAllTools', () => {
+		it('returns tool statuses for the authenticated user’s connections', async () => {
+			const { controller, service } = createController();
+			const tools = [
+				{ id: 'conn-1', status: 'connected' as const, tools: [{ name: 'search' }] },
+				{
+					id: 'conn-2',
+					status: 'disconnected' as const,
+					tools: [],
+					failureReason: 'unknown' as const,
+				},
+			];
+			service.listAllConnectionTools.mockResolvedValue(tools);
+
+			const result = await controller.listAllTools(authedRequest());
+
+			expect(service.listAllConnectionTools).toHaveBeenCalledWith(user);
+			expect(result).toEqual(tools);
+		});
+	});
+
 	describe('update', () => {
 		it('delegates update to service and returns enriched response', async () => {
 			const { controller, service, credentialsFinderService, mcpRegistryService } =

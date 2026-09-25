@@ -5,7 +5,7 @@ import { runMemoryBenchmark } from '../harness/memory-harness';
 test.use(instanceAiTestConfig);
 
 test.describe(
-	'Instance-AI Memory: Single Thread Lifecycle @capability:observability',
+	'Instance-AI Memory: Single Thread Lifecycle',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

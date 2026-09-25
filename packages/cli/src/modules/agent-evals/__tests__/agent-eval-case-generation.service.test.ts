@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';
 import type { DataTable } from '../../data-table/data-table.entity';
@@ -19,7 +19,9 @@ import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 // Stub the @n8n/agents SDK: fluent builder is a no-op; `generate` is a
 // controllable mock so tests drive the model's (in)valid structured output.
 const { generateMock } = vi.hoisted(() => ({ generateMock: vi.fn() }));
-vi.mock('@n8n/agents', () => ({
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	// Channel action tools import APPROVAL_* schemas from the SDK; keep those real.
+	...(await importOriginal<typeof import('@n8n/agents')>()),
 	Agent: class {
 		model() {
 			return this;
@@ -75,7 +77,7 @@ describe('AgentEvalCaseGenerationService', () => {
 	let dataTableService: Mocked<DataTableService>;
 	let datasetRepository: Mocked<AgentEvalDatasetRepository>;
 	let flagGate: Mocked<AgentEvalsFlagGate>;
-	let sourceControlPreferences: Mocked<SourceControlPreferencesService>;
+	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
 
 	beforeEach(() => {
 		logger = mock<Logger>();
@@ -85,10 +87,8 @@ describe('AgentEvalCaseGenerationService', () => {
 		dataTableService = mock<DataTableService>();
 		datasetRepository = mock<AgentEvalDatasetRepository>();
 		flagGate = mock<AgentEvalsFlagGate>();
-		sourceControlPreferences = mock<SourceControlPreferencesService>();
-		sourceControlPreferences.getPreferences.mockReturnValue({
-			branchReadOnly: false,
-		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+		instanceWriteAccess = mock<InstanceWriteAccessService>();
+		instanceWriteAccess.isReadOnly.mockReturnValue(false);
 
 		generateMock.mockReset();
 		resolveModelMock.mockReset();
@@ -107,7 +107,7 @@ describe('AgentEvalCaseGenerationService', () => {
 			dataTableService,
 			datasetRepository,
 			flagGate,
-			sourceControlPreferences,
+			instanceWriteAccess,
 		);
 	});
 
@@ -121,9 +121,7 @@ describe('AgentEvalCaseGenerationService', () => {
 	});
 
 	it('rejects on a source-control read-only instance', async () => {
-		sourceControlPreferences.getPreferences.mockReturnValue({
-			branchReadOnly: true,
-		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+		instanceWriteAccess.isReadOnly.mockReturnValue(true);
 
 		await expect(service.generateDraftCases(user, 'project-1', 'agent-1')).rejects.toThrow(
 			ForbiddenError,

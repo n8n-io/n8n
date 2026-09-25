@@ -27,6 +27,7 @@ import {
 // "Property '<new field>' is missing"; if a field is removed, the literal
 // errors because the listed key is no longer assignable.
 const KNOWN_CONFIG_KEY_MAP: Record<keyof NodeConfig, true> = {
+	id: true,
 	parameters: true,
 	credentials: true,
 	name: true,
@@ -42,6 +43,7 @@ const KNOWN_CONFIG_KEY_MAP: Record<keyof NodeConfig, true> = {
 	alwaysOutputData: true,
 	onError: true,
 	extendsCredential: true,
+	customTelemetryTags: true,
 	pinData: true,
 	output: true,
 	subnodes: true,

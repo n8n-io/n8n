@@ -1,14 +1,17 @@
+import type { ResourceEditorDestination } from '@/features/collaboration/projects/projects.types';
 import type {
 	AgentJsonConfig,
 	FrontendSettings,
+	InstanceAiCredentialSetupHint,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
+	WorkflowListPublicationStatus,
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
-import type { IUsedCredential } from '@/features/credentials/credentials.types';
-import type { Scope } from '@n8n/permissions';
+import type { CredentialPayload, IUsedCredential } from '@/features/credentials/credentials.types';
+import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type { ModalState } from '@n8n/frontend-module-sdk';
 import type {
@@ -26,6 +29,7 @@ import type {
 	NodeParameterValueType,
 	IDisplayOptions,
 	FeatureFlags,
+	FeatureFlagPayloads,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	WorkflowSettingsBinaryMode,
@@ -68,7 +72,31 @@ import type {
 } from '@/features/core/folders/folders.types';
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 
-export * from '@n8n/design-system/types';
+// Enumerated rather than `export *` from the package root: the root also exports
+// every component, so a wildcard here would pull the whole library into the module
+// graph of every file that imports from `@/Interface`. These are the design-system
+// types actually consumed through this module.
+export type {
+	ActionDropdownItem,
+	BinaryMetadata,
+	ButtonSize,
+	DatatableColumn,
+	Direction,
+	FormFieldValueUpdate,
+	FormValues,
+	IFormBoxConfig,
+	IFormInput,
+	IFormInputs,
+	IMenuItem,
+	InputAutocompletePropType,
+	InputSize,
+	KeyboardShortcut,
+	ResizeData,
+	Rule,
+	RuleGroup,
+	TabOptions,
+	UserAction,
+} from '@n8n/design-system';
 
 declare global {
 	interface Window {
@@ -77,13 +105,16 @@ declare global {
 				key: string,
 				options?: {
 					api_host?: string;
+					tracing_headers?: string[];
 					autocapture?: boolean;
 					disable_session_recording?: boolean;
+					advanced_disable_feature_flags?: boolean;
 					debug?: boolean;
 					bootstrap?: {
 						distinctID?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
+						featureFlagPayloads?: FeatureFlagPayloads;
 					};
 					session_recording?: {
 						maskAllInputs?: boolean;
@@ -94,6 +125,7 @@ declare global {
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;
 			getFeatureFlag?(flagName: string): boolean | string;
+			getFeatureFlagPayload?(flagName: string): FeatureFlagPayloads[string] | undefined;
 			identify?(
 				id: string,
 				userProperties?: Record<string, string | number>,
@@ -110,6 +142,8 @@ declare global {
 			};
 			debug?(): void;
 			get_session_id?(): string | null;
+			/** Set by posthog-js once init() has run; further init() calls are no-ops. */
+			__loaded?: boolean;
 		};
 		analytics?: {
 			identify(userId: string): void;
@@ -119,7 +153,11 @@ declare global {
 		featureFlags?: {
 			getAll: () => FeatureFlags;
 			getVariant: (name: string) => string | boolean | undefined;
-			override: (name: string, value: string) => void;
+			override: (
+				name: string,
+				value: string | boolean,
+				payload?: FeatureFlagPayloads[string],
+			) => void;
 		};
 	}
 }
@@ -257,6 +295,11 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
+	// Raw ownership relation returned by `GET /workflows/:id` only when the
+	// sharing license is inactive (the licensed path assembles `homeProject`
+	// instead). Kept so the client can derive `homeProject` from it — see the
+	// workflowDocument store hydration.
+	shared?: Array<{ role: WorkflowSharingRole; project: ProjectSharingData }>;
 	scopes?: Scope[];
 	versionId: string;
 	activeVersionId: string | null;
@@ -297,6 +340,7 @@ export type WorkflowResource = BaseResource & {
 	parentFolder?: ResourceParentFolder;
 	settings?: Partial<IWorkflowSettings>;
 	hasResolvableCredentials?: boolean;
+	publicationStatus?: WorkflowListPublicationStatus;
 };
 
 export type VariableResource = BaseResource & {
@@ -308,6 +352,7 @@ export type VariableResource = BaseResource & {
 
 export type CredentialsResource = BaseResource & {
 	resourceType: 'credential';
+	description?: string | null;
 	updatedAt: string;
 	createdAt: string;
 	type: string;
@@ -319,6 +364,7 @@ export type CredentialsResource = BaseResource & {
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
+	connectedAccountIdentifier?: string;
 };
 
 // Base resource types that are always available
@@ -354,6 +400,7 @@ export type WorkflowListItem = Omit<
 	resource?: 'workflow'; // only included if list may contain folders
 	description?: string;
 	hasResolvableCredentials?: boolean;
+	publicationStatus?: WorkflowListPublicationStatus;
 };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
@@ -658,11 +705,25 @@ export type ModalKey = keyof Modals;
 export type { ModalState };
 
 export interface NewCredentialsModal extends ModalState {
+	notice?: () => string;
+	initialName?: string;
+	initialData?: Record<string, unknown>;
+	destination?: ResourceEditorDestination;
+	createCredential?: (details: CredentialPayload, projectId: string) => Promise<string>;
+	onInitializeError?: (error: unknown) => void;
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
 	closeOnSave?: boolean;
+	onCredentialCreated?: (credential: { id: string }) => void;
 	projectId?: string;
 	suggestedName?: string;
+	/** Workflow the credential is being set up for, supplied by workflow-scoped
+	 * surfaces (NDV, Instance AI workflow setup) for telemetry attribution — the
+	 * modal itself can open where no workflow document is loaded. */
+	workflowId?: string;
+	/** Agent-supplied Templated Custom Auth recipe — pre-fills the credential's
+	 * template fields so the modal opens on the guided simple view. */
+	credentialSetupHint?: InstanceAiCredentialSetupHint;
 	nodeName?: string;
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
@@ -678,6 +739,8 @@ export interface NewCredentialsModal extends ModalState {
 		nodeName?: string;
 		nodeType?: string;
 		id?: string;
+		placeholderTitles?: string[];
+		docsUrl?: string;
 		documentationUrl?: string;
 		oauthRedirectUrl?: string;
 	}) => Promise<boolean>;

@@ -9,23 +9,45 @@ from src.task_runner import TaskRunner
 from src.config.task_runner_config import TaskRunnerConfig
 
 
+def make_config(**overrides):
+    defaults = {
+        "grant_token": "test-token",
+        "runner_id": "",
+        "task_broker_uri": "http://127.0.0.1:5679",
+        "max_concurrency": 5,
+        "max_payload_size": 1024 * 1024,
+        "task_timeout": 60,
+        "auto_shutdown_timeout": 0,
+        "graceful_shutdown_timeout": 10,
+        "stdlib_allow": {"*"},
+        "external_allow": {"*"},
+        "builtins_deny": set(),
+        "env_deny": False,
+        "allow_transitive_imports": False,
+    }
+    return TaskRunnerConfig(**{**defaults, **overrides})
+
+
+class TestTaskRunnerId:
+    def test_identifies_as_assigned_runner_id(self):
+        runner = TaskRunner(make_config(runner_id="assigned-by-n8n"))
+
+        assert runner.runner_id == "assigned-by-n8n"
+        assert runner.websocket_url.endswith("?id=assigned-by-n8n")
+
+    def test_self_assigns_unique_runner_id_when_assigned_none(self):
+        first = TaskRunner(make_config(runner_id=""))
+        second = TaskRunner(make_config(runner_id=""))
+
+        assert first.runner_id != ""
+        assert second.runner_id != first.runner_id
+        assert first.websocket_url.endswith(f"?id={first.runner_id}")
+
+
 class TestTaskRunnerConnectionRetry:
     @pytest.fixture
     def config(self):
-        return TaskRunnerConfig(
-            grant_token="test-token",
-            task_broker_uri="http://127.0.0.1:5679",
-            max_concurrency=5,
-            max_payload_size=1024 * 1024,
-            task_timeout=60,
-            auto_shutdown_timeout=0,
-            graceful_shutdown_timeout=10,
-            stdlib_allow={"*"},
-            external_allow={"*"},
-            builtins_deny=set(),
-            env_deny=False,
-            allow_transitive_imports=False,
-        )
+        return make_config()
 
     @pytest.mark.asyncio
     async def test_connection_failure_logs_warning_not_crash(self, config):
@@ -76,20 +98,7 @@ class TestTaskRunnerConnectionRetry:
 class TestTaskRunnerDrain:
     @pytest.fixture
     def config(self):
-        return TaskRunnerConfig(
-            grant_token="test-token",
-            task_broker_uri="http://127.0.0.1:5679",
-            max_concurrency=5,
-            max_payload_size=1024 * 1024,
-            task_timeout=60,
-            auto_shutdown_timeout=0,
-            graceful_shutdown_timeout=10,
-            stdlib_allow={"*"},
-            external_allow={"*"},
-            builtins_deny=set(),
-            env_deny=False,
-            allow_transitive_imports=False,
-        )
+        return make_config()
 
     @pytest.mark.asyncio
     async def test_drain_stops_sending_offers(self, config):

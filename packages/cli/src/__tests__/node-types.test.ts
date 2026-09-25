@@ -4,8 +4,10 @@ import type {
 	LoadedClass,
 	INodeType,
 	IVersionedNodeType,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeVersionNotFoundError, VersionedNodeType } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -45,6 +47,15 @@ describe('NodeTypes', () => {
 				return v2Node;
 			},
 		},
+	};
+	// Backed by a REAL VersionedNodeType (not a stubbed getNodeType) so an unknown
+	// version exercises the actual resolution path end-to-end.
+	const realVersionedNode: LoadedClass<IVersionedNodeType> = {
+		sourcePath: '',
+		type: new VersionedNodeType(
+			{ 1: v1Node, 2: v2Node },
+			mock<INodeTypeBaseDescription>({ name: 'n8n-nodes-base.realVersioned', defaultVersion: 2 }),
+		),
 	};
 	const toolNode: LoadedClass<INodeType> = {
 		sourcePath: '',
@@ -243,6 +254,7 @@ describe('NodeTypes', () => {
 		if (packageName === 'n8n-nodes-base') {
 			if (nodeType === 'nonVersioned') return nonVersionedNode;
 			if (nodeType === 'versioned') return versionedNode;
+			if (nodeType === 'realVersioned') return realVersionedNode;
 			if (nodeType === 'testNode') return toolSupportingNode;
 			if (nodeType === 'declarativeNode') return declarativeNode;
 			if (nodeType === 'toolNode') return toolNode;
@@ -266,6 +278,36 @@ describe('NodeTypes', () => {
 		loadNodesAndCredentials.loaded.nodes = {};
 	});
 
+	describe('resolveBaseName', () => {
+		it('resolves a synthetic Tool variant to the node it was generated from', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNodeTool')).toEqual({
+				baseName: 'n8n-nodes-base.testNode',
+				isSyntheticTool: true,
+			});
+		});
+
+		it('resolves a synthetic HitlTool variant to the node it was generated from', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.hitlNodeHitlTool')).toEqual({
+				baseName: 'n8n-nodes-base.hitlNode',
+				isSyntheticTool: true,
+			});
+		});
+
+		it('leaves a real on-disk node whose name ends in Tool as it is', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.realTool')).toEqual({
+				baseName: 'n8n-nodes-base.realTool',
+				isSyntheticTool: false,
+			});
+		});
+
+		it('leaves a name without a tool suffix as it is', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNode')).toEqual({
+				baseName: 'n8n-nodes-base.testNode',
+				isSyntheticTool: false,
+			});
+		});
+	});
+
 	describe('getByName', () => {
 		it('should return node type when it exists', () => {
 			const result = nodeTypes.getByName('n8n-nodes-base.nonVersioned');
@@ -284,6 +326,25 @@ describe('NodeTypes', () => {
 			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-base.unknownNode')).toThrow(
 				'Unrecognized node type: n8n-nodes-base.unknownNode',
 			);
+		});
+
+		it('should throw NodeVersionNotFoundError (not an opaque TypeError) for an unknown version', () => {
+			let caught: unknown;
+			try {
+				nodeTypes.getByNameAndVersion('n8n-nodes-base.realVersioned', 4.4);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeVersionNotFoundError);
+			const error = caught as NodeVersionNotFoundError;
+			expect(error.message).not.toContain(
+				"Cannot read properties of undefined (reading 'execute')",
+			);
+			expect(error.message).toBe(
+				'Node type "n8n-nodes-base.realVersioned" is not available in version 4.4. Available versions: 1, 2. Use the latest version 2.',
+			);
+			expect(error.availableVersions).toEqual([1, 2]);
 		});
 
 		it('should return a regular node-type without version', () => {
@@ -447,11 +508,18 @@ describe('NodeTypes', () => {
 	});
 
 	describe('getWithSourcePath', () => {
-		it('should return description and source path for existing node', () => {
+		it('should return description and the resolved source path for existing node', () => {
+			const resolvedPath = '/nodes-base/dist/nodes/NonVersioned/NonVersioned.node.js';
+			loadNodesAndCredentials.resolveNodeSourcePath.mockReturnValueOnce(resolvedPath);
+
 			const result = nodeTypes.getWithSourcePath('n8n-nodes-base.nonVersioned', 1);
+
 			expect(result).toHaveProperty('description');
-			expect(result).toHaveProperty('sourcePath');
-			expect(result.sourcePath).toBe(nonVersionedNode.sourcePath);
+			expect(result.sourcePath).toBe(resolvedPath);
+			expect(loadNodesAndCredentials.resolveNodeSourcePath).toHaveBeenCalledWith(
+				'n8n-nodes-base.nonVersioned',
+				nonVersionedNode.sourcePath,
+			);
 		});
 
 		it('should throw error for non-existent node', () => {

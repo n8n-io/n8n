@@ -1,3 +1,4 @@
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
@@ -12,10 +13,10 @@ import type {
 	ObservationLogMerge,
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
-	TokenCounter,
 } from '../../types/sdk/observation-log';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
+import { getStoredObservationTokenCount } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export type { ObservationLogReflectFn, ObservationLogReflectorInput };
 
@@ -64,7 +65,7 @@ export type RunObservationLogReflectorResult =
 export function parseObservationLogReflectionJson(output: string): ObservationLogReflection {
 	let parsed: unknown;
 	try {
-		parsed = JSON.parse(extractJsonObject(output));
+		parsed = JSON.parse(extractJsonCandidate(output));
 	} catch {
 		throw new Error('Reflector output must be valid JSON');
 	}
@@ -172,7 +173,7 @@ export async function runObservationLogReflector(
 		observationScopeId,
 		order: 'asc',
 	});
-	const tokenCount = countObservationTokens(activeObservationLog, tokenCounter);
+	const tokenCount = countObservationTokens(activeObservationLog);
 	if (tokenCount <= reflectorThresholdTokens) {
 		return { status: 'skipped', reason: 'below-threshold', tokenCount };
 	}
@@ -193,15 +194,19 @@ export async function runObservationLogReflector(
 		activeObservationLog,
 		withCreatedAt(parseObservationLogReflectionJson(output), now),
 	);
-	const reflection = {
+	const reflection: ObservationLogReflection = {
 		...normalized,
-		merge: normalized.merge.map((merge) => ({ ...merge, text: redactText(merge.text).text })),
+		merge: await Promise.all(
+			normalized.merge.map(async (merge) => {
+				const text = redactText(merge.text).text;
+				return { ...merge, text, tokenCount: await tokenCounter(text) };
+			}),
+		),
 	};
 	const result = await memory.applyObservationLogReflection({ observationScopeId }, reflection);
 
 	const remainingTokenCount = countObservationTokens(
 		await memory.getActiveObservationLog({ observationScopeId }),
-		tokenCounter,
 	);
 	const overBudgetAfterReflection = remainingTokenCount > reflectorThresholdTokens;
 	if (overBudgetAfterReflection) {
@@ -269,15 +274,6 @@ function normalizeReplacementParentId(
 ): string | null | undefined {
 	if (parentId === undefined || parentId === null) return parentId;
 	return activeById.has(parentId) && !removedIds.has(parentId) ? parentId : null;
-}
-
-function extractJsonObject(output: string): string {
-	const start = output.indexOf('{');
-	const end = output.lastIndexOf('}');
-	if (start === -1 || end === -1 || end < start) {
-		throw new Error('Reflector output did not contain a JSON object');
-	}
-	return output.slice(start, end + 1);
 }
 
 function readStringArray(value: unknown, fieldName: string): string[] {
@@ -349,16 +345,8 @@ function withCreatedAt(reflection: ObservationLogReflection, now: Date): Observa
 	};
 }
 
-function countObservationTokens(
-	entries: ObservationLogEntry[],
-	tokenCounter: TokenCounter,
-): number {
-	return entries.reduce((total, entry) => total + observationTokenCount(entry, tokenCounter), 0);
-}
-
-function observationTokenCount(entry: ObservationLogEntry, tokenCounter: TokenCounter): number {
-	if (Number.isFinite(entry.tokenCount) && entry.tokenCount > 0) return entry.tokenCount;
-	return tokenCounter(entry.text);
+function countObservationTokens(entries: ObservationLogEntry[]): number {
+	return entries.reduce((total, entry) => total + getStoredObservationTokenCount(entry), 0);
 }
 
 function compareEntries(a: ObservationLogEntry, b: ObservationLogEntry): number {

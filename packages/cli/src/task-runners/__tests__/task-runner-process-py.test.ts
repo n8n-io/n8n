@@ -63,6 +63,27 @@ describe('PyTaskRunnerProcess', () => {
 			);
 		});
 
+		it('should pass the runner ID it was assigned', async () => {
+			await taskRunnerProcess.start();
+
+			const { env } = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(env!.N8N_RUNNERS_ID).toEqual(expect.stringMatching(/.+/));
+			expect(authService.createGrantToken).toHaveBeenCalledWith(env!.N8N_RUNNERS_ID);
+		});
+
+		it('should not let an operator-set runner ID override the assigned one', async () => {
+			process.env.N8N_RUNNERS_ID = 'operator-set';
+
+			try {
+				await taskRunnerProcess.start();
+
+				const { env } = spawnMock.mock.calls[0][2] as SpawnOptions;
+				expect(env!.N8N_RUNNERS_ID).not.toBe('operator-set');
+			} finally {
+				delete process.env.N8N_RUNNERS_ID;
+			}
+		});
+
 		it('should build env with a null prototype', async () => {
 			await taskRunnerProcess.start();
 

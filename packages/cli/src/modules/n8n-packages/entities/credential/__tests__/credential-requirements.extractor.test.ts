@@ -117,6 +117,43 @@ describe('CredentialRequirementsExtractor', () => {
 		]);
 	});
 
+	it('extracts credentials used by an inline workflow', () => {
+		const workflow = makeWorkflow({
+			id: 'wf-inline',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'Execute Workflow',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						source: 'parameter',
+						workflowJson: JSON.stringify({
+							nodes: [
+								{
+									credentials: {
+										httpHeaderAuth: { id: 'cred-inline', name: 'Inline credential' },
+									},
+								},
+							],
+							connections: {},
+						}),
+					},
+				},
+			],
+		});
+
+		expect(extractor.extract(workflow)).toEqual([
+			{
+				workflowId: 'wf-inline',
+				credentialId: 'cred-inline',
+				credentialName: 'Inline credential',
+				credentialType: 'httpHeaderAuth',
+			},
+		]);
+	});
+
 	it('skips slots that have no credential id selected yet', () => {
 		const workflow = makeWorkflow({
 			id: 'wf-blank-slot',

@@ -1,3 +1,10 @@
+@mixin reduced-motion {
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+		transition: none;
+	}
+}
+
 // Shimmer - animated gradient for loading/skeleton states
 @mixin shimmer {
 	background: linear-gradient(
@@ -202,10 +209,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	from {
 		opacity: 0;
 		transform: translateY(var(--animation--fade-in--translate, 8px));
+		filter: blur(var(--animation--fade-in--blur, var(--spacing--5xs)));
 	}
 	to {
 		opacity: 1;
 		transform: translateY(0);
+		filter: blur(0);
 	}
 }
 
@@ -363,10 +372,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	from {
 		opacity: 0;
 		transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+		filter: blur(var(--animation--fade-in-up--blur, var(--spacing--5xs)));
 	}
 	to {
 		opacity: 1;
 		transform: translateY(0);
+		filter: blur(0);
 	}
 }
 
@@ -385,10 +396,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 		transform: translateY(
 			calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs)))
 		);
+		filter: blur(var(--animation--fade-in-down--blur, var(--spacing--5xs)));
 	}
 	to {
 		opacity: 1;
 		transform: translateY(0);
+		filter: blur(0);
 	}
 }
 
@@ -407,10 +420,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 		transform: translateX(
 			calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs)))
 		);
+		filter: blur(var(--animation--fade-in-left--blur, var(--spacing--5xs)));
 	}
 	to {
 		opacity: 1;
 		transform: translateX(0);
+		filter: blur(0);
 	}
 }
 
@@ -427,10 +442,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	from {
 		opacity: 0;
 		transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+		filter: blur(var(--animation--fade-in-right--blur, var(--spacing--5xs)));
 	}
 	to {
 		opacity: 1;
 		transform: translateX(0);
+		filter: blur(0);
 	}
 }
 
@@ -608,6 +625,17 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	transition: height var(--animation--height-transition--duration, var(--duration--snappy))
 		var(--animation--height-transition--easing, var(--easing--ease-out));
 	will-change: height;
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+		will-change: auto;
+	}
+}
+
+@mixin max-height-transition {
+	transition: max-height var(--animation--height-transition--duration, var(--duration--snappy))
+		var(--animation--height-transition--easing, var(--easing--ease-out));
+	will-change: max-height;
 
 	@media (prefers-reduced-motion: reduce) {
 		transition: none;

@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -22,7 +22,6 @@ const settingsStore = useSettingsStore();
 const allowSendingSchema = ref(true);
 
 const isAssistantEnabled = computed(() => assistantStore.isAssistantEnabled);
-const isBuilderEnabled = computed(() => settingsStore.isAiBuilderEnabled);
 const isAskAiEnabled = computed(() => settingsStore.isAskAiEnabled);
 const allowSendingParameterValues = computed(() => settingsStore.isAiDataSharingEnabled);
 
@@ -38,18 +37,11 @@ const aiSettingsDescription = computed(() => {
 	return i18n.baseText('settings.ai.description.both');
 });
 
-const confirmationMessage = computed(() => {
-	if (isBuilderEnabled.value) {
-		return i18n.baseText('settings.ai.confirm.message.builderEnabled');
-	}
-	return i18n.baseText('settings.ai.confirm.message.builderDisabled');
-});
-
 const onallowSendingParameterValuesChange = async (newValue: boolean | string | number) => {
 	if (typeof newValue !== 'boolean') return;
 
 	if (!newValue) {
-		const promptResponse = await message.confirm(confirmationMessage.value, {
+		const promptResponse = await message.confirm(i18n.baseText('settings.ai.confirm.message'), {
 			title: i18n.baseText('settings.ai.confirm.title'),
 			confirmButtonText: i18n.baseText('settings.ai.confirm.confirmButtonText'),
 			cancelButtonText: i18n.baseText('generic.cancel'),

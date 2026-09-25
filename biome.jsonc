@@ -18,8 +18,7 @@
 			"**/cl100k_base.json",
 			"**/o200k_base.json",
 			"**/*.generated.ts",
-			"**/expectations/**",
-			"**/instance-ai-examples.data.json"
+			"**/expectations/**"
 		]
 	},
 	"formatter": {
@@ -42,6 +41,14 @@
 		]
 	},
 	"organizeImports": { "enabled": false },
+	// Every `tsconfig*.json` is JSONC. Biome only infers that from the exact name `tsconfig.json`,
+	// so variants like `tsconfig.frontend-module.json` need it spelled out.
+	"overrides": [
+		{
+			"include": ["**/tsconfig*.json"],
+			"json": { "parser": { "allowComments": true } }
+		}
+	],
 	"linter": {
 		"enabled": false
 	},

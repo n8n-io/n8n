@@ -1,4 +1,5 @@
 import { AIMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
+import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
@@ -35,7 +36,6 @@ import {
 } from './score-calculator';
 import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
 import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { ChatPayload } from '../../src/workflow-builder-agent';
 import { extractMessageContent } from '../langsmith/types';
 
 const DEFAULT_PASS_THRESHOLD = 0.7;
@@ -231,10 +231,6 @@ function buildContext(args: {
 
 function isUnknownRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isUnknownArray(value: unknown): value is unknown[] {
-	return Array.isArray(value);
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -1014,7 +1010,7 @@ function extractPrompt(inputs: LangsmithDatasetInput): string {
  */
 function enrichExamplesWithHistory(examples: Example[]): Example[] {
 	return examples.map((example) => {
-		const outputMessages = (example.outputs as Record<string, unknown> | undefined)?.messages;
+		const outputMessages: unknown = example.outputs?.messages;
 		if (!Array.isArray(outputMessages) || outputMessages.length <= 1) {
 			return example; // No history to extract
 		}
@@ -1094,7 +1090,7 @@ function extractDatasetInputContext(
 	const context: DatasetInputContext = {};
 
 	if (isUnknownRecord(inputs.workflowContext)) {
-		context.workflowContext = inputs.workflowContext as ChatPayload['workflowContext'];
+		context.workflowContext = inputs.workflowContext;
 	}
 
 	if (isSimpleWorkflow(inputs.workflowJSON)) {

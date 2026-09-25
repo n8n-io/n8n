@@ -78,9 +78,8 @@ const renderComponent = createComponentRenderer(WorkflowSetupCard);
 function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 	return {
 		sections: computed(() => [section]),
-		steps: computed(() => [{ kind: 'section', section }]),
 		currentStepIndex: ref(0),
-		activeStep: computed(() => ({ kind: 'section', section })),
+		activeSection: computed(() => section),
 		hasOtherUnhandledSteps: computed(() => false),
 		canAdvanceToNextIncomplete: computed(() => false),
 		credentialSelections: ref({}),
@@ -96,9 +95,7 @@ function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 		isSectionComplete: () => false,
 		isCredentialTestFailed: () => false,
 		isSectionSkipped: () => false,
-		isStepComplete: () => false,
-		isStepSkipped: () => false,
-		isStepHandled: () => false,
+		isSectionHandled: () => false,
 		goToStep: vi.fn(),
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),
@@ -134,6 +131,27 @@ describe('WorkflowSetupCard', () => {
 		expect(queryByText('Set up Header Auth')).not.toBeInTheDocument();
 		expect(getByTestId('node-icon')).toBeInTheDocument();
 		expect(queryByTestId('credential-icon')).not.toBeInTheDocument();
+	});
+
+	it('titles the card from the setup hint suggested name, verbatim', () => {
+		const section = makeWorkflowSetupSection({
+			credentialType: 'httpTemplatedCustomAuth',
+			setupHint: {
+				template: { headers: { Authorization: 'Key {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+				// "API" must survive — hint names skip the type-name keyword filter.
+				suggestedName: 'fal.ai API Key',
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		const { getByText, getByTestId, queryByText } = renderComponent({
+			props: { section },
+		});
+
+		expect(getByText('Set up fal.ai API Key')).toBeInTheDocument();
+		expect(queryByText('Set up Header Auth')).not.toBeInTheDocument();
+		expect(getByTestId('credential-icon')).toBeInTheDocument();
 	});
 
 	it('shows the credential app name when the section only needs credentials', () => {

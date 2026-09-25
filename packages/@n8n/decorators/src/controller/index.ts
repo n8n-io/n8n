@@ -12,6 +12,8 @@ export { Get, Post, Put, Patch, Delete, Head, Options } from './route';
 export { Middleware } from './middleware';
 export { ControllerRegistryMetadata } from './controller-registry-metadata';
 export { Licensed } from './licensed';
+export { RequiresUserQuota } from './requires-user-quota';
+export { Deprecated } from './deprecated';
 export { GlobalScope, ProjectScope } from './scoped';
 export type {
 	AccessScope,
@@ -19,6 +21,8 @@ export type {
 	Arg,
 	Controller,
 	CorsOptions,
+	DeprecationInfo,
+	ErrorResponse,
 	HandlerName,
 	Method,
 	ResponseDtoClass,

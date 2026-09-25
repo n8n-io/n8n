@@ -107,11 +107,22 @@ export const codeSnippetAssistantResponse = {
 
 // #region Test Requirements for different scenarios
 
+/**
+ * The legacy AI Assistant entry points (canvas action button, node error view
+ * button, credential help) only render while Instance AI is off, so these
+ * suites pin the module off. Instance AI's own entry points are covered by
+ * `tests/e2e/instance-ai`.
+ */
+export const INSTANCE_AI_DISABLED: NonNullable<TestRequirements['config']>['moduleSettings'] = {
+	'instance-ai': { enabled: false },
+};
+
 export const aiDisabledRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: false, setup: false },
+			aiAssistant: { enabled: false, setup: false, cloudUbbEnabled: false },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: false },
 	},
 };
@@ -119,8 +130,9 @@ export const aiDisabledRequirements: TestRequirements = {
 export const aiEnabledRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: true, setup: true },
+			aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 };
@@ -128,8 +140,9 @@ export const aiEnabledRequirements: TestRequirements = {
 export const aiEnabledWithWorkflowRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: true, setup: true },
+			aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 	workflow: {
@@ -146,8 +159,9 @@ export const aiEnabledWithWorkflowRequirements: TestRequirements = {
 export const aiEnabledWithQuickRepliesRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: true, setup: true },
+			aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true },
 	},
 	workflow: {
@@ -183,8 +197,9 @@ export const aiEnabledWithQuickRepliesRequirements: TestRequirements = {
 export const aiEnabledWithEndSessionRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: true, setup: true },
+			aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true },
 	},
 	workflow: {
@@ -216,8 +231,9 @@ export const aiEnabledWithEndSessionRequirements: TestRequirements = {
 export const aiEnabledWorkflowBaseRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: true, setup: true },
+			aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 	workflow: {
@@ -238,8 +254,9 @@ export const aiEnabledWithCodeDiffRequirements: TestRequirements = {
 export const aiEnabledWithSimpleChatRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: true, setup: true },
+			aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 	intercepts: {
@@ -253,8 +270,9 @@ export const aiEnabledWithSimpleChatRequirements: TestRequirements = {
 export const aiEnabledWithCodeSnippetRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: true, setup: true },
+			aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 	intercepts: {
@@ -268,8 +286,9 @@ export const aiEnabledWithCodeSnippetRequirements: TestRequirements = {
 export const aiEnabledWithHttpWorkflowRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: true, setup: true },
+			aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: { aiAssistant: true, setup: true },
 	},
 	workflow: {

@@ -255,6 +255,18 @@ describe('useWorkflowSetupInputs', () => {
 		});
 	});
 
+	it('reports skipped sections so the backend stops asking for them', () => {
+		// Without this the backend only sees an unconfigured node, which reads as "ask again".
+		const h = setupHarness();
+		h.inputs.setCredential(h.sectionB, 'cred-2');
+		h.inputs.markSectionSkipped(h.sectionA);
+
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeCredentials: { Slack: { slackApi: 'cred-2' } },
+			skippedNodes: ['HTTP Request'],
+		});
+	});
+
 	it('seeds selections from current credentials and tests seeded credentials', async () => {
 		addCredential({ id: 'current-cred', type: 'httpBasicAuth', name: 'Current credential' });
 		const section = makeWorkflowSetupSection({
@@ -566,6 +578,9 @@ describe('useWorkflowSetupInputs', () => {
 		h.inputs.setCredential(groupedSection, 'cred-1');
 		h.inputs.markSectionSkipped(groupedSection);
 
-		expect(h.inputs.buildCompletedSetupPayload()).toEqual({});
+		// No credentials applied, and every node behind the section is reported as skipped.
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			skippedNodes: ['Primary', 'Follower'],
+		});
 	});
 });

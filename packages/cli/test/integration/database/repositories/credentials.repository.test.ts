@@ -1,4 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
+import type { CredentialSharingRelation, ListQuery } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -93,6 +94,49 @@ describe('CredentialsRepository', () => {
 			expect(result.credentials.map((c) => c.name)).toEqual(
 				expect.arrayContaining(['Team Credential 1', 'Team Credential 2']),
 			);
+		});
+
+		it('should load the requested sharing relations and no more', async () => {
+			// ARRANGE
+			const { createMember } = await import('../../shared/db/users.js');
+			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+
+			const member = await createMember();
+			const teamProject = await createTeamProject('relations-project');
+			await linkUserToProject(member, teamProject, 'project:editor');
+			const credential = await createCredentials({ name: 'Cred', type: 'googleApi', data: '' });
+			await shareCredentialsToProject([credential], teamProject.id, 'credential:user');
+
+			const sharingOptions = {
+				scopes: ['credential:read'] as Scope[],
+				projectRoles: ['project:editor'],
+				credentialRoles: ['credential:user'],
+			};
+			const list = async (relations?: CredentialSharingRelation[]) =>
+				(
+					await credentialsRepository.getManyAndCountWithSharingSubquery(member, sharingOptions, {
+						relations,
+					})
+				).credentials[0];
+
+			// ACT / ASSERT
+			const byDefault = await list();
+			expect(byDefault.shared[0].project.id).toBe(teamProject.id);
+			expect(byDefault.shared[0].project.projectRelations).toBeUndefined();
+
+			const withMembers = await list([
+				'shared',
+				'shared.project',
+				'shared.project.projectRelations',
+			]);
+			expect(withMembers.shared[0].project.projectRelations.map((r) => r.userId)).toEqual([
+				member.id,
+			]);
+
+			const sharingsOnly = await list(['shared']);
+			expect(sharingsOnly.shared[0].projectId).toBe(teamProject.id);
+			expect(sharingsOnly.shared[0].project).toBeUndefined();
 		});
 
 		it('should handle personal project filtering correctly', async () => {
@@ -544,16 +588,20 @@ describe('CredentialsRepository', () => {
 			const projectRoles = await roleService.rolesWithScope('project', scopes);
 			const credentialRoles = await roleService.rolesWithScope('credential', scopes);
 
-			const oldOptions = {
+			// Both approaches need an explicit order: without one, Postgres is free to
+			// return the rows in any order, and the two queries use different plans.
+			const oldOptions: ListQuery.Options = {
 				filter: { projectId: teamProject.id, name: 'Test' },
 				take: 2,
 				skip: 0,
+				sortBy: 'id:asc',
 			};
 
-			const newOptions = {
+			const newOptions: ListQuery.Options = {
 				filter: { name: 'Test' },
 				take: 2,
 				skip: 0,
+				sortBy: 'id:asc',
 			};
 
 			// ACT - Old Approach
@@ -574,7 +622,7 @@ describe('CredentialsRepository', () => {
 			expect(newResult.count).toBe(oldResult[1]);
 			expect(newResult.credentials).toHaveLength(oldResult[0].length);
 
-			// Check same credentials in same order (sorting should be consistent)
+			// Check same credentials in same order
 			const oldIds = oldResult[0].map((c) => c.id);
 			const newIds = newResult.credentials.map((c) => c.id);
 			expect(newIds).toEqual(oldIds);
@@ -762,6 +810,42 @@ describe('CredentialsRepository', () => {
 				userAResultIds.includes(id),
 			);
 			expect(reverseContamination).toHaveLength(0);
+		});
+	});
+
+	describe('hasResolvableCredential', () => {
+		let credentialsRepository: CredentialsRepository;
+
+		beforeEach(() => {
+			credentialsRepository = Container.get(CredentialsRepository);
+		});
+
+		it('returns true when any given credential is resolvable', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const staticCred = await createCredentials({ name: 'Static', type: 'googleApi', data: '' });
+			const privateCred = await createCredentials({
+				name: 'Private',
+				type: 'googleApi',
+				data: '',
+				isResolvable: true,
+			});
+
+			await expect(
+				credentialsRepository.hasResolvableCredential([staticCred.id, privateCred.id]),
+			).resolves.toBe(true);
+		});
+
+		it('returns false when no given credential is resolvable', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const staticCred = await createCredentials({ name: 'Static', type: 'googleApi', data: '' });
+
+			await expect(credentialsRepository.hasResolvableCredential([staticCred.id])).resolves.toBe(
+				false,
+			);
+		});
+
+		it('returns false for an empty id list without querying', async () => {
+			await expect(credentialsRepository.hasResolvableCredential([])).resolves.toBe(false);
 		});
 	});
 });

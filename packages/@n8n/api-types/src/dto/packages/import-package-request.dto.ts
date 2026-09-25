@@ -13,11 +13,14 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'workflowPublishingPolicy',
 	'workflowIdPolicy',
 	'missingNodeTypeMode',
+	'projectConflictPolicy',
 	'folderConflictPolicy',
+	'overwriteDeletionPolicy',
 	'dataTableMatchingMode',
 	'dataTableMissingMode',
 	'dataTableSchemaConflictPolicy',
 	'variableMissingMode',
+	'variableConflictPolicy',
 	'variableParentPolicy',
 	'tagMissingMode',
 	'tagConflictPolicy',
@@ -100,7 +103,9 @@ export class ImportPackageRequestDto extends Z.class({
 	),
 	workflowIdPolicy: optionalEnum(['new', 'source'], 'source'),
 	missingNodeTypeMode: optionalEnum(['fail', 'import-anyway'], 'fail'),
-	folderConflictPolicy: optionalEnum(['merge', 'fail'], 'merge'),
+	projectConflictPolicy: optionalEnum(['merge', 'fail', 'overwrite'], 'merge'),
+	folderConflictPolicy: optionalEnumNoDefault(['merge', 'fail', 'overwrite']),
+	overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive'),
 	dataTableMatchingMode: optionalEnum(['by-id'], 'by-id'),
 	dataTableMissingMode: optionalEnum(['create', 'must-preexist', 'do-nothing'], 'create'),
 	dataTableSchemaConflictPolicy: optionalEnum(['keep-existing', 'fail'], 'keep-existing'),
@@ -108,7 +113,76 @@ export class ImportPackageRequestDto extends Z.class({
 		['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
 		'create-with-value',
 	),
+	variableConflictPolicy: optionalEnum(['keep-existing', 'overwrite', 'fail'], 'keep-existing'),
 	variableParentPolicy: optionalEnumNoDefault(['project', 'global']),
 	tagMissingMode: optionalEnum(['create', 'do-nothing'], 'create'),
 	tagConflictPolicy: optionalEnum(['skip', 'fail', 'rename'], 'skip'),
+}) {}
+
+/** Multipart text field names validated by {@link ImportPackageSelectionRequestDto}. */
+export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
+	'selectedProjectId',
+	'selectedWorkflowIds',
+	'deletedWorkflowIds',
+	'workflowConflictPolicy',
+	'workflowIdPolicy',
+] as const;
+
+const SELECTED_WORKFLOW_IDS_ERROR_MESSAGE =
+	'selectedWorkflowIds must be a JSON array of non-empty strings, e.g. ["id1","id2"]';
+const DELETED_WORKFLOW_IDS_ERROR_MESSAGE =
+	'deletedWorkflowIds must be a JSON array of non-empty strings, e.g. ["id1","id2"]';
+
+const idArraySchema = z.array(z.string().trim().min(1));
+
+function parseIdArray(value: string, ctx: z.RefinementCtx, errorMessage: string): string[] {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(value);
+	} catch {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
+		return z.NEVER;
+	}
+
+	const result = idArraySchema.safeParse(parsed);
+	if (!result.success) {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
+		return z.NEVER;
+	}
+
+	return result.data;
+}
+
+/**
+ * Multipart fields carry arrays as JSON text.
+ * Reject blank or omitted fields, but accept `[]`.
+ */
+const requiredJsonStringIdArray = (errorMessage: string) =>
+	z
+		.string()
+		.optional()
+		.transform((value, ctx): string[] => {
+			if (value === undefined || value.trim().length === 0) {
+				ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
+				return z.NEVER;
+			}
+			return parseIdArray(value, ctx, errorMessage);
+		});
+
+/** Treat blank or omitted fields as `undefined`. */
+const optionalJsonStringIdArray = (errorMessage: string) =>
+	z
+		.string()
+		.optional()
+		.transform((value, ctx): string[] | undefined => {
+			if (value === undefined || value.trim().length === 0) return undefined;
+			return parseIdArray(value, ctx, errorMessage);
+		});
+
+export class ImportPackageSelectionRequestDto extends Z.class({
+	selectedProjectId: z.string().trim().min(1),
+	selectedWorkflowIds: requiredJsonStringIdArray(SELECTED_WORKFLOW_IDS_ERROR_MESSAGE),
+	deletedWorkflowIds: optionalJsonStringIdArray(DELETED_WORKFLOW_IDS_ERROR_MESSAGE),
+	workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version'),
+	workflowIdPolicy: optionalEnum(['new', 'source'], 'source'),
 }) {}

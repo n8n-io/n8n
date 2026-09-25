@@ -4,6 +4,12 @@
         "id": {
             "type": "string"
         },
+        "labelListVisibility": {
+            "type": "string"
+        },
+        "messageListVisibility": {
+            "type": "string"
+        },
         "messagesTotal": {
             "type": "integer"
         },
@@ -23,5 +29,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

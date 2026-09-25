@@ -4,7 +4,6 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
-import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -14,7 +13,9 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 
+import { resolveTaskTriggerNode } from '../resolve-task-trigger-node';
 import {
 	buildScheduleTriggerItem,
 	isScheduleTriggerTaskPayload,
@@ -42,6 +43,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -49,8 +51,23 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
 		const { workflowId, nodeId } = this.parsePayload(task);
 		const workflowData =
-			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(workflowId);
-		const node = this.resolveTriggerNode(workflowData, nodeId, task);
+			await this.triggerExecutionContextFactory.findPublishedWorkflowData(workflowId);
+
+		if (workflowData === null) {
+			this.logger.debug('Workflow has no published version. Skipping the occurrence', {
+				taskId: task.id,
+				jobId: task.jobId,
+				workflowId,
+				nodeId,
+			});
+			return report.notDispatched();
+		}
+		const node = resolveTaskTriggerNode(
+			workflowData,
+			nodeId,
+			task,
+			'Schedule-trigger task points to a node that is missing or disabled in the published workflow',
+		);
 
 		const deduplicationKey = scheduleTriggerDeduplicationKey(task);
 		// `''`/`'DEFAULT'` are the instance-default sentinels, not Moment zones:
@@ -65,9 +82,21 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId,
 			workflowSettings: workflowData.settings,
+			// A schedule has nobody to be, so the run is attributed to the publisher
+			// of the version it runs. That is the mapping's `versionId`, not the
+			// workflow row's `activeVersionId`: publication updates the row first and
+			// the mapping after, so mid-publication the row already points at a
+			// version whose nodes are not the ones below.
+			userId: await this.workflowPublisherService.findPublisherUserId(
+				workflowId,
+				workflowData.versionId,
+			),
 		});
 
 		try {
+			// TODO(CAT-4078): an engine v2 run writes no execution row, so the unique
+			// index that turns a redelivered occurrence into a `DuplicateExecutionError`
+			// never applies and the redelivery starts a second run.
 			const executionId = await this.workflowExecutionService.runWorkflow(
 				workflowData,
 				node,
@@ -121,22 +150,6 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 			});
 		}
 		return task.payload;
-	}
-
-	private resolveTriggerNode(
-		workflowData: IWorkflowBase,
-		nodeId: string,
-		task: ClaimedTask,
-	): INode {
-		const node = workflowData.nodes.find((candidate) => candidate.id === nodeId);
-		if (!node || node.disabled) {
-			// The job outlived its trigger node: deactivation should have removed it.
-			throw new UnexpectedError(
-				'Schedule-trigger task points to a node that is missing or disabled in the published workflow',
-				{ extra: { taskId: task.id, jobId: task.jobId, workflowId: workflowData.id, nodeId } },
-			);
-		}
-		return node;
 	}
 
 	/**

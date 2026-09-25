@@ -44,6 +44,16 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		getCredentialTypeByName: () => ({ displayName: 'HTTP Basic Auth' }),
 		getCredentialById: () => undefined,
+		// Non-empty so the inline-form gate resolves to the (stubbed) NodeCredentials selector.
+		getUsableCredentialByType: () => [{ id: 'cred-1', name: 'Existing' }],
+	}),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: false },
+		isNodeTypeVersionSupported: () => false,
+		isCredentialTypeSupported: () => false,
 	}),
 }));
 
@@ -67,9 +77,8 @@ vi.mock('@/features/settings/environments.ee/environments.store', () => ({
 function makeContext(): WorkflowSetupContext {
 	return {
 		sections: computed(() => []),
-		steps: computed(() => []),
 		currentStepIndex: ref(0),
-		activeStep: computed(() => undefined),
+		activeSection: computed(() => undefined),
 		hasOtherUnhandledSteps: computed(() => false),
 		canAdvanceToNextIncomplete: computed(() => false),
 		credentialSelections: ref({}),
@@ -85,9 +94,7 @@ function makeContext(): WorkflowSetupContext {
 		isSectionComplete: () => false,
 		isCredentialTestFailed: () => false,
 		isSectionSkipped: () => false,
-		isStepComplete: () => false,
-		isStepSkipped: () => false,
-		isStepHandled: () => false,
+		isSectionHandled: () => false,
 		goToStep: vi.fn(),
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),

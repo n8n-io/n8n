@@ -1,7 +1,7 @@
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -77,7 +77,7 @@ describe(useFloatingUiOffsets, () => {
 				currentRouteName = view;
 				useSettingsStore().setSettings({
 					...defaultSettings,
-					aiAssistant: { enabled: true, setup: true },
+					aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 				});
 
 				const { toastBottomOffset } = useFloatingUiOffsets(workflowDocumentIdRef);

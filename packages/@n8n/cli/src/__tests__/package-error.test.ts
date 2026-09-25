@@ -4,6 +4,45 @@ import { ApiError } from '../client';
 import { toPackagesError } from '../commands/package/package-error';
 
 describe('toPackagesError', () => {
+	it('explains a conflict between import and deletion', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'workflow-removal-conflict',
+						sourceWorkflowId: 'source',
+						workflowId: 'target',
+						projectId: 'P1',
+					},
+				],
+			}),
+		);
+
+		expect(result).toBeInstanceOf(ApiError);
+		expect((result as ApiError).hint).toContain(
+			'Workflow target (source source) in project P1 is selected for both import and deletion. Remove it from one selection.',
+		);
+	});
+
+	it('explains a forbidden workflow removal', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'workflow-removal-forbidden',
+						workflowId: 'w1',
+						name: 'Flow',
+						projectId: 'P1',
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'workflow "Flow" (w1) in project P1 could not be removed — not in the package or selected for deletion, and you lack permission',
+		);
+	});
+
 	it('returns non-ApiError values unchanged', () => {
 		const error = new Error('boom');
 		expect(toPackagesError(error)).toBe(error);
@@ -27,6 +66,19 @@ describe('toPackagesError', () => {
 		expect(hint).toContain('Blocking issues:');
 		expect(hint).toContain('workflow "Flow"');
 		expect(hint).toContain('e1');
+	});
+
+	it('lists project-conflict issues for a 409', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{ type: 'project-conflict', kind: 'fail-policy', sourceProjectId: 'P1', name: 'brie' },
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('project "brie" (source P1) already exists on this instance');
 	});
 
 	it('lists credential-unresolved issues for a 422', () => {
@@ -63,6 +115,51 @@ describe('toPackagesError', () => {
 
 		const hint = (result as ApiError).hint ?? '';
 		expect(hint).toContain('variable "var1" unresolved');
+		expect(hint).toContain('w1, w2');
+	});
+
+	it('lists variable-conflict issues for a 409, naming the scope', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'variable-conflict',
+						name: 'API_URL',
+						projectId: 'p1',
+						usedByWorkflows: ['w1'],
+					},
+					{ type: 'variable-conflict', name: 'DB_URL', usedByWorkflows: ['w2'] },
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('variable "API_URL" in project p1 holds a different value');
+		expect(hint).toContain('w1');
+		expect(hint).toContain('variable "DB_URL" in the global scope holds a different value');
+		expect(hint).toContain('w2');
+	});
+
+	it('lists variable-limit-exceeded issues for a 422', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'variable-limit-exceeded',
+						limit: 5,
+						remaining: 1,
+						requested: 3,
+						names: ['API_URL', 'DB_URL', 'TOKEN'],
+						usedByWorkflows: ['w1', 'w2'],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain('variable limit reached: 3 new variable(s)');
+		expect(hint).toContain('API_URL, DB_URL, TOKEN');
+		expect(hint).toContain('1 of 5 remaining');
 		expect(hint).toContain('w1, w2');
 	});
 

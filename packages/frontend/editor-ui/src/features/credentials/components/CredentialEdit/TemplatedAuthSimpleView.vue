@@ -3,6 +3,7 @@ import startCase from 'lodash/startCase';
 
 import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
+import CredentialInputs from './CredentialInputs.vue';
 import {
 	cleanPlaceholderValue,
 	extractTemplateMarkers,
@@ -18,16 +19,12 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nSwitch,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type {
-	ICredentialDataDecryptedObject,
-	INodeProperties,
-	NodeParameterValueType,
-} from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, INodeProperties } from 'n8n-workflow';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 
@@ -45,6 +42,10 @@ import { computed, ref, watch } from 'vue';
  */
 const props = defineProps<{
 	credentialData: ICredentialDataDecryptedObject;
+	/** Show only the guided inputs inside the setup panel. */
+	compact?: boolean;
+	/** Show missing values after the user submits the simplified form. */
+	showValidationWarnings?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -131,7 +132,7 @@ const placeholderProperties = computed<INodeProperties[]>(() =>
 // sentinel — the blanking constant would read as a real value there).
 // Composition still reads `editedValues`, so an untouched input keeps sending
 // `***` (the server merge-back contract).
-const parameterValues = computed<Record<string, NodeParameterValueType>>(() =>
+const parameterValues = computed<Record<string, string>>(() =>
 	Object.fromEntries(
 		markers.value.map((name, index) => {
 			const value = editedValues.value[name] ?? '';
@@ -231,8 +232,17 @@ const typeOptions = [
 <template>
 	<div :class="$style.view" data-test-id="templated-auth-simple-view" @keydown.stop>
 		<!-- ── Guided form ── -->
-		<template v-if="!editing">
-			<template v-if="markers.length">
+		<template v-if="compact || !editing">
+			<CredentialInputs
+				v-if="compact && markers.length"
+				compact
+				:credential-properties="placeholderProperties"
+				:credential-data="parameterValues"
+				:show-validation-warnings="showValidationWarnings"
+				documentation-url=""
+				@update="onParameterUpdate"
+			/>
+			<template v-else-if="markers.length">
 				<!-- form-per-input matches CredentialInputs: breaks up inputs and prevents Chrome autofill -->
 				<form
 					v-for="parameter in placeholderProperties"
@@ -257,7 +267,7 @@ const typeOptions = [
 				{{ i18n.baseText('credentialEdit.templatedAuth.noFieldsYet') }}
 			</div>
 
-			<div :class="$style.provenance">
+			<div v-if="!compact" :class="$style.provenance">
 				<N8nButton
 					variant="subtle"
 					size="small"
@@ -344,7 +354,7 @@ const typeOptions = [
 									/>
 								</N8nInputLabel>
 								<div :class="$style.typePick">
-									<N8nRadioButtons
+									<N8nSegmentControl
 										size="small"
 										:model-value="defFor(name).type === 'plain' ? 'plain' : 'password'"
 										:options="typeOptions"

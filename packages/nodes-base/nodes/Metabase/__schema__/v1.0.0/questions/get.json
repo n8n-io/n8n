@@ -90,8 +90,14 @@
                 "email": {
                     "type": "string"
                 },
+                "first_name": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
+                },
+                "is_data_analyst": {
+                    "type": "boolean"
                 },
                 "is_qbnewb": {
                     "type": "boolean"
@@ -205,6 +211,12 @@
                 }
             }
         },
+        "dimension_mappings": {
+            "type": "null"
+        },
+        "dimensions": {
+            "type": "null"
+        },
         "display": {
             "type": "string"
         },
@@ -233,6 +245,9 @@
             "type": "object",
             "properties": {
                 "email": {
+                    "type": "string"
+                },
+                "first_name": {
                     "type": "string"
                 },
                 "id": {
@@ -340,5 +355,5 @@
             }
         }
     },
-    "version": 5
+    "version": 6
 }

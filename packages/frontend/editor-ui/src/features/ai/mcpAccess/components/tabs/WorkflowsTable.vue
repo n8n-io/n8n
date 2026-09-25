@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowListItem, UserAction } from '@/Interface';
-import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader, TableOptions } from '@n8n/design-system';
 import {
 	N8nActionToggle,
 	N8nButton,
@@ -10,12 +10,12 @@ import {
 	N8nIcon,
 	N8nLink,
 	N8nLoading,
+	N8nSelectedItemsInfo,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
 import router from '@/app/router';
-import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -283,7 +283,7 @@ const onConnectClick = () => {
 					/>
 				</template>
 			</N8nDataTableServer>
-			<SelectedItemsInfo
+			<N8nSelectedItemsInfo
 				:class="$style['selection-bar']"
 				:selected-count="selectedWorkflowIds.length"
 				@clear-selection="clearSelection"
@@ -296,7 +296,7 @@ const onConnectClick = () => {
 						@click="onBulkRemoveMcpAccess"
 					/>
 				</template>
-			</SelectedItemsInfo>
+			</N8nSelectedItemsInfo>
 		</div>
 	</div>
 </template>

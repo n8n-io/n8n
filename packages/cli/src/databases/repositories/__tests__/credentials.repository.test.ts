@@ -12,58 +12,6 @@ describe('CredentialsRepository', () => {
 		vi.resetAllMocks();
 	});
 
-	describe('findMany', () => {
-		const credentialsId = 'cred_123';
-		const credential = mock<CredentialsEntity>({ id: credentialsId });
-
-		test('return `data` property if `includeData:true` and select is using the record syntax', async () => {
-			// ARRANGE
-			entityManager.find.mockResolvedValueOnce([credential]);
-
-			// ACT
-			const credentials = await repository.findMany({ includeData: true, select: { id: true } });
-
-			// ASSERT
-			expect(credentials).toHaveLength(1);
-			expect(credentials[0]).toHaveProperty('data');
-		});
-
-		test('return `data` property if `includeData:true` and select is using the array syntax', async () => {
-			// ARRANGE
-			entityManager.find.mockResolvedValueOnce([credential]);
-
-			// ACT
-			const credentials = await repository.findMany({
-				includeData: true,
-				//TODO: fix this
-				// The function's type does not support this but this is what it
-				// actually gets from the service because the middlewares are typed
-				// loosely.
-				select: ['id'] as never,
-			});
-
-			// ASSERT
-			expect(credentials).toHaveLength(1);
-			expect(credentials[0]).toHaveProperty('data');
-		});
-
-		test('should include isGlobal in default select', async () => {
-			// ARRANGE
-			entityManager.find.mockResolvedValueOnce([credential]);
-
-			// ACT
-			await repository.findMany();
-
-			// ASSERT
-			expect(entityManager.find).toHaveBeenCalledWith(
-				CredentialsEntity,
-				expect.objectContaining({
-					select: expect.arrayContaining(['isGlobal']),
-				}),
-			);
-		});
-	});
-
 	describe('findStartingWith', () => {
 		it('only searches project credential names', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
@@ -103,7 +51,7 @@ describe('CredentialsRepository', () => {
 						'updatedAt',
 						'isGlobal',
 					]),
-					relations: ['shared', 'shared.project', 'shared.project.projectRelations'],
+					relations: ['shared', 'shared.project'],
 				}),
 			);
 			expect(entityManager.find).toHaveBeenCalledWith(
@@ -143,7 +91,7 @@ describe('CredentialsRepository', () => {
 			expect(entityManager.find).toHaveBeenCalledWith(
 				CredentialsEntity,
 				expect.objectContaining({
-					relations: ['shared', 'shared.project', 'shared.project.projectRelations'],
+					relations: ['shared', 'shared.project'],
 				}),
 			);
 			expect(credentials[0].shared).toBeDefined();
@@ -201,45 +149,6 @@ describe('CredentialsRepository', () => {
 				}),
 			);
 			expect(credentials).toHaveLength(1);
-		});
-
-		test('should narrow results by credential type when type is provided', async () => {
-			// ARRANGE
-			const slackCred = mock<CredentialsEntity>({
-				id: 'global-slack',
-				isGlobal: true,
-				type: 'slackOAuth2Api',
-			});
-			entityManager.find.mockResolvedValueOnce([slackCred]);
-
-			// ACT
-			const credentials = await repository.findAllGlobalCredentials({ type: 'slackOAuth2Api' });
-
-			// ASSERT — the where clause must include both isGlobal AND a type matcher
-			expect(entityManager.find).toHaveBeenCalledWith(
-				CredentialsEntity,
-				expect.objectContaining({
-					where: expect.objectContaining({
-						isGlobal: true,
-						type: expect.anything(),
-					}),
-				}),
-			);
-			expect(credentials).toEqual([slackCred]);
-		});
-
-		test('should not add a type filter when type is omitted', async () => {
-			// ARRANGE
-			entityManager.find.mockResolvedValueOnce([]);
-
-			// ACT
-			await repository.findAllGlobalCredentials();
-
-			// ASSERT — where contains isGlobal but NOT type
-			const findCall = entityManager.find.mock.calls.find((call) => call[0] === CredentialsEntity);
-			const findArg = findCall?.[1] as { where?: Record<string, unknown> };
-			expect(findArg?.where).toBeDefined();
-			expect(findArg?.where).not.toHaveProperty('type');
 		});
 	});
 

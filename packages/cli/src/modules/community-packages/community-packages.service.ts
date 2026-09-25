@@ -1,20 +1,30 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
-import { LICENSE_FEATURES, Time } from '@n8n/constants';
+import { BUILTIN_NODES_PACKAGES, LICENSE_FEATURES, Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
+import {
+	checkNodesApiVersion,
+	jsonParse,
+	N8N_NODES_API_VERSION,
+	UnexpectedError,
+	UserError,
+	type NodesApiVersionPackageJson,
+	type PublicInstalledPackage,
+} from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
+import pLimit from 'p-limit';
 import { valid } from 'semver';
 
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -44,6 +54,14 @@ const { PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
 
+/** Built-in package names cannot be installed as community packages. */
+const RESERVED_PACKAGE_NAMES = new Set<string>(BUILTIN_NODES_PACKAGES);
+
+const NPM_PACKAGE_SCOPE_PATTERN = /^@[a-z0-9][a-z0-9\-._]*$/;
+
+/** A package name holds no path separator, so it can never widen the resolved directory. */
+const NPM_PACKAGE_NAME_PATTERN = /^[a-z0-9][a-z0-9\-._]*$/;
+
 type PackageJson = {
 	name: 'installed-nodes';
 	private: true;
@@ -52,13 +70,14 @@ type PackageJson = {
 
 @Service()
 export class CommunityPackagesService {
-	missingPackages: string[] = [];
-
 	private readonly downloadFolder = this.instanceSettings.nodesDownloadDir;
 
 	private readonly packageJsonPath = join(this.downloadFolder, 'package.json');
 
 	private readonly http: HttpRequestClient;
+
+	/** Makes install/update/remove run one at a time, so they can't corrupt shared state on disk. */
+	private readonly packageMutex = pLimit(1);
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -71,7 +90,7 @@ export class CommunityPackagesService {
 		outboundHttp: OutboundHttp,
 	) {
 		this.http = outboundHttp.requests({
-			ssrf: 'disabled', // Fixed, n8n-controlled host
+			useDefaultSsrfPolicy: 'unsafe', // Fixed, n8n-controlled host
 			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
@@ -81,19 +100,11 @@ export class CommunityPackagesService {
 		await this.checkForMissingPackages();
 	}
 
-	get hasMissingPackages() {
-		return this.missingPackages.length > 0;
-	}
-
 	async findInstalledPackage(packageName: string) {
 		return await this.installedPackageRepository.findOne({
 			where: { packageName },
 			relations: ['installedNodes'],
 		});
-	}
-
-	async isPackageInstalled(packageName: string) {
-		return await this.installedPackageRepository.exist({ where: { packageName } });
 	}
 
 	async getAllInstalledPackages() {
@@ -149,6 +160,10 @@ export class CommunityPackagesService {
 
 		const scope = rawString.includes('/') ? rawString.split('/')[0] : undefined;
 
+		if (scope && !NPM_PACKAGE_SCOPE_PATTERN.test(scope)) {
+			throw new UnexpectedError(`Invalid package scope: ${scope}`);
+		}
+
 		const packageNameWithoutScope = scope ? rawString.replace(`${scope}/`, '') : rawString;
 
 		if (!packageNameWithoutScope.startsWith(NODE_PACKAGE_PREFIX)) {
@@ -164,6 +179,16 @@ export class CommunityPackagesService {
 		}
 
 		const packageName = version ? rawString.replace(`@${version}`, '') : rawString;
+
+		const nameWithoutScopeOrVersion = scope ? packageName.replace(`${scope}/`, '') : packageName;
+
+		if (!NPM_PACKAGE_NAME_PATTERN.test(nameWithoutScopeOrVersion)) {
+			throw new UnexpectedError(`Invalid package name: ${packageName}`);
+		}
+
+		if (RESERVED_PACKAGE_NAMES.has(packageName)) {
+			throw new UserError(`Package name "${packageName}" is reserved for n8n built-in packages`);
+		}
 
 		return { packageName, scope, version, rawString };
 	}
@@ -187,32 +212,24 @@ export class CommunityPackagesService {
 		}, []);
 	}
 
-	matchMissingPackages(installedPackages: PublicInstalledPackage[]) {
-		const missingPackagesList = this.missingPackages
-			.map((name) => {
-				try {
-					// Strip away versions but maintain scope and package name
-					const parsedPackageData = this.parseNpmPackageName(name);
-					return parsedPackageData.packageName;
-				} catch {
-					return;
-				}
-			})
-			.filter((i): i is string => i !== undefined);
+	/**
+	 * `some`, not `every`: a repair-reinstall (`saveInstalledPackageWithNodes`, unlike
+	 * `replaceInstalledPackageWithNodes`) doesn't delete `installedNodes` rows from a
+	 * previous version, so a package that dropped a node type keeps a stale row that
+	 * will never resolve. `every` would flag that package as failed forever.
+	 */
+	private areNodesLoaded(installedNodes: Array<{ type: string }>) {
+		return (
+			installedNodes.length === 0 ||
+			installedNodes.some((node) => this.loadNodesAndCredentials.isKnownNode(node.type))
+		);
+	}
 
-		const packages: PublicInstalledPackage[] = [];
-
-		for (const installedPackage of installedPackages) {
-			const pkg = { ...installedPackage };
-
-			if (missingPackagesList.includes(pkg.packageName)) {
-				pkg.failedLoading = true;
-			}
-
-			packages.push(pkg);
-		}
-
-		return packages;
+	withLoadStatus(installedPackages: PublicInstalledPackage[]): PublicInstalledPackage[] {
+		return installedPackages.map((installedPackage) => ({
+			...installedPackage,
+			failedLoading: !this.areNodesLoaded(installedPackage.installedNodes),
+		}));
 	}
 
 	async checkNpmPackageStatus(packageName: string) {
@@ -234,59 +251,138 @@ export class CommunityPackagesService {
 		return { status: NPM_PACKAGE_STATUS_GOOD };
 	}
 
-	hasPackageLoaded(packageName: string) {
-		if (!this.missingPackages.length) return true;
+	isPackageLoaded(installedPackage: InstalledPackages) {
+		return this.areNodesLoaded(installedPackage.installedNodes);
+	}
 
-		return !this.missingPackages.some(
-			(packageNameAndVersion) =>
-				packageNameAndVersion.startsWith(packageName) &&
-				packageNameAndVersion.replace(packageName, '').startsWith('@'),
+	/**
+	 * Returns the ledger, or `null` if it is absent or unusable (e.g. truncated by a crash
+	 * mid-write). Absence is the normal state before the first install, so only an unusable
+	 * ledger is worth a warning.
+	 */
+	private async readPackageJson(): Promise<PackageJson | null> {
+		const content = await readFile(this.packageJsonPath, 'utf-8').catch(() => null);
+		if (content === null) return null;
+
+		// Checking `dependencies` rather than just the parse: `{}` parses fine but throws on
+		// the next mutation, and nothing would ever rebuild it.
+		const packageJson = jsonParse<PackageJson | null>(content, { fallbackValue: null });
+		if (packageJson?.dependencies) return packageJson;
+
+		this.logger.warn('Community package ledger is unusable, rebuilding it');
+		return null;
+	}
+
+	/** Reads a package's on-disk `package.json`, or `null` if absent or unreadable. */
+	private async readInstalledPackageJson(
+		packageName: string,
+	): Promise<(NodesApiVersionPackageJson & { version?: string }) | null> {
+		const packageJsonPath = `${this.resolvePackageDirectory(packageName)}/package.json`;
+		try {
+			const content = await readFile(packageJsonPath, 'utf-8');
+			return jsonParse<(NodesApiVersionPackageJson & { version?: string }) | null>(content, {
+				fallbackValue: null,
+			});
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Rejects a downloaded package that requires a node-authoring API version this
+	 * runtime does not support (or declares a malformed one). Runs after
+	 * `downloadPackage` extracted the files and before any `require()` of node
+	 * code, so no loader can ever import incompatible node code.
+	 *
+	 * An unreadable `package.json` is not a compatibility verdict: fall through and
+	 * let the load step report it.
+	 */
+	private async assertPackageApiVersionSupported(packageName: string) {
+		const packageJson = await this.readInstalledPackageJson(packageName);
+		if (!packageJson) return;
+
+		const check = checkNodesApiVersion(packageJson);
+		if (check.compatible) return;
+
+		const isMalformed = check.reason === 'malformed';
+
+		throw new IncompatibleNodesApiVersionError(
+			isMalformed
+				? `This community node declares an invalid n8n node API version (${JSON.stringify(check.declared)}). Install a version of the package with valid metadata or contact the package author.`
+				: "This community node isn't compatible with your version of n8n. Update n8n to use it.",
+			{
+				requiredNodesApiVersion: isMalformed ? null : Number(check.declared),
+				supportedNodesApiVersion: N8N_NODES_API_VERSION,
+			},
 		);
 	}
 
-	removePackageFromMissingList(packageName: string) {
-		try {
-			this.missingPackages = this.missingPackages.filter(
-				(packageNameAndVersion) =>
-					!packageNameAndVersion.startsWith(packageName) ||
-					!packageNameAndVersion.replace(packageName, '').startsWith('@'),
-			);
-		} catch {
-			// do nothing
-		}
+	/** Reads the version a package actually has on disk, or `null` if absent or unreadable. */
+	private async readInstalledPackageVersion(packageName: string): Promise<string | null> {
+		return (await this.readInstalledPackageJson(packageName))?.version ?? null;
+	}
+
+	/**
+	 * Rebuilds the ledger from the database, the source of truth for what is installed.
+	 * Writing an empty `dependencies` instead would leave `npm outdated` with nothing
+	 * to compare, silently hiding available updates for every package.
+	 */
+	private async buildPackageJsonFromDatabase(): Promise<PackageJson> {
+		const installedPackages = await this.getAllInstalledPackages();
+
+		return {
+			name: 'installed-nodes',
+			private: true,
+			dependencies: Object.fromEntries(
+				installedPackages.map(({ packageName, installedVersion }) => [
+					packageName,
+					installedVersion,
+				]),
+			),
+		};
 	}
 
 	async ensurePackageJson() {
-		try {
-			await access(this.packageJsonPath, constants.F_OK);
-		} catch {
-			await mkdir(this.downloadFolder, { recursive: true });
-			const packageJson: PackageJson = {
-				name: 'installed-nodes',
-				private: true,
-				dependencies: {},
-			};
-			await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
-		}
+		if (await this.readPackageJson()) return;
+
+		const packageJson = await this.buildPackageJsonFromDatabase();
+
+		await mkdir(this.downloadFolder, { recursive: true });
+		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}
 
 	async checkForMissingPackages() {
 		const installedPackages = await this.getAllInstalledPackages();
 		const missingPackages = new Set<{ packageName: string; version: string }>();
 
-		installedPackages.forEach((installedPackage) => {
-			installedPackage.installedNodes.forEach((installedNode) => {
-				if (!this.loadNodesAndCredentials.isKnownNode(installedNode.type)) {
-					// Leave the list ready for installing in case we need.
-					missingPackages.add({
-						packageName: installedPackage.packageName,
-						version: installedPackage.installedVersion,
-					});
-				}
-			});
-		});
+		for (const installedPackage of installedPackages) {
+			// Same rule as `withLoadStatus`, so the UI and this check can't disagree.
+			if (this.areNodesLoaded(installedPackage.installedNodes)) continue;
 
-		this.missingPackages = [];
+			// Not loaded does not mean missing. A package the startup guard skipped
+			// because of its node API version is still on disk: reinstalling the same
+			// version can never fix it, and `loadPackage` would import its node code.
+			// An unreadable package.json stays "missing" — that is the repair path for
+			// partial or corrupt installs.
+			const packageJson = await this.readInstalledPackageJson(installedPackage.packageName);
+			const apiVersionCheck = packageJson && checkNodesApiVersion(packageJson);
+			if (apiVersionCheck && !apiVersionCheck.compatible) {
+				const requirement =
+					apiVersionCheck.reason === 'malformed'
+						? `an invalid n8nNodesApiVersion (${JSON.stringify(apiVersionCheck.declared)})`
+						: `node API version ${String(apiVersionCheck.declared)}, but this n8n version supports up to ${N8N_NODES_API_VERSION}`;
+				this.logger.warn(
+					`Not reinstalling package "${installedPackage.packageName}": it requires ${requirement}. Upgrade n8n to use this package, or uninstall it in Settings > Community nodes.`,
+				);
+				continue;
+			}
+
+			// Leave the list ready for installing in case we need.
+			missingPackages.add({
+				packageName: installedPackage.packageName,
+				version: installedPackage.installedVersion,
+			});
+		}
 
 		if (missingPackages.size === 0) return;
 
@@ -312,6 +408,7 @@ export class CommunityPackagesService {
 						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
 					this.config.aiNodeSdkVersion,
+					this.config.nodesApiVersion,
 				);
 			} catch (error) {
 				this.logger.error(
@@ -358,10 +455,6 @@ export class CommunityPackagesService {
 				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
 			);
 		}
-
-		this.missingPackages = [...missingPackages].map(
-			(missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`,
-		);
 	}
 
 	async installPackage(
@@ -384,10 +477,17 @@ export class CommunityPackagesService {
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
 		await this.removeNpmPackage(packageName);
 		await this.removePackageFromDatabase(installedPackage);
-		void this.publisher.publishCommand({
-			command: 'community-package-uninstall',
-			payload: { packageName },
-		});
+		void this.publisher
+			.publishCommand({
+				command: 'community-package-uninstall',
+				payload: { packageName },
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to publish community package uninstall event', {
+					error: ensureError(error),
+					packageName,
+				});
+			});
 	}
 
 	private getNpmRegistry() {
@@ -408,163 +508,346 @@ export class CommunityPackagesService {
 		}
 	}
 
+	private async runRegistryChecks(packageName: string, packageVersion: string, checksum?: string) {
+		this.checkInstallPermissions(Boolean(checksum));
+
+		const packageStatus = await this.checkNpmPackageStatus(packageName);
+
+		if (packageStatus.status !== NPM_PACKAGE_STATUS_GOOD) {
+			throw new UnexpectedError(`Package "${packageName}" is not allowed`);
+		}
+
+		const authToken = this.getNpmAuthToken();
+		const registry = this.getNpmRegistry();
+
+		if (checksum) {
+			await verifyIntegrity(packageName, packageVersion, registry, checksum, authToken);
+		}
+
+		await checkIfVersionExistsOrThrow(packageName, packageVersion, registry, authToken);
+
+		return authToken;
+	}
+
 	private async installOrUpdatePackage(
 		packageName: string,
 		options:
 			| { version?: string; checksum?: string }
 			| { installedPackage: InstalledPackages; version?: string; checksum?: string } = {},
 	) {
-		const isUpdate = 'installedPackage' in options;
-		const packageVersion = !options.version ? 'latest' : options.version;
+		return await this.packageMutex(async () => {
+			const isUpdate = 'installedPackage' in options;
+			const packageVersion = !options.version ? 'latest' : options.version;
 
-		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
-		this.checkInstallPermissions(shouldValidateChecksum);
+			const authToken = await this.runRegistryChecks(packageName, packageVersion, options.checksum);
 
-		const authToken = this.getNpmAuthToken();
+			// The ledger entry to put back on failure, read before `downloadPackage` overwrites it.
+			// Falls back to the DB record on update: if the ledger was missing or malformed,
+			// `downloadPackage` rebuilds it from the DB anyway, so that's the real previous value.
+			const previousVersion = isUpdate
+				? ((await this.readPackageJson())?.dependencies[packageName] ??
+					options.installedPackage.installedVersion)
+				: (await this.readPackageJson())?.dependencies[packageName];
 
-		if (options.checksum) {
-			await verifyIntegrity(
-				packageName,
-				packageVersion,
-				this.getNpmRegistry(),
-				options.checksum,
-				authToken,
-			);
-		}
+			// Keep whatever is on disk aside so any failure below can roll back to it. This has
+			// to run for a fresh install too: a directory can pre-exist one, after a crash
+			// mid-install or when reinstalling a package the loader reports as missing.
+			const backupDirectory = await this.backupPackageDirectory(packageName);
 
-		await checkIfVersionExistsOrThrow(
-			packageName,
-			packageVersion,
-			this.getNpmRegistry(),
-			authToken,
-		);
-
-		const previousVersion = isUpdate ? options.installedPackage.installedVersion : undefined;
-
-		// Keep the previous version aside so a failed update can be rolled back
-		const backupDirectory =
-			isUpdate && (await this.packageDirectoryExists(packageName))
-				? await this.backupPackageDirectory(packageName)
-				: undefined;
-
-		try {
-			await this.downloadPackage(packageName, packageVersion, authToken);
-		} catch (error) {
-			// No reload here: the previous package was not unloaded before the download
-			await this.restoreFailedPackageInstallation(packageName, {
-				backupDirectory,
-				previousVersion,
-			});
-
-			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
-				throw new UserError('npm package not found', { extra: { packageName } });
-			}
-			throw error;
-		}
-
-		let loader: PackageDirectoryLoader;
-		try {
-			await this.loadNodesAndCredentials.unloadPackage(packageName);
-			loader = await this.loadNodesAndCredentials.loadPackage(packageName);
-		} catch (error) {
-			await this.restoreFailedPackageInstallation(packageName, {
-				backupDirectory,
-				previousVersion,
-				reloadPackage: isUpdate,
-			});
-			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
-		}
-
-		if (loader.loadedNodes.length > 0) {
-			let installedPackage: InstalledPackages;
-
-			// Persisting to the DB is the point of no return: the transaction either
-			// commits the new version or leaves the old record intact, so a failure here
-			// can still roll back to a consistent previous state.
 			try {
-				installedPackage = isUpdate
-					? await this.replaceInstalledPackage(options.installedPackage, loader)
-					: await this.persistInstalledPackage(loader);
+				await this.downloadPackage(packageName, packageVersion, authToken);
+				// Reject before the loader imports node code or the database records the version.
+				await this.assertPackageApiVersionSupported(packageName);
+			} catch (error) {
+				// No reload here: the previous package was not unloaded before the download
+				await this.restorePackageFiles(packageName, {
+					backupDirectory,
+					previousVersion,
+				});
+
+				if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
+					throw new UserError('npm package not found', { extra: { packageName } });
+				}
+				throw error;
+			}
+
+			let loader: PackageDirectoryLoader;
+			try {
+				await this.loadNodesAndCredentials.unloadPackage(packageName);
+				loader = await this.loadNodesAndCredentials.loadPackage(packageName);
 			} catch (error) {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
 					previousVersion,
-					reloadPackage: isUpdate,
 				});
-
-				throw new UnexpectedError('Failed to save installed package', {
-					extra: { packageName },
+				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
 					cause: error,
 				});
 			}
 
-			// The new version is now authoritative; later failures must not roll back,
-			// or the DB record would end up inconsistent with the restored files.
-			// Removing the backup is housekeeping — a failure here must not fail the update.
-			if (backupDirectory) {
+			if (loader.loadedNodes.length > 0) {
+				let installedPackage: InstalledPackages;
+
+				// Persisting to the DB is the point of no return: the transaction either
+				// commits the new version or leaves the old record intact, so a failure here
+				// can still roll back to a consistent previous state.
 				try {
-					await rm(backupDirectory, { recursive: true, force: true });
+					installedPackage = isUpdate
+						? await this.replaceInstalledPackage(options.installedPackage, loader)
+						: await this.persistInstalledPackage(loader);
 				} catch (error) {
-					this.logger.warn('Failed to remove community package backup directory', {
-						error: ensureError(error),
-						packageName,
+					await this.restoreFailedPackageInstallation(packageName, {
 						backupDirectory,
+						previousVersion,
+					});
+
+					throw new UnexpectedError('Failed to save installed package', {
+						extra: { packageName },
+						cause: error,
 					});
 				}
-			}
-			void this.publisher.publishCommand({
-				command: isUpdate ? 'community-package-update' : 'community-package-install',
-				payload: { packageName, packageVersion },
-			});
-			await this.loadNodesAndCredentials.postProcessLoaders();
-			this.loadNodesAndCredentials.releaseTypes();
-			this.logger.info(`Community package installed: ${packageName}`);
-			return installedPackage;
-		} else {
-			await this.restoreFailedPackageInstallation(packageName, {
-				backupDirectory,
-				previousVersion,
-				reloadPackage: isUpdate,
-			});
 
-			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
+				// The new version is now authoritative; later failures must not roll back,
+				// or the DB record would end up inconsistent with the restored files.
+				await this.discardBackupDirectory(packageName, backupDirectory);
+				// Publish the resolved version, not the requested specifier (e.g. `latest`),
+				// so peers install the exact version this instance just persisted.
+				const { installedVersion } = installedPackage;
+				void this.publisher
+					.publishCommand({
+						command: isUpdate ? 'community-package-update' : 'community-package-install',
+						payload: {
+							packageName,
+							packageVersion: installedVersion,
+							checksum: options.checksum,
+						},
+					})
+					.catch((error) => {
+						this.logger.warn('Failed to publish community package install/update event', {
+							error: ensureError(error),
+							packageName,
+							packageVersion: installedVersion,
+						});
+					});
+				await this.loadNodesAndCredentials.postProcessLoaders();
+				this.loadNodesAndCredentials.releaseTypes();
+				this.logger.info(`Community package installed: ${packageName}`);
+				return installedPackage;
+			} else {
+				await this.restoreFailedPackageInstallation(packageName, {
+					backupDirectory,
+					previousVersion,
+				});
+
+				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
+			}
+		});
+	}
+
+	private assertPackageChangesAllowed() {
+		if (!this.config.enabled) {
+			throw new UserError('Community packages are disabled on this instance');
+		}
+
+		if (this.config.preventLoading) {
+			throw new UserError('Community package loading is disabled on this instance');
 		}
 	}
 
+	// Payloads from other instances pass the same gates as a local install request. Not
+	// `communityPackagesManagedByEnv`: only the main runs the env loader, and it publishes
+	// these commands, so a follower that refused them would never get the packages.
+	// Failures are logged rather than rethrown, so one message cannot break the subscriber.
 	@OnPubSubEvent('community-package-install')
 	@OnPubSubEvent('community-package-update')
 	async handleInstallEvent({
 		packageName,
 		packageVersion,
-	}: { packageName: string; packageVersion: string }) {
-		await this.installOrUpdateNpmPackage(packageName, packageVersion);
+		checksum,
+	}: { packageName: string; packageVersion: string; checksum?: string }) {
+		let accepted = false;
+
+		try {
+			this.assertPackageChangesAllowed();
+
+			const parsed = this.parseNpmPackageName(packageName);
+
+			const installedPackage = await this.findInstalledPackage(parsed.packageName);
+
+			if (!installedPackage) {
+				throw new UnexpectedError('No installed package record found', {
+					extra: { packageName: parsed.packageName },
+				});
+			}
+
+			const resolvedVersion = installedPackage.installedVersion;
+
+			if (!isValidVersionSpecifier(resolvedVersion)) {
+				throw new UnexpectedError(`Invalid version: ${resolvedVersion}`);
+			}
+
+			const versionMatches = resolvedVersion === packageVersion;
+
+			if (!versionMatches) {
+				this.logger.warn('Community package version differs from the stored record', {
+					packageName: installedPackage.packageName,
+					packageVersion,
+					installedVersion: resolvedVersion,
+				});
+			}
+
+			await this.runRegistryChecks(
+				installedPackage.packageName,
+				resolvedVersion,
+				versionMatches ? checksum : undefined,
+			);
+
+			accepted = true;
+
+			await this.installOrUpdateNpmPackage(installedPackage.packageName, resolvedVersion);
+		} catch (error) {
+			const details = {
+				packageName,
+				reason: ensureError(error).message,
+				// The operator needs both node API versions to see why a leader's package
+				// is rejected here; the user-facing message deliberately omits them.
+				...(error instanceof IncompatibleNodesApiVersionError ? error.meta : {}),
+			};
+
+			if (accepted) this.logger.error('Failed to install community package', details);
+			else this.logger.warn('Skipped installing community package', details);
+		}
 	}
 
 	@OnPubSubEvent('community-package-uninstall')
 	async handleUninstallEvent({ packageName }: { packageName: string }) {
-		await this.removeNpmPackage(packageName);
+		let accepted = false;
+
+		try {
+			this.assertPackageChangesAllowed();
+
+			const parsed = this.parseNpmPackageName(packageName);
+
+			const installedPackage = await this.findInstalledPackage(parsed.packageName);
+
+			if (installedPackage) {
+				throw new UnexpectedError('Installed package record still present', {
+					extra: { packageName: parsed.packageName },
+				});
+			}
+
+			accepted = true;
+
+			await this.removeNpmPackage(parsed.packageName, { requireNoRecord: true });
+		} catch (error) {
+			const details = { packageName, reason: ensureError(error).message };
+
+			if (accepted) this.logger.error('Failed to uninstall community package', details);
+			else this.logger.warn('Skipped uninstalling community package', details);
+		}
 	}
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
-		const authToken = this.getNpmAuthToken();
-		await this.downloadPackage(packageName, packageVersion, authToken);
-		await this.loadNodesAndCredentials.unloadPackage(packageName);
-		await this.loadNodesAndCredentials.loadPackage(packageName);
-		await this.loadNodesAndCredentials.postProcessLoaders();
-		this.loadNodesAndCredentials.releaseTypes();
-		this.logger.info(`Community package installed: ${packageName}`);
+		return await this.packageMutex(async () => {
+			// The record read before the lock can have changed while this call waited for it,
+			// so re-read it: a command that raced an uninstall must not put the package back.
+			const installedPackage = await this.findInstalledPackage(packageName);
+
+			if (installedPackage?.installedVersion !== packageVersion) {
+				throw new UnexpectedError('Installed package record changed while waiting for the lock', {
+					extra: { packageName },
+				});
+			}
+
+			const onDiskVersion = await this.readInstalledPackageVersion(packageName);
+			if (onDiskVersion === packageVersion && this.loadNodesAndCredentials.loaders[packageName]) {
+				this.logger.debug(
+					`Community package ${packageName} already at ${packageVersion}, skipping`,
+				);
+				return;
+			}
+
+			const authToken = this.getNpmAuthToken();
+			const backupDirectory = await this.backupPackageDirectory(packageName);
+
+			// Only the directory is rolled back here, never the ledger: on a follower its
+			// entry is justified by the leader's database record, not by this instance's disk.
+			try {
+				await this.downloadPackage(packageName, packageVersion, authToken);
+				// The command may come from a newer leader in a mixed fleet.
+				await this.assertPackageApiVersionSupported(packageName);
+			} catch (error) {
+				// No reload: the previous package was not unloaded before the download
+				await this.restorePackageDirectory(packageName, backupDirectory);
+				throw error;
+			}
+
+			// A failed load keeps the new directory: rolling back to a working older version
+			// would leave this instance silently behind the leader's record.
+			try {
+				await this.loadNodesAndCredentials.unloadPackage(packageName);
+				await this.loadNodesAndCredentials.loadPackage(packageName);
+				await this.loadNodesAndCredentials.postProcessLoaders();
+				this.loadNodesAndCredentials.releaseTypes();
+			} finally {
+				await this.discardBackupDirectory(packageName, backupDirectory);
+			}
+
+			this.logger.info(`Community package installed: ${packageName}`);
+		});
 	}
 
-	private async removeNpmPackage(packageName: string) {
-		await this.deletePackageDirectory(packageName);
-		await this.loadNodesAndCredentials.unloadPackage(packageName);
-		await this.loadNodesAndCredentials.postProcessLoaders();
-		this.loadNodesAndCredentials.releaseTypes();
-		this.logger.info(`Community package uninstalled: ${packageName}`);
+	private async removeNpmPackage(packageName: string, options: { requireNoRecord?: boolean } = {}) {
+		return await this.packageMutex(async () => {
+			// Same reason as in `installOrUpdateNpmPackage`: on the receiving path the absent
+			// record is the precondition, and a concurrent install command can restore it.
+			if (options.requireNoRecord && (await this.findInstalledPackage(packageName))) {
+				throw new UnexpectedError('Installed package record restored while waiting for the lock', {
+					extra: { packageName },
+				});
+			}
+
+			await this.deletePackageDirectory(packageName);
+
+			// Housekeeping: the ledger is a projection of the database, so a dangling entry
+			// must not fail the uninstall, but leaving it gives `npm prune` a reason to put
+			// the package back on disk.
+			try {
+				await this.removePackageJsonDependency(packageName);
+			} catch (error) {
+				this.logger.warn('Failed to remove community package from the ledger', {
+					error: ensureError(error),
+					packageName,
+				});
+			}
+
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
+			this.logger.info(`Community package uninstalled: ${packageName}`);
+		});
 	}
 
 	private resolvePackageDirectory(packageName: string) {
-		return `${this.downloadFolder}/node_modules/${packageName}`;
+		const nodeModulesDirectory = `${this.downloadFolder}/node_modules`;
+		const packageDirectory = `${nodeModulesDirectory}/${packageName}`;
+
+		// Not every caller validates the name, so confirm the resolved path is exactly the
+		// named directory. A prefix check alone still accepts a name like `@scope/pkg/..`,
+		// which resolves to the scope directory and stays under node_modules.
+		const relativePath = relative(resolve(nodeModulesDirectory), resolve(packageDirectory));
+
+		// An empty relative path is the download folder itself, and a leading `..` is outside
+		// it. Both of those compare equal to the name that produced them, so reject them first.
+		if (
+			relativePath === '' ||
+			relativePath.startsWith('..') ||
+			relativePath.split(sep).join('/') !== packageName
+		) {
+			throw new UserError('Invalid package name', { extra: { packageName } });
+		}
+
+		return packageDirectory;
 	}
 
 	private async packageDirectoryExists(packageName: string) {
@@ -576,38 +859,110 @@ export class CommunityPackagesService {
 		}
 	}
 
-	private async backupPackageDirectory(packageName: string) {
+	/**
+	 * Moves the package directory aside, if there is one, so a failed install can put it
+	 * back. Taking this once up front is what keeps a fresh install over an existing
+	 * directory recoverable.
+	 */
+	private async backupPackageDirectory(packageName: string): Promise<string | undefined> {
+		if (!(await this.packageDirectoryExists(packageName))) return undefined;
+
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 		const backupDirectory = `${packageDirectory}.backup-${Date.now()}`;
 		await rename(packageDirectory, backupDirectory);
 		return backupDirectory;
 	}
 
-	private async restoreFailedPackageInstallation(
-		packageName: string,
-		options: { backupDirectory?: string; previousVersion?: string; reloadPackage?: boolean },
-	) {
-		const { backupDirectory, previousVersion, reloadPackage = false } = options;
+	/** Drops a backup that is no longer needed. Housekeeping: a failure must not fail the install. */
+	private async discardBackupDirectory(packageName: string, backupDirectory?: string) {
+		if (!backupDirectory) return;
 
 		try {
-			await this.deletePackageDirectory(packageName);
+			await rm(backupDirectory, { recursive: true, force: true, maxRetries: 3 });
+		} catch (error) {
+			this.logger.warn('Failed to remove community package backup directory', {
+				error: ensureError(error),
+				packageName,
+				backupDirectory,
+			});
+		}
+	}
 
+	/** Discards whatever is at `packageDirectory` and puts the backup back in its place, if any. */
+	private async restorePackageDirectoryFromBackup(packageName: string, backupDirectory?: string) {
+		await this.deletePackageDirectory(packageName);
+		if (!backupDirectory) return;
+		await rename(backupDirectory, this.resolvePackageDirectory(packageName));
+	}
+
+	/**
+	 * Puts the backup back in place. Kept apart from the ledger rollback below because a
+	 * follower must not touch the ledger: its entry is justified by the leader's database
+	 * record, not by this instance's disk.
+	 */
+	private async restorePackageDirectory(packageName: string, backupDirectory?: string) {
+		try {
+			await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
+		} catch (cleanupError) {
+			// `backupDirectory` is the only pointer to the files if the rename half failed: the
+			// loader skips `.backup-<ts>` directories, so nothing finds them again on its own.
+			this.logger.warn('Failed to restore community package directory after failed installation', {
+				error: ensureError(cleanupError),
+				packageName,
+				backupDirectory,
+			});
+		}
+	}
+
+	/**
+	 * Unloads the version that failed and loads back whatever the rollback left on disk.
+	 * Only for callers that already unloaded the previous version.
+	 */
+	private async restoreLoadedPackage(packageName: string) {
+		try {
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			// Check the disk instead of assuming the rollback restored something: a rename
+			// that failed halfway leaves no directory to load.
+			if (await this.packageDirectoryExists(packageName)) {
+				await this.loadNodesAndCredentials.loadPackage(packageName);
+			}
+		} catch (cleanupError) {
+			this.logger.warn('Failed to reload community package after failed installation', {
+				error: ensureError(cleanupError),
+				packageName,
+			});
+		}
+
+		// Runs even when the load above failed: `known` is only ever rebuilt here, so
+		// skipping it leaves node types advertised with no loader behind them, which
+		// `withLoadStatus` then reports as a healthy package.
+		try {
+			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
+		} catch (cleanupError) {
+			this.logger.warn('Failed to refresh node types after failed community package install', {
+				error: ensureError(cleanupError),
+				packageName,
+			});
+		}
+	}
+
+	private async restorePackageFiles(
+		packageName: string,
+		options: { backupDirectory?: string; previousVersion?: string },
+	) {
+		const { backupDirectory, previousVersion } = options;
+
+		await this.restorePackageDirectory(packageName, backupDirectory);
+
+		// Independent of the restore above: a failed restore must not leave package.json
+		// pointing at the version that failed to install.
+		try {
 			if (previousVersion) {
 				await this.updatePackageJsonDependency(packageName, previousVersion);
 			} else {
 				await this.removePackageJsonDependency(packageName);
 			}
-
-			if (!backupDirectory) return;
-
-			await rename(backupDirectory, this.resolvePackageDirectory(packageName));
-
-			if (!reloadPackage) return;
-
-			await this.loadNodesAndCredentials.unloadPackage(packageName);
-			await this.loadNodesAndCredentials.loadPackage(packageName);
-			await this.loadNodesAndCredentials.postProcessLoaders();
-			this.loadNodesAndCredentials.releaseTypes();
 		} catch (cleanupError) {
 			this.logger.warn('Failed to restore community package after failed installation', {
 				error: ensureError(cleanupError),
@@ -616,6 +971,20 @@ export class CommunityPackagesService {
 		}
 	}
 
+	/** Full rollback, for callers that already unloaded the package before failing. */
+	private async restoreFailedPackageInstallation(
+		packageName: string,
+		options: { backupDirectory?: string; previousVersion?: string },
+	) {
+		await this.restorePackageFiles(packageName, options);
+		await this.restoreLoadedPackage(packageName);
+	}
+
+	/**
+	 * Writes the package into its directory, which the caller must have freed first.
+	 * Recovering from a failure here is the caller's job: it holds the only backup, and
+	 * only it knows whether a later step still needs one.
+	 */
 	private async downloadPackage(
 		packageName: string,
 		packageVersion: string,
@@ -624,8 +993,6 @@ export class CommunityPackagesService {
 		const registry = this.getNpmRegistry();
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
-		// (Re)create the packageDir
-		await this.deletePackageDirectory(packageName);
 		await mkdir(packageDirectory, { recursive: true });
 
 		// TODO: make sure that this works for scoped packages as well
@@ -675,7 +1042,11 @@ export class CommunityPackagesService {
 			);
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
-			await rm(join(this.downloadFolder, tarballName));
+			// `npm pack` failing to print a filename would otherwise resolve this to
+			// `downloadFolder` itself, and the non-recursive `rm` would mask the real error.
+			if (tarballName) {
+				await rm(join(this.downloadFolder, tarballName));
+			}
 		}
 
 		return packageDirectory;
@@ -683,7 +1054,9 @@ export class CommunityPackagesService {
 
 	private async deletePackageDirectory(packageName: string) {
 		const packageDirectory = this.resolvePackageDirectory(packageName);
-		await rm(packageDirectory, { recursive: true, force: true });
+		// Node only retries ENOTEMPTY/EBUSY/EPERM when maxRetries > 0; these surface
+		// transiently on overlayfs for large package trees.
+		await rm(packageDirectory, { recursive: true, force: true, maxRetries: 3 });
 	}
 
 	async updatePackageJsonDependency(packageName: string, version: string) {
@@ -701,8 +1074,11 @@ export class CommunityPackagesService {
 	private async mutatePackageJsonDependencies(
 		mutate: (dependencies: PackageJson['dependencies']) => void,
 	) {
-		const existingContent = await readFile(this.packageJsonPath, 'utf-8');
-		const packageJson = jsonParse<PackageJson>(existingContent);
+		// Heal here too, not just at boot: an unreadable ledger would otherwise fail
+		// every install and uninstall until the process is restarted.
+		const packageJson =
+			(await this.readPackageJson()) ?? (await this.buildPackageJsonFromDatabase());
+
 		mutate(packageJson.dependencies);
 		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}

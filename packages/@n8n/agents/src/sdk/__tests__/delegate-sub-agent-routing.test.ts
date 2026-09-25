@@ -6,6 +6,8 @@ import {
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
 	getInlineDelegateSubAgentToolOptions,
+	type DelegateSubAgentCancelRequest,
+	type DelegateSubAgentResumeRequest,
 	type DelegateSubAgentRunner,
 	type DelegateSubAgentRunnerHelpers,
 } from '../../runtime/tools/delegate-sub-agent-tool';
@@ -165,10 +167,12 @@ describe('delegate sub-agent routing', () => {
 		inlineChildResumeResult = undefined;
 	});
 
-	it('routes inline delegations through a host runner with runInlineSubAgent helpers', async () => {
-		const hostRunSubAgent = vi.fn<DelegateSubAgentRunner>(async (request, helpers) => {
-			expect(request.subAgentId).toBe(INLINE_SUB_AGENT_ID);
-			return await helpers.runInlineSubAgent(request);
+	it('routes inline delegations through a host without constructing an SDK child', async () => {
+		const hostRunSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			runId: 'host-child-run',
+			answer: 'host answer',
 		});
 
 		const agent = new Agent('parent')
@@ -192,14 +196,61 @@ describe('delegate sub-agent routing', () => {
 			delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' }),
 		).resolves.toMatchObject({
 			status: 'completed',
-			answer: 'inline answer',
+			answer: 'host answer',
 		});
 
 		expect(hostRunSubAgent).toHaveBeenCalledOnce();
-		const helpers = hostRunSubAgent.mock.calls[0]?.[1];
-		expect(helpers).toBeDefined();
-		expect(typeof helpers?.runInlineSubAgent).toBe('function');
-		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs).toHaveLength(0);
+	});
+
+	it('prefers host resume and cancellation handlers for inline delegations', async () => {
+		const hostResumeSubAgent = vi.fn().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			runId: 'child-run-1',
+			answer: 'resumed by host',
+		});
+		const hostCancelSubAgent = vi.fn().mockResolvedValue(undefined);
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.checkpoint('memory')
+			.tool(
+				createDelegateSubAgentTool({
+					runSubAgent: vi.fn(),
+					resumeSubAgent: hostResumeSubAgent,
+					cancelSubAgent: hostCancelSubAgent,
+				}),
+			);
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		if (!delegateTool) throw new Error('Expected delegate sub-agent tool');
+		const { resumeSubAgent, cancelSubAgent } =
+			getInlineDelegateSubAgentToolOptions(delegateTool) ?? {};
+		const request: DelegateSubAgentResumeRequest & DelegateSubAgentCancelRequest = {
+			...delegateInput,
+			taskPath: '/root/research_api_0',
+			childCount: 0,
+			childRunId: 'child-run-1',
+			childToolCallId: 'child-tool-call-1',
+			childThreadId: 'child-thread-1',
+			resumeData: { approved: true },
+			resumeContext: { agentId: 'parent-agent-1' },
+			reason: 'cancelled by parent',
+		};
+		const helpers = { runInlineSubAgent: vi.fn(), emitChunk: vi.fn() };
+
+		await expect(resumeSubAgent?.(request, helpers)).resolves.toMatchObject({
+			status: 'completed',
+			answer: 'resumed by host',
+		});
+		await cancelSubAgent?.(request, helpers);
+
+		expect(hostResumeSubAgent).toHaveBeenCalledOnce();
+		expect(hostCancelSubAgent).toHaveBeenCalledOnce();
+		expect(runtimeResumeCalls).toHaveLength(0);
 	});
 
 	it('runs inline delegations without a host runner when the tool is built on an Agent', async () => {

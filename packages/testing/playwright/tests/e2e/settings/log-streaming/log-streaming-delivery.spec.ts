@@ -8,7 +8,7 @@
  *
  * Prerequisites:
  * - Log streaming feature enabled (enterprise license, @licensed)
- * - @capability:proxy tag to bring up the MockServer proxy
+ * - The proxy capability starts MockServer
  */
 import type { ProxyServer, RequestMade } from 'n8n-containers/services/proxy';
 import { nanoid } from 'nanoid';
@@ -114,7 +114,7 @@ async function triggerApiKeyDeletedEvent(api: ApiHelpers): Promise<void> {
 }
 
 test.describe(
-	'Log Streaming delivery @capability:proxy @licensed',
+	'Log Streaming delivery @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},

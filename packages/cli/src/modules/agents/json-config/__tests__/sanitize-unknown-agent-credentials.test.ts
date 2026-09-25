@@ -47,7 +47,6 @@ describe('sanitizeUnknownAgentCredentials', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'known-cred',
-					extractorModel: workerModel,
 					reflectorModel: workerModel,
 				},
 			},
@@ -66,6 +65,34 @@ describe('sanitizeUnknownAgentCredentials', () => {
 
 		expect(result).toEqual({
 			memory: { episodicMemory: { enabled: true, credential: '' } },
+		});
+	});
+
+	it('preserves the n8n Connect tag on the web search credential', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			config: {
+				webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+			},
+		});
+	});
+
+	it('clears an unknown web search credential id', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{ config: { webSearch: { enabled: true, provider: 'brave', credential: 'unknown-cred' } } },
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			config: { webSearch: { enabled: true, provider: 'brave', credential: '' } },
 		});
 	});
 
@@ -150,7 +177,7 @@ describe('sanitizeUnknownAgentCredentials', () => {
 					episodicMemory: {
 						enabled: true,
 						credential: 'managed',
-						extractorModel: { model: 'openai/gpt-4o-mini', credential: 'managed' },
+						reflectorModel: { model: 'openai/gpt-4o-mini', credential: 'managed' },
 					},
 				},
 				tools: [
@@ -194,7 +221,7 @@ describe('sanitizeUnknownAgentCredentials', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'managed',
-					extractorModel: { model: 'openai/gpt-4o-mini', credential: '' },
+					reflectorModel: { model: 'openai/gpt-4o-mini', credential: '' },
 				},
 			},
 			tools: [
@@ -205,6 +232,46 @@ describe('sanitizeUnknownAgentCredentials', () => {
 						nodeType: 'n8n-nodes-base.slack',
 						nodeTypeVersion: 1,
 						credentials: { slackApi: { id: '', name: 'Managed by n8n' } },
+					},
+				},
+			],
+		});
+	});
+
+	it('preserves the n8n Connect managed sentinel on a node-tool credential', () => {
+		// Relies on the non-string-id recursion branch of the `credentials`
+		// handler — this pin exists so a refactor of that branch can't silently
+		// start clearing managed refs.
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				tools: [
+					{
+						type: 'node',
+						name: 'Slack',
+						node: {
+							nodeType: 'n8n-nodes-base.slackTool',
+							nodeTypeVersion: 1,
+							credentials: {
+								slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							},
+						},
+					},
+				],
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			tools: [
+				{
+					type: 'node',
+					name: 'Slack',
+					node: {
+						nodeType: 'n8n-nodes-base.slackTool',
+						nodeTypeVersion: 1,
+						credentials: {
+							slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+						},
 					},
 				},
 			],

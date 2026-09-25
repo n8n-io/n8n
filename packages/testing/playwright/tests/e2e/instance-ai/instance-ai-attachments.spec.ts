@@ -6,7 +6,7 @@ import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
 test.describe(
-	'Instance AI attachments @capability:proxy',
+	'Instance AI attachments',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},

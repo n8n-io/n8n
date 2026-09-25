@@ -3,16 +3,16 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { UserAction } from '@/Interface';
 import type { Agent } from '@/features/agents/agent.types';
-import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader, TableOptions } from '@n8n/design-system';
 import {
 	N8nActionToggle,
 	N8nButton,
 	N8nDataTableServer,
 	N8nLink,
 	N8nLoading,
+	N8nSelectedItemsInfo,
 	N8nText,
 } from '@n8n/design-system';
-import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import { AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
 import router from '@/app/router';
 
@@ -230,7 +230,7 @@ const projectLink = (agent: Agent) =>
 					/>
 				</template>
 			</N8nDataTableServer>
-			<SelectedItemsInfo
+			<N8nSelectedItemsInfo
 				:class="$style['selection-bar']"
 				:selected-count="selectedAgentIds.length"
 				@clear-selection="clearSelection"
@@ -243,7 +243,7 @@ const projectLink = (agent: Agent) =>
 						@click="onBulkRemoveMcpAccess"
 					/>
 				</template>
-			</SelectedItemsInfo>
+			</N8nSelectedItemsInfo>
 		</div>
 	</div>
 </template>

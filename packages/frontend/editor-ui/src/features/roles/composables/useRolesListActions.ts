@@ -4,6 +4,7 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { useRouter } from 'vue-router';
+import { useRoleDeleteGuard } from './useRoleDeleteGuard';
 import { useRoleDeletion } from './useRoleDeletion';
 
 export interface RoleListViews {
@@ -31,6 +32,7 @@ export function useRolesListActions({
 	const { showError, showMessage } = useToast();
 	const rolesStore = useRolesStore();
 	const i18n = useI18n();
+	const { deleteBlockedReason } = useRoleDeleteGuard();
 	const telemetry = useTelemetry();
 	const router = useRouter();
 	const { reassignState, requestDelete, confirmReassignDelete, cancelReassign } = useRoleDeletion();
@@ -78,11 +80,19 @@ export function useRolesListActions({
 	const actions = { duplicate: duplicateRole, delete: deleteRole } as const;
 
 	function rowActions(
-		_item: Role,
-	): Array<{ label: string; value: keyof typeof actions; disabled?: boolean }> {
+		item: Role,
+	): Array<{ label: string; value: keyof typeof actions; disabled?: boolean; tooltip?: string }> {
+		// Disable delete (with an explanation) when the role can't be removed — e.g. the
+		// caller's own role, or a role with users they can't reassign.
+		const deleteBlocked = deleteBlockedReason(item, roleType);
 		return [
 			{ label: i18n.baseText('roles.action.duplicate'), value: 'duplicate' },
-			{ label: i18n.baseText('roles.action.delete'), value: 'delete' },
+			{
+				label: i18n.baseText('roles.action.delete'),
+				value: 'delete',
+				disabled: Boolean(deleteBlocked),
+				tooltip: deleteBlocked,
+			},
 		];
 	}
 

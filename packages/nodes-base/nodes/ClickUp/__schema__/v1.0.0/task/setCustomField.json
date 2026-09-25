@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

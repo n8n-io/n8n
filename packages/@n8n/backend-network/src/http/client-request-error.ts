@@ -19,6 +19,74 @@ export function isConnectionRefusedError(error: unknown): boolean {
 	);
 }
 
+const TRANSPORT_FAILURE_CODES: ReadonlySet<string> = new Set([
+	// libuv errno names, surfaced by Node as `err.code` on socket operations.
+	// https://docs.libuv.org/en/v1.x/errors.html
+	'ECONNABORTED',
+	'ECONNREFUSED',
+	'ECONNRESET',
+	'EHOSTUNREACH',
+	'ENETDOWN',
+	'ENETUNREACH',
+	'EPIPE',
+	'ETIMEDOUT',
+	// undici error codes, thrown by fetch and by the SDKs built on it.
+	// https://github.com/nodejs/undici/blob/main/docs/docs/api/Errors.md
+	'UND_ERR_BODY_TIMEOUT',
+	'UND_ERR_CONNECT_TIMEOUT',
+	'UND_ERR_HEADERS_TIMEOUT',
+	'UND_ERR_SOCKET',
+]);
+
+// getaddrinfo codes, not libuv errnos: Node exposes them on `err.code` for name resolution.
+// https://nodejs.org/api/dns.html#error-codes
+const DNS_FAILURE_CODES: ReadonlySet<string> = new Set(['EAI_AGAIN', 'ENOTFOUND']);
+
+/**
+ * Whether the connection underlying a request broke: refused, reset, timed out
+ * at the socket, or destroyed mid-response. Excludes name resolution, see
+ * {@link isDnsFailure}.
+ *
+ * undici collapses a mid-stream body destruction into a bare
+ * `TypeError: terminated`, sometimes without a `cause`, hence the shape check.
+ */
+export function isTransportFailure(error: unknown): boolean {
+	return (
+		(error instanceof Error && error.name === 'TypeError' && error.message === 'terminated') ||
+		hasErrorCode(error, TRANSPORT_FAILURE_CODES)
+	);
+}
+
+/**
+ * Whether a request failed because the hostname could not be resolved.
+ * Kept apart from {@link isTransportFailure}: callers disagree on whether that is a
+ * transient blip to retry or a misconfiguration to surface.
+ */
+export function isDnsFailure(error: unknown): boolean {
+	return hasErrorCode(error, DNS_FAILURE_CODES);
+}
+
+function hasErrorCode(
+	error: unknown,
+	codes: ReadonlySet<string>,
+	visited = new WeakSet<object>(),
+): boolean {
+	if (typeof error !== 'object' || error === null) {
+		return false;
+	}
+	if (visited.has(error)) {
+		return false;
+	}
+
+	visited.add(error);
+
+	if ('code' in error && typeof error.code === 'string' && codes.has(error.code)) {
+		return true;
+	}
+
+	return 'cause' in error && hasErrorCode(error.cause, codes, visited);
+}
+
 /**
  * Whether the error originates from axios, recognized by the `isAxiosError` brand
  * axios stamps on every error it throws.

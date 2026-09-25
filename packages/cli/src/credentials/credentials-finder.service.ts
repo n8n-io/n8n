@@ -1,5 +1,10 @@
 import type { SharedCredentials, User } from '@n8n/db';
-import { CredentialsEntity, CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialsEntity,
+	CredentialsRepository,
+	chunkIds,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
@@ -7,6 +12,12 @@ import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 
 import { RoleService } from '@/services/role.service';
+
+/**
+ * The credential scopes an instance role can hold without being allowed to use a
+ * credential — the "View" rung of the instance-role editor's Credentials group.
+ */
+const VISIBILITY_SCOPES: ReadonlySet<Scope> = new Set(['credential:read', 'credential:list']);
 
 @Service()
 export class CredentialsFinderService {
@@ -27,12 +38,50 @@ export class CredentialsFinderService {
 		});
 	}
 
+	private isExactScope(scopes: Scope[], scope: Scope): boolean {
+		return scopes.length === 1 && scopes[0] === scope;
+	}
+
+	/**
+	 * A global credential scope bypasses project sharing entirely. That override now
+	 * splits in two: seeing a credential you are not a member of, and using its
+	 * secret. Using also requires `credential:use`, so an instance role can grant
+	 * "see but do not use".
+	 *
+	 * The split only applies to a request made on see-rights alone. That is where the
+	 * ambiguity lives: `credential:read` gates the NDV picker, load-options, test and
+	 * probe — all of which hand out the live secret — as well as plain metadata reads.
+	 * A caller that asks for more than see-rights names its own gate (`:update`,
+	 * `:delete`, `:move`, `:share`, `:connect`), which a see-only role does not hold,
+	 * so requiring `credential:use` on top would only break unrelated roles.
+	 *
+	 * Among the see-rights callers, the genuine metadata reads opt in with
+	 * `visibilityOnly`; the rest are treated as a use and fail closed.
+	 *
+	 * Owner and Admin hold `credential:use` from GLOBAL_OWNER_SCOPES, so for them the
+	 * added conjunct is always true and behaviour is unchanged.
+	 */
+	private hasGlobalOverride(user: User, scopes: Scope[], visibilityOnly = false): boolean {
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) return false;
+		if (scopes.some((scope) => !VISIBILITY_SCOPES.has(scope))) return true;
+		return visibilityOnly || hasGlobalScope(user, 'credential:use');
+	}
+
 	/**
 	 * Checks if the scopes allow read-only access to global credentials.
 	 * Global credentials can be accessed with credential:read scope only.
 	 */
 	hasGlobalReadOnlyAccess(scopes: Scope[]): boolean {
-		return scopes.length === 1 && scopes[0] === 'credential:read';
+		return this.isExactScope(scopes, 'credential:read');
+	}
+
+	/**
+	 * Checks if the scopes allow connect access to global credentials. Only
+	 * end-user (resolvable) global credentials grant this — the caller is
+	 * still responsible for checking `isResolvable` on the credential itself.
+	 */
+	hasGlobalConnectAccess(scopes: Scope[]): boolean {
+		return this.isExactScope(scopes, 'credential:connect');
 	}
 
 	/**
@@ -52,15 +101,19 @@ export class CredentialsFinderService {
 		});
 	}
 
-	async findCredentialById(
+	async findById(
 		credentialId: string,
-		options: { includeInstanceCredentials?: boolean } = {},
+		options: {
+			includeInstanceCredentials?: boolean;
+			includeSharedProject?: boolean;
+		} = {},
 	): Promise<CredentialsEntity | null> {
 		return await this.credentialsRepository.findOne({
 			where: {
 				id: credentialId,
 				usageScope: options.includeInstanceCredentials ? In(['project', 'instance']) : 'project',
 			},
+			relations: options.includeSharedProject ? { shared: { project: true } } : undefined,
 		});
 	}
 
@@ -89,13 +142,17 @@ export class CredentialsFinderService {
 	 * This also returns `credentials.shared` which is useful for constructing
 	 * all scopes the user has for the credential using `RoleService.addScopes`.
 	 **/
-	async findCredentialsForUser(user: User, scopes: Scope[]) {
+	async findCredentialsForUser(
+		user: User,
+		scopes: Scope[],
+		options: { visibilityOnly?: boolean } = {},
+	) {
 		let where: FindOptionsWhere<CredentialsEntity> = {
 			isGlobal: false,
 			usageScope: 'project',
 		};
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+		if (!this.hasGlobalOverride(user, scopes, options.visibilityOnly)) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),
@@ -133,7 +190,7 @@ export class CredentialsFinderService {
 		credentialsId: string,
 		user: User,
 		scopes: Scope[],
-		options: { includeInstanceCredentials?: boolean } = {},
+		options: { includeInstanceCredentials?: boolean; visibilityOnly?: boolean } = {},
 	): Promise<CredentialsEntity | null> {
 		if (options.includeInstanceCredentials && hasGlobalScope(user, 'credential:manageInstance')) {
 			const instanceCredential = await this.credentialsRepository.findOneBy({
@@ -145,7 +202,7 @@ export class CredentialsFinderService {
 
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId };
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+		if (!this.hasGlobalOverride(user, scopes, options.visibilityOnly)) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),
@@ -184,6 +241,15 @@ export class CredentialsFinderService {
 			});
 		}
 
+		// End-user credentials shared globally still let the recipient connect
+		// their own account; static global credentials do not.
+		if (this.hasGlobalConnectAccess(scopes)) {
+			const globalCredential = await this.findGlobalCredentialById(credentialsId, {
+				shared: { project: true },
+			});
+			return globalCredential?.isResolvable ? globalCredential : null;
+		}
+
 		return null;
 	}
 
@@ -192,13 +258,13 @@ export class CredentialsFinderService {
 		user: User,
 		scopes: Scope[],
 		trx?: EntityManager,
-		options?: { includeGlobalCredentials?: boolean },
+		options?: { includeGlobalCredentials?: boolean; visibilityOnly?: boolean },
 	) {
 		let where: FindOptionsWhere<SharedCredentials> = {
 			credentials: { usageScope: 'project' },
 		};
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+		if (!this.hasGlobalOverride(user, scopes, options?.visibilityOnly)) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),
@@ -254,6 +320,7 @@ export class CredentialsFinderService {
 		credentialIds: string[],
 		user: User,
 		scopes: Scope[],
+		options: { visibilityOnly?: boolean } = {},
 	): Promise<Set<string>> {
 		if (credentialIds.length === 0) return new Set();
 
@@ -262,7 +329,7 @@ export class CredentialsFinderService {
 			credentials: { usageScope: 'project' },
 		};
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+		if (!this.hasGlobalOverride(user, scopes, options.visibilityOnly)) {
 			const [projectRoles, credentialRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('credential', scopes),
@@ -279,20 +346,40 @@ export class CredentialsFinderService {
 			};
 		}
 
-		const sharedCredentials = await this.sharedCredentialsRepository.find({
-			select: { credentialsId: true },
-			where,
-		});
-
-		const result = new Set(sharedCredentials.map((sc) => sc.credentialsId));
+		const result = new Set<string>();
+		for (const chunk of chunkIds(credentialIds)) {
+			const sharedCredentials = await this.sharedCredentialsRepository.find({
+				select: { credentialsId: true },
+				where: { ...where, credentialsId: In(chunk) },
+			});
+			for (const sharedCredential of sharedCredentials) {
+				result.add(sharedCredential.credentialsId);
+			}
+		}
 
 		// Also include global credentials if scopes allow read-only access
 		if (this.hasGlobalReadOnlyAccess(scopes)) {
-			const globalCreds = await this.credentialsRepository.find({
-				where: { id: In(credentialIds), isGlobal: true, usageScope: 'project' },
-				select: ['id'],
-			});
-			for (const gc of globalCreds) result.add(gc.id);
+			for (const chunk of chunkIds(credentialIds)) {
+				const globalCreds = await this.credentialsRepository.find({
+					where: { id: In(chunk), isGlobal: true, usageScope: 'project' },
+					select: ['id'],
+				});
+				for (const gc of globalCreds) result.add(gc.id);
+			}
+		} else if (this.hasGlobalConnectAccess(scopes)) {
+			// Only end-user (resolvable) global credentials grant connect access.
+			for (const chunk of chunkIds(credentialIds)) {
+				const globalCreds = await this.credentialsRepository.find({
+					where: {
+						id: In(chunk),
+						isGlobal: true,
+						usageScope: 'project',
+						isResolvable: true,
+					},
+					select: ['id'],
+				});
+				for (const gc of globalCreds) result.add(gc.id);
+			}
 		}
 
 		return result;

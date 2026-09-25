@@ -1,12 +1,21 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 import type WebSocket from 'ws';
 
-import { WsStatusCodes } from '@/constants';
+import { ShutdownMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+
+import { HIGHEST_SHUTDOWN_PRIORITY, WsStatusCodes } from '@/constants';
+import type { EventService } from '@/events/event.service';
 import type { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
-import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import {
+	SHUTDOWN_TASK_BUDGET_RATIO,
+	TaskBrokerWsServer,
+} from '@/task-runners/task-broker/task-broker-ws-server';
 import type { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
+import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 const globalConfig = mock<GlobalConfig>({ generic: { gracefulShutdownTimeout: 30 } });
 
@@ -28,18 +37,25 @@ const createServer = ({
 	taskBroker = mock<TaskBroker>(),
 	disconnectAnalyzer = mock<DefaultTaskRunnerDisconnectAnalyzer>(),
 	heartbeatInterval = 30,
+	runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>(),
+	eventService = mock<EventService>(),
+	logger = mock<Logger>(),
 }: {
 	taskBroker?: TaskBroker;
 	disconnectAnalyzer?: DefaultTaskRunnerDisconnectAnalyzer;
 	heartbeatInterval?: number;
+	runnerLifecycleEvents?: TaskRunnerLifecycleEvents;
+	eventService?: EventService;
+	logger?: Logger;
 } = {}) =>
 	new TaskBrokerWsServer(
-		mock(),
+		logger,
 		taskBroker,
 		disconnectAnalyzer,
-		mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval }),
-		mock(),
+		mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval, mode: 'internal' }),
+		runnerLifecycleEvents,
 		globalConfig,
+		eventService,
 	);
 
 const wsMessage = (message: unknown) => Buffer.from(JSON.stringify(message));
@@ -219,12 +235,96 @@ describe('TaskBrokerWsServer', () => {
 		});
 	});
 
+	describe('duplicate runner ID', () => {
+		const idIsAlreadyTaken = () => expect.stringContaining('N8N_RUNNERS_ID');
+
+		it('should warn when an ID a live runner holds is claimed again', async () => {
+			const logger = mock<Logger>();
+			const server = createServer({ logger });
+
+			await registerOverWs(server, 'test-runner', mockWs());
+			await registerOverWs(server, 'test-runner', mockWs());
+
+			expect(logger.warn).toHaveBeenCalledWith(idIsAlreadyTaken());
+		});
+
+		it('should not warn on a first registration', async () => {
+			const logger = mock<Logger>();
+			const server = createServer({ logger });
+
+			await registerOverWs(server, 'test-runner', mockWs());
+
+			expect(logger.warn).not.toHaveBeenCalledWith(idIsAlreadyTaken());
+		});
+
+		it('should not warn when the holder is already closing, as on a reconnect', async () => {
+			const logger = mock<Logger>();
+			const server = createServer({ logger });
+
+			await registerOverWs(server, 'test-runner', mockWs(WS_CLOSING));
+			await registerOverWs(server, 'test-runner', mockWs());
+
+			expect(logger.warn).not.toHaveBeenCalledWith(idIsAlreadyTaken());
+		});
+
+		it('should not warn when the holder stopped answering heartbeats', async () => {
+			const logger = mock<Logger>();
+			const server = createServer({ logger });
+
+			// `add` marks every new connection alive, so go stale only after registering
+			const holder = mockWs();
+			await registerOverWs(server, 'test-runner', holder);
+			holder.isAlive = false;
+
+			await registerOverWs(server, 'test-runner', mockWs());
+
+			expect(logger.warn).not.toHaveBeenCalledWith(idIsAlreadyTaken());
+		});
+	});
+
+	describe('capTaskTimeoutsForShutdown', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should register at the highest shutdown priority, so the cap runs alongside the worker drain instead of after it', () => {
+			const handlers =
+				Container.get(ShutdownMetadata).getHandlersByPriority()[HIGHEST_SHUTDOWN_PRIORITY] ?? [];
+
+			expect(handlers).toContainEqual({
+				serviceClass: TaskBrokerWsServer,
+				methodName: 'capTaskTimeoutsForShutdown',
+			});
+		});
+
+		it('should cap broker task timeouts to 80% of the graceful shutdown window', () => {
+			const taskBroker = mock<TaskBroker>();
+			const server = createServer({ taskBroker });
+
+			server.capTaskTimeoutsForShutdown();
+
+			expect(taskBroker.capTaskTimeoutsForShutdown).toHaveBeenCalledWith(
+				Date.now() +
+					globalConfig.generic.gracefulShutdownTimeout *
+						SHUTDOWN_TASK_BUDGET_RATIO *
+						Time.seconds.toMilliseconds,
+			);
+		});
+	});
+
 	describe('heartbeat timer', () => {
 		const DEAD = false;
 
-		const runHeartbeatCheck = async (...connections: WebSocket[]) => {
+		const runHeartbeatCheck = async (
+			connections: WebSocket[],
+			options: Parameters<typeof createServer>[0] = {},
+		) => {
 			vi.useFakeTimers();
-			const server = createServer();
+			const server = createServer(options);
 
 			connections.forEach((ws, i) => server.runnerConnections.set(`runner-${i}`, ws));
 
@@ -264,7 +364,7 @@ describe('TaskBrokerWsServer', () => {
 		it('should close connection with protocol error code when heartbeat check fails', async () => {
 			const ws = mockWs(WS_OPEN, DEAD);
 
-			await runHeartbeatCheck(ws);
+			await runHeartbeatCheck([ws]);
 
 			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
 		});
@@ -273,7 +373,7 @@ describe('TaskBrokerWsServer', () => {
 			const deadWs1 = mockWs(WS_OPEN, DEAD);
 			const deadWs2 = mockWs(WS_OPEN, DEAD);
 
-			await runHeartbeatCheck(deadWs1, deadWs2);
+			await runHeartbeatCheck([deadWs1, deadWs2]);
 
 			expect(deadWs1.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
 			expect(deadWs2.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
@@ -282,12 +382,87 @@ describe('TaskBrokerWsServer', () => {
 		it('should keep pinging live connections listed after a dead one', async () => {
 			const liveWs = mockWs();
 
-			await runHeartbeatCheck(mockWs(WS_OPEN, DEAD), liveWs);
+			await runHeartbeatCheck([mockWs(WS_OPEN, DEAD), liveWs]);
 
 			expect(liveWs.ping).toHaveBeenCalled();
 			expect(liveWs.isAlive).toBe(false);
 			expect(liveWs.close).not.toHaveBeenCalled();
 		});
+
+		it('should report only the dead runner', async () => {
+			const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+
+			await runHeartbeatCheck([mockWs(WS_OPEN, DEAD), mockWs()], { runnerLifecycleEvents });
+
+			expect(runnerLifecycleEvents.emit).toHaveBeenCalledExactlyOnceWith(
+				'runner:failed-heartbeat-check',
+				{ runnerId: 'runner-0' },
+			);
+		});
+	});
+
+	describe('unresponsive runners', () => {
+		it('should disconnect a runner reported unresponsive', async () => {
+			const runnerLifecycleEvents = new TaskRunnerLifecycleEvents();
+			const disconnectAnalyzer = mock<DefaultTaskRunnerDisconnectAnalyzer>();
+			const server = createServer({ disconnectAnalyzer, runnerLifecycleEvents });
+			const ws = mockWs();
+			server.runnerConnections.set('test-runner', ws);
+			server.start();
+
+			runnerLifecycleEvents.emit('runner:unresponsive', { runnerId: 'test-runner' });
+
+			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
+			expect(disconnectAnalyzer.toDisconnectError).toHaveBeenCalledWith(
+				expect.objectContaining({ runnerId: 'test-runner', reason: 'runner-unresponsive' }),
+			);
+
+			await server.stop();
+		});
+
+		it('should stop listening for unresponsive runners on stop', async () => {
+			const runnerLifecycleEvents = new TaskRunnerLifecycleEvents();
+			const server = createServer({ runnerLifecycleEvents });
+			server.start();
+			await server.stop();
+
+			const ws = mockWs();
+			server.runnerConnections.set('test-runner', ws);
+			runnerLifecycleEvents.emit('runner:unresponsive', { runnerId: 'test-runner' });
+
+			expect(ws.close).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('disconnect reporting', () => {
+		it.each(['failed-heartbeat-check', 'runner-unresponsive'] as const)(
+			'should report a runner disconnected for reason %s',
+			async (reason) => {
+				const eventService = mock<EventService>();
+				const server = createServer({ eventService });
+				server.runnerConnections.set('test-runner', mockWs());
+
+				await server.removeConnection('test-runner', { reason });
+
+				expect(eventService.emit).toHaveBeenCalledWith('runner-disconnected', {
+					reason,
+					mode: 'internal',
+				});
+			},
+		);
+
+		it.each(['shutting-down', 'unknown'] as const)(
+			'should not report a runner disconnected for reason %s',
+			async (reason) => {
+				const eventService = mock<EventService>();
+				const server = createServer({ eventService });
+				server.runnerConnections.set('test-runner', mockWs());
+
+				await server.removeConnection('test-runner', { reason });
+
+				expect(eventService.emit).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('sendMessage', () => {

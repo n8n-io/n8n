@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import type { KeyboardShortcut } from '@n8n/design-system/types/keyboardshortcut';
-import { N8nKeyboardShortcut } from '@n8n/design-system';
+import type { IconName, IconOrEmoji, KeyboardShortcut } from '@n8n/design-system';
+import { N8nIcon, N8nKeyboardShortcut } from '@n8n/design-system';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 interface Props {
@@ -10,6 +9,8 @@ interface Props {
 	suffixIcon?: IconOrEmoji;
 	actionText?: string;
 	shortcut?: KeyboardShortcut;
+	/** A trailing status icon, such as a lock for an entry the user cannot run. */
+	icon?: IconName;
 
 	// passed from CommandBarItem
 	isSelected?: boolean;
@@ -29,6 +30,7 @@ defineProps<Props>();
 		<span v-if="actionText && (isSelected || isHovered)" :class="$style.action">{{
 			actionText
 		}}</span>
+		<N8nIcon v-if="icon" :icon="icon" size="small" :class="$style.icon" />
 		<span v-if="shortcut" :class="$style.shortcut">
 			<N8nKeyboardShortcut
 				:keys="shortcut.keys"
@@ -76,6 +78,10 @@ defineProps<Props>();
 
 .shortcut {
 	margin-left: auto;
+	flex-shrink: 0;
+}
+.icon {
+	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 </style>

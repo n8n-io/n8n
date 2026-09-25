@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 
 import { N8nIcon } from '@n8n/design-system';
-const { icon } = defineProps<{ title?: string; wide?: boolean; icon?: IconName }>();
+const { icon } = defineProps<{
+	title?: string;
+	wide?: boolean;
+	icon?: IconName;
+	/** Has a compact `#actions` fallback that replaces the description on a narrow pane (needs an `ndvPane` container). */
+	hasCompactAction?: boolean;
+}>();
 
 defineSlots<{
 	icon(): unknown;
@@ -12,7 +18,10 @@ defineSlots<{
 </script>
 
 <template>
-	<article :class="[$style.empty, { [$style.wide]: wide }]">
+	<article
+		data-ndv-empty-state
+		:class="[$style.empty, { [$style.wide]: wide, [$style.compactActions]: hasCompactAction }]"
+	>
 		<slot name="icon">
 			<N8nIcon v-if="icon" :icon="icon" size="xlarge" />
 		</slot>
@@ -57,6 +66,20 @@ defineSlots<{
 
 	.wide & {
 		max-width: none;
+	}
+}
+
+.compactActions .actions {
+	display: none;
+}
+
+@container ndvPane (max-width: 180px) {
+	.compactActions .description {
+		display: none;
+	}
+
+	.compactActions .actions {
+		display: block;
 	}
 }
 </style>

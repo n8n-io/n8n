@@ -8,6 +8,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -51,13 +52,14 @@ function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const modificationTelemetry = mock<AgentModificationTelemetryService>();
-	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.saveDraftFenced.mockResolvedValue(true);
 
 	const service = new AgentCustomToolsService(
 		mockLogger(),
 		agentRepository,
 		runtimeCacheService,
 		modificationTelemetry,
+		mock<AgentUpdateBroadcaster>(),
 	);
 
 	return { service, agentRepository, runtimeCacheService, modificationTelemetry };
@@ -85,11 +87,12 @@ describe('AgentCustomToolsService', () => {
 			ok: true,
 			id: 'lookup_customer',
 			descriptor,
+			changed: true,
 		});
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, undefined);
 	});
 
 	it('throws when building a tool for a missing agent', async () => {
@@ -99,6 +102,24 @@ describe('AgentCustomToolsService', () => {
 		await expect(
 			service.buildCustomTool(agentId, projectId, 'return 1;', descriptor, telemetryContext),
 		).rejects.toThrow(NotFoundError);
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+	});
+
+	it('reports an unchanged custom tool without writing the draft', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		const agent = makeAgent({ tools: { lookup_customer: { code: 'return 1;', descriptor } } });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await service.buildCustomTool(
+			agentId,
+			projectId,
+			'return 1;',
+			descriptor,
+			telemetryContext,
+		);
+
+		expect(result.changed).toBe(false);
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
 
@@ -148,7 +169,7 @@ describe('AgentCustomToolsService', () => {
 		]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, undefined);
 	});
 
 	it('snapshots only configured custom tools', () => {

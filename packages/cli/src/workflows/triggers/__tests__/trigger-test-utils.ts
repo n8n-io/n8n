@@ -25,6 +25,11 @@ export function node(id: string, type: string, overrides: Partial<INode> = {}): 
 export function createNodeTypes() {
 	const nodeTypes = mock<NodeTypes>();
 	nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+		// Mirrors the real NodeTypes, which throws for a node type that is not
+		// installed on this instance (e.g. an uninstalled community node).
+		if (type === 'unrecognized') {
+			throw new Error(`Unrecognized node type: ${type}`);
+		}
 		if (type === 'trigger') {
 			return { description: { ...description, name: 'trigger' }, trigger: vi.fn() } as never;
 		}

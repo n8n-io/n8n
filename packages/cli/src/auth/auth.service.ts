@@ -4,9 +4,11 @@ import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import escapeRegExp from 'lodash/escapeRegExp';
 import type { StringValue as TimeUnitValue } from 'ms';
 
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -34,13 +36,32 @@ interface IssuedJWT extends AuthJwtPayload {
 	exp: number;
 }
 
+/**
+ * A valid signature proves only that this instance signed the token, not that
+ * it signed it as a session token. Narrowing to `IssuedJWT` promises the type
+ * of every field, and the callers act on those types rather than re-check them:
+ * `exp` bounds the session (`jwt.verify` treats a token without one as
+ * unbounded), `usedMfa` decides the MFA gate, `isEmbed` relaxes the cookie to
+ * `SameSite=None`, and `browserId` binds the session to one browser. So check
+ * each one, and require a present optional claim to hold its declared type.
+ */
+function isIssuedJWT(payload: unknown): payload is IssuedJWT {
+	if (!isRecord(payload)) return false;
+	const { id, hash, exp, browserId, usedMfa, isEmbed } = payload;
+	return (
+		typeof id === 'string' &&
+		id.length > 0 &&
+		typeof hash === 'string' &&
+		Number.isFinite(exp) &&
+		(browserId === undefined || typeof browserId === 'string') &&
+		(usedMfa === undefined || typeof usedMfa === 'boolean') &&
+		(isEmbed === undefined || typeof isEmbed === 'boolean')
+	);
+}
+
 interface PasswordResetToken {
 	sub: string;
 	hash: string;
-}
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 interface CreateAuthMiddlewareOptions {
@@ -58,6 +79,12 @@ interface CreateAuthMiddlewareOptions {
 	 * Use this for endpoints that should return different data for authenticated vs unauthenticated users.
 	 */
 	allowUnauthenticated?: boolean;
+}
+
+interface EmailChangeToken {
+	sub: string;
+	newEmail: string;
+	hash: string;
 }
 
 @Service()
@@ -209,6 +236,11 @@ export class AuthService {
 
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
+		// The form page auth cookies (`n8n-form-auth-*`) are NOT cleared here: their
+		// names embed the workflow/execution they were minted for, and this response
+		// can neither read them (they're scoped to the form-waiting path) nor clear a
+		// cookie without naming it exactly. They are httpOnly, expire within an hour,
+		// and a session for a different user overrides them on the form pages.
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {
@@ -359,9 +391,11 @@ export class AuthService {
 		user: User;
 		jwtPayload: IssuedJWT;
 	}> {
-		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
+		const jwtPayload = this.jwtService.verify<unknown>(token, {
 			algorithms: ['HS256'],
 		});
+
+		if (!isIssuedJWT(jwtPayload)) throw new AuthError('Unauthorized');
 
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
 		const user = await this.userRepository.findOne({
@@ -416,9 +450,41 @@ export class AuthService {
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
 	}
 
+	generateEmailChangeUrl(user: User, newEmail: string) {
+		const payload: EmailChangeToken = {
+			sub: user.id,
+			newEmail,
+			hash: this.createJWTHash(user),
+		};
+		const token = this.jwtService.sign(payload, { expiresIn: '20m', audience: 'n8n-email-change' });
+		const url = new URL(`${this.urlService.getInstanceBaseUrl()}/confirm-email-change`);
+		url.searchParams.append('token', token);
+		return url.toString();
+	}
+
+	async resolveEmailChangeToken(
+		token: string,
+	): Promise<{ user: User; newEmail: string } | undefined> {
+		let decoded: EmailChangeToken;
+		try {
+			decoded = this.jwtService.verify(token, {
+				audience: 'n8n-email-change',
+			});
+		} catch {
+			return;
+		}
+		const user = await this.userRepository.findOne({
+			where: { id: decoded.sub },
+			relations: ['authIdentities', 'role'],
+		});
+		if (!user) return;
+		if (decoded.hash !== this.createJWTHash(user)) return; // password/email changed since issue
+		return { user, newEmail: decoded.newEmail };
+	}
+
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
-		return this.jwtService.sign(payload, { expiresIn });
+		return this.jwtService.sign(payload, { expiresIn, audience: 'n8n-password-reset' });
 	}
 
 	generatePasswordResetUrl(user: User) {
@@ -434,7 +500,9 @@ export class AuthService {
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
-			decodedToken = this.jwtService.verify(token);
+			decodedToken = this.jwtService.verify(token, {
+				audience: 'n8n-password-reset',
+			});
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired');

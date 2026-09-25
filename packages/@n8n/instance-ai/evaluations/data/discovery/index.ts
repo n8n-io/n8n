@@ -2,24 +2,81 @@ import { readFileSync, readdirSync } from 'fs';
 import { basename, join } from 'path';
 import { z } from 'zod';
 
-import type { LocalGatewayStatus } from '../../../src/types';
-import type { DiscoveryTestCase } from '../../discovery/types';
+import type { ComputerUseChannelState, ComputerUseState } from '../../../src/types';
+import type { DiscoveryMcpState } from '../../discovery/stub-mcp-registry';
+import type { DiscoveryConfirmations, DiscoveryTestCase } from '../../discovery/types';
 
 const forbiddenToolCallSchema = z
 	.object({
 		toolName: z.string().min(1),
+		args: z
+			.record(z.string(), z.unknown())
+			.refine((pattern) => Object.keys(pattern).length > 0, { message: 'args must not be empty' })
+			.optional(),
 		argsContainAny: z.array(z.string().min(1)).min(1).optional(),
+		declined: z.boolean().optional(),
 	})
 	.strict();
 
-/** Mirrors `LocalGatewayStatus` (src/types.ts) — the annotation makes tsc flag
- *  this schema when the source union drifts. */
-const localGatewayStatusSchema: z.ZodType<LocalGatewayStatus> = z.discriminatedUnion('status', [
-	z.object({ status: z.literal('connected'), capabilities: z.array(z.string()) }).strict(),
-	z.object({ status: z.literal('disabledGlobally') }).strict(),
-	z.object({ status: z.literal('disconnected') }).strict(),
-	z.object({ status: z.literal('disabled') }).strict(),
-]);
+/** Mirrors `ComputerUseState` (src/types.ts) — the annotation makes tsc flag
+ *  these schemas when the source union drifts. */
+const computerUseChannelStateSchema: z.ZodType<ComputerUseChannelState> = z.discriminatedUnion(
+	'status',
+	[
+		z.object({ status: z.literal('unavailable') }).strict(),
+		z.object({ status: z.literal('disconnected') }).strict(),
+		z.object({ status: z.literal('disabledByUser') }).strict(),
+		z.object({ status: z.literal('connected'), toolCategories: z.array(z.string()) }).strict(),
+	],
+);
+
+const computerUseStateSchema: z.ZodType<ComputerUseState> = z
+	.object({
+		localComputer: computerUseChannelStateSchema,
+		browser: computerUseChannelStateSchema,
+	})
+	.strict();
+
+const mcpStateSchema: z.ZodType<DiscoveryMcpState> = z
+	.object({
+		registry: z.array(z.string().min(1)).optional(),
+		connected: z
+			.array(
+				z
+					.object({ slug: z.string().min(1), tools: z.array(z.string().min(1)).optional() })
+					.strict(),
+			)
+			.optional(),
+	})
+	.strict();
+
+const confirmationDecisionSchema = z.enum(['approve', 'deny']);
+
+/** An empty map is dead config: the default (approve everything) already applies. */
+const confirmationsSchema: z.ZodType<DiscoveryConfirmations> = z
+	.record(
+		z.string().min(1),
+		z.union([
+			confirmationDecisionSchema,
+			z
+				.object({
+					decision: confirmationDecisionSchema,
+					resumeWith: z
+						.record(z.string(), z.unknown())
+						.refine((fields) => Object.keys(fields).length > 0, {
+							message: 'resumeWith must not be empty',
+						})
+						.refine((fields) => !('approved' in fields), {
+							message: 'resumeWith must not set `approved` — use `decision` instead',
+						})
+						.optional(),
+				})
+				.strict(),
+		]),
+	)
+	.refine((entries) => Object.keys(entries).length > 0, {
+		message: 'confirmations must not be empty',
+	});
 
 /** Strict authoring schema for discovery cases — a typo'd key or an empty
  *  expectation must fail at load time, not pass vacuously at run time (the
@@ -31,11 +88,13 @@ export const discoveryTestCaseSchema = z
 		userMessage: z.string().min(1),
 		instanceState: z
 			.object({
-				localGateway: localGatewayStatusSchema.optional(),
-				browserAvailable: z.boolean().optional(),
+				computerUse: computerUseStateSchema.optional(),
+				mcp: mcpStateSchema.optional(),
+				folderExploration: z.boolean().optional(),
 			})
 			.strict()
 			.optional(),
+		confirmations: confirmationsSchema.optional(),
 		expectedToolInvocations: z
 			.object({
 				// min(1) on every list: an empty expectation array is dead config that
@@ -52,6 +111,7 @@ export const discoveryTestCaseSchema = z
 			}),
 		rationale: z.string().optional(),
 		maxSteps: z.number().int().positive().optional(),
+		timeoutMs: z.number().int().positive().optional(),
 	})
 	.strict();
 

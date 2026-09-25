@@ -48,6 +48,7 @@ describe('ObjectStoreService', () => {
 		protocol: 'https',
 		forcePathStyle: true,
 		maxAttempts: 3,
+		startupTimeoutMs: 10_000,
 	});
 
 	let objectStoreService: ObjectStoreService;
@@ -61,7 +62,23 @@ describe('ObjectStoreService', () => {
 		await objectStoreService.init();
 		mockS3Send.mockClear();
 		logger.error.mockClear();
+		logger.info.mockClear();
 		vi.restoreAllMocks();
+	});
+
+	describe('init()', () => {
+		it('should log the resolved endpoint so a misconfigured host is visible at startup', async () => {
+			s3Config.host = mockHost;
+			s3Config.forcePathStyle = true;
+			mockS3Send.mockResolvedValueOnce({});
+			objectStoreService.setReady(false);
+
+			await objectStoreService.init();
+
+			expect(logger.info).toHaveBeenCalledWith(
+				`S3 binary storage configured: endpoint=https://${mockHost}, bucket=test-bucket, region=us-east-1, forcePathStyle=true`,
+			);
+		});
 	});
 
 	describe('getClientConfig()', () => {
@@ -69,7 +86,6 @@ describe('ObjectStoreService', () => {
 			accessKeyId: s3Config.credentials.accessKey,
 			secretAccessKey: s3Config.credentials.accessSecret,
 		};
-
 		it('should return client config with endpoint and forcePathStyle when custom host is provided', () => {
 			s3Config.host = 'example.com';
 			s3Config.forcePathStyle = true;
@@ -125,7 +141,7 @@ describe('ObjectStoreService', () => {
 	});
 
 	describe('checkConnection()', () => {
-		it('should send a HEAD request to the correct bucket', async () => {
+		it('should send a HEAD request to the correct bucket, with a timeout', async () => {
 			mockS3Send.mockResolvedValueOnce({});
 
 			objectStoreService.setReady(false);
@@ -133,20 +149,38 @@ describe('ObjectStoreService', () => {
 			await objectStoreService.checkConnection();
 
 			const commandCaptor = captor<HeadObjectCommand>();
-			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const optionsCaptor = captor<{ abortSignal: AbortSignal }>();
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor, optionsCaptor);
 			const command = commandCaptor.value;
 			expect(command).toBeInstanceOf(HeadBucketCommand);
 			expect(command.input).toEqual({ Bucket: 'test-bucket' });
+			expect(optionsCaptor.value.abortSignal).toBeInstanceOf(AbortSignal);
 		});
 
-		it('should throw an error on request failure', async () => {
+		it('should not attach an abort signal when the startup timeout is disabled (0)', async () => {
+			s3Config.startupTimeoutMs = 0;
+			mockS3Send.mockResolvedValueOnce({});
+
+			objectStoreService.setReady(false);
+
+			await objectStoreService.checkConnection();
+
+			expect(mockS3Send).toHaveBeenCalledWith(expect.any(HeadBucketCommand), {});
+
+			s3Config.startupTimeoutMs = 10_000;
+		});
+
+		it('should throw an error naming the endpoint on request failure', async () => {
+			s3Config.host = 'example.com';
 			objectStoreService.setReady(false);
 
 			mockS3Send.mockRejectedValueOnce(mockError);
 
 			const promise = objectStoreService.checkConnection();
 
-			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+			await expect(promise).rejects.toThrowError(
+				`Failed to connect to S3 at https://example.com (bucket: test-bucket): ${mockError.message}.`,
+			);
 		});
 	});
 

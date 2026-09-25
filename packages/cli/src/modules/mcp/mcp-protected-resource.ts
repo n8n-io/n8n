@@ -1,17 +1,28 @@
-import { MCP_AGENT_SCOPES, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import {
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	MCP_AGENT_SCOPES,
+	MCP_INSTANCE_SCOPES,
+} from '@n8n/api-types';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
+import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
+import type { User } from '@n8n/db';
+import { Container, Service } from '@n8n/di';
 
-import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
-import { areAgentToolsAvailable } from './mcp-tool-availability';
-import { McpConfig } from './mcp.config';
-import { McpSettingsService } from './mcp.settings.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
-import type { User } from '@n8n/db';
+import { PostHogClient } from '@/posthog';
 
-export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
+import {
+	ACTIVITY_LOG_TOOLS,
+	BUILDER_TOOLS,
+	FOLDER_FEATURE_TOOLS,
+	INSTANCE_CONTEXT_TOOLS,
+	TOOLS_BY_SCOPE,
+} from './mcp-scopes';
+import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
+import { McpConfig } from './mcp.config';
+import { McpSettingsService } from './mcp.settings.service';
 
 /**
  * Scopes a user can grant on the consent screen. Enforced per-tool via the
@@ -52,6 +63,8 @@ export class McpProtectedResource implements ProtectedResource {
 		private readonly mcpConfig: McpConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly licenseState: LicenseState,
+		private readonly postHogClient: PostHogClient,
 	) {}
 
 	get scopes(): string[] {
@@ -63,10 +76,21 @@ export class McpProtectedResource implements ProtectedResource {
 	 * Filtered to the tools this instance actually exposes, so the consent
 	 * screen never advertises tools a grant cannot deliver.
 	 */
-	getScopeTools(): Record<string, string[]> {
+	async getScopeTools(): Promise<Record<string, string[]>> {
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const tagsDisabled = this.globalConfig.tags.disabled;
+		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
+		// Consent and tool registration use the same instance activity gate.
+		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
+		let instanceContextEnabled = false;
+		try {
+			instanceContextEnabled =
+				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
+				true;
+		} catch {
+			// Keep context tools hidden when the gate cannot be read.
+		}
 
 		return Object.fromEntries(
 			Object.entries(TOOLS_BY_SCOPE)
@@ -76,7 +100,10 @@ export class McpProtectedResource implements ProtectedResource {
 					tools.filter(
 						(tool) =>
 							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
-							(!tagsDisabled || tool !== 'list_workflow_tags'),
+							(!tagsDisabled || tool !== 'list_workflow_tags') &&
+							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
+							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
+							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)),
 					),
 				]),
 		);
@@ -124,10 +151,41 @@ export class McpProtectedResource implements ProtectedResource {
 		return await this.mcpSettingsService.getAllowedRedirectUris();
 	}
 
+	/**
+	 * Scopes narrowed to what this user can actually exercise on this instance.
+	 *
+	 * `communityPackage:install` is dropped unless `install_community_node` would
+	 * really register, so the consent screen never records a grant that can do
+	 * nothing. Delegates to the same predicate registration uses rather than
+	 * re-checking one of its conditions: the screen pre-checks every offered
+	 * scope on first consent, so a scope offered here is a scope granted.
+	 */
+	async getGrantableScopes(user: User): Promise<string[]> {
+		const scopes = this.scopes;
+
+		const { CommunityPackagesConfig } = await import(
+			'@/modules/community-packages/community-packages.config.js'
+		);
+		const installAvailable = isCommunityNodeInstallAvailable(
+			this.moduleRegistry,
+			Container.get(CommunityPackagesConfig),
+			this.globalConfig,
+			this.mcpConfig,
+			user,
+		);
+		if (installAvailable) return scopes;
+
+		return scopes.filter((scope) => scope !== 'communityPackage:install');
+	}
+
+	async isAvailable(): Promise<boolean> {
+		return await this.mcpSettingsService.getEnabled();
+	}
+
 	async authorize(_user: User): Promise<boolean> {
 		// The instance MCP server has no per-user authorization rule: any
 		// authenticated user may access it while the server is enabled, and all
 		// users are denied when it is disabled.
-		return await this.mcpSettingsService.getEnabled();
+		return await this.isAvailable();
 	}
 }

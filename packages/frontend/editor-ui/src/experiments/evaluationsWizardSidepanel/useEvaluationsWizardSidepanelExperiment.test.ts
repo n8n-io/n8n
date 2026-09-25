@@ -13,7 +13,7 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings })),
 }));
 

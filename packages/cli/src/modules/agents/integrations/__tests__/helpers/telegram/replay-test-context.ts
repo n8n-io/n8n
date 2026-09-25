@@ -1,8 +1,7 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
-import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -25,7 +24,6 @@ import {
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 
 export interface TelegramUserFixture {
@@ -52,7 +50,15 @@ export interface TelegramMessageFixture {
 	chat: TelegramChatFixture;
 	date: number;
 	text?: string;
+	caption?: string;
 	message_thread_id?: number;
+	photo?: Array<{
+		file_id: string;
+		file_unique_id: string;
+		width: number;
+		height: number;
+		file_size?: number;
+	}>;
 }
 
 export interface TelegramCallbackQueryFixture {
@@ -86,6 +92,7 @@ export interface TelegramReplayContext extends Omit<ReplayContextSetup, 'nextStr
 	agentExecutor: {
 		executeForChatPublished: Mock;
 		resumeForChat: Mock;
+		isResumable: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
 	apiCalls: TelegramApiCall[];
@@ -132,12 +139,26 @@ function installTelegramApiStub(bot: TelegramUserFixture, failedMethods: string[
 			let result: unknown = true;
 			if (method === 'getMe') {
 				result = bot;
-			} else if (method === 'sendMessage') {
+			} else if (method === 'sendMessage' || method === 'sendRichMessage') {
+				const richMessage = body.rich_message;
+				const richMarkdown =
+					richMessage &&
+					typeof richMessage === 'object' &&
+					'markdown' in richMessage &&
+					typeof richMessage.markdown === 'string'
+						? richMessage.markdown
+						: '';
 				result = {
 					message_id: nextMessageId++,
 					chat: { id: Number(body.chat_id) },
 					date: 1719000000,
-					text: body.text ?? '',
+					...(method === 'sendRichMessage'
+						? {
+								rich_message: {
+									blocks: [{ type: 'paragraph', text: richMarkdown }],
+								},
+							}
+						: { text: body.text ?? '' }),
 				};
 			}
 			return { apiCall: { method, body }, responseBody: { ok: true, result } };
@@ -155,8 +176,6 @@ function createIntegration() {
 		mock<AgentRepository>(),
 		mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
 		mock<OutboundHttp>(),
-		{ enabled: false } as SsrfProtectionConfig,
-		mock<SsrfProtectionService>(),
 	);
 }
 
@@ -211,6 +230,7 @@ export async function createTelegramReplayContext(
 		userName: 'n8n-agent-agent-1',
 		adapters: { telegram: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		concurrency: 'concurrent',
 	});
 
 	const integration = options.integration ?? {
@@ -233,7 +253,7 @@ export async function createTelegramReplayContext(
 	const sendTelegramWebhook = async (payload: unknown) => {
 		const headers = new Headers();
 		headers.set('x-telegram-bot-api-secret-token', TELEGRAM_SECRET_TOKEN);
-		return await sendJsonWebhook(
+		return await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.telegram(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/telegram',
 			payload,
@@ -247,10 +267,13 @@ export async function createTelegramReplayContext(
 		apiCalls: stub.apiCalls,
 		sendTelegramWebhook,
 		sendWebhook: sendTelegramWebhook,
-		latestContext: () => setup.messageContextStore.latest(),
-		latestThreadId: () => setup.messageContextStore.latestThreadId(),
+		latestContext: setup.latestContext,
+		latestThreadId: setup.latestThreadId,
 		lastApiCall: (method: string) => stub.apiCalls.filter((call) => call.method === method).at(-1),
-		lastPost: () => stub.apiCalls.filter((call) => call.method === 'sendMessage').at(-1),
+		lastPost: () =>
+			stub.apiCalls
+				.filter((call) => call.method === 'sendMessage' || call.method === 'sendRichMessage')
+				.at(-1),
 		shutdown: async () => {
 			try {
 				await setup.shutdown();

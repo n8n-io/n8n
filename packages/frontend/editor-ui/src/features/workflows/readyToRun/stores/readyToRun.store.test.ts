@@ -107,7 +107,7 @@ vi.mock('@n8n/stores/users.store', () => ({
 
 const mockIsAiCreditsEnabled = { value: true };
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		get isAiCreditsEnabled() {
 			return mockIsAiCreditsEnabled.value;

@@ -3,6 +3,8 @@ import type { ScheduledJob as ScheduledJobEntity, ScheduledTask } from '@n8n/db'
 import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { selfOwned } from './shared/job-factory';
+
 /**
  * Real-DB coverage for the claim/lease/terminal behaviour the executor relies on,
  * across cli's sqlite + postgres matrix (the dialect-split locking is the point).
@@ -61,11 +63,11 @@ describe('ScheduledTaskRepository executor methods', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['ScheduledTask', 'ScheduledJob']);
+		const jobName = `job-${Math.random().toString(36).slice(2)}`;
 		job = await jobRepository.save(
 			jobRepository.create({
-				name: `job-${Math.random().toString(36).slice(2)}`,
-				workflowId: null,
-				nodeId: null,
+				name: jobName,
+				...selfOwned(jobName),
 				taskType: TASK_TYPE,
 				payload: {},
 				kind: 'interval',
@@ -341,6 +343,29 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(row.finishedAt).not.toBeNull();
 		});
 
+		it('completeTask clears the error message of an earlier failed attempt', async () => {
+			const { id, epoch } = await claimOne();
+			expect(
+				await taskRepository.rescheduleTask({ host: HOST_A, id, claimedEpoch: epoch }, 0, 'boom'),
+			).toBe(1);
+			expect((await reload(id)).errorMessage).toBe('boom');
+
+			const [reclaimed] = await taskRepository.claimDueTasks(claimOpts({ host: HOST_A }));
+			expect(reclaimed.id).toBe(id);
+			expect(
+				await taskRepository.completeTask({
+					host: HOST_A,
+					id,
+					claimedEpoch: reclaimed.leaseEpoch,
+				}),
+			).toBe(1);
+
+			const row = await reload(id);
+			expect(row.status).toBe('succeeded');
+			expect(row.attempts).toBe(1);
+			expect(row.errorMessage).toBeNull();
+		});
+
 		it('failTaskTerminal marks failed and records the error and attempt', async () => {
 			const { id, epoch } = await claimOne();
 
@@ -461,6 +486,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 		it('bumps the epoch again on re-claim after a reschedule', async () => {
 			const { id, epoch } = await claimOne();
 			await taskRepository.rescheduleTask({ host: HOST_A, id, claimedEpoch: epoch }, 0, 'retry');
+			await taskRepository.update(id, { runAt: past() });
 
 			const [reclaimed] = await taskRepository.claimDueTasks(claimOpts({ host: HOST_B }));
 			expect(reclaimed.id).toBe(id);
@@ -848,12 +874,13 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 
 		describe('completeExpired', () => {
-			it('completes the task as succeeded, stamping finishedAt without failing it', async () => {
+			it('completes the task as succeeded, stamping finishedAt and clearing an earlier error', async () => {
 				const task = await createExpiredRunning({
-					attempts: 0,
-					maxAttempts: 1,
+					attempts: 1,
+					maxAttempts: 3,
 					leaseEpoch: 1,
 					dispatchedAt: past(),
+					errorMessage: 'boom',
 				});
 
 				expect(await taskRepository.completeExpired({ id: task.id, claimedEpoch: 1 })).toBe(1);
@@ -1013,11 +1040,11 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 
 		it('applies each job its own cutoff in a single call, without crossing jobs', async () => {
+			const jobName = `job-${Math.random().toString(36).slice(2)}`;
 			const otherJob = await jobRepository.save(
 				jobRepository.create({
-					name: `job-${Math.random().toString(36).slice(2)}`,
-					workflowId: null,
-					nodeId: null,
+					name: jobName,
+					...selfOwned(jobName),
 					taskType: TASK_TYPE,
 					payload: {},
 					kind: 'interval',
@@ -1066,9 +1093,10 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(reloaded.missedAfter!.getTime()).toBe(runAt.getTime() + 90_000);
 		});
 
-		it("clamps an overdue row's recomputed deadline to now", async () => {
+		it("clamps an overdue-but-still-live row's recomputed deadline to now", async () => {
 			const runAt = past();
-			const task = await createTask({ runAt, missedAfter: new Date(runAt.getTime() + 30_000) });
+			const missedAfter = new Date(Date.now() + 60_000);
+			const task = await createTask({ runAt, missedAfter });
 
 			// DB-clock brackets, not `Date.now()`: a container's clock can drift from
 			// the test runner's host clock.
@@ -1080,6 +1108,16 @@ describe('ScheduledTaskRepository executor methods', () => {
 			const deadline = reloaded.missedAfter!.getTime();
 			expect(deadline).toBeGreaterThanOrEqual(before.getTime() + 90_000);
 			expect(deadline).toBeLessThanOrEqual(after.getTime() + 90_000);
+		});
+
+		it('leaves a row whose deadline has already passed alone', async () => {
+			const runAt = past();
+			const missedAfter = new Date(runAt.getTime() + 30_000);
+			const task = await createTask({ runAt, missedAfter });
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			expect((await reload(task.id)).missedAfter!.getTime()).toBe(missedAfter.getTime());
 		});
 
 		it('leaves a row with no deadline without one', async () => {

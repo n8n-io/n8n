@@ -1,36 +1,56 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES } from '@n8n/api-types';
-import { NodeConnectionTypes, isCommunityPackageName } from 'n8n-workflow';
-import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	isCommunityPackageName,
+	resolveSupportedCredentialActivation,
+} from 'n8n-workflow';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import { useRouter } from 'vue-router';
 
 import { getWorkflow } from '@/app/api/workflows';
+import { VIEWS } from '@/app/constants';
+import {
+	SAMPLE_SUBWORKFLOW_TRIGGER_ID,
+	SAMPLE_SUBWORKFLOW_WORKFLOW,
+} from '@/app/constants/samples';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants/workflows';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { stripToolSuffix } from '@/app/stores/aiGateway.store';
+import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
+	isAiGatewayEligibleNode,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
-import type {
-	NodeConnectionItem,
-	ToolCategoryKey,
-	ToolConnectionItem,
-	ToolCredentialRef,
-	WorkflowConnectionItem,
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
+import {
+	hasToolConnection,
+	TOOL_CONNECTION_CREDITS_LABEL_KEY,
+	type NodeConnectionItem,
+	type ToolCategoryKey,
+	type ToolConnectionItem,
+	type ToolCredentialRef,
+	type WorkflowConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 
-import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	getExistingToolNames,
 	nodeTypeToNewToolRef,
@@ -48,10 +68,17 @@ import {
 	mcpServerToNode,
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
-import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
+import type { ToolPickerMode } from './AgentCapabilitiesSection.types';
+import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
+import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
+import AgentToolConfigForm, { type AgentToolConfigModalData } from './AgentToolConfigForm.vue';
+import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
-const CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
+const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'app-action', 'workflows'];
+/** Prefix for the synthetic ids of gateway-backed rows in the n8n Connect section. */
+const N8N_CONNECT_ID_PREFIX = 'n8n-connect:';
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 );
@@ -65,6 +92,7 @@ defineOptions({ inheritAttrs: false });
 const props = defineProps<{
 	modalName: string;
 	data: {
+		mode: ToolPickerMode;
 		tools: AgentJsonToolRef[];
 		mcpServers?: AgentJsonMcpServerConfig[];
 		projectId?: string;
@@ -81,15 +109,46 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const aiGatewayStore = useAiGatewayStore();
+// The shared modal/rows read the credits pill copy through injection so they
+// stay free of editor-ui stores (see toolsConnection/types.ts).
+provide(
+	TOOL_CONNECTION_CREDITS_LABEL_KEY,
+	computed(() => aiGatewayStore.creditsLabelKey),
+);
+const router = useRouter();
 const toast = useToast();
+const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
+const sourceControlStore = useSourceControlStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
-const { availableToolTypes, availableWorkflows, loadWorkflows, resolveToolNodeType } =
-	useAgentToolCatalog();
+const {
+	availableToolTypes,
+	availableWorkflows,
+	incompatibleWorkflows,
+	loadWorkflows,
+	resolveToolNodeType,
+} = useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
 const usersStore = useUsersStore();
 
 const searchQuery = ref('');
 const installingToolName = ref<string | null>(null);
+const isWorkflow = computed(() => props.data.mode === 'workflows');
+const isCreatingWorkflow = ref(false);
+const canCreateWorkflow = computed(() => {
+	if (!props.data.projectId || sourceControlStore.preferences.branchReadOnly) return false;
+
+	const projectScopes = projectsStore.myProjects.find(
+		(project) => project.id === props.data.projectId,
+	)?.scopes;
+	const projectPermission = getResourcePermissions(projectScopes).workflow.create;
+	const globalPermission = getResourcePermissions(usersStore.currentUser?.globalScopes).workflow
+		.create;
+
+	return Boolean(globalPermission ?? projectPermission);
+});
 
 interface WorkingToolEntry {
 	localId: string;
@@ -144,47 +203,94 @@ watch(
 
 const workingTools = computed(() => workingToolEntries.value.map(({ ref }) => ref));
 const workingMcpServers = computed(() => workingMcpServerEntries.value.map(({ server }) => server));
+const configData = shallowRef<AgentToolConfigModalData | null>(null);
+const configForm = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
+const configTitle = ref('');
+const configSession = ref(0);
+const isCredentialModalOpen = ref(false);
 
-const isConfigModalOpen = computed(
-	() => uiStore.modalsById[AGENT_TOOL_CONFIG_MODAL_KEY]?.open === true,
-);
-
-/**
- * The two dialogs are sequential rather than stacked: connecting a tool hands
- * over to the config modal, and this one steps aside. It stays open in the
- * store rather than closing, so cancelling the config brings the list back with
- * its search and scroll position intact.
- */
 const isOpen = computed({
-	get: () => uiStore.modalsById[props.modalName]?.open === true && !isConfigModalOpen.value,
+	get: () => uiStore.modalsById[props.modalName]?.open === true,
 	set: (value: boolean) => {
 		if (!value) uiStore.closeModal(props.modalName);
 	},
 });
 
-function openConfigModal(data: Record<string, unknown>) {
-	uiStore.openModalWithData({ name: AGENT_TOOL_CONFIG_MODAL_KEY, data });
+const currentStep = computed(() => (configData.value ? 'configure' : 'select'));
+const pickerTitle = computed(() =>
+	isWorkflow.value ? i18n.baseText('workflows.add') : i18n.baseText('agents.builder.tools.add'),
+);
+const modalTitle = computed(() => (configData.value ? configTitle.value : pickerTitle.value));
+const configIsCustom = computed(
+	() => configData.value?.kind !== 'mcpServer' && configData.value?.toolRef.type === 'custom',
+);
+const removeLabel = computed(() => {
+	const data = configData.value;
+	if (data?.kind === 'mcpServer') {
+		return i18n.baseText('agents.builder.tools.mcp.remove' as BaseTextKey);
+	}
+	if (data?.toolRef.type === 'workflow') {
+		return i18n.baseText('agents.builder.tools.workflow.remove' as BaseTextKey);
+	}
+	return i18n.baseText('agents.builder.tools.remove');
+});
+
+function initialConfigTitle(data: AgentToolConfigModalData): string {
+	if (data.kind === 'mcpServer') return data.mcpServer.name;
+	if (data.toolRef.type === 'custom') {
+		return data.customTool?.descriptor.name ?? data.toolRef.id;
+	}
+	return data.toolRef.name ?? '';
+}
+
+function openConfigModal(data: AgentToolConfigModalData) {
+	configData.value = data;
+	configTitle.value = initialConfigTitle(data);
+	configSession.value += 1;
+}
+
+function closeModal() {
+	uiStore.closeModal(props.modalName);
+	configData.value = null;
+}
+
+function backToPicker() {
+	configData.value = null;
+	isCredentialModalOpen.value = false;
+	configTitle.value = '';
+}
+
+function updateConfigTitle(value: string) {
+	configTitle.value = value;
+	configForm.value?.changeTitle(value);
+}
+
+function saveConfig() {
+	if (configForm.value?.confirm()) closeModal();
+}
+
+function removeConfig() {
+	configForm.value?.remove();
+	closeModal();
+}
+
+function handleInteractOutside(event: Event) {
+	if (isCredentialModalOpen.value) event.preventDefault();
 }
 
 onMounted(() => {
-	void loadWorkflows(props.data.projectId);
+	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
+	// Config gates which tools are eligible for the n8n Connect section; the
+	// wallet drives the credits pill copy (Free credits vs n8n credits). Fetch
+	// both here so the section is correct without relying on a sibling (sidebar
+	// or model selector) having loaded them first.
+	if (settingsStore.isAiGatewayEnabled) {
+		void aiGatewayStore.fetchConfig();
+		void aiGatewayStore.fetchWallet();
+	}
 });
-
-function hasRequiredCredentials(nodeType: INodeTypeDescription): boolean {
-	return (nodeType.credentials ?? []).some((credential) => credential.required !== false);
-}
-
-function isConfigurableParameter(parameter: INodeProperties): boolean {
-	return parameter.type !== 'notice' && parameter.type !== 'hidden';
-}
-
-function needsSetup(nodeType: INodeTypeDescription): boolean {
-	return (
-		hasRequiredCredentials(nodeType) || (nodeType.properties ?? []).some(isConfigurableParameter)
-	);
-}
 
 function makeUniqueName(
 	baseName: string,
@@ -226,11 +332,6 @@ function commit() {
 function addToolRef(savedRef: AgentJsonToolRef) {
 	workingToolEntries.value = [...workingToolEntries.value, { localId: uuidv4(), ref: savedRef }];
 	commit();
-	uiStore.closeModal(props.modalName);
-	toast.showMessage({
-		title: i18n.baseText('agents.tools.added'),
-		type: 'success',
-	});
 }
 
 function addMcpServer(savedServer: AgentJsonMcpServerConfig) {
@@ -239,11 +340,6 @@ function addMcpServer(savedServer: AgentJsonMcpServerConfig) {
 		{ localId: uuidv4(), server: savedServer },
 	];
 	commit();
-	uiStore.closeModal(props.modalName);
-	toast.showMessage({
-		title: i18n.baseText('agents.tools.mcp.added'),
-		type: 'success',
-	});
 }
 
 function openConfigForNewRef(newRef: AgentJsonToolRef) {
@@ -351,14 +447,8 @@ async function handleAddTool(nodeType: INodeTypeDescription) {
 function addNodeTool(nodeType: INodeTypeDescription) {
 	toolTelemetry.trackAddStarted('node');
 	const newRef = nodeTypeToNewToolRef(nodeType);
-
-	if (needsSetup(nodeType)) {
-		openConfigForNewRef(newRef);
-		return;
-	}
-
 	if (newRef.type === 'node') {
-		addToolRef({
+		openConfigForNewRef({
 			...newRef,
 			name: makeUniqueName(
 				newRef.name ?? nodeType.displayName,
@@ -366,10 +456,34 @@ function addNodeTool(nodeType: INodeTypeDescription) {
 			),
 		});
 	} else {
-		addToolRef({
+		openConfigForNewRef({
 			...newRef,
 		});
 	}
+}
+
+/**
+ * Add a gateway-backed tool. Same flow as any other node tool — the config
+ * modal opens so the user can pick the operation — the only difference being
+ * the n8n Connect managed credential is pre-selected, so no credential setup.
+ */
+function addManagedNodeTool(nodeType: INodeTypeDescription) {
+	toolTelemetry.trackAddStarted('node');
+	const newRef = nodeTypeToNewToolRef(nodeType);
+
+	const activation = resolveSupportedCredentialActivation(
+		nodeType,
+		{ typeVersion: newRef.node.nodeTypeVersion, parameters: {} },
+		aiGatewayStore.isCredentialTypeSupported,
+	);
+	if (activation) {
+		newRef.node.nodeParameters = activation.parameters;
+		newRef.node.credentials = {
+			[activation.credentialType]: { id: null, name: '', __aiGatewayManaged: true },
+		};
+	}
+
+	openConfigForNewRef(newRef);
 }
 
 async function handleAddWorkflow(workflow: IWorkflowDb) {
@@ -404,6 +518,50 @@ async function handleAddWorkflow(workflow: IWorkflowDb) {
 	openConfigForNewRef(workflowToNewToolRef(workflow));
 }
 
+async function handleCreateWorkflow() {
+	const projectId = props.data.projectId;
+	if (!projectId || !canCreateWorkflow.value || isCreatingWorkflow.value) return;
+
+	isCreatingWorkflow.value = true;
+	toolTelemetry.trackAddStarted('workflow');
+
+	try {
+		const sampleName = DEFAULT_NEW_WORKFLOW_NAME;
+		const matchingWorkflows = availableWorkflows.value.filter((workflow) =>
+			workflow.name?.startsWith(sampleName),
+		);
+		const newWorkflow = await workflowsStore.createNewWorkflow({
+			...SAMPLE_SUBWORKFLOW_WORKFLOW,
+			name: `${sampleName} ${matchingWorkflows.length + 1}`,
+			projectId,
+		});
+		const newRef = workflowToNewToolRef(newWorkflow);
+
+		openConfigForNewRef({
+			...newRef,
+			name: makeUniqueName(
+				newRef.name ?? newWorkflow.name,
+				getExistingToolNames(workingTools.value),
+			),
+		});
+
+		const { href } = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: {
+				workflowId: newWorkflow.id,
+				nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID,
+			},
+		});
+		window.open(href, '_blank');
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.tools.workflow.createFailed.title'), {
+			message: i18n.baseText('agents.tools.workflow.createFailed.message'),
+		});
+	} finally {
+		isCreatingWorkflow.value = false;
+	}
+}
+
 function openConfigForToolEntry(entry: WorkingToolEntry) {
 	const toolRef = entry.ref;
 	openConfigModal({
@@ -418,7 +576,6 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 			);
 			toolTelemetry.trackEdited(updatedRef);
 			commit();
-			uiStore.closeModal(props.modalName);
 		},
 		onRemove: () => {
 			workingToolEntries.value = workingToolEntries.value.filter(
@@ -446,7 +603,6 @@ function openConfigForMcpEntry(entry: WorkingMcpServerEntry) {
 				e.localId === entry.localId ? { ...e, server: updatedServer } : e,
 			);
 			commit();
-			uiStore.closeModal(props.modalName);
 		},
 		onRemove: () => {
 			workingMcpServerEntries.value = workingMcpServerEntries.value.filter(
@@ -471,21 +627,6 @@ function credentialSubtitle(node: INode): string | undefined {
 
 function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 	const { localId, ref } = entry;
-	if (ref.type === 'workflow') {
-		const workflowRef = ref as WorkflowToolRef;
-		const item: WorkflowConnectionItem = {
-			id: `tool:${localId}`,
-			kind: 'workflow',
-			category: 'workflows',
-			workflowId: workflowRef.workflow,
-			title: workflowRef.name ?? workflowRef.workflow,
-			description: workflowRef.description,
-			isConnected: true,
-			credentials: [],
-		};
-		return item;
-	}
-
 	if (ref.type !== 'node') return null;
 
 	const node = toolRefToNode(ref);
@@ -501,7 +642,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		title: node.name,
 		description: credentialSubtitle(node) ?? nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: true,
+		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
@@ -521,7 +662,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 		title: entry.server.name,
 		description: credentialSubtitle(node) ?? nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: true,
+		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 	};
@@ -538,13 +679,27 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		title: nodeType.displayName.replace(/ Tool$/, ''),
 		description: nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: false,
+		status: 'none',
 		iconSource: toToolIconSource(nodeType),
 		credentials: [],
 		verified: isVerifiedCommunityTool(nodeType),
 		communityPreview,
 		installing: installingToolName.value === nodeType.name,
 		installDisabled: communityPreview && !usersStore.isAdminOrOwner,
+	};
+}
+
+/**
+ * Same node, presented in the n8n Connect section: credentials are managed, so
+ * it carries the "Free credits" pill and adds without a Connect step. The node
+ * still appears under n8n nodes for users who want their own credential.
+ */
+function n8nConnectNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
+	return {
+		...availableNodeItem(nodeType),
+		id: `${N8N_CONNECT_ID_PREFIX}${nodeType.name}`,
+		category: 'n8n-connect',
+		freeCredits: true,
 	};
 }
 
@@ -556,9 +711,42 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
-		isConnected: false,
+		// An unpublished workflow stays selectable; the warning tells the user the
+		// published agent cannot call it until they publish it.
+		warning:
+			workflow.activeVersionId === null
+				? i18n.baseText('agents.tools.workflow.notPublished')
+				: undefined,
+		status: 'none',
 		credentials: [],
 	};
+}
+
+function disabledWorkflowItem(
+	workflow: IWorkflowDb,
+	reason: WorkflowToolIncompatibilityReason,
+): WorkflowConnectionItem {
+	return {
+		id: `workflow-disabled:${workflow.id}`,
+		kind: 'workflow',
+		category: 'workflows',
+		workflowId: workflow.id,
+		title: workflow.name,
+		description: workflow.description ?? undefined,
+		status: 'none',
+		credentials: [],
+		disabled: true,
+		disabledReason: disabledWorkflowReasonText(reason),
+	};
+}
+
+function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): string {
+	if (reason.reason === 'incompatible_nodes') {
+		return i18n.baseText('agents.tools.workflow.disabled.incompatibleNodes');
+	}
+	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger', {
+		interpolate: { trigger: workflowToolTriggerLabel() },
+	});
 }
 
 /**
@@ -588,9 +776,41 @@ const communitySearchToolTypes = computed<INodeTypeDescription[]>(() => {
 	return previews;
 });
 
+/** Gateway-backed subset of the available tools, surfaced in the n8n Connect section. */
+const n8nConnectItems = computed<NodeConnectionItem[]>(() =>
+	availableToolTypes.value
+		.filter((nodeType) => isAiGatewayEligibleNode(nodeType.name))
+		.map(n8nConnectNodeItem),
+);
+
+/**
+ * Keep "All" first (the default tab), and slot the n8n Connect tab right after
+ * it — only when the gateway actually offers something to show.
+ */
+const categories = computed<ToolCategoryKey[]>(() => {
+	if (isWorkflow.value) return ['workflows'];
+
+	const baseCategories = BASE_CATEGORIES.filter((category) => category !== 'workflows');
+	if (n8nConnectItems.value.length === 0) return baseCategories;
+	const [all, ...rest] = baseCategories;
+	return [all, 'n8n-connect', ...rest];
+});
+
 const items = computed<ToolConnectionItem[]>(() => {
+	if (isWorkflow.value) {
+		return [
+			...availableWorkflows.value.map(availableWorkflowItem),
+			...incompatibleWorkflows.value.map(({ workflow, reason }) =>
+				disabledWorkflowItem(workflow, reason),
+			),
+		];
+	}
+
 	const out: ToolConnectionItem[] = [];
 
+	for (const item of n8nConnectItems.value) {
+		out.push(item);
+	}
 	for (const entry of workingMcpServerEntries.value) {
 		const item = connectedMcpItem(entry);
 		if (item) out.push(item);
@@ -605,15 +825,23 @@ const items = computed<ToolConnectionItem[]>(() => {
 	for (const nodeType of communitySearchToolTypes.value) {
 		out.push(availableNodeItem(nodeType));
 	}
-	for (const workflow of availableWorkflows.value) {
-		out.push(availableWorkflowItem(workflow));
-	}
-
 	return out;
 });
 
+function addActionLabel(item: ToolConnectionItem): string {
+	if (item.category === 'mcp') {
+		return i18n.baseText('agents.builder.tools.mcp.add' as BaseTextKey);
+	}
+	if (item.kind === 'workflow') return i18n.baseText('workflows.add');
+	return i18n.baseText('node.addNode');
+}
+
 function handleRowActivate(item: ToolConnectionItem) {
-	if (item.isConnected) {
+	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
+	// the row's own tooltip already explains why, so activating does nothing.
+	if (item.disabled) return;
+	if (item.status === 'connecting') return;
+	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {
 			const localId = item.id.slice('mcp:'.length);
 			const entry = workingMcpServerEntries.value.find((e) => e.localId === localId);
@@ -623,7 +851,27 @@ function handleRowActivate(item: ToolConnectionItem) {
 		if (item.id.startsWith('tool:')) {
 			const localId = item.id.slice('tool:'.length);
 			const entry = workingToolEntries.value.find((e) => e.localId === localId);
-			if (entry) openConfigForToolEntry(entry);
+			if (!entry) return;
+			// Adding another instance of the same service: editing happens via the
+			// capabilities chips, so activating a connected node-tool row adds a
+			// new instance instead of overwriting the existing tool. A connected
+			// n8n Connect managed tool must keep its managed-credential
+			// preselection, so route it through the same managed add path.
+			const { ref } = entry;
+			if (ref.type === 'node') {
+				const nodeType =
+					[...availableToolTypes.value, ...communitySearchToolTypes.value].find(
+						(nt) => nt.name === ref.node.nodeType,
+					) ?? nodeTypesStore.getNodeType(ref.node.nodeType);
+				if (nodeType) {
+					const isManaged = Object.values(ref.node.credentials ?? {}).some(
+						(credential) => '__aiGatewayManaged' in credential && credential.__aiGatewayManaged,
+					);
+					void (isManaged ? addManagedNodeTool(nodeType) : handleAddTool(nodeType));
+				}
+				return;
+			}
+			openConfigForToolEntry(entry);
 		}
 		return;
 	}
@@ -639,6 +887,13 @@ function handleRowActivate(item: ToolConnectionItem) {
 		return;
 	}
 
+	if (item.kind === 'node' && item.id.startsWith(N8N_CONNECT_ID_PREFIX)) {
+		const nodeTypeName = item.id.slice(N8N_CONNECT_ID_PREFIX.length);
+		const nodeType = availableToolTypes.value.find((nt) => nt.name === nodeTypeName);
+		if (nodeType) addManagedNodeTool(nodeType);
+		return;
+	}
+
 	if (item.kind === 'node' && item.id.startsWith('nodeType:')) {
 		const nodeTypeName = item.id.slice('nodeType:'.length);
 		const nodeType = [...availableToolTypes.value, ...communitySearchToolTypes.value].find(
@@ -650,13 +905,88 @@ function handleRowActivate(item: ToolConnectionItem) {
 </script>
 
 <template>
-	<ToolsConnectionModal
-		v-model:open="isOpen"
-		:items="items"
-		:categories="CATEGORIES"
-		:detail-item="null"
-		@update:search-query="searchQuery = $event"
-		@connect="handleRowActivate"
-		@open-detail="handleRowActivate"
-	/>
+	<AgentModalMultiStep
+		:open="isOpen"
+		:step="currentStep"
+		:title="modalTitle"
+		:editable-title="Boolean(configData) && !configIsCustom"
+		:show-back="Boolean(configData)"
+		:show-footer="Boolean(configData)"
+		:busy="isCredentialModalOpen || isCreatingWorkflow"
+		:trap-focus="!isCredentialModalOpen"
+		:disable-outside-pointer-events="!isCredentialModalOpen"
+		data-testid="agent-tools-connection-modal"
+		@interact-outside="handleInteractOutside"
+		@update:open="isOpen = $event"
+		@update:title="updateConfigTitle"
+		@back="backToPicker"
+	>
+		<ToolsConnectionModal
+			v-show="!configData"
+			:open="isOpen"
+			:items="items"
+			:categories="categories"
+			:title="pickerTitle"
+			:search-placeholder="
+				isWorkflow ? i18n.baseText('agents.tools.workflow.search.placeholder') : undefined
+			"
+			:detail-item="null"
+			:create-action="
+				isWorkflow && canCreateWorkflow
+					? {
+							category: 'workflows',
+							label: i18n.baseText('generic.create.workflow'),
+							description: i18n.baseText('projectRoles.workflow:create.tooltip'),
+							testId: 'tools-connection-create-workflow',
+						}
+					: undefined
+			"
+			:create-action-loading="isCreatingWorkflow"
+			:empty-message="isWorkflow ? i18n.baseText('agents.tools.workflow.empty.title') : undefined"
+			:no-results-message="
+				isWorkflow ? i18n.baseText('agents.tools.workflow.empty.noResults') : undefined
+			"
+			:connect-label="addActionLabel"
+			embedded
+			show-connect-actions
+			persistent-scrollbar
+			@update:search-query="searchQuery = $event"
+			@connect="handleRowActivate"
+			@open-detail="handleRowActivate"
+			@create="handleCreateWorkflow"
+		>
+			<template #suggestion-footer>
+				<McpRegistrySuggestionFooter
+					:prompt="i18n.baseText('agents.tools.suggestion.prompt')"
+					:action="i18n.baseText('agents.tools.suggestion.action')"
+				/>
+			</template>
+		</ToolsConnectionModal>
+
+		<AgentToolConfigForm
+			v-if="configData"
+			:key="configSession"
+			ref="configForm"
+			:data="configData"
+			@update:title="configTitle = $event"
+			@update:credential-modal-open="isCredentialModalOpen = $event"
+		/>
+
+		<template v-if="configData?.onRemove" #footerLeft>
+			<N8nButton variant="ghost" data-testid="agent-tool-config-remove" @click="removeConfig">
+				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ removeLabel }}
+			</N8nButton>
+		</template>
+		<template v-if="configData" #footerActions>
+			<N8nButton
+				variant="solid"
+				:disabled="isCredentialModalOpen"
+				data-testid="agent-tool-config-save"
+				@click="saveConfig"
+			>
+				{{ i18n.baseText('generic.save') }}
+			</N8nButton>
+		</template>
+	</AgentModalMultiStep>
 </template>

@@ -298,46 +298,6 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.clickByTestId('execute-previous-node');
 	}
 
-	async clickAskAiTab() {
-		await this.codeNodeEditor.clickAskAiTab();
-	}
-
-	getAskAiTabPanel() {
-		return this.codeNodeEditor.getAskAiTabPanel();
-	}
-
-	getAskAiCtaButton() {
-		return this.codeNodeEditor.getAskAiCtaButton();
-	}
-
-	getAskAiPromptInput() {
-		return this.codeNodeEditor.getAskAiPromptInput();
-	}
-
-	getAskAiPromptCounter() {
-		return this.codeNodeEditor.getAskAiPromptCounter();
-	}
-
-	getAskAiCtaTooltipNoInputData() {
-		return this.codeNodeEditor.getAskAiCtaTooltipNoInputData();
-	}
-
-	getAskAiCtaTooltipNoPrompt() {
-		return this.codeNodeEditor.getAskAiCtaTooltipNoPrompt();
-	}
-
-	getAskAiCtaTooltipPromptTooShort() {
-		return this.codeNodeEditor.getAskAiCtaTooltipPromptTooShort();
-	}
-
-	getCodeTabPanel() {
-		return this.codeNodeEditor.getCodeTabPanel();
-	}
-
-	getCodeTab() {
-		return this.codeNodeEditor.getCodeTab();
-	}
-
 	getCodeEditor() {
 		return this.codeNodeEditor.getCodeEditor();
 	}
@@ -352,18 +312,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getPlaceholderText(text: string) {
 		return this.page.getByText(text);
-	}
-
-	getHeyAiText() {
-		return this.codeNodeEditor.getHeyAiText();
-	}
-
-	getCodeGenerationCompletedText() {
-		return this.codeNodeEditor.getCodeGenerationCompletedText();
-	}
-
-	getErrorMessageText(message: string) {
-		return this.codeNodeEditor.getErrorMessageText(message);
 	}
 
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
@@ -526,7 +474,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPaginationPages() {
-		return this.getOutputPagination().locator('.el-pager li.number');
+		return this.getOutputPagination().getByTestId('pagination-item');
 	}
 
 	async navigateToOutputPage(pageNumber: number): Promise<void> {
@@ -602,22 +550,24 @@ export class NodeDetailsViewPage extends BasePage {
 		const selector = this.inputPanel.getRunSelector();
 		await selector.click();
 		await this.getVisiblePopoverOption(value).click();
-		await expect(this.inputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
+		await this.expectInputRunSelectorValue(value);
 	}
 
 	async changeOutputRunSelector(value: string) {
 		const selector = this.outputPanel.getRunSelector();
 		await selector.click();
 		await this.getVisiblePopoverOption(value).click();
+		await this.expectOutputRunSelectorValue(value);
+	}
+
+	// Run-selector updates can land asynchronously (notably cross-panel via
+	// run-linking), so assert with a retrying matcher rather than reading once.
+	async expectInputRunSelectorValue(value: string) {
+		await expect(this.inputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
+	}
+
+	async expectOutputRunSelectorValue(value: string) {
 		await expect(this.outputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
-	}
-
-	async getInputRunSelectorValue() {
-		return await this.inputPanel.getRunSelectorInput().inputValue();
-	}
-
-	async getOutputRunSelectorValue() {
-		return await this.outputPanel.getRunSelectorInput().inputValue();
 	}
 
 	getExecuteNodeButton() {

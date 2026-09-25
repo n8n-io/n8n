@@ -1,6 +1,6 @@
 import { jsonParse, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
-import { getActiveCredentialType, getHost } from '../helpers';
+import { databricksApiRequest, getActiveCredentialType, getHost } from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -55,7 +55,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		};
 	}
 
-	const response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+	const response = await databricksApiRequest(this, credentialType, {
 		method: 'POST',
 		url: `${host}/api/2.0/vector-search/indexes/${indexName}/query`,
 		body,

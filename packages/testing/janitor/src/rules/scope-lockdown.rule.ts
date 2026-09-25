@@ -96,6 +96,7 @@ export class ScopeLockdownRule extends AstRule<{ rootDir: string }> {
 
 	analyzeProject(project: Project, files: SourceFile[] = project.getSourceFiles()): Violation[] {
 		const violations: Violation[] = [];
+		const reportedViolations = new Set<string>();
 		const navigationMethods = this.getNavigationMethods();
 
 		for (const file of files) {
@@ -156,13 +157,20 @@ export class ScopeLockdownRule extends AstRule<{ rootDir: string }> {
 					if (isUnscopedPageCall(call) && isLocatorCall(call)) {
 						const startLine = call.getStartLineNumber();
 						const startColumn = call.getStart() - call.getStartLinePos();
+						const message = `${className}: Unscoped locator - use this.container instead of this.page`;
+						const violationKey = `${filePath}:${call.getStart()}:${className}:${message}`;
+
+						if (reportedViolations.has(violationKey)) {
+							continue;
+						}
+						reportedViolations.add(violationKey);
 
 						violations.push(
 							this.fileViolation(
 								file,
 								startLine,
 								startColumn,
-								`${className}: Unscoped locator - use this.container instead of this.page`,
+								message,
 								'Replace this.page.getByTestId(...) with this.container.getByTestId(...)',
 							),
 						);

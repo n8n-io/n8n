@@ -1,9 +1,8 @@
 import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor, within } from '@testing-library/vue';
 
-import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
-
 import N8nDataTableServer, { type TableHeader } from './N8nDataTableServer.vue';
+import { createComponentRenderer } from '../../__tests__/render';
 
 const renderComponent = createComponentRenderer(N8nDataTableServer);
 
@@ -100,7 +99,7 @@ describe('N8nDataTableServer', () => {
 
 		await userEvent.click(container.querySelector('thead tr th')!);
 		await userEvent.click(container.querySelector('thead tr th')!);
-		await userEvent.click(within(getByTestId('pagination')).getByLabelText('page 2'));
+		await userEvent.click(within(getByTestId('pagination')).getByText('2'));
 
 		expect(emitted('update:options').length).toBe(3);
 		expect(emitted('update:options')[0]).toStrictEqual([

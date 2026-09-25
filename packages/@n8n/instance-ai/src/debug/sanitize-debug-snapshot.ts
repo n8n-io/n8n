@@ -1,9 +1,8 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 const OMIT_KEYS = new Set(['abortSignal']);
-const SENSITIVE_KEY_PATTERN =
-	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 function shouldOmitKey(key: string, parentKey?: string): boolean {
 	if (OMIT_KEYS.has(key)) {
@@ -19,7 +18,7 @@ function shouldOmitKey(key: string, parentKey?: string): boolean {
 }
 
 function redactSensitiveKey(key: string, value: unknown, seen: WeakSet<object>): unknown {
-	if (SENSITIVE_KEY_PATTERN.test(key) && typeof value === 'string') {
+	if (isSensitiveKey(key) && typeof value === 'string') {
 		return '[redacted]';
 	}
 
@@ -42,7 +41,7 @@ export function sanitizeDebugSnapshotValue(
 	}
 
 	if (typeof value === 'string') {
-		if (keyHint && SENSITIVE_KEY_PATTERN.test(keyHint)) {
+		if (keyHint && isSensitiveKey(keyHint)) {
 			return '[redacted]';
 		}
 		return scrubSecretsInText(value);

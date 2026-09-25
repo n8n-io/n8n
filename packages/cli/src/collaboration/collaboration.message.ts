@@ -5,7 +5,12 @@ export type CollaborationMessage =
 	| WorkflowClosedMessage
 	| WriteAccessRequestedMessage
 	| WriteAccessReleaseRequestedMessage
-	| WriteAccessHeartbeatMessage;
+	| WriteAccessHeartbeatMessage
+	| AgentOpenedMessage
+	| AgentClosedMessage
+	| AgentWriteAccessRequestedMessage
+	| AgentWriteAccessReleaseRequestedMessage
+	| AgentWriteAccessHeartbeatMessage;
 
 export const workflowOpenedMessageSchema = z
 	.object({
@@ -43,12 +48,53 @@ export const writeAccessHeartbeatMessageSchema = z
 	})
 	.strict();
 
+export const agentOpenedMessageSchema = z
+	.object({
+		type: z.literal('agentOpened'),
+		agentId: z.string().min(1),
+	})
+	.strict();
+
+export const agentClosedMessageSchema = z
+	.object({
+		type: z.literal('agentClosed'),
+		agentId: z.string().min(1),
+	})
+	.strict();
+
+export const agentWriteAccessRequestedMessageSchema = z
+	.object({
+		type: z.literal('agentWriteAccessRequested'),
+		agentId: z.string().min(1),
+		force: z.boolean().optional(),
+	})
+	.strict();
+
+export const agentWriteAccessReleaseRequestedMessageSchema = z
+	.object({
+		type: z.literal('agentWriteAccessReleaseRequested'),
+		agentId: z.string().min(1),
+	})
+	.strict();
+
+export const agentWriteAccessHeartbeatMessageSchema = z
+	.object({
+		type: z.literal('agentWriteAccessHeartbeat'),
+		agentId: z.string().min(1),
+	})
+	.strict();
+
 export const workflowMessageSchema = z.discriminatedUnion('type', [
 	workflowOpenedMessageSchema,
 	workflowClosedMessageSchema,
 	writeAccessRequestedMessageSchema,
 	writeAccessReleaseRequestedMessageSchema,
 	writeAccessHeartbeatMessageSchema,
+	agentOpenedMessageSchema,
+	agentClosedMessageSchema,
+	agentWriteAccessRequestedMessageSchema,
+	agentWriteAccessReleaseRequestedMessageSchema,
+	agentWriteAccessHeartbeatMessageSchema,
 ]);
 
 export type WorkflowOpenedMessage = z.infer<typeof workflowOpenedMessageSchema>;
@@ -62,6 +108,22 @@ export type WriteAccessReleaseRequestedMessage = z.infer<
 >;
 
 export type WriteAccessHeartbeatMessage = z.infer<typeof writeAccessHeartbeatMessageSchema>;
+
+export type AgentOpenedMessage = z.infer<typeof agentOpenedMessageSchema>;
+
+export type AgentClosedMessage = z.infer<typeof agentClosedMessageSchema>;
+
+export type AgentWriteAccessRequestedMessage = z.infer<
+	typeof agentWriteAccessRequestedMessageSchema
+>;
+
+export type AgentWriteAccessReleaseRequestedMessage = z.infer<
+	typeof agentWriteAccessReleaseRequestedMessageSchema
+>;
+
+export type AgentWriteAccessHeartbeatMessage = z.infer<
+	typeof agentWriteAccessHeartbeatMessageSchema
+>;
 
 export type WorkflowMessage = z.infer<typeof workflowMessageSchema>;
 

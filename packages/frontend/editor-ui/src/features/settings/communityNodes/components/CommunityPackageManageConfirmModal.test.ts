@@ -2,12 +2,13 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { defaultSettings } from '@/__tests__/defaults';
-import { mockNodeTypeDescription } from '@/__tests__/mocks';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY } from '../communityNodes.constants';
+import { useCommunityNodesStore } from '../communityNodes.store';
+import { fireEvent } from '@testing-library/vue';
 
 const fetchWorkflowsWithNodesIncluded = vi.fn();
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -25,7 +26,7 @@ const renderComponent = createComponentRenderer(CommunityPackageManageConfirmMod
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalsById: {
+				modalStateById: {
 					[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]: { open: true },
 				},
 			},
@@ -35,16 +36,10 @@ const renderComponent = createComponentRenderer(CommunityPackageManageConfirmMod
 						packageName: 'n8n-nodes-test',
 						installedVersion: '1.0.0',
 						updateAvailable: '2.0.0',
-						installedNodes: [{ name: 'TestNode' }],
-					},
-				},
-			},
-			[STORES.NODE_TYPES]: {
-				nodeTypes: {
-					['n8n-nodes-test.test']: {
-						1: mockNodeTypeDescription({
-							name: 'n8n-nodes-test.test',
-						}),
+						installedNodes: [
+							{ name: 'OldNode', type: 'n8n-nodes-test.old' },
+							{ name: 'TestNode', type: 'n8n-nodes-test.test' },
+						],
 					},
 				},
 			},
@@ -65,12 +60,18 @@ describe('CommunityPackageManageConfirmModal', () => {
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 
 	beforeEach(() => {
+		useSettingsStore().$patch({
+			settings: { ...defaultSettings, communityNodesEnabled: true },
+		});
 		nodeTypesStore = useNodeTypesStore();
 	});
 
-	it('should call nodeTypesStore methods and update latestVerifiedVersion on mount', async () => {
-		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
-		nodeTypesStore.getCommunityNodeAttributes = vi.fn().mockResolvedValue({ npmVersion: '2.0.0' });
+	it('skips stale node types when loading package information', async () => {
+		nodeTypesStore.getCommunityNodeAttributes = vi
+			.fn()
+			.mockImplementation(async (nodeType) =>
+				nodeType === 'n8n-nodes-test.test' ? { npmVersion: '2.0.0' } : null,
+			);
 
 		renderComponent({
 			props: {
@@ -82,8 +83,50 @@ describe('CommunityPackageManageConfirmModal', () => {
 
 		await flushPromises();
 
-		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
-		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith('n8n-nodes-test.test');
+		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenNthCalledWith(
+			1,
+			'n8n-nodes-test.old',
+		);
+		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenNthCalledWith(
+			2,
+			'n8n-nodes-test.test',
+		);
+		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledTimes(2);
+	});
+
+	it('uses the exact package version and checksum for a verified-only update', async () => {
+		useSettingsStore().$patch({
+			settings: {
+				...defaultSettings,
+				communityNodesEnabled: true,
+				unverifiedCommunityNodesEnabled: false,
+			},
+		});
+		const communityNodesStore = useCommunityNodesStore();
+		nodeTypesStore.getCommunityNodeAttributes = vi
+			.fn()
+			.mockImplementation(async (nodeType) =>
+				nodeType === 'n8n-nodes-test.test'
+					? { npmVersion: '2.0.5', checksum: 'correct-checksum' }
+					: null,
+			);
+
+		const { getByRole } = renderComponent({
+			props: {
+				modalName: 'test-modal',
+				activePackageName: 'n8n-nodes-test',
+				mode: 'update',
+			},
+		});
+
+		await flushPromises();
+		await fireEvent.click(getByRole('button', { name: 'Confirm update' }));
+
+		expect(communityNodesStore.updatePackage).toHaveBeenCalledWith(
+			'n8n-nodes-test',
+			'2.0.5',
+			'correct-checksum',
+		);
 	});
 
 	it('should call nodeTypesStore methods and update latestVerifiedVersion on mount', async () => {
@@ -162,7 +205,7 @@ describe('CommunityPackageManageConfirmModal', () => {
 		expect(screen.getByText('Active')).toBeInTheDocument();
 		expect(screen.getByText('Confirm update')).toBeInTheDocument();
 		expect(screen.getByText('Cancel')).toBeInTheDocument();
-		expect(screen.getByText('Package includes: TestNode')).toBeInTheDocument();
+		expect(screen.getByText('Package includes: OldNode, TestNode')).toBeInTheDocument();
 	});
 
 	it('should not include table with affected workflows', async () => {
@@ -188,7 +231,7 @@ describe('CommunityPackageManageConfirmModal', () => {
 		const testId = screen.getByTestId('communityPackageManageConfirmModal-warning');
 		expect(testId).toBeInTheDocument();
 
-		expect(screen.getByText('Package includes: TestNode')).toBeInTheDocument();
+		expect(screen.getByText('Package includes: OldNode, TestNode')).toBeInTheDocument();
 
 		expect(
 			screen.getByText('Nodes from this package are not used in any workflows'),

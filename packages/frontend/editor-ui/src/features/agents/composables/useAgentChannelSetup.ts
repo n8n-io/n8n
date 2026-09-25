@@ -1,6 +1,5 @@
 import type { AgentIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import { useUIStore } from '@/app/stores/ui.store';
@@ -10,10 +9,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
 import type { AgentCredentialOption } from '../components/AgentCredentialSelect.vue';
-import { createSlackAgentApp } from './useAgentApi';
-
-const SLACK_APP_SETUP_POLL_INTERVAL_MS = 2000;
-const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
 
 type ChannelSetupComponent = {
 	credentialId: string;
@@ -23,15 +18,12 @@ type ChannelSetupComponent = {
 
 type UseAgentChannelSetupOptions = {
 	projectId: MaybeRefOrGetter<string>;
-	agentId: MaybeRefOrGetter<string>;
 	currentIntegration: MaybeRefOrGetter<ChatIntegrationDescriptor | null | undefined>;
 	connectedCredentials: MaybeRefOrGetter<Record<string, string>>;
 	fetchStatus: (integrationTypes: string[]) => Promise<void>;
-	isIntegrationConfigured: (type: string) => boolean;
 };
 
 export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
-	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
@@ -46,7 +38,6 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 	const fetchedProjectForPermissions = ref<Project | null>(null);
 
 	const projectId = computed(() => toValue(options.projectId));
-	const agentId = computed(() => toValue(options.agentId));
 	const currentIntegration = computed(() => toValue(options.currentIntegration) ?? null);
 	const connectedCredentials = computed(() => toValue(options.connectedCredentials));
 
@@ -107,7 +98,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		credentialsLoading.value = true;
 		try {
 			credentialsStore.setCredentials([]);
-			const allCredentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+			const allCredentials = await credentialsStore.fetchUsableCredentials({
 				projectId: projectId.value,
 			});
 
@@ -171,100 +162,6 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		}
 	}
 
-	function openSlackAppAuthorizationPopup(installUrl: string): Window {
-		const parsedUrl = new URL(installUrl);
-		if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-			throw new Error('Invalid Slack installation URL');
-		}
-
-		const params =
-			'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
-		const popup = window.open(parsedUrl.toString(), 'Slack App Authorization', params);
-		if (!popup) {
-			throw new Error('Slack authorization popup was blocked');
-		}
-		return popup;
-	}
-
-	async function waitForSlackAppSetupCompletion(popup: Window): Promise<boolean> {
-		return await new Promise((resolve) => {
-			const oauthChannel = new BroadcastChannel('oauth-callback');
-			let activePoll: Promise<void> | null = null;
-			let settled = false;
-
-			const closePopup = () => {
-				try {
-					popup.close();
-				} catch {}
-			};
-
-			const settle = (success: boolean) => {
-				if (settled) return;
-				settled = true;
-				window.clearInterval(pollInterval);
-				window.clearTimeout(timeout);
-				oauthChannel.close();
-				if (success) closePopup();
-				resolve(success);
-			};
-
-			const pollStatus = async () => {
-				if (activePoll || settled) return;
-				activePoll = (async () => {
-					try {
-						await options.fetchStatus(['slack']);
-						if (options.isIntegrationConfigured('slack')) settle(true);
-					} finally {
-						activePoll = null;
-					}
-				})();
-				await activePoll;
-			};
-
-			const pollInterval = window.setInterval(() => {
-				// User closed the popup — the OAuth flow can't complete anymore. Let any
-				// in-flight poll finish (it may confirm success), check status once more,
-				// then give up instead of blocking the UI until the full timeout.
-				if (popup.closed) {
-					void (activePoll ?? Promise.resolve())
-						.catch(() => {})
-						.then(pollStatus)
-						.finally(() => settle(false));
-					return;
-				}
-				void pollStatus();
-			}, SLACK_APP_SETUP_POLL_INTERVAL_MS);
-			const timeout = window.setTimeout(() => settle(false), SLACK_APP_SETUP_TIMEOUT_MS);
-
-			oauthChannel.addEventListener('message', (event: MessageEvent) => {
-				settle(event.data === 'success');
-			});
-
-			void pollStatus();
-		});
-	}
-
-	async function setupSlackApp(
-		appConfigurationToken: string,
-		onConfigured: () => void | Promise<void>,
-	): Promise<boolean> {
-		const { installUrl } = await createSlackAgentApp(
-			rootStore.restApiContext,
-			projectId.value,
-			agentId.value,
-			appConfigurationToken,
-		);
-		const popup = openSlackAppAuthorizationPopup(installUrl);
-		const configured = await waitForSlackAppSetupCompletion(popup);
-		if (!configured) {
-			throw new Error('Slack app installation was not completed');
-		}
-
-		await options.fetchStatus(['slack']);
-		await onConfigured();
-		return true;
-	}
-
 	watch(credentialModalOpen, async (isOpen, wasOpen) => {
 		if (!wasOpen || isOpen) return;
 		const type = pendingNewCredentialType.value;
@@ -300,6 +197,5 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		loadChannelState,
 		createCredential,
 		editCredential,
-		setupSlackApp,
 	};
 }

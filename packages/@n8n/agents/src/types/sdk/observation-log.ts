@@ -68,9 +68,12 @@ export interface ObservationLogReflectionResult {
 	inserted: ObservationLogEntry[];
 }
 
-export type TokenCounter = (text: string) => number;
-
-export const estimateObservationTokens: TokenCounter = (text) => Math.ceil(text.length / 4);
+export function getStoredObservationTokenCount(
+	entry: Pick<ObservationLogEntry, 'text' | 'tokenCount'>,
+): number {
+	if (Number.isFinite(entry.tokenCount) && entry.tokenCount > 0) return entry.tokenCount;
+	return Buffer.byteLength(entry.text, 'utf8');
+}
 
 export interface ObservationLogObserverInput {
 	observationScopeId: string;
@@ -84,6 +87,7 @@ export interface ObservationLogObserverInput {
 	telemetry?: BuiltTelemetry;
 }
 
+/** Return observation bullets, or exactly NO_OBSERVATIONS when the batch has no new facts. */
 export type ObservationLogObserveFn = (input: ObservationLogObserverInput) => Promise<string>;
 
 export interface ObservationLogReflectorInput {

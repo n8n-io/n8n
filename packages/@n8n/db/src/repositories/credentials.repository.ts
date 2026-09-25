@@ -1,11 +1,21 @@
+import { assertClearedFor, credentialContentSubject } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
+import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { CredentialsEntity, type User } from '../entities';
+import { UserError } from 'n8n-workflow';
+
+import {
+	CredentialsEntity,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+	SharedCredentials,
+	type User,
+} from '../entities';
 import { BaseRepository } from './base-repository';
 import {
+	CredentialDependencyRepository,
 	addCredentialDependencyExistsFilter,
 	type CredentialDependencyFilter,
 } from './credential-dependency.repository';
@@ -13,14 +23,80 @@ import { InstanceCredentialAssignmentRepository } from './instance-credential-as
 import { SharedCredentialsRepository } from './shared-credentials.repository';
 import type { ICredentialsDb, ListQuery } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
+import { chunkIds } from '../utils/chunk-ids';
+import { parseListQuerySortBy } from '../utils/list-query-sort';
+
+export class CredentialIdConflictError extends UserError {
+	constructor() {
+		super('A credential with this ID already exists');
+	}
+}
+
+const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
+
+export type CredentialSharingRelation =
+	| 'shared'
+	| 'shared.project'
+	| 'shared.project.projectRelations';
+
+// The list path reads `shared[].role` and `shared[].project`; loading every member of
+// every shared project would multiply the joined rows by the project sizes.
+const DEFAULT_CREDENTIAL_RELATIONS: CredentialSharingRelation[] = ['shared', 'shared.project'];
+
+type CredentialsListQueryOptions = ListQuery.Options & {
+	includeData?: boolean;
+	/** Also match global credentials, so they page, count and filter like every other row. */
+	includeGlobal?: boolean;
+	user?: User;
+	relations?: CredentialSharingRelation[];
+};
 
 @Service()
 export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	constructor(
 		dataSource: DataSource,
 		private readonly instanceCredentialAssignmentRepository: InstanceCredentialAssignmentRepository,
+		transactionRunner: TransactionRunner,
+		private readonly credentialDependencyRepository: CredentialDependencyRepository,
 	) {
-		super(CredentialsEntity, dataSource.manager);
+		super(CredentialsEntity, dataSource.manager, transactionRunner);
+	}
+
+	async insertProjectCredentialWithOwner(
+		credential: Pick<
+			CredentialsEntity,
+			'id' | 'name' | 'type' | 'data' | 'isManaged' | 'isResolvable'
+		> &
+			Partial<Pick<CredentialsEntity, 'isGlobal'>>,
+		projectId: string,
+		externalSecretProviderIds: string[],
+		ctx: OperationContext,
+	): Promise<CredentialsEntity> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
+		return await this.runInTransaction(ctx, async (manager) => {
+			const entity = this.create({ ...credential, usageScope: 'project' });
+			try {
+				await manager.insert(CredentialsEntity, entity);
+			} catch (error) {
+				// Only the credential insert can report an ID conflict.
+				if (isUniqueConstraintError(error)) throw new CredentialIdConflictError();
+				throw error;
+			}
+			await manager.insert(SharedCredentials, {
+				credentialsId: entity.id,
+				projectId,
+				role: 'credential:owner',
+			});
+			await this.credentialDependencyRepository.upsertDependenciesForCredential({
+				credentialId: entity.id,
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyIds: externalSecretProviderIds,
+				entityManager: manager,
+			});
+			return await manager.findOneByOrFail(CredentialsEntity, { id: entity.id });
+		});
 	}
 
 	async findStartingWith(credentialName: string) {
@@ -35,6 +111,87 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			where: { id: In(ids), usageScope: Not('project') },
 			select: ['id'],
 		});
+	}
+
+	/** Id and name for each of the given credential ids. */
+	async findNamesByIds(ids: string[]): Promise<Array<Pick<CredentialsEntity, 'id' | 'name'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			where: { id: In(ids) },
+			select: ['id', 'name'],
+		});
+	}
+
+	/** The ids among `ids` that still have a row, regardless of usage scope. */
+	async findExistingIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const rows = await this.find({
+			where: { id: In(ids) },
+			select: ['id'],
+		});
+
+		return rows.map((row) => row.id);
+	}
+
+	/** Filters `ids` down to the global credentials, which every project can use. */
+	async findGlobalProjectCredentialIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const rows = await this.find({
+			where: { id: In(ids), isGlobal: true, usageScope: 'project' },
+			select: ['id'],
+		});
+
+		return rows.map((row) => row.id);
+	}
+
+	/** Reads workflow eligibility and access for the package's credential and project IDs. */
+	async findPromotionBindingAccess(
+		ids: string[],
+		projectIds: string[],
+	): Promise<
+		Array<
+			Pick<CredentialsEntity, 'id' | 'type' | 'usageScope' | 'isGlobal'> & { projectIds: string[] }
+		>
+	> {
+		const found = [];
+		for (const batch of chunkIds(ids)) {
+			const credentials = await this.find({
+				where: { id: In(batch) },
+				select: ['id', 'type', 'usageScope', 'isGlobal'],
+			});
+			const projectsByCredential = new Map<string, string[]>();
+			for (const projectBatch of chunkIds(projectIds)) {
+				const relations = await this.manager.find(SharedCredentials, {
+					where: { credentialsId: In(batch), projectId: In(projectBatch) },
+					select: ['credentialsId', 'projectId'],
+				});
+				for (const relation of relations) {
+					const projects = projectsByCredential.get(relation.credentialsId) ?? [];
+					projects.push(relation.projectId);
+					projectsByCredential.set(relation.credentialsId, projects);
+				}
+			}
+			found.push(
+				...credentials.map(({ id, type, usageScope, isGlobal }) => ({
+					id,
+					type,
+					usageScope,
+					isGlobal,
+					projectIds: projectsByCredential.get(id) ?? [],
+				})),
+			);
+		}
+		return found;
+	}
+
+	/** True when any of the given credentials is a private (resolvable) credential. */
+	async hasResolvableCredential(ids: string[]): Promise<boolean> {
+		if (ids.length === 0) return false;
+		const count = await this.count({ where: { id: In(ids), isResolvable: true } });
+		return count > 0;
 	}
 
 	async findDanglingProjectCredentials(): Promise<CredentialsEntity[]> {
@@ -55,10 +212,34 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/**
+	 * Persists a new project credential, gated on a clearance for its type.
+	 *
+	 * A create binds to the type hash, not the id: an id here is generated on insert, so nothing
+	 * may change `type` between the `enforceCredentialSave` call and this write.
+	 */
+	async createContent(
+		credential: CredentialsEntity,
+		ctx: OperationContext,
+	): Promise<CredentialsEntity> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
+		return await this.managerFor(ctx).save(CredentialsEntity, credential);
+	}
+
+	async updateContent(
+		id: string,
+		content: QueryDeepPartialEntity<CredentialsEntity>,
+		ctx: OperationContext,
+	): Promise<void> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id });
+		await this.managerFor(ctx).update(CredentialsEntity, id, content);
+	}
+
 	async saveInstanceCredential(
 		credential: CredentialsEntity,
 		ctx: OperationContext,
 	): Promise<CredentialsEntity> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
 		return await this.managerFor(ctx).save(CredentialsEntity, credential);
 	}
 
@@ -67,6 +248,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		data: Pick<ICredentialsDb, 'id' | 'name' | 'type' | 'data'>,
 		ctx: OperationContext,
 	): Promise<CredentialsEntity | null> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id: credentialId });
 		const manager = this.managerFor(ctx);
 		await manager.update(CredentialsEntity, { id: credentialId, usageScope: 'instance' }, data);
 		return await manager.findOneBy(CredentialsEntity, {
@@ -114,31 +296,8 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		}
 	}
 
-	async findMany(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-			user?: User;
-			/** When provided, sets sort order for the query. */
-			order?: FindManyOptions<CredentialsEntity>['order'];
-		},
-		credentialIds?: string[],
-	) {
-		const findManyOptions = this.toFindManyOptions(listQueryOptions);
-
-		if (credentialIds) {
-			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
-		}
-
-		return await this.find(this.onlyProjectCredentials(findManyOptions));
-	}
-
 	async findManyAndCount(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-			user?: User;
-			/** When provided, sets sort order for the query. */
-			order?: FindManyOptions<CredentialsEntity>['order'];
-		},
+		listQueryOptions?: CredentialsListQueryOptions,
 		credentialIds?: string[],
 	): Promise<[CredentialsEntity[], number]> {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
@@ -147,7 +306,23 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
 		}
 
-		return await this.findAndCount(this.onlyProjectCredentials(findManyOptions));
+		const options = this.onlyProjectCredentials(findManyOptions);
+
+		if (listQueryOptions?.includeGlobal) {
+			// Globals are visible whatever the sharing filter says; the column filters still apply.
+			const { shared: _shared, ...columnFilters } =
+				options.where as FindOptionsWhere<CredentialsEntity>;
+			options.where = [
+				options.where as FindOptionsWhere<CredentialsEntity>,
+				{ ...columnFilters, isGlobal: true },
+			];
+		}
+
+		// `findAndCount` would count over the selected relations too, multiplying the rows
+		// it has to scan by every sharing and project member. Count on the filter alone.
+		const credentials = await this.find(options);
+		const count = await this.count({ where: options.where });
+		return [credentials, count];
 	}
 
 	private onlyProjectCredentials(
@@ -157,20 +332,16 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return findManyOptions;
 	}
 
-	private toFindManyOptions(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-			order?: FindManyOptions<CredentialsEntity>['order'];
-		},
-	) {
+	private toFindManyOptions(listQueryOptions?: CredentialsListQueryOptions) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
 		type Select = Array<keyof CredentialsEntity>;
 
-		const defaultRelations = ['shared', 'shared.project', 'shared.project.projectRelations'];
+		const relations = listQueryOptions?.relations ?? DEFAULT_CREDENTIAL_RELATIONS;
 		const defaultSelect: Select = [
 			'id',
 			'name',
+			'description',
 			'type',
 			'isManaged',
 			'createdAt',
@@ -183,11 +354,11 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		if (!listQueryOptions) {
 			return {
 				select: defaultSelect,
-				relations: defaultRelations,
+				relations,
 			} as FindManyOptions<CredentialsEntity>;
 		}
 
-		const { filter, select, take, skip, order } = listQueryOptions;
+		const { filter, select, take, skip, sortBy } = listQueryOptions;
 
 		if (typeof filter?.name === 'string' && filter?.name !== '') {
 			filter.name = Like(`%${filter.name}%`);
@@ -208,13 +379,21 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
 		}
 
-		if (!findManyOptions.select) {
-			findManyOptions.select = defaultSelect;
-			findManyOptions.relations = defaultRelations;
+		// the credential:connect scope check needs isResolvable whenever isGlobal is selected
+		if (select?.isGlobal && !select?.isResolvable) {
+			findManyOptions.select = { ...findManyOptions.select, isResolvable: true };
 		}
 
-		if (order !== undefined) {
-			findManyOptions.order = order;
+		if (!findManyOptions.select) {
+			findManyOptions.select = defaultSelect;
+			findManyOptions.relations = relations;
+		}
+
+		if (sortBy) {
+			const { column, direction } = parseListQuerySortBy(sortBy);
+			if (SORTABLE_COLUMNS.has(column)) {
+				findManyOptions.order = { [column]: direction };
+			}
 		}
 
 		if (listQueryOptions.includeData) {
@@ -228,9 +407,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return findManyOptions;
 	}
 
-	private handleSharedFilters(
-		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
-	): void {
+	private handleSharedFilters(listQueryOptions?: CredentialsListQueryOptions): void {
 		if (!listQueryOptions?.filter) return;
 
 		const { filter } = listQueryOptions;
@@ -285,75 +462,14 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	}
 
 	/**
-	 * Find all global credentials, optionally narrowed by credential type.
+	 * Find all global credentials.
 	 */
 	async findAllGlobalCredentials(
-		options: {
-			includeData?: boolean;
-			type?: string;
-			filters?: {
-				dependency?: CredentialDependencyFilter;
-			};
-		} = {},
+		options: { includeData?: boolean } = {},
 	): Promise<CredentialsEntity[]> {
-		const { includeData = false, type, filters } = options;
-
-		const dependencyFilter = filters?.dependency;
-		if (dependencyFilter) {
-			return await this.findAllGlobalCredentialsByDependencyFilter({
-				dependencyFilter,
-				includeData,
-				type,
-			});
-		}
-
-		const findManyOptions = this.toFindManyOptions({ includeData });
-		findManyOptions.where = {
-			...findManyOptions.where,
-			isGlobal: true,
-			usageScope: 'project',
-			...(type ? { type: Like(`%${type}%`) } : {}),
-		};
+		const findManyOptions = this.toFindManyOptions({ includeData: options.includeData ?? false });
+		findManyOptions.where = { ...findManyOptions.where, isGlobal: true, usageScope: 'project' };
 		return await this.find(findManyOptions);
-	}
-
-	private async findAllGlobalCredentialsByDependencyFilter(options: {
-		dependencyFilter: CredentialDependencyFilter;
-		includeData?: boolean;
-		type?: string;
-	}): Promise<CredentialsEntity[]> {
-		const { includeData, dependencyFilter, type } = options;
-
-		const qb = this.createQueryBuilder('credential');
-		qb.where('credential.isGlobal = :isGlobal', { isGlobal: true });
-		qb.andWhere('credential.usageScope = :usageScope', { usageScope: 'project' });
-		if (type) {
-			qb.andWhere('credential.type LIKE :type', { type: `%${type}%` });
-		}
-		addCredentialDependencyExistsFilter(qb, dependencyFilter);
-
-		const defaultSelect: Array<keyof CredentialsEntity> = [
-			'id',
-			'name',
-			'type',
-			'isManaged',
-			'createdAt',
-			'updatedAt',
-			'isGlobal',
-			'isResolvable',
-			'resolverId',
-		];
-		const selectColumns = defaultSelect.map((k) => `credential.${k}`);
-		if (includeData) {
-			selectColumns.push('credential.data');
-		}
-
-		qb.select(selectColumns);
-		qb.leftJoinAndSelect('credential.shared', 'shared');
-		qb.leftJoinAndSelect('shared.project', 'project');
-		qb.leftJoinAndSelect('project.projectRelations', 'projectRelations');
-
-		return await qb.getMany();
 	}
 
 	/**
@@ -416,9 +532,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options & {
-			includeData?: boolean;
-			order?: FindManyOptions<CredentialsEntity>['order'];
+		options: CredentialsListQueryOptions & {
 			filters?: {
 				dependency?: CredentialDependencyFilter;
 			};
@@ -429,15 +543,13 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		// Get credentials with pagination
 		const credentials = await query.getMany();
 
-		// Build count query without pagination and relations
-		const countQuery = this.getManyQueryWithSharingSubquery(user, sharingOptions, {
-			...options,
-			take: undefined,
-			skip: undefined,
-			select: undefined,
-		});
-
-		// Remove relations and select for count
+		// Count on the filter alone: no pagination, no relation joins.
+		const countQuery = this.getManyQueryWithSharingSubquery(
+			user,
+			sharingOptions,
+			{ ...options, take: undefined, skip: undefined, select: undefined, sortBy: undefined },
+			{ joinRelations: false },
+		);
 		const count = await countQuery.select('credential.id').getCount();
 
 		return { credentials, count };
@@ -456,13 +568,12 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options & {
-			includeData?: boolean;
-			order?: FindManyOptions<CredentialsEntity>['order'];
+		options: CredentialsListQueryOptions & {
 			filters?: {
 				dependency?: CredentialDependencyFilter;
 			};
 		} = {},
+		{ joinRelations = true }: { joinRelations?: boolean } = {},
 	): SelectQueryBuilder<CredentialsEntity> {
 		const qb = this.createQueryBuilder('credential');
 		qb.andWhere('credential.usageScope = :usageScope', { usageScope: 'project' });
@@ -486,14 +597,21 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			sharingOptionsWithProjectId,
 		);
 
-		// Apply the sharing filter using the subquery
-		qb.andWhere(`credential.id IN (${sharedCredentialSubquery.getQuery()})`);
+		// Apply the sharing filter using the subquery; globals bypass it when requested.
+		const sharingCondition = `credential.id IN (${sharedCredentialSubquery.getQuery()})`;
+		if (options.includeGlobal) {
+			qb.andWhere(`(${sharingCondition} OR credential.isGlobal = :includeGlobal)`, {
+				includeGlobal: true,
+			});
+		} else {
+			qb.andWhere(sharingCondition);
+		}
 		qb.setParameters(sharedCredentialSubquery.getParameters());
 
 		// Apply other filters
 		// projectId is always handled in the subquery, so skip it to avoid issues
 		const filtersToApply =
-			options.filter && typeof options.filter.projectId !== 'undefined'
+			typeof options.filter?.projectId !== 'undefined'
 				? { ...options.filter, projectId: undefined }
 				: options.filter;
 
@@ -511,6 +629,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		const defaultSelect: Array<keyof CredentialsEntity> = [
 			'id',
 			'name',
+			'description',
 			'type',
 			'isManaged',
 			'createdAt',
@@ -539,19 +658,25 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			qb.addSelect('credential.data');
 		}
 
-		// Apply relations
-		if (!options.select) {
-			// Only add relations if using default select
-			qb.leftJoinAndSelect('credential.shared', 'shared')
-				.leftJoinAndSelect('shared.project', 'project')
-				.leftJoinAndSelect('project.projectRelations', 'projectRelations');
+		// Apply relations, same set as `toFindManyOptions`
+		if (joinRelations && !options.select) {
+			const relations = options.relations ?? DEFAULT_CREDENTIAL_RELATIONS;
+			if (relations.includes('shared')) {
+				qb.leftJoinAndSelect('credential.shared', 'shared');
+			}
+			if (relations.includes('shared.project')) {
+				qb.leftJoinAndSelect('shared.project', 'project');
+			}
+			if (relations.includes('shared.project.projectRelations')) {
+				qb.leftJoinAndSelect('project.projectRelations', 'projectRelations');
+			}
 		}
 
-		// Apply sorting
-		if (options.order) {
-			Object.entries(options.order).forEach(([key, direction]) => {
-				qb.addOrderBy(`credential.${key}`, direction as 'ASC' | 'DESC');
-			});
+		if (options.sortBy) {
+			const { column, direction } = parseListQuerySortBy(options.sortBy);
+			if (SORTABLE_COLUMNS.has(column)) {
+				qb.addOrderBy(`credential.${column}`, direction);
+			}
 		}
 
 		// Apply pagination

@@ -2,7 +2,54 @@ import { createHash } from 'crypto';
 import moment from 'moment-timezone';
 import { type CronExpression, type CronSource, type INode, NodeOperationError } from 'n8n-workflow';
 
-import type { IRecurrenceRule, ScheduleInterval } from './SchedulerInterface';
+import type { IRecurrenceRule, RawScheduleInterval, ScheduleInterval } from './SchedulerInterface';
+
+const SCHEDULE_FIELDS = [
+	'seconds',
+	'minutes',
+	'hours',
+	'days',
+	'weeks',
+	'months',
+	'cronExpression',
+] as const;
+
+const isScheduleField = (value: unknown): value is ScheduleInterval['field'] =>
+	SCHEDULE_FIELDS.some((field) => field === value);
+
+export function withIntervalDefaults(interval: RawScheduleInterval): ScheduleInterval {
+	const { triggerAtHour, triggerAtMinute, triggerAtDayOfMonth } = interval;
+	const field = isScheduleField(interval.field) ? interval.field : 'days';
+
+	switch (field) {
+		case 'cronExpression':
+			return { field, expression: interval.expression ?? ('' as CronExpression) };
+		case 'seconds':
+			return { field, secondsInterval: interval.secondsInterval ?? 30 };
+		case 'minutes':
+			return { field, minutesInterval: interval.minutesInterval ?? 5 };
+		case 'hours':
+			return { field, hoursInterval: interval.hoursInterval ?? 1, triggerAtMinute };
+		case 'days':
+			return { field, daysInterval: interval.daysInterval ?? 1, triggerAtHour, triggerAtMinute };
+		case 'weeks':
+			return {
+				field,
+				weeksInterval: interval.weeksInterval ?? 1,
+				triggerAtDay: interval.triggerAtDay ?? [0],
+				triggerAtHour,
+				triggerAtMinute,
+			};
+		case 'months':
+			return {
+				field,
+				monthsInterval: interval.monthsInterval ?? 1,
+				triggerAtDayOfMonth,
+				triggerAtHour,
+				triggerAtMinute,
+			};
+	}
+}
 
 export function validateInterval(node: INode, itemIndex: number, interval: ScheduleInterval): void {
 	let errorMessage = '';

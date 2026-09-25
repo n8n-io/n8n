@@ -77,6 +77,7 @@ export const ngrok: Service<NgrokResult> = {
 			}
 
 			const container = await builder.start();
+			ctx?.registerContainer?.(container);
 
 			const hostPort = container.getMappedPort(API_PORT);
 			const host = container.getHost();

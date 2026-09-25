@@ -11,6 +11,7 @@ import type {
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	IWorkflowExecutionDataProcess,
+	RelatedAgentRun,
 	RelatedExecution,
 	StartNodeData,
 } from '..';
@@ -20,6 +21,12 @@ export interface RedactionInfo {
 	isRedacted: boolean;
 	reason: string;
 	canReveal: boolean;
+	/**
+	 * True when the info is synthesized from live push markers before the
+	 * authoritative executionFinished metadata arrives. `canReveal` is a
+	 * pessimistic guess while this is set.
+	 */
+	provisional?: boolean;
 }
 
 // DIFF: switches startData.destinationNode to a structured object, rather than just the name of the string.
@@ -55,6 +62,8 @@ export interface IRunExecutionDataV1 {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/** Suspended agent tool call to resume once this execution finishes. */
+	parentAgentRun?: RelatedAgentRun;
 	/**
 	 * Random token used to validate waiting webhook/form requests.
 	 * Generated when execution starts. Presence signals validation is required.
@@ -72,6 +81,9 @@ export interface IRunExecutionDataV1 {
 		| 'evaluationRunId'
 		| 'source'
 		| 'suppressErrorWorkflow'
+		// A run of a single tool node carries the agent request that supplies the
+		// tool's arguments. Without it a worker runs the tool on empty arguments.
+		| 'agentRequest'
 	>;
 
 	/** Metadata about whether and how this execution's data was redacted. */

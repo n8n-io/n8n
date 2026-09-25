@@ -1,8 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { nodeTypeToNewMcpServer } from '../composables/useMcpServerAdapter';
+import {
+	mcpServerToNode,
+	nodeToMcpServer,
+	nodeTypeToNewMcpServer,
+} from '../composables/useMcpServerAdapter';
 
 vi.mock('uuid', () => ({ v4: () => 'mocked-uuid' }));
 
@@ -71,6 +75,85 @@ describe('useMcpServerAdapter', () => {
 			const server = nodeTypeToNewMcpServer(makeMcpNodeType(1.1));
 
 			expect(server.transport).toBe('sse');
+		});
+	});
+
+	describe('nodeToMcpServer()', () => {
+		it('uses the credential type as authentication for a registry MCP server', () => {
+			const node: INode = {
+				id: 'github-mcp',
+				name: 'github-mcp',
+				type: '@n8n/mcp-registry.gitHub',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {
+					endpointUrl: 'https://api.githubcopilot.com/mcp/',
+					serverTransport: 'httpStreamable',
+					authentication: 'enterpriseOAuth2',
+					options: { timeout: 60001 },
+				},
+				credentials: {
+					githubEnterpriseOAuth2Api: {
+						id: 'UZscC4Mgs5EMeouw',
+						name: 'GitHub Enterprise OAuth2',
+					},
+				},
+			};
+
+			expect(nodeToMcpServer(node)).toEqual({
+				name: 'github-mcp',
+				url: 'https://api.githubcopilot.com/mcp/',
+				transport: 'streamableHttp',
+				authentication: 'githubEnterpriseOAuth2Api',
+				credential: 'UZscC4Mgs5EMeouw',
+				toolFilter: undefined,
+				description: undefined,
+				approval: undefined,
+				connectionTimeoutMs: 60001,
+				metadata: {
+					nodeTypeName: '@n8n/mcp-registry.gitHub',
+				},
+			});
+		});
+	});
+
+	describe('mcpServerToNode()', () => {
+		it('uses the registry selector that matches the authentication credential type', () => {
+			const nodeType = {
+				...makeMcpNodeType(1),
+				name: '@n8n/mcp-registry.gitHub',
+				credentials: [
+					{
+						name: 'githubEnterpriseOAuth2Api',
+						required: true,
+						displayOptions: {
+							show: {
+								authentication: ['enterpriseOAuth2'],
+							},
+						},
+					},
+				],
+			} satisfies INodeTypeDescription;
+
+			const node = mcpServerToNode(
+				{
+					name: 'github-mcp',
+					url: 'https://api.githubcopilot.com/mcp/',
+					transport: 'streamableHttp',
+					authentication: 'githubEnterpriseOAuth2Api',
+					credential: 'UZscC4Mgs5EMeouw',
+					connectionTimeoutMs: 60001,
+				},
+				nodeType,
+			);
+
+			expect(node.parameters.authentication).toBe('enterpriseOAuth2');
+			expect(node.credentials).toEqual({
+				githubEnterpriseOAuth2Api: {
+					id: 'UZscC4Mgs5EMeouw',
+					name: 'UZscC4Mgs5EMeouw',
+				},
+			});
 		});
 	});
 });

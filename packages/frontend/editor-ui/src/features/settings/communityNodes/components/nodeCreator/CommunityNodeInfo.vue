@@ -5,7 +5,6 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
-import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import ContactAdministratorToInstall from '../ContactAdministratorToInstall.vue';
 import { useInstalledCommunityPackage } from '../../composables/useInstalledCommunityPackage';
 
@@ -27,8 +26,9 @@ const downloads = ref<string | null>(null);
 const verified = ref(false);
 const official = ref(false);
 const packageName = computed(() => communityNodeDetails?.packageName);
-const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
-	useInstalledCommunityPackage(packageName);
+const nodeTypeName = computed(() => communityNodeDetails?.key);
+const { installedPackage, initInstalledPackage, canUpdatePackage, hasUpdateAvailable } =
+	useInstalledCommunityPackage(nodeTypeName);
 const { getQuickConnectOptionByPackageName } = useQuickConnect();
 const quickConnect = computed(() => {
 	const pkg = packageName.value;
@@ -119,7 +119,7 @@ onMounted(async () => {
 			{{ communityNodeDetails?.description }}
 		</N8nText>
 		<CommunityNodeUpdateInfo
-			v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
+			v-if="canUpdatePackage && hasUpdateAvailable"
 			data-test-id="update-available"
 			:package-name="communityNodeDetails?.packageName"
 			source="node creator panel"
@@ -133,7 +133,7 @@ onMounted(async () => {
 						: i18n.baseText('communityNodeInfo.approved')
 				}}</template>
 				<div>
-					<ShieldIcon :class="$style.tooltipIcon" />
+					<N8nIcon :class="$style.tooltipIcon" icon="shield-half" />
 					<N8nText color="text-light" size="xsmall" bold data-test-id="verified-tag">
 						{{ i18n.baseText('communityNodeInfo.approved.label') }}
 					</N8nText>

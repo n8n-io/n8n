@@ -1,3 +1,5 @@
+@use 'mixins/motion';
+
 .el-skeleton {
 	width: 100%;
 }
@@ -78,6 +80,8 @@
 	background-size: 400% 100%;
 	-webkit-animation: el-skeleton-loading 1.4s ease infinite;
 	animation: el-skeleton-loading 1.4s ease infinite;
+
+	@include motion.reduced-motion;
 }
 
 @-webkit-keyframes el-skeleton-loading {

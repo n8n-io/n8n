@@ -40,7 +40,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
-import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
+import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
 import {
 	type ChatHubConversationModelWithCachedDisplayName,
 	chatHubConversationModelWithCachedDisplayNameSchema,
@@ -48,7 +48,7 @@ import {
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -692,7 +692,7 @@ function onFilesDropped(files: File[]) {
 		</div>
 		<N8nResizeWrapper
 			:class="$style.mainContentResizer"
-			:width="artifacts.viewerSize.value"
+			:resizer="artifacts.panelResizer"
 			:style="{
 				width: artifacts.isViewerVisible.value
 					? `${artifacts.viewerSize.value}px`
@@ -702,7 +702,6 @@ function onFilesDropped(files: File[]) {
 			}"
 			:supported-directions="['right']"
 			:is-resizing-enabled="true"
-			@resize="artifacts.handleViewerResize"
 			@resizeend="artifacts.handleViewerResizeEnd"
 		>
 			<div :class="$style.mainContent">

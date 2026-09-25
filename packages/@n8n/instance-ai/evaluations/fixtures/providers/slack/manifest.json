@@ -1,0 +1,12 @@
+{
+	"credentialType": "slackApi",
+	"hosts": ["api.slack.com"],
+	"secretPrefix": "xoxb-",
+	"routes": {
+		"/apps": "apps.html",
+		"/apps/:appId/general": "general.html",
+		"/apps/:appId/install-on-team": "install.html",
+		"/apps/:appId/oauth": "install.html"
+	},
+	"defaultRoute": "/apps"
+}

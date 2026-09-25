@@ -5,30 +5,38 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	shouldAutoResolveCredential,
+	type InstanceAiCredentialSetupHint,
+} from '@n8n/api-types';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
-import type { IConnections, ICredentialsDisplayOptions, INode } from 'n8n-workflow';
-import {
-	getCredentialActivationParameters as getCredentialActivationParametersByDisplayOptions,
-	getParentNodes,
-	mapConnectionsByDestination,
-} from 'n8n-workflow';
+import { getCredentialActivationParameters as getCredentialActivationParametersByDisplayOptions } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import { computeUnavailableLocatorIssues } from './chat-model-validation';
 import {
 	AI_GATEWAY_CREDENTIAL,
 	N8N_CONNECT_DISPLAY_NAME,
 	assignCredentialToNode,
+	extractServiceHost,
+	extractServiceOrigin,
 	isAiGatewayManagedCredential,
 	resolveCredentialForApply,
+	serviceHostsMatch,
 	toSetupNodeCredential,
 	type SetupNodeCredential,
 } from './credential-utils';
 import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
+import { describeSavedPublishState, type SavedWorkflowState } from './saved-workflow-state';
 import type { SetupRequest } from './setup-workflow.schema';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { InstanceAiContext } from '../../types';
+
+type SetupValidationMode = 'live' | 'configuration';
 
 // ── Credential cache ────────────────────────────────────────────────────────
 
@@ -41,10 +49,14 @@ export interface CredentialCache {
 	testability: Map<string, Promise<boolean>>;
 	/** Credential test result promises, keyed by credential ID (workflow-independent). */
 	tests: Map<string, Promise<{ success: boolean; message?: string }>>;
+	/** Templated credential host lookups, keyed by the sorted candidate-id set.
+	 *  Every HTTP node resolving the shared type sees the same candidates, so the
+	 *  host decrypt runs once per workflow rather than once per node. */
+	templatedHosts: Map<string, Promise<Record<string, string | null>>>;
 }
 
 export function createCredentialCache(): CredentialCache {
-	return { lists: new Map(), testability: new Map(), tests: new Map() };
+	return { lists: new Map(), testability: new Map(), tests: new Map(), templatedHosts: new Map() };
 }
 
 function listCacheKey(workflowId: string | undefined, credentialType: string): string {
@@ -81,7 +93,7 @@ export async function getValidCredentialTypes(
 				node.type,
 				typeVersion,
 				parameters,
-				node.credentials as Record<string, unknown> | undefined,
+				node.credentials,
 			);
 			for (const t of dynamic) types.add(t);
 		} catch (error) {
@@ -105,12 +117,7 @@ export async function getValidCredentialTypes(
 				types.add(c.name);
 				continue;
 			}
-			if (
-				matchesDisplayOptions(
-					{ parameters, nodeVersion: typeVersion },
-					c.displayOptions as DisplayOptions,
-				)
-			) {
+			if (matchesDisplayOptions({ parameters, nodeVersion: typeVersion }, c.displayOptions)) {
 				types.add(c.name);
 			}
 		}
@@ -139,9 +146,7 @@ export async function getValidCredentialTypes(
 export function getCredentialActivationParameters(
 	displayOptions: Record<string, unknown> | undefined,
 ): IDataObject {
-	return getCredentialActivationParametersByDisplayOptions(
-		displayOptions as ICredentialsDisplayOptions | undefined,
-	);
+	return getCredentialActivationParametersByDisplayOptions(displayOptions);
 }
 
 export type CredentialActivationState = 'active' | 'activatable' | 'unreachable';
@@ -288,11 +293,7 @@ function buildEditableParameters(
 			...(prop.default !== undefined ? { default: prop.default } : {}),
 			...(prop.options
 				? {
-						options: prop.options as SetupRequest['editableParameters'] extends Array<infer T>
-							? T extends { options?: infer O }
-								? O
-								: never
-							: never,
+						options: prop.options,
 					}
 				: {}),
 		});
@@ -334,10 +335,7 @@ async function resolveCredentialTypes(
 		credentialTypes = nodeDesc.credentials
 			.filter((c: { name?: string; displayOptions?: unknown }) => {
 				if (!c.displayOptions) return true;
-				return matchesDisplayOptions(
-					{ parameters, nodeVersion: typeVersion },
-					c.displayOptions as DisplayOptions,
-				);
+				return matchesDisplayOptions({ parameters, nodeVersion: typeVersion }, c.displayOptions);
 			})
 			.map((c: { name?: string }) => c.name)
 			.filter((n): n is string => n !== undefined);
@@ -374,6 +372,48 @@ interface CredentialState {
 	 */
 	autoAppliedGateway?: true;
 	credentialTestResult?: { success: boolean; message?: string };
+	/**
+	 * The stored credential this slot effectively resolves to — bound on the node,
+	 * or the sole candidate we auto-applied. Undefined for the gateway option (no
+	 * stored record) and for slots with nothing resolved yet. Used to validate
+	 * credential-scoped parameter values such as a model name.
+	 */
+	effectiveCredential?: { id: string; name: string };
+}
+
+/**
+ * Same-service filter for Templated Custom Auth candidates: the type is shared
+ * by every service, so a credential is offered only when the host it was
+ * created for (its stored `serviceHost`) matches the node's own URL host.
+ * Untagged credentials — and every candidate when the node host can't be
+ * derived — are dropped: fail closed rather than offer another service's key.
+ * Same-service reuse survives; anything else goes through "create new".
+ */
+async function filterTemplatedCredentialsByServiceHost(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	candidates: Array<{ id: string; name: string }>,
+	cache: CredentialCache | undefined,
+): Promise<Array<{ id: string; name: string }>> {
+	if (candidates.length === 0) return candidates;
+	const parameters = node.parameters as Record<string, unknown> | undefined;
+	const nodeHost = extractServiceHost(parameters?.url);
+	const getHosts = context.credentialService.getTemplatedCredentialHosts?.bind(
+		context.credentialService,
+	);
+	if (!nodeHost || !getHosts) return [];
+	const ids = candidates.map((c) => c.id);
+	const cacheKey = [...ids].sort().join(',');
+	let hostsPromise = cache?.templatedHosts.get(cacheKey);
+	if (!hostsPromise) {
+		hostsPromise = getHosts(ids).catch((): Record<string, string | null> => ({}));
+		cache?.templatedHosts.set(cacheKey, hostsPromise);
+	}
+	const hosts = await hostsPromise;
+	return candidates.filter((candidate) => {
+		const host = hosts[candidate.id];
+		return typeof host === 'string' && host !== '' && serviceHostsMatch(host, nodeHost);
+	});
 }
 
 /**
@@ -386,6 +426,8 @@ async function resolveCredentialState(
 	credentialType: string,
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
+	prefersNewCredential = false,
+	validationMode: SetupValidationMode = 'live',
 ): Promise<CredentialState> {
 	// Use cache to avoid duplicate fetches for the same credential type across nodes.
 	// Scope to the workflow so we list only credentials the save path will accept —
@@ -400,13 +442,31 @@ async function resolveCredentialState(
 		cache?.lists.set(cacheKey, listPromise);
 	}
 	const sortedCreds = await listPromise;
-	const existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
+	let existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
+	if (credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+		existingCredentials = await filterTemplatedCredentialsByServiceHost(
+			context,
+			node,
+			existingCredentials,
+			cache,
+		);
+	}
 
-	const existingOnNode = node.credentials?.[credentialType];
+	// A slot the user asked to refill fresh ignores its current binding — it renders
+	// unbound, so the bound credential is neither tested nor reported as effective.
+	const existingOnNode = prefersNewCredential ? undefined : node.credentials?.[credentialType];
 	const existingCredentialId =
 		typeof existingOnNode?.id === 'string' && existingOnNode.id ? existingOnNode.id : undefined;
 	const hasExistingOnNode =
 		existingCredentialId !== undefined || isAiGatewayManagedCredential(existingOnNode);
+	if (validationMode === 'configuration') {
+		const effectiveCredential = existingCredentials.find((c) => c.id === existingCredentialId);
+		return {
+			existingCredentials,
+			isAutoApplied: false,
+			...(effectiveCredential ? { effectiveCredential } : {}),
+		};
+	}
 	let isAutoApplied = false;
 	let autoAppliedGateway: true | undefined;
 
@@ -416,6 +476,7 @@ async function resolveCredentialState(
 	// override a saved key with the managed gateway.
 	if (
 		!hasExistingOnNode &&
+		!prefersNewCredential &&
 		existingCredentials.length === 0 &&
 		context.credentialService.isAiGatewayCredentialType
 	) {
@@ -431,8 +492,17 @@ async function resolveCredentialState(
 	// Fall back to auto-applying the sole stored credential when n8n credits
 	// is not available. With multiple candidates, picking the first is a
 	// silent guess — surface the list so the setup wizard can prompt.
-	if (!isAutoApplied) {
-		isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
+	// Generic auth types never auto-apply: the type alone does not identify a
+	// service, so a sole bearer/header/etc. key must not be attached to an
+	// arbitrary URL without the user's click (a sole match arrives preselected).
+	// Neither does a type the user asked to create fresh — answering that with a
+	// stored credential is the contradiction this flag exists to prevent.
+	if (
+		!prefersNewCredential &&
+		!hasExistingOnNode &&
+		shouldAutoResolveCredential(credentialType, existingCredentials.length)
+	) {
+		isAutoApplied = true;
 	}
 
 	const credToTest =
@@ -446,6 +516,9 @@ async function resolveCredentialState(
 		};
 	}
 
+	const resolvedCredential = sortedCreds.find((c) => c.id === credToTest);
+	const effectiveCredential = resolvedCredential ? { effectiveCredential: resolvedCredential } : {};
+
 	let testabilityPromise = cache?.testability.get(credentialType);
 	if (!testabilityPromise) {
 		testabilityPromise = context.credentialService.isTestable
@@ -454,7 +527,7 @@ async function resolveCredentialState(
 		cache?.testability.set(credentialType, testabilityPromise);
 	}
 	const canTest = await testabilityPromise;
-	if (!canTest) return { existingCredentials, isAutoApplied };
+	if (!canTest) return { existingCredentials, isAutoApplied, ...effectiveCredential };
 
 	let testPromise = cache?.tests.get(credToTest);
 	if (!testPromise) {
@@ -465,7 +538,7 @@ async function resolveCredentialState(
 		cache?.tests.set(credToTest, testPromise);
 	}
 	const credentialTestResult = await testPromise;
-	return { existingCredentials, isAutoApplied, credentialTestResult };
+	return { existingCredentials, isAutoApplied, credentialTestResult, ...effectiveCredential };
 }
 
 type RequestNodeCredentials = NonNullable<SetupRequest['node']['credentials']>;
@@ -496,13 +569,11 @@ function buildRequestCredentials(
 
 	if (nodeCredentials && Object.keys(nodeCredentials).length > 0) {
 		return {
-			credentials: (autoCredential
-				? { ...nodeCredentials, ...autoCredential }
-				: nodeCredentials) as RequestNodeCredentials,
+			credentials: autoCredential ? { ...nodeCredentials, ...autoCredential } : nodeCredentials,
 		};
 	}
 
-	return autoCredential ? { credentials: autoCredential as RequestNodeCredentials } : {};
+	return autoCredential ? { credentials: autoCredential } : {};
 }
 
 /**
@@ -519,11 +590,21 @@ async function resolveAppliedCredentialState(
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
 	nodeCredentials: Record<string, SetupNodeCredential> | undefined,
+	prefersNewCredential = false,
+	validationMode: SetupValidationMode = 'live',
 ): Promise<CredentialState> {
 	if (!credentialType) {
 		return { existingCredentials: [], isAutoApplied: false };
 	}
-	const state = await resolveCredentialState(context, node, credentialType, cache, workflowId);
+	const state = await resolveCredentialState(
+		context,
+		node,
+		credentialType,
+		cache,
+		workflowId,
+		prefersNewCredential,
+		validationMode,
+	);
 	if (state.isAutoApplied && nodeCredentials) {
 		if (state.autoAppliedGateway) {
 			nodeCredentials[credentialType] = {
@@ -541,10 +622,10 @@ async function resolveAppliedCredentialState(
 }
 
 interface NodeSetupContext {
+	validationMode: SetupValidationMode;
 	nodeName: string;
 	isTrigger: boolean;
 	isTestable: boolean;
-	hasParamIssues: boolean;
 	parameterIssues: Record<string, string[]>;
 	editableParameters: SetupRequest['editableParameters'];
 	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string };
@@ -566,7 +647,11 @@ async function buildRequestForCredentialType(
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
 	nodeCtx: NodeSetupContext,
+	preferNewCredentialTypes?: ReadonlySet<string>,
+	appliedCredentialIds?: ReadonlySet<string>,
 ): Promise<SetupRequest | null> {
+	const prefersNewCredential =
+		credentialType !== undefined && (preferNewCredentialTypes?.has(credentialType) ?? false);
 	const nodeCredentials = node.credentials
 		? Object.fromEntries(
 				Object.entries(node.credentials)
@@ -576,18 +661,56 @@ async function buildRequestForCredentialType(
 					),
 			)
 		: undefined;
+	// A slot routed to fresh creation renders unbound: the credential being replaced
+	// must not show as selected — it only stays available in the picker's list.
+	if (prefersNewCredential && credentialType && nodeCredentials) {
+		delete nodeCredentials[credentialType];
+	}
 
-	const { existingCredentials, isAutoApplied, credentialTestResult, autoAppliedGateway } =
-		await resolveAppliedCredentialState(
-			context,
-			node,
-			credentialType,
-			cache,
-			workflowId,
-			nodeCredentials,
-		);
+	const {
+		existingCredentials,
+		isAutoApplied,
+		credentialTestResult,
+		autoAppliedGateway,
+		effectiveCredential,
+	} = await resolveAppliedCredentialState(
+		context,
+		node,
+		credentialType,
+		cache,
+		workflowId,
+		nodeCredentials,
+		prefersNewCredential,
+		nodeCtx.validationMode,
+	);
 
-	const { isTrigger, isTestable, hasParamIssues } = nodeCtx;
+	// The connected credential can rule out a parameter value chosen before it existed
+	// (see computeUnavailableLocatorIssues), so fold those in as parameter issues.
+	// Gateway-managed (n8n credits) slots use the managed tag so the host can
+	// validate against the gateway allowlist.
+	const locatorCredential =
+		effectiveCredential ??
+		(credentialType &&
+		!prefersNewCredential &&
+		(autoAppliedGateway || isAiGatewayManagedCredential(node.credentials?.[credentialType]))
+			? { id: AI_GATEWAY_MANAGED_TAG, name: N8N_CONNECT_DISPLAY_NAME }
+			: undefined);
+	const unavailableIssues =
+		nodeCtx.validationMode === 'live' && credentialType && locatorCredential
+			? await computeUnavailableLocatorIssues(
+					context,
+					node,
+					nodeCtx.parameters,
+					nodeCtx.typeVersion,
+					credentialType,
+					locatorCredential,
+				)
+			: {};
+
+	const parameterIssues = { ...nodeCtx.parameterIssues, ...unavailableIssues };
+
+	const { isTrigger, isTestable } = nodeCtx;
+	const hasParamIssues = Object.keys(parameterIssues).length > 0;
 	if (!credentialType && !isTrigger && !hasParamIssues) return null;
 	if (!credentialType && isTrigger && !isTestable && !hasParamIssues) return null;
 
@@ -601,22 +724,29 @@ async function buildRequestForCredentialType(
 	// rides along in credentialTestResult for display.
 	// A parameter request needs action if issues remain.
 	// A trigger-only request (no credential, no param issues) never blocks apply.
-	let needsAction = false;
+	let credentialNeedsAction = false;
 	if (credentialType) {
 		const existingOnNode = node.credentials?.[credentialType];
 		const boundId =
 			typeof existingOnNode?.id === 'string' && existingOnNode.id !== ''
 				? existingOnNode.id
 				: undefined;
+		// A preferNewCredentials request un-settles a node that already has a working
+		// credential, so setup shows the card to change it instead of reporting
+		// "No nodes require setup". Otherwise, an id the resume just applied resolves
+		// even when the list view lags it (scoped discovery, e.g. eval allowlist
+		// pins) — the apply already resolved it before binding.
 		const isSettled =
-			isAiGatewayManagedCredential(existingOnNode) ||
-			(boundId !== undefined &&
-				existingCredentials.some((credential) => credential.id === boundId));
-		needsAction = !isSettled;
+			!prefersNewCredential &&
+			(isAiGatewayManagedCredential(existingOnNode) ||
+				(boundId !== undefined &&
+					(existingCredentials.some((credential) => credential.id === boundId) ||
+						(appliedCredentialIds?.has(boundId) ?? false))));
+		credentialNeedsAction = !isSettled;
 	}
-	if (hasParamIssues) {
-		needsAction = true;
-	}
+	// Tracked apart from `needsAction` because the two answer different questions: a node with a
+	// working credential and an unfilled parameter needs action, but not *about the credential*.
+	const needsAction = credentialNeedsAction || hasParamIssues;
 
 	return {
 		node: {
@@ -639,13 +769,15 @@ async function buildRequestForCredentialType(
 		isTrigger,
 		...(isTestable ? { isTestable } : {}),
 		...(isAutoApplied ? { isAutoApplied } : {}),
+		...(prefersNewCredential ? { preferNewCredential: true } : {}),
 		...(credentialTestResult ? { credentialTestResult } : {}),
 		...(nodeCtx.triggerTestResult ? { triggerTestResult: nodeCtx.triggerTestResult } : {}),
-		...(hasParamIssues ? { parameterIssues: nodeCtx.parameterIssues } : {}),
+		...(hasParamIssues ? { parameterIssues } : {}),
 		...(nodeCtx.editableParameters && nodeCtx.editableParameters.length > 0
 			? { editableParameters: nodeCtx.editableParameters }
 			: {}),
 		needsAction,
+		...(credentialNeedsAction ? { credentialNeedsAction } : {}),
 	};
 }
 
@@ -655,6 +787,9 @@ export async function buildSetupRequests(
 	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string },
 	cache?: CredentialCache,
 	workflowId?: string,
+	preferNewCredentialTypes?: ReadonlySet<string>,
+	appliedCredentialIds?: ReadonlySet<string>,
+	validationMode: SetupValidationMode = 'live',
 ): Promise<SetupRequest[]> {
 	if (!node.name) return [];
 	if (node.disabled) return [];
@@ -662,9 +797,10 @@ export async function buildSetupRequests(
 	const typeVersion = node.typeVersion ?? 1;
 	const parameters = (node.parameters as Record<string, unknown>) ?? {};
 
-	const nodeDesc = await context.nodeService
-		.getDescription(node.type, typeVersion)
-		.catch(() => undefined);
+	const nodeDesc = await (validationMode === 'configuration'
+		? context.nodeService.getDescription(node.type, typeVersion, { includeGatewayMetadata: false })
+		: context.nodeService.getDescription(node.type, typeVersion)
+	).catch(() => undefined);
 
 	const isTrigger = nodeDesc?.group?.includes('trigger') ?? false;
 	const isTestable =
@@ -685,15 +821,14 @@ export async function buildSetupRequests(
 
 	const nodeId = node.id ?? nanoid();
 	const nodePosition: [number, number] = node.position ?? [0, 0];
-	const hasParamIssues = Object.keys(parameterIssues).length > 0;
 
 	const requests: SetupRequest[] = [];
 	const processedCredTypes = credentialTypes.length > 0 ? credentialTypes : [undefined];
 	const nodeCtx: NodeSetupContext = {
+		validationMode,
 		nodeName: node.name,
 		isTrigger,
 		isTestable,
-		hasParamIssues,
 		parameterIssues,
 		editableParameters,
 		triggerTestResult,
@@ -711,11 +846,47 @@ export async function buildSetupRequests(
 			cache,
 			workflowId,
 			nodeCtx,
+			preferNewCredentialTypes,
+			appliedCredentialIds,
 		);
 		if (request) requests.push(request);
 	}
 
 	return requests;
+}
+
+// ── Credential setup hints ──────────────────────────────────────────────────
+
+/** Agent-supplied Templated Custom Auth recipe, optionally scoped to one node. */
+export type CredentialHintInput = InstanceAiCredentialSetupHint & { nodeName?: string };
+
+/**
+ * Attach agent-supplied credential recipes to the setup requests of nodes
+ * using Templated Custom Auth, so the setup UI creates the credential from the
+ * template and asks the user only for the placeholder values. A node-scoped
+ * hint (nodeName) wins over a type-wide one.
+ */
+export function applyCredentialHints(
+	requests: SetupRequest[],
+	hints: CredentialHintInput[] | undefined,
+): void {
+	if (!hints?.length) return;
+	for (const request of requests) {
+		if (request.credentialType !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) continue;
+		const hint =
+			hints.find((h) => h.nodeName === request.node.name) ?? hints.find((h) => !h.nodeName);
+		if (!hint) continue;
+		const { nodeName: _nodeName, ...setupHint } = hint;
+		// The workflow node is the authority for service identity. The recipe's
+		// own destinations cannot establish or replace it.
+		const serviceHost = extractServiceHost(request.node.parameters?.url);
+		const serviceOrigin = extractServiceOrigin(request.node.parameters?.url);
+		request.setupHint = {
+			...setupHint,
+			...(serviceHost ? { serviceHost } : {}),
+			...(serviceOrigin ? { serviceOrigin } : {}),
+		};
+	}
 }
 
 // ── Execution order ─────────────────────────────────────────────────────────
@@ -847,7 +1018,7 @@ export function sortByExecutionOrder(
 // ── Workflow mutation ───────────────────────────────────────────────────────
 
 /** Result of applying credentials or parameters to workflow nodes. */
-export interface ApplyResult {
+export interface ApplyResult extends SavedWorkflowState {
 	applied: string[];
 	failed: Array<{ nodeName: string; error: string }>;
 }
@@ -913,6 +1084,7 @@ export async function applyNodeCredentials(
 			versionId: saved.versionId,
 			checksum: saved.checksum,
 		});
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		// If the final save fails, mark all previously-applied nodes as failed
 		const saveError = `Failed to save workflow after credential apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -960,6 +1132,7 @@ export async function applyNodeParameters(
 			versionId: saved.versionId,
 			checksum: saved.checksum,
 		});
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		const saveError = `Failed to save workflow after parameter apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of result.applied) {
@@ -979,9 +1152,9 @@ export async function applyNodeParameters(
  * `instance-ai-auto` mirrors the auto-apply rules in `buildSetupRequests`: Instance
  * AI defaults a credential unprompted only when the node had none and the user did
  * not have to choose — n8n Connect when the user has no stored credential of the
- * type (rule 3), or their sole stored credential (rule 2). Anything else — a
- * credential picked among several, or n8n Connect chosen despite having stored keys
- * — is a user-confirmed choice.
+ * type (rule 3), or their sole stored non-generic credential (rule 2). Anything
+ * else — a credential picked among several, a generic auth type, or n8n Connect
+ * chosen despite having stored keys — is a user-confirmed choice.
  */
 async function trackCredentialAssignment(
 	context: InstanceAiContext,
@@ -1001,13 +1174,20 @@ async function trackCredentialAssignment(
 			.list({ type: opts.credType, ...(opts.workflowId ? { workflowId: opts.workflowId } : {}) })
 			.catch(() => []);
 		// Gateway auto-applies when no stored key exists; a BYOK key auto-applies
-		// when it is the user's only one for the type.
-		if (isGateway ? stored.length === 0 : stored.length === 1) source = 'instance-ai-auto';
+		// when it is the user's only one for a service-scoped type. Generic auth
+		// never auto-applies — the type alone does not identify a service.
+		const soleByokAutoApplied =
+			!isGateway && shouldAutoResolveCredential(opts.credType, stored.length);
+		if (isGateway ? stored.length === 0 : soleByokAutoApplied) source = 'instance-ai-auto';
 	}
 	context.trackTelemetry('Node credential assigned', {
 		credential_type: opts.credType,
 		node_type: opts.nodeType,
 		workflow_id: opts.workflowId,
+		// The join key back to `User created credentials`; n8n Connect slots have no
+		// stored credential of the user's own.
+		credential_id: isGateway ? null : opts.credential.id,
+		thread_id: context.threadId ?? null,
 		credential_kind: isGateway ? 'n8n_connect' : 'own',
 		source,
 	});
@@ -1126,6 +1306,7 @@ export async function applyNodeChanges(
 			checksum: saved.checksum,
 		});
 		result.applied = [...appliedNodes];
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		const saveError = `Failed to save workflow: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of appliedNodes) {
@@ -1191,77 +1372,6 @@ export function buildCompletedReport(
 	return result;
 }
 
-// ── Sub-node grouping ───────────────────────────────────────────────────────
-type SubnodeRootNode = Pick<INode, 'name' | 'type' | 'typeVersion' | 'id'>;
-
-export function buildSubnodeToRootNodeMap(
-	nodes: NodeJSON[],
-	connections: IConnections,
-	executionOrder: string[],
-): Map<string, SubnodeRootNode> {
-	const connectionsByDestination = mapConnectionsByDestination(connections);
-
-	const directSubnodesByNodeName = new Map<string, string[]>();
-	for (const node of nodes) {
-		if (!node.name) continue;
-		// Non-main upstream nodes are direct sub-nodes of this node.
-		const subs = getParentNodes(connectionsByDestination, node.name, 'ALL_NON_MAIN', 1);
-		if (subs.length > 0) directSubnodesByNodeName.set(node.name, subs);
-	}
-	if (directSubnodesByNodeName.size === 0) return new Map();
-
-	const allSubnodeNames = new Set<string>();
-	for (const subs of directSubnodesByNodeName.values()) {
-		for (const name of subs) allSubnodeNames.add(name);
-	}
-	const rootNodeNames = [...directSubnodesByNodeName.keys()].filter((n) => !allSubnodeNames.has(n));
-	if (rootNodeNames.length === 0) return new Map();
-
-	const nodeByName = new Map<string, NodeJSON>();
-	for (const node of nodes) {
-		if (node.name) nodeByName.set(node.name, node);
-	}
-
-	// Sort root nodes by execution order so the first to claim a sub-node
-	// is the deterministic "owner" when multi-root ambiguity exists.
-	const orderIndex = new Map<string, number>();
-	for (let i = 0; i < executionOrder.length; i++) {
-		orderIndex.set(executionOrder[i], i);
-	}
-	const sortedRootNodes = [...rootNodeNames].sort(
-		(a, b) =>
-			(orderIndex.get(a) ?? Number.MAX_SAFE_INTEGER) -
-			(orderIndex.get(b) ?? Number.MAX_SAFE_INTEGER),
-	);
-
-	const subnodeToRootNode = new Map<string, SubnodeRootNode>();
-
-	for (const rootNodeName of sortedRootNodes) {
-		const rootNode = nodeByName.get(rootNodeName);
-		if (!rootNode) continue;
-
-		const subnodeRootNode: SubnodeRootNode = {
-			name: rootNodeName,
-			type: rootNode.type,
-			typeVersion: rootNode.typeVersion ?? 1,
-			id: rootNode.id ?? '',
-		};
-
-		const transitiveSubs = getParentNodes(
-			connectionsByDestination,
-			rootNodeName,
-			'ALL_NON_MAIN',
-			-1,
-		);
-		for (const subName of transitiveSubs) {
-			if (subnodeToRootNode.has(subName)) continue;
-			subnodeToRootNode.set(subName, subnodeRootNode);
-		}
-	}
-
-	return subnodeToRootNode;
-}
-
 // ── Full workflow analysis ──────────────────────────────────────────────────
 
 /**
@@ -1273,14 +1383,31 @@ export async function analyzeWorkflow(
 	workflowId: string,
 	triggerResults?: Record<string, { status: 'success' | 'error' | 'listening'; error?: string }>,
 	options?: {
+		/** Passive observation reads saved configuration without provider calls. Defaults to live validation. */
+		validationMode?: SetupValidationMode;
 		/** Keep settled requests (needsAction=false) in the result. For reporting
 		 *  consumers only (e.g. the apply path surfacing a just-applied credential
 		 *  whose test failed) — never for card rendering, where settled slots must
 		 *  stay hidden. */
 		includeSettled?: boolean;
+		/** Credential types the user asked to create fresh: nothing is auto-applied
+		 *  for them and their requests carry `preferNewCredential` so the card opens
+		 *  unselected. */
+		preferNewCredentialTypes?: readonly string[];
+		/** Credential ids a setup resume just applied. A bound slot carrying one of
+		 *  these is settled even when the credential list view lags it (scoped
+		 *  discovery, e.g. eval allowlist pins) — the apply already resolved the id. */
+		appliedCredentialIds?: readonly string[];
 	},
 ): Promise<SetupRequest[]> {
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
+
+	const preferNewCredentialTypes = options?.preferNewCredentialTypes?.length
+		? new Set(options.preferNewCredentialTypes)
+		: undefined;
+	const appliedCredentialIds = options?.appliedCredentialIds?.length
+		? new Set(options.appliedCredentialIds)
+		: undefined;
 
 	const cache = createCredentialCache();
 	const allRequestArrays = await Promise.all(
@@ -1291,6 +1418,9 @@ export async function analyzeWorkflow(
 				triggerResults?.[node.name ?? ''],
 				cache,
 				workflowId,
+				preferNewCredentialTypes,
+				appliedCredentialIds,
+				options?.validationMode,
 			);
 		}),
 	);
@@ -1303,39 +1433,13 @@ export async function analyzeWorkflow(
 				req.isTrigger ||
 				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
 		)
-		// Hide cards the user has nothing to do on: credentials already set,
-		// no parameter issues, not a trigger awaiting testing. Trigger steps
-		// are always kept — triggers require user testing regardless of
-		// credential state.
-		.filter(
-			(req) =>
-				options?.includeSettled === true ||
-				!!req.needsAction ||
-				(req.isTrigger && !!req.isTestable),
-		);
+		// Hide cards the user has nothing to do on: credentials already set
+		// and no parameter issues. Settled trigger requests are hidden too —
+		// no wizard step acts on them, so keeping them only renders an
+		// already-complete credential card as if it were pending work.
+		.filter((req) => options?.includeSettled === true || !!req.needsAction);
 
-	sortByExecutionOrder(
-		setupRequests,
-		workflowJson.connections as unknown as Record<string, unknown>,
-	);
-
-	// Stamp `subnodeRootNode` on every sub-node setup request so the frontend can
-	// render the group header even when the root node has no setup request of
-	// its own. Sub-node membership is derived from the full workflow graph,
-	// not just the (filtered) setup requests.
-	const subnodeToRootNode = buildSubnodeToRootNodeMap(
-		workflowJson.nodes,
-		workflowJson.connections as unknown as IConnections,
-		setupRequests.map((req) => req.node.name),
-	);
-	if (subnodeToRootNode.size > 0) {
-		for (const req of setupRequests) {
-			const subnodeRootNode = subnodeToRootNode.get(req.node.name);
-			if (subnodeRootNode) {
-				req.subnodeRootNode = subnodeRootNode;
-			}
-		}
-	}
+	sortByExecutionOrder(setupRequests, workflowJson.connections);
 
 	return setupRequests;
 }

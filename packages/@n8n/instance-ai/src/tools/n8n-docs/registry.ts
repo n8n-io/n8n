@@ -1,4 +1,5 @@
 import { isAbortError } from '@n8n/agents';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { Logger } from '../../logger';
 import { sanitizeWebContent, wrapUntrustedData } from '../web-research/sanitize-web-content';
@@ -62,10 +63,6 @@ function parseDocsUrl(rawUrl: string): URL | undefined {
 	parsed.hash = '';
 	parsed.search = '';
 	return parsed;
-}
-
-export function getFetchErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
 }
 
 export function normalizeDocsUrl(rawUrl: string): string | undefined {
@@ -250,7 +247,7 @@ export async function getN8nDocsRegistry(
 		if (isAbortError(error) || abortSignal?.aborted) {
 			throw error;
 		}
-		const message = getFetchErrorMessage(error);
+		const message = getErrorMessage(error);
 		context.logger?.warn('Failed to fetch n8n docs registry', { error: message });
 		if (registryCache) {
 			return {

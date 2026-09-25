@@ -66,8 +66,9 @@ vi.mock('./NotificationPermissionBanner.vue', () => ({
 }));
 
 // Mock AskAssistantChat component
-vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', () => ({
-	default: defineComponent({
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/design-system')>()),
+	N8nAskAssistantChat: defineComponent({
 		name: 'AskAssistantChat',
 		props: [
 			'user',

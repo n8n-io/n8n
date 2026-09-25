@@ -22,7 +22,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 import type { TelemetryNdvType } from '@/app/types/telemetry';
@@ -358,10 +358,11 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}) {
 		resetNodesPanelSession();
 
-		// Warm up the AI Gateway config so the n8n Connect search boost has the
-		// supported-node list by the time the user types. Cached after first load.
+		// Config for Connect search boost; wallet for the credits pill.
 		if (useSettingsStore().isAiGatewayEnabled) {
-			void useAiGatewayStore().fetchConfig();
+			const aiGatewayStore = useAiGatewayStore();
+			void aiGatewayStore.fetchConfig();
+			void aiGatewayStore.fetchWallet();
 		}
 
 		trackNodeCreatorEvent('User opened nodes panel', {

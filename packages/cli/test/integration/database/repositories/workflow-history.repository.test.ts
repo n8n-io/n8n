@@ -1,10 +1,16 @@
 import {
+	createTeamProject,
 	createWorkflow,
 	createWorkflowHistory,
 	createWorkflowWithHistory,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { WorkflowHistoryRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
+import {
+	WorkflowHistoryRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowReviewRequestRepository,
+	WorkflowReviewRequestWorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { RULES, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -27,10 +33,13 @@ describe('WorkflowHistoryRepository', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate([
+			'WorkflowReviewRequestWorkflow',
+			'WorkflowReviewRequest',
 			'WorkflowPublishedVersion',
 			'WorkflowPublishHistory',
 			'WorkflowHistory',
 			'WorkflowEntity',
+			'Project',
 			'User',
 		]);
 	});
@@ -338,6 +347,90 @@ describe('WorkflowHistoryRepository', () => {
 			expect(remainingIds).toContain(vCurrent); // preserved: current version
 			expect(remainingIds).not.toContain(vOther); // pruned: old and unreferenced
 		});
+
+		// The open-review exclusion must hold even when named-version preservation
+		// is off (unlicensed), because review pins are named versions and would
+		// otherwise be pruned mid-review. A closed review no longer protects its pin.
+		it('should preserve versions pinned by an open review but not by a closed one', async () => {
+			const vCurrent = uuid();
+			const vOpenPinned = uuid();
+			const vClosedPinned = uuid();
+
+			const tenDaysAgo = new Date();
+			tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+			const oneDayAgo = new Date();
+			oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+			const workflow = await createWorkflow({
+				versionId: vCurrent,
+				nodes: [{ ...testNode1, parameters: { a: 'current' } }],
+			});
+			await createWorkflowHistory(
+				{
+					...workflow,
+					versionId: vOpenPinned,
+					nodes: [{ ...testNode1, parameters: { a: 'open-pinned' } }],
+				},
+				undefined,
+				undefined,
+				{ createdAt: tenDaysAgo, name: 'Open review pin' },
+			);
+			await createWorkflowHistory(
+				{
+					...workflow,
+					versionId: vClosedPinned,
+					nodes: [{ ...testNode1, parameters: { a: 'closed-pinned' } }],
+				},
+				undefined,
+				undefined,
+				{ createdAt: tenDaysAgo, name: 'Closed review pin' },
+			);
+			await createWorkflowHistory(workflow);
+
+			const project = await createTeamProject('Reviews Project');
+			const requestRepository = Container.get(WorkflowReviewRequestRepository);
+			const linkRepository = Container.get(WorkflowReviewRequestWorkflowRepository);
+
+			const openRequest = await requestRepository.createRequest(
+				{ projectId: project.id, title: 'Open review', createdById: null },
+				{},
+			);
+			await linkRepository.createWorkflowRow(
+				{
+					workflowReviewRequestId: openRequest.id,
+					workflowId: workflow.id,
+					workflowVersionId: vOpenPinned,
+				},
+				{},
+			);
+
+			const closedRequest = await requestRepository.createRequest(
+				{ projectId: project.id, title: 'Closed review', state: 'closed', createdById: null },
+				{},
+			);
+			await linkRepository.createWorkflowRow(
+				{
+					workflowReviewRequestId: closedRequest.id,
+					workflowId: workflow.id,
+					workflowVersionId: vClosedPinned,
+				},
+				{},
+			);
+
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			// preserveNamedVersions = false: the name on the pins must not save them here
+			await repository.deleteEarlierThanExceptCurrentAndActive(oneDayAgo, false);
+
+			const remainingIds = (await repository.find()).map((r) => r.versionId);
+			expect(remainingIds).toContain(vOpenPinned); // preserved: pinned by an open review
+			expect(remainingIds).not.toContain(vClosedPinned); // pruned: its review is closed
+
+			// The pin was nulled by the FK, not left dangling
+			const closedLinkRows = await linkRepository.findByRequestId(closedRequest.id, {});
+			expect(closedLinkRows[0]?.workflowVersionId).toBeNull();
+		});
 	});
 
 	describe('getWorkflowIdsInRange', () => {
@@ -386,6 +479,88 @@ describe('WorkflowHistoryRepository', () => {
 				const ids = await repository.getWorkflowIdsInRange(twoSecondsAhead, sixSecondsAhead);
 				expect(ids).toEqual(expect.arrayContaining([workflowA.id, workflowB.id]));
 			}
+		});
+	});
+
+	describe('findVersionSummaries', () => {
+		it('scopes by workflowId, filters by versionId, selects versionId/name/createdAt, and orders by createdAt desc', async () => {
+			const workflowA = await createWorkflow({
+				versionId: uuid(),
+				nodes: [testNode1],
+			});
+			const workflowB = await createWorkflow({
+				versionId: uuid(),
+				nodes: [testNode1],
+			});
+
+			const vOldest = uuid();
+			const vMiddle = uuid();
+			const vNewest = uuid();
+			const vNotRequested = uuid();
+			const vOtherWorkflow = uuid();
+
+			const threeDaysAgo = new Date();
+			threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+			const twoDaysAgo = new Date();
+			twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+			const oneDayAgo = new Date();
+			oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vOldest,
+				name: null,
+				createdAt: threeDaysAgo,
+			});
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vMiddle,
+				name: 'Release 1',
+				createdAt: twoDaysAgo,
+			});
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vNewest,
+				name: null,
+				createdAt: oneDayAgo,
+			});
+			// Belongs to workflowA but not passed in versionIds — must be excluded
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vNotRequested,
+				name: 'Should not appear',
+				createdAt: oneDayAgo,
+			});
+			// Passed in versionIds but belongs to workflowB — must be excluded by workflowId scoping
+			await createWorkflowHistory(workflowB, undefined, undefined, {
+				versionId: vOtherWorkflow,
+				name: 'Wrong workflow',
+				createdAt: oneDayAgo,
+			});
+
+			const repository = Container.get(WorkflowHistoryRepository);
+			const result = await repository.findVersionSummaries(workflowA.id, [
+				vOldest,
+				vMiddle,
+				vNewest,
+				vOtherWorkflow,
+				uuid(), // not present in the DB at all
+			]);
+
+			expect(result).toHaveLength(3);
+			expect(result.map((v) => v.versionId)).toEqual([vNewest, vMiddle, vOldest]);
+			expect(result[0]).toMatchObject({ versionId: vNewest, name: null });
+			expect(result[1]).toMatchObject({ versionId: vMiddle, name: 'Release 1' });
+			expect(result[2]).toMatchObject({ versionId: vOldest, name: null });
+			// `select` should be applied: only versionId/name/createdAt are populated,
+			// not the full entity (e.g. nodes/authors).
+			expect(result[0]).not.toHaveProperty('nodes');
+			expect(result[0]).not.toHaveProperty('authors');
+		});
+
+		it('returns an empty array when no versionIds match', async () => {
+			const workflow = await createWorkflow({ versionId: uuid(), nodes: [testNode1] });
+
+			const repository = Container.get(WorkflowHistoryRepository);
+			const result = await repository.findVersionSummaries(workflow.id, [uuid()]);
+
+			expect(result).toEqual([]);
 		});
 	});
 });

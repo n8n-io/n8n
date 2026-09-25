@@ -29,13 +29,15 @@ tags:
     description: Operations about community packages
   - name: Credential
     description: Operations about credentials
+  - name: CredentialTypePolicy
+    description: Operations about credential type availability policies
   - name: DataTable
     description: Operations about data tables and their rows
   - name: Discover
     description: API capability discovery
   - name: Evaluation
     description: Operations about evaluation test runs
-  - name: Execution
+  - name: Executions
     description: Operations about executions
   - name: Folders
     description: Operations about folders
@@ -45,8 +47,16 @@ tags:
     description: Operations about log streaming destinations
   - name: N8nPackage
     description: Beta — breaking changes may still occur without major version bump.
+  - name: NodeTypePolicy
+    description: Operations about node type availability policies
   - name: Projects
     description: Operations about projects
+  - name: Promotions
+    description: Operations about promotion providers, connections, and package operations
+  - name: Role
+    description: Operations about roles
+  - name: RoleMappingRule
+    description: Operations about identity-provider role-mapping rules
   - name: SecurityPolicy
     description: Operations about the instance security policy settings
   - name: SettingsLdap
@@ -75,8 +85,6 @@ paths:
     $ref: './handlers/ldap/spec/paths/settings.ldap.yml'
   /settings/ldap/sync:
     $ref: './handlers/ldap/spec/paths/settings.ldap.sync.yml'
-  /settings/security-policy:
-    $ref: './handlers/security-policy/spec/paths/security-policy.yml'
   /settings/otel:
     $ref: './handlers/otel/spec/paths/settings.otel.yml'
   /settings/otel/test-trace:
@@ -85,78 +93,8 @@ paths:
     $ref: './handlers/sso-oidc/spec/paths/settings.sso.oidc.yml'
   /settings/sso/saml:
     $ref: './handlers/sso-saml/spec/paths/settings.sso.saml.yml'
-  /credentials:
-    $ref: './handlers/credentials/spec/paths/credentials.yml'
-  /credentials/{id}:
-    $ref: './handlers/credentials/spec/paths/credentials.id.yml'
-  /credentials/{id}/test:
-    $ref: './handlers/credentials/spec/paths/credentials.id.test.yml'
-  /credentials/schema/{credentialTypeName}:
-    $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
-  /credentials/{id}/transfer:
-    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
-  /executions:
-    $ref: './handlers/executions/spec/paths/executions.yml'
-  /executions/{id}:
-    $ref: './handlers/executions/spec/paths/executions.id.yml'
-  /executions/{id}/retry:
-    $ref: './handlers/executions/spec/paths/executions.id.retry.yml'
-  /executions/{id}/stop:
-    $ref: './handlers/executions/spec/paths/executions.id.stop.yml'
-  /executions/stop:
-    $ref: './handlers/executions/spec/paths/executions.stop.yml'
-  /executions/{id}/tags:
-    $ref: './handlers/executions/spec/paths/executions.id.tags.yml'
-  /tags:
-    $ref: './handlers/tags/spec/paths/tags.yml'
-  /tags/{id}:
-    $ref: './handlers/tags/spec/paths/tags.id.yml'
-  /workflows:
-    $ref: './handlers/workflows/spec/paths/workflows.yml'
-  /workflows/{id}:
-    $ref: './handlers/workflows/spec/paths/workflows.id.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
-  /workflows/{id}/activate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
-  /workflows/{id}/deactivate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
-  /workflows/{id}/publish:
-    $ref: './handlers/workflows/spec/paths/workflows.id.publish.yml'
-  /workflows/{id}/unpublish:
-    $ref: './handlers/workflows/spec/paths/workflows.id.unpublish.yml'
-  /workflows/{id}/archive:
-    $ref: './handlers/workflows/spec/paths/workflows.id.archive.yml'
-  /workflows/{id}/unarchive:
-    $ref: './handlers/workflows/spec/paths/workflows.id.unarchive.yml'
-  /workflows/{id}/transfer:
-    $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
-  /workflows/{id}/tags:
-    $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
-  /workflows/{id}/test-runs:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
-  /workflows/{id}/test-runs/{runId}:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.yml'
-  /workflows/{id}/test-runs/{runId}/cancel:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.cancel.yml'
-  /workflows/{id}/test-runs/{runId}/test-cases:
-    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.test-cases.yml'
-  /users:
-    $ref: './handlers/users/spec/paths/users.yml'
-  /users/{id}:
-    $ref: './handlers/users/spec/paths/users.id.yml'
-  /users/{id}/role:
-    $ref: './handlers/users/spec/paths/users.id.role.yml'
-  /source-control/pull:
-    $ref: './handlers/source-control/spec/paths/sourceControl.yml'
-  /variables:
-    $ref: './handlers/variables/spec/paths/variables.yml'
-  /variables/{id}:
-    $ref: './handlers/variables/spec/paths/variables.id.yml'
-  /data-tables:
-    $ref: './handlers/data-tables/spec/paths/data-tables.yml'
-  /data-tables/{dataTableId}:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.yml'
   /data-tables/{dataTableId}/rows:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.yml'
   /data-tables/{dataTableId}/rows/update:
@@ -171,30 +109,16 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.yml'
   /data-tables/{dataTableId}/columns/{columnId}:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.columnId.yml'
-  /projects:
-    $ref: './handlers/projects/spec/paths/projects.yml'
-  /projects/{projectId}:
-    $ref: './handlers/projects/spec/paths/projects.projectId.yml'
-  /projects/{projectId}/users:
-    $ref: './handlers/projects/spec/paths/projects.projectId.users.yml'
-  /projects/{projectId}/users/{userId}:
-    $ref: './handlers/projects/spec/paths/projects.projectId.users.userId.yml'
   /community-packages:
     $ref: './handlers/community-packages/spec/paths/community-packages.yml'
   /community-packages/{name}:
     $ref: './handlers/community-packages/spec/paths/community-packages.packageName.yml'
-  /discover:
-    $ref: './handlers/discover/spec/paths/discover.yml'
-  /insights/summary:
-    $ref: './handlers/insights/spec/paths/insights.yml'
-  /projects/{projectId}/folders:
-    $ref: './handlers/folders/spec/paths/folders.yml'
-  /projects/{projectId}/folders/{folderId}:
-    $ref: './handlers/folders/spec/paths/folders.folderId.yml'
   /n8n-packages/export:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
   /n8n-packages/import:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import.yml'
+  /n8n-packages/import-selection:
+    $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import-selection.yml'
   /settings/log-streaming/event-types:
     $ref: './handlers/log-streaming/spec/paths/event-types.yml'
   /settings/log-streaming/destinations:
@@ -219,7 +143,13 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      # Must match AUTH_COOKIE_NAME in packages/cli/src/constants.ts
+      name: n8n-auth
 
 security:
   - ApiKeyAuth: []
   - BearerAuth: []
+  - CookieAuth: []

@@ -1,0 +1,62 @@
+{
+	"properties": {
+		"add_time": {
+			"type": "string"
+		},
+		"billing_frequency": {
+			"type": "string"
+		},
+		"billing_frequency_cycles": {},
+		"billing_start_date": {},
+		"comments": {
+			"type": "string"
+		},
+		"currency": {
+			"type": "string"
+		},
+		"deal_id": {
+			"type": "number"
+		},
+		"discount": {
+			"type": "number"
+		},
+		"discount_type": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_enabled": {
+			"type": "boolean"
+		},
+		"item_price": {
+			"type": "number"
+		},
+		"name": {
+			"type": "string"
+		},
+		"order_nr": {
+			"type": "number"
+		},
+		"product_id": {
+			"type": "number"
+		},
+		"product_variation_id": {},
+		"quantity": {
+			"type": "number"
+		},
+		"sum": {
+			"type": "number"
+		},
+		"tax": {
+			"type": "number"
+		},
+		"tax_method": {
+			"type": "string"
+		},
+		"update_time": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

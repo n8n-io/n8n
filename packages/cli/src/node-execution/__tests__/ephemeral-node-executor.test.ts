@@ -9,11 +9,13 @@ import {
 } from '@n8n/db';
 import { StructuredToolkit } from 'n8n-core';
 import {
+	Expression,
 	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeCredentialsDetails,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -149,6 +151,30 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.error).toContain('Node is not usable as a tool');
 			expect(result.error).toContain('n8n-nodes-base.notATool');
 			expect(result.data).toEqual([]);
+		});
+
+		it('formats a non-Error validation failure', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw 'unknown node';
+			});
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.missing',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result).toEqual({
+				status: 'error',
+				data: [],
+				error: 'Cannot execute node "n8n-nodes-base.missing": unknown node',
+			});
+			expect(logger.debug).toHaveBeenCalledWith('Node execution validation failed', {
+				nodeType: 'n8n-nodes-base.missing',
+				error: 'unknown node',
+			});
 		});
 
 		it('returns a structured error when the node is a trigger', async () => {
@@ -400,6 +426,26 @@ describe('EphemeralNodeExecutor', () => {
 				}),
 			).rejects.toThrow(/has type .* but the node expects credential slot/);
 		});
+
+		it('passes an n8n Connect managed credential through without a project lookup', async () => {
+			mockToolNodeWithSupplyData();
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentialDetails: {
+					slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+			// Managed credentials are minted per execution (CredentialsHelper.getDecrypted),
+			// so there is no stored row to resolve — the project lookup must be skipped.
+			expect(sharedCredentialsRepository.findOne).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('executeInline routing', () => {
@@ -427,26 +473,29 @@ describe('EphemeralNodeExecutor', () => {
 			});
 		});
 
-		it('returns an error result when the supplyData tool invocation throws', async () => {
-			const invoke = vi.fn().mockRejectedValue(new Error('upstream 500'));
-			nodeTypes.getByNameAndVersion.mockReturnValue(
-				mockNodeType({
-					description: toolDescription,
-					supplyData: vi.fn().mockResolvedValue({ response: { invoke } }),
-				}),
-			);
+		it.each([new Error('upstream 500'), 'upstream 500'])(
+			'returns an error result when the supplyData tool invocation throws %s',
+			async (error) => {
+				const invoke = vi.fn().mockRejectedValue(error);
+				nodeTypes.getByNameAndVersion.mockReturnValue(
+					mockNodeType({
+						description: toolDescription,
+						supplyData: vi.fn().mockResolvedValue({ response: { invoke } }),
+					}),
+				);
 
-			const result = await executor.executeInline({
-				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
-				nodeTypeVersion: 1,
-				nodeParameters: {},
-				inputData: [{ json: {} }],
-				projectId: 'p-1',
-			});
+				const result = await executor.executeInline({
+					nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					inputData: [{ json: {} }],
+					projectId: 'p-1',
+				});
 
-			expect(result.status).toBe('error');
-			expect(result.error).toBe('upstream 500');
-		});
+				expect(result.status).toBe('error');
+				expect(result.error).toBe('upstream 500');
+			},
+		);
 
 		it('returns an error result when the node does not expose a valid LangChain tool', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
@@ -590,24 +639,27 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result).toEqual({ status: 'success', data: [{ json: { ok: true, count: 3 } }] });
 		});
 
-		it('returns an error result when nodeType.execute throws', async () => {
-			const execute = vi.fn().mockRejectedValue(new Error('upstream 500'));
-			nodeTypes.getByNameAndVersion.mockReturnValue({
-				description: toolDescription,
-				execute,
-			} as unknown as INodeType);
+		it.each([new Error('upstream 500'), 'upstream 500'])(
+			'returns an error result when nodeType.execute throws %s',
+			async (error) => {
+				const execute = vi.fn().mockRejectedValue(error);
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: toolDescription,
+					execute,
+				} as unknown as INodeType);
 
-			const result = await executor.executeInline({
-				nodeType: 'n8n-nodes-base.slack',
-				nodeTypeVersion: 1,
-				nodeParameters: {},
-				inputData: [],
-				projectId: 'p-1',
-			});
+				const result = await executor.executeInline({
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					inputData: [],
+					projectId: 'p-1',
+				});
 
-			expect(result.status).toBe('error');
-			expect(result.error).toBe('upstream 500');
-		});
+				expect(result.status).toBe('error');
+				expect(result.error).toBe('upstream 500');
+			},
+		);
 
 		it('returns an error when execute resolves without an output array', async () => {
 			// Downstream consumers expect NodeExecutionData[] — resolving with
@@ -670,6 +722,84 @@ describe('EphemeralNodeExecutor', () => {
 				nodeParameters: {},
 			});
 
+			expect(result).toBe(schema);
+		});
+
+		it('returns null without running supplyData when the credential is not shared with the project', async () => {
+			const supplyData = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			sharedCredentialsRepository.findOne.mockResolvedValue(null);
+
+			const result = await executor.introspectSupplyDataToolSchema({
+				projectId: 'p-1',
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentials: { slackApi: { id: 'c1', name: 'Prod Slack' } },
+			});
+
+			expect(result).toBeNull();
+			expect(supplyData).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith('supplyData tool introspection failed', {
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				error: expect.stringMatching(/not accessible or does not exist/),
+			});
+		});
+
+		it('logs a non-Error credential lookup failure during introspection', async () => {
+			sharedCredentialsRepository.findOne.mockRejectedValue('lookup failed');
+
+			const result = await executor.introspectSupplyDataToolSchema({
+				projectId: 'p-1',
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentials: { slackApi: { id: 'c1', name: 'Prod Slack' } },
+			});
+
+			expect(result).toBeNull();
+			expect(logger.warn).toHaveBeenCalledWith('supplyData tool introspection failed', {
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				error: 'lookup failed',
+			});
+		});
+
+		it('uses verified credentials when running supplyData', async () => {
+			const schema = { type: 'object', properties: { query: { type: 'string' } } };
+			let observedCredentials: Record<string, INodeCredentialsDetails> | undefined;
+			const supplyData = vi.fn(function (this: ISupplyDataFunctions) {
+				observedCredentials = this.getNode().credentials;
+				return { response: { invoke: vi.fn(), schema } };
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			sharedCredentialsRepository.findOne.mockResolvedValue(
+				mock<SharedCredentials>({
+					credentials: mock<CredentialsEntity>({
+						id: 'c1',
+						name: 'Prod Slack',
+						type: 'slackApi',
+					}),
+				}),
+			);
+
+			const result = await executor.introspectSupplyDataToolSchema({
+				projectId: 'p-1',
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentials: {
+					slackApi: { id: 'c1', name: 'Prod Slack', __aiGatewayManaged: false },
+				},
+			});
+
+			expect(supplyData).toHaveBeenCalledTimes(1);
+			expect(observedCredentials).toEqual({
+				slackApi: { id: 'c1', name: 'Prod Slack' },
+			});
 			expect(result).toBe(schema);
 		});
 
@@ -815,5 +945,56 @@ describe('EphemeralNodeExecutor', () => {
 			expect(executedNodeName).toBe('Target Node');
 			expect(base.evalLlmMockHandler).toBeUndefined();
 		});
+	});
+
+	it('resolves expressions when invoking a supplyData tool with the VM engine', async () => {
+		await Expression.initExpressionEngine({
+			engine: 'vm',
+			bridgeTimeout: 1000,
+			bridgeMemoryLimit: 128,
+			poolSize: 1,
+			maxCodeCacheSize: 10,
+		});
+
+		try {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({
+					description: {
+						...toolDescription,
+						properties: [
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+					async supplyData(this: ISupplyDataFunctions) {
+						const resolvedValue = this.getNodeParameter('value', 0);
+						return {
+							response: {
+								invoke: async () => resolvedValue,
+							},
+						};
+					},
+				}),
+			);
+
+			const result = await executor.executeInline({
+				nodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				nodeTypeVersion: 1,
+				nodeParameters: { value: '={{ 1 + 1 }}' },
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(result).toEqual({
+				status: 'success',
+				data: [{ json: { response: 2 } }],
+			});
+		} finally {
+			await Expression.disposeExpressionEngine();
+		}
 	});
 });

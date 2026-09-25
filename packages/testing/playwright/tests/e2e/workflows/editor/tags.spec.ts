@@ -15,8 +15,11 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
-		test('should create and attach tags inline, then add more incrementally', async ({ n8n }) => {
+		test('should create and attach tags via the modal, then add more incrementally', async ({
+			n8n,
+		}) => {
 			await n8n.start.fromBlankCanvas();
+			await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 			const tag1 = `tag-${nanoid(6)}`;
 			const tag2 = `tag-${nanoid(6)}`;
@@ -31,27 +34,24 @@ test.describe(
 
 			await expect(n8n.canvas.getTagPills()).toHaveCount(2);
 
-			await n8n.canvas.clickNthTagPill(0);
-			await n8n.canvas.getVisibleDropdown().waitFor();
+			await n8n.canvas.saveDescriptionAndTagsModal();
+
+			await n8n.canvas.clickCreateTagButton();
+			await expect(n8n.canvas.getTagPills()).toHaveCount(2);
+
 			await n8n.canvas.typeInTagInput(tag3);
 			await n8n.canvas.pressEnterToCreateTag();
+			await expect(n8n.canvas.getTagPills()).toHaveCount(3);
 
-			await n8n.canvas.clickOutsideModal();
+			await n8n.canvas.saveDescriptionAndTagsModal();
 
-			// Wait for save to complete first - closing the dropdown triggers a save
-			// which re-renders the tags container
-			await n8n.canvas.waitForSaveWorkflowCompleted();
-
-			// After dropdown closes, tags are displayed via WorkflowTagsContainer (workflow-tags)
-			// not the dropdown container, so use getSavedWorkflowTagPills()
-			await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(3);
-
-			// Pills should be rendered individually, not collapsed as "+3"
-			await expect(n8n.canvas.getWorkflowTagsElement()).not.toHaveText(/\+\d+/);
+			await n8n.canvas.clickCreateTagButton();
+			await expect(n8n.canvas.getTagPills()).toHaveCount(3);
 		});
 
 		test('should create tags via modal without attaching them', async ({ n8n }) => {
 			await n8n.start.fromBlankCanvas();
+			await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 			const tag1 = `modal-${nanoid(6)}`;
 			const tag2 = `modal-${nanoid(6)}`;
@@ -70,7 +70,7 @@ test.describe(
 
 			await n8n.canvas.tagsManagerModal.clickDoneButton();
 
-			await n8n.canvas.clickCreateTagButton();
+			await n8n.canvas.openTagsDropdownInModal();
 
 			await expect(n8n.canvas.getTagItemInDropdownByName(tag1)).toBeVisible();
 			await expect(n8n.canvas.getTagItemInDropdownByName(tag2)).toBeVisible();
@@ -93,6 +93,7 @@ test.describe('Workflow tags - Tag operations', () => {
 		]);
 
 		await n8n.start.fromBlankCanvas();
+		await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 		await n8n.canvas.openTagManagerModal();
 
 		for (let i = 0; i < 5; i++) {
@@ -103,7 +104,7 @@ test.describe('Workflow tags - Tag operations', () => {
 		}
 
 		await n8n.canvas.tagsManagerModal.clickDoneButton();
-		await n8n.canvas.clickCreateTagButton();
+		await n8n.canvas.openTagsDropdownInModal();
 
 		for (const tag of tags) {
 			await expect(n8n.canvas.getTagItemInDropdownByName(tag.name)).not.toBeAttached();
@@ -122,6 +123,7 @@ test.describe('Workflow tags - Tag operations', () => {
 		]);
 
 		await n8n.start.fromBlankCanvas();
+		await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 		await n8n.canvas.clickCreateTagButton();
 		for (const tag of tags) {
@@ -129,14 +131,16 @@ test.describe('Workflow tags - Tag operations', () => {
 		}
 		await expect(n8n.canvas.getTagPills()).toHaveCount(5);
 
-		await n8n.canvas.clickNthTagPill(0);
+		await n8n.canvas.saveDescriptionAndTagsModal();
 
+		await n8n.canvas.clickCreateTagButton();
 		await n8n.canvas.getTagCloseButton().first().click();
+		await expect(n8n.canvas.getTagPills()).toHaveCount(4);
 
-		await n8n.canvas.clickOutsideModal();
+		await n8n.canvas.saveDescriptionAndTagsModal();
 
-		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(4);
+		await n8n.canvas.clickCreateTagButton();
+		await expect(n8n.canvas.getTagPills()).toHaveCount(4);
 	});
 
 	test('should detach tag by clicking selected item in dropdown', async ({ n8n, api }) => {
@@ -149,6 +153,7 @@ test.describe('Workflow tags - Tag operations', () => {
 		]);
 
 		await n8n.start.fromBlankCanvas();
+		await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 		await n8n.canvas.clickCreateTagButton();
 		for (const tag of tags) {
@@ -156,13 +161,16 @@ test.describe('Workflow tags - Tag operations', () => {
 		}
 		await expect(n8n.canvas.getTagPills()).toHaveCount(5);
 
-		await n8n.canvas.clickWorkflowTagsContainer();
+		await n8n.canvas.saveDescriptionAndTagsModal();
+
+		await n8n.canvas.clickCreateTagButton();
 		await n8n.canvas.getSelectedTagItems().first().click();
+		await expect(n8n.canvas.getTagPills()).toHaveCount(4);
 
-		await n8n.canvas.clickOutsideModal();
+		await n8n.canvas.saveDescriptionAndTagsModal();
 
-		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(4);
+		await n8n.canvas.clickCreateTagButton();
+		await expect(n8n.canvas.getTagPills()).toHaveCount(4);
 	});
 
 	test('should show correct tag count when reopening after save', async ({ n8n, api }) => {
@@ -173,6 +181,7 @@ test.describe('Workflow tags - Tag operations', () => {
 		]);
 
 		await n8n.start.fromBlankCanvas();
+		await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 		await n8n.canvas.clickCreateTagButton();
 		for (const tag of tags) {
@@ -180,11 +189,11 @@ test.describe('Workflow tags - Tag operations', () => {
 		}
 		await expect(n8n.canvas.getTagPills()).toHaveCount(3);
 
-		await n8n.canvas.clickOutsideModal();
+		await n8n.canvas.saveDescriptionAndTagsModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
 
-		await n8n.canvas.clickWorkflowTagsArea();
+		await n8n.canvas.openDescriptionAndTagsModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).toBeVisible();
 		await expect(n8n.canvas.getTagPills()).toHaveCount(3);
@@ -201,6 +210,7 @@ test.describe('Workflow tags - Tag operations', () => {
 		const nonExisting = `nonexist-${nanoid(6)}`;
 
 		await n8n.start.fromBlankCanvas();
+		await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 		await n8n.canvas.clickCreateTagButton();
 		for (const tag of tags) {
@@ -208,8 +218,8 @@ test.describe('Workflow tags - Tag operations', () => {
 		}
 		await expect(n8n.canvas.getTagPills()).toHaveCount(5);
 
-		await n8n.canvas.clickOutsideModal();
-		await n8n.canvas.clickWorkflowTagsArea();
+		await n8n.canvas.saveDescriptionAndTagsModal();
+		await n8n.canvas.clickCreateTagButton();
 		await n8n.canvas.typeInTagInput(nonExisting);
 
 		const dropdownItems = n8n.canvas.getTagDropdownItems();

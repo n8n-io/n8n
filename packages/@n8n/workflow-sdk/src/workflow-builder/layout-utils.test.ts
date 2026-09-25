@@ -2,7 +2,14 @@
  * Tests for layout utility functions (BFS and Dagre)
  */
 
-import { GRID_SIZE, STICKY_NODE_TYPE, NODE_SPACING_X, START_X, DEFAULT_Y } from './constants';
+import {
+	GRID_SIZE,
+	STICKY_NODE_TYPE,
+	NODE_SPACING_X,
+	START_X,
+	DEFAULT_Y,
+	DEFAULT_NODE_SIZE,
+} from './constants';
 import { calculateNodePositions, calculateNodePositionsDagre } from './layout-utils';
 import type { GraphNode, ConnectionTarget } from '../types/base';
 
@@ -19,13 +26,18 @@ function createGraphNode(
 		['main', new Map<number, ConnectionTarget[]>()],
 	]),
 	position?: [number, number],
+	parameters?: Record<string, unknown>,
+	version: string | number = 1,
 ): GraphNode {
 	return {
 		instance: {
 			type,
 			name,
-			version: 1,
-			config: position ? { position } : {},
+			version,
+			config: {
+				...(position ? { position } : {}),
+				...(parameters ? { parameters } : {}),
+			},
 		} as unknown as GraphNode['instance'],
 		connections,
 	};
@@ -225,6 +237,43 @@ describe('calculateNodePositionsDagre', () => {
 			expect(truePos[0]).toBe(falsePos[0]);
 			expect(truePos[1]).not.toBe(falsePos[1]);
 		});
+
+		it.each([
+			[3.1, 448],
+			[1, 224],
+		])(
+			'sizes message an agent by version when spacing its successors (v%s → successors at agent.x + %s)',
+			(version, successorOffset) => {
+				const nodes = new Map<string, GraphNode>();
+				const triggerConns = makeMainConns([[0, [makeTarget('agent')]]]);
+				const agentConns = makeMainConns([
+					[0, [makeTarget('first')]],
+					[1, [makeTarget('second')]],
+				]);
+				nodes.set('start', createGraphNode('start', 'n8n-nodes-base.manualTrigger', triggerConns));
+				nodes.set(
+					'agent',
+					createGraphNode(
+						'agent',
+						'n8n-nodes-base.messageAnAgent',
+						agentConns,
+						undefined,
+						undefined,
+						version,
+					),
+				);
+				nodes.set('first', createGraphNode('first', 'n8n-nodes-base.set'));
+				nodes.set('second', createGraphNode('second', 'n8n-nodes-base.set'));
+				const positions = calculateNodePositionsDagre(nodes);
+				const triggerPosition = positions.get('start')!;
+				const agentPosition = positions.get('agent')!;
+
+				expect(agentPosition[0]).toBeGreaterThan(triggerPosition[0]);
+				for (const successor of ['first', 'second']) {
+					expect(positions.get(successor)![0]).toBe(agentPosition[0] + successorOffset);
+				}
+			},
+		);
 	});
 
 	describe('disconnected subgraphs', () => {
@@ -416,8 +465,41 @@ describe('calculateNodePositionsDagre', () => {
 
 			const positions = calculateNodePositionsDagre(nodes);
 
-			// Sticky is reanchored relative to trigger's explicit position, not dagre's guess
-			expect(positions.get('note')).toEqual([496, 672]);
+			// Sticky is reanchored relative to trigger's explicit position, not dagre's guess.
+			// Bottom-aligned against the covered node using the sticky's own 240x160 default
+			// size — not the node-sized box the layout used to assume for stickies.
+			expect(positions.get('note')).toEqual([432, 608]);
+		});
+
+		it('measures coverage using the sticky note declared size', () => {
+			const nodes = new Map<string, GraphNode>();
+			const triggerConns = makeMainConns([[0, [makeTarget('set')]]]);
+
+			nodes.set(
+				'trigger',
+				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns, [500, 600]),
+			);
+			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
+			// A wide sticky whose declared box covers the trigger, but whose top-left
+			// corner alone does not — only its real width/height reveal the coverage.
+			nodes.set(
+				'note',
+				createGraphNode('note', STICKY_NODE_TYPE, undefined, [480, 560], {
+					width: 400,
+					height: 300,
+				}),
+			);
+
+			const positions = calculateNodePositionsDagre(nodes);
+
+			// The sticky covers the trigger, so it follows it instead of being left behind
+			const notePosition = positions.get('note');
+			expect(notePosition).toBeDefined();
+			const [x, y] = notePosition!;
+			expect(x).toBeLessThanOrEqual(500);
+			expect(x + 400).toBeGreaterThanOrEqual(500 + DEFAULT_NODE_SIZE[0]);
+			expect(y).toBeLessThanOrEqual(600);
+			expect(y + 300).toBeGreaterThanOrEqual(600 + DEFAULT_NODE_SIZE[1]);
 		});
 	});
 });

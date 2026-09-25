@@ -5,13 +5,14 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type {
+	IConnections,
 	INode,
 	IRunExecutionData,
 	IRun,
 	IWorkflowBase,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -71,7 +72,8 @@ const mockRestoreNoProxy = vi.fn();
 vi.mock('@n8n/backend-network/proxy', () => ({
 	ensureHostsBypassProxy: vi.fn(() => mockRestoreNoProxy),
 }));
-vi.mock('@n8n/workflow-sdk', () => ({
+vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/workflow-sdk')>()),
 	normalizePinData: vi.fn((pd: unknown) => pd),
 }));
 
@@ -81,11 +83,16 @@ vi.mock('n8n-workflow', async () => {
 	const actual = await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
 	class MockWorkflow {
 		nodes: Record<string, unknown>;
+		connections: IConnections;
 		getStartNode = mockGetStartNode;
-		constructor(options: { nodes?: Array<{ name: string }> }) {
+		constructor(options: { nodes?: Array<{ name: string }>; connections?: IConnections }) {
 			// Key the entity's node objects by name (same references, so the SUT's
 			// in-place parameter patching propagates to the executed workflow).
 			this.nodes = Object.fromEntries((options?.nodes ?? []).map((node) => [node.name, node]));
+			this.connections = options?.connections ?? {};
+		}
+		getChildNodes(nodeName: string) {
+			return actual.getChildNodes(this.connections, nodeName);
 		}
 	}
 	return {
@@ -409,6 +416,193 @@ describe('EvalExecutionService', () => {
 			expect(result.executionId).toBe(DB_EXECUTION_ID);
 		});
 
+		it('pins the trigger to zero items when the scenario says it emits nothing', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {};
+			hints.triggerEmitsNoItems = true;
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+				pinData?: Record<string, unknown[]>;
+			};
+			expect(runArg.pinData?.Webhook).toEqual([]);
+		});
+
+		describe('trigger content', () => {
+			function triggerCapableStart() {
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: { properties: [] } as unknown as INodeTypeDescription,
+					webhook: vi.fn(),
+				} as never);
+			}
+
+			it('returns a framework error and does not run when Phase 1 leaves a trigger start node without content', async () => {
+				triggerCapableStart();
+				const empty = makeEmptyHints();
+				empty.triggerContent = {};
+				empty.warnings = ['Phase 1 attempt 2/2: empty triggerContent'];
+				generateMockHintsMock.mockResolvedValue(empty);
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(result.success).toBe(false);
+				expect(result.errors[0]).toMatch(
+					/^FRAMEWORK ISSUE: .*no trigger content for start node "Webhook" \(Phase 1 attempt 2\/2: empty triggerContent\)/,
+				);
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			it('keeps the zero-item pin when the scenario says the trigger emits nothing', async () => {
+				triggerCapableStart();
+				const hints = makeEmptyHints();
+				hints.triggerContent = {};
+				hints.triggerEmitsNoItems = true;
+				generateMockHintsMock.mockResolvedValue(hints);
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+					pinData?: Record<string, unknown[]>;
+				};
+				expect(runArg.pinData?.Webhook).toEqual([]);
+			});
+
+			it('runs as usual when the trigger content is present', async () => {
+				triggerCapableStart();
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		describe('engine readiness', () => {
+			// The patcher leaves an invalid id-mode locator alone, so the readiness check rejects it.
+			const idLocatorNode = (): INode =>
+				({
+					id: 'node-2',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: { project: { __rl: true, mode: 'id', value: 'IT' } },
+				}) as INode;
+			const startToLocator: IConnections = {
+				Webhook: { main: [[{ node: 'HTTP Request', type: NodeConnectionTypes.Main, index: 0 }]] },
+			};
+
+			function mockIdLocatorNodeType() {
+				nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
+					if (nodeType !== 'n8n-nodes-base.httpRequest') {
+						return { description: { properties: [] } as unknown as INodeTypeDescription } as never;
+					}
+					return {
+						description: {
+							properties: [
+								{
+									displayName: 'Project',
+									name: 'project',
+									type: 'resourceLocator',
+									default: { mode: 'list', value: '' },
+									required: true,
+									modes: [
+										{
+											displayName: 'ID',
+											name: 'id',
+											type: 'string',
+											validation: [
+												{
+													type: 'regex',
+													properties: {
+														regex: '^[0-9]+$',
+														errorMessage: 'Not a valid Jira Project ID',
+													},
+												},
+											],
+										},
+									],
+								},
+							],
+						} as unknown as INodeTypeDescription,
+					} as never;
+				});
+			}
+
+			it('refuses to start when a node downstream of the start node still has a parameter issue', async () => {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeWorkflowEntity({
+						nodes: [makeStartNode(), idLocatorNode()],
+						connections: startToLocator,
+					}) as never,
+				);
+				mockIdLocatorNodeType();
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+				expect(result.success).toBe(false);
+				expect(result.errors[0]).toMatch(
+					/^Execution failed: n8n refused to start the workflow: .*'HTTP Request' node has issues:\n- Not a valid Jira Project ID/,
+				);
+				expect(result.nodeResults['HTTP Request']?.configIssues).toBeDefined();
+				expect(result.nodeResults.Webhook?.executionMode).not.toBe('pinned');
+			});
+
+			it('runs when the node with the parameter issue is not downstream of the start node', async () => {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeWorkflowEntity({
+						nodes: [makeStartNode(), idLocatorNode()],
+						connections: {},
+					}) as never,
+				);
+				mockIdLocatorNodeType();
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		it("applies a pinned Data Table read's literal conditions and limit to the generated rows", async () => {
+			const readNode = {
+				id: 'node-3',
+				name: 'Read Pending Tasks',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1.1,
+				position: [400, 0],
+				parameters: {
+					operation: 'get',
+					matchType: 'allConditions',
+					filters: { conditions: [{ keyName: 'status', condition: 'eq', keyValue: 'pending' }] },
+					returnAll: false,
+					limit: 1,
+				},
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [makeStartNode(), readNode] }) as never,
+			);
+			identifyNodesForPinDataMock.mockReturnValue([readNode]);
+			emitsDataTableRowsMock.mockReturnValue(true);
+			generatePinDataMock.mockResolvedValue({
+				'Read Pending Tasks': [
+					{ json: { task: 'T-1', status: 'done' } },
+					{ json: { task: 'T-2', status: 'pending' } },
+					{ json: { task: 'T-3', status: 'pending' } },
+				],
+			});
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+				pinData?: Record<string, unknown[]>;
+			};
+			expect(runArg.pinData?.['Read Pending Tasks']).toEqual([
+				{ json: { task: 'T-2', status: 'pending' } },
+			]);
+		});
+
 		it('routes through WorkflowRunner with evaluation mode + pin data + user', async () => {
 			const hints = makeEmptyHints();
 			hints.triggerContent = { body: { email: 'jane@example.com' } };
@@ -523,6 +717,78 @@ describe('EvalExecutionService', () => {
 			await service.executeWithLlmMock('wf-1', makeUser());
 
 			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(DB_EXECUTION_ID);
+		});
+
+		// Stopping rejects the promise the service awaits, as ActiveExecutions does —
+		// pinning that the budget is reported and not that rejection.
+		it('stops the execution and reports it when the run outlives the caller budget', async () => {
+			vi.useFakeTimers();
+			try {
+				let rejectRun: (error: Error) => void = () => {};
+				activeExecutions.getPostExecutePromise.mockImplementation(
+					async () =>
+						await new Promise<never>((_resolve, reject) => {
+							rejectRun = reject;
+						}),
+				);
+				activeExecutions.stopExecution.mockImplementation((_id, cancellationError) => {
+					rejectRun(cancellationError);
+				});
+
+				const pending = service.executeWithLlmMock('wf-1', makeUser(), { timeoutMs: 30_000 });
+				await vi.advanceTimersByTimeAsync(30_001);
+				const result = await pending;
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					DB_EXECUTION_ID,
+					expect.any(TimeoutExecutionCancelledError),
+				);
+				expect(result.success).toBe(false);
+				expect(result.errors).toEqual([expect.stringContaining('30s eval budget')]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		// Hint generation is an LLM call, so it has to come out of the caller's
+		// budget — otherwise the request outlives the deadline it declared.
+		it('charges setup time against the caller budget', async () => {
+			vi.useFakeTimers();
+			try {
+				let rejectRun: (error: Error) => void = () => {};
+				activeExecutions.getPostExecutePromise.mockImplementation(
+					async () =>
+						await new Promise<never>((_resolve, reject) => {
+							rejectRun = reject;
+						}),
+				);
+				activeExecutions.stopExecution.mockImplementation((_id, cancellationError) => {
+					rejectRun(cancellationError);
+				});
+				// Setup burns 25s of the 30s budget. The clock moves without running
+				// timers — advancing them here would re-enter the timer queue the test
+				// drives below.
+				generateMockHintsMock.mockImplementation(async () => {
+					vi.setSystemTime(Date.now() + 25_000);
+					return makeEmptyHints();
+				});
+
+				const pending = service.executeWithLlmMock('wf-1', makeUser(), { timeoutMs: 30_000 });
+				// Only the 5s left after setup, not another full 30s.
+				await vi.advanceTimersByTimeAsync(5_001);
+				const result = await pending;
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalled();
+				expect(result.errors).toEqual([expect.stringContaining('30s eval budget')]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps waiting indefinitely when the caller sends no budget', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 		});
 
 		it('wraps additionalData.credentialsHelper inside configureAdditionalData', async () => {
@@ -1061,6 +1327,38 @@ describe('EvalExecutionService', () => {
 			expect(result.errors).toEqual(
 				expect.arrayContaining([expect.stringContaining('HTTP Request')]),
 			);
+		});
+
+		it('synthesizes numeric values for id-shaped placeholders', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						{
+							id: 'node-2',
+							name: 'Graph Node',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {
+								node: placeholderValue('Facebook Page ID'),
+								account: placeholderValue('Instagram Business Account ID'),
+								note: placeholderValue('Video caption'),
+							},
+						} as INode,
+					],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			const runArg = workflowRunner.run.mock.calls[0][0];
+			const graphNode = runArg.workflowData.nodes.find((node) => node.name === 'Graph Node');
+
+			expect(graphNode?.parameters).toMatchObject({
+				node: '100000000',
+				account: '100000000',
+				note: '__evalMockValue',
+			});
 		});
 
 		it('synthesizes validator-shaped values for selected resource placeholders', async () => {
@@ -1642,6 +1940,49 @@ describe('EvalExecutionService', () => {
 
 			expect(result.hints.globalContext).toBe('Users: jane@example.com, john@example.com');
 			expect(result.hints.nodeHints).toEqual({ 'HTTP Request': 'Return user profiles' });
+		});
+	});
+
+	// ── reserved node names ──────────────────────────────────────────
+
+	describe('reserved node names', () => {
+		// Object literals cannot express an own "__proto__" key; this mirrors the
+		// shape JSON.parse produces for a persisted runData column.
+		function runDataWithOwnKey(key: string, value: unknown): Record<string, unknown> {
+			const runData: Record<string, unknown> = {};
+			Object.defineProperty(runData, key, {
+				value,
+				enumerable: true,
+				writable: true,
+				configurable: true,
+			});
+			return runData;
+		}
+
+		afterEach(() => {
+			// Undo any pollution a regression would have caused so it can't leak
+			// into unrelated tests.
+			for (const key of ['iterationCount', 'outputs', 'outputCount', 'executionMode']) {
+				delete (Object.prototype as Record<string, unknown>)[key];
+			}
+		});
+
+		it('does not pollute Object.prototype when a run node is named "__proto__"', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: { runData: runDataWithOwnKey('__proto__', []) },
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect('iterationCount' in {}).toBe(false);
+			expect(Object.getOwnPropertyNames(Object.prototype)).not.toContain('iterationCount');
+			// The node is still recorded — as an own key on the result, not on the prototype.
+			expect(Object.keys(result.nodeResults)).toContain('__proto__');
 		});
 	});
 });

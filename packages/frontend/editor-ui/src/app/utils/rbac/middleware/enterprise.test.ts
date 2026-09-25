@@ -1,10 +1,10 @@
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { VIEWS, EnterpriseEditionFeature } from '@/app/constants';
 import { enterpriseMiddleware } from '@/app/utils/rbac/middleware/enterprise';
 import { type RouteLocationNormalized } from 'vue-router';
 import type { EnterprisePermissionOptions } from '@/app/types/rbac';
 import { createPinia, setActivePinia } from 'pinia';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 describe('Middleware', () => {
 	beforeEach(() => {

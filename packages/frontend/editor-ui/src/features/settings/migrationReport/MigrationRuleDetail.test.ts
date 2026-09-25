@@ -124,7 +124,7 @@ describe('MigrationRuleDetail', () => {
 				},
 			});
 
-			expect(document.title).toContain('Migration Report');
+			expect(document.title).toContain('Migration report');
 		});
 
 		it('should render rule details correctly', async () => {

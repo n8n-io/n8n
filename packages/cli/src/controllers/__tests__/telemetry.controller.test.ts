@@ -188,7 +188,7 @@ describe('TelemetryController', () => {
 		await controller.sourceConfig(req, res);
 
 		expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
-		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(outboundHttp.requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		expect(requestMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				method: 'GET',

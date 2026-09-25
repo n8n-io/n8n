@@ -4,6 +4,7 @@ import ClaudeIcon from './assets/client-icons/claude.svg?component';
 import CodexIcon from './assets/client-icons/codex.svg?component';
 import CursorIcon from './assets/client-icons/cursor.svg?component';
 import GeminiIcon from './assets/client-icons/gemini.svg?component';
+import MistralIcon from './assets/client-icons/mistral.svg?component';
 import OpenAiIcon from './assets/client-icons/openai.svg?component';
 import VsCodeIcon from './assets/client-icons/vscode.svg?component';
 
@@ -136,6 +137,21 @@ url = "${serverUrl}"`;
 					name: 'ChatGPT',
 					category: 'web',
 					icon: OpenAiIcon,
+					// Opens ChatGPT's "create connector" form directly, prefilled to just take the
+					// server URL, rather than dropping the user on the connectors settings page.
+					addUrl:
+						'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
+				},
+				{
+					id: 'mistral-vibe',
+					name: 'Mistral Vibe',
+					category: 'web',
+					icon: MistralIcon,
+					// Opens Vibe's built-in n8n connector template with the server URL prefilled,
+					// so the user only has to click Connect.
+					addUrl: `https://chat.mistral.ai/connections/marketplace?search=n8n&template=n8n&server_url=${encodeURIComponent(
+						serverUrl,
+					)}`,
 				},
 			],
 		},

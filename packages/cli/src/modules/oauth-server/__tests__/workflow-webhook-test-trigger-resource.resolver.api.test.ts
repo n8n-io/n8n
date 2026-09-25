@@ -44,16 +44,20 @@ const webhookNode = ({
 	authentication = 'n8nOAuth2',
 	disabled = false,
 	requireExecuteAccess,
+	options,
+	typeVersion = 2.1,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
+	options?: { oauthClient?: string };
+	typeVersion?: number;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
 	type: WEBHOOK_NODE_TYPE,
-	typeVersion: 2.1,
+	typeVersion,
 	position: [0, 0],
 	disabled,
 	parameters: {
@@ -61,6 +65,7 @@ const webhookNode = ({
 		httpMethod: 'POST',
 		authentication,
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
+		...(options === undefined ? {} : { options }),
 	},
 });
 
@@ -123,17 +128,12 @@ const registerOAuthClient = async () => {
 };
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS = 'true'; // gates the webhook-trigger resolvers
 	owner = await createOwner();
 	member = await createMember();
 	const { endpoints } = Container.get(GlobalConfig);
 	webhookEndpoint = endpoints.webhook;
 	webhookTestEndpoint = endpoints.webhookTest;
 	registrations = Container.get(TestWebhookRegistrationsService);
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS;
 });
 
 afterEach(async () => {
@@ -177,6 +177,45 @@ describe('protected resource metadata for test webhook triggers', () => {
 		expect(workflowName).toBe('Unsaved workflow');
 	});
 
+	// Only a GET can ever be redirected through the browser flow, so only a
+	// GET-resolved trigger may act as its own virtual client.
+	test('should resolve a POST trigger as non-first-party (arbitrary OAuth clients)', async () => {
+		const webhookPath = randomUUID();
+		await registerTestWebhook(webhookPath, webhookNode());
+
+		const resource = await resolveResource(webhookPath);
+
+		expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath));
+		expect(resource?.isFirstParty).toBeUndefined();
+	});
+
+	// Only a GET can ever be redirected through the browser flow, so only a GET-resolved
+	// trigger may act as its own virtual client. An unset `oauthClient` defaults to auto
+	// from typeVersion 2.2 on; bearer-only opts out. Either way it stays a resource, so a
+	// DCR client keeps working against it, and it never restricts redirect URIs itself.
+	test.each([
+		['unset on a pre-2.2 node → not first-party', 2.1, undefined, undefined],
+		['unset on a 2.2+ node → first-party', 2.2, undefined, true],
+		['auto → first-party', 2.1, 'auto', true],
+		['bearer → not first-party', 2.1, 'bearer', undefined],
+	])(
+		'should resolve a GET trigger with oauthClient %s',
+		async (_label, typeVersion, oauthClient, isFirstParty) => {
+			const webhookPath = randomUUID();
+			await registerTestWebhook(
+				webhookPath,
+				webhookNode({ typeVersion, options: oauthClient ? { oauthClient } : undefined }),
+				{ methods: ['GET'] },
+			);
+
+			const resource = await resolveResource(webhookPath, 'GET');
+
+			expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath, 'GET'));
+			expect(resource?.isFirstParty).toBe(isFirstParty);
+			expect(resource?.getAllowedRedirectUris).toBeUndefined();
+		},
+	);
+
 	test('should not resolve an unknown test path', async () => {
 		const response = await testServer.restlessAgent.get(prmPathFor(randomUUID()));
 
@@ -205,19 +244,6 @@ describe('protected resource metadata for test webhook triggers', () => {
 		const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should not resolve when the feature flag is disabled', async () => {
-		const webhookPath = randomUUID();
-		await registerTestWebhook(webhookPath, webhookNode());
-
-		delete process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS;
-		try {
-			const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
-			expect(response.statusCode).toBe(404);
-		} finally {
-			process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS = 'true';
-		}
 	});
 
 	test('should not resolve a non-test-webhook path even if the registration exists', async () => {
@@ -413,6 +439,7 @@ describe('test vs production resources', () => {
 			clientId,
 			owner.id,
 			[],
+			testToken.audience,
 		);
 		const productionToken = tokenService.generateTokenPair(
 			owner.id,
@@ -426,6 +453,7 @@ describe('test vs production resources', () => {
 			clientId,
 			owner.id,
 			[],
+			productionToken.audience,
 		);
 
 		await expect(

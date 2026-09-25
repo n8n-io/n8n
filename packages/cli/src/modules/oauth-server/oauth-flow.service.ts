@@ -1,7 +1,10 @@
-import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import {
+	InvalidGrantError,
+	InvalidTargetError,
+} from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { UserError, type N8nOAuth2FlowResult } from 'n8n-workflow';
+import { UserError, type N8nOAuth2FlowResult, type N8nOAuth2RefreshResult } from 'n8n-workflow';
 import { createHash, randomBytes } from 'node:crypto';
 import pkceChallenge from 'pkce-challenge';
 
@@ -100,9 +103,17 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 			if (!result.user) {
 				return { valid: false, reason: result.context?.reason ?? 'invalid_token' };
 			}
+			// Both are optional in the SDK's token shape but always set by our AS. Treat a
+			// missing one as a failed grant rather than throwing: a caller that can't refresh
+			// would silently stop working an hour later instead of restarting the flow now.
+			if (!tokens.refresh_token || tokens.expires_in === undefined) {
+				return { valid: false, reason: 'invalid_grant' };
+			}
 			return {
 				valid: true,
 				token: tokens.access_token,
+				refreshToken: tokens.refresh_token,
+				expiresIn: tokens.expires_in,
 				user: {
 					id: result.user.id,
 					email: result.user.email,
@@ -117,6 +128,55 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 			// same way. Surface it as a graceful invalid_grant rather than a thrown 500 —
 			// the return contract is a discriminated union, not an exception channel.
 			if (error instanceof InvalidGrantError) {
+				return { valid: false, reason: 'invalid_grant' };
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Trade a refresh token from a completed flow for a fresh pair on the same grant.
+	 * The client comes from `resourceUrl` alone, so this serves virtual clients only — the
+	 * first-party trigger resources where client_id = redirect_uri = resource. A registered
+	 * (DCR) client cannot refresh here; it uses the public `/oauth/token` endpoint.
+	 * The AS rotates: the returned refresh token replaces the one passed in, and the
+	 * old access token stays valid until its own expiry, so requests already in flight
+	 * survive the rotation.
+	 */
+	async refreshVirtualClientToken(
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
+		const resource = await this.resourceRegistry.getByResourceUrl(resourceUrl);
+		if (!resource?.isFirstParty) {
+			throw new UserError(`Not a first-party protected resource: ${resourceUrl}`);
+		}
+
+		const client = await this.oauthServerService.clientsStore.getClient(resourceUrl);
+		if (!client) return { valid: false, reason: 'invalid_client' };
+
+		try {
+			const tokens = await this.oauthServerService.exchangeRefreshToken(
+				client,
+				refreshToken,
+				undefined,
+				new URL(resourceUrl),
+			);
+			if (!tokens.refresh_token || tokens.expires_in === undefined) {
+				return { valid: false, reason: 'invalid_grant' };
+			}
+			return {
+				valid: true,
+				token: tokens.access_token,
+				refreshToken: tokens.refresh_token,
+				expiresIn: tokens.expires_in,
+			};
+		} catch (error) {
+			// A token already consumed by a concurrent refresh loses the atomic
+			// `deleteValidByToken` race and arrives here; so does a request naming a
+			// resource outside the grant. Both are the caller's cue to restart the flow,
+			// not a server fault — surface them on the union, never as a silent reuse.
+			if (error instanceof InvalidGrantError || error instanceof InvalidTargetError) {
 				return { valid: false, reason: 'invalid_grant' };
 			}
 			throw error;

@@ -93,18 +93,26 @@ const homeProjectName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
 );
 
-const projectFilterFn = (p: ProjectListItem): boolean =>
-	!p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
-
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 
-const isResolvableCredential = computed(
+// What the credential is — the backend rejects the move on `isResolvable` alone,
+// so the destination filter must not depend on module/license state.
+const isEndUserCredential = computed(
 	() =>
-		privateCredentials.isEnabled.value &&
 		props.data.resourceType === ResourceType.Credential &&
 		(props.data.resource as ICredentialsResponse).isResolvable === true,
 );
+// What we surface about it — gated on the module being enabled.
+const isResolvableCredential = computed(
+	() => privateCredentials.isEnabled.value && isEndUserCredential.value,
+);
+
+const projectFilterFn = (p: ProjectListItem): boolean => {
+	// End-user credentials can't move into personal projects
+	if (isEndUserCredential.value && p.type === ProjectTypes.Personal) return false;
+	return !p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
+};
 const targetProjectName = computed(() => {
 	return getTruncatedProjectName(selectedProject.value?.name);
 });

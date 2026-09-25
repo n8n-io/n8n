@@ -1,0 +1,57 @@
+{
+	"name": "Webhook Isolate Skip - Expression Parameter",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "isolate-skip-expression",
+				"responseMode": "lastNode",
+				"options": {
+					"onlyRunIf": "={{ true }}"
+				}
+			},
+			"id": "b1e1c9b0-0000-4000-8000-000000000011",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"webhookId": "b1e1c9b0-0000-4000-8000-000000000011"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "result",
+							"name": "result",
+							"value": "expression-ok",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "b1e1c9b0-0000-4000-8000-000000000012",
+			"name": "Set Result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [220, 0]
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Set Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"pinData": {}
+}

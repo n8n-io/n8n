@@ -158,6 +158,7 @@ test.describe(
 				await n8n.canvas.clickZoomToFitButton();
 				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 					'Workflow executed successfully',
+					{ timeout: 15000 },
 				);
 				await n8n.canvas.openNode('Set3');
 
@@ -166,35 +167,35 @@ test.describe(
 
 				await n8n.ndv.ensureOutputRunLinking(true);
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('2 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('2 of 2 (6 items)');
 
 				await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('1 of 2 (6 items)');
 				await expect(n8n.ndv.inputPanel.getTbodyCell(0, 0)).toHaveText('1111');
 				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText('1111');
 
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 				await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('2 of 2 (6 items)');
 
 				await n8n.ndv.outputPanel.getLinkRun().click();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 				await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('2 of 2 (6 items)');
 
 				await n8n.ndv.outputPanel.getLinkRun().click();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('1 of 2 (6 items)');
 
 				await n8n.ndv.inputPanel.toggleInputRunLinking();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 				await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('1 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('1 of 2 (6 items)');
 
 				await n8n.ndv.inputPanel.toggleInputRunLinking();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('2 of 2 (6 items)');
 			});
 		});
 

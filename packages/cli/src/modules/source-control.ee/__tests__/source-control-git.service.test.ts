@@ -326,21 +326,28 @@ describe('SourceControlGitService', () => {
 			await sourceControlGitService.setGitCommand();
 
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
-			const expectedCredentialScript = `!f() { echo username='${credentials.username}'; echo password='${credentials.password}'; }; f`;
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_USERNAME', credentials.username);
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_PASSWORD', credentials.password);
+			const expectedCredentialScript =
+				'!f() { printf \'%s\\n\' "username=$N8N_GIT_USERNAME" "password=$N8N_GIT_PASSWORD"; }; f';
 			expect(simpleGit).toHaveBeenCalledWith(
 				expect.objectContaining({
 					binary: 'git',
 					maxConcurrentProcesses: 6,
 					trimmed: false,
-					config: [`credential.helper=${expectedCredentialScript}`, 'credential.useHttpPath=true'],
+					config: [
+						`credential.helper=${expectedCredentialScript}`,
+						'credential.useHttpPath=true',
+						'http.lowSpeedLimit=1000',
+						'http.lowSpeedTime=30',
+					],
 					unsafe: { allowUnsafeCredentialHelper: true },
 				}),
 			);
 		});
 
-		it('should escape https credentials to prevent command injection', async () => {
-			// simulate credentials that would try to inject an rm -rf command by breaking out of the echo command with single quotes inside them
-			const credentials = { username: "user'; rm -rf /", password: "pass'; rm -rf /" };
+		it('passes literal HTTPS credentials through the Git environment', async () => {
+			const credentials = { username: "user's name", password: 'pass\'"$word' };
 
 			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
 				connectionType: 'https',
@@ -355,13 +362,11 @@ describe('SourceControlGitService', () => {
 			await sourceControlGitService.setGitCommand();
 
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
-			const expectedCredentialScript =
-				"!f() { echo username='user'\"'\"'; rm -rf /'; echo password='pass'\"'\"'; rm -rf /'; }; f";
-			expect(simpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: [`credential.helper=${expectedCredentialScript}`, 'credential.useHttpPath=true'],
-				}),
-			);
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_USERNAME', credentials.username);
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_PASSWORD', credentials.password);
+			const options = JSON.stringify((simpleGit as Mock).mock.calls);
+			expect(options).not.toContain(credentials.username);
+			expect(options).not.toContain(credentials.password);
 		});
 
 		it('should setup git client for ssh connection', async () => {
@@ -382,7 +387,7 @@ describe('SourceControlGitService', () => {
 			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith(
 				'GIT_SSH_COMMAND',
-				'ssh -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "private-key"',
+				"ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile='.ssh/known_hosts' -o StrictHostKeyChecking=accept-new -i 'private-key'",
 			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
 		});
@@ -614,11 +619,11 @@ describe('SourceControlGitService', () => {
 				// Assert - verify paths with spaces are properly quoted
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.stringContaining('"C:/Users/Test User/.n8n/ssh_private_key_temp"'), // Quoted path with spaces
+					expect.stringContaining("'C:/Users/Test User/.n8n/ssh_private_key_temp'"), // Quoted path with spaces
 				);
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.stringContaining('"C:/Users/Test User/.n8n/.ssh/known_hosts"'), // Quoted known_hosts path
+					expect.stringContaining("'C:/Users/Test User/.n8n/.ssh/known_hosts'"), // Quoted known_hosts path
 				);
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
@@ -630,7 +635,7 @@ describe('SourceControlGitService', () => {
 				);
 			});
 
-			it('should escape double quotes in paths to prevent command injection', async () => {
+			it('should single-quote paths to prevent command injection', async () => {
 				// Arrange
 				const mockPreferencesService = mock<SourceControlPreferencesService>();
 				const pathWithQuotes = 'C:/Users/Test"User/.n8n/ssh_private_key_temp';
@@ -655,14 +660,56 @@ describe('SourceControlGitService', () => {
 				// Act
 				await gitService.setGitCommand('/git/folder', sshFolder);
 
-				// Assert - verify the SSH command was properly escaped
+				// Assert - the double quote is kept literal inside single quotes, so it
+				// cannot terminate the argument and inject a command.
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.stringContaining('Test\\"User'), // Escaped quote
+					expect.stringContaining("-i 'C:/Users/Test\"User/.n8n/ssh_private_key_temp'"),
 				);
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.not.stringContaining('Test"User'), // No unescaped quote in final command
+					expect.stringContaining(
+						"-o UserKnownHostsFile='C:/Users/Test\"User/.n8n/.ssh/known_hosts'",
+					),
+				);
+			});
+
+			it('should escape single quotes in paths to prevent command injection', async () => {
+				// Arrange - a path containing a single quote (e.g. a Windows user
+				// folder like "John's") would otherwise terminate the quoted argument.
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const pathWithSingleQuote = "C:/Users/John's/.n8n/ssh_private_key_temp";
+				const sshFolder = "C:/Users/John's/.n8n/.ssh";
+
+				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(pathWithSingleQuote);
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'ssh',
+					connected: true,
+					repositoryUrl: 'git@github.com:user/repo.git',
+					branchName: 'main',
+					branchReadOnly: false,
+					branchColor: '#5296D6',
+					initRepo: false,
+					keyGeneratorType: 'ed25519',
+				});
+
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+
+				// Act
+				await gitService.setGitCommand('/git/folder', sshFolder);
+
+				// Assert - the single quote is emitted as the POSIX '\'' sequence
+				// (close-quote, escaped quote, reopen-quote), keeping it literal so
+				// it cannot break out of the argument and inject a command.
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining("-i 'C:/Users/John'\"'\"'s/.n8n/ssh_private_key_temp'"),
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining(
+						"-o UserKnownHostsFile='C:/Users/John'\"'\"'s/.n8n/.ssh/known_hosts'",
+					),
 				);
 			});
 		});

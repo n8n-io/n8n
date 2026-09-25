@@ -5,28 +5,38 @@ import {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
+	InstanceAiPreferenceCardEditRequestDto,
+	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
+	InstanceAiThreadHistoryQuery,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
+	findSeedFolderIssues,
+	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
 import type {
 	InstanceAiAdminSettingsResponse,
-	InstanceAiAgentNode,
+	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiEvent,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	RestController,
 	GlobalScope,
@@ -41,9 +51,19 @@ import {
 	Body,
 	Query,
 } from '@n8n/decorators';
-import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
-import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
-import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
+import type { StoredEvent } from '@n8n/instance-ai';
+import { hasGlobalScope } from '@n8n/permissions';
+import {
+	buildAgentTreeFromEvents,
+	clearedAgentBuilderTargetMetadata,
+	seedAgentBuilderTargetMetadata,
+} from '@n8n/instance-ai';
+import {
+	OversizedAttachmentError,
+	UnsupportedAttachmentError,
+	validateAttachmentMimeTypes,
+	validateAttachmentSizes,
+} from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
@@ -57,7 +77,11 @@ import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
+import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
+import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -78,46 +102,14 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
 
-	/** Durable-log prototype flag (N8N_INSTANCE_AI_DURABLE_LOG): replay and
-	 *  cursors come from the DB-backed log instead of the in-memory bus. */
-	private readonly durableLogEnabled: boolean;
-
-	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
-		let score = 0;
-		const stack = [tree];
-
-		while (stack.length > 0) {
-			const node = stack.pop()!;
-			score += 100;
-			score += node.toolCalls.length * 10;
-			score += node.timeline.length * 2;
-			score += (node.planItems?.length ?? 0) * 20;
-			score += node.toolCalls.filter((toolCall) => toolCall.confirmation).length * 50;
-			score += node.children.length * 25;
-			stack.push(...node.children);
-		}
-
-		return score;
-	}
-
-	private static selectBootstrapTree(
-		eventTree: InstanceAiAgentNode,
-		persistedTree?: InstanceAiAgentNode,
-	): InstanceAiAgentNode {
-		if (!persistedTree) return eventTree;
-
-		return InstanceAiController.getTreeRichnessScore(persistedTree) >
-			InstanceAiController.getTreeRichnessScore(eventTree)
-			? persistedTree
-			: eventTree;
-	}
-
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
+		private readonly pendingAgentService: InstanceAiPendingAgentService,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly modelCatalogService: InstanceAiModelCatalogService,
 		private readonly evalExecutionService: EvalExecutionService,
 		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
@@ -133,15 +125,29 @@ export class InstanceAiController {
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
+		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
-		this.durableLogEnabled = globalConfig.instanceAi.durableLog;
 	}
 
 	private requireInstanceAiEnabled(): void {
 		if (!this.settingsService.isInstanceAiEnabled()) {
 			throw new ForbiddenError('Instance AI is disabled');
+		}
+	}
+
+	/**
+	 * Without a model the run starts and then dies inside the provider call, with
+	 * nothing to tell the user why. The frontend routes an unconfigured instance
+	 * to setup rather than the composer, but that is one gate per entry point and
+	 * the endpoint is reachable on its own, so refuse the run here too.
+	 */
+	private async requireModelConfigured(): Promise<void> {
+		if (!(await this.settingsService.isModelConfigured())) {
+			throw new BadRequestError(
+				'The n8n Assistant has no model configured. An instance owner can add one in Settings > Assistant.',
+			);
 		}
 	}
 
@@ -172,6 +178,7 @@ export class InstanceAiController {
 		@Body payload: InstanceAiSendMessageRequest,
 	) {
 		this.requireInstanceAiEnabled();
+		await this.requireModelConfigured();
 		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
 			throw new BadRequestError('Either message or attachments must be provided');
 		}
@@ -187,12 +194,30 @@ export class InstanceAiController {
 		if (fileAttachments.length > 0) {
 			try {
 				validateAttachmentMimeTypes(fileAttachments);
+				// Reject oversized payloads here rather than letting them reach the model.
+				// The provider answers an oversized image with an opaque 400, and the
+				// attachment is already persisted in thread history by then — so every
+				// later turn replays it and fails too, stranding the conversation.
+				//
+				// Note the request schema caps each `data` field at the same per-file
+				// limit, and body validation runs before this handler — so over HTTP a
+				// single oversized file is answered by the schema and only the combined
+				// budget reaches here. This call stays because it is the check for
+				// non-HTTP callers and the one that enforces the total.
+				validateAttachmentSizes(fileAttachments);
 			} catch (error) {
 				if (error instanceof UnsupportedAttachmentError) {
 					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
 					throw new BadRequestError(
 						`Unsupported attachment type: ${summary}. Supported types include CSV, JSON, ` +
 							'PDF, DOCX, XLSX, HTML, plain text, markdown, and images.',
+					);
+				}
+				if (error instanceof OversizedAttachmentError) {
+					throw new BadRequestError(
+						error.reason === 'per_file'
+							? `${error.message} Attach a smaller version, or resize the image before sending.`
+							: `${error.message} Send them across separate messages, or attach smaller versions.`,
 					);
 				}
 				throw error;
@@ -204,6 +229,15 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
+		// The override is an eval knob. It changes how often the observer runs, so a
+		// plain chat caller must not be able to set it.
+		if (
+			payload.observerThresholdTokens !== undefined &&
+			!hasGlobalScope(req.user, 'instanceAi:eval')
+		) {
+			throw new ForbiddenError('observerThresholdTokens requires the instanceAi:eval scope');
+		}
+
 		const runId = this.instanceAiService.startRun(
 			req.user,
 			threadId,
@@ -212,6 +246,11 @@ export class InstanceAiController {
 			payload.context,
 			payload.timeZone,
 			payload.pushRef,
+			payload.mode,
+			payload.promptVersion,
+			payload.computerUseChannels,
+			payload.threadArtifacts,
+			payload.observerThresholdTokens,
 		);
 		return { runId };
 	}
@@ -304,9 +343,7 @@ export class InstanceAiController {
 
 		// 2. Re-publish any terminal outcomes that never reached the client.
 		if (ownership === 'owned') {
-			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
-				delivery: 'event',
-			});
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 		}
 
 		// 3. Set SSE headers.
@@ -328,7 +365,7 @@ export class InstanceAiController {
 		const cursor =
 			Number.isFinite(parsedHeader) && parsedHeader >= 0 ? parsedHeader : (query.lastEventId ?? 0);
 
-		// 5. Collect live message groups and fetch their persisted snapshots.
+		// 5. Collect live message groups.
 		//    Multiple groups can be active simultaneously when a background task
 		//    from an older turn outlives its original turn.
 		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
@@ -361,40 +398,24 @@ export class InstanceAiController {
 			}
 		}
 
-		const persistedSnapshots = new Map<string, AgentTreeSnapshot | undefined>();
-		for (const [groupId, group] of liveGroups) {
-			persistedSnapshots.set(
-				groupId,
-				await this.memoryService.getLatestRunSnapshot(threadId, {
-					messageGroupId: groupId,
-					// Use the group's own latest runId — NOT the thread-global
-					// activeRunId, which belongs to the current orchestrator turn and
-					// would be wrong for background groups from older turns.
-					runId: group.runIds.at(-1),
-				}),
-			);
-		}
-
-		// The client may have disconnected during the awaits above.
-		if (closed) return;
-
 		// 6b (used by both arms below). Emit one run-sync control frame for a live
 		//     message group. Each frame uses a named SSE event type
 		//     (event: run-sync) with NO id: field so the browser's lastEventId is
 		//     unaffected and the replay cursor stays consistent.
-		const writeRunSyncFrame = (
+		const writeRunSyncFrame = async (
 			groupId: string,
 			group: { runIds: string[]; status: 'active' | 'suspended' | 'background' },
 			runEvents: InstanceAiEvent[],
 		) => {
-			const persistedSnapshot = persistedSnapshots.get(groupId);
-			if (runEvents.length === 0 && !persistedSnapshot) return;
+			if (runEvents.length === 0) return;
 
-			const eventTree = buildAgentTreeFromEvents(runEvents);
-			const agentTree = InstanceAiController.selectBootstrapTree(
-				eventTree,
-				persistedSnapshot?.tree,
-			);
+			const agentTree = buildAgentTreeFromEvents(runEvents);
+			// The fold records that a confirmation was requested, not that it was
+			// answered. Settle cards whose pending row is gone (same check as the
+			// history read); otherwise a client that reconnects mid-run re-arms a
+			// card the server already consumed, and every click on it fails.
+			await this.memoryService.flagExpiredConfirmations([{ agentTree }]);
+			if (closed) return;
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: group.runIds.at(-1),
@@ -407,160 +428,144 @@ export class InstanceAiController {
 			);
 		};
 
-		if (this.durableLogEnabled) {
-			// 6. Replay missed events from the DURABLE log — survives restarts and is
-			//    valid on any main (the table is in the shared DB). The reads are
-			//    async, so unlike the old synchronous memory-store replay, live
-			//    events can land mid-bootstrap: buffer them across every await (the
-			//    replay read, the run-sync tree reads, AND the gap read) and flush
-			//    with seq dedupe only when no await remains before live delivery
-			//    takes over (the drain persists before it emits, so a fact is never
-			//    in neither place). A flushed event may already be folded into a
-			//    run-sync tree; the shared reducer applies it idempotently, same as
-			//    any live event arriving after a frame.
-			const arrivedDuringReplay: StoredEvent[] = [];
-			const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
-				arrivedDuringReplay.push(stored);
-			});
-			try {
-				const missed = await this.eventLog.getEventsAfter(threadId, cursor);
-				// The client may have disconnected during the read: stop before
-				// writing to the dead response or arming the keep-alive below.
-				if (closed) return;
-				let lastReplayedSeq = cursor;
-				for (const stored of missed) {
-					deliver(stored);
-					if (stored.id !== undefined) lastReplayedSeq = stored.id;
-				}
-				// Build each live group's bootstrap tree from the durable log, so the
-				// group renders fully even when the bus cache was evicted, the process
-				// restarted, or this main never buffered the thread (sibling main).
-				// Remember which coalesced blocks each delivered tree folds: the gap
-				// read below may return the same rows, and re-applying a block the
-				// tree already renders would append a duplicate timeline entry.
-				const blockKey = (event: {
-					type: string;
-					runId: string;
-					agentId: string;
-					responseId?: string;
-					payload: { text: string };
-				}) =>
-					`${event.type}:${event.runId}:${event.agentId}:${event.responseId ?? ''}:${event.payload.text}`;
-				const foldedBlockKeys = new Set<string>();
-				for (const [groupId, group] of liveGroups) {
-					const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
-					if (closed) return;
-					writeRunSyncFrame(groupId, group, runEvents);
-					for (const event of runEvents) {
-						if (event.type === 'text-block' || event.type === 'reasoning-block') {
-							foldedBlockKeys.add(blockKey(event));
-						}
-					}
-				}
-				// One more durable read: coalesced blocks are persisted but never
-				// live-emitted (live clients saw the deltas), so a segment that closed
-				// during the awaits above exists only as rows the replay read predates
-				// — invisible to the buffering subscription. Without this read, the
-				// buffered fact that follows such a block would advance the browser
-				// cursor past it and no later replay would ever return it.
-				const gapRows = await this.eventLog.getEventsAfter(threadId, lastReplayedSeq);
-				if (closed) return;
-				// A still-streaming segment exists only in the log's coalesce buffer
-				// (deltas are never persisted), so a mid-stream refresh would render
-				// only the post-refresh tail. Serve each open segment as one ephemeral
-				// delta frame (no `id:` line — the cursor stays on durable facts), after
-				// the run-sync frames so live deltas keep appending to it and the
-				// segment's eventual block replaces it. Everything from this read to
-				// `bootstrapping = false` is synchronous, so a buffered delta of a
-				// served segment is exactly text inside the snapshot: skipping it loses
-				// nothing and delivering it would duplicate.
-				const openSegments = this.eventLog.getOpenSegments(threadId);
-				const segmentKey = (
-					kind: 'text' | 'reasoning',
-					event: { runId: string; agentId: string; responseId?: string },
-				) => `${kind}:${event.runId}:${event.agentId}:${event.responseId ?? ''}`;
-				const served = new Set(openSegments.map((segment) => segmentKey(segment.kind, segment)));
-				// Deliver the gap rows first. A block identical to one folded into a
-				// delivered run-sync tree is not re-applied (that would duplicate its
-				// text) but still counts as delivered for cursor contiguity — its
-				// content reached the client inside the frame. Buffered deltas of a
-				// gap block's segment are skipped below like served ones: their text
-				// is inside the block, and delivering them after it would duplicate.
-				const gapBlockSegments = new Set<string>();
-				for (const row of gapRows) {
-					if (row.id === undefined || row.id <= lastReplayedSeq) continue;
-					const { event } = row;
-					if (event.type === 'text-block' || event.type === 'reasoning-block') {
-						gapBlockSegments.add(
-							segmentKey(event.type === 'text-block' ? 'text' : 'reasoning', event),
-						);
-						if (foldedBlockKeys.has(blockKey(event))) {
-							lastReplayedSeq = row.id;
-							continue;
-						}
-					}
-					deliver(row);
-					lastReplayedSeq = row.id;
-				}
-				for (const stored of arrivedDuringReplay) {
-					if (stored.id !== undefined) {
-						if (stored.id <= lastReplayedSeq) continue;
-						if (stored.id === lastReplayedSeq + 1) {
-							deliver(stored);
-							lastReplayedSeq = stored.id;
-							continue;
-						}
-						// Rows between the cursor and this fact were persisted after the
-						// gap read (a segment closed while it was in flight): deliver the
-						// fact's content but strip its id line, so the cursor never
-						// crosses a row the client has not seen — the next replay returns
-						// the missing block and re-applies this fact idempotently.
-						deliver({ event: stored.event });
-						continue;
-					}
-					const { event } = stored;
-					if (
-						(event.type === 'text-delta' || event.type === 'reasoning-delta') &&
-						(served.has(segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event)) ||
-							gapBlockSegments.has(
-								segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event),
-							))
-					) {
-						continue;
-					}
-					deliver(stored);
-				}
-				for (const segment of openSegments) {
-					deliver({
-						event: {
-							type: segment.kind === 'text' ? 'text-delta' : 'reasoning-delta',
-							runId: segment.runId,
-							agentId: segment.agentId,
-							...(segment.responseId ? { responseId: segment.responseId } : {}),
-							payload: { text: segment.text },
-						},
-					});
-				}
-				this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
-			} finally {
-				// The buffering subscription must not outlive the bootstrap, even when
-				// a durable read throws.
-				stopBuffering();
-			}
-		} else {
-			// 6. Replay missed events, emit run-sync frames, and flip to live delivery
-			//    in one synchronous block. The event bus store and emitter are
-			//    synchronous, so no event can slip between the replay and the live
-			//    handler taking over. Events that arrived during the awaits above are
-			//    already in the store (the early subscription in step 1 keeps relayed
-			//    events flowing in multi-main) and are included in the replay here.
-			const missed = this.eventBus.getEventsAfter(threadId, cursor);
+		// 6. Replay missed events from the durable log — survives restarts and is
+		//    valid on any main (the table is in the shared DB). The reads are
+		//    async, so live events can land mid-bootstrap: buffer them across
+		//    every await (the
+		//    replay read, the run-sync tree reads, AND the gap read) and flush
+		//    with seq dedupe only when no await remains before live delivery
+		//    takes over (the drain persists before it emits, so a fact is never
+		//    in neither place). A flushed event may already be folded into a
+		//    run-sync tree; the shared reducer applies it idempotently, same as
+		//    any live event arriving after a frame.
+		const arrivedDuringReplay: StoredEvent[] = [];
+		const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
+			arrivedDuringReplay.push(stored);
+		});
+		try {
+			const missed = await this.eventLog.getEventsAfter(threadId, cursor);
+			// The client may have disconnected during the read: stop before
+			// writing to the dead response or arming the keep-alive below.
+			if (closed) return;
+			let lastReplayedSeq = cursor;
 			for (const stored of missed) {
 				deliver(stored);
+				if (stored.id !== undefined) lastReplayedSeq = stored.id;
 			}
+			// Build each live group's bootstrap tree from the durable log, so the
+			// group renders fully even when the process
+			// restarted, or this main never buffered the thread (sibling main).
+			// Remember which coalesced blocks each delivered tree folds: the gap
+			// read below may return the same rows, and re-applying a block the
+			// tree already renders would append a duplicate timeline entry.
+			const blockKey = (event: {
+				type: string;
+				runId: string;
+				agentId: string;
+				responseId?: string;
+				payload: { text: string };
+			}) =>
+				`${event.type}:${event.runId}:${event.agentId}:${event.responseId ?? ''}:${event.payload.text}`;
+			const foldedBlockKeys = new Set<string>();
 			for (const [groupId, group] of liveGroups) {
-				writeRunSyncFrame(groupId, group, this.eventBus.getEventsForRuns(threadId, group.runIds));
+				const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
+				if (closed) return;
+				await writeRunSyncFrame(groupId, group, runEvents);
+				for (const event of runEvents) {
+					if (event.type === 'text-block' || event.type === 'reasoning-block') {
+						foldedBlockKeys.add(blockKey(event));
+					}
+				}
 			}
+			// One more durable read: coalesced blocks are persisted but never
+			// live-emitted (live clients saw the deltas), so a segment that closed
+			// during the awaits above exists only as rows the replay read predates
+			// — invisible to the buffering subscription. Without this read, the
+			// buffered fact that follows such a block would advance the browser
+			// cursor past it and no later replay would ever return it.
+			const gapRows = await this.eventLog.getEventsAfter(threadId, lastReplayedSeq);
+			if (closed) return;
+			// A still-streaming segment exists only in the log's coalesce buffer
+			// (deltas are never persisted), so a mid-stream refresh would render
+			// only the post-refresh tail. Serve each open segment as one ephemeral
+			// delta frame (no `id:` line — the cursor stays on durable facts), after
+			// the run-sync frames so live deltas keep appending to it and the
+			// segment's eventual block replaces it. Everything from this read to
+			// `bootstrapping = false` is synchronous, so a buffered delta of a
+			// served segment is exactly text inside the snapshot: skipping it loses
+			// nothing and delivering it would duplicate.
+			const openSegments = this.eventLog.getOpenSegments(threadId);
+			const segmentKey = (
+				kind: 'text' | 'reasoning',
+				event: { runId: string; agentId: string; responseId?: string },
+			) => `${kind}:${event.runId}:${event.agentId}:${event.responseId ?? ''}`;
+			const served = new Set(openSegments.map((segment) => segmentKey(segment.kind, segment)));
+			// Deliver the gap rows first. A block identical to one folded into a
+			// delivered run-sync tree is not re-applied (that would duplicate its
+			// text) but still counts as delivered for cursor contiguity — its
+			// content reached the client inside the frame. Buffered deltas of a
+			// gap block's segment are skipped below like served ones: their text
+			// is inside the block, and delivering them after it would duplicate.
+			const gapBlockSegments = new Set<string>();
+			for (const row of gapRows) {
+				if (row.id === undefined || row.id <= lastReplayedSeq) continue;
+				const { event } = row;
+				if (event.type === 'text-block' || event.type === 'reasoning-block') {
+					gapBlockSegments.add(
+						segmentKey(event.type === 'text-block' ? 'text' : 'reasoning', event),
+					);
+					if (foldedBlockKeys.has(blockKey(event))) {
+						lastReplayedSeq = row.id;
+						continue;
+					}
+				}
+				deliver(row);
+				lastReplayedSeq = row.id;
+			}
+			for (const stored of arrivedDuringReplay) {
+				if (stored.id !== undefined) {
+					if (stored.id <= lastReplayedSeq) continue;
+					if (stored.id === lastReplayedSeq + 1) {
+						deliver(stored);
+						lastReplayedSeq = stored.id;
+						continue;
+					}
+					// Rows between the cursor and this fact were persisted after the
+					// gap read (a segment closed while it was in flight): deliver the
+					// fact's content but strip its id line, so the cursor never
+					// crosses a row the client has not seen — the next replay returns
+					// the missing block and re-applies this fact idempotently.
+					deliver({ event: stored.event });
+					continue;
+				}
+				const { event } = stored;
+				if (
+					(event.type === 'text-delta' || event.type === 'reasoning-delta') &&
+					(served.has(segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event)) ||
+						gapBlockSegments.has(
+							segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event),
+						))
+				) {
+					continue;
+				}
+				deliver(stored);
+			}
+			for (const segment of openSegments) {
+				deliver({
+					event: {
+						type: segment.kind === 'text' ? 'text-delta' : 'reasoning-delta',
+						runId: segment.runId,
+						agentId: segment.agentId,
+						...(segment.responseId ? { responseId: segment.responseId } : {}),
+						payload: { text: segment.text },
+					},
+				});
+			}
+			this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
+		} finally {
+			// The buffering subscription must not outlive the bootstrap, even when
+			// a durable read throws.
+			stopBuffering();
 		}
 		if (liveGroups.size > 0) res.flush?.();
 
@@ -654,6 +659,44 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	// ── Preference card (the save_user_preference result in the chat) ────────
+	//
+	// The thread check is the ownership boundary. The row check is inside
+	// AiPreferenceService. The runId and the toolCallId are not verified against
+	// the log on purpose, and the check would cost a log read on every click.
+	// The fold ignores preference-card facts when it anchors a turn, so a wrong
+	// pair can only mis-render that one card's state in the caller's own thread.
+
+	@Post('/threads/:threadId/preferences/:preferenceId/undo')
+	@GlobalScope('instanceAi:message')
+	async undoPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: InstanceAiPreferenceCardUndoRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const event = await this.preferenceCardService.undo(req.user, threadId, preferenceId, payload);
+		// The card applies the fact at once; the stream delivers the same one later.
+		return { ok: true, event };
+	}
+
+	@Post('/threads/:threadId/preferences/:preferenceId/edit')
+	@GlobalScope('instanceAi:message')
+	async editPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: InstanceAiPreferenceCardEditRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.preferenceCardService.edit(req.user, threadId, preferenceId, payload);
+	}
+
 	// ── Credits ──────────────────────────────────────────────────────────────
 
 	@Get('/credits')
@@ -669,6 +712,12 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:manage')
 	async getAdminSettings(_req: AuthenticatedRequest) {
 		return await this.settingsService.getAdminSettings();
+	}
+
+	@Get('/settings/models')
+	@GlobalScope('instanceAi:manage')
+	async getModelCatalog(_req: AuthenticatedRequest) {
+		return await this.modelCatalogService.getModels();
 	}
 
 	@Put('/settings')
@@ -694,6 +743,36 @@ export class InstanceAiController {
 		return result;
 	}
 
+	@Post('/settings/verify/model')
+	@GlobalScope('instanceAi:manage')
+	async verifyModel(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifyModelRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifyModel(req.user, payload);
+	}
+
+	@Post('/settings/verify/sandbox')
+	@GlobalScope('instanceAi:manage')
+	async verifySandbox(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifySandboxRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifySandbox(req.user, payload);
+	}
+
+	@Post('/settings/verify/search')
+	@GlobalScope('instanceAi:manage')
+	async verifySearch(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifySearchRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifySearch(payload);
+	}
+
 	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })
 	async reloadAdminSettings() {
 		await this.settingsService.reloadFromDb();
@@ -713,6 +792,9 @@ export class InstanceAiController {
 		const sideEffects: Array<() => Promise<void> | void> = [
 			async () => {
 				await this.moduleRegistry.refreshModuleSettings('instance-ai');
+			},
+			async () => {
+				await this.moduleRegistry.refreshModuleSettings('agents');
 			},
 		];
 		if (!settings.enabled || !settings.browserUseEnabled) {
@@ -790,6 +872,25 @@ export class InstanceAiController {
 		return await this.memoryService.listThreads(req.user.id);
 	}
 
+	@Get('/threads/history')
+	@GlobalScope('instanceAi:message')
+	async listThreadHistory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: InstanceAiThreadHistoryQuery,
+	) {
+		this.requireInstanceAiEnabled();
+		return await this.memoryService.listThreadHistory(req.user.id, query);
+	}
+
+	@Get('/threads/:threadId')
+	@GlobalScope('instanceAi:message')
+	async getThread(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return { thread: await this.memoryService.getThreadInfo(threadId) };
+	}
+
 	@Post('/threads')
 	@GlobalScope('instanceAi:message')
 	async ensureThread(
@@ -840,7 +941,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.routeClearThreadState(threadId);
+		await this.instanceAiService.routeClearThreadState(threadId, req.user.id);
 		await this.memoryService.deleteThread(threadId);
 		return { ok: true };
 	}
@@ -860,6 +961,25 @@ export class InstanceAiController {
 			metadata: payload.metadata,
 		});
 		return { thread };
+	}
+
+	/**
+	 * Persist the pending new-agent artifact this thread has open, and bind it to
+	 * the thread in the same request. Idempotent under a concurrent writer on the
+	 * same client-minted id (the chat's build-agent tool), unlike the strict
+	 * project-scoped agent create.
+	 */
+	@Post('/threads/:threadId/agent')
+	@GlobalScope('instanceAi:message')
+	async persistPendingAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiPersistPendingAgentRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.pendingAgentService.persistAndBind(req.user, threadId, payload);
 	}
 
 	@Get('/threads/:threadId/messages')
@@ -913,12 +1033,24 @@ export class InstanceAiController {
 
 		// Include the next SSE event ID so the frontend can skip past events
 		// already covered by these historical messages (prevents duplicates).
-		// Flag on: durable authority, valid across restarts and mains. Flag off:
-		// the shared sequence, so the cursor is valid against any main.
-		const nextEventId = this.durableLogEnabled
-			? await this.eventLog.getNextEventId(threadId)
-			: await this.eventBus.getNextEventId(threadId);
-		return { ...result, nextEventId };
+		// Read from the log, so the cursor is valid across restarts and across
+		// mains sharing the database.
+		//
+		// The applied-preferences payload rides along because the messages
+		// endpoint is what opens a thread: without it a reopened thread could
+		// only claim "none applied" until its next turn.
+		//
+		// Cursor first, payload second, on purpose. A turn that commits its
+		// `preferences-applied` fact between the two reads then lands in the
+		// payload AND replays over SSE (a harmless repeat). The other order
+		// would move the cursor past a fact the payload never saw.
+		const nextEventId = await this.eventLog.getNextEventId(threadId);
+		const appliedPreferences = await this.eventLog.getLastAppliedPreferences(threadId);
+		return {
+			...result,
+			nextEventId,
+			...(appliedPreferences ? { appliedPreferences } : {}),
+		};
 	}
 
 	@Get('/threads/:threadId/status')
@@ -1014,11 +1146,31 @@ export class InstanceAiController {
 	}
 
 	/**
+	 * Observational memory for a thread, for a context eval to assert on.
+	 *
+	 * Returns the observation text, an LLM-written summary of the user's conversation.
+	 * Gated like every other `/eval/` route: `instanceAi:eval` is owner/admin-only,
+	 * and `assertThreadAccess` keeps a caller to threads they can already read in full.
+	 */
+	@Get('/eval/threads/:threadId/memory')
+	@GlobalScope('instanceAi:eval')
+	async getEvalThreadMemory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.instanceAiService.getThreadMemory(req.user.id, threadId);
+	}
+
+	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
-	 * recreate the workflow artifacts the history references (node credentials
-	 * stripped — see `EvalThreadRestoreService`), then write the native message
-	 * log verbatim. The thread then continues as if the conversation really
-	 * happened, so an eval can drive the next turn live.
+	 * recreate the artifacts the history references — workflows (node credentials
+	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
+	 * and agents — publish the workflows the seed flags `published`, then write the
+	 * native message log verbatim. The thread then continues as if the
+	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
 	@GlobalScope('instanceAi:eval')
@@ -1035,24 +1187,99 @@ export class InstanceAiController {
 		}
 
 		const workflows = payload.workflows ?? [];
-		// Data tables first: the workflows reference them, and their ids are
-		// rewritten to the recreated tables' ids during workflow restore.
-		const idMap = await this.evalThreadRestore.restoreDataTables(
-			payload.dataTables ?? [],
-			projectId,
-			{ uniquifyNames: payload.uniquifyNames ?? true },
-		);
-		const dataTableIds = [...idMap.values()];
+		const agents = payload.agents ?? [];
+		const folders = payload.folders ?? [];
+		// Cross-field, so the schema can't own it: a seeded agent's workflow tool is
+		// resolved by DISPLAY NAME, and a name no seeded workflow carries restores a
+		// dead tool (or binds an unrelated ambient workflow of the same name).
+		const unbacked = findUnbackedSeedWorkflowTools(payload);
+		if (unbacked.length > 0) {
+			throw new BadRequestError(
+				unbacked
+					.map(
+						({ agentId, target }: { agentId: string; target: unknown }) =>
+							`Seed agent ${agentId} has a workflow tool targeting ${JSON.stringify(target)}, which no seeded workflow's name matches`,
+					)
+					.join('; '),
+			);
+		}
+		// Also cross-field: a workflow's `parentFolderId` must name a seeded folder.
+		// Checked before anything is created, so a typo costs no rollback.
+		const folderIssues = findSeedFolderIssues({ folders, workflows });
+		if (folderIssues.length > 0) {
+			throw new BadRequestError(folderIssues.join('; '));
+		}
+		// Folders first: the workflows are created inside them. `restoreFolders`
+		// rolls its own partial work back, so nothing else exists yet if it fails.
+		const folderIdMap = await this.evalThreadRestore.restoreFolders(folders, projectId, req.user);
+		// Positional to `folders`, like `workflowIds` to `workflows`, so the harness
+		// can pair each created id with the seed folder it came from.
+		const folderIds = folders.flatMap((folder) => {
+			const id = folderIdMap.get(folder.id);
+			return id === undefined ? [] : [id];
+		});
 		// Roll back everything we created if a later step fails, so a partial
-		// restore doesn't leak workflows/tables into the shared eval project.
+		// restore doesn't leak folders/tables/workflows/agents into the shared eval
+		// project.
 		let restored = 0;
+		let dataTableIds: string[] = [];
 		let createdWorkflowIds: string[] = [];
+		let publishedWorkflowIds: string[] = [];
+		let createdAgentIds: string[] = [];
+		// Captured so the binding write is undoable: the message write happens after
+		// it, and without this a message failure left a binding pointing at agents the
+		// rollback had already deleted.
+		let priorMetadata: Record<string, unknown> | undefined;
+		let bindingWritten = false;
+		// Seed node credentials resolve within the thread's pinned credential view,
+		// so a same-named credential of a concurrent case is never picked.
+		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
 		try {
+			// Data tables before workflows: the workflows reference them, and their ids
+			// are rewritten to the recreated tables' ids during workflow restore.
+			const idMap = await this.evalThreadRestore.restoreDataTables(
+				payload.dataTables ?? [],
+				projectId,
+				{ uniquifyNames: payload.uniquifyNames ?? true },
+			);
+			dataTableIds = [...idMap.values()];
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
 				idMap,
+				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
+				folderIdMap,
 			);
+			// BEFORE the messages, which the rollback cannot undo: a refused activation
+			// (no trigger, webhook conflict, unresolved credential) must fail while the
+			// restore is still fully rollback-able. The rollback unpublishes.
+			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
+			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
+			// Built (and validated) BEFORE the message write: a rejected binding — two
+			// agents whose refs collide — must fail while the restore is still fully
+			// rollback-able, not after the messages have committed.
+			const binding =
+				createdAgentIds.length > 0
+					? seedAgentBuilderTargetMetadata(
+							agents.map((agent) => ({
+								agentId: agent.id,
+								projectId,
+								name: agent.config.name,
+								ref: agent.config.name,
+							})),
+							payload.messages,
+						)
+					: undefined;
+			// Bind the thread as the conversation that built these agents would have, or
+			// the live turn's first `build-agent` call is rejected as an unknown agentRef.
+			// BEFORE the messages, and undoable: the catch restores the prior metadata,
+			// so a message failure can't leave a binding pointing at deleted agents, and
+			// a binding failure can't leave messages referencing them.
+			if (binding) {
+				priorMetadata = await this.memoryService.getThreadMetadata(req.user.id, payload.threadId);
+				await this.memoryService.updateThread(payload.threadId, { metadata: binding });
+				bindingWritten = true;
+			}
 			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
 			if (payload.messages.length > 0) {
 				({ restored } = await this.memoryService.restoreThreadMessages(
@@ -1062,8 +1289,28 @@ export class InstanceAiController {
 				));
 			}
 		} catch (error) {
+			if (bindingWritten) {
+				try {
+					// `updateThread` MERGES, so the prior snapshot alone would leave the
+					// binding keys standing — this names them and restores each.
+					await this.memoryService.updateThread(payload.threadId, {
+						metadata: clearedAgentBuilderTargetMetadata(priorMetadata),
+					});
+				} catch {
+					// Best-effort, like the artifact deletes: never throw over the failure
+					// that triggered the rollback.
+				}
+			}
+			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
+			// Every seed this restore published, not only the created ones: a re-applied
+			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
+			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
+			// Last, with the contents moved to the root: a re-applied seed workflow
+			// (moved into the folder, not created) is kept by this rollback, so the
+			// folder must not take it down.
+			await this.evalThreadRestore.deleteFolders(folders, folderIdMap, projectId, req.user);
 			throw error;
 		}
 		return {
@@ -1072,6 +1319,8 @@ export class InstanceAiController {
 			restored,
 			workflowIds: workflows.map((workflow) => workflow.id),
 			dataTableIds,
+			agentIds: createdAgentIds,
+			folderIds,
 		};
 	}
 

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import TextWithHighlights from './TextWithHighlights.vue';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import { saveAs } from 'file-saver';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -247,6 +247,8 @@ const emit = defineEmits<{
 	font-size: var(--font-size--2xs);
 	margin-left: var(--spacing--2xs);
 	word-break: break-word;
+	/** Fixes DS-538 where text was optically un-aligned from baseline **/
+	transform: translateY(-1px);
 }
 
 .collapse-icon {

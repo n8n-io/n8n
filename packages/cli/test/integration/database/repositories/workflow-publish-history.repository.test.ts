@@ -11,6 +11,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import { v4 as uuid } from 'uuid';
 
 import { createUser } from '../../shared/db/users';
@@ -98,7 +99,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -107,7 +108,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -151,7 +152,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: user1.id,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -206,119 +207,133 @@ describe('WorkflowPublishHistoryRepository', () => {
 		});
 	});
 
-	describe('getVersionPublicationStates', () => {
-		const repository = () => Container.get(WorkflowPublishHistoryRepository);
-
-		/** Workflow-history createdAt drives the "later version" rule, so space the rows out. */
-		const addVersion = async (workflow: Awaited<ReturnType<typeof createWorkflow>>) => {
-			const versionId = uuid();
-			await createWorkflowHistory({ ...workflow, versionId });
-			await new Promise((resolve) => setTimeout(resolve, 10));
-			return versionId;
-		};
-
-		const activate = async (workflowId: string, versionId: string) => {
-			await repository().addRecord({ workflowId, versionId, event: 'activated', userId: null });
-		};
-
-		const deactivate = async (workflowId: string, versionId: string) => {
-			await repository().addRecord({ workflowId, versionId, event: 'deactivated', userId: null });
-		};
-
-		const stateOf = async (workflowId: string, versionId: string) => {
-			const states = await repository().getVersionPublicationStates(workflowId, [versionId]);
-			return states.get(versionId);
-		};
-
-		it('returns published when the version itself was activated', async () => {
+	describe('findPublisherUserId', () => {
+		// Republishing an older version means the newest activation is not
+		// necessarily the live one, so the version asked about wins.
+		it('prefers the publisher of the version it is asked about', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const older = await createUser();
+			const newer = await createUser();
+			const id1 = uuid();
+			const id2 = uuid();
 			const workflow = await createWorkflow();
-			const versionId = await addVersion(workflow);
-			await activate(workflow.id, versionId);
+			await createWorkflowHistory({ ...workflow, versionId: id1 });
+			await createWorkflowHistory({ ...workflow, versionId: id2 });
 
-			await expect(stateOf(workflow.id, versionId)).resolves.toBe('published');
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: id1,
+				event: 'activated',
+				userId: older.id,
+			});
+
+			// Keep `createdAt` ordering deterministic, as the tests above do.
+			await sleep(5);
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: id2,
+				event: 'activated',
+				userId: newer.id,
+			});
+
+			await expect(repository.findPublisherUserId(workflow.id, id1)).resolves.toBe(older.id);
+			// and without a version, the most recent activation wins
+			await expect(repository.findPublisherUserId(workflow.id)).resolves.toBe(newer.id);
 		});
 
-		it('returns published even after a later deactivation', async () => {
-			const workflow = await createWorkflow();
-			const versionId = await addVersion(workflow);
-			await activate(workflow.id, versionId);
-			await deactivate(workflow.id, versionId);
+		// Covers a published version whose history row has since been pruned.
+		it('falls back to the latest activation when the version has none', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const user = await createUser();
+			const workflow = await createWorkflowWithHistory();
 
-			await expect(stateOf(workflow.id, versionId)).resolves.toBe('published');
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: user.id,
+			});
+
+			const result = await repository.findPublisherUserId(workflow.id, 'a-version-never-activated');
+
+			expect(result).toBe(user.id);
 		});
 
-		it('returns not_published when nothing was ever activated', async () => {
-			const workflow = await createWorkflow();
-			const versionId = await addVersion(workflow);
+		it('falls back to the latest activation when no version is given', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const user = await createUser();
+			const workflow = await createWorkflowWithHistory();
 
-			await expect(stateOf(workflow.id, versionId)).resolves.toBe('not_published');
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: user.id,
+			});
+
+			const result = await repository.findPublisherUserId(workflow.id);
+
+			expect(result).toBe(user.id);
 		});
 
-		it('returns superseded when a later-created version was activated', async () => {
-			const workflow = await createWorkflow();
-			const versionId = await addVersion(workflow);
-			const laterVersionId = await addVersion(workflow);
-			await activate(workflow.id, laterVersionId);
+		// The FK nulls the column when the publisher is deleted.
+		it('returns undefined when the activation records no user', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const workflow = await createWorkflowWithHistory();
 
-			await expect(stateOf(workflow.id, versionId)).resolves.toBe('superseded');
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: null,
+			});
+
+			const result = await repository.findPublisherUserId(workflow.id, workflow.versionId);
+
+			expect(result).toBeUndefined();
 		});
 
-		it('returns superseded even after the later version was deactivated', async () => {
+		// A deleted publisher must leave the run unattributed. Falling through to the
+		// latest activation would hand it to whoever published a different version.
+		it('returns undefined when the version was activated by a since-deleted user', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const otherPublisher = await createUser();
+			const deletedPublishersVersion = uuid();
+			const otherVersion = uuid();
 			const workflow = await createWorkflow();
-			const versionId = await addVersion(workflow);
-			const laterVersionId = await addVersion(workflow);
-			await activate(workflow.id, laterVersionId);
-			await deactivate(workflow.id, laterVersionId);
+			await createWorkflowHistory({ ...workflow, versionId: deletedPublishersVersion });
+			await createWorkflowHistory({ ...workflow, versionId: otherVersion });
 
-			await expect(stateOf(workflow.id, versionId)).resolves.toBe('superseded');
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: deletedPublishersVersion,
+				event: 'activated',
+				userId: null,
+			});
+
+			// Keep `createdAt` ordering deterministic, as the tests above do.
+			await sleep(5);
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: otherVersion,
+				event: 'activated',
+				userId: otherPublisher.id,
+			});
+
+			await expect(
+				repository.findPublisherUserId(workflow.id, deletedPublishersVersion),
+			).resolves.toBeUndefined();
 		});
 
-		it('returns not_published when only an earlier-created version was activated', async () => {
-			const workflow = await createWorkflow();
-			const earlierVersionId = await addVersion(workflow);
-			const versionId = await addVersion(workflow);
-			await activate(workflow.id, earlierVersionId);
+		it('returns undefined for a workflow that was never activated', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const workflow = await createWorkflowWithHistory();
 
-			await expect(stateOf(workflow.id, versionId)).resolves.toBe('not_published');
-		});
+			const result = await repository.findPublisherUserId(workflow.id, workflow.versionId);
 
-		it('ignores activations of another workflow', async () => {
-			const workflow = await createWorkflow();
-			const versionId = await addVersion(workflow);
-			const otherWorkflow = await createWorkflow();
-			const otherVersionId = await addVersion(otherWorkflow);
-			await activate(otherWorkflow.id, otherVersionId);
-
-			await expect(stateOf(workflow.id, versionId)).resolves.toBe('not_published');
-		});
-
-		it('returns unknown when the pinned history row was pruned', async () => {
-			const workflow = await createWorkflow();
-			const versionId = await addVersion(workflow);
-			await Container.get(WorkflowHistoryRepository).delete({ versionId });
-
-			await expect(stateOf(workflow.id, versionId)).resolves.toBe('unknown');
-		});
-
-		it('resolves each requested version independently in one call', async () => {
-			const workflow = await createWorkflow();
-			const publishedVersionId = await addVersion(workflow);
-			const supersededVersionId = await addVersion(workflow);
-			const activatedVersionId = await addVersion(workflow);
-			const prunedVersionId = await addVersion(workflow);
-			await activate(workflow.id, publishedVersionId);
-			await activate(workflow.id, activatedVersionId);
-			await Container.get(WorkflowHistoryRepository).delete({ versionId: prunedVersionId });
-
-			const states = await repository().getVersionPublicationStates(workflow.id, [
-				publishedVersionId,
-				supersededVersionId,
-				prunedVersionId,
-			]);
-
-			expect(states.get(publishedVersionId)).toBe('published');
-			expect(states.get(supersededVersionId)).toBe('superseded');
-			expect(states.get(prunedVersionId)).toBe('unknown');
+			expect(result).toBeUndefined();
 		});
 	});
 

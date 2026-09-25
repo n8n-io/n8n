@@ -2,7 +2,7 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { Request, Response } from 'express';
 import fs from 'fs/promises';
 import { mock } from 'vitest-mock-extended';
-import type { IWebhookFunctions } from 'n8n-workflow';
+import type { INodeProperties, IWebhookFunctions } from 'n8n-workflow';
 
 import { Webhook } from '../Webhook.node';
 
@@ -58,7 +58,19 @@ describe('Test Webhook Node', () => {
 				type: 'boolean',
 				default: true,
 				displayOptions: { show: { authentication: ['n8nOAuth2'] } },
-				envFeatureFlag: 'WEBHOOK_PRIVATE_CREDENTIALS',
+			});
+		});
+
+		it('scopes the oauthClient option to n8nOAuth2 and forbids expressions, as the resolvers read it raw', () => {
+			const options = new Webhook().description.properties.find((p) => p.name === 'options');
+			const oauthClient = (options?.options as INodeProperties[]).find(
+				(o) => o.name === 'oauthClient',
+			);
+
+			expect(oauthClient).toMatchObject({
+				default: 'auto',
+				displayOptions: { show: { '/authentication': ['n8nOAuth2'] } },
+				noDataExpression: true,
 			});
 		});
 	});
@@ -221,10 +233,13 @@ describe('Test Webhook Node', () => {
 			req.query = {};
 			req.method = 'GET';
 			req.body = { hello: 'world' };
+			req.originalUrl = '/webhook/abc';
 			Object.defineProperty(req, 'ips', { value: [], configurable: true });
 			Object.defineProperty(req, 'ip', { value: '127.0.0.1', configurable: true });
 			res.writeHead.mockImplementation(() => res);
 			res.end.mockImplementation(() => res);
+			res.cookie.mockImplementation(() => res);
+			res.clearCookie.mockImplementation(() => res);
 		});
 
 		it('rejects a request with no bearer token and does not establish identity', async () => {
@@ -294,6 +309,50 @@ describe('Test Webhook Node', () => {
 			expect(result.workflowData).toBeDefined();
 			expect(result.workflowData?.[0][0].json.body).toEqual({ hello: 'world' });
 		});
+
+		// The node's only decision is the mode it hands to `n8nOAuth2Auth`: explicit
+		// `oauthClient` wins, an unset one defaults to auto from typeVersion 2.2 on and
+		// stays bearer-only below, so workflows saved before the option existed keep
+		// 401ing. The heuristics behind each mode are covered on the flow itself.
+		it.each([
+			[2.1, undefined, 401],
+			[2.2, undefined, 302],
+			[2.1, 'auto', 302],
+			[2.1, 'bearer', 401],
+			[2.1, 'browser', 302],
+		])(
+			'answers a tokenless browser GET on a %s node with oauthClient %s with a %s',
+			async (typeVersion, oauthClient, status) => {
+				req.headers.accept = 'text/html';
+				context.getNode.mockReturnValue({
+					type: 'n8n-nodes-base.webhook',
+					typeVersion,
+					name: 'Webhook',
+				} as any);
+				context.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'options') return oauthClient ? { oauthClient } : {};
+					if (paramName === 'responseMode') return 'onReceived';
+					if (paramName === 'authentication') return 'n8nOAuth2';
+					if (paramName === 'httpMethod') return 'GET';
+					return undefined;
+				});
+				context.beginN8nOAuth2Flow.mockResolvedValue('https://n8n.test/oauth/authorize?…');
+
+				const result = await node.webhook(context);
+
+				expect(res.writeHead).toHaveBeenCalledWith(status, expect.any(Object));
+				if (status === 302) {
+					expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(
+						`${WEBHOOK_URL}?method=GET`,
+						expect.any(Object),
+					);
+				} else {
+					expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+				}
+				expect(context.establishTriggerIdentity).not.toHaveBeenCalled();
+				expect(result).toEqual({ noWebhookResponse: true });
+			},
+		);
 	});
 
 	describe('sensitiveOutputFields', () => {

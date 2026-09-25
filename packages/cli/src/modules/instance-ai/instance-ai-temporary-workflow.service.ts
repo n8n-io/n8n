@@ -1,13 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * Owns the lifecycle of the throwaway workflows the AI builder creates while
@@ -147,7 +144,7 @@ export class InstanceAiTemporaryWorkflowService {
 	}
 
 	private async archive(threadId: string, user: User, workflowIds: Set<string>): Promise<string[]> {
-		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
+		const { configEvalsEnabled } = await this.adapterService.resolveExperimentGates(user);
 		const adapter = this.adapterService.createContext(user, { threadId, configEvalsEnabled });
 		const archived: string[] = [];
 		for (const workflowId of workflowIds) {

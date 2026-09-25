@@ -3,6 +3,7 @@ import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
+	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 
 export type ResourceEntry = {
@@ -26,6 +27,13 @@ export type ResourceEntry = {
 	pending?: boolean;
 };
 
+export interface TransientWorkflowArtifactReference {
+	referenceId: string;
+	workflowId: string;
+	workflowName: string;
+	projectId?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers (defined before use to satisfy no-use-before-define)
 // ---------------------------------------------------------------------------
@@ -39,8 +47,15 @@ interface Collections {
 	linkableByName: Map<string, ResourceEntry>;
 }
 
+/**
+ * A blank string is treated as absent. Every caller uses the result as the head
+ * of a fallback chain, so a blank name from a patch call would otherwise beat
+ * the known name and re-key the indexes under an empty string.
+ */
 function optionalString(val: unknown): string | undefined {
-	return typeof val === 'string' ? val : undefined;
+	if (typeof val !== 'string') return undefined;
+	const trimmed = val.trim();
+	return trimmed === '' ? undefined : trimmed;
 }
 
 type RecordProducedOptions = {
@@ -139,7 +154,10 @@ function entryFromAgentBuilderTarget(
 	const entry: ResourceEntry = {
 		type: 'agent',
 		id: target.id,
-		name: optionalString(target.name) ?? existing?.name ?? fallbackName,
+		name:
+			(existing && !existing.pending && existing.name !== 'Untitled' ? existing.name : undefined) ??
+			optionalString(target.name) ??
+			fallbackName,
 	};
 	const projectId = optionalString(target.projectId) ?? existing?.projectId;
 	if (projectId !== undefined) entry.projectId = projectId;
@@ -190,9 +208,8 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		recordProduced(col, { type: 'workflow', id: workflowId, name });
 	}
 
-	// workflows action=get-json returns the workflow document itself, not under
-	// a `workflow` key. Surface it so existing workflows loaded for editing can
-	// be previewed even before a later update result is observed.
+	// Historical workflows action=get-json events return the workflow document itself,
+	// not under a `workflow` key. Keep them available when replaying stored threads.
 	if (tc.toolName === 'workflows' && Array.isArray(result.nodes)) {
 		const entry = entryFromListItem('workflow', result);
 		if (entry) recordProduced(col, entry);
@@ -220,7 +237,13 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	// the name, so fall back to the existing entry before regressing to
 	// 'Untitled'. projectId is preserved from the agent-spawned entry by
 	// recordProduced's merge.
-	if (tc.toolName === 'build-agent' && typeof result.agentId === 'string') {
+	if (
+		tc.toolName === 'build-agent' &&
+		typeof result.agentId === 'string' &&
+		(result.agentChange === 'created' ||
+			result.agentChange === 'updated' ||
+			result.agentChange === undefined)
+	) {
 		const existing = col.produced.get(result.agentId);
 		recordProduced(col, {
 			type: 'agent',
@@ -312,6 +335,9 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	const existing = col.produced.get(target.id);
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
 	if (target.type === 'agent') {
+		// New events report the target before the result is known. Only the
+		// build-agent result can confirm that this Agent changed.
+		if (node.activity !== undefined && (!existing || existing.pending)) return;
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
 		if (entry) recordProduced(col, entry);
 		return;
@@ -320,10 +346,12 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 }
 
 function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
-	extractFromTargetResource(node, col);
+	const deferAgentTarget = node.targetResource?.type === 'agent' && node.activity !== undefined;
+	if (!deferAgentTarget) extractFromTargetResource(node, col);
 	for (const tc of node.toolCalls) {
 		extractFromToolCall(tc, col);
 	}
+	if (deferAgentTarget) extractFromTargetResource(node, col);
 	for (const child of node.children) {
 		collectFromAgentNode(child, col);
 	}
@@ -343,11 +371,24 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				name: attachment.name ?? 'Untitled',
 			});
 		} else if (attachment.type === 'agent') {
+			recordProduced(
+				col,
+				{
+					type: 'agent',
+					id: attachment.id,
+					name: attachment.name ?? 'Untitled',
+					projectId: attachment.projectId,
+					...(attachment.pending ? { pending: true } : {}),
+				},
+				{ linkable: !attachment.pending },
+			);
+		} else if (attachment.type === 'nodes') {
+			const workflowName = optionalString(attachment.workflowName);
+			if (!workflowName) continue;
 			recordProduced(col, {
-				type: 'agent',
-				id: attachment.id,
-				name: attachment.name ?? 'Untitled',
-				projectId: attachment.projectId,
+				type: 'workflow',
+				id: attachment.workflowId,
+				name: workflowName,
 			});
 		}
 	}
@@ -363,7 +404,8 @@ function enrichAgentFromBuilderTarget(
 	// Event-derived names are canonical; the persisted metadata name only fills
 	// in when no run event carried one (e.g. historical threads whose events
 	// aren't loaded). The 'Untitled' placeholder is not a real name.
-	const eventName = existing && existing.name !== 'Untitled' ? existing.name : undefined;
+	const eventName =
+		existing && !existing.pending && existing.name !== 'Untitled' ? existing.name : undefined;
 	recordProduced(
 		col,
 		{
@@ -384,12 +426,56 @@ function enrichWorkflowNames(
 		if (entry.type !== 'workflow') continue;
 		const storeName = workflowNameLookup(entry.id);
 		if (storeName && storeName !== entry.name) {
-			col.byName.delete(entry.name.toLowerCase());
-			col.linkableByName.delete(entry.name.toLowerCase());
+			const previousKey = entry.name.toLowerCase();
+			const wasLinkable = col.linkableByName.get(previousKey)?.id === entry.id;
+			col.byName.delete(previousKey);
+			col.linkableByName.delete(previousKey);
 			entry.name = storeName;
 			col.byName.set(storeName.toLowerCase(), entry);
-			col.linkableByName.set(storeName.toLowerCase(), entry);
+			if (wasLinkable) col.linkableByName.set(storeName.toLowerCase(), entry);
 		}
+	}
+}
+
+/**
+ * Surface a workflow the editor handed off before any message carries it, so
+ * the canvas tab opens on arrival. Skipped once a message attachment (or any
+ * other producer) already knows this id.
+ */
+function enrichWorkflowFromPendingAttachment(
+	col: Collections,
+	pending: InstanceAiWorkflowAttachment | undefined,
+): void {
+	if (!pending) return;
+	if (col.produced.has(pending.id)) return;
+
+	recordProduced(
+		col,
+		{
+			type: 'workflow',
+			id: pending.id,
+			name: optionalString(pending.name) ?? 'Untitled',
+		},
+		{ linkable: true },
+	);
+}
+
+function enrichWorkflowsFromTransientReferences(
+	col: Collections,
+	references: readonly TransientWorkflowArtifactReference[],
+): void {
+	for (const reference of references) {
+		if (col.produced.has(reference.workflowId)) continue;
+		recordProduced(
+			col,
+			{
+				type: 'workflow',
+				id: reference.workflowId,
+				name: reference.workflowName,
+				...(reference.projectId ? { projectId: reference.projectId } : {}),
+			},
+			{ linkable: false },
+		);
 	}
 }
 
@@ -451,6 +537,9 @@ export function useResourceRegistry(
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
+	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined,
+	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
+	agentBuilderTargets?: () => AgentBuilderTargetMetadata[],
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -476,7 +565,15 @@ export function useResourceRegistry(
 			}
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
+			for (const target of agentBuilderTargets?.() ?? []) {
+				const existing = col.produced.get(target.agentId);
+				if (existing?.type === 'agent' && !existing.pending) {
+					recordProduced(col, { ...existing, projectId: target.projectId }, { linkable: false });
+				}
+			}
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
+			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
+			enrichWorkflowsFromTransientReferences(col, transientWorkflowReferences?.() ?? []);
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);

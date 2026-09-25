@@ -421,4 +421,5 @@ export const SDK_INLINE_CONSTRAINTS: readonly string[] = [
 	'No destructuring in declarations — declare each value with its own `const`.',
 	'No variable reassignment — only property assignment (`obj.prop = value`) is allowed.',
 	"No computed/dynamic member access (`obj[expr]`); use static names. Literal keys like `obj['a']` or `arr[0]` are fine.",
+	'`JSON.stringify(value)` takes no replacer argument — pass `null` if you need the indentation argument.',
 ];

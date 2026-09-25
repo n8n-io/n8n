@@ -1,7 +1,7 @@
 import type { User } from '@n8n/db';
 
 import type { PackageWriter } from '../../io/package-writer';
-import type { VariableMissingMode } from '../../n8n-packages.types';
+import type { VariableConflictPolicy, VariableMissingMode } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 
@@ -32,6 +32,7 @@ export type PlacedVariableRequirement = PackageVariableRequirement & {
 export interface VariableImportRequest {
 	requirements: PlacedVariableRequirement[] | undefined;
 	missingMode: VariableMissingMode;
+	conflictPolicy: VariableConflictPolicy;
 }
 
 export interface VariableResolutionFailure {
@@ -43,6 +44,20 @@ export interface VariableCreation {
 	name: string;
 	projectId?: string;
 	value?: string;
+	usedByWorkflows: string[];
+}
+
+export interface VariableConflict {
+	name: string;
+	projectId?: string;
+	usedByWorkflows: string[];
+}
+
+export interface VariableOverwrite {
+	variableId: string;
+	name: string;
+	projectId?: string;
+	value: string;
 	usedByWorkflows: string[];
 }
 
@@ -84,6 +99,24 @@ export function dedupeCreationsByDestination(creations: VariableCreation[]): Var
 	return [...byDestination.values()];
 }
 
+/**
+ * Scopes resolve independently, so two can land on one row — a global neither shadows — and disagree
+ * about its value, where the last write would silently win.
+ */
+export function divergentOverwrites(overwrites: VariableOverwrite[]): VariableConflict[] {
+	const firstValueByRow = new Map<string, string>();
+	const divergent = new Set<string>();
+	for (const { variableId, value } of overwrites) {
+		const seen = firstValueByRow.get(variableId);
+		if (seen === undefined) firstValueByRow.set(variableId, value);
+		else if (seen !== value) divergent.add(variableId);
+	}
+
+	return overwrites
+		.filter(({ variableId }) => divergent.has(variableId))
+		.map(({ variableId, value, ...conflict }) => conflict);
+}
+
 /** Reports the planned creations that do not fit the remaining quota. `quota` of `null` means unlimited. */
 export function computeVariableLimitFailure(
 	creations: VariableCreation[],
@@ -104,10 +137,13 @@ export interface VariableImportPlan {
 	matched: string[];
 	missing: VariableResolutionFailure[];
 	creations: VariableCreation[];
+	conflicts: VariableConflict[];
+	overwrites: VariableOverwrite[];
 }
 
 export interface VariableApplyResult {
 	created: string[];
 	stubbed: string[];
 	skippedExisting: string[];
+	updated: string[];
 }
