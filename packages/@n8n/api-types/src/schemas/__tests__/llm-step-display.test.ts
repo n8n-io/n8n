@@ -586,12 +586,17 @@ describe('llm-step-display', () => {
 
 		it('uses the OpenAI prompt cache retention', () => {
 			const input = { providerOptions: { openai: { promptCacheRetention: '24h' } } };
-			const breaks = parseStepCacheBreaks([
+			const withinRetention = parseStepCacheBreaks([
 				step(0, 30000, { input, timestamp: '2026-01-01T00:00:00.000Z' }),
 				step(0, 30000, { input, timestamp: '2026-01-01T02:00:00.000Z' }),
 			]);
+			const pastRetention = parseStepCacheBreaks([
+				step(0, 30000, { input, timestamp: '2026-01-01T00:00:00.000Z' }),
+				step(0, 30000, { input, timestamp: '2026-01-02T01:00:00.000Z' }),
+			]);
 
-			expect(breaks[1]?.cause).toBe('messages');
+			expect(withinRetention[1]?.cause).toBe('messages');
+			expect(pastRetention[1]).toMatchObject({ cause: 'expired', cacheTtlMinutes: 1440 });
 		});
 
 		it('does not report expiry when the cache lifetime is unknown', () => {
