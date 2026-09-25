@@ -201,9 +201,7 @@ watch(
 
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
-	box-shadow:
-		var(--shadow--md),
-		inset var(--shadow--outline);
+	box-shadow: var(--shadow--md), var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--popover--offset--origin-x) var(--popover--offset--origin-y);
 
