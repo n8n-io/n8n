@@ -36,6 +36,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -732,15 +733,7 @@ function syncAgentIdentityFromConfig(c: AgentJsonConfig) {
 	};
 }
 
-const projectName = computed<string | null>(() => {
-	if (projectsStore.personalProject?.id === projectId.value) {
-		return locale.baseText('projects.menu.personal');
-	}
-	const current = projectsStore.currentProject;
-	if (current && current.id === projectId.value) return current.name ?? null;
-	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
-	return match?.name ?? null;
-});
+const { projectName, projectIcon } = useAgentProjectBreadcrumb(projectId);
 
 // A fetch/mutation captures its target agent + project at call time. By the
 // time an awaited call resolves the user may have switched to a different agent
@@ -2649,6 +2642,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:project-id="projectId"
 			:agent-id="agentId"
 			:project-name="projectName"
+			:project-icon="projectIcon"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
 			:before-revert-to-published="beforeRevertToPublished"

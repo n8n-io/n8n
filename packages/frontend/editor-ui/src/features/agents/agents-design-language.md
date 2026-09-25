@@ -1,8 +1,7 @@
 # Agent design language
 
-This document is the source of truth for Agent-only interface patterns in this
-module. It starts with modal patterns. Add other reusable Agent patterns as the
-interface develops.
+This document defines reusable Agent interface patterns in this module. Add
+patterns as the interface develops.
 
 ## Scope
 
@@ -11,6 +10,12 @@ interface develops.
 - Do not add or change a global Design System primitive for an Agent-only need.
 - Put all user-facing text in i18n.
 - Test responsive layouts at 375 by 667 pixels and in light and dark themes.
+
+## Breadcrumbs
+
+Show the project icon before the project name in Agent builder and session
+timeline breadcrumbs. Use the same icon as the owning project. Show the user
+icon for a personal project.
 
 ## Modal patterns
 
