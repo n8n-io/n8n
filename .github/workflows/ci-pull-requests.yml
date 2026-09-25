@@ -62,21 +62,6 @@ jobs:
           # Include recent history so the PR filter can reuse the checkout.
           fetch-depth: 200
 
-      - name: Mount seeded pnpm store
-        if: github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && vars.RUNNER_PROVIDER != 'github'
-        uses: useblacksmith/stickydisk@94697d49e77d0dd78b77deb85ad3de63a28b4b8a # v1
-        with:
-          key: n8n-io-n8n-pnpm-pilot-linux-amd64-v11
-          path: /pnpm-sticky-store
-          commit: 'false'
-
-      - name: Check seeded pnpm store
-        if: github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && vars.RUNNER_PROVIDER != 'github'
-        run: |
-          mountpoint -q /pnpm-sticky-store
-          test "$(pnpm --store-dir /pnpm-sticky-store store path --silent)" = /pnpm-sticky-store/v11
-          du -sh /pnpm-sticky-store
-
       - name: Capture commit SHA for cache consistency
         id: commit-sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -249,7 +234,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && vars.RUNNER_PROVIDER != 'github' }}
-          install-command: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && vars.RUNNER_PROVIDER != 'github' && 'pnpm --store-dir /pnpm-sticky-store install --frozen-lockfile' || 'pnpm install --frozen-lockfile' }}
+          use-pnpm-sticky-disk: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && vars.RUNNER_PROVIDER != 'github' }}
           build-command: ${{ fromJSON(steps.ci-filter.outputs.results).ci && 'pnpm build' || 'pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...' }}
 
       - name: Record pilot setup timing

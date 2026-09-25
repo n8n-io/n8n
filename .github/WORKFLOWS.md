@@ -664,6 +664,7 @@ Composite actions in `.github/actions/`:
 inputs:
   node-version:        # default: '26.5.1'
   preinstalled-toolchain: # default: 'false'; use with the CI toolchain image
+  use-pnpm-sticky-disk: # default: 'false'; requires the prepared Blacksmith job container
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
@@ -710,8 +711,9 @@ wider rollout.
 The pilot also runs an independent `Pilot pnpm sticky disk` job on Blacksmith.
 It mounts a pnpm store inside the container and installs without lifecycle
 scripts. Blacksmith branch protection discards writes from pull request jobs.
-The pilot `Install & Build` job reads the same store. Seed it with
-`ci-seed-pnpm-sticky-disk.yml` on `master` before measuring the full PR run.
+The pilot `Install & Build` and `Backend Unit Tests` jobs opt into the same
+read-only store through `setup-nodejs`. Seed it with `ci-seed-pnpm-sticky-disk.yml`
+on `master` before measuring the full PR run.
 Compare mount and install time with the cold container install.
 
 Build and check the image locally with:

@@ -43,7 +43,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v2","credentials":{{"username":"{0}","password":"{1}"}}}}', github.actor, github.token)) || null }}
+    container: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' && vars.RUNNER_PROVIDER != 'github' && fromJSON(format('{{"image":"ghcr.io/n8n-io/ci-toolchain:node26.5.1-pnpm12.4.2-pw1.62.1-sc1.5.20-v2","credentials":{{"username":"{0}","password":"{1}"}},"options":"--privileged --env VM_ID --env GITHUB_REPO_NAME --env BLACKSMITH_STICKYDISK_TOKEN --env BLACKSMITH_INSTALLATION_MODEL_ID --env BLACKSMITH_REGION"}}', github.actor, github.token)) || null }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -57,7 +57,8 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
-          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' }}
+          preinstalled-toolchain: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' && vars.RUNNER_PROVIDER != 'github' }}
+          use-pnpm-sticky-disk: ${{ github.event_name == 'pull_request' && github.head_ref == 'ci/pilot-toolchain-pr' && github.event.pull_request.head.repo.full_name == 'n8n-io/n8n' && inputs.nodeVersion == '26.5.1' && vars.RUNNER_PROVIDER != 'github' }}
 
       # Confluent publishes prebuilds up to Node 24 only.
       - name: Verify Kafka native binding installed

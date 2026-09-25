@@ -14,6 +14,10 @@ inputs:
     description: 'Use Node, pnpm and SafeChain already installed in the CI toolchain image.'
     required: false
     default: 'false'
+  use-pnpm-sticky-disk:
+    description: 'Mount the seeded Blacksmith pnpm store inside the CI toolchain container.'
+    required: false
+    default: 'false'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -113,6 +117,30 @@ runs:
           echo "::error::pnpm ${EXPECTED_PNPM_VERSION} is not active (got ${ACTUAL_PNPM_VERSION})"
           exit 1
         fi
+
+    - name: Verify sticky disk uses the CI toolchain
+      if: inputs.use-pnpm-sticky-disk == 'true' && inputs.preinstalled-toolchain != 'true'
+      shell: bash
+      run: |
+        echo '::error::use-pnpm-sticky-disk requires preinstalled-toolchain'
+        exit 1
+
+    - name: Mount seeded pnpm store
+      if: inputs.use-pnpm-sticky-disk == 'true' && inputs.preinstalled-toolchain == 'true' && inputs.install-command != ''
+      uses: useblacksmith/stickydisk@94697d49e77d0dd78b77deb85ad3de63a28b4b8a # v1
+      with:
+        key: n8n-io-n8n-pnpm-pilot-linux-amd64-v11
+        path: /pnpm-sticky-store
+        commit: 'false'
+
+    - name: Use seeded pnpm store
+      if: inputs.use-pnpm-sticky-disk == 'true' && inputs.preinstalled-toolchain == 'true' && inputs.install-command != ''
+      shell: bash
+      run: |
+        mountpoint -q /pnpm-sticky-store
+        pnpm config set --global storeDir /pnpm-sticky-store
+        test "$(pnpm store path --silent)" = /pnpm-sticky-store/v11
+        du -sh /pnpm-sticky-store
 
     # Save before later job failures can prevent cache creation.
     - name: Save pnpm executable
