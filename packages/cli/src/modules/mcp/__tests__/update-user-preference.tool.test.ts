@@ -161,6 +161,37 @@ describe('update_user_preference MCP tool', () => {
 		);
 	});
 
+	// The call named a scope, so the refusal can say which one. The field is absent only for
+	// a call that named no usable scope.
+	test('names the scope the call asked for when it refuses a project move with no project', async () => {
+		const { telemetry, tool } = createMocks();
+
+		await tool.handler({ id: 'pref-1', scope: 'project' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
+			expect.objectContaining({ surface: 'mcp', scope_type: 'project' }),
+		);
+	});
+
+	// Both events describe the same click, so one cannot call it a move and the other not.
+	test('counts a change of project as a change of scope on the update event', async () => {
+		const { aiPreferenceService, telemetry, tool } = createMocks();
+		aiPreferenceService.getById.mockResolvedValue(dto({ userId: null, projectId: 'p-1' }));
+		aiPreferenceService.update.mockResolvedValue(dto({ userId: null, projectId: 'p-2' }));
+
+		await tool.handler({ id: 'pref-1', scope: 'project', projectId: 'p-2' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE,
+			expect.objectContaining({ scope_changed: true, project_id: 'p-2' }),
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
+			expect.objectContaining({ scope_changed: true }),
+		);
+	});
+
 	test('moves the row through the same update the settings page uses, and reports the move', async () => {
 		const { aiPreferenceService, telemetry, tool } = createMocks();
 		aiPreferenceService.update.mockResolvedValue(dto({ userId: null, projectId: 'p-1' }));

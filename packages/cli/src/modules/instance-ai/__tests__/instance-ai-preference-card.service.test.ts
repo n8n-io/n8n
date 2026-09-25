@@ -277,6 +277,11 @@ describe('InstanceAiPreferenceCardService', () => {
 				scope_changed: true,
 			},
 		);
+		// Both events describe the same click, so the update event agrees that it moved.
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE,
+			expect.objectContaining({ scope_changed: true, project_id: 'p-2' }),
+		);
 	});
 
 	it('edit appends nothing when the update throws', async () => {

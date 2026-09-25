@@ -7369,6 +7369,8 @@
 	"instanceAi.preferenceCard.appliesTo": "Applies to {scope}",
 	"instanceAi.preferenceCard.scope.project": "This project · {name}",
 	"instanceAi.preferenceCard.scope.projectFallback": "This project",
+	"instanceAi.preferenceCard.scope.otherProject": "{name}",
+	"instanceAi.preferenceCard.scope.otherProjectFallback": "Another project",
 	"instanceAi.preferenceCard.edit": "Edit",
 	"instanceAi.preferenceCard.manage": "Manage preferences",
 	"instanceAi.preferenceCard.modal.title": "Edit preference",

@@ -274,8 +274,49 @@ describe('PreferenceCard', () => {
 			);
 		});
 
-		it('falls back to "This project" for a project the store does not know', () => {
+		it('falls back to "This project" for the thread\'s own project when the store does not know it', () => {
 			// Review focus 5: an unknown project must not throw or show an id.
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'project',
+					projectId: 'thread-project',
+				},
+			});
+
+			// `thread-project` is the thread's, so "this project" is true of it even unnamed.
+			mockedStore(useProjectsStore).myProjects = [] as never;
+
+			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
+				'instanceAi.preferenceCard.scope.project',
+			);
+		});
+
+		// Only the thread's project is "this project". A row can sit in another one, and saying
+		// "this project" of both would name two different places the same way.
+		it('names a project that is not the thread\'s without calling it "this project"', () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.myProjects = [
+				...projectsState[STORES.PROJECTS].myProjects,
+				{ id: 'other-project', name: 'Sales', type: 'team', scopes: [] },
+			] as never;
+			renderActive({
+				preferenceCard: {
+					state: 'edited',
+					content: STORED_TEXT,
+					scope: 'project',
+					projectId: 'other-project',
+				},
+			});
+
+			const scope = screen.getByTestId('instance-ai-preference-card-scope');
+			expect(scope).toHaveTextContent('instanceAi.preferenceCard.scope.otherProject');
+			expect(scope).toHaveTextContent('Sales');
+			expect(scope).not.toHaveTextContent('instanceAi.preferenceCard.scope.project:');
+		});
+
+		it("falls back to a neutral label for an unknown project that is not the thread's", () => {
 			renderActive({
 				preferenceCard: {
 					state: 'edited',
@@ -286,7 +327,7 @@ describe('PreferenceCard', () => {
 			});
 
 			expect(screen.getByTestId('instance-ai-preference-card-scope')).toHaveTextContent(
-				'instanceAi.preferenceCard.scope.projectFallback',
+				'instanceAi.preferenceCard.scope.otherProjectFallback',
 			);
 		});
 

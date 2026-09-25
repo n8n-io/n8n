@@ -108,7 +108,7 @@ function optionFor(value: string): ScopeOption {
 	const project = projects.find((candidate) => candidate.id === projectId);
 	return {
 		value,
-		label: preferenceScopeLabel(i18n, 'project', projectId, projects),
+		label: preferenceScopeLabel(i18n, 'project', projectId, projects, thread.projectId),
 		icon: project?.type === 'personal' ? USER_ICON : (project?.icon ?? DEFAULT_PROJECT_ICON),
 	};
 }

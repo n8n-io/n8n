@@ -20,6 +20,7 @@ import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useContextStore } from '@/features/settings/context/context.store';
 
+import { useThread } from '../instanceAi.store';
 import { resolvePreferenceCard, resolvePreferenceRejection } from '../preferenceCard.utils';
 import { preferenceScopeLabel } from '../preferenceScope.utils';
 import PreferenceEditModal from './PreferenceEditModal.vue';
@@ -42,6 +43,7 @@ const isUnconfirmed = computed(() => rejection.value?.reason === 'interrupted');
 
 const projectsStore = useProjectsStore();
 const contextStore = useContextStore();
+const thread = useThread();
 
 /**
  * The card's fact says where its own last write put the row. A move made on the settings
@@ -85,6 +87,7 @@ const scopeLabel = computed(() =>
 				target.value.scope,
 				target.value.projectId,
 				projectsStore.myProjects,
+				thread.projectId,
 			)
 		: '',
 );
@@ -134,7 +137,9 @@ watch(
 		if (reportedSeen.value || !value || readOnly) return;
 		reportedSeen.value = true;
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD, {
-			scope_type: value.scope,
+			// What the card shows, which is the row when it is known. Reporting the fact would
+			// name a scope the person on the screen is not looking at.
+			scope_type: target.value?.scope ?? value.scope,
 			state: value.state,
 		});
 	},

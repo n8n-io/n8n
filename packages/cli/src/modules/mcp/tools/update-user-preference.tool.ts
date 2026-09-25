@@ -98,6 +98,9 @@ export const createUpdateUserPreferenceTool = (
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
 				surface: 'mcp',
 				reason: toRejectedReason(reason),
+				// The scope the call named, when it named one. The field is absent only for a
+				// call that named no usable scope, which is what the event documents.
+				...(requestedScope !== undefined ? { scope_type: requestedScope } : {}),
 				...(textLength !== undefined ? { text_length: textLength } : {}),
 			});
 			telemetryPayload.results = { success: false, error: message, data: { reason } };
@@ -202,7 +205,9 @@ export const createUpdateUserPreferenceTool = (
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
 			scope_type: scope,
 			text_length: preference.content.length,
-			scope_changed: beforeScope !== scope,
+			// The same answer the move event gives. A change of project is a move, and reading
+			// only the scope kind would call it no change on one event and a move on the other.
+			scope_changed: moved,
 			...(preference.projectId ? { project_id: preference.projectId } : {}),
 			surface: 'mcp',
 		});

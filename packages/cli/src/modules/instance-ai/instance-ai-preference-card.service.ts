@@ -101,6 +101,14 @@ export class InstanceAiPreferenceCardService {
 			userId,
 		});
 		const after = aiPreferenceTargetOf(preference);
+		// The tool offered `user`; a later edit may have moved the row already, so the
+		// offered scope is the one this edit found, not always `user`.
+		//
+		// An edit that named no scope moved nothing, so it reports no move. The row may still
+		// differ from the one the read above found, because another writer can change it in
+		// between, and reading that as a move would credit this edit with someone else's.
+		const moved =
+			named && (before.scope !== after.scope || preference.projectId !== projectIdOf(before));
 		const event = this.publish(threadId, {
 			type: 'preference-card',
 			runId,
@@ -125,18 +133,12 @@ export class InstanceAiPreferenceCardService {
 		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
 			scope_type: after.scope,
 			text_length: preference.content.length,
-			scope_changed: named && before.scope !== after.scope,
+			// The same answer the move event gives, so a change of project cannot read as no
+			// change here and as a move there.
+			scope_changed: moved,
 			...(preference.projectId ? { project_id: preference.projectId } : {}),
 			surface: 'aia',
 		});
-		// The tool offered `user`; a later edit may have moved the row already, so the
-		// offered scope is the one this edit found, not always `user`.
-		//
-		// An edit that named no scope moved nothing, so it reports no move. The row may still
-		// differ from the one the read above found, because another writer can change it in
-		// between, and reading that as a move would credit this edit with someone else's.
-		const moved =
-			named && (before.scope !== after.scope || preference.projectId !== projectIdOf(before));
 		if (moved) {
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
 				surface: 'aia',

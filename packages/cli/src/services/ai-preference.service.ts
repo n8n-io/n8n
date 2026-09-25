@@ -408,8 +408,6 @@ export class AiPreferenceService {
 		}
 	}
 
-	/** Decided from the ids alone, before any permission check. On an edit `request.userId`
-	 *  is always set (see `assertEditNamesOwner`), so the `?? user.id` only serves a create. */
 	/** The row's own target, as a request. Keeps a scope-less update exactly where it is. */
 	private keepTargetOf(row: AiPreference, content: string): AiPreferenceRequestDto {
 		return {
@@ -420,6 +418,8 @@ export class AiPreferenceService {
 		};
 	}
 
+	/** Decided from the ids alone, before any permission check. On an edit `request.userId`
+	 *  is always set (see `assertEditNamesOwner`), so the `?? user.id` only serves a create. */
 	private isMove(user: User, row: AiPreference, request: AiPreferenceRequestDto): boolean {
 		const userId = request.scope === 'user' ? (request.userId ?? user.id) : null;
 		const projectId = request.scope === 'project' ? (request.projectId ?? null) : null;
