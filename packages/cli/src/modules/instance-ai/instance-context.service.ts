@@ -705,8 +705,9 @@ export class InstanceContextService {
 				surface: 'mcp',
 				projectIds: [projectId],
 				credentialProjectIds,
-				allowedCategories:
-					credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+				allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+					? ['workflow', 'credential']
+					: ['workflow'],
 				runsVisible: scope.executionGranted,
 			};
 		}
@@ -728,8 +729,9 @@ export class InstanceContextService {
 				surface: 'mcp',
 				projectIds: 'all-projects',
 				credentialProjectIds,
-				allowedCategories:
-					credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+				allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+					? ['workflow', 'credential']
+					: ['workflow'],
 				runsVisible: scope.executionGranted,
 			};
 		}
@@ -752,8 +754,9 @@ export class InstanceContextService {
 			surface: 'mcp',
 			projectIds,
 			credentialProjectIds,
-			allowedCategories:
-				credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+			allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+				? ['workflow', 'credential']
+				: ['workflow'],
 			runsVisible: scope.executionGranted,
 		};
 	}
@@ -855,6 +858,10 @@ export class InstanceContextService {
 	}
 }
 
+function hasCredentialProjectScope(projectIds: ActivityProjectScope): boolean {
+	return projectIds === 'all-projects' || projectIds.length > 0;
+}
+
 /**
  * The category a read should filter on. `undefined` means no filter; `null` means refuse the read
  * outright, because the caller asked for exactly the category they may not see.
@@ -870,9 +877,7 @@ function resolveCategory(
 	if (category !== undefined && !scope.allowedCategories.includes(category)) return null;
 	if (scope.surface !== 'mcp') return category;
 
-	const seesSomeCredentials =
-		scope.credentialProjectIds === 'all-projects' || scope.credentialProjectIds.length > 0;
-	if (seesSomeCredentials) return category;
+	if (hasCredentialProjectScope(scope.credentialProjectIds)) return category;
 
 	if (category === 'credential') return null;
 	// No category asked for, and only one of the two is visible anywhere — so name it rather than
