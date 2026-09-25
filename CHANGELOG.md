@@ -1,3 +1,11 @@
+## [2.41.3](https://github.com/n8n-io/n8n/compare/n8n@2.41.2...n8n@2.41.3) (2026-09-25)
+
+
+### Bug Fixes
+
+* **core:** Propagate project span attributes to node spans ([#39456](https://github.com/n8n-io/n8n/issues/39456)) ([29afe51](https://github.com/n8n-io/n8n/commit/29afe517b3a6954a6070c13e26dde9e9d648bfe3))
+
+
 ## [2.41.2](https://github.com/n8n-io/n8n/compare/n8n@2.41.1...n8n@2.41.2) (2026-09-24)
 
 
