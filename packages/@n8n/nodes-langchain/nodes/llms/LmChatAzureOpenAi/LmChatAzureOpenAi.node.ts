@@ -28,7 +28,7 @@ export class LmChatAzureOpenAi implements INodeType {
 	};
 
 	description: INodeTypeDescription = {
-		displayName: 'Azure OpenAI Chat Model',
+		displayName: 'Azure AI Foundry Chat Model',
 
 		name: 'lmChatAzureOpenAi',
 		icon: 'file:azure.svg',
@@ -36,7 +36,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		version: 1,
 		description: 'For advanced usage with an AI chain',
 		defaults: {
-			name: 'Azure OpenAI Chat Model',
+			name: 'Azure AI Foundry Chat Model',
 		},
 		codex: {
 			categories: ['AI'],
@@ -51,6 +51,9 @@ export class LmChatAzureOpenAi implements INodeType {
 					},
 				],
 			},
+			// 'Azure OpenAI' keeps the old label findable. The rest are the Foundry catalog this
+			// node reaches beyond OpenAI models.
+			alias: ['Azure OpenAI', 'Azure AI Foundry', 'Foundry', 'Llama', 'Mistral', 'DeepSeek'],
 		},
 
 		inputs: [],

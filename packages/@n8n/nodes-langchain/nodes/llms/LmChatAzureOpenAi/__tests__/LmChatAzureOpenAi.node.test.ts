@@ -47,6 +47,31 @@ describe('LmChatAzureOpenAi', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('node identity', () => {
+		const { description } = new LmChatAzureOpenAi();
+
+		it('should be labelled for the whole Foundry catalogue, not just OpenAI', () => {
+			expect(description.displayName).toBe('Azure AI Foundry Chat Model');
+			expect(description.defaults.name).toBe('Azure AI Foundry Chat Model');
+		});
+
+		// A saved workflow resolves its nodes by type, so the rename is only safe while this is
+		// untouched. Changing it would orphan every existing Azure OpenAI Chat Model node.
+		it('should keep the node type, which saved workflows resolve by', () => {
+			expect(description.name).toBe('lmChatAzureOpenAi');
+		});
+
+		// Without this the old label finds nothing at all, which is the one way the rename
+		// could actually cost a user something.
+		it('should still be findable by the old name', () => {
+			expect(description.codex?.alias).toContain('Azure OpenAI');
+		});
+
+		it.each(['Azure AI Foundry', 'Foundry'])('should be findable by %s', (term) => {
+			expect(description.codex?.alias).toContain(term);
+		});
+	});
+
 	it.each([
 		[
 			'API key with custom endpoint',

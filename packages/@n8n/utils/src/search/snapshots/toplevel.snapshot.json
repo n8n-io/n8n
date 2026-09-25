@@ -11618,9 +11618,9 @@
 		"key": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
 		"subcategory": "*",
 		"properties": {
-			"displayName": "Azure OpenAI Chat Model",
+			"displayName": "Azure AI Foundry Chat Model",
 			"defaults": {
-				"name": "Azure OpenAI Chat Model"
+				"name": "Azure AI Foundry Chat Model"
 			},
 			"description": "For advanced usage with an AI chain",
 			"name": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
@@ -11639,7 +11639,8 @@
 							"url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatazureopenai/"
 						}
 					]
-				}
+				},
+				"alias": ["Azure OpenAI", "Azure AI Foundry", "Foundry", "Llama", "Mistral", "DeepSeek"]
 			}
 		},
 		"type": "node"
