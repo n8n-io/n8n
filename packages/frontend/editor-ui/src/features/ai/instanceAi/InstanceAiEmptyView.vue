@@ -31,6 +31,7 @@ import {
 	isInstanceAiThreadSource,
 } from './constants';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
+import { provisionOnboardingThread } from './composables/useInstanceAiHandoff';
 import {
 	InstanceAiProactiveStarterMessage,
 	useInstanceAiProactiveAgentExperiment,
@@ -645,22 +646,17 @@ const ONBOARDING_SURVEY_TEAMS = [
 ];
 const onboardingSurveyTeam = ref('');
 async function startOnboardingThread() {
-	if (isStartingThread.value) return;
-	const threadId = uuidv4();
+	if (isStartingThread.value || !selectedProject.value) return;
 	isStartingThread.value = true;
-	try {
-		await store.syncThread(threadId, selectedProject.value, {
-			source: 'onboarding',
-			origin: 'internal',
-			sourceContext: onboardingSurveyTeam.value
-				? { survey: { what_team_are_you_on: onboardingSurveyTeam.value } }
-				: undefined,
-		});
-	} catch {
+	const threadId = await provisionOnboardingThread(
+		selectedProject.value,
+		onboardingSurveyTeam.value ? { what_team_are_you_on: onboardingSurveyTeam.value } : undefined,
+		'internal',
+	);
+	isStartingThread.value = false;
+	if (!threadId) {
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
-	} finally {
-		isStartingThread.value = false;
 	}
 	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 }
