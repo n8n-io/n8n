@@ -102,6 +102,9 @@ describe('devServerPlugin', () => {
 			'VUE_APP_URL_BASE_API=https://mode-env.example/\n',
 		);
 
+		const originalProcessEnv = process.env.VUE_APP_URL_BASE_API;
+		delete process.env.VUE_APP_URL_BASE_API;
+
 		try {
 			const env: NodeJS.ProcessEnv = {};
 			const plugin = devServerPlugin(env, tempDir);
@@ -110,6 +113,11 @@ describe('devServerPlugin', () => {
 
 			expect(env.VUE_APP_URL_BASE_API).toBe('https://mode-env.example/');
 		} finally {
+			if (originalProcessEnv !== undefined) {
+				process.env.VUE_APP_URL_BASE_API = originalProcessEnv;
+			} else {
+				delete process.env.VUE_APP_URL_BASE_API;
+			}
 			rmSync(tempDir, { recursive: true, force: true });
 		}
 	});
