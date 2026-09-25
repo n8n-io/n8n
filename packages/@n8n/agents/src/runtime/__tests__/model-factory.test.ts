@@ -364,11 +364,11 @@ describe('createModel', () => {
 		// Endpoint answers are shared across model instances for the whole process.
 		beforeEach(forgetEndpointApiStyles);
 
-		const build = (creds: Record<string, unknown>, fetchFn: typeof globalThis.fetch) =>
-			createModel(
-				{ id: 'openai/gpt-5.6', apiKey: 'sk-fake', ...creds },
-				fetchFn,
-			) as unknown as EndpointModel;
+		const build = (
+			creds: Record<string, unknown>,
+			fetchFn: typeof globalThis.fetch,
+			id = 'openai/gpt-5.6',
+		) => createModel({ id, apiKey: 'sk-fake', ...creds }, fetchFn) as unknown as EndpointModel;
 
 		it('uses the Responses API on a custom endpoint that serves it', async () => {
 			// Reported failure: a proxy in front of real OpenAI was pinned to
@@ -382,14 +382,14 @@ describe('createModel', () => {
 			expect(paths).toEqual(['/v1/responses']);
 		});
 
-		it('moves to chat completions when the endpoint has no /responses route', async () => {
+		it('moves to chat completions for an Instance AI custom endpoint', async () => {
 			// OpenAI-COMPATIBLE servers (LM Studio, vLLM, Ollama) must keep working.
 			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
-			const model = build({ url: 'http://127.0.0.1:1234/v1' }, fetchFn);
+			const model = build({ url: 'http://proxy/v1' }, fetchFn, 'openai/gemini-2.0-flash');
 
 			await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
 				api: 'chat-completions',
-				url: 'http://127.0.0.1:1234/v1/chat/completions',
+				url: 'http://proxy/v1/chat/completions',
 			});
 			expect(paths).toEqual(['/v1/responses', '/v1/chat/completions']);
 		});
