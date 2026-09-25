@@ -11,7 +11,7 @@ A PR title consists of these elements:
   |       |                        Capitalized
   |       |                        No period at the end.
   │       │
-  │       └─⫸ Scope: API | benchmark | core | editor | * Node
+  │       └─⫸ Scope: API | benchmark | core | editor | engine | * Node
   │
   └─⫸ Type: build | ci | chore | docs | feat | fix | perf | refactor | test
 ```
@@ -39,7 +39,7 @@ Must be one of the following:
 | `test` | Adding missing tests or correcting existing tests | ❌ |
 | `docs` | Documentation only changes | ❌ |
 | `refactor` | A behavior-neutral code change that neither fixes a bug nor adds a feature | ❌ |
-| `build` | Changes that affect the build system or external dependencies (TypeScript, Jest, pnpm, etc.) | ❌ |
+| `build` | Changes that affect the build system or external dependencies (TypeScript, Vitest, pnpm, etc.) | ❌ |
 | `ci` | Changes to CI configuration files and scripts (e.g. Github actions) | ❌ |
 | `chore` | Routine tasks, maintenance, and minor updates not covered by other types | ❌ |
 
@@ -53,6 +53,7 @@ The scope should specify the place of the commit change as long as the commit cl
 - `benchmark` - changes to the benchmark cli
 - `core` - changes to the core / private API / backend of n8n
 - `editor` - changes to the Editor UI
+- `engine` - changes to the new workflow execution engine v2
 - `* Node` - changes to a specific node or trigger node (”`*`” to be replaced with the node name, not its display name), e.g.
   - mattermost → Mattermost Node
   - microsoftToDo → Microsoft To Do Node

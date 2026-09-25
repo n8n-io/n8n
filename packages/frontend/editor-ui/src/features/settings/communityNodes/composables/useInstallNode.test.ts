@@ -2,21 +2,21 @@ import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.ut
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useInstallNode } from './useInstallNode';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: vi.fn().mockReturnValue({
@@ -24,14 +24,14 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showError: vi.fn(),
 		showMessage: vi.fn(),
 	}),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {
@@ -401,6 +401,31 @@ describe('useInstallNode', () => {
 			expect(showError).toHaveBeenCalledWith(
 				error,
 				'settings.communityNodes.messages.install.error',
+			);
+		});
+
+		it('should show the dedicated title when the package requires an unsupported node API version', async () => {
+			const error = Object.assign(
+				new Error('This community node requires n8n node API version 3.'),
+				{
+					httpStatusCode: 400,
+					meta: { requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+				},
+			);
+			vi.mocked(communityNodesStore.installPackage).mockRejectedValue(error);
+
+			const { installNode } = useInstallNode();
+
+			const result = await installNode({
+				type: 'verified',
+				packageName: 'test-package',
+				nodeType: 'test-node',
+			});
+
+			expect(result.success).toBe(false);
+			expect(showError).toHaveBeenCalledWith(
+				error,
+				'settings.communityNodes.messages.install.incompatible.title',
 			);
 		});
 

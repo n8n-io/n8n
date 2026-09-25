@@ -12,7 +12,7 @@ You are an expert AI agent specialized in writing comprehensive, reliable unit t
 
 ### 3. Testing guidelines
 
-- **Don't add useless comments** such as "Arrange, Assert, Act" or "Mock something". 
+- **Don't add useless comments** such as "Arrange, Assert, Act" or "Mock something".
 - **Always work from within the package directory** when running tests. E.g. for a node in nodes-base enter `packages/nodes-base` or for langchain node enter `packages/@n8n/nodes-langchain`
 - **Use `pnpm test <file_name>`** for running tests
 - **Mock all external dependencies** in unit tests
@@ -33,7 +33,7 @@ Always include tests for:
 
 ### 1. Core n8n Interfaces Mocking
 ```typescript
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IWebhookFunctions, INode } from 'n8n-workflow';
 
 // Standard execute functions mock
@@ -88,8 +88,8 @@ mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
 
 ### 3. External API Mocking
 ```typescript
-// Using jest.spyOn for API functions
-const apiRequestSpy = jest.spyOn(GenericFunctions, 'apiRequest');
+// Using vi.spyOn for API functions
+const apiRequestSpy = vi.spyOn(GenericFunctions, 'apiRequest');
 apiRequestSpy.mockResolvedValue({
   id: '123',
   name: 'Test Item',
@@ -114,15 +114,15 @@ afterEach(() => {
 ```typescript
 // Database mocking
 const mockDataTable = mock<IDataStoreProjectService>({
-  getColumns: jest.fn(),
-  addColumn: jest.fn(),
-  updateRow: jest.fn(),
+  getColumns: vi.fn(),
+  addColumn: vi.fn(),
+  updateRow: vi.fn(),
 });
 
 // Redis client mocking
 const mockClient = mock<RedisClient>();
-const createClient = jest.fn().mockReturnValue(mockClient);
-jest.mock('redis', () => ({ createClient }));
+const createClient = vi.fn().mockReturnValue(mockClient);
+vi.mock('redis', () => ({ createClient }));
 ```
 
 ## Test Implementation Patterns
@@ -131,7 +131,7 @@ jest.mock('redis', () => ({ createClient }));
 ```typescript
 describe('Node Execution', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
     mockExecuteFunctions.getNode.mockReturnValue(mockNode);
   });
@@ -142,7 +142,7 @@ describe('Node Execution', () => {
       const params = { operation: 'create', name: 'Test' };
       return params[param];
     });
-    
+
     apiRequestSpy.mockResolvedValue({ id: '123', name: 'Test' });
 
     // Execute
@@ -209,10 +209,10 @@ describe('Binary Data Handling', () => {
   it('should handle file upload operations', async () => {
     const fileBuffer = Buffer.from('test file content');
     mockExecuteFunctions.helpers.getBinaryStream.mockResolvedValue(fileBuffer);
-    
+
     // Test file upload logic
     const result = await node.execute.call(mockExecuteFunctions);
-    
+
     expect(result[0][0].json).toHaveProperty('fileId');
   });
 });
@@ -223,7 +223,7 @@ describe('Binary Data Handling', () => {
 describe('Webhook Operations', () => {
   it('should handle GET requests', async () => {
     const mockRequest = { method: 'GET', query: { id: '123' } };
-    const mockResponse = { render: jest.fn(), send: jest.fn() };
+    const mockResponse = { render: vi.fn(), send: vi.fn() };
 
     mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
     mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
@@ -234,9 +234,9 @@ describe('Webhook Operations', () => {
   });
 
   it('should process POST data', async () => {
-    const mockRequest = { 
-      method: 'POST', 
-      body: { name: 'Test', email: 'test@example.com' } 
+    const mockRequest = {
+      method: 'POST',
+      body: { name: 'Test', email: 'test@example.com' }
     };
 
     mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
@@ -404,7 +404,7 @@ await expect(asyncFunction()).rejects.toThrow(Error);
 ## Example Complete Test Suite
 
 ```typescript
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { TestNode } from '../TestNode';
@@ -412,17 +412,17 @@ import * as GenericFunctions from '../GenericFunctions';
 
 describe('TestNode', () => {
   let node: TestNode;
-  let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-  const apiRequestSpy = jest.spyOn(GenericFunctions, 'apiRequest');
+  let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+  const apiRequestSpy = vi.spyOn(GenericFunctions, 'apiRequest');
 
   beforeEach(() => {
     node = new TestNode();
     mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   describe('execute', () => {

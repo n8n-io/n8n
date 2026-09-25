@@ -1,7 +1,8 @@
 import { ref, readonly } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import { BINARY_MODE_SEPARATE, deepCopy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import type { IWorkflowSettings } from 'n8n-workflow';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { CHANGE_ACTION } from './types';
 import type { ChangeAction, ChangeEvent } from './types';
 
@@ -10,11 +11,6 @@ export type SettingsPayload = {
 };
 
 export type SettingsChangeEvent = ChangeEvent<SettingsPayload>;
-
-export const DEFAULT_SETTINGS = {
-	executionOrder: 'v1',
-	binaryMode: BINARY_MODE_SEPARATE,
-} satisfies IWorkflowSettings;
 
 export interface WorkflowDocumentSettingsDeps {
 	syncWorkflowObject: (settings: IWorkflowSettings) => void;

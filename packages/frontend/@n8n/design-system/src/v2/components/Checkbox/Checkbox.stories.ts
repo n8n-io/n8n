@@ -5,12 +5,18 @@ import { ref } from 'vue';
 import Checkbox from './Checkbox.vue';
 
 const meta = {
-	title: 'Experimental/Checkbox',
+	title: 'Core/Checkbox',
 	component: Checkbox,
 	parameters: {
 		docs: {
 			source: { type: 'dynamic' },
 		},
+	},
+	argTypes: {
+		modelValue: { control: 'boolean' },
+		disabled: { control: 'boolean' },
+		indeterminate: { control: 'boolean' },
+		label: { control: 'text' },
 	},
 };
 export default meta;
@@ -21,8 +27,46 @@ export const Default = {
 	render: (args) => ({
 		components: { Checkbox },
 		setup() {
-			const value = ref(args.modelValue);
+			return { args };
+		},
+		template: `
+			<Checkbox
+				:model-value="args.modelValue"
+				:label="args.label"
+				:disabled="args.disabled"
+				:indeterminate="args.indeterminate"
+				@update:model-value="args.modelValue = $event"
+			/>
+		`,
+	}),
+	args: {
+		modelValue: false,
+		label: 'Label',
+		disabled: false,
+		indeterminate: false,
+	},
+} satisfies Story;
 
+export const States = {
+	render: () => ({
+		components: { Checkbox },
+		template: `
+		<div style="display: flex; flex-direction: column; gap: 16px;">
+			<Checkbox :model-value="false" label="Unchecked"/>
+			<Checkbox :model-value="true" label="Checked"/>
+			<Checkbox indeterminate label="Indeterminate"/>
+			<Checkbox :model-value="false" label="Disabled unchecked" disabled/>
+			<Checkbox :model-value="true" label="Disabled checked" disabled/>
+			<Checkbox indeterminate label="Disabled indeterminate" disabled/>
+		</div>
+		`,
+	}),
+} satisfies Story;
+
+export const IndeterminateGroup = {
+	render: () => ({
+		components: { Checkbox },
+		setup() {
 			const checkAll = ref(false);
 			const isIndeterminate = ref(true);
 			const checkedCities = ref(['Shanghai', 'Beijing']);
@@ -47,8 +91,6 @@ export const Default = {
 			}
 
 			return {
-				args,
-				value,
 				checkAll,
 				isIndeterminate,
 				checkedCities,
@@ -58,31 +100,38 @@ export const Default = {
 			};
 		},
 		template: `
-		<div style="padding: 40px;">
-			<template v-for="isDisabled in [false, true]" :key="isDisabled">
-				<h2 :style="{ margin: '20px 0' }">Disabled: {{ isDisabled }}</h2>
-				<Checkbox v-model="value" :disabled="isDisabled"/>
-				<Checkbox :model-value="true" label="Checked" :disabled="isDisabled"/>
-				<Checkbox :model-value="false" label="Unchecked" :disabled="isDisabled"/>
-				<Checkbox indeterminate  label="Indeterminate" :disabled="isDisabled"/>
-				<form>
-					<Checkbox name="test" v-model="value"  label="Form control" :disabled="isDisabled"/>
-				</form>
-			</template>
-
-			<h2 :style="{ margin: '20px 0' }">Indeterminate value</h2>
-			<Checkbox :indeterminate="isIndeterminate" v-model="checkAll" label="Check all" @update:model-value="toggleCheckAll"/>
-			<div>
-			<template v-for="city in cities" :key="city">
-				<Checkbox :label="city" :model-value="checkedCities.includes(city)" @update:model-value="toggleCitySelection(city)">
-					{{ checkedCities.includes(city) }} | {{ city }}
-				</Checkbox>
-			</template>
-			</div>
+		<div style="display: flex; flex-direction: column; gap: 8px;">
+			<Checkbox
+				:indeterminate="isIndeterminate"
+				v-model="checkAll"
+				label="Check all"
+				@update:model-value="toggleCheckAll"
+			/>
+			<Checkbox
+				v-for="city in cities"
+				:key="city"
+				:label="city"
+				:model-value="checkedCities.includes(city)"
+				@update:model-value="toggleCitySelection(city)"
+			/>
 		</div>
 		`,
 	}),
-	args: {
-		modelValue: false,
-	},
+} satisfies Story;
+
+export const WithCustomLabel = {
+	render: () => ({
+		components: { Checkbox },
+		setup() {
+			const value = ref(false);
+			return { value };
+		},
+		template: `
+			<Checkbox v-model="value">
+				<template #label>
+					I accept the <a href="#" style="color: var(--color--primary);">terms and conditions</a>
+				</template>
+			</Checkbox>
+		`,
+	}),
 } satisfies Story;

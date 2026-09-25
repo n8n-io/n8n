@@ -21,7 +21,7 @@ import {
 	EXPRESSION_EDITOR_PARSER_TIMEOUT,
 	ExpressionLocalResolveContextSymbol,
 } from '@/app/constants';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
 import {
@@ -30,9 +30,23 @@ import {
 } from '@/app/composables/useWorkflowHelpers';
 import { highlighter } from '../plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '../plugins/codemirror/tooltips/InfoBoxTooltip';
-import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/app/types/expressions';
-import { getExpressionErrorMessage, getResolvableState } from '@/app/utils/expressions';
+import type {
+	Html,
+	Plaintext,
+	RawSegment,
+	Resolvable,
+	ResolvableState,
+	Segment,
+} from '@/app/types/expressions';
+import {
+	getExpressionErrorMessage,
+	getExternalSecretPreview,
+	getResolvableState,
+	referencesExecutionData,
+} from '@/app/utils/expressions';
+import { useRedactionHint } from './useRedactionHint';
 import { isCredentialsModalOpen } from '../plugins/codemirror/completions/utils';
+import { usesDeprecatedExpressionFunction } from '../plugins/codemirror/expressionDeprecations';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import {
 	Compartment,
@@ -45,7 +59,7 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useAutocompleteTelemetry } from '@/app/composables/useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import {
@@ -81,12 +95,13 @@ export const useExpressionEditor = ({
 	initialCursorPosition?: number | 'lastExpression' | 'end';
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
-	const ndvStore = injectNDVStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowsStore = useWorkflowsStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const { isMacOs } = useDeviceSupport();
 	const i18n = useI18n();
+	const { isRedacted: isRedactedExecution, redactedHintText } = useRedactionHint();
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const segments = ref<Segment[]>([]);
@@ -143,7 +158,7 @@ export const useExpressionEditor = ({
 				const { from, to, text, token } = segment;
 
 				if (token === 'Resolvable') {
-					const { resolved, error, fullError } = await resolve(text, targetItem.value);
+					const { resolved, error, fullError, state } = await resolve(text, targetItem.value);
 					return {
 						kind: 'resolvable' as const,
 						from,
@@ -153,7 +168,8 @@ export const useExpressionEditor = ({
 						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
 						// This fixes that but as as TODO we should figure out why this is happening
 						resolved: String(resolved),
-						state: getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
+						state:
+							state ?? getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
 						error: fullError,
 					};
 				}
@@ -291,6 +307,8 @@ export const useExpressionEditor = ({
 				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 				EditorView.domEventHandlers({
 					mousedown: () => {
+						// A click sets its own cursor; don't override it with the initial position
+						hasReceivedFocus = true;
 						dragging.value = true;
 					},
 				}),
@@ -377,20 +395,32 @@ export const useExpressionEditor = ({
 	}
 
 	async function resolve(resolvable: string, target: TargetItem | null) {
-		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
+		const result: {
+			resolved: unknown;
+			error: boolean;
+			fullError: Error | null;
+			state?: ResolvableState;
+		} = {
 			resolved: undefined,
 			error: false,
 			fullError: null,
 		};
+		const isCredentialModal = !expressionLocalResolveContext.value && isCredentialsModalOpen();
 
 		try {
+			// Deprecated functions still resolve on the backend, but we surface them
+			// as an error in the editor preview to steer users off them.
+			if (usesDeprecatedExpressionFunction(resolvable)) {
+				throw new Error(i18n.baseText('expressionEditor.deprecated.getPairedItem'));
+			}
+
 			if (expressionLocalResolveContext.value) {
 				result.resolved = await workflowHelpers.resolveExpression('=' + resolvable, undefined, {
 					...expressionLocalResolveContext.value,
 					additionalKeys: toValue(additionalData),
 				});
 			} else if (
-				isCredentialsModalOpen() ||
+				isCredentialModal ||
 				(!ndvStore.value.activeNode && toValue(targetNodeParameterContext) === undefined)
 			) {
 				// e.g. credential modal
@@ -419,7 +449,7 @@ export const useExpressionEditor = ({
 			}
 		} catch (error) {
 			const hasRunData =
-				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
+				!!workflowExecutionStateStore.value.activeExecutionRunData?.[
 					ndvStore.value.activeNode?.name ?? ''
 				];
 			result.resolved = `[${getExpressionErrorMessage(error, workflowDocumentStore.value.getPinDataSnapshot(), hasRunData)}]`;
@@ -428,11 +458,25 @@ export const useExpressionEditor = ({
 		}
 
 		if (result.resolved === undefined) {
-			result.resolved = isUncalledExpressionExtension(resolvable)
-				? i18n.baseText('expressionEditor.uncalledFunction')
-				: i18n.baseText('expressionModalInput.undefined');
+			const secretPreview = isCredentialModal
+				? getExternalSecretPreview(resolvable, toValue(additionalData).$secrets)
+				: undefined;
 
-			result.error = true;
+			if (secretPreview) {
+				result.resolved = secretPreview.text;
+				result.state = secretPreview.exists ? 'pending' : 'invalid';
+			} else if (isUncalledExpressionExtension(resolvable)) {
+				result.resolved = i18n.baseText('expressionEditor.uncalledFunction');
+				result.error = true;
+			} else if (isRedactedExecution.value && referencesExecutionData(resolvable)) {
+				// Redaction empties the item data, so the expression reads nothing even
+				// though the execution has a value. Prompt for a reveal instead of an error.
+				result.resolved = redactedHintText.value;
+				result.state = 'redacted';
+			} else {
+				result.resolved = i18n.baseText('expressionModalInput.undefined');
+				result.error = true;
+			}
 		}
 
 		return result;
@@ -524,7 +568,10 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
+		[
+			() => workflowExecutionStateStore.value.activeExecution,
+			() => workflowExecutionStateStore.value.activeExecutionRunData,
+		],
 		debouncedUpdateSegments,
 	);
 

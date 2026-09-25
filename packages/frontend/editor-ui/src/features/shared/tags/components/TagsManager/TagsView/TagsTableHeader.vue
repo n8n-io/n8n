@@ -9,10 +9,12 @@ withDefaults(
 	defineProps<{
 		disabled: boolean;
 		search: string;
+		canCreate?: boolean;
 	}>(),
 	{
 		disabled: false,
 		search: '',
+		canCreate: true,
 	},
 );
 
@@ -52,6 +54,7 @@ const onSearchChange = (search: string) => {
 		</ElCol>
 		<ElCol :span="14">
 			<N8nButton
+				v-if="canCreate"
 				:disabled="disabled"
 				icon="plus"
 				:label="i18n.baseText('tagsTableHeader.addNew')"

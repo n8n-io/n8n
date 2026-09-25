@@ -1,8 +1,8 @@
 export {
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-	LIST_SKILLS_TOOL_NAME,
 	SKILL_LOAD_TOOL_NAME,
 } from './types';
 export type {
@@ -22,6 +22,8 @@ export type {
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillStateScope,
+	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './types';
@@ -33,18 +35,19 @@ export {
 export {
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
+	filterRuntimeSkillSource,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
 	loadRuntimeSkillSourceFromDirectory,
 } from './registry';
+export type { LoadRuntimeSkillSourceFromDirectoryOptions } from './registry';
 export {
 	appendSkillCatalogToInstructions,
 	renderSkillCatalogPrompt,
 	type RenderSkillCatalogOptions,
 } from './prompt';
 export {
-	createListSkillsTool,
 	createSkillLoadTool,
 	createRuntimeSkillTools,
 	RUNTIME_SKILL_TOOL_NAMES,

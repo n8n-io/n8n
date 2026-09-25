@@ -21,6 +21,7 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 - `activatorIcon?: IconOrEmoji` Icon or emoji for the default trigger button | `default: { type: 'icon', value: 'ellipsis' }`
 - `disabled?: boolean` When `true`, prevents the user from interacting with dropdown
 - `teleported?: boolean` Whether to teleport the dropdown to body | `default: true`
+- `reference?: DropdownMenuContentProps['reference']` Element or virtual element used to position the menu instead of its trigger
 - `maxHeight?: string | number` Maximum height of the dropdown menu
 - `loading?: boolean` Whether to show loading state
 - `loadingItemCount?: number` Number of skeleton items to show when loading | `default: 3`
@@ -29,8 +30,10 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 
 **Search-specific Props**
 - `searchable?: boolean` Enable search functionality
+- `searchMode?: 'internal' | 'external'` Select whether the menu or an external text control owns search focus | `default: 'internal'`
+- `externalFocusTarget?: HTMLInputElement | HTMLTextAreaElement | null` Text control that owns focus in external search mode
 - `searchPlaceholder?: string` Search input placeholder
-- `searchDebounce?: number` Debounce delay in ms | `default: 300`
+- `searchDebounce?: number` Debounce delay in ms | `default: 0`
 
 
 **Events**
@@ -44,6 +47,8 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 
 - `open()` Programmatically opens the dropdown
 - `close()` Programmatically closes the dropdown
+- `highlightFirstItem()` Highlights the first enabled item in a searchable menu
+- `handleExternalKeydown(event: KeyboardEvent): boolean` Handles menu keys from an external text control and returns whether the menu handled the key
 
 **Slots**
 
@@ -75,6 +80,7 @@ type DropdownMenuItemProps<T = string> = {
   loading?: boolean;
   loadingItemCount?: number;
   searchable?: boolean;
+  selectable?: boolean; // Lets a sub-menu parent label select the parent
   searchPlaceholder?: string;
 }
 ```
@@ -96,6 +102,7 @@ A companion component for rendering individual dropdown items with full slot-bas
 - `loading?: boolean` Whether to show loading state in sub-menu
 - `loadingItemCount?: number` Number of skeleton items when loading | `default: 3`
 - `searchable?: boolean` Enable search functionality for this item's children
+- `selectable?: boolean` Allow the sub-menu parent label and Enter key to select the parent
 - `searchPlaceholder?: string` Search input placeholder
 
 **Events**
@@ -289,6 +296,46 @@ const handleSearch = async (term: string, itemId?: string) => {
 </template>
 ```
 
+**Search with an external text control**
+
+Use external mode when a text control outside the menu owns the query. Pass each keydown event to `handleExternalKeydown()`. Invoke it before the text control's other keydown handlers, such as from an ancestor capture listener. The method handles ArrowUp, ArrowDown, Enter, Tab, Escape, ArrowRight, and ArrowLeft. It stops handled events from continuing through the propagation path. Tab keeps its browser default so focus can move. The method ignores modified editing keys and keys during input method editor (IME) composition.
+
+```vue
+<script setup lang="ts">
+import type { DropdownMenuExposed, DropdownMenuItemProps } from '@n8n/design-system'
+import { ref } from 'vue'
+
+const dropdown = ref<DropdownMenuExposed>()
+const textarea = ref<HTMLTextAreaElement>()
+const isOpen = ref(false)
+const items = ref<Array<DropdownMenuItemProps<string>>>([
+  { id: 'workflow-1', label: 'Customer orders' },
+  { id: 'workflow-2', label: 'Payment reminders' }
+])
+
+const handleKeydown = (event: KeyboardEvent) => {
+  dropdown.value?.handleExternalKeydown(event)
+}
+
+const handleSelect = (itemId: string) => {
+  console.log('Selected:', itemId)
+}
+</script>
+
+<template>
+  <textarea ref="textarea" @focus="isOpen = true" @keydown="handleKeydown" />
+  <N8nDropdownMenu
+    ref="dropdown"
+    v-model="isOpen"
+    :items="items"
+    :external-focus-target="textarea"
+    searchable
+    search-mode="external"
+    @select="handleSelect"
+  />
+</template>
+```
+
 **Loading state**
 
 ```vue
@@ -446,6 +493,10 @@ const items = ref([
 - The new `update:modelValue` replaces both `visible-change` and `visibleChange` events
 - Search is opt-in via `searchable` prop. Both root-level and sub-menu search are supported
 - Search filtering is not built-in - use the `search` event to filter items externally (e.g., for async search)
+- External search mode does not render a search input or emit search text. The consumer updates `items` from its text control.
+- External search mode uses non-modal menu content so the external text control can keep focus.
+- Set `reference` when the menu must be positioned against a different element than its trigger.
+- A selectable sub-menu parent uses Enter or a label click for selection. Use ArrowRight or the chevron to open its children.
 - The `icon` prop now accepts `IconOrEmoji` type: `{ type: 'icon', value: 'pen' }` or `{ type: 'emoji', value: '🎉' }`
 - Keyboard navigation in searchable menus uses virtual highlighting (focus stays in search input)
 - Non-searchable menus use Reka UI's built-in roving focus for keyboard navigation

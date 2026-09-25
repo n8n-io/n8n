@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { AI_BUILDER_DIFF_MODAL_KEY } from '@/app/constants';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
 import type { IWorkflowDb } from '@/Interface';

@@ -4,7 +4,7 @@
  * per project, in-flight requests deduped, errors propagated so the next
  * `ensureLoaded()` can retry cleanly.
  */
-import { ref, watch, type Ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { listAgents } from './useAgentApi';
 import type { AgentResource } from '../types';
@@ -27,18 +27,10 @@ function getEntry(projectId: string): Entry {
 
 export function useProjectAgentsList(projectId: Ref<string>) {
 	const rootStore = useRootStore();
-	const list = ref<AgentResource[] | null>(null);
-
-	function bind(id: string) {
-		if (!id) {
-			list.value = null;
-			return;
-		}
-		list.value = getEntry(id).list.value;
-	}
-
-	bind(projectId.value);
-	watch(projectId, (id) => bind(id));
+	const list = computed(() => {
+		const id = projectId.value;
+		return id ? getEntry(id).list.value : null;
+	});
 
 	async function ensureLoaded(): Promise<AgentResource[]> {
 		const id = projectId.value;
@@ -50,7 +42,6 @@ export function useProjectAgentsList(projectId: Ref<string>) {
 				.then((result) => {
 					entry.list.value = result;
 					entry.inFlight = null;
-					if (projectId.value === id) list.value = result;
 					return result;
 				})
 				.catch((err: unknown) => {
@@ -70,6 +61,30 @@ export function useProjectAgentsList(projectId: Ref<string>) {
 	}
 
 	return { list, ensureLoaded, refresh };
+}
+
+export function upsertProjectAgentsListCache(projectId: string, agent: AgentResource) {
+	if (!projectId) return;
+	const entry = getEntry(projectId);
+	const current = entry.list.value;
+	if (!current) return;
+
+	const existingIndex = current.findIndex((candidate) => candidate.id === agent.id);
+	if (existingIndex === -1) {
+		entry.list.value = [agent, ...current];
+		return;
+	}
+
+	entry.list.value = current.map((candidate) => (candidate.id === agent.id ? agent : candidate));
+}
+
+export function removeProjectAgentFromListCache(projectId: string, agentId: string) {
+	if (!projectId) return;
+	const entry = getEntry(projectId);
+	const current = entry.list.value;
+	if (!current) return;
+
+	entry.list.value = current.filter((agent) => agent.id !== agentId);
 }
 
 /** Test-only escape hatch — drops the module-level cache between specs. */

@@ -1,4 +1,9 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import {
 	GLOBAL_MEMBER_ROLE,
@@ -230,13 +235,34 @@ describe('DELETE /workflows/:workflowId/test-runs/:id', () => {
 
 		expect(resp.statusCode).toBe(404);
 	});
+
+	test('should return 404 when user has project:viewer role on the workflow project', async () => {
+		const viewerShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const viewerAgent = testServer.authAgentFor(viewerShell);
+
+		const teamProject = await createTeamProject('eval-delete-project', ownerShell);
+		await linkUserToProject(viewerShell, teamProject, 'project:viewer');
+
+		const teamWorkflow = await createWorkflow({ name: 'team-workflow-delete' }, teamProject);
+		const testRun = await testRunRepository.createTestRun(teamWorkflow.id);
+
+		const listResp = await viewerAgent.get(`/workflows/${teamWorkflow.id}/test-runs`);
+		expect(listResp.statusCode).toBe(200);
+
+		const resp = await viewerAgent.delete(`/workflows/${teamWorkflow.id}/test-runs/${testRun.id}`);
+
+		expect(resp.statusCode).toBe(404);
+
+		const testRunAfterDelete = await testRunRepository.findOne({ where: { id: testRun.id } });
+		expect(testRunAfterDelete).not.toBeNull();
+	});
 });
 
 describe('POST /workflows/:workflowId/test-runs/:id/cancel', () => {
 	test('should cancel test run', async () => {
 		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
 
-		jest.spyOn(testRunRepository, 'markAsCancelled');
+		vi.spyOn(testRunRepository, 'markAsCancelled');
 
 		const resp = await authOwnerAgent.post(
 			`/workflows/${workflowUnderTest.id}/test-runs/${testRun.id}/cancel`,
@@ -271,6 +297,29 @@ describe('POST /workflows/:workflowId/test-runs/:id/cancel', () => {
 
 		expect(resp.statusCode).toBe(404);
 	});
+
+	test('should return 404 when user has project:viewer role on the workflow project', async () => {
+		const viewerShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const viewerAgent = testServer.authAgentFor(viewerShell);
+
+		const teamProject = await createTeamProject('eval-cancel-project', ownerShell);
+		await linkUserToProject(viewerShell, teamProject, 'project:viewer');
+
+		const teamWorkflow = await createWorkflow({ name: 'team-workflow-cancel' }, teamProject);
+		const testRun = await testRunRepository.createTestRun(teamWorkflow.id);
+
+		const listResp = await viewerAgent.get(`/workflows/${teamWorkflow.id}/test-runs`);
+		expect(listResp.statusCode).toBe(200);
+
+		testRunner.cancelTestRun.mockClear();
+
+		const resp = await viewerAgent.post(
+			`/workflows/${teamWorkflow.id}/test-runs/${testRun.id}/cancel`,
+		);
+
+		expect(resp.statusCode).toBe(404);
+		expect(testRunner.cancelTestRun).not.toHaveBeenCalled();
+	});
 });
 
 describe('POST /workflows/:workflowId/test-runs/new', () => {
@@ -289,10 +338,34 @@ describe('POST /workflows/:workflowId/test-runs/new', () => {
 
 		expect(resp.statusCode).toBe(202);
 		expect(resp.body).toEqual({ success: true, testRunId: 'test-run-id' });
+		// 4th arg is `options` (evaluation config id + compileFromConfig flag);
+		// the controller forwards it from the request body even when absent, so
+		// the mock sees `undefined` rather than no value.
 		expect(testRunner.startTestRun).toHaveBeenCalledWith(
 			expect.objectContaining({ id: ownerShell.id }),
 			workflowUnderTest.id,
 			1,
+			undefined,
+		);
+	});
+
+	test('should forward evaluationConfigId and compileFromConfig to the service', async () => {
+		testRunner.startTestRun.mockResolvedValue({
+			testRun: { id: 'config-run-id' } as never,
+			finished: Promise.resolve(),
+		});
+
+		const resp = await authOwnerAgent
+			.post(`/workflows/${workflowUnderTest.id}/test-runs/new`)
+			.send({ evaluationConfigId: 'cfg-abc', compileFromConfig: true });
+
+		expect(resp.statusCode).toBe(202);
+		expect(resp.body).toEqual({ success: true, testRunId: 'config-run-id' });
+		expect(testRunner.startTestRun).toHaveBeenCalledWith(
+			expect.objectContaining({ id: ownerShell.id }),
+			workflowUnderTest.id,
+			1,
+			expect.objectContaining({ evaluationConfigId: 'cfg-abc', compileFromConfig: true }),
 		);
 	});
 
@@ -306,6 +379,26 @@ describe('POST /workflows/:workflowId/test-runs/new', () => {
 		const resp = await authOwnerAgent.post('/workflows/non-existent-id/test-runs/new');
 
 		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should return 404 when user has project:viewer role on the workflow project', async () => {
+		const viewerShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const viewerAgent = testServer.authAgentFor(viewerShell);
+
+		const teamProject = await createTeamProject('eval-test-project', ownerShell);
+		await linkUserToProject(viewerShell, teamProject, 'project:viewer');
+
+		const teamWorkflow = await createWorkflow({ name: 'team-workflow' }, teamProject);
+
+		const listResp = await viewerAgent.get(`/workflows/${teamWorkflow.id}/test-runs`);
+		expect(listResp.statusCode).toBe(200);
+
+		testRunner.startTestRun.mockClear();
+
+		const resp = await viewerAgent.post(`/workflows/${teamWorkflow.id}/test-runs/new`);
+
+		expect(resp.statusCode).toBe(404);
+		expect(testRunner.startTestRun).not.toHaveBeenCalled();
 	});
 });
 

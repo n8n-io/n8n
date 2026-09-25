@@ -1,3 +1,6 @@
+import { isRecord } from '@n8n/utils/is-record';
+import { isUnknownArray } from '@n8n/utils/is-unknown-array';
+
 export interface ViewCommand {
 	command: 'view';
 	path: string;
@@ -26,21 +29,7 @@ export interface InsertCommand {
 	insert_text: string;
 }
 
-export interface BatchStrReplaceCommand {
-	command: 'batch_str_replace';
-	path: string;
-	replacements: StrReplacement[];
-}
-
 export type TextEditorCommand = ViewCommand | CreateCommand | StrReplaceCommand | InsertCommand;
-
-export type TextEditorCommandWithBatch = TextEditorCommand | BatchStrReplaceCommand;
-
-export interface TextEditorToolCall {
-	name: 'str_replace_based_edit_tool';
-	args: TextEditorCommand;
-	id: string;
-}
 
 export interface TextEditorResult {
 	content: string;
@@ -80,21 +69,14 @@ export class InvalidViewRangeError extends Error {
 }
 
 export class InvalidPathError extends Error {
-	constructor(path: string, supportedPath = '/workflow.js', message?: string) {
+	constructor(path: string, supportedPath: string, message?: string) {
 		super(message ?? `Invalid path "${path}". Only ${supportedPath} is supported.`);
 		this.name = 'InvalidPathError';
 	}
 }
 
-export class FileExistsError extends Error {
-	constructor() {
-		super('File already exists. Use text editor tools to modify existing content.');
-		this.name = 'FileExistsError';
-	}
-}
-
 export class FileNotFoundError extends Error {
-	constructor(message = 'No workflow code exists yet. Use create first.') {
+	constructor(message = 'No file content exists yet. Use create first.') {
 		super(message);
 		this.name = 'FileNotFoundError';
 	}
@@ -111,26 +93,6 @@ export interface BatchReplaceResult {
 	old_str: string;
 	status: 'success' | 'failed' | 'not_attempted';
 	error?: string;
-}
-
-export class BatchReplacementError extends Error {
-	readonly failedIndex: number;
-	readonly totalCount: number;
-	override readonly cause: NoMatchFoundError | MultipleMatchesError;
-
-	constructor(
-		failedIndex: number,
-		totalCount: number,
-		cause: NoMatchFoundError | MultipleMatchesError,
-	) {
-		super(
-			`Batch replacement failed at index ${failedIndex} of ${totalCount}: ${cause.message}. All changes have been rolled back.`,
-		);
-		this.name = 'BatchReplacementError';
-		this.failedIndex = failedIndex;
-		this.totalCount = totalCount;
-		this.cause = cause;
-	}
 }
 
 export interface TextEditorDocumentOptions {
@@ -153,10 +115,6 @@ function truncatePreview(str: string): string {
 
 function escapeWhitespace(str: string): string {
 	return str.replace(/\n/g, '\\n').replace(/\t/g, '\\t').replace(/\r/g, '\\r');
-}
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function formatTextWithLineNumbers(text: string): string {
@@ -210,7 +168,7 @@ export function parseStrReplacements(raw: unknown): StrReplacement[] {
 
 	if (typeof parsed === 'string') {
 		try {
-			parsed = JSON.parse(parsed);
+			parsed = JSON.parse(parsed) as unknown;
 		} catch {
 			throw new Error(
 				'replacements must be a JSON array of {old_str, new_str} objects, but received an invalid JSON string.',
@@ -218,7 +176,7 @@ export function parseStrReplacements(raw: unknown): StrReplacement[] {
 		}
 	}
 
-	if (!Array.isArray(parsed)) {
+	if (!isUnknownArray(parsed)) {
 		throw new Error(
 			'replacements must be an array of {old_str, new_str} objects. Example: {"replacements": [{"old_str": "foo", "new_str": "bar"}]}',
 		);
@@ -228,7 +186,7 @@ export function parseStrReplacements(raw: unknown): StrReplacement[] {
 
 	for (let i = 0; i < parsed.length; i++) {
 		const item = parsed[i];
-		if (!isObjectRecord(item) || typeof item.old_str !== 'string') {
+		if (!isRecord(item) || typeof item.old_str !== 'string') {
 			throw new Error(
 				`replacements[${i}] is missing a valid "old_str" string. Each replacement must have {old_str: string, new_str: string}.`,
 			);
@@ -354,7 +312,7 @@ export class TextEditorDocument {
 			return;
 		}
 
-		throw new InvalidPathError(
+		throw this.createInvalidPathError(
 			path,
 			supportedPath,
 			this.options.invalidPathMessage?.(path, supportedPath),
@@ -470,7 +428,15 @@ export class TextEditorDocument {
 		}
 	}
 
-	private createFileNotFoundError(): FileNotFoundError {
+	protected createInvalidPathError(
+		path: string,
+		supportedPath: string,
+		message?: string,
+	): InvalidPathError {
+		return new InvalidPathError(path, supportedPath, message);
+	}
+
+	protected createFileNotFoundError(): FileNotFoundError {
 		return new FileNotFoundError(this.options.fileNotFoundMessage);
 	}
 

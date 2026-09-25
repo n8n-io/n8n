@@ -1,26 +1,27 @@
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
 
 import { FacebookTrigger } from '../FacebookTrigger.node';
+import type { Mocked } from 'vitest';
 
 describe('FacebookTrigger', () => {
 	let node: FacebookTrigger;
-	let mockWebhookFunctions: jest.Mocked<IWebhookFunctions>;
+	let mockWebhookFunctions: Mocked<IWebhookFunctions>;
 
 	beforeEach(() => {
 		node = new FacebookTrigger();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('webhook', () => {
 		const createMockResponse = () =>
 			({
-				status: jest.fn().mockReturnThis(),
-				type: jest.fn().mockReturnThis(),
-				send: jest.fn().mockReturnThis(),
-				end: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				type: vi.fn().mockReturnThis(),
+				send: vi.fn().mockReturnThis(),
+				end: vi.fn(),
 			}) as unknown as Response;
 
 		it('should respond to verification challenge as text/plain when the verify token matches', async () => {

@@ -3,22 +3,24 @@ import Modal from '@/app/components/Modal.vue';
 import {
 	MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED,
-	MFA_SETUP_MODAL_KEY,
 	VIEWS,
 } from '@/app/constants';
+import { MFA_SETUP_MODAL_KEY } from '../auth.constants';
 import { ref, onMounted } from 'vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { mfaEventBus } from '../auth.eventBus';
-import { useToast } from '@/app/composables/useToast';
-//@ts-ignore
+import { useToast } from '@n8n/composables/useToast';
 import QrcodeVue from 'qrcode.vue';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import router from '@/app/router';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+
+// DynamicModalLoader's modal-state props must not reach the dialog root.
+defineOptions({ inheritAttrs: false });
 // ---------------------------------------------------------------------------
 // #region Reactive properties
 // ---------------------------------------------------------------------------

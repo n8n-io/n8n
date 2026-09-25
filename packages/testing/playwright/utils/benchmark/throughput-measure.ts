@@ -25,6 +25,16 @@ export interface StageMeasurement {
 	completedDuringStage: number;
 	durationMs: number;
 	execPerSec: number;
+	/** Completion rate over the final 30 seconds of the stage. */
+	tailExecPerSec?: number;
+}
+
+export interface CounterWindowMeasurement {
+	rate: number;
+	completed: number;
+	actualDurationMs: number;
+	sampleCount: number;
+	coverage: number;
 }
 
 export interface ThroughputResult {
@@ -32,10 +42,10 @@ export interface ThroughputResult {
 	durationMs: number;
 	avgExecPerSec: number;
 	/** Rate over the final 60s window — approximates the architectural ceiling. */
-	tailExecPerSec: number;
+	tailExecPerSec?: number;
 	peakExecPerSec: number;
 	actionsPerSec: number;
-	tailActionsPerSec: number;
+	tailActionsPerSec?: number;
 	peakActionsPerSec: number;
 	samples: ThroughputSample[];
 	/**
@@ -45,6 +55,7 @@ export interface ThroughputResult {
 	 * "rate while only draining a backlog" — different system behavior, different question.
 	 */
 	inputPhaseExecPerSec?: number;
+	inputPhaseTailExecPerSec?: number;
 	inputPhaseCompleted?: number;
 	inputPhaseDurationMs?: number;
 	drainPhaseExecPerSec?: number;
@@ -57,23 +68,157 @@ export interface ThroughputResult {
 	perStage?: StageMeasurement[];
 }
 
+/**
+ * Measures a cumulative counter over a requested wall-clock window.
+ * Duplicate polls are collapsed because VictoriaMetrics scrapes every two seconds
+ * while the benchmark polls every second.
+ */
+export function measureCounterWindow(
+	samples: ThroughputSample[],
+	options: {
+		startTime: number;
+		endTime: number;
+		minimumCoverage?: number;
+		minimumSamples?: number;
+	},
+): CounterWindowMeasurement | undefined {
+	const { startTime, endTime, minimumCoverage = 0.8, minimumSamples = 3 } = options;
+	const requestedDurationMs = endTime - startTime;
+	if (requestedDurationMs <= 0) return undefined;
+
+	const distinctSamples: ThroughputSample[] = [];
+	for (const sample of samples) {
+		if (sample.timestamp < startTime || sample.timestamp > endTime) continue;
+		if (distinctSamples.at(-1)?.completed === sample.completed) continue;
+		distinctSamples.push(sample);
+	}
+	if (distinctSamples.length < minimumSamples) return undefined;
+
+	const first = distinctSamples[0];
+	const last = distinctSamples.at(-1);
+	if (!first || !last) return undefined;
+
+	const actualDurationMs = last.timestamp - first.timestamp;
+	const completed = last.completed - first.completed;
+	const coverage = actualDurationMs / requestedDurationMs;
+	if (actualDurationMs <= 0 || completed <= 0 || coverage < minimumCoverage) return undefined;
+
+	return {
+		rate: (completed / actualDurationMs) * 1000,
+		completed,
+		actualDurationMs,
+		sampleCount: distinctSamples.length,
+		coverage,
+	};
+}
+
+export function measureStageWindows(
+	samples: ThroughputSample[],
+	stageBoundaries: number[],
+): StageMeasurement[] {
+	const completedAt = (timestamp: number): number => {
+		let value = 0;
+		for (const sample of samples) {
+			if (sample.timestamp <= timestamp) value = sample.completed;
+			else break;
+		}
+		return value;
+	};
+
+	const stages: StageMeasurement[] = [];
+	for (let i = 0; i < stageBoundaries.length - 1; i++) {
+		const stageStart = stageBoundaries[i];
+		const stageEnd = stageBoundaries[i + 1];
+		if (stageStart === undefined || stageEnd === undefined) continue;
+
+		const durationMs = stageEnd - stageStart;
+		const completedDuringStage = completedAt(stageEnd) - completedAt(stageStart);
+		const tail = measureCounterWindow(samples, {
+			startTime: Math.max(stageStart, stageEnd - 30_000),
+			endTime: stageEnd,
+		});
+		stages.push({
+			stageIndex: i,
+			startTimestamp: stageStart,
+			endTimestamp: stageEnd,
+			completedDuringStage,
+			durationMs,
+			execPerSec: durationMs > 0 ? (completedDuringStage / durationMs) * 1000 : 0,
+			tailExecPerSec: tail?.rate,
+		});
+	}
+	return stages;
+}
+
+type SteadyPhaseMeasurements = Pick<
+	ThroughputResult,
+	| 'inputPhaseExecPerSec'
+	| 'inputPhaseTailExecPerSec'
+	| 'inputPhaseCompleted'
+	| 'inputPhaseDurationMs'
+	| 'drainPhaseExecPerSec'
+	| 'drainPhaseCompleted'
+	| 'drainPhaseDurationMs'
+>;
+
+export function measureSteadyPhases(
+	samples: ThroughputSample[],
+	startTime: number,
+	publishEndAt: number,
+): SteadyPhaseMeasurements {
+	const result: SteadyPhaseMeasurements = {};
+	const inputSamples = samples.filter((sample) => sample.timestamp <= publishEndAt);
+	const drainSamples = samples.filter((sample) => sample.timestamp > publishEndAt);
+	const lastActiveOf = (phaseSamples: ThroughputSample[]) =>
+		phaseSamples.findLast((sample) => sample.delta > 0);
+
+	if (inputSamples.length > 0) {
+		const lastActive = lastActiveOf(inputSamples) ?? inputSamples.at(-1);
+		if (lastActive) {
+			result.inputPhaseCompleted = lastActive.completed;
+			result.inputPhaseDurationMs = lastActive.timestamp - startTime;
+			result.inputPhaseExecPerSec =
+				result.inputPhaseDurationMs > 0
+					? (result.inputPhaseCompleted / result.inputPhaseDurationMs) * 1000
+					: 0;
+			result.inputPhaseTailExecPerSec = measureCounterWindow(samples, {
+				startTime: publishEndAt - 60_000,
+				endTime: publishEndAt,
+			})?.rate;
+		}
+	}
+
+	if (drainSamples.length > 0) {
+		const lastActive = lastActiveOf(drainSamples);
+		const drainStart = inputSamples.at(-1)?.completed ?? 0;
+		if (lastActive) {
+			result.drainPhaseCompleted = lastActive.completed - drainStart;
+			result.drainPhaseDurationMs = lastActive.timestamp - publishEndAt;
+			result.drainPhaseExecPerSec =
+				result.drainPhaseDurationMs > 0
+					? (result.drainPhaseCompleted / result.drainPhaseDurationMs) * 1000
+					: 0;
+		} else {
+			result.drainPhaseCompleted = 0;
+			result.drainPhaseDurationMs = 0;
+			result.drainPhaseExecPerSec = 0;
+		}
+	}
+
+	return result;
+}
+
 // --- PromQL queries ---
 
 export const WORKFLOW_SUCCESS_QUERY = 'n8n_workflow_success_total';
 export const QUEUE_JOBS_COMPLETED_QUERY = 'n8n_scaling_mode_queue_jobs_completed';
+export type CompletionCounterReader = () => Promise<number>;
 
 /**
  * Returns the completion metric for the current Playwright project.
- *
- * `n8n_workflow_success_total` is emitted by both main and workers; in queue mode
- * each instance produces its own time series. The query wraps the metric in
- * `sum(last_over_time(...[5m]))` so VictoriaMetrics aggregates across instances
- * server-side, and the wide lookback tolerates transient scrape misses that
- * would otherwise drop a series and make the summed counter appear to regress.
- *
- * `n8n_scaling_mode_queue_jobs_completed` is the designed queue-mode metric but
- * it depends on ScalingService.scheduleQueueMetrics() emitting `job-counts-updated`
- * events at regular intervals — currently observed as 0 in CI.
+ * `n8n_workflow_success_total` is per-receiver-instance; summed via
+ * `sum(last_over_time(...[5m]))` for the system-wide total. The wide lookback
+ * tolerates transient scrape misses.
  */
 export function resolveMetricQuery(_testInfo: TestInfo): string {
 	return WORKFLOW_SUCCESS_QUERY;
@@ -113,6 +258,7 @@ export async function waitForThroughput(
 		 * per-stage measurements so a ramp test can identify the breaking point.
 		 */
 		stageBoundaries?: number[];
+		counterReader?: CompletionCounterReader;
 	},
 ): Promise<ThroughputResult> {
 	const {
@@ -125,6 +271,7 @@ export async function waitForThroughput(
 		stallThresholdMs = 60_000,
 		publishEndAt,
 		stageBoundaries,
+		counterReader,
 	} = options;
 
 	const samples: ThroughputSample[] = [];
@@ -138,17 +285,20 @@ export async function waitForThroughput(
 		const remaining = deadline - Date.now();
 		await new Promise((resolve) => setTimeout(resolve, Math.min(pollIntervalMs, remaining)));
 
-		let results;
+		let current: number;
 		try {
-			results = await metrics.query(`sum(last_over_time(${metricQuery}[5m]))`);
+			if (counterReader) {
+				current = await counterReader();
+			} else {
+				const results = await metrics.query(`sum(last_over_time(${metricQuery}[5m]))`);
+				current = results.length > 0 ? results.reduce((sum, r) => sum + r.value, 0) : 0;
+			}
 		} catch (error) {
 			console.log(
 				`[THROUGHPUT] Query error: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			continue;
 		}
-
-		const current = results.length > 0 ? results.reduce((sum, r) => sum + r.value, 0) : 0;
 
 		// Monotonic guard: counters should never decrease.
 		// If VictoriaMetrics returns a stale/missing value, skip this sample.
@@ -196,13 +346,15 @@ export async function waitForThroughput(
 }
 
 /**
- * Reads the current value of the workflow success counter from VictoriaMetrics.
- * Returns 0 if the metric hasn't been scraped yet.
+ * Reads the current value of the workflow completion counter from
+ * VictoriaMetrics. Returns 0 if the metric hasn't been scraped yet.
  */
 export async function getBaselineCounter(
 	metrics: MetricsHelper,
 	metricQuery: string = WORKFLOW_SUCCESS_QUERY,
+	counterReader?: CompletionCounterReader,
 ): Promise<number> {
+	if (counterReader) return await counterReader();
 	try {
 		const results = await metrics.query(`sum(last_over_time(${metricQuery}[5m]))`);
 		return results.length > 0 ? results.reduce((sum, r) => sum + r.value, 0) : 0;
@@ -223,10 +375,8 @@ function calculateThroughput(
 			totalCompleted: 0,
 			durationMs: 0,
 			avgExecPerSec: 0,
-			tailExecPerSec: 0,
 			peakExecPerSec: 0,
 			actionsPerSec: 0,
-			tailActionsPerSec: 0,
 			peakActionsPerSec: 0,
 			samples: [],
 		};
@@ -285,7 +435,7 @@ function calculateThroughput(
 	const durationMs = lastActiveSample.timestamp - referenceStart;
 
 	// Peak rate intentionally omitted: at current poll/scrape cadence, a single
-	// poll interval can catch a full 15s scrape batch worth of completions,
+	// poll interval can catch a full 2s scrape batch worth of completions,
 	// inflating "peak" by an order of magnitude. Reporting it is more misleading
 	// than useful.
 	const avgExecPerSec = durationMs > 0 ? (measuredCompleted / durationMs) * 1000 : 0;
@@ -293,96 +443,22 @@ function calculateThroughput(
 	// Tail rate: throughput across the final 60s of the active window.
 	// Approximates the architectural ceiling — ignores both warm-up and any
 	// mid-run drift (e.g. PG bloat, GC pressure building up over long runs).
-	// Falls back to avg for short runs where the tail is the whole run.
 	const TAIL_WINDOW_MS = 60_000;
-	let tailExecPerSec = avgExecPerSec;
 	const tailStartTime = lastActiveSample.timestamp - TAIL_WINDOW_MS;
-	const tailStartIndex = samples.findIndex((s) => s.timestamp >= tailStartTime);
-	if (tailStartIndex > 0 && tailStartIndex < lastActiveIndex) {
-		const tailAnchor = samples[tailStartIndex];
-		const tailCompletions = lastActiveSample.completed - tailAnchor.completed;
-		const tailDurationMs = lastActiveSample.timestamp - tailAnchor.timestamp;
-		if (tailDurationMs > 0) {
-			tailExecPerSec = (tailCompletions / tailDurationMs) * 1000;
-		}
-	}
+	const tailExecPerSec = measureCounterWindow(samples, {
+		startTime: tailStartTime,
+		endTime: lastActiveSample.timestamp,
+	})?.rate;
 
-	// Phase split: for steady-rate runs, separate "rate while publishing" from
-	// "rate while draining backlog". Each phase has different load characteristics
-	// so reporting one averaged number is misleading.
-	let inputPhaseExecPerSec: number | undefined;
-	let inputPhaseCompleted: number | undefined;
-	let inputPhaseDurationMs: number | undefined;
-	let drainPhaseExecPerSec: number | undefined;
-	let drainPhaseCompleted: number | undefined;
-	let drainPhaseDurationMs: number | undefined;
-
-	if (publishEndAt !== undefined) {
-		const inputSamples = samples.filter((s) => s.timestamp <= publishEndAt);
-		const drainSamples = samples.filter((s) => s.timestamp > publishEndAt);
-
-		// Bound each phase by its LAST ACTIVE sample so post-completion stall
-		// padding doesn't dilute the rate (same trick the tail-rate calc above uses).
-		const lastActiveOf = (s: ThroughputSample[]) => s.findLast((x) => x.delta > 0);
-
-		if (inputSamples.length > 0) {
-			const lastActive = lastActiveOf(inputSamples) ?? inputSamples[inputSamples.length - 1];
-			inputPhaseCompleted = lastActive.completed;
-			inputPhaseDurationMs = lastActive.timestamp - startTime;
-			inputPhaseExecPerSec =
-				inputPhaseDurationMs > 0 ? (inputPhaseCompleted / inputPhaseDurationMs) * 1000 : 0;
-		}
-
-		if (drainSamples.length > 0) {
-			const lastActive = lastActiveOf(drainSamples);
-			const drainStart = inputSamples[inputSamples.length - 1] ?? { completed: 0 };
-			if (lastActive !== undefined) {
-				drainPhaseCompleted = lastActive.completed - drainStart.completed;
-				drainPhaseDurationMs = lastActive.timestamp - publishEndAt;
-				drainPhaseExecPerSec =
-					drainPhaseDurationMs > 0 ? (drainPhaseCompleted / drainPhaseDurationMs) * 1000 : 0;
-			} else {
-				// No active drain samples — drain finished within input phase or counter
-				// never advanced after publish ended.
-				drainPhaseCompleted = 0;
-				drainPhaseDurationMs = 0;
-				drainPhaseExecPerSec = 0;
-			}
-		}
-	}
+	const phaseMeasurements =
+		publishEndAt === undefined ? {} : measureSteadyPhases(samples, startTime, publishEndAt);
 
 	// Per-stage split for staged-rate runs. boundaries[i] = stage i's start;
 	// boundaries[i+1] = stage i's end. Each stage's completion delta is the
 	// difference in cumulative count between its start and end boundaries.
 	let perStage: StageMeasurement[] | undefined;
 	if (stageBoundaries !== undefined && stageBoundaries.length >= 2) {
-		perStage = [];
-		// Helper: cumulative count at the latest sample whose timestamp <= t.
-		// Returns 0 if no samples yet by that timestamp.
-		const completedAt = (t: number): number => {
-			let value = 0;
-			for (const s of samples) {
-				if (s.timestamp <= t) value = s.completed;
-				else break;
-			}
-			return value;
-		};
-		for (let i = 0; i < stageBoundaries.length - 1; i++) {
-			const stageStart = stageBoundaries[i];
-			const stageEnd = stageBoundaries[i + 1];
-			const completedAtStart = completedAt(stageStart);
-			const completedAtEnd = completedAt(stageEnd);
-			const completedDuringStage = completedAtEnd - completedAtStart;
-			const durationMs = stageEnd - stageStart;
-			perStage.push({
-				stageIndex: i,
-				startTimestamp: stageStart,
-				endTimestamp: stageEnd,
-				completedDuringStage,
-				durationMs,
-				execPerSec: durationMs > 0 ? (completedDuringStage / durationMs) * 1000 : 0,
-			});
-		}
+		perStage = measureStageWindows(samples, stageBoundaries);
 	}
 
 	return {
@@ -392,15 +468,10 @@ function calculateThroughput(
 		tailExecPerSec,
 		peakExecPerSec: 0,
 		actionsPerSec: avgExecPerSec * nodeCount,
-		tailActionsPerSec: tailExecPerSec * nodeCount,
+		tailActionsPerSec: tailExecPerSec === undefined ? undefined : tailExecPerSec * nodeCount,
 		peakActionsPerSec: 0,
 		samples,
-		inputPhaseExecPerSec,
-		inputPhaseCompleted,
-		inputPhaseDurationMs,
-		drainPhaseExecPerSec,
-		drainPhaseCompleted,
-		drainPhaseDurationMs,
+		...phaseMeasurements,
 		perStage,
 	};
 }
@@ -414,14 +485,18 @@ export async function attachThroughputResults(
 ): Promise<void> {
 	await attachMetric(testInfo, 'exec-per-sec', result.avgExecPerSec, 'exec/s', dimensions);
 	await attachMetric(testInfo, 'actions-per-sec', result.actionsPerSec, 'actions/s', dimensions);
-	await attachMetric(testInfo, 'tail-exec-per-sec', result.tailExecPerSec, 'exec/s', dimensions);
-	await attachMetric(
-		testInfo,
-		'tail-actions-per-sec',
-		result.tailActionsPerSec,
-		'actions/s',
-		dimensions,
-	);
+	if (result.tailExecPerSec !== undefined) {
+		await attachMetric(testInfo, 'tail-exec-per-sec', result.tailExecPerSec, 'exec/s', dimensions);
+	}
+	if (result.tailActionsPerSec !== undefined) {
+		await attachMetric(
+			testInfo,
+			'tail-actions-per-sec',
+			result.tailActionsPerSec,
+			'actions/s',
+			dimensions,
+		);
+	}
 	await attachMetric(testInfo, 'total-completed', result.totalCompleted, 'count', dimensions);
 	await attachMetric(testInfo, 'duration', result.durationMs, 'ms', dimensions);
 }

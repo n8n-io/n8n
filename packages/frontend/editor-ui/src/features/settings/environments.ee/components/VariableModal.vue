@@ -4,7 +4,7 @@ import { VARIABLE_MODAL_KEY } from '../environments.constants';
 import { computed, reactive, ref, onMounted, nextTick } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nFormInput,
 	N8nInputLabel,
@@ -16,27 +16,28 @@ import {
 	N8nIcon,
 } from '@n8n/design-system';
 import type { Rule, RuleGroup } from '@/Interface';
-import type { EnvironmentVariable } from '../environments.types';
+import type { EnvironmentVariable, VariableModalOptions } from '../environments.types';
 import { useEnvironmentsStore } from '../environments.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system';
 
-const props = withDefaults(
-	defineProps<{
-		mode?: 'new' | 'edit';
-		variable?: EnvironmentVariable;
-	}>(),
-	{
-		mode: 'new',
-	},
-);
+const props = withDefaults(defineProps<VariableModalOptions>(), {
+	mode: 'new',
+	variable: undefined,
+	projectId: undefined,
+});
 
 const i18n = useI18n();
 const { showError } = useToast();
 const uiStore = useUIStore();
 const environmentsStore = useEnvironmentsStore();
 const projectsStore = useProjectsStore();
+const usersStore = useUsersStore();
+const sourceControlStore = useSourceControlStore();
 
 const modalBus = createEventBus();
 const loading = ref(false);
@@ -59,14 +60,22 @@ const valueValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'MAX_LENGTH', config: { maximum: VALUE_MAX_LENGTH } },
 ];
 
+function getInitialProjectId() {
+	if (props.destination?.kind === 'resolved') return props.destination.project.id;
+	if (props.destination?.kind === 'pending') return props.destination.id;
+	if (props.variable) return props.variable.project?.id;
+	if (props.projectId !== undefined) return props.projectId;
+	return projectsStore.currentProjectId;
+}
+
 const form = reactive<{
 	key: string;
 	value: string;
 	projectId?: string | null;
 }>({
-	key: props.variable?.key || '',
-	value: props.variable?.value || '',
-	projectId: props.variable ? props.variable.project?.id : projectsStore.currentProjectId,
+	key: props.variable?.key ?? props.initialValues?.key ?? '',
+	value: props.variable?.value ?? props.initialValues?.value ?? '',
+	projectId: getInitialProjectId(),
 });
 
 const formValidation = reactive<{
@@ -77,43 +86,24 @@ const formValidation = reactive<{
 	value: false,
 });
 
-const keyExistsInSameScope = computed(() => {
-	if (!form.key) return false;
+const keyExistsInSameScope = computed(
+	() =>
+		!!form.key &&
+		environmentsStore
+			.getVariablesInScope(form.projectId)
+			.some(
+				(variable) =>
+					variable.key === form.key &&
+					(props.mode !== 'edit' || variable.id !== props.variable?.id),
+			),
+);
 
-	// Check if a variable with the same key exists in the same project scope
-	const existingVariable = environmentsStore.variables.find((v: EnvironmentVariable) => {
-		// When editing, exclude the current variable being edited
-		if (props.mode === 'edit' && v.id === props.variable?.id) {
-			return false;
-		}
-
-		// Check if the key matches
-		if (v.key !== form.key) return false;
-
-		// Check if both are global (no project)
-		if (!v.project && !form.projectId) return true;
-
-		// Check if both belong to the same project
-		return v.project && v.project?.id === form.projectId;
-	});
-
-	return !!existingVariable;
-});
-
-const globalVariableExistsWarning = computed(() => {
-	if (!form.key || keyExistsInSameScope.value) return false;
-
-	// Only show warning if the current variable is global
-	const isCurrentVariableGlobal = !form.projectId;
-	if (isCurrentVariableGlobal) return false;
-
-	// Check if a global variable (without project) with the same key exists
-	const existingGlobalVariable = environmentsStore.variables.find(
-		(v: EnvironmentVariable) => v.key === form.key && !v.project,
-	);
-
-	return !!existingGlobalVariable;
-});
+const globalVariableExistsWarning = computed(
+	() =>
+		!!form.projectId &&
+		!keyExistsInSameScope.value &&
+		environmentsStore.getVariablesInScope(null).some((variable) => variable.key === form.key),
+);
 
 const isValid = computed(
 	() => Object.values(formValidation).every((value) => value) && !keyExistsInSameScope.value,
@@ -125,42 +115,53 @@ const modalTitle = computed(() =>
 		: i18n.baseText('variables.modal.title.edit'),
 );
 
-const projectOptions = computed<
-	Array<{
-		value: string;
-		label: string;
-		icon: IconOrEmoji;
-	}>
->(() => {
-	const options: Array<{
-		value: string;
-		label: string;
-		icon: IconOrEmoji;
-	}> = [
+type ScopeOption = {
+	value: string;
+	label: string;
+	icon: IconOrEmoji;
+	disabled: boolean;
+};
+
+const projectOptions = computed<ScopeOption[]>(() => {
+	const readOnly = sourceControlStore.preferences.branchReadOnly;
+
+	const options: ScopeOption[] = [
 		{
 			value: '',
 			label: i18n.baseText('variables.modal.scope.global'),
 			icon: { type: 'icon', value: 'database' },
+			disabled:
+				readOnly || !getResourcePermissions(usersStore.currentUser?.globalScopes).variable?.create,
 		},
 	];
 
-	if (projectsStore.availableProjects) {
-		options.push(
-			...projectsStore.availableProjects
-				.filter((project) => project.type !== 'personal')
-				.map((project) => {
-					const icon = (project.icon || {
-						type: 'icon' as const,
-						value: 'layer-group',
-					}) as IconOrEmoji;
-					return {
-						value: project.id,
-						label: project.name ?? project.id,
-						icon,
-					};
-				}),
-		);
+	if (projectsStore.personalProject) {
+		options.push({
+			value: projectsStore.personalProject.id,
+			label: i18n.baseText('projects.menu.personal'),
+			icon: { type: 'icon', value: 'user' },
+			disabled:
+				readOnly ||
+				!getResourcePermissions(projectsStore.personalProject.scopes).projectVariable?.create,
+		});
 	}
+
+	options.push(
+		...projectsStore.myProjects
+			.filter((project) => project.type === 'team')
+			.map((project) => {
+				const icon = (project.icon || {
+					type: 'icon' as const,
+					value: 'layer-group',
+				}) as IconOrEmoji;
+				return {
+					value: project.id,
+					label: project.name ?? project.id,
+					icon,
+					disabled: readOnly || !getResourcePermissions(project.scopes).projectVariable?.create,
+				};
+			}),
+	);
 
 	return options;
 });
@@ -171,16 +172,40 @@ const selectedProjectIcon = computed<IconOrEmoji>(() => {
 });
 
 const showScopeField = computed(() => {
-	// Show scope field only when creating a new variable and not in a project context
-	return props.mode === 'new' && !projectsStore.currentProjectId;
+	// Hidden when the caller already chose a scope (projectId prop) or we're in a project
+	return (
+		!props.destination &&
+		props.mode === 'new' &&
+		props.projectId === undefined &&
+		!projectsStore.currentProjectId
+	);
+});
+
+const destinationName = computed(() =>
+	props.destination?.kind === 'resolved' ? props.destination.project.name : props.destination?.name,
+);
+
+const canCreate = computed(() => {
+	if (!props.onCreate) return true;
+	if (sourceControlStore.preferences.branchReadOnly) return false;
+	const destination = props.destination;
+	if (!destination)
+		return !!getResourcePermissions(usersStore.currentUser?.globalScopes).variable.create;
+	const project =
+		destination.kind === 'resolved'
+			? destination.project
+			: projectsStore.myProjects.find((item) => item.id === destination.id);
+	if (project) return !!getResourcePermissions(project.scopes).projectVariable.create;
+	return destination.kind === 'pending' && destination.permissions.create;
 });
 
 function closeModal() {
+	if (loading.value) return;
 	uiStore.closeModal(VARIABLE_MODAL_KEY);
 }
 
 async function handleSubmit() {
-	if (!isValid.value) {
+	if (loading.value || !isValid.value || !canCreate.value) {
 		return;
 	}
 
@@ -199,7 +224,7 @@ async function handleSubmit() {
 		}
 
 		if (props.mode === 'new') {
-			await environmentsStore.createVariable(variablePayload);
+			await (props.onCreate ?? environmentsStore.createVariable)(variablePayload);
 		} else if (props.variable) {
 			await environmentsStore.updateVariable({
 				id: props.variable.id,
@@ -207,7 +232,7 @@ async function handleSubmit() {
 			});
 		}
 
-		closeModal();
+		uiStore.closeModal(VARIABLE_MODAL_KEY);
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.save'));
 	} finally {
@@ -216,6 +241,7 @@ async function handleSubmit() {
 }
 
 onMounted(async () => {
+	void projectsStore.getMyProjects();
 	await nextTick();
 	const input = keyInputRef.value?.inputRef;
 	if (input) {
@@ -245,15 +271,18 @@ onMounted(async () => {
 		:name="VARIABLE_MODAL_KEY"
 		width="600px"
 		:lock-scroll="false"
-		:close-on-esc="true"
-		:close-on-click-modal="false"
-		:show-close="true"
+		:show-close="!loading"
+		:before-close="() => !loading"
+		:append-to-body="appendToBody"
 	>
 		<template #content>
 			<div :class="$style.form" @keyup.enter="handleSubmit">
+				<N8nCallout v-if="notice" theme="info">{{ notice() }}</N8nCallout>
+				<N8nText v-if="destinationName">{{ destinationName }}</N8nText>
 				<N8nFormInput
 					ref="keyInputRef"
 					v-model="form.key"
+					:disabled="fixedKey || loading"
 					:label="i18n.baseText('variables.modal.key.label')"
 					name="key"
 					focus-initially
@@ -283,6 +312,7 @@ onMounted(async () => {
 
 				<N8nFormInput
 					v-model="form.value"
+					:disabled="loading"
 					name="value"
 					:label="i18n.baseText('variables.modal.value.label')"
 					data-test-id="variable-modal-value-input"
@@ -316,6 +346,7 @@ onMounted(async () => {
 								:key="option.value || 'global'"
 								:value="option.value"
 								:label="option.label"
+								:disabled="option.disabled"
 								:class="{ [$style.globalOption]: option.value === '' }"
 							>
 								<div :class="$style.optionContent">
@@ -337,11 +368,12 @@ onMounted(async () => {
 					variant="subtle"
 					:label="i18n.baseText('variables.modal.button.cancel')"
 					data-test-id="variable-modal-cancel-button"
+					:disabled="loading"
 					@click="closeModal"
 				/>
 				<N8nButton
 					:loading="loading"
-					:disabled="!isValid"
+					:disabled="!isValid || !canCreate || loading"
 					:label="i18n.baseText('variables.modal.button.save')"
 					data-test-id="variable-modal-save-button"
 					@click="handleSubmit"

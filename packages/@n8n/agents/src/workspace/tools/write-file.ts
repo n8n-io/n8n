@@ -9,7 +9,11 @@ export function createWriteFileTool(filesystem: WorkspaceFilesystem): BuiltTool 
 		.description('Write content to a file in the workspace')
 		.input(
 			z.object({
-				path: z.string().describe('Path to the file to write'),
+				path: z
+					.string()
+					.describe(
+						'Path to the file to write, relative to the workspace root (absolute paths must be under it)',
+					),
 				content: z.string().describe('Content to write to the file'),
 				recursive: z
 					.boolean()
@@ -22,8 +26,11 @@ export function createWriteFileTool(filesystem: WorkspaceFilesystem): BuiltTool 
 				success: z.boolean().describe('Whether the write was successful'),
 			}),
 		)
-		.handler(async (input) => {
-			await filesystem.writeFile(input.path, input.content, { recursive: input.recursive });
+		.handler(async (input, ctx) => {
+			await filesystem.writeFile(input.path, input.content, {
+				recursive: input.recursive,
+				abortSignal: ctx.abortSignal,
+			});
 			return { success: true };
 		})
 		.build();

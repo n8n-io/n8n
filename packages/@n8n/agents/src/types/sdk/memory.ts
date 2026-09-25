@@ -4,11 +4,10 @@ import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from 
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
-	ObservationLogEntry,
 	ObservationLogObserveFn,
 	ObservationLogReflectFn,
-	ObservationLogScope,
 } from './observation-log';
+import type { RuntimeSkillStateStore } from '../../skills/types';
 import type { JSONObject } from '../utils/json';
 
 /**
@@ -34,6 +33,8 @@ export interface Thread {
 }
 
 export interface BuiltMemory {
+	/** Retains active skills across separate runs, including compacted conversations. */
+	skillState?: RuntimeSkillStateStore;
 	// --- Thread management ---
 	getThread(threadId: string): Promise<Thread | null>;
 	saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread>;
@@ -48,12 +49,16 @@ export interface BuiltMemory {
 		},
 	): Promise<AgentDbMessage[]>;
 	/**
-	 * Append messages to a thread. Each entry must be a full {@link AgentDbMessage}:
-	 * stable string `id` and `createdAt` (the runtime sets both when messages pass through
-	 * its internal list). Custom backends must persist and return those fields from
-	 * `getMessages` so ordering, pagination (`before` / limit), and filters stay consistent;
-	 * when both a column and serialized JSON exist, treat the stored sort key / column as
-	 * authoritative for `createdAt` on load.
+	 * Upsert messages into a thread by `id`: insert messages with a new `id`, and replace
+	 * in place (preserving position) any whose `id` already exists. Implementations MUST be
+	 * idempotent on `id` — the runtime persists a turn's input eagerly (so it survives an
+	 * aborted or abandoned-HITL turn) and again at end of turn, so the same message id is
+	 * saved more than once; an append-only backend would duplicate it. Each entry must be a
+	 * full {@link AgentDbMessage}: stable string `id` and `createdAt` (the runtime sets both
+	 * when messages pass through its internal list). Custom backends must persist and return
+	 * those fields from `getMessages` so ordering, pagination (`before` / limit), and filters
+	 * stay consistent; when both a column and serialized JSON exist, treat the stored sort
+	 * key / column as authoritative for `createdAt` on load.
 	 */
 	saveMessages(args: {
 		threadId: string;
@@ -61,38 +66,6 @@ export interface BuiltMemory {
 		messages: AgentDbMessage[];
 	}): Promise<void>;
 	deleteMessages(messageIds: string[]): Promise<void>;
-	// --- Semantic recall (optional) ---
-	search?(
-		query: string,
-		opts?: {
-			/** @default 'resource' */
-			scope?: 'thread' | 'resource';
-			threadId?: string;
-			resourceId?: string;
-			topK?: number;
-			messageRange?: { before: number; after: number };
-		},
-	): Promise<AgentDbMessage[]>;
-	// --- Tier 3: Vector operations (optional — runtime handles embeddings) ---
-	saveEmbeddings?(opts: {
-		scope?: 'thread' | 'resource';
-		threadId?: string;
-		resourceId?: string;
-		entries: Array<{
-			id: string;
-			vector: number[];
-			text: string;
-			model: string;
-		}>;
-	}): Promise<void>;
-	queryEmbeddings?(opts: {
-		/** @default 'resource' */
-		scope?: 'thread' | 'resource';
-		threadId?: string;
-		resourceId?: string;
-		vector: number[];
-		topK: number;
-	}): Promise<Array<{ id: string; score: number }>>;
 	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---
 	episodic?: EpisodicMemoryMethods;
 	// --- Lifecycle (optional) ---
@@ -102,23 +75,48 @@ export interface BuiltMemory {
 	describe(): MemoryDescriptor;
 }
 
-// --- Semantic Recall Config ---
-
-export interface SemanticRecallConfig {
-	/** @default 'resource' */
-	scope?: 'thread' | 'resource';
-	topK: number;
-	messageRange?: { before: number; after: number };
-	embedder?: string; // e.g. 'openai/text-embedding-3-small' — required for queryEmbeddings(), optional for search()-based backends
-	/** API key for the embedder provider. Falls back to environment variables if not set. */
-	apiKey?: string;
-}
-
 export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
 
+/**
+ * Who asked and where. Stores decide the storage scope from both: a host can
+ * key shared conversations by thread and still resolve recall per resource.
+ */
 export interface EpisodicMemoryScope {
 	resourceId: string;
+	threadId: string;
 }
+
+export type EpisodicMemoryCaptureKind =
+	| 'explicit_remember'
+	| 'preference'
+	| 'decision'
+	| 'fact'
+	| 'correction'
+	| 'resolution'
+	| 'request';
+
+export type EpisodicMemoryCaptureStatus = 'pending' | 'completed' | 'failed';
+
+export interface EpisodicMemoryCaptureCandidate {
+	id: string;
+	resourceId: string;
+	threadId: string;
+	sourceMessageId: string | null;
+	runId: string;
+	toolCallId: string;
+	content: string;
+	evidenceText: string;
+	kind: EpisodicMemoryCaptureKind;
+	status: EpisodicMemoryCaptureStatus;
+	attemptCount: number;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export type NewEpisodicMemoryCaptureCandidate = Omit<
+	EpisodicMemoryCaptureCandidate,
+	'id' | 'status' | 'attemptCount' | 'createdAt' | 'updatedAt'
+>;
 
 export interface EpisodicMemoryEntry {
 	id: string;
@@ -144,33 +142,31 @@ export type NewEpisodicMemoryEntry = Omit<
 	lastSeenAt?: Date;
 };
 
-export interface EpisodicMemoryEntrySource {
+interface EpisodicMemoryEntrySourceBase {
 	id: string;
 	memoryEntryId: string;
-	observationId: string;
 	threadId: string;
 	evidenceText: string;
 	createdAt: Date;
 }
 
-export type NewEpisodicMemoryEntrySource = Omit<EpisodicMemoryEntrySource, 'id' | 'createdAt'> & {
+export type EpisodicMemoryEntrySource = EpisodicMemoryEntrySourceBase &
+	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
+
+type NewEpisodicMemoryEntrySourceBase = Omit<EpisodicMemoryEntrySourceBase, 'id' | 'createdAt'> & {
 	createdAt?: Date;
 };
 
-export type NewEpisodicMemoryEntrySourceForEntry = Omit<
-	NewEpisodicMemoryEntrySource,
+export type NewEpisodicMemoryEntrySource = NewEpisodicMemoryEntrySourceBase &
+	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
+
+type NewEpisodicMemoryEntrySourceForEntryBase = Omit<
+	NewEpisodicMemoryEntrySourceBase,
 	'memoryEntryId'
 >;
 
-export interface EpisodicMemoryCursor extends ObservationLogScope {
-	lastIndexedObservationId: string;
-	lastIndexedObservationCreatedAt: Date;
-	updatedAt: Date;
-}
-
-export type NewEpisodicMemoryCursor = Omit<EpisodicMemoryCursor, 'updatedAt'> & {
-	updatedAt?: Date;
-};
+export type NewEpisodicMemoryEntrySourceForEntry = NewEpisodicMemoryEntrySourceForEntryBase &
+	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
 
 export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
 	lexicalScore: number;
@@ -183,6 +179,8 @@ export interface EpisodicMemorySearchOptions {
 	topK?: number;
 	queryEmbedding?: number[];
 	includeStatuses?: EpisodicMemoryStatus[];
+	/** Search only entries a write from this scope would supersede or merge. Shared backends must not widen this search. */
+	writeScopeOnly?: boolean;
 }
 
 export interface EpisodicMemoryTaskLockHandle {
@@ -193,7 +191,7 @@ export interface EpisodicMemoryTaskLockHandle {
 
 export interface EpisodicMemoryTaskLockMethods {
 	acquire(
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<EpisodicMemoryTaskLockHandle | null>;
 	release(handle: EpisodicMemoryTaskLockHandle): Promise<void>;
@@ -214,8 +212,6 @@ export interface EpisodicMemoryMethods {
 		scope: EpisodicMemoryScope,
 		reflection: EpisodicMemoryReflectionApply,
 	): Promise<EpisodicMemoryReflectionResult>;
-	getCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
-	setCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
 	taskLock?: EpisodicMemoryTaskLockMethods;
 }
 
@@ -223,31 +219,21 @@ export interface BuiltEpisodicMemoryStore {
 	episodic: EpisodicMemoryMethods;
 }
 
-export interface EpisodicMemoryExtractionCandidate {
-	content: string;
-	sources: Array<{
-		observationId: string;
-		evidence: string;
-	}>;
+export interface EpisodicMemoryCaptureMethods {
+	enqueueCaptureCandidate(
+		candidate: NewEpisodicMemoryCaptureCandidate,
+	): Promise<EpisodicMemoryCaptureCandidate>;
+	getPendingCaptureCandidates(
+		scope: EpisodicMemoryScope,
+		opts?: { limit?: number },
+	): Promise<EpisodicMemoryCaptureCandidate[]>;
+	completeCaptureCandidates(ids: string[]): Promise<void>;
+	recordCaptureCandidateFailure(ids: string[], maxAttempts: number): Promise<void>;
 }
 
-export interface EpisodicMemoryExtractorInput {
-	scope: EpisodicMemoryScope;
-	observationScope: ObservationLogScope;
-	now: Date;
-	observations: ObservationLogEntry[];
-	renderedObservations: string;
-	existingEntries: RetrievedEpisodicMemoryEntry[];
-	executionCounter?: AgentExecutionCounter;
+export interface BuiltEpisodicMemoryCaptureStore {
+	episodic: EpisodicMemoryMethods & EpisodicMemoryCaptureMethods;
 }
-
-export interface EpisodicMemoryExtraction {
-	entries: EpisodicMemoryExtractionCandidate[];
-}
-
-export type EpisodicMemoryExtractFn = (
-	input: EpisodicMemoryExtractorInput,
-) => Promise<EpisodicMemoryExtraction>;
 
 export interface EpisodicMemoryReflectionMerge {
 	supersedes: string[];
@@ -289,7 +275,6 @@ export interface EpisodicMemoryReflectionResult {
 }
 
 export interface EpisodicMemoryPrompts {
-	extraction?: string;
 	reflection?: string;
 	recallToolInstruction?: string;
 }
@@ -297,6 +282,7 @@ export interface EpisodicMemoryPrompts {
 export interface EpisodicMemoryEmbeddingProviderOptions {
 	apiKey?: string;
 	baseURL?: string;
+	fetch?: typeof globalThis.fetch;
 }
 
 export interface EpisodicMemoryConfig {
@@ -306,7 +292,6 @@ export interface EpisodicMemoryConfig {
 	embedder?: EmbeddingModel;
 	embeddingModel?: string;
 	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;
-	extract?: EpisodicMemoryExtractFn;
 	reflect?: EpisodicMemoryReflectFn;
 	prompts?: EpisodicMemoryPrompts;
 }
@@ -328,8 +313,13 @@ export interface ObservationLogMemoryConfig {
 }
 
 export interface ObservationalMemoryConfig {
-	/** Estimated tokens in unobserved transcript required before the Observer runs. */
+	/** Estimated visible-window tokens at which the Observer is scheduled mid-run and post-turn. */
 	observerThresholdTokens?: number;
+	/**
+	 * Run the Observer at tool-loop boundaries inside a turn. Default `true`.
+	 * When `false`, the Observer runs only after the turn completes.
+	 */
+	midRunObservation?: boolean;
 	/** Estimated active observation-log tokens required before the Reflector runs. */
 	reflectorThresholdTokens?: number;
 	/** Maximum estimated tokens to render into the system prompt. */
@@ -346,7 +336,6 @@ export interface ObservationalMemoryConfig {
 
 interface MemoryConfigBase {
 	observationLog?: ObservationLogMemoryConfig;
-	semanticRecall?: SemanticRecallConfig;
 	episodicMemory?: EpisodicMemoryConfig;
 	titleGeneration?: TitleGenerationConfig;
 }
@@ -382,15 +371,16 @@ export interface CheckpointStore {
 	/** Persist a snapshot. Overwrites any existing snapshot for the same key. */
 	save(key: string, state: SerializableAgentState): Promise<void>;
 	/**
-	 * Load a snapshot by key. Returns `undefined` if not found.
-	 *
-	 * Multi-process implementations MUST guarantee that concurrent load+delete
-	 * calls for the same key are atomic (only one caller receives the state).
-	 * Use a compare-and-delete primitive (e.g. Redis SET NX, SQL SELECT FOR UPDATE)
-	 * to prevent double-execution when two processes race to resume the same run.
-	 * For single-process use the MemoryCheckpointStore in RunStateManager provides this guarantee.
+	 * Load a snapshot by key. Returns `undefined` if not found. This must be read-only:
+	 * resume validation happens after load and before claimForResume.
 	 */
 	load(key: string): Promise<SerializableAgentState | undefined>;
-	/** Delete a snapshot by key. */
-	delete(key: string): Promise<void>;
+	/**
+	 * Atomically mark a suspended snapshot as running before a validated resume starts.
+	 * Multi-process stores should compare against the loaded suspended state and return
+	 * false when another process has already claimed or changed the snapshot.
+	 */
+	claimForResume?(key: string, state: SerializableAgentState): Promise<boolean>;
+	/** Delete a snapshot. Hosts can use the finishing state to check ownership. */
+	delete(key: string, state?: SerializableAgentState): Promise<void>;
 }

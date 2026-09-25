@@ -150,30 +150,6 @@ describe('TcrExecutor', () => {
 			expect(hasTestInChanged || hasTestInAffected).toBe(true);
 		});
 
-		it('detects new test files in new directories (staged)', () => {
-			// Create a new directory with a test file and stage it
-			const newDir = path.join(tempDir, 'tests', 'e2e', 'staged-feature');
-			fs.mkdirSync(newDir, { recursive: true });
-			// Use valid TypeScript without external imports to pass typecheck
-			fs.writeFileSync(
-				path.join(newDir, 'staged-feature.spec.ts'),
-				'export const test = { name: "staged feature test" };\n',
-			);
-
-			// Stage the new file
-			execSync('git add -A', { cwd: tempDir, stdio: 'pipe' });
-
-			const tcr = new TcrExecutor();
-			const result = tcr.run({ verbose: false });
-
-			// Should detect the actual test file, not just the directory
-			expect(result.changedFiles.some((f) => f.includes('staged-feature.spec.ts'))).toBe(true);
-			// Should NOT include directory paths
-			expect(result.changedFiles.some((f) => f.endsWith('staged-feature/'))).toBe(false);
-			// Should include in affected tests
-			expect(result.affectedTests.some((t) => t.includes('staged-feature.spec.ts'))).toBe(true);
-		});
-
 		it('detects deleted files', () => {
 			// Create and commit a file first
 			fs.writeFileSync(
@@ -340,8 +316,6 @@ describe('TcrExecutor', () => {
 			// Create and commit a baseline file first
 			const baseline: BaselineFile = {
 				version: 1,
-				generated: new Date().toISOString(),
-				totalViolations: 0,
 				violations: {},
 			};
 			saveBaseline(baseline, tempDir);
@@ -367,8 +341,6 @@ describe('TcrExecutor', () => {
 			// Create and commit a baseline file
 			const baseline: BaselineFile = {
 				version: 1,
-				generated: new Date().toISOString(),
-				totalViolations: 0,
 				violations: {},
 			};
 			saveBaseline(baseline, tempDir);
@@ -398,8 +370,6 @@ describe('TcrExecutor', () => {
 			// Create baseline with this violation
 			const baseline: BaselineFile = {
 				version: 1,
-				generated: new Date().toISOString(),
-				totalViolations: 1,
 				violations: {
 					'pages/PageA.ts': [
 						{

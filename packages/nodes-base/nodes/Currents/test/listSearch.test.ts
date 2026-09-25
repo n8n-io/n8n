@@ -1,14 +1,15 @@
 import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getProjects } from '../methods/listSearch';
+import type { Mock } from 'vitest';
 
 describe('Currents listSearch', () => {
 	describe('getProjects', () => {
 		let mockContext: Partial<ILoadOptionsFunctions>;
-		let mockHttpRequest: jest.Mock;
+		let mockHttpRequest: Mock;
 
 		beforeEach(() => {
-			mockHttpRequest = jest.fn();
+			mockHttpRequest = vi.fn();
 			mockContext = {
 				helpers: {
 					httpRequestWithAuthentication: mockHttpRequest,

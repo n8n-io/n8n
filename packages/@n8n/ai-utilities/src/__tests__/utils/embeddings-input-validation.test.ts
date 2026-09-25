@@ -27,7 +27,7 @@ describe('validateEmbedQueryInput', () => {
 
 		try {
 			validateEmbedQueryInput('', mockNode);
-			fail('Should have thrown');
+			expect.fail('Should have thrown');
 		} catch (error) {
 			expect(error).toBeInstanceOf(NodeOperationError);
 			const nodeError = error as NodeOperationError;
@@ -59,7 +59,7 @@ describe('validateEmbedDocumentsInput', () => {
 
 		try {
 			validateEmbedDocumentsInput('not array', mockNode);
-			fail('Should have thrown');
+			expect.fail('Should have thrown');
 		} catch (error) {
 			expect(error).toBeInstanceOf(NodeOperationError);
 			const nodeError = error as NodeOperationError;

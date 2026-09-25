@@ -1,3 +1,5 @@
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import {
 	SyntaxKind,
 	type Project,
@@ -6,7 +8,6 @@ import {
 	type ClassDeclaration,
 } from 'ts-morph';
 
-import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import {
@@ -69,7 +70,7 @@ function hasNavigationMethod(classDecl: ClassDeclaration, methodNames: string[])
  * - this.page.goto(), this.page.waitForURL() etc. (page-level operations)
  * - Pages with navigation methods (explicit standalone pages)
  */
-export class ScopeLockdownRule extends BaseRule {
+export class ScopeLockdownRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'scope-lockdown';
 	readonly name = 'Scope Lockdown';
 	readonly description = 'Page locators must be scoped to container';
@@ -85,8 +86,17 @@ export class ScopeLockdownRule extends BaseRule {
 		return config.patterns.pages;
 	}
 
-	analyze(_project: Project, files: SourceFile[]): Violation[] {
+	protected projectConfig(): AstProjectConfig {
+		return { packages: ['.'], spec: { globs: this.getTargetGlobs() } };
+	}
+
+	analyze(context: { rootDir: string }): Violation[] {
+		return this.projects(context).flatMap(({ project }) => this.analyzeProject(project));
+	}
+
+	analyzeProject(project: Project, files: SourceFile[] = project.getSourceFiles()): Violation[] {
 		const violations: Violation[] = [];
+		const reportedViolations = new Set<string>();
 		const navigationMethods = this.getNavigationMethods();
 
 		for (const file of files) {
@@ -113,7 +123,7 @@ export class ScopeLockdownRule extends BaseRule {
 					const startColumn = classDecl.getStart() - classDecl.getStartLinePos();
 
 					violations.push(
-						this.createViolation(
+						this.fileViolation(
 							file,
 							startLine,
 							startColumn,
@@ -147,13 +157,20 @@ export class ScopeLockdownRule extends BaseRule {
 					if (isUnscopedPageCall(call) && isLocatorCall(call)) {
 						const startLine = call.getStartLineNumber();
 						const startColumn = call.getStart() - call.getStartLinePos();
+						const message = `${className}: Unscoped locator - use this.container instead of this.page`;
+						const violationKey = `${filePath}:${call.getStart()}:${className}:${message}`;
+
+						if (reportedViolations.has(violationKey)) {
+							continue;
+						}
+						reportedViolations.add(violationKey);
 
 						violations.push(
-							this.createViolation(
+							this.fileViolation(
 								file,
 								startLine,
 								startColumn,
-								`${className}: Unscoped locator - use this.container instead of this.page`,
+								message,
 								'Replace this.page.getByTestId(...) with this.container.getByTestId(...)',
 							),
 						);

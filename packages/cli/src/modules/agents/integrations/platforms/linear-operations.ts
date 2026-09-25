@@ -1,12 +1,14 @@
 import { z } from 'zod';
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import type { ChatInstance } from '../chat-integration.service';
 import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
 import {
 	booleanProperty,
+	hasUpdateIssueField,
 	integrationError,
 	isDefined,
-	isRecord,
 	isoDateProperty,
 	numberProperty,
 	removeUndefinedValues,
@@ -723,31 +725,6 @@ function buildLinearUserSearchTermFilter(input: SearchUsersInput): Record<string
 			{ email: { containsIgnoreCase: query } },
 		],
 	};
-}
-
-function hasUpdateIssueField(input: {
-	issueId: string;
-	teamId?: string | null;
-	title?: string;
-	description?: string | null;
-	assigneeId?: string | null;
-	projectId?: string | null;
-	labelIds?: string[];
-	priority?: number | null;
-	stateId?: string | null;
-	parentId?: string | null;
-}): boolean {
-	return (
-		input.teamId !== undefined ||
-		input.title !== undefined ||
-		input.description !== undefined ||
-		input.assigneeId !== undefined ||
-		input.projectId !== undefined ||
-		input.labelIds !== undefined ||
-		input.priority !== undefined ||
-		input.stateId !== undefined ||
-		input.parentId !== undefined
-	);
 }
 
 /**

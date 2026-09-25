@@ -6,10 +6,10 @@ import { VALID_EMAIL_REGEX } from '@/app/constants';
 import { COMMUNITY_PLUS_DOCS_URL } from '../usage.constants';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUsageStore } from '../usage.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import { N8nButton, N8nFormInput, N8nText } from '@n8n/design-system';
 const props = defineProps<{

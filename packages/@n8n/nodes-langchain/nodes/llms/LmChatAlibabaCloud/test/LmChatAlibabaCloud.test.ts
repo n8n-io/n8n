@@ -21,7 +21,7 @@ describe('LmChatAlibabaCloud', () => {
 
 	const mockNodeDef: INode = {
 		id: '1',
-		name: 'Alibaba Cloud Chat Model',
+		name: 'Qwen Cloud Chat Model',
 		typeVersion: 1,
 		type: '@n8n/n8n-nodes-langchain.lmChatAlibabaCloud',
 		position: [0, 0],
@@ -60,10 +60,10 @@ describe('LmChatAlibabaCloud', () => {
 	describe('node description', () => {
 		it('should have correct node properties', () => {
 			expect(node.description).toMatchObject({
-				displayName: 'Alibaba Cloud Chat Model',
+				displayName: 'Qwen Cloud Chat Model',
 				name: 'lmChatAlibabaCloud',
 				group: ['transform'],
-				version: [1],
+				version: [1, 1.1],
 			});
 		});
 
@@ -172,6 +172,7 @@ describe('LmChatAlibabaCloud', () => {
 					headersTimeout: undefined,
 					bodyTimeout: undefined,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 
@@ -191,6 +192,7 @@ describe('LmChatAlibabaCloud', () => {
 					headersTimeout: 120000,
 					bodyTimeout: 120000,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 

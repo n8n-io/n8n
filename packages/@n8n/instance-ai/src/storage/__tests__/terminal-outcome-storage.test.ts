@@ -1,13 +1,13 @@
-jest.mock('../thread-patch', () => ({
-	getThread: jest.fn(),
-	patchThread: jest.fn(),
+vi.mock('../thread-patch', () => ({
+	getThread: vi.fn(),
+	patchThread: vi.fn(),
 }));
 
 import { TerminalOutcomeStorage, type TerminalOutcome } from '../terminal-outcome-storage';
 import { getThread, patchThread, type PatchableThreadMemory } from '../thread-patch';
 
-const mockedGetThread = jest.mocked(getThread);
-const mockedPatchThread = jest.mocked(patchThread);
+const mockedGetThread = vi.mocked(getThread);
+const mockedPatchThread = vi.mocked(patchThread);
 
 function makeMemory(): PatchableThreadMemory {
 	return {};
@@ -43,7 +43,7 @@ describe('TerminalOutcomeStorage', () => {
 	let storage: TerminalOutcomeStorage;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		memory = makeMemory();
 		storage = new TerminalOutcomeStorage(memory);
 	});

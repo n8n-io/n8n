@@ -3,7 +3,7 @@ import { attachMetric, getStableHeap } from '../../utils/performance-helper';
 
 export function runMemoryBaseline({ name, owner }: { name: string; owner: string }) {
 	test.describe(
-		`Module Memory Impact · ${name} @capability:observability`,
+		`Module Memory Impact · ${name}`,
 		{ annotation: [{ type: 'owner', description: owner }] },
 		() => {
 			test(`Idle baseline · ${name}`, async ({ n8nContainer, services }, testInfo) => {

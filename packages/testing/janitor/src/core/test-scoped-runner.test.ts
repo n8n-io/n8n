@@ -1,29 +1,13 @@
 import { isAbsolute } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { buildRunnerArgs } from './test-scoped-runner.js';
+import { buildRunnerArgs, resolveExitCode } from './test-scoped-runner.js';
 
 const rootDir = '/repo/root';
 
 describe('buildRunnerArgs', () => {
-	it('jest scoped: emits --findRelatedTests with absolute paths', () => {
+	it('scoped: emits `related` with absolute paths and `--run` to avoid watch mode', () => {
 		const args = buildRunnerArgs(
-			'jest',
-			{ kind: 'scoped', files: ['packages/nodes-base/nodes/Foo.node.ts'] },
-			rootDir,
-			['--summarize'],
-		);
-		expect(args[0]).toBe('--findRelatedTests');
-		expect(isAbsolute(args[1])).toBe(true);
-		expect(args[1]).toBe('/repo/root/packages/nodes-base/nodes/Foo.node.ts');
-		// A scoped jest run that resolves to zero related tests must pass, not exit 1.
-		expect(args[2]).toBe('--passWithNoTests');
-		expect(args[3]).toBe('--summarize');
-	});
-
-	it('vitest scoped: emits `related` with absolute paths and `--run` to avoid watch mode', () => {
-		const args = buildRunnerArgs(
-			'vitest',
 			{
 				kind: 'scoped',
 				files: ['packages/frontend/editor-ui/src/x.ts', 'packages/frontend/editor-ui/src/y.ts'],
@@ -41,23 +25,39 @@ describe('buildRunnerArgs', () => {
 
 	it('preserves already-absolute paths', () => {
 		const args = buildRunnerArgs(
-			'jest',
 			{ kind: 'scoped', files: ['/already/absolute/path.ts'] },
 			rootDir,
 			[],
 		);
-		expect(args).toEqual(['--findRelatedTests', '/already/absolute/path.ts', '--passWithNoTests']);
+		expect(args).toEqual(['related', '/already/absolute/path.ts', '--run']);
 	});
 
-	it('jest full: passes through args with no related-tests flag', () => {
-		expect(
-			buildRunnerArgs('jest', { kind: 'full', reason: 'config change' }, rootDir, ['--summarize']),
-		).toEqual(['--summarize']);
+	it('full: prepends `run` subcommand', () => {
+		expect(buildRunnerArgs({ kind: 'full', reason: 'no signal' }, rootDir, ['--coverage'])).toEqual(
+			['run', '--coverage'],
+		);
+	});
+});
+
+describe('resolveExitCode', () => {
+	it('passes a normal exit status through unchanged', () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		expect(resolveExitCode({ status: 0, signal: null })).toBe(0);
+		expect(resolveExitCode({ status: 1, signal: null })).toBe(1);
+		expect(error).not.toHaveBeenCalled();
 	});
 
-	it('vitest full: prepends `run` subcommand', () => {
-		expect(
-			buildRunnerArgs('vitest', { kind: 'full', reason: 'no signal' }, rootDir, ['--coverage']),
-		).toEqual(['run', '--coverage']);
+	it('reports the spawn error when vitest does not start', () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const enoent = new Error('spawnSync vitest ENOENT');
+		expect(resolveExitCode({ status: null, signal: null, error: enoent })).toBe(1);
+		expect(error).toHaveBeenCalledWith(expect.stringContaining('ENOENT'));
+		expect(error).not.toHaveBeenCalledWith(expect.stringContaining('signal'));
+	});
+
+	it('names the signal and fails when vitest exits without a status', () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		expect(resolveExitCode({ status: null, signal: 'SIGKILL' })).toBe(1);
+		expect(error).toHaveBeenCalledWith(expect.stringContaining('SIGKILL'));
 	});
 });

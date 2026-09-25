@@ -60,8 +60,7 @@ test.describe(
 					await expect(n8n.ndv.outputPanel.getSchemaItem(key)).toBeVisible();
 				}
 
-				const objectValueItem = n8n.ndv.outputPanel.getSchemaItem('objectValue');
-				await objectValueItem.locator('.toggle').click();
+				await n8n.ndv.outputPanel.getSchemaItemToggle('objectValue').click();
 
 				for (const key of expandedObjectProps) {
 					await expect(n8n.ndv.outputPanel.getSchemaItem(key)).not.toBeInViewport();
@@ -80,7 +79,7 @@ test.describe(
 
 				await n8n.ndv.execute();
 
-				await expect(n8n.ndv.outputPanel.get().getByText('5 items')).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getItemsCountText('5 items')).toBeVisible();
 
 				await n8n.ndv.outputPanel.switchDisplayMode('schema');
 
@@ -96,12 +95,12 @@ test.describe(
 				await n8n.canvas.openNode('Set');
 
 				// 26 items with page size 25 = 2 pages, so pagination is visible
-				await expect(n8n.ndv.outputPanel.get().getByText('26 items')).toBeVisible();
-				await expect(n8n.ndv.getOutputPagination()).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getItemsCountText('26 items')).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getPagination()).toBeVisible();
 
 				await n8n.ndv.outputPanel.switchDisplayMode('schema');
 
-				await expect(n8n.ndv.getOutputPagination()).toBeHidden();
+				await expect(n8n.ndv.outputPanel.getPagination()).toBeHidden();
 			});
 		});
 
@@ -118,7 +117,7 @@ test.describe(
 
 				await n8n.ndv.searchOutputData('US');
 
-				await expect(n8n.ndv.outputPanel.getTableRow(1).locator('mark')).toContainText('US');
+				await expect(n8n.ndv.outputPanel.getTableRowHighlights(1)).toContainText('US');
 
 				await n8n.ndv.execute();
 
@@ -133,7 +132,7 @@ test.describe(
 				);
 				await n8n.canvas.openNode('Edit Fields');
 
-				await expect(n8n.ndv.outputPanel.get().locator('[class*="active"]')).toContainText('Table');
+				await expect(n8n.ndv.outputPanel.getActiveDisplayMode()).toContainText('Table');
 
 				await expect(n8n.ndv.outputPanel.getTableRow(1)).toContainText(
 					'<?xml version="1.0" encoding="UTF-8"?> <library>',
@@ -145,11 +144,11 @@ test.describe(
 				await expect(searchInput).toBeFocused();
 				await searchInput.fill('<lib');
 
-				await expect(n8n.ndv.outputPanel.getTableRow(1).locator('mark')).toContainText('<lib');
+				await expect(n8n.ndv.outputPanel.getTableRowHighlights(1)).toContainText('<lib');
 
 				await n8n.ndv.outputPanel.switchDisplayMode('json');
 
-				await expect(n8n.ndv.outputPanel.getDataContainer().locator('.json-data')).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getJsonDataContainer()).toBeVisible();
 			});
 		});
 
@@ -159,6 +158,7 @@ test.describe(
 				await n8n.canvas.clickZoomToFitButton();
 				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 					'Workflow executed successfully',
+					{ timeout: 15000 },
 				);
 				await n8n.canvas.openNode('Set3');
 
@@ -167,35 +167,35 @@ test.describe(
 
 				await n8n.ndv.ensureOutputRunLinking(true);
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('2 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('2 of 2 (6 items)');
 
 				await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('1 of 2 (6 items)');
 				await expect(n8n.ndv.inputPanel.getTbodyCell(0, 0)).toHaveText('1111');
 				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText('1111');
 
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 				await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('2 of 2 (6 items)');
 
 				await n8n.ndv.outputPanel.getLinkRun().click();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 				await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('2 of 2 (6 items)');
 
 				await n8n.ndv.outputPanel.getLinkRun().click();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
-				expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
+				await n8n.ndv.expectInputRunSelectorValue('1 of 2 (6 items)');
 
 				await n8n.ndv.inputPanel.toggleInputRunLinking();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 				await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('1 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('1 of 2 (6 items)');
 
 				await n8n.ndv.inputPanel.toggleInputRunLinking();
 				await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
-				expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+				await n8n.ndv.expectOutputRunSelectorValue('2 of 2 (6 items)');
 			});
 		});
 
@@ -252,9 +252,7 @@ test.describe(
 				await n8n.ndv.searchOutputData('foo');
 
 				await expect(
-					n8n.ndv.outputPanel
-						.get()
-						.getByText('To search field values, switch to table or JSON view.'),
+					n8n.ndv.outputPanel.getBranchTab('To search field values, switch to table or JSON view.'),
 				).toBeVisible();
 			});
 		});

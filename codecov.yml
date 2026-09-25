@@ -17,6 +17,8 @@ coverage:
     project:
       default:
         threshold: 0.5
+        flags:
+          - nightly-full
 
 github_checks:
   annotations: false
@@ -36,6 +38,10 @@ flags:
     carryforward: true
   python:
     carryforward: true
+  nightly-full:
+    carryforward: true
+  nightly-python:
+    carryforward: true
 
 component_management:
   default_rules:
@@ -54,6 +60,7 @@ component_management:
         - packages/extensions/**
         - packages/@n8n/api-types/**
         - packages/@n8n/backend-common/**
+        - packages/@n8n/backend-services/**
         - packages/@n8n/backend-test-utils/**
         - packages/@n8n/cli/**
         - packages/@n8n/client-oauth2/**

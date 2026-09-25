@@ -1,7 +1,6 @@
 import { BufferLoader } from '@langchain/classic/document_loaders/fs/buffer';
 import { Document } from '@langchain/core/documents';
 import { LoggerProxy as Logger } from 'n8n-workflow';
-import type { PDFParse as PDFParseClass } from 'pdf-parse';
 
 export interface N8nPdfLoaderOptions {
 	splitPages?: boolean;
@@ -25,10 +24,17 @@ export class N8nPdfLoader extends BufferLoader {
 	}
 
 	protected async parse(raw: Buffer, metadata: Record<string, unknown>): Promise<Document[]> {
+		// pdf-parse v2 is backed by pdfjs-dist, which expects a `DOMMatrix` global
+		// that Node.js does not provide. Polyfill it before parsing.
+		if (typeof Reflect.get(globalThis, 'DOMMatrix') === 'undefined') {
+			const { default: DOMMatrix } = await import('@thednp/dommatrix');
+			Reflect.set(globalThis, 'DOMMatrix', DOMMatrix);
+		}
+
 		const { PDFParse } = await import('pdf-parse');
 
 		// Buffer extends Uint8Array; PDFParse accepts it directly.
-		const parser: PDFParseClass = new PDFParse({ data: raw });
+		const parser = new PDFParse({ data: raw });
 
 		try {
 			// pageJoiner default ('-- page X of Y --') would pollute the extracted

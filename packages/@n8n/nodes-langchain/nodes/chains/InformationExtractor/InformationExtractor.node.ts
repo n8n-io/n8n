@@ -1,7 +1,8 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { JSONSchema7 } from 'json-schema';
 import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
-import { jsonParse, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -17,8 +18,13 @@ import {
 	jsonSchemaExampleField,
 	schemaTypeField,
 } from '@utils/descriptions';
-import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
+import {
+	convertJsonSchemaToZod,
+	generateSchemaFromExample,
+	parseJsonSchemaParameter,
+} from '@utils/schemaParsing';
 import { getBatchingOptionFields } from '@n8n/ai-utilities';
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 import { makeZodSchemaFromAttributes } from './helpers';
@@ -257,14 +263,14 @@ export class InformationExtractor implements INodeType {
 			let jsonSchema: JSONSchema7;
 
 			if (schemaType === 'fromJson') {
-				const jsonExample = this.getNodeParameter('jsonSchemaExample', 0, '') as string;
+				const jsonExample = this.getNodeParameter('jsonSchemaExample', 0, '') as unknown;
 				// Enforce all fields to be required in the generated schema if the node version is 1.2 or higher
 				const jsonExampleAllFieldsRequired = this.getNode().typeVersion >= 1.2;
 
 				jsonSchema = generateSchemaFromExample(jsonExample, jsonExampleAllFieldsRequired);
 			} else {
-				const inputSchema = this.getNodeParameter('inputSchema', 0, '') as string;
-				jsonSchema = jsonParse<JSONSchema7>(inputSchema);
+				const inputSchema = this.getNodeParameter('inputSchema', 0, '') as unknown;
+				jsonSchema = parseJsonSchemaParameter(inputSchema);
 			}
 
 			const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
@@ -292,7 +298,7 @@ export class InformationExtractor implements INodeType {
 
 				batchResults.forEach((response, index) => {
 					if (response.status === 'rejected') {
-						const error = response.reason as Error;
+						const error = wrapLangChainParserError(response.reason, this.getNode(), i + index);
 						if (this.continueOnFail()) {
 							resultData.push({
 								json: { error: error.message },
@@ -300,7 +306,7 @@ export class InformationExtractor implements INodeType {
 							});
 							return;
 						} else {
-							throw new NodeOperationError(this.getNode(), error.message);
+							throw new NodeOperationError(this.getNode(), error);
 						}
 					}
 					const output = response.value;
@@ -319,12 +325,16 @@ export class InformationExtractor implements INodeType {
 					const output = await processItem(this, itemIndex, llm, parser);
 					resultData.push({ json: { output } });
 				} catch (error) {
+					const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
 					if (this.continueOnFail()) {
-						resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+						resultData.push({
+							json: { error: executionError.message },
+							pairedItem: { item: itemIndex },
+						});
 						continue;
 					}
 
-					throw error;
+					throw executionError;
 				}
 			}
 		}

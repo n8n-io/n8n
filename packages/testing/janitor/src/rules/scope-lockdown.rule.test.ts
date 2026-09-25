@@ -22,10 +22,58 @@ export class TestPage {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
-		const unscopedCall = violations.find((v) => v.message.includes('Unscoped locator'));
-		expect(unscopedCall).toBeDefined();
+		expect(violations).toHaveLength(1);
+		expect(violations[0].message).toContain('Unscoped locator');
+	});
+
+	test('reports one violation for a chained page locator', ({ project, createFile }) => {
+		const file = createFile(
+			'/pages/TestPage.ts',
+			`
+export class TestPage {
+  get container() {
+    return this.page.getByTestId('root');
+  }
+
+  getSomething() {
+    return this.page.getByTestId('x').locator('button').first();
+  }
+}
+`,
+		);
+
+		const violations = rule.analyzeProject(project, [file]);
+
+		expect(violations).toHaveLength(1);
+		expect(violations[0].line).toBe(8);
+	});
+
+	test('reports separate unscoped locator sites', ({ project, createFile }) => {
+		const file = createFile(
+			'/pages/TestPage.ts',
+			`
+export class TestPage {
+  get container() {
+    return this.page.getByTestId('root');
+  }
+
+  getSomething() {
+    return this.page.getByTestId('x');
+  }
+
+  getSomethingElse() {
+    return this.page.getByRole('button');
+  }
+}
+`,
+		);
+
+		const violations = rule.analyzeProject(project, [file]);
+
+		expect(violations).toHaveLength(2);
+		expect(violations.map(({ line }) => line)).toEqual([8, 12]);
 	});
 
 	test('allows properly scoped locators', ({ project, createFile }) => {
@@ -44,7 +92,7 @@ export class TestPage {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -68,7 +116,7 @@ export class TestPage {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -87,7 +135,7 @@ export class TestComponent {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -104,7 +152,7 @@ export class BasePage {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -125,7 +173,7 @@ export class LoginPage {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		// Has navigation method = explicit standalone page, no violations
 		expect(violations).toHaveLength(0);
@@ -146,7 +194,7 @@ export class AmbiguousPage {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		// No container AND no navigation method = ambiguous
 		expect(violations).toHaveLength(1);
@@ -169,7 +217,7 @@ export class SettingsPage {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		// 'navigate' is in default config, so this should pass
 		expect(violations).toHaveLength(0);

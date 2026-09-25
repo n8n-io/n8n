@@ -2,9 +2,13 @@ import { usePushConnection } from '@/app/composables/usePushConnection';
 import {
 	testWebhookReceived,
 	builderCreditsUpdated,
+	executionStarted,
+	agentNodeProgress,
 } from '@/app/composables/usePushConnection/handlers';
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
 import type { BuilderCreditsPushMessage } from '@n8n/api-types/push/builder-credits';
+import type { AgentNodeProgress, PushMessage } from '@n8n/api-types';
+import { pushHandlerRegistry } from '@n8n/frontend-module-sdk';
 import { useRouter } from 'vue-router';
 import type { OnPushMessageHandler } from '@/app/stores/pushConnection.store';
 import { createPinia, setActivePinia } from 'pinia';
@@ -33,12 +37,14 @@ vi.mock('@/app/composables/usePushConnection/handlers', () => ({
 	sendWorkerStatusMessage: vi.fn(),
 	sendConsoleMessage: vi.fn(),
 	workflowFailedToActivate: vi.fn(),
+	workflowPartiallyActivated: vi.fn(),
 	executionFinished: vi.fn(),
 	executionRecovered: vi.fn(),
 	workflowActivated: vi.fn(),
 	workflowDeactivated: vi.fn(),
 	collaboratorsChanged: vi.fn(),
 	builderCreditsUpdated: vi.fn(),
+	agentNodeProgress: vi.fn(),
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -56,6 +62,7 @@ describe('usePushConnection composable', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		pushHandlerRegistry.clear();
 
 		setActivePinia(createPinia());
 
@@ -95,11 +102,54 @@ describe('usePushConnection composable', () => {
 		expect(testWebhookReceived).toHaveBeenCalledWith(testEvent, expect.any(Object));
 	});
 
+	it('yields a push type a module owns, and never runs the handler itself', async () => {
+		const moduleHandler = vi.fn();
+		pushHandlerRegistry.register('executionStarted', moduleHandler);
+
+		pushConnection.initialize();
+
+		const handler = addEventListener.mock.calls[0][0];
+		const testEvent = {
+			type: 'executionStarted',
+			data: { executionId: '123' },
+		} as unknown as PushMessage;
+
+		handler(testEvent);
+		await Promise.resolve();
+
+		expect(executionStarted).not.toHaveBeenCalled();
+		expect(moduleHandler).not.toHaveBeenCalled();
+	});
+
 	it('should call removeEventListener when terminate is called', () => {
 		pushConnection.initialize();
 		pushConnection.terminate();
 
 		expect(removeEventListener).toHaveBeenCalledTimes(1);
+	});
+
+	it('routes agent capability progress to its execution-scoped handler', async () => {
+		pushConnection.initialize();
+		const handler = addEventListener.mock.calls[0][0];
+		const event: AgentNodeProgress = {
+			type: 'agentNodeProgress',
+			data: {
+				executionId: 'exec-1',
+				nodeId: 'node-1',
+				nodeName: 'Message an Agent',
+				runIndex: 0,
+				itemIndex: 0,
+				sequenceNumber: 0,
+				toolCallId: 'tc-1',
+				capability: { kind: 'tool', name: 'lookup' },
+				status: 'running',
+			},
+		};
+
+		handler(event);
+		await Promise.resolve();
+
+		expect(agentNodeProgress).toHaveBeenCalledWith(event, expect.any(Object));
 	});
 
 	it('should handle updateBuilderCredits event correctly', async () => {

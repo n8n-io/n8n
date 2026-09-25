@@ -1,27 +1,26 @@
 import type { TaskList } from '@n8n/api-types';
+import type { Mock } from 'vitest';
 
 import type { PatchableThreadMemory } from '../thread-patch';
 import type * as ThreadPatch from '../thread-patch';
 import { patchThread } from '../thread-patch';
 import { ThreadTaskStorage } from '../thread-task-storage';
 
-jest.mock('../thread-patch', () => {
-	const actual =
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		jest.requireActual<typeof ThreadPatch>('../thread-patch');
+vi.mock('../thread-patch', async () => {
+	const actual = await vi.importActual<typeof ThreadPatch>('../thread-patch');
 
 	return {
 		...actual,
-		patchThread: jest.fn(),
+		patchThread: vi.fn(),
 	};
 });
 
-const mockedPatchThread = jest.mocked(patchThread);
-type TestMemory = PatchableThreadMemory & { getThread: jest.Mock };
+const mockedPatchThread = vi.mocked(patchThread);
+type TestMemory = PatchableThreadMemory & { getThread: Mock };
 
 function makeMemory(): TestMemory {
 	return {
-		getThread: jest.fn(),
+		getThread: vi.fn(),
 	};
 }
 
@@ -40,14 +39,14 @@ describe('ThreadTaskStorage', () => {
 	let storage: ThreadTaskStorage;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		memory = makeMemory();
 		storage = new ThreadTaskStorage(memory);
 	});
 
 	describe('get', () => {
 		it('returns task list from thread metadata', async () => {
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				id: 'thread-1',
 				title: 'Test',
 				metadata: { instanceAiTasks: sampleTaskList },
@@ -61,7 +60,7 @@ describe('ThreadTaskStorage', () => {
 		});
 
 		it('returns null when no tasks in metadata', async () => {
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				id: 'thread-1',
 				title: 'Test',
 				metadata: {},
@@ -74,13 +73,13 @@ describe('ThreadTaskStorage', () => {
 		});
 
 		it('returns null when thread not found', async () => {
-			jest.mocked(memory.getThread).mockResolvedValue(null);
+			vi.mocked(memory.getThread).mockResolvedValue(null);
 
 			expect(await storage.get('unknown')).toBeNull();
 		});
 
 		it('returns null when metadata fails Zod validation', async () => {
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				id: 'thread-1',
 				title: 'Test',
 				metadata: { instanceAiTasks: 'invalid-data' },

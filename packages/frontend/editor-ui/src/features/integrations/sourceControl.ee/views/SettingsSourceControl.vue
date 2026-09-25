@@ -4,19 +4,23 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLoadingService } from '@/app/composables/useLoadingService';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useSourceControlStore } from '../sourceControl.store';
+import {
+	SOURCE_CONTROL_HTTPS_REPO_URL_REGEX,
+	SOURCE_CONTROL_SSH_REPO_URL_REGEX,
+} from '../sourceControl.constants';
 import type { SshKeyTypes, SourceControlPreferences } from '../sourceControl.types';
 import type { TupleToUnion } from '@/app/utils/typeHelpers';
-import type { Rule, RuleGroup } from '@n8n/design-system/types';
+import type { Rule, RuleGroup } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Validatable } from '@n8n/design-system';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nCallout,
 	N8nCheckbox,
@@ -34,6 +38,7 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const loadingService = useLoadingService();
 
+const isInitializing = ref(true);
 const isConnected = ref(false);
 const connectionType = ref<'ssh' | 'https'>('ssh');
 const httpsUsername = ref('');
@@ -151,8 +156,16 @@ const initialize = async () => {
 
 onMounted(async () => {
 	documentTitle.set(locale.baseText('settings.sourceControl.title'));
-	if (!sourceControlStore.isEnterpriseSourceControlEnabled) return;
-	await initialize();
+	if (!sourceControlStore.isEnterpriseSourceControlEnabled) {
+		isInitializing.value = false;
+		return;
+	}
+
+	try {
+		await initialize();
+	} finally {
+		isInitializing.value = false;
+	}
 });
 
 const formValidationStatus = reactive<Record<string, boolean>>({
@@ -173,8 +186,7 @@ const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
 		baseRules.push({
 			name: 'MATCH_REGEX',
 			config: {
-				regex:
-					/^(?:git@|ssh:\/\/git@|[\w.-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
+				regex: SOURCE_CONTROL_SSH_REPO_URL_REGEX,
 				message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
 			},
 		});
@@ -182,7 +194,7 @@ const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
 		baseRules.push({
 			name: 'MATCH_REGEX',
 			config: {
-				regex: /^https:\/\/.+$/,
+				regex: SOURCE_CONTROL_HTTPS_REPO_URL_REGEX,
 				message: locale.baseText('settings.sourceControl.enterValidHttpsUrl'),
 			},
 		});
@@ -317,7 +329,7 @@ watch(connectionType, () => {
 						name="repoUrl"
 						validate-on-blur
 						:validation-rules="repoUrlValidationRules"
-						:disabled="isConnected"
+						:disabled="isInitializing || isConnected"
 						:placeholder="
 							connectionType === 'ssh'
 								? locale.baseText('settings.sourceControl.sshRepoUrlPlaceholder')
@@ -413,6 +425,7 @@ watch(connectionType, () => {
 						:validation-rules="keyGeneratorTypeValidationRules"
 						:options="sourceControlStore.sshKeyTypesWithLabel"
 						:model-value="sourceControlStore.preferences.keyGeneratorType"
+						:disabled="isInitializing"
 						@validate="(value: boolean) => onValidate('keyGeneratorType', value)"
 						@update:model-value="onSelectSshKeyType"
 					/>
@@ -429,6 +442,7 @@ watch(connectionType, () => {
 						size="large"
 						icon="refresh-cw"
 						data-test-id="source-control-refresh-ssh-key-button"
+						:disabled="isInitializing"
 						@click="refreshSshKey"
 					>
 						{{ locale.baseText('settings.sourceControl.refreshSshKey') }}
@@ -449,7 +463,7 @@ watch(connectionType, () => {
 			<N8nButton
 				v-if="!isConnected"
 				size="large"
-				:disabled="!validForConnection"
+				:disabled="isInitializing || !validForConnection"
 				:class="$style.connect"
 				data-test-id="source-control-connect-button"
 				@click="onConnect"
@@ -527,7 +541,7 @@ watch(connectionType, () => {
 				</div>
 			</div>
 		</div>
-		<N8nActionBox
+		<N8nEmptyState
 			v-else
 			data-test-id="source-control-content-unlicensed"
 			:class="$style.actionBox"
@@ -544,7 +558,7 @@ watch(connectionType, () => {
 					{{ locale.baseText('settings.sourceControl.actionBox.description.link') }}
 				</a>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 	</div>
 </template>
 

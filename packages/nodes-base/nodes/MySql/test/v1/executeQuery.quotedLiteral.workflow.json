@@ -1,0 +1,84 @@
+{
+	"name": "mysql v1 query parameters with quoted literal",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "select * from users where label = '$5' and id = $1",
+				"options": {
+					"queryReplacement": "7"
+				}
+			},
+			"id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+			"name": "Run query",
+			"type": "n8n-nodes-base.mySql",
+			"typeVersion": 1,
+			"position": [680, 460],
+			"credentials": {
+				"mySql": {
+					"id": "93",
+					"name": "MySQL account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80",
+			"name": "No Operation, do nothing1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [900, 460]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Run query",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Run query": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "b1c2d3e4-f5a6-4071-8293-a4b5c6d7e8fa",
+	"id": "QueryQuotedLiteralWf01",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

@@ -12,15 +12,18 @@ import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createTestingPinia } from '@pinia/testing';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import { INSTANCE_AI_NEW_VIEW } from '@/features/ai/instanceAi/constants';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -38,7 +41,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
 	const showToast = vi.fn();
@@ -1094,54 +1097,26 @@ describe('WorkflowCard', () => {
 		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
 	});
 
-	it('should show dynamic credentials indicator when workflow has resolvable credentials', () => {
+	it('should show private credential indicator when workflow has resolvable credentials', () => {
 		const data = createWorkflow({
 			hasResolvableCredentials: true,
 		});
 
 		const { getByTestId } = renderComponent({ props: { data } });
 
-		const indicator = getByTestId('workflow-card-dynamic-credentials');
+		const indicator = getByTestId('workflow-card-private-credential');
 		expect(indicator).toBeVisible();
 	});
 
-	it('should hide dynamic credentials indicator when workflow has no resolvable credentials', () => {
+	it('should hide private credential indicator when workflow has no resolvable credentials', () => {
 		const data = createWorkflow({
 			hasResolvableCredentials: false,
 		});
 
 		const { queryByTestId } = renderComponent({ props: { data } });
 
-		const indicator = queryByTestId('workflow-card-dynamic-credentials');
+		const indicator = queryByTestId('workflow-card-private-credential');
 		expect(indicator).toBeNull();
-	});
-
-	it('should show resolver missing badge when workflow has resolvable credentials but no resolver configured', () => {
-		const data = createWorkflow({
-			hasResolvableCredentials: true,
-			settings: {
-				credentialResolverId: undefined,
-			},
-		});
-
-		const { getByTestId } = renderComponent({ props: { data } });
-
-		const badge = getByTestId('workflow-card-resolver-missing');
-		expect(badge).toBeVisible();
-	});
-
-	it('should hide resolver missing badge when workflow has resolver configured', () => {
-		const data = createWorkflow({
-			hasResolvableCredentials: true,
-			settings: {
-				credentialResolverId: 'resolver-123',
-			},
-		});
-
-		const { queryByTestId } = renderComponent({ props: { data } });
-
-		const badge = queryByTestId('workflow-card-resolver-missing');
-		expect(badge).toBeNull();
 	});
 
 	it('should show Archived text on archived workflows', async () => {
@@ -1390,6 +1365,118 @@ describe('WorkflowCard', () => {
 				expect(emitted()['workflow:unpublished']).toBeTruthy();
 				expect(emitted()['workflow:unpublished'][0]).toEqual([{ id: '1' }]);
 			});
+		});
+	});
+
+	describe('metadata divider spacing (ADO-5569)', () => {
+		// The metadata row (`.cardDescription`) lays its items out with
+		// `display: flex; gap`. The flex `gap` only produces even spacing on both
+		// sides of a "|" divider when the "|" is its OWN direct flex child. When a
+		// "|" is baked into the "Last updated ..." / "Created ..." text spans it
+		// gets a plain text space on one side and the flex `gap` on the other,
+		// which makes the spacing around the divider visually uneven.
+		it('should render each "|" divider as its own flex item so spacing is even on both sides', () => {
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				settings: {
+					availableInMCP: true,
+				},
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					data,
+					isMcpEnabled: true,
+					isMcpModuleActive: true,
+					canManageInstanceMcp: true,
+					isWorkflowCardMcpToggleEnabled: false,
+				},
+			});
+
+			// The MCP indicator is a direct child of the metadata flex row.
+			const metadataRow = getByTestId('workflow-card-mcp').parentElement;
+			expect(metadataRow).not.toBeNull();
+
+			// Sanity check: the row actually renders divider characters.
+			expect(metadataRow!.textContent).toContain('|');
+
+			// No content span may embed a "|"; every divider must be a dedicated
+			// direct child of the flex row so the `gap` applies symmetrically.
+			const embedsDivider = Array.from(metadataRow!.children).some((el) => {
+				const text = el.textContent ?? '';
+				return text.includes('|') && text.trim() !== '|';
+			});
+			expect(embedsDivider).toBe(false);
+		});
+	});
+
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	describe('open in assistant experiment', () => {
+		let openInAssistantStore: MockedStore<typeof useOpenWorkflowInAssistantStore>;
+
+		beforeEach(() => {
+			openInAssistantStore = mockedStore(useOpenWorkflowInAssistantStore);
+			openInAssistantStore.opensInAssistant = false;
+		});
+
+		it('opens the workflow in the assistant for treatment users', async () => {
+			openInAssistantStore.opensInAssistant = true;
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				homeProject: { id: 'p1', type: 'personal', name: 'Personal' },
+			});
+			const { getByRole } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByRole('heading', { level: 2, name: new RegExp(data.name) }));
+			await waitFor(() => {
+				expect(router.push).toHaveBeenCalledWith({
+					name: INSTANCE_AI_NEW_VIEW,
+					query: { workflowId: data.id },
+				});
+			});
+		});
+	});
+
+	describe('Publication status indicator', () => {
+		const renderCard = (overrides: Partial<WorkflowResource> = {}) =>
+			renderComponent({ props: { data: createWorkflow(overrides) } });
+
+		it.each([
+			['partial', 'Partial publish'],
+			['failed', 'Failed publish'],
+		] as const)('shows the %s indicator with its label and state', (status, label) => {
+			const { getByTestId, getByText } = renderCard({
+				publicationStatus: status,
+				activeVersionId: 'v1',
+			});
+			const indicator = getByTestId('workflow-card-publish-indicator');
+			expect(indicator).toBeVisible();
+			expect(indicator).toHaveAttribute('data-state', status);
+			expect(getByText(label)).toBeVisible();
+			// The explanation lives in a focus-openable tooltip; the trigger must be tabbable.
+			expect(indicator).toHaveAttribute('tabindex', '0');
+		});
+
+		it('lets the server status win over activeVersionId', () => {
+			const { getByTestId } = renderCard({ publicationStatus: 'failed', activeVersionId: null });
+			expect(getByTestId('workflow-card-publish-indicator')).toHaveAttribute(
+				'data-state',
+				'failed',
+			);
+		});
+
+		it('falls back to the legacy "Published" indicator when publicationStatus is absent', () => {
+			const { getByTestId, getByText } = renderCard({ activeVersionId: 'v1' });
+			const indicator = getByTestId('workflow-card-publish-indicator');
+			expect(indicator).toHaveAttribute('data-state', 'published');
+			expect(getByText('Published')).toBeVisible();
+			// The published state has no tooltip, so it must not be a focus stop.
+			expect(indicator).not.toHaveAttribute('tabindex');
+		});
+
+		it('shows no indicator when not published and no publicationStatus', () => {
+			const { queryByTestId } = renderCard({ activeVersionId: null });
+			expect(queryByTestId('workflow-card-publish-indicator')).toBeNull();
 		});
 	});
 });

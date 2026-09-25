@@ -6,21 +6,17 @@ import { type GitRepoHelper, setupGitRepo } from '../../../utils/source-control-
 test.use({ capability: 'source-control' });
 
 async function expectPushSuccess(n8n: n8nPage) {
-	expect(
-		await n8n.notifications.waitForNotificationAndClose('Pushed successfully', { timeout: 30000 }),
-	).toBe(true);
+	await n8n.notifications.waitForNotificationAndClose('Pushed successfully', { timeout: 30000 });
 }
 
 async function expectNoChangesToCommit(n8n: n8nPage) {
-	expect(
-		await n8n.notifications.waitForNotificationAndClose('No changes to commit', { timeout: 10000 }),
-	).toBe(true);
+	await n8n.notifications.waitForNotificationAndClose('No changes to commit', { timeout: 10000 });
 }
 
 // Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
 test.describe(
-	'Push resources to Git @capability:source-control',
+	'Push resources to Git',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},

@@ -230,6 +230,7 @@ export class McpClient implements INodeType {
 			serverTransport,
 			endpointUrl,
 			surface: 'MCP Client',
+			signal: this.getExecutionCancelSignal(),
 		});
 		if (!client.ok) {
 			throw mapToNodeOperationError(node, client.error);

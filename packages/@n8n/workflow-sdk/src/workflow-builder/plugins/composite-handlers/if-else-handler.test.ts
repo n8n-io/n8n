@@ -53,14 +53,14 @@ function createMockContext(): MutablePluginContext {
 		workflowId: 'test-workflow',
 		workflowName: 'Test Workflow',
 		settings: {},
-		addNodeWithSubnodes: jest.fn((node: NodeInstance<string, string, unknown>) => {
+		addNodeWithSubnodes: vi.fn((node: NodeInstance<string, string, unknown>) => {
 			nodes.set(node.name, {
 				instance: node,
 				connections: new Map(),
 			});
 			return node.name;
 		}),
-		addBranchToGraph: jest.fn((branch: unknown) => {
+		addBranchToGraph: vi.fn((branch: unknown) => {
 			const branchNode = branch as NodeInstance<string, string, unknown>;
 			nodes.set(branchNode.name, {
 				instance: branchNode,

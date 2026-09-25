@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import { buildErrorHandler, hasErrorOutput, getErrorOutputTargets } from './error-handler';
 import type { OnError } from '../../types/base';
 import type { CompositeNode, LeafNode } from '../composite-tree';

@@ -14,4 +14,6 @@ export interface WebSearchOptions {
 	maxResults?: number;
 	includeDomains?: string[];
 	excludeDomains?: string[];
+	/** When aborted, in-flight search requests should stop promptly. */
+	abortSignal?: AbortSignal;
 }

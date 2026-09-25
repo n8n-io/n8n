@@ -5,6 +5,7 @@ import { resolve } from 'path';
 import child_process from 'child_process';
 import { promisify } from 'util';
 import assert from 'assert';
+import { getMonorepoProjects } from './pnpm-utils.mjs';
 
 const exec = promisify(child_process.exec);
 
@@ -22,11 +23,17 @@ export function generateExperimentalVersion(currentVersion, sha) {
 }
 
 /**
+ * Overrides live in `pnpm-workspace.yaml` since pnpm 11; older tags still carry them in
+ * package.json. Both are merged so a comparison that straddles the move sees the same set
+ * on either side, rather than reading every override as added and removed.
+ *
  * @param {{ pnpm?: { overrides?: Record<string, string> }, overrides?: Record<string, string> }} pkg
+ * @param {Record<string, unknown>} [workspace] parsed pnpm-workspace.yaml
  * @returns {Record<string, string>}
  */
-export function getOverrides(pkg) {
-	return { ...pkg.pnpm?.overrides, ...pkg.overrides };
+export function getOverrides(pkg, workspace) {
+	const fromWorkspace = /** @type {Record<string, string> | undefined} */ (workspace?.overrides);
+	return { ...pkg.pnpm?.overrides, ...pkg.overrides, ...fromWorkspace };
 }
 
 /**
@@ -184,13 +191,7 @@ async function bumpVersions() {
 		releaseType === 'experimental'
 			? (await exec('git rev-parse --short=8 HEAD')).stdout.trim()
 			: undefined;
-	const packages = JSON.parse(
-		(
-			await exec(
-				`pnpm ls -r --only-projects --json | jq -r '[.[] | { name: .name, version: .version, path: .path,  private: .private}]'`,
-			)
-		).stdout,
-	);
+	const packages = await getMonorepoProjects();
 
 	/** @type {Record<string, { path: string, isDirty: boolean, version: string, nextVersion?: string }>} */
 	const packageMap = {};
@@ -218,18 +219,13 @@ async function bumpVersions() {
 	// that package also needs a bump (e.g. design-system → editor-ui → cli).
 
 	// Detect root-level changes that affect resolved dep versions without touching individual
-	// package.json files: pnpm.overrides (applies to all specifiers)
-	// and pnpm-workspace.yaml catalog entries (applies only to deps using a "catalog:…" specifier).
+	// package.json files: overrides (apply to all specifiers) and catalog entries
+	// (apply only to deps using a "catalog:…" specifier).
 
 	const rootPkgJson = JSON.parse(await readFile(resolve(rootDir, 'package.json'), 'utf-8'));
 	const rootPkgJsonAtTag = await exec(`git show ${lastTag}:package.json`)
 		.then(({ stdout }) => JSON.parse(stdout))
 		.catch(() => ({}));
-
-	const changedOverrides = computeChangedOverrides(
-		getOverrides(rootPkgJson),
-		getOverrides(rootPkgJsonAtTag),
-	);
 
 	const workspaceYaml = parseWorkspaceYaml(
 		await readFile(resolve(rootDir, 'pnpm-workspace.yaml'), 'utf-8').catch(() => ''),
@@ -239,6 +235,12 @@ async function bumpVersions() {
 			.then(({ stdout }) => stdout)
 			.catch(() => ''),
 	);
+
+	const changedOverrides = computeChangedOverrides(
+		getOverrides(rootPkgJson, workspaceYaml),
+		getOverrides(rootPkgJsonAtTag, workspaceYamlAtTag),
+	);
+
 	const changedCatalogEntries = computeChangedCatalogEntries(
 		getCatalogs(workspaceYaml),
 		getCatalogs(workspaceYamlAtTag),
@@ -260,6 +262,8 @@ async function bumpVersions() {
 
 	propagateDirtyTransitively(packageMap, depsByPackage);
 
+	// Always mark the `cli` package as dirty, so it's version always gets incremented
+	packageMap["n8n"].isDirty = true;
 	// Keep the monorepo version up to date with the released version
 	packageMap['monorepo-root'].version = packageMap['n8n'].version;
 
@@ -288,5 +292,10 @@ async function bumpVersions() {
 
 // only run when executed directly, not when imported by tests
 if (import.meta.url === `file://${process.argv[1]}`) {
-	bumpVersions();
+	try {
+		await bumpVersions();
+	} catch (error) {
+		console.error(error);
+		process.exit(1);
+	}
 }

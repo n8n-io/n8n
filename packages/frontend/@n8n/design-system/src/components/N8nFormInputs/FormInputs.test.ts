@@ -1,11 +1,41 @@
 import { mount } from '@vue/test-utils';
-import { describe, it, expect } from 'vitest';
-
-import type { IFormInput } from '@n8n/design-system/types';
+import { describe, it, expect, vi } from 'vitest';
 
 import FormInputs from './FormInputs.vue';
+import type { IFormInput } from '../../types';
+import { createFormEventBus } from '../../utils';
+import N8nFormInput from '../N8nFormInput';
 
 describe('FormInputs', () => {
+	describe('event bus', () => {
+		const inputs: IFormInput[] = [
+			{ name: 'email', properties: { type: 'text', label: 'Email' }, initialValue: 'a@b.c' },
+		];
+
+		it('should submit the current values when the bus emits submit', async () => {
+			const eventBus = createFormEventBus();
+			const wrapper = mount(FormInputs, { props: { inputs, eventBus } });
+			await wrapper.vm.$nextTick();
+
+			eventBus.emit('submit');
+
+			expect(wrapper.emitted('submit')).toEqual([[{ email: 'a@b.c' }]]);
+		});
+
+		it('should stop listening to the bus when unmounted', async () => {
+			const eventBus = createFormEventBus();
+			const onSpy = vi.spyOn(eventBus, 'on');
+			const offSpy = vi.spyOn(eventBus, 'off');
+			const wrapper = mount(FormInputs, { props: { inputs, eventBus } });
+			await wrapper.vm.$nextTick();
+
+			wrapper.unmount();
+
+			const [, registeredHandler] = onSpy.mock.calls[0];
+			expect(offSpy).toHaveBeenCalledWith('submit', registeredHandler);
+		});
+	});
+
 	describe('dangling field removal', () => {
 		it('should remove values for fields that are no longer in the inputs list', async () => {
 			const initialInputs: IFormInput[] = [
@@ -436,6 +466,57 @@ describe('FormInputs', () => {
 			expect(result.field1.metadata).toEqual({ userId: 123, role: 'admin' });
 			expect(result.field1.metadata?.userId).toBe(123);
 			expect(result.field1.metadata?.role).toBe('admin');
+		});
+	});
+
+	describe('tag size', () => {
+		const multiSelectInput: IFormInput = {
+			name: 'skills',
+			properties: {
+				type: 'multi-select',
+				label: 'Skills',
+				options: [
+					{ label: 'One', value: 'one' },
+					{ label: 'Two', value: 'two' },
+				],
+			},
+		};
+
+		it('should pass tagSize down to each form input', () => {
+			const wrapper = mount(FormInputs, {
+				props: {
+					inputs: [multiSelectInput],
+					tagSize: 'small',
+				},
+			});
+
+			expect(wrapper.findComponent(N8nFormInput).props('tagSize')).toBe('small');
+		});
+
+		it('should let a per-field tagSize override the form-level one', () => {
+			const wrapper = mount(FormInputs, {
+				props: {
+					inputs: [
+						{
+							...multiSelectInput,
+							properties: { ...multiSelectInput.properties, tagSize: 'medium' },
+						},
+					],
+					tagSize: 'small',
+				},
+			});
+
+			expect(wrapper.findComponent(N8nFormInput).props('tagSize')).toBe('medium');
+		});
+
+		it('should keep the form input default when no tagSize is set', () => {
+			const wrapper = mount(FormInputs, {
+				props: {
+					inputs: [multiSelectInput],
+				},
+			});
+
+			expect(wrapper.findComponent(N8nFormInput).props('tagSize')).toBe('large');
 		});
 	});
 });

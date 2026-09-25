@@ -16,6 +16,20 @@ vi.mock('@n8n/chat/event-buses', () => ({
 	},
 }));
 
+const mockChatOptions: ChatOptions = {
+	webhookUrl: 'http://test.com',
+	i18n: {
+		en: {
+			title: '',
+			subtitle: '',
+			footer: '',
+			getStarted: '',
+			inputPlaceholder: '',
+			closeButtonTooltip: '',
+		},
+	},
+};
+
 describe('streamingHandlers', () => {
 	let messages: Ref<ChatMessage[]>;
 	let receivedMessage: Ref<ChatMessageText | null>;
@@ -127,6 +141,49 @@ describe('streamingHandlers', () => {
 			// Verify run is registered by adding a chunk
 			handleStreamingChunk('test', 'node-1', streamingManager, receivedMessage, messages);
 			expect(messages.value).toHaveLength(1);
+		});
+
+		it('should keep each turn of a resumed run in its own message', () => {
+			// An agent resumed after a tool call reports the same runIndex for both turns
+			handleNodeStart('node-1', streamingManager, 0);
+			handleStreamingChunk('Room 1101', 'node-1', streamingManager, receivedMessage, messages, 0);
+			void handleNodeComplete('node-1', streamingManager, 0, 'user', mockChatOptions, messages);
+
+			handleNodeStart('node-1', streamingManager, 0);
+			handleStreamingChunk(
+				'Work order created successfully!',
+				'node-1',
+				streamingManager,
+				receivedMessage,
+				messages,
+				0,
+			);
+			void handleNodeComplete('node-1', streamingManager, 0, 'user', mockChatOptions, messages);
+
+			expect(messages.value).toHaveLength(2);
+			expect((messages.value[0] as ChatMessageText).text).toBe('Room 1101');
+			expect((messages.value[1] as ChatMessageText).text).toBe('Work order created successfully!');
+		});
+
+		it('should still accumulate chunks within a single turn', () => {
+			handleNodeStart('node-1', streamingManager, 0);
+			handleStreamingChunk('Work order ', 'node-1', streamingManager, receivedMessage, messages, 0);
+			handleStreamingChunk('created!', 'node-1', streamingManager, receivedMessage, messages, 0);
+
+			expect(messages.value).toHaveLength(1);
+			expect((messages.value[0] as ChatMessageText).text).toBe('Work order created!');
+		});
+
+		it('should not create a message for a turn that emits no text', () => {
+			// A turn that only produces tool calls streams no chunks
+			handleNodeStart('node-1', streamingManager, 0);
+			void handleNodeComplete('node-1', streamingManager, 0, 'user', mockChatOptions, messages);
+
+			handleNodeStart('node-1', streamingManager, 0);
+			handleStreamingChunk('Done!', 'node-1', streamingManager, receivedMessage, messages, 0);
+
+			expect(messages.value).toHaveLength(1);
+			expect((messages.value[0] as ChatMessageText).text).toBe('Done!');
 		});
 
 		it('should handle errors gracefully', () => {

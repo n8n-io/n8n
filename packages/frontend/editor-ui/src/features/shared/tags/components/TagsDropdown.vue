@@ -6,7 +6,7 @@ import { MAX_TAG_NAME_LENGTH } from '../tags.constants';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 
@@ -22,6 +22,13 @@ interface TagsDropdownProps {
 	createTag?: (name: string) => Promise<ITag>;
 	multipleLimit?: number;
 	createTagI18nKey?: BaseTextKey;
+	/**
+	 * i18n key for a note explaining why creating a tag isn't available, shown under
+	 * "No tags exist". Set it only when the reason is a missing permission — leave it
+	 * undefined when the consumer disabled creation itself (e.g. the workflow-list
+	 * filter), or the note is a non-sequitur.
+	 */
+	createBlockedI18nKey?: BaseTextKey;
 }
 
 const i18n = useI18n();
@@ -37,6 +44,7 @@ const props = withDefaults(defineProps<TagsDropdownProps>(), {
 	createTag: undefined,
 	multipleLimit: 0,
 	createTagI18nKey: 'tagsDropdown.createTag',
+	createBlockedI18nKey: undefined,
 });
 
 const emit = defineEmits<{
@@ -243,12 +251,18 @@ onClickOutside(
 					{{ i18n.baseText(props.createTagI18nKey, { interpolate: { filter } }) }}
 				</span>
 			</N8nOption>
-			<N8nOption v-else-if="options.length === 0" value="message" disabled>
+			<N8nOption v-else-if="options.length === 0" value="message" disabled class="message">
 				<span v-if="createEnabled">{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-else-if="allTags.length > 0">{{
-					i18n.baseText('tagsDropdown.noMatchingTagsExist')
-				}}</span>
-				<span v-else>{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
+				<template v-else>
+					<span data-test-id="tags-dropdown-message">{{
+						allTags.length > 0
+							? i18n.baseText('tagsDropdown.noMatchingTagsExist')
+							: i18n.baseText('tagsDropdown.noTagsExist')
+					}}</span>
+					<span v-if="createBlockedI18nKey" class="create-blocked-note">
+						{{ i18n.baseText(createBlockedI18nKey) }}
+					</span>
+				</template>
 			</N8nOption>
 
 			<N8nOption
@@ -270,6 +284,8 @@ onClickOutside(
 </template>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 .tags-container {
 	$--max-input-height: 60px;
 
@@ -408,6 +424,24 @@ onClickOutside(
 			min-width: $--dropdown-width;
 			border-top: 1px solid var(--color--foreground);
 		}
+	}
+
+	// The permission note needs a second line, unlike every other row.
+	// element-plus lays each item out as a centred flex *row*, so the note has to be
+	// stacked explicitly — `display: block` on it alone is inert inside a row, and the
+	// inherited `align-items: center` would centre the two lines.
+	li.message {
+		height: auto;
+		white-space: normal;
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.create-blocked-note {
+		display: block;
+		margin-top: var(--spacing--5xs);
+		color: var(--color--text--tint-1);
+		font-size: var(--font-size--2xs);
 	}
 }
 </style>

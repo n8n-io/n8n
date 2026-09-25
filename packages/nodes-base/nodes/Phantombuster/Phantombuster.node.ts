@@ -1,16 +1,21 @@
 import {
-	type IExecuteFunctions,
 	type IDataObject,
+	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
+	NodeApiError,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { agentFields, agentOperations } from './AgentDescription';
-import { phantombusterApiRequest, validateJSON } from './GenericFunctions';
+import {
+	phantombusterApiRequest,
+	phantombusterStreamingRequest,
+	validateJSON,
+} from './GenericFunctions';
 
 // import {
 // 	sentenceCase,
@@ -184,12 +189,11 @@ export class Phantombuster implements INodeType {
 						}
 					}
 					//https://hub.phantombuster.com/reference#post_agents-launch-1
-					if (operation === 'launch') {
+					// https://hub.phantombuster.com/reference/post_agents-launch-sync
+					if (operation === 'launch' || operation === 'launchSync') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
-
-						const resolveData = this.getNodeParameter('resolveData', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -249,16 +253,60 @@ export class Phantombuster implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await phantombusterApiRequest.call(this, 'POST', '/agents/launch', body);
-
-						if (resolveData) {
+						if (operation === 'launch') {
 							responseData = await phantombusterApiRequest.call(
 								this,
-								'GET',
-								'/containers/fetch',
-								{},
-								{ id: responseData.containerId },
+								'POST',
+								'/agents/launch',
+								body,
 							);
+
+							const resolveData = this.getNodeParameter('resolveData', i);
+							if (resolveData) {
+								responseData = await phantombusterApiRequest.call(
+									this,
+									'GET',
+									'/containers/fetch',
+									{},
+									{ id: responseData.containerId },
+								);
+							}
+						} else {
+							let containerId: string | undefined;
+							responseData = await phantombusterStreamingRequest.call(
+								this,
+								{ method: 'POST', path: '/agents/launch-sync', body },
+								(message) => {
+									if (
+										message.type === 'start' &&
+										typeof message.data === 'object' &&
+										message.data !== null &&
+										'containerId' in message.data
+									) {
+										containerId = message.data?.containerId as string;
+									}
+								},
+							);
+							// If the streaming call disconnects without an error ( no response ) reconnect using the attach endpoint
+							const MAX_RECONNECTIONS = 5;
+							const RECONNECTION_DELAY_MS = 1_000;
+							for (
+								let attempt = 0;
+								attempt < MAX_RECONNECTIONS && !responseData && containerId;
+								attempt += 1
+							) {
+								await new Promise((resolve) => setTimeout(resolve, RECONNECTION_DELAY_MS));
+								responseData = await phantombusterStreamingRequest.call(this, {
+									method: 'GET',
+									path: '/containers/attach',
+									qs: { id: containerId },
+								});
+							}
+							if (!responseData) {
+								throw new NodeApiError(this.getNode(), {
+									message: 'Stream did not provide a response',
+								});
+							}
 						}
 					}
 				}

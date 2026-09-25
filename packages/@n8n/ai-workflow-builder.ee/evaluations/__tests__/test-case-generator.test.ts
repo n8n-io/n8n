@@ -6,7 +6,8 @@
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { loadDefaultTestCases } from '../cli/csv-prompt-loader';
 import { createTestCaseGenerator, type GeneratedTestCase } from '../support/test-case-generator';
@@ -25,7 +26,7 @@ function hasGetTypeMethod(msg: unknown): msg is { _getType: () => string } {
 }
 
 /** Helper to extract messages from mock invoke calls */
-function getMessagesFromMockCall(mockInvoke: jest.Mock): { system: string; human: string } {
+function getMessagesFromMockCall(mockInvoke: Mock): { system: string; human: string } {
 	const calls = mockInvoke.mock.calls;
 	if (calls.length === 0) throw new Error('No calls recorded');
 
@@ -60,12 +61,12 @@ function getMessagesFromMockCall(mockInvoke: jest.Mock): { system: string; human
 describe('Test Case Generator', () => {
 	describe('createTestCaseGenerator()', () => {
 		let mockLlm: BaseChatModel;
-		let mockInvoke: jest.Mock;
+		let mockInvoke: Mock;
 
 		beforeEach(() => {
-			mockInvoke = jest.fn().mockResolvedValue({ testCases: [] });
+			mockInvoke = vi.fn().mockResolvedValue({ testCases: [] });
 			mockLlm = mock<BaseChatModel>();
-			(mockLlm as unknown as { withStructuredOutput: jest.Mock }).withStructuredOutput = jest
+			(mockLlm as unknown as { withStructuredOutput: Mock }).withStructuredOutput = vi
 				.fn()
 				.mockReturnValue({ invoke: mockInvoke });
 		});
@@ -82,7 +83,7 @@ describe('Test Case Generator', () => {
 			await generator.generate();
 
 			expect(
-				(mockLlm as unknown as { withStructuredOutput: jest.Mock }).withStructuredOutput,
+				(mockLlm as unknown as { withStructuredOutput: Mock }).withStructuredOutput,
 			).toHaveBeenCalled();
 			expect(mockInvoke).toHaveBeenCalled();
 		});
@@ -256,9 +257,9 @@ describe('Test Case Generator', () => {
 				},
 			];
 
-			const mockInvoke = jest.fn().mockResolvedValue({ testCases: mockTestCases });
+			const mockInvoke = vi.fn().mockResolvedValue({ testCases: mockTestCases });
 			const mockLlm = mock<BaseChatModel>();
-			(mockLlm as unknown as { withStructuredOutput: jest.Mock }).withStructuredOutput = jest
+			(mockLlm as unknown as { withStructuredOutput: Mock }).withStructuredOutput = vi
 				.fn()
 				.mockReturnValue({ invoke: mockInvoke });
 

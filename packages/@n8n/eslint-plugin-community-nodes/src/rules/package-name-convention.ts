@@ -15,6 +15,10 @@ export const PackageNameConventionRule = createRule({
 			renameTo: "Rename to '{{suggestedName}}'",
 			invalidPackageName:
 				'Package name "{{ packageName }}" must follow the convention "n8n-nodes-[PACKAGE-NAME]" or "@[AUTHOR]/n8n-nodes-[PACKAGE-NAME]"',
+			missingName:
+				'Package name is missing. Add a "name" field following the convention "n8n-nodes-[PACKAGE-NAME]" or "@[AUTHOR]/n8n-nodes-[PACKAGE-NAME]"',
+			defaultPlaceholderName:
+				'Package name "{{ packageName }}" still contains the default placeholder. Replace "<...>" with your package name',
 		},
 		schema: [],
 		hasSuggestions: true,
@@ -34,6 +38,10 @@ export const PackageNameConventionRule = createRule({
 				const nameProperty = findJsonProperty(node, 'name');
 
 				if (!nameProperty) {
+					context.report({
+						node,
+						messageId: 'missingName',
+					});
 					return;
 				}
 
@@ -43,6 +51,17 @@ export const PackageNameConventionRule = createRule({
 
 				const packageName = nameProperty.value.value;
 				const packageNameStr = typeof packageName === 'string' ? packageName : null;
+
+				if (packageNameStr && isDefaultPlaceholderName(packageNameStr)) {
+					context.report({
+						node: nameProperty,
+						messageId: 'defaultPlaceholderName',
+						data: {
+							packageName: packageNameStr,
+						},
+					});
+					return;
+				}
 
 				if (!packageNameStr || !isValidPackageName(packageNameStr)) {
 					const suggestions: ReportSuggestionArray<'invalidPackageName' | 'renameTo'> = [];
@@ -74,6 +93,10 @@ export const PackageNameConventionRule = createRule({
 		};
 	},
 });
+
+function isDefaultPlaceholderName(name: string): boolean {
+	return name.includes('<...>');
+}
 
 function isValidPackageName(name: string): boolean {
 	const unscoped = /^n8n-nodes-.+$/;

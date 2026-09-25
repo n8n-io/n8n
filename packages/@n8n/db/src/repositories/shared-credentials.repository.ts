@@ -6,6 +6,7 @@ import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedCredentials } from '../entities';
+import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -15,12 +16,24 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	async findByCredentialIds(credentialIds: string[], role: CredentialSharingRole) {
 		return await this.find({
-			relations: { credentials: true, project: { projectRelations: { user: true, role: true } } },
+			relations: { credentials: true },
 			where: {
 				credentialsId: In(credentialIds),
 				role,
 			},
 		});
+	}
+
+	async findOwnerProjectsByCredentialIds(credentialIds: string[]): Promise<Map<string, Project>> {
+		const ownerProjects = new Map<string, Project>();
+		for (const chunk of chunkIds(credentialIds)) {
+			const rows = await this.find({
+				where: { credentialsId: In(chunk), role: 'credential:owner' },
+				relations: { project: true },
+			});
+			for (const { credentialsId, project } of rows) ownerProjects.set(credentialsId, project);
+		}
+		return ownerProjects;
 	}
 
 	async makeOwnerOfAllCredentials(project: Project) {
@@ -144,6 +157,42 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 				},
 			},
 		});
+	}
+
+	/**
+	 * Given a list of `(credentialId, userId)` pairs, returns the subset that
+	 * still retains `scope` on the credential through a project membership path:
+	 *
+	 *   SharedCredentials (credential ↔ project)
+	 *     ← ProjectRelation (project ↔ user, project role must grant `scope`)
+	 */
+	async findPairsWithCredentialAccess(
+		pairs: Array<{ credentialId: string; userId: string }>,
+		scope: Scope,
+		credentialRoles: string[],
+		trx?: EntityManager,
+	): Promise<Array<{ credentialId: string; userId: string }>> {
+		if (pairs.length === 0 || credentialRoles.length === 0) return [];
+
+		const manager = trx ?? this.manager;
+		const credentialIds = [...new Set(pairs.map((p) => p.credentialId))];
+		const userIds = [...new Set(pairs.map((p) => p.userId))];
+
+		const rows = await manager
+			.createQueryBuilder(SharedCredentials, 'sc')
+			.select(['sc.credentialsId AS "credentialId"', 'pr.userId AS "userId"'])
+			.distinct(true)
+			.innerJoin(ProjectRelation, 'pr', 'pr.projectId = sc.projectId')
+			.innerJoin('pr.role', 'pr_role')
+			.innerJoin('pr_role.scopes', 'pr_scope')
+			.where('sc.credentialsId IN (:...credentialIds)', { credentialIds })
+			.andWhere('pr.userId IN (:...userIds)', { userIds })
+			.andWhere('pr_scope.slug = :scope', { scope })
+			.andWhere('sc.role IN (:...credentialRoles)', { credentialRoles })
+			.getRawMany<{ credentialId: string; userId: string }>();
+
+		const requested = new Set(pairs.map((p) => `${p.credentialId}|${p.userId}`));
+		return rows.filter((r) => requested.has(`${r.credentialId}|${r.userId}`));
 	}
 
 	/**

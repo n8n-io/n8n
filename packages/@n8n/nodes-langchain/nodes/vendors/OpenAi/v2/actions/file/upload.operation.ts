@@ -75,7 +75,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		i,
 		binaryPropertyName,
 	);
-	formData.append('file', fileContent, {
+	const buffer = await this.helpers.binaryToBuffer(fileContent);
+	formData.append('file', buffer, {
 		filename,
 		contentType,
 	});

@@ -16,7 +16,6 @@ export class WorkflowComposer {
 		notificationMessage: string,
 		options: { timeout?: number } = {},
 	) {
-		const { timeout = 3000 } = options;
 		const responsePromise = this.n8n.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows/') &&
@@ -26,7 +25,7 @@ export class WorkflowComposer {
 
 		await this.n8n.canvas.clickExecuteWorkflowButton();
 		await responsePromise;
-		await this.n8n.notifications.waitForNotificationAndClose(notificationMessage, { timeout });
+		await this.n8n.notifications.waitForNotificationAndClose(notificationMessage, options);
 	}
 
 	/**
@@ -63,25 +62,24 @@ export class WorkflowComposer {
 	 * @param tag - Optional tag to add to the workflow
 	 */
 	async duplicateWorkflow(name: string, tag?: string): Promise<void> {
-		await this.n8n.workflowSettingsModal.getWorkflowMenu().click();
-		await this.n8n.workflowSettingsModal.getDuplicateMenuItem().click();
+		await this.n8n.workflowMenu.openDuplicate();
 
-		const modal = this.n8n.workflowSettingsModal.getDuplicateModal();
+		const modal = this.n8n.workflowMenu.getDuplicateModal();
 		await expect(modal).toBeVisible();
 
-		const nameInput = this.n8n.workflowSettingsModal.getDuplicateNameInput();
+		const nameInput = this.n8n.workflowMenu.getDuplicateNameInput();
 		await expect(nameInput).toBeVisible();
 		await nameInput.press('ControlOrMeta+a');
 		await nameInput.fill(name);
 
 		if (tag) {
-			const tagsInput = this.n8n.workflowSettingsModal.getDuplicateTagsInput();
+			const tagsInput = this.n8n.workflowMenu.getDuplicateTagsInput();
 			await tagsInput.fill(tag);
 			await tagsInput.press('Enter');
 			await tagsInput.press('Escape');
 		}
 
-		const saveButton = this.n8n.workflowSettingsModal.getDuplicateSaveButton();
+		const saveButton = this.n8n.workflowMenu.getDuplicateSaveButton();
 		await expect(saveButton).toBeVisible();
 		await saveButton.click();
 	}
@@ -120,7 +118,21 @@ export class WorkflowComposer {
 		await input.waitFor({ state: 'visible' });
 		await this.n8n.page.keyboard.press('ControlOrMeta+a');
 		await this.n8n.page.keyboard.press('Backspace');
+
+		// Only an account with global project:list searches the server (GET /projects); a
+		// member without it filters its already-fetched project list locally, with no
+		// matching response to wait for. Bound the wait so that misuse fails fast instead
+		// of hanging until the test timeout — every caller today authenticates as an owner
+		// or admin, both of which have project:list.
+		const searchResponse = this.n8n.page.waitForResponse(
+			(response) =>
+				response.request().method() === 'GET' &&
+				new URL(response.url()).pathname.endsWith('/projects') &&
+				new URL(response.url()).searchParams.get('search') === projectNameOrEmail,
+			{ timeout: 20_000 },
+		);
 		await this.n8n.page.keyboard.type(projectNameOrEmail, { delay: 50 });
+		await searchResponse;
 
 		const projectOption = this.n8n.page
 			.getByTestId('project-sharing-info')
@@ -132,9 +144,26 @@ export class WorkflowComposer {
 
 	private async selectFolderInMoveModal(folderName: string): Promise<void> {
 		await this.n8n.resourceMoveModal.getFolderSelect().locator('input').click();
-		await this.n8n.page.keyboard.type(folderName, { delay: 50 });
 
-		const folderOption = this.n8n.page.getByTestId('move-to-folder-option').getByText(folderName);
+		const folderSearchResponse = this.n8n.page.waitForResponse(
+			(response) => {
+				if (response.request().method() !== 'GET') return false;
+				const url = new URL(response.url());
+				if (!url.pathname.endsWith('/folders')) return false;
+				const filterParam = url.searchParams.get('filter');
+				if (!filterParam) return false;
+				try {
+					return (JSON.parse(filterParam) as { name?: string }).name === folderName;
+				} catch {
+					return false;
+				}
+			},
+			{ timeout: 20_000 },
+		);
+		await this.n8n.page.keyboard.type(folderName, { delay: 50 });
+		await folderSearchResponse;
+
+		const folderOption = this.n8n.resourceMoveModal.getFolderOption(folderName);
 		await folderOption.waitFor({ state: 'visible' });
 		await folderOption.click();
 	}

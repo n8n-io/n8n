@@ -30,7 +30,7 @@ import {
 	wrapIntoJson,
 } from './test-data';
 
-jest.mock('ws');
+vi.mock('ws');
 
 const defaultConfig = new MainConfig();
 defaultConfig.jsRunnerConfig ??= {
@@ -78,12 +78,12 @@ describe('JsTaskRunner', () => {
 		taskData: DataRequestResponse;
 		runner?: JsTaskRunner;
 	}) => {
-		jest.spyOn(runner, 'requestData').mockResolvedValue(taskData);
+		vi.spyOn(runner, 'requestData').mockResolvedValue(taskData);
 		return await runner.executeTask(task, new AbortController().signal);
 	};
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	const executeForAllItems = async ({
@@ -236,7 +236,7 @@ describe('JsTaskRunner', () => {
 		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
 			'should make an rpc call for console log in %s mode',
 			async (nodeMode) => {
-				jest.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
+				vi.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
 				const task = newTaskParamsWithSettings({
 					code: "console.log('Hello', 'world!'); return {}",
 					nodeMode,
@@ -302,7 +302,7 @@ describe('JsTaskRunner', () => {
 		});
 
 		it('should log the context object as [[ExecutionContext]]', async () => {
-			const rpcCallSpy = jest.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
+			const rpcCallSpy = vi.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
 
 			const task = newTaskParamsWithSettings({
 				code: `
@@ -777,7 +777,7 @@ describe('JsTaskRunner', () => {
 			for (const group of groups) {
 				it(`${group.method} for runOnceForAllItems`, async () => {
 					// Arrange
-					const rpcCallSpy = jest
+					const rpcCallSpy = vi
 						.spyOn(defaultTaskRunner, 'makeRpcCall')
 						.mockResolvedValue(undefined);
 
@@ -799,7 +799,7 @@ describe('JsTaskRunner', () => {
 
 				it(`${group.method} for runOnceForEachItem`, async () => {
 					// Arrange
-					const rpcCallSpy = jest
+					const rpcCallSpy = vi
 						.spyOn(defaultTaskRunner, 'makeRpcCall')
 						.mockResolvedValue(undefined);
 
@@ -1159,17 +1159,25 @@ describe('JsTaskRunner', () => {
 		});
 
 		describe('all external modules allowed with *', () => {
-			const testCases = Object.keys(packageJson.dependencies);
+			// Packages that use subpath exports only (no root "." export) must be
+			// tested via a known subpath instead of the bare package name.
+			const subpathOnlyModules: Record<string, string> = {
+				'@n8n/utils': '@n8n/utils/result',
+			};
+			const testCases = Object.keys(packageJson.dependencies).map((dep) => ({
+				dep,
+				requirePath: subpathOnlyModules[dep] ?? dep,
+			}));
 			const runner = createRunnerWithOpts({
 				allowedExternalModules: '*',
 			});
 
 			test.each(testCases)(
-				'should be able to require %s in runOnceForAllItems mode',
-				async (module) => {
+				'should be able to require $dep in runOnceForAllItems mode',
+				async ({ requirePath }) => {
 					await expect(
 						executeForAllItems({
-							code: `return { val: require('${module}') }`,
+							code: `return { val: require('${requirePath}') }`,
 							inputItems,
 							runner,
 						}),
@@ -1178,11 +1186,11 @@ describe('JsTaskRunner', () => {
 			);
 
 			test.each(testCases)(
-				'should be able to require %s in runOnceForEachItem mode',
-				async (module) => {
+				'should be able to require $dep in runOnceForEachItem mode',
+				async ({ requirePath }) => {
 					await expect(
 						executeForEachItem({
-							code: `return { val: require('${module}') }`,
+							code: `return { val: require('${requirePath}') }`,
 							inputItems,
 							runner,
 						}),
@@ -1335,6 +1343,28 @@ describe('JsTaskRunner', () => {
 			},
 		);
 
+		// A database driver error, e.g. `pg`'s `DatabaseError`, sets `name` to
+		// `'error'`, so V8 renders the stack header lowercased as `error: <message>`.
+		// The message the database gave must survive to the user.
+		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+			'should surface the message of a rethrown database error in %s mode',
+			async (nodeMode) => {
+				const code = `
+					const dbError = new Error('duplicate key value violates unique constraint "users_email_key"');
+					dbError.name = 'error';
+					dbError.code = '23505';
+					throw dbError;
+				`;
+
+				await expect(
+					execTaskWithParams({
+						task: newTaskParamsWithSettings({ code, nodeMode }),
+						taskData: newDataRequestResponse([wrapIntoJson({ a: 1 })]),
+					}),
+				).rejects.toThrow('duplicate key value violates unique constraint "users_email_key"');
+			},
+		);
+
 		it('sends serializes an error correctly', async () => {
 			const runner = createRunnerWithOpts({});
 			const taskId = '1';
@@ -1347,11 +1377,11 @@ describe('JsTaskRunner', () => {
 			};
 			runner.runningTasks.set(taskId, task);
 
-			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
-			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
-			jest
-				.spyOn(runner, 'requestData')
-				.mockResolvedValue(newDataRequestResponse([wrapIntoJson({ a: 1 })]));
+			const sendSpy = vi.spyOn(runner.ws, 'send').mockImplementation(() => {});
+			vi.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			vi.spyOn(runner, 'requestData').mockResolvedValue(
+				newDataRequestResponse([wrapIntoJson({ a: 1 })]),
+			);
 
 			await runner.receivedSettings(taskId, taskSettings);
 
@@ -1374,22 +1404,22 @@ describe('JsTaskRunner', () => {
 
 	describe('idle timeout', () => {
 		beforeEach(() => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should set idle timer when instantiated', () => {
 			const idleTimeout = 5;
 			const runner = createRunnerWithOpts({}, { idleTimeout });
-			const emitSpy = jest.spyOn(runner, 'emit');
+			const emitSpy = vi.spyOn(runner, 'emit');
 
-			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			vi.advanceTimersByTime(idleTimeout * 1000 - 100);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 
-			jest.advanceTimersByTime(idleTimeout * 1000);
+			vi.advanceTimersByTime(idleTimeout * 1000);
 			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
@@ -1398,9 +1428,9 @@ describe('JsTaskRunner', () => {
 			const runner = createRunnerWithOpts({}, { idleTimeout });
 			const taskId = '123';
 			const offerId = 'offer123';
-			const emitSpy = jest.spyOn(runner, 'emit');
+			const emitSpy = vi.spyOn(runner, 'emit');
 
-			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			vi.advanceTimersByTime(idleTimeout * 1000 - 100);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 
 			runner.openOffers.set(offerId, {
@@ -1409,12 +1439,12 @@ describe('JsTaskRunner', () => {
 			});
 			runner.offerAccepted(offerId, taskId);
 
-			jest.advanceTimersByTime(200);
+			vi.advanceTimersByTime(200);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout'); // because timer was reset
 
 			runner.runningTasks.clear();
 
-			jest.advanceTimersByTime(idleTimeout * 1000);
+			vi.advanceTimersByTime(idleTimeout * 1000);
 			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
@@ -1422,28 +1452,28 @@ describe('JsTaskRunner', () => {
 			const idleTimeout = 5;
 			const runner = createRunnerWithOpts({}, { idleTimeout });
 			const taskId = '123';
-			const emitSpy = jest.spyOn(runner, 'emit');
-			jest.spyOn(runner, 'executeTask').mockResolvedValue({ result: [] });
+			const emitSpy = vi.spyOn(runner, 'emit');
+			vi.spyOn(runner, 'executeTask').mockResolvedValue({ result: [] });
 
 			runner.runningTasks.set(taskId, newTaskState(taskId));
 
-			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			vi.advanceTimersByTime(idleTimeout * 1000 - 100);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 
 			await runner.receivedSettings(taskId, {});
 
-			jest.advanceTimersByTime(200);
+			vi.advanceTimersByTime(200);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout'); // because timer was reset
 
-			jest.advanceTimersByTime(idleTimeout * 1000);
+			vi.advanceTimersByTime(idleTimeout * 1000);
 			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
 		it('should never reach idle timeout if idle timeout is set to 0', () => {
 			const runner = createRunnerWithOpts({}, { idleTimeout: 0 });
-			const emitSpy = jest.spyOn(runner, 'emit');
+			const emitSpy = vi.spyOn(runner, 'emit');
 
-			jest.advanceTimersByTime(999999);
+			vi.advanceTimersByTime(999999);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
@@ -1451,12 +1481,12 @@ describe('JsTaskRunner', () => {
 			const idleTimeout = 5;
 			const runner = createRunnerWithOpts({}, { idleTimeout });
 			const taskId = '123';
-			const emitSpy = jest.spyOn(runner, 'emit');
+			const emitSpy = vi.spyOn(runner, 'emit');
 			const task = newTaskState(taskId);
 
 			runner.runningTasks.set(taskId, task);
 
-			jest.advanceTimersByTime(idleTimeout * 1000);
+			vi.advanceTimersByTime(idleTimeout * 1000);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 			task.cleanup();
 		});
@@ -1764,11 +1794,11 @@ describe('JsTaskRunner', () => {
 			};
 			runner.runningTasks.set(taskId, task);
 
-			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
-			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
-			jest
-				.spyOn(runner, 'requestData')
-				.mockResolvedValue(newDataRequestResponse([wrapIntoJson({ a: 1 })]));
+			const sendSpy = vi.spyOn(runner.ws, 'send').mockImplementation(() => {});
+			vi.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			vi.spyOn(runner, 'requestData').mockResolvedValue(
+				newDataRequestResponse([wrapIntoJson({ a: 1 })]),
+			);
 
 			await runner.receivedSettings(taskId, taskSettings);
 
@@ -1817,7 +1847,7 @@ describe('JsTaskRunner', () => {
 			});
 
 			// runCode mode doesn't fetch data, so we can pass empty response
-			jest.spyOn(runner, 'requestData').mockResolvedValue(newDataRequestResponse([]));
+			vi.spyOn(runner, 'requestData').mockResolvedValue(newDataRequestResponse([]));
 
 			return await runner.executeTask(task, new AbortController().signal);
 		};
@@ -1958,7 +1988,7 @@ describe('JsTaskRunner', () => {
 
 		describe('console methods', () => {
 			it('should allow console.log without making RPC calls', async () => {
-				const rpcSpy = jest.spyOn(defaultTaskRunner, 'makeRpcCall');
+				const rpcSpy = vi.spyOn(defaultTaskRunner, 'makeRpcCall');
 
 				const outcome = await executeRunCode({
 					code: `

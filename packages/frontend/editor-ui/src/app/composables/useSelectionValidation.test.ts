@@ -1,21 +1,30 @@
-import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
+import { setActivePinia } from 'pinia';
 import { createApp, shallowRef } from 'vue';
 
 import { useSelectionValidation } from './useSelectionValidation';
+
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const TEST_WF_ID = 'test-wf-validation';
 const INJECTED_WF_ID = 'injected-wf-validation';
+
+const allowTriggerInGroup = shallowRef(false);
+const allowMultipleBoundaryNodes = shallowRef(false);
+
+vi.mock('@/app/composables/useNodeGroupRules', () => ({
+	useNodeGroupRules: () => ({ allowTriggerInGroup, allowMultipleBoundaryNodes }),
+}));
 
 function makeNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return {
@@ -48,6 +57,58 @@ type LinearGraphFixture = {
 	nodes: Record<string, INodeUi>;
 	connections: IConnections;
 };
+
+const triggerNodeTypes: Record<string, INodeTypeDescription> = {
+	'n8n-nodes-base.manualTrigger': makeNodeType({
+		name: 'n8n-nodes-base.manualTrigger',
+		group: ['trigger'],
+	}),
+	'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+};
+
+/** A feeds B and C, which each leave the selection: two exit nodes. */
+function makeTwoExitGraph(): LinearGraphFixture {
+	const connections: IConnections = {
+		A: {
+			main: [
+				[
+					{ node: 'B', type: 'main', index: 0 },
+					{ node: 'C', type: 'main', index: 0 },
+				],
+			],
+		},
+		B: { main: [[{ node: 'OutsideOne', type: 'main', index: 0 }]] },
+		C: { main: [[{ node: 'OutsideTwo', type: 'main', index: 0 }]] },
+	};
+
+	return {
+		nodes: {
+			a: makeNode({ id: 'a', name: 'A' }),
+			b: makeNode({ id: 'b', name: 'B' }),
+			c: makeNode({ id: 'c', name: 'C' }),
+		},
+		connections,
+	};
+}
+
+/** Outside reaches A and B, which both join at C: two entry nodes. */
+function makeTwoEntryGraph(): LinearGraphFixture {
+	const connections: IConnections = {
+		OutsideOne: { main: [[{ node: 'A', type: 'main', index: 0 }]] },
+		OutsideTwo: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+		A: { main: [[{ node: 'C', type: 'main', index: 0 }]] },
+		B: { main: [[{ node: 'C', type: 'main', index: 0 }]] },
+	};
+
+	return {
+		nodes: {
+			a: makeNode({ id: 'a', name: 'A' }),
+			b: makeNode({ id: 'b', name: 'B' }),
+			c: makeNode({ id: 'c', name: 'C' }),
+		},
+		connections,
+	};
+}
 
 function makeLinearGraph(): LinearGraphFixture {
 	const a = makeNode({ id: 'a', name: 'A' });
@@ -115,6 +176,8 @@ describe('useSelectionValidation', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		useWorkflowsStore().workflowId = TEST_WF_ID;
+		allowTriggerInGroup.value = false;
+		allowMultipleBoundaryNodes.value = false;
 	});
 
 	afterEach(() => {
@@ -168,18 +231,6 @@ describe('useSelectionValidation', () => {
 		expect(result.valid).toBe(true);
 	});
 
-	it('returns too-few-nodes for a single-node grouping selection', () => {
-		const graph = makeLinearGraph();
-		setupGraph(graph, {
-			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
-		});
-
-		const { isSelectionGroupable } = useSelectionValidation();
-		const result = isSelectionGroupable(['a']);
-
-		expect(result).toEqual({ valid: false, reason: 'too-few-nodes' });
-	});
-
 	it('returns node-already-grouped when a selection id belongs to an existing group', () => {
 		const graph = makeLinearGraph();
 		const workflowDocumentStore = setupGraph(graph, {
@@ -215,6 +266,92 @@ describe('useSelectionValidation', () => {
 				expect(result.triggers).toEqual(['A']);
 			}
 		}
+	});
+
+	describe('with the trigger rule on alone', () => {
+		beforeEach(() => {
+			allowTriggerInGroup.value = true;
+		});
+
+		it('accepts a selection that holds a trigger', () => {
+			const graph = makeLinearGraph();
+			graph.nodes.a.type = 'n8n-nodes-base.manualTrigger';
+			setupGraph(graph, triggerNodeTypes);
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b']).valid).toBe(true);
+		});
+
+		it('still refuses a selection with two entry nodes', () => {
+			const graph = makeTwoEntryGraph();
+			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(false);
+		});
+	});
+
+	describe('with the boundary rule on alone', () => {
+		beforeEach(() => {
+			allowMultipleBoundaryNodes.value = true;
+		});
+
+		it('accepts a selection with two entry nodes', () => {
+			const graph = makeTwoEntryGraph();
+			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(true);
+		});
+
+		it('accepts a selection with two exit nodes', () => {
+			const graph = makeTwoExitGraph();
+			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(true);
+		});
+
+		it('still refuses a selection that holds a trigger', () => {
+			const graph = makeLinearGraph();
+			graph.nodes.a.type = 'n8n-nodes-base.manualTrigger';
+			setupGraph(graph, triggerNodeTypes);
+
+			const { isSelectionGroupable } = useSelectionValidation();
+
+			expect(isSelectionGroupable(['a', 'b']).valid).toBe(false);
+		});
+
+		it('still refuses to extract a selection with two entry nodes', () => {
+			const graph = makeTwoEntryGraph();
+			setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+			const { isSelectionExtractable } = useSelectionValidation();
+
+			expect(isSelectionExtractable(['a', 'b', 'c']).valid).toBe(false);
+		});
+	});
+
+	it('refuses a selection with two entry nodes while both rules are off', () => {
+		const graph = makeTwoEntryGraph();
+		setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+		const { isSelectionGroupable } = useSelectionValidation();
+
+		expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(false);
+	});
+
+	it('refuses a selection with two exit nodes while both rules are off', () => {
+		const graph = makeTwoExitGraph();
+		setupGraph(graph, { 'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }) });
+
+		const { isSelectionGroupable } = useSelectionValidation();
+
+		expect(isSelectionGroupable(['a', 'b', 'c']).valid).toBe(false);
 	});
 
 	it('returns invalid-subgraph when the selection skips an intermediate node', () => {
@@ -322,6 +459,140 @@ describe('useSelectionValidation', () => {
 
 			const { expandSelectionWithSubNodes } = useSelectionValidation();
 			expect(expandSelectionWithSubNodes(['a', 'b']).sort()).toEqual(['a', 'b', 'memory'].sort());
+		});
+	});
+
+	describe('resolveGroupableNodeIds', () => {
+		it('drops ids that do not resolve to a node before validating', () => {
+			const graph = makeLinearGraph();
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a', 'b', 'missing'])).toEqual(['a', 'b']);
+		});
+
+		it('returns the sub-node-expanded ids when the selection is groupable', () => {
+			const graph = makeLinearGraph();
+			const memory = makeNode({ id: 'memory', name: 'Memory' });
+			graph.nodes.memory = memory;
+			graph.connections.Memory = { ai_memory: [[{ node: 'B', type: 'ai_memory', index: 0 }]] };
+
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
+			vi.mocked(workflowDocumentStore.getParentNodes).mockImplementation((nodeName, type) => {
+				if (type !== 'ALL_NON_MAIN') return [];
+				if (nodeName === 'B') return ['Memory'];
+				return [];
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a', 'b'])?.sort()).toEqual(['a', 'b', 'memory'].sort());
+		});
+
+		it('returns null when no id resolves to a node', () => {
+			const graph = makeLinearGraph();
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['missing', 'also-missing'])).toBeNull();
+			expect(resolveGroupableNodeIds([])).toBeNull();
+		});
+
+		it('returns null when the resolved selection is not groupable', () => {
+			// A → B → C; selecting only A and C is an invalid subgraph
+			const graph = makeLinearGraph();
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a', 'c'])).toBeNull();
+		});
+
+		it('includes stickies when the selection also has a connectable node', () => {
+			const graph = makeLinearGraph();
+			graph.nodes.sticky = makeNode({ id: 'sticky', name: 'Sticky', type: STICKY_NODE_TYPE });
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+				[STICKY_NODE_TYPE]: makeNodeType({ name: STICKY_NODE_TYPE, group: ['input'] }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a', 'b', 'sticky'])?.sort()).toEqual(
+				['a', 'b', 'sticky'].sort(),
+			);
+		});
+
+		it('returns null for sticky-only selections (creating requires connectable nodes)', () => {
+			// Sticky-only groups remain valid data (a group can degenerate to one
+			// when its last connectable node is deleted), but creating one from
+			// the canvas is not offered.
+			const graph = makeLinearGraph();
+			graph.nodes.sticky = makeNode({ id: 'sticky', name: 'Sticky', type: STICKY_NODE_TYPE });
+			graph.nodes.sticky2 = makeNode({ id: 'sticky2', name: 'Sticky2', type: STICKY_NODE_TYPE });
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+				[STICKY_NODE_TYPE]: makeNodeType({ name: STICKY_NODE_TYPE, group: ['input'] }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['sticky'])).toBeNull();
+			expect(resolveGroupableNodeIds(['sticky', 'sticky2'])).toBeNull();
+		});
+
+		it('returns null for selections with fewer than two connectable members', () => {
+			// Single-member groups are pointless, so creating one is not offered.
+			// A sticky does not count toward the minimum: a lone node plus its
+			// annotation sticky is still a "one-node group". Creation-only rule —
+			// deletion can still degenerate an existing group below the minimum.
+			const graph = makeLinearGraph();
+			graph.nodes.sticky = makeNode({ id: 'sticky', name: 'Sticky', type: STICKY_NODE_TYPE });
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+				[STICKY_NODE_TYPE]: makeNodeType({ name: STICKY_NODE_TYPE, group: ['input'] }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a'])).toBeNull();
+			expect(resolveGroupableNodeIds(['a', 'sticky'])).toBeNull();
+		});
+
+		it('counts connectable members after sub-node expansion for the minimum', () => {
+			// A lone AI parent node expands with its sub-nodes, so the resulting
+			// group has multiple connectable members and grouping stays offered.
+			const graph = makeLinearGraph();
+			const memory = makeNode({ id: 'memory', name: 'Memory' });
+			graph.nodes.memory = memory;
+			graph.connections.Memory = { ai_memory: [[{ node: 'B', type: 'ai_memory', index: 0 }]] };
+
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
+			vi.mocked(workflowDocumentStore.getParentNodes).mockImplementation((nodeName, type) => {
+				if (type !== 'ALL_NON_MAIN') return [];
+				if (nodeName === 'B') return ['Memory'];
+				return [];
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['b'])?.sort()).toEqual(['b', 'memory'].sort());
 		});
 	});
 
@@ -441,7 +712,7 @@ describe('useSelectionValidation', () => {
 		}
 	});
 
-	it('returns multiple-output-branches for an end node with multiple main outputs', () => {
+	it('allows grouping an end node with multiple main outputs', () => {
 		const graph = makeLinearGraph();
 		const nodeTypes: Record<string, INodeTypeDescription> = {
 			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
@@ -456,13 +727,31 @@ describe('useSelectionValidation', () => {
 		const { isSelectionGroupable } = useSelectionValidation();
 		const result = isSelectionGroupable(['a', 'b']);
 
+		expect(result.valid).toBe(true);
+	});
+
+	it('returns multiple-output-branches for extraction when the end node has multiple main outputs', () => {
+		const graph = makeLinearGraph();
+		const nodeTypes: Record<string, INodeTypeDescription> = {
+			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			'n8n-nodes-base.if': makeNodeType({
+				name: 'n8n-nodes-base.if',
+				outputs: ['main', 'main'],
+			}),
+		};
+		graph.nodes.b.type = 'n8n-nodes-base.if';
+		setupGraph(graph, nodeTypes);
+
+		const { isSelectionExtractable } = useSelectionValidation();
+		const result = isSelectionExtractable(['a', 'b']);
+
 		expect(result.valid).toBe(false);
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-output-branches');
 		}
 	});
 
-	it('resolves dynamic outputs before validating end node branch count', () => {
+	it('resolves dynamic outputs before validating end node branch count for extraction', () => {
 		const graph = makeLinearGraph();
 		const nodeTypes: Record<string, INodeTypeDescription> = {
 			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
@@ -476,8 +765,8 @@ describe('useSelectionValidation', () => {
 
 		const getNodeOutputsSpy = vi.spyOn(NodeHelpers, 'getNodeOutputs');
 
-		const { isSelectionGroupable } = useSelectionValidation();
-		const result = isSelectionGroupable(['a', 'b']);
+		const { isSelectionExtractable } = useSelectionValidation();
+		const result = isSelectionExtractable(['a', 'b']);
 
 		expect(getNodeOutputsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({ expression: expect.any(Object) }),
@@ -490,7 +779,7 @@ describe('useSelectionValidation', () => {
 		}
 	});
 
-	it('includes the continueErrorOutput branch when validating end node branch count', () => {
+	it('allows grouping when the end node has an error output branch', () => {
 		const graph = makeLinearGraph();
 		const nodeTypes: Record<string, INodeTypeDescription> = {
 			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
@@ -500,6 +789,20 @@ describe('useSelectionValidation', () => {
 
 		const { isSelectionGroupable } = useSelectionValidation();
 		const result = isSelectionGroupable(['a', 'b']);
+
+		expect(result.valid).toBe(true);
+	});
+
+	it('returns multiple-output-branches for extraction when the end node has an error output branch', () => {
+		const graph = makeLinearGraph();
+		const nodeTypes: Record<string, INodeTypeDescription> = {
+			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+		};
+		graph.nodes.b.onError = 'continueErrorOutput';
+		setupGraph(graph, nodeTypes);
+
+		const { isSelectionExtractable } = useSelectionValidation();
+		const result = isSelectionExtractable(['a', 'b']);
 
 		expect(result.valid).toBe(false);
 		if (!result.valid) {

@@ -3,17 +3,23 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	type User,
 	type ExecutionEntity,
+	type IExecutionBase,
+	type IExecutionResponse,
 	GLOBAL_OWNER_ROLE,
 	Project,
 	ExecutionRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { createExecution } from '@test-integration/db/executions';
+import { createUser } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
-import { DirectedGraph, WorkflowExecute } from 'n8n-core';
+import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
+	type IExecuteResponsePromiseData,
 	type INode,
 	type IRun,
 	type IRunExecutionData,
@@ -31,19 +37,44 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import {
+	CredentialsPermissionChecker,
+	WorkflowPreExecute,
+} from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { WorkflowRunner } from '@/workflow-runner';
-import { createExecution } from '@test-integration/db/executions';
-import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+
+// `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
+// Define the mock at module top-level so the `vi.mock` factory (hoisted) can
+// reference the class without a temporal-dead-zone error — a describe-scoped
+// class isn't initialised when the hoisted factory first resolves.
+const setupQueue = vi.fn();
+const addJob = vi.fn();
+
+@Service()
+class MockScalingService {
+	setupQueue = setupQueue;
+
+	addJob = addJob;
+}
+
+vi.mock('@/scaling/scaling.service', () => ({
+	ScalingService: MockScalingService,
+}));
 
 let owner: User;
 let runner: WorkflowRunner;
@@ -53,7 +84,7 @@ setupTestServer({ endpointGroups: [] });
 mockInstance(Telemetry);
 
 mockInstance(OwnershipService, {
-	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
+	getWorkflowProjectCached: vi.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
 });
 
 beforeAll(async () => {
@@ -63,13 +94,13 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
-	jest.clearAllMocks();
-	jest.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
+	vi.clearAllMocks();
+	vi.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
 });
 
 describe('processError', () => {
@@ -80,7 +111,7 @@ describe('processError', () => {
 	const watcher = mock<{ workflowExecuteAfter: () => Promise<void> }>();
 
 	beforeEach(async () => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		globalConfig.executions.mode = 'regular';
 		workflow = await createWorkflow({}, owner);
 		execution = await createExecution({ status: 'success', finished: true }, workflow);
@@ -89,14 +120,42 @@ describe('processError', () => {
 	});
 
 	test('processError should return early in Bull stalled edge case', async () => {
-		const workflow = await createWorkflow({}, owner);
-		const execution = await createExecution(
-			{
-				status: 'success',
-				finished: true,
-			},
-			workflow,
+		const workflow = await createWorkflow({ settings: { saveDataSuccessExecution: 'all' } }, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
 		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		const successData = createRunExecutionData({
+			resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
+		});
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		const persistenceSpy = vi
+			.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
+			.mockResolvedValue(
+				mock<IExecutionResponse>({
+					status: 'success',
+					finished: true,
+					mode: 'webhook',
+					data: successData,
+					workflowId: workflow.id,
+					workflowData: workflow,
+				}),
+			);
+		const deleteInFlightSpy = vi.spyOn(
+			Container.get(ExecutionPersistence),
+			'deleteInFlightExecution',
+		);
+
 		globalConfig.executions.mode = 'queue';
 		await runner.processError(
 			new Error('test') as ExecutionError,
@@ -105,6 +164,538 @@ describe('processError', () => {
 			execution.id,
 			hooks,
 		);
+
+		await expect(postExecutePromise).resolves.toEqual(
+			expect.objectContaining({ status: 'success', finished: true, data: successData }),
+		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+		expect(persistenceSpy).toHaveBeenCalledWith(execution.id, {
+			includeData: true,
+			unflattenData: true,
+		});
+		expect(activeExecutions.has(execution.id)).toBe(false);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+		expect(deleteInFlightSpy).not.toHaveBeenCalled();
+	});
+
+	test('processError deletes the false-positive success when the workflow does not save successful executions', async () => {
+		const workflow = await createWorkflow(
+			{ settings: { saveDataSuccessExecution: 'none' } },
+			owner,
+		);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		const successData = createRunExecutionData({
+			resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
+		});
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'webhook',
+				data: successData,
+				workflowId: workflow.id,
+				workflowData: workflow,
+				storedAt: 'db',
+			}),
+		);
+		const deleteInFlightSpy = vi
+			.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
+			.mockResolvedValue();
+
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		await expect(postExecutePromise).resolves.toEqual(
+			expect.objectContaining({ status: 'success', finished: true, data: successData }),
+		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+		expect(deleteInFlightSpy).toHaveBeenCalledWith({
+			workflowId: workflow.id,
+			executionId: execution.id,
+			storedAt: 'db',
+		});
+		expect(activeExecutions.has(execution.id)).toBe(false);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+	});
+
+	test('processError soft-deletes a false-positive success for a manual execution that is not saved', async () => {
+		const workflow = await createWorkflow({ settings: { saveManualExecutions: false } }, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'manual', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		const successData = createRunExecutionData({
+			resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
+		});
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'manual',
+				data: successData,
+				workflowId: workflow.id,
+				workflowData: workflow,
+			}),
+		);
+		const deleteInFlightSpy = vi.spyOn(
+			Container.get(ExecutionPersistence),
+			'deleteInFlightExecution',
+		);
+		const softDeleteSpy = vi
+			.spyOn(Container.get(ExecutionRepository), 'softDelete')
+			.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			new Date(),
+			'manual',
+			execution.id,
+			hooks,
+		);
+
+		await expect(postExecutePromise).resolves.toEqual(
+			expect.objectContaining({ status: 'success', finished: true, data: successData }),
+		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+		expect(softDeleteSpy).toHaveBeenCalledWith(execution.id);
+		expect(deleteInFlightSpy).not.toHaveBeenCalled();
+		expect(activeExecutions.has(execution.id)).toBe(false);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+	});
+
+	test('processError prunes a false-positive success even when the stored execution carries no run data', async () => {
+		const workflow = await createWorkflow(
+			{ settings: { saveDataSuccessExecution: 'none' } },
+			owner,
+		);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'webhook',
+				data: undefined,
+				workflowId: workflow.id,
+				workflowData: workflow,
+				storedAt: 'db',
+			}),
+		);
+		const deleteInFlightSpy = vi
+			.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
+			.mockResolvedValue();
+
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		// The run data was still unreadable, so the waiters see the usual fallback error...
+		const run = await postExecutePromise;
+		expect(run).toEqual(expect.objectContaining({ status: 'error', finished: false }));
+		// ...but the retention decision ran anyway, off the row that was found.
+		expect(deleteInFlightSpy).toHaveBeenCalledWith({
+			workflowId: workflow.id,
+			executionId: execution.id,
+			storedAt: 'db',
+		});
+		expect(activeExecutions.has(execution.id)).toBe(false);
+	});
+
+	test.each([
+		[
+			'the stored execution cannot be found',
+			() =>
+				vi
+					.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
+					.mockResolvedValue(undefined),
+		],
+		[
+			'reading the stored execution fails',
+			() =>
+				vi
+					.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
+					.mockRejectedValue(new Error('storage unavailable')),
+		],
+	])('processError finalizes the execution as failed when %s', async (_case, mockReadback) => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		mockReadback();
+
+		const startedAt = new Date();
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			startedAt,
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		const run = await postExecutePromise;
+		expect(run).toEqual(
+			expect.objectContaining({ status: 'error', finished: false, mode: 'webhook', startedAt }),
+		);
+		expect(run?.data.resultData.error?.message).toBe(
+			`Execution ${execution.id} succeeded, but its result could not be read`,
+		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+		expect(activeExecutions.has(execution.id)).toBe(false);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+	});
+
+	test('processError does not fail the execution when a stalled-count error precedes the success write', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+		vi.spyOn(executionRepository, 'findSingleExecution')
+			.mockResolvedValueOnce(mock<IExecutionBase>({ status: 'running' }))
+			.mockResolvedValue(mock<IExecutionBase>({ status: 'success' }));
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'webhook',
+				data: createRunExecutionData({ resultData: { runData: { Start: [] } } }),
+			}),
+		);
+
+		globalConfig.executions.mode = 'queue';
+		vi.useFakeTimers();
+
+		try {
+			const processing = runner.processError(
+				new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+				new Date(),
+				'webhook',
+				execution.id,
+				hooks,
+			);
+			await vi.advanceTimersByTimeAsync(60_000);
+			await processing;
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+		expect(finalizeExecution).not.toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'error' }),
+		);
+	});
+
+	test('processError stops rechecking a stalled-count error once the grace window elapses', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+		globalConfig.executions.mode = 'queue';
+		vi.useFakeTimers();
+
+		const findSingleExecution = vi
+			.spyOn(executionRepository, 'findSingleExecution')
+			.mockImplementation(async () => {
+				vi.setSystemTime(Date.now() + 10_000);
+				return mock<IExecutionBase>({ status: 'running' });
+			});
+
+		try {
+			const processing = runner.processError(
+				new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+				new Date(),
+				'webhook',
+				execution.id,
+				hooks,
+			);
+			await vi.runAllTimersAsync();
+			await processing;
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(findSingleExecution.mock.calls.length).toBeLessThan(10);
+		expect(finalizeExecution).toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'crashed' }),
+		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+	});
+
+	test('processError runs the after hook with a crashed run when a stalled-count error claims the execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'new', finished: false }, workflow);
+		await Container.get(ActiveExecutions).add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'new' },
+		);
+		const claim = vi
+			.spyOn(Container.get(ExecutionCrashService), 'markAsCrashedWithoutCounting')
+			.mockResolvedValue([
+				{
+					id: execution.id,
+					workflowId: workflow.id,
+					mode: 'webhook',
+					startedAt: null,
+					stoppedAt: new Date(),
+				},
+			]);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(claim).toHaveBeenCalledExactlyOnceWith(execution.id, 'stall');
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'crashed',
+				data: expect.objectContaining({
+					resultData: expect.objectContaining({
+						error: expect.objectContaining({ name: 'MaxStalledCountError' }),
+					}),
+				}),
+			}),
+		);
+	});
+
+	test('processError finalizes without running the after hook when a stalled-count error claims nothing', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'crashed', finished: false }, workflow);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+		vi.spyOn(
+			Container.get(ExecutionCrashService),
+			'markAsCrashedWithoutCounting',
+		).mockResolvedValue([]);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(finalizeExecution).toHaveBeenCalledExactlyOnceWith(execution.id);
+		expect(watcher.workflowExecuteAfter).not.toHaveBeenCalled();
+	});
+
+	test('processError leaves a paused execution to the wait tracker on a stalled-count error', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+		const waitTill = new Date(Date.now() + 60_000);
+
+		const findSingleExecution = vi
+			.spyOn(executionRepository, 'findSingleExecution')
+			.mockResolvedValue(mock<IExecutionBase>({ status: 'waiting', waitTill }));
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				mode: 'webhook',
+				waitTill,
+				data: createRunExecutionData({ resultData: { runData: { Start: [] } } }),
+			}),
+		);
+
+		globalConfig.executions.mode = 'queue';
+		vi.useFakeTimers();
+
+		try {
+			// no timer runs here, so the call can only settle if it never waits
+			await runner.processError(
+				new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+				new Date(),
+				'webhook',
+				execution.id,
+				hooks,
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(findSingleExecution).toHaveBeenCalledTimes(1);
+		expect(finalizeExecution).toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'waiting' }),
+		);
+		expect(finalizeExecution).not.toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'error' }),
+		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+
+		findSingleExecution.mockRestore();
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('waiting');
+	});
+
+	test('processError keeps a paused execution intact when its stored data cannot be read', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+		vi.spyOn(executionRepository, 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'waiting', waitTill: new Date(Date.now() + 60_000) }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockRejectedValue(
+			new Error('data bundle is gone'),
+		);
+
+		globalConfig.executions.mode = 'queue';
+
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(finalizeExecution).toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'waiting' }),
+		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+	});
+
+	test.each(['error', 'crashed'] as const)(
+		'processError fails a stalled-count error without rechecking when the execution is already %s',
+		async (status) => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'running', finished: false }, workflow);
+			const executionRepository = Container.get(ExecutionRepository);
+			const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+			const findSingleExecution = vi
+				.spyOn(executionRepository, 'findSingleExecution')
+				.mockResolvedValue(mock<IExecutionBase>({ status }));
+
+			globalConfig.executions.mode = 'queue';
+			vi.useFakeTimers();
+
+			try {
+				// no timer runs here, so the call can only settle if it never waits
+				await runner.processError(
+					new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+					new Date(),
+					'webhook',
+					execution.id,
+					hooks,
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+
+			expect(findSingleExecution).toHaveBeenCalledTimes(1);
+			expect(finalizeExecution).toHaveBeenCalledWith(
+				execution.id,
+				expect.objectContaining({ status: 'crashed' }),
+			);
+			expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	test('processError leaves a canceled execution alone without rechecking on a stalled-count error', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+		const findSingleExecution = vi
+			.spyOn(executionRepository, 'findSingleExecution')
+			.mockResolvedValue(mock<IExecutionBase>({ status: 'canceled' }));
+
+		globalConfig.executions.mode = 'queue';
+		vi.useFakeTimers();
+
+		try {
+			// no timer runs here, so the call can only settle if it never waits
+			await runner.processError(
+				new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+				new Date(),
+				'webhook',
+				execution.id,
+				hooks,
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(findSingleExecution).toHaveBeenCalledTimes(1);
+		expect(finalizeExecution).not.toHaveBeenCalled();
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
 
@@ -132,7 +723,7 @@ describe('processError', () => {
 		);
 		await Container.get(ActiveExecutions).add(
 			{ executionMode: 'webhook', workflowData: workflow },
-			execution.id,
+			{ executionId: execution.id, expectedStatus: 'waiting' },
 		);
 		globalConfig.executions.mode = 'regular';
 		await runner.processError(
@@ -150,20 +741,20 @@ describe('run', () => {
 	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		jest.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
+		vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),
 		);
 
-		jest.spyOn(Workflow.prototype, 'getNode').mockReturnValueOnce(mock<INode>());
-		jest.spyOn(DirectedGraph, 'fromWorkflow').mockReturnValueOnce(new DirectedGraph());
-		const recreateNodeExecutionStackSpy = jest
+		vi.spyOn(Workflow.prototype, 'getNode').mockReturnValueOnce(mock<INode>());
+		vi.spyOn(DirectedGraph, 'fromWorkflow').mockReturnValueOnce(new DirectedGraph());
+		const recreateNodeExecutionStackSpy = vi
 			.spyOn(core, 'recreateNodeExecutionStack')
 			.mockReturnValueOnce({
 				nodeExecutionStack: mock<IExecuteData[]>(),
@@ -174,7 +765,7 @@ describe('run', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			triggerToStartFrom: { name: 'trigger', data: mock<ITaskData>() },
 
-			workflowData: { nodes: [] },
+			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
@@ -190,23 +781,23 @@ describe('run', () => {
 	it('does not use recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom without data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		jest.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
+		vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),
 		);
 
-		const recreateNodeExecutionStackSpy = jest.spyOn(core, 'recreateNodeExecutionStack');
+		const recreateNodeExecutionStackSpy = vi.spyOn(core, 'recreateNodeExecutionStack');
 
 		const data = mock<IWorkflowExecutionDataProcess>({
 			triggerToStartFrom: { name: 'trigger', data: undefined },
 
-			workflowData: { nodes: [] },
+			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
@@ -220,26 +811,108 @@ describe('run', () => {
 		expect(recreateNodeExecutionStackSpy).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		{ existingExecution: undefined },
+		{ existingExecution: { executionId: '42', expectedStatus: 'waiting' as const } },
+		{ existingExecution: { executionId: '42', expectedStatus: 'new' as const } },
+	])('forwards $existingExecution to activeExecutions.add', async ({ existingExecution }) => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
+			new PCancelable(() => mock<IRun>()),
+		);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			triggerToStartFrom: undefined,
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			startNodes: undefined,
+			destinationNode: undefined,
+			runData: undefined,
+		});
+
+		// ACT
+		await runner.run(data, undefined, false, existingExecution);
+
+		// ASSERT
+		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
+	});
+
+	describe('engine v2 dispatch', () => {
+		it('hands the run to the dispatcher without registering a control-plane execution', async () => {
+			// ARRANGE
+			const dispatcher = Container.get(EngineV2Dispatcher);
+			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(true);
+			const startSpy = vi.spyOn(dispatcher, 'start').mockResolvedValueOnce('dp-uuid');
+			const addSpy = vi.spyOn(Container.get(ActiveExecutions), 'add');
+
+			const data = mock<IWorkflowExecutionDataProcess>();
+
+			// ACT
+			const executionId = await runner.run(data);
+
+			// ASSERT
+			expect(executionId).toBe('dp-uuid');
+			expect(startSpy).toHaveBeenCalledWith(data);
+			expect(addSpy).not.toHaveBeenCalled();
+		});
+
+		it('leaves the v1 path alone when the run does not route to engine v2', async () => {
+			// ARRANGE
+			const dispatcher = Container.get(EngineV2Dispatcher);
+			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(false);
+			const startSpy = vi.spyOn(dispatcher, 'start');
+			const activeExecutions = Container.get(ActiveExecutions);
+			const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
+				new PCancelable(() => mock<IRun>()),
+			);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				triggerToStartFrom: undefined,
+				workflowData: { nodes: [], staticData: {} },
+				executionData: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				runData: undefined,
+			});
+
+			// ACT
+			const executionId = await runner.run(data);
+
+			// ASSERT
+			expect(executionId).toBe('1');
+			expect(startSpy).not.toHaveBeenCalled();
+			expect(addSpy).toHaveBeenCalledWith(data, undefined);
+		});
+	});
+
 	it('run partial execution with additional data', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
-		jest.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),
 		);
 
-		jest.spyOn(Workflow.prototype, 'getNode').mockReturnValueOnce(mock<INode>());
-		jest.spyOn(DirectedGraph, 'fromWorkflow').mockReturnValueOnce(new DirectedGraph());
+		vi.spyOn(Workflow.prototype, 'getNode').mockReturnValueOnce(mock<INode>());
+		vi.spyOn(DirectedGraph, 'fromWorkflow').mockReturnValueOnce(new DirectedGraph());
 
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
-		jest.spyOn(ManualExecutionService.prototype, 'runManually');
-		jest.spyOn(core, 'recreateNodeExecutionStack').mockReturnValueOnce({
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+		vi.spyOn(ManualExecutionService.prototype, 'runManually');
+		vi.spyOn(core, 'recreateNodeExecutionStack').mockReturnValueOnce({
 			nodeExecutionStack: mock<IExecuteData[]>(),
 			waitingExecution: mock<IWaitingForExecution>(),
 			waitingExecutionSource: mock<IWaitingForExecutionSource>(),
@@ -248,7 +921,7 @@ describe('run', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			triggerToStartFrom: { name: 'trigger', data: mock<ITaskData>() },
 
-			workflowData: { nodes: [], id: 'workflow-id', settings: undefined },
+			workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
@@ -277,41 +950,135 @@ describe('run', () => {
 			undefined,
 		);
 	});
+
+	describe('configureAdditionalData hook', () => {
+		function arrangeRunDeps(executionData?: IRunExecutionData) {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
+				new PCancelable(() => mock<IRun>()),
+			);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: executionData ?? createRunExecutionData({}),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				userId: 'mock-user-id',
+			});
+			return { data, additionalData };
+		}
+
+		it('invokes the callback with additionalData once lifecycle hooks are wired', async () => {
+			const { data, additionalData } = arrangeRunDeps();
+			const configureAdditionalData = vi.fn((ad: IWorkflowExecuteAdditionalData) => {
+				// Hooks must already be attached when the callback fires.
+				expect(ad.hooks).toBeDefined();
+			});
+			data.configureAdditionalData = configureAdditionalData;
+
+			await runner.run(data);
+
+			expect(configureAdditionalData).toHaveBeenCalledTimes(1);
+			expect(configureAdditionalData).toHaveBeenCalledWith(additionalData);
+		});
+
+		it('passes additionalData mutated by the callback into WorkflowExecute', async () => {
+			const { data, additionalData } = arrangeRunDeps();
+			const sentinel = vi.fn();
+			data.configureAdditionalData = (ad: IWorkflowExecuteAdditionalData) => {
+				ad.evalLlmMockHandler = sentinel;
+			};
+
+			await runner.run(data);
+
+			// processRunExecutionData receives the WorkflowExecute instance, but
+			// the constructor was given additionalData by reference — assert the
+			// mutation landed on the same object the engine sees.
+			expect(additionalData.evalLlmMockHandler).toBe(sentinel);
+		});
+
+		it('is a no-op when not provided', async () => {
+			const { data } = arrangeRunDeps();
+			// Not setting data.configureAdditionalData
+
+			await expect(runner.run(data)).resolves.toBe('1');
+		});
+	});
+
+	describe('workflow issues pre-flight failure', () => {
+		function arrangeFailingRunDeps(error: Error) {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockImplementationOnce(() => {
+				throw error;
+			});
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: createRunExecutionData({}),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				userId: 'mock-user-id',
+			});
+			return { data };
+		}
+
+		it('surfaces a WorkflowHasIssuesError as a failed run instead of rejecting', async () => {
+			const error = new WorkflowHasIssuesError(
+				{ node1: { parameters: { field: ['is missing'] } } },
+				{},
+			);
+			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
+			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+
+			await expect(runner.run(data)).resolves.toBe('1');
+
+			expect(failExecution).toHaveBeenCalledWith(data, '1', error);
+			expect(processError).not.toHaveBeenCalled();
+		});
+
+		it('still rejects on other startup errors', async () => {
+			const error = new Error('boom');
+			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
+			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+
+			await expect(runner.run(data)).rejects.toThrowError(error);
+
+			expect(processError).toHaveBeenCalled();
+			expect(failExecution).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('enqueueExecution', () => {
-	const setupQueue = jest.fn();
-	const addJob = jest.fn();
-
-	@Service()
-	class MockScalingService {
-		setupQueue = setupQueue;
-
-		addJob = addJob;
-	}
-
-	beforeAll(() => {
-		jest.mock('@/scaling/scaling.service', () => ({
-			ScalingService: MockScalingService,
-		}));
-	});
-
-	afterAll(() => {
-		jest.unmock('@/scaling/scaling.service');
-	});
-
 	it('should setup queue when scalingService is not initialized', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
-		jest.spyOn(runner, 'processError').mockResolvedValue();
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [] },
+			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 		});
 		const error = new Error('stop for test purposes');
 
 		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Jest does not move on to tear down the suite until the PCancelable settles
+		// so that Vitest does not move on to tear down the suite until the PCancelable settles
 		addJob.mockRejectedValueOnce(error);
 
 		// @ts-expect-error Private method
@@ -320,12 +1087,39 @@ describe('enqueueExecution', () => {
 		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});
 
+	it('should finalize the execution when pool resolution fails', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+		});
+		const error = new Error('pool resolution failed');
+		const { PoolConfigService } = await import('@/scaling/pool-config.service.ee.js');
+		vi.spyOn(Container.get(PoolConfigService), 'resolvePoolForExecution').mockRejectedValueOnce(
+			error,
+		);
+
+		// @ts-expect-error Private method
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+
+		expect(processError).toHaveBeenCalledWith(
+			error,
+			expect.any(Date),
+			data.executionMode,
+			'1',
+			expect.anything(),
+		);
+		expect(addJob).not.toHaveBeenCalled();
+	});
+
 	it('should include restartExecutionId in job data when provided', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
-		jest.spyOn(runner, 'processError').mockResolvedValue();
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [] },
+			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 			pushRef: 'push-ref',
 			streamingEnabled: true,
@@ -333,7 +1127,7 @@ describe('enqueueExecution', () => {
 		const error = new Error('stop for test purposes');
 
 		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Jest does not move on to tear down the suite until the PCancelable settles
+		// so that Vitest does not move on to tear down the suite until the PCancelable settles
 		addJob.mockRejectedValueOnce(error);
 
 		const restartExecutionId = 'restart-execution-id';
@@ -352,14 +1146,38 @@ describe('enqueueExecution', () => {
 			expect.any(Object),
 		);
 	});
+
+	it.each([
+		{ encryptedRunnerIdentity: 'encrypted-identity-blob' },
+		{ mcpToolInput: { method: 'tools/call', headers: { 'x-user-id': 'user-1' } } },
+	])('should carry %o into job data', async (processData) => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		vi.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			...processData,
+		});
+		const error = new Error('stop for test purposes');
+
+		// mock a rejection to stop execution flow before we create the PCancelable promise,
+		// so that Vitest does not move on to tear down the suite until the PCancelable settles
+		addJob.mockRejectedValueOnce(error);
+
+		// @ts-expect-error Private method
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+
+		expect(addJob).toHaveBeenCalledWith(expect.objectContaining(processData), expect.any(Object));
+	});
 });
 
 describe('workflow timeout with startedAt', () => {
-	let mockSetTimeout: jest.SpyInstance;
+	let mockSetTimeout: MockInstance;
 	let recordedTimeout: number | undefined = undefined;
 
 	beforeEach(() => {
-		mockSetTimeout = jest.spyOn(global, 'setTimeout').mockImplementation((_fn, timeout) => {
+		mockSetTimeout = vi.spyOn(global, 'setTimeout').mockImplementation((_fn, timeout) => {
 			// There can be multiple calls to setTimeout with 60000ms, these happen
 			// when accessing the database, we only capture the first one not equal to 60000ms
 			if (timeout !== 60000) {
@@ -372,12 +1190,12 @@ describe('workflow timeout with startedAt', () => {
 	it('should calculate timeout based on startedAt date when provided', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
+		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
 		// Mock config to return a workflow timeout of 10 seconds
 		Container.get(GlobalConfig).executions.timeout = 10;
@@ -386,6 +1204,7 @@ describe('workflow timeout with startedAt', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: {
 				nodes: [],
+				staticData: {},
 				settings: { executionTimeout: 10 }, // 10 seconds timeout
 			},
 			executionData: undefined,
@@ -394,15 +1213,13 @@ describe('workflow timeout with startedAt', () => {
 		});
 
 		const mockHooks = mock<core.ExecutionLifecycleHooks>();
-		jest
-			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-			.mockReturnValue(mockHooks);
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain').mockReturnValue(mockHooks);
 
 		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
 
 		const manualExecutionService = Container.get(ManualExecutionService);
-		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+		vi.spyOn(manualExecutionService, 'runManually').mockReturnValue(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),
@@ -428,12 +1245,12 @@ describe('workflow timeout with startedAt', () => {
 	it('should stop execution immediately when timeout has already elapsed', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
+		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
 		// Mock config to return a workflow timeout of 10 seconds
 		Container.get(GlobalConfig).executions.timeout = 10;
@@ -442,6 +1259,7 @@ describe('workflow timeout with startedAt', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: {
 				nodes: [],
+				staticData: {},
 				settings: { executionTimeout: 10 }, // 10 seconds timeout
 			},
 			executionData: undefined,
@@ -450,15 +1268,13 @@ describe('workflow timeout with startedAt', () => {
 		});
 
 		const mockHooks = mock<core.ExecutionLifecycleHooks>();
-		jest
-			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-			.mockReturnValue(mockHooks);
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain').mockReturnValue(mockHooks);
 
 		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
 
 		const manualExecutionService = Container.get(ManualExecutionService);
-		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+		vi.spyOn(manualExecutionService, 'runManually').mockReturnValue(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),
@@ -475,12 +1291,12 @@ describe('workflow timeout with startedAt', () => {
 	it('should use original timeout logic when startedAt is not provided', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
+		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
 		// Mock config to return a workflow timeout of 10 seconds
 		Container.get(GlobalConfig).executions.timeout = 10;
@@ -488,6 +1304,7 @@ describe('workflow timeout with startedAt', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: {
 				nodes: [],
+				staticData: {},
 				settings: { executionTimeout: 10 }, // 10 seconds timeout
 			},
 			executionData: undefined,
@@ -496,15 +1313,13 @@ describe('workflow timeout with startedAt', () => {
 		});
 
 		const mockHooks = mock<core.ExecutionLifecycleHooks>();
-		jest
-			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-			.mockReturnValue(mockHooks);
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain').mockReturnValue(mockHooks);
 
 		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
 
 		const manualExecutionService = Container.get(ManualExecutionService);
-		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+		vi.spyOn(manualExecutionService, 'runManually').mockReturnValue(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),
@@ -521,18 +1336,18 @@ describe('workflow timeout with startedAt', () => {
 	it('should call stopExecution when the timeout callback is executed', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
+		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
 		// Mock config to return a workflow timeout of 10 seconds
 		Container.get(GlobalConfig).executions.timeout = 10;
 
 		let timeoutCallback: (() => void) | undefined;
-		jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+		vi.spyOn(global, 'setTimeout').mockImplementation((fn) => {
 			if (typeof fn === 'function') {
 				timeoutCallback = fn;
 			}
@@ -542,6 +1357,7 @@ describe('workflow timeout with startedAt', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: {
 				nodes: [],
+				staticData: {},
 				settings: { executionTimeout: 10 }, // 10 seconds timeout
 			},
 			executionData: undefined,
@@ -549,15 +1365,13 @@ describe('workflow timeout with startedAt', () => {
 		});
 
 		const mockHooks = mock<core.ExecutionLifecycleHooks>();
-		jest
-			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-			.mockReturnValue(mockHooks);
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain').mockReturnValue(mockHooks);
 
 		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
 
 		const manualExecutionService = Container.get(ManualExecutionService);
-		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+		vi.spyOn(manualExecutionService, 'runManually').mockReturnValue(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),
@@ -577,39 +1391,16 @@ describe('workflow timeout with startedAt', () => {
 });
 
 describe('needsFullExecutionData', () => {
-	const originalEnv = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
-
-	afterEach(() => {
-		if (originalEnv === undefined) {
-			delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
-		} else {
-			process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = originalEnv;
-		}
-	});
-
-	it('should return true when forceFullExecutionData is true even with N8N_MINIMIZE_EXECUTION_DATA_FETCHING set', () => {
-		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
-
+	it('should return true when forceFullExecutionData is true', () => {
 		// @ts-expect-error Private method
 		const result = runner.needsFullExecutionData('evaluation', 'exec-id', true);
 
 		expect(result).toBe(true);
 	});
 
-	it('should return true when env var is not set and forceFullExecutionData is undefined', () => {
-		delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
-
-		// @ts-expect-error Private method
-		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
-
-		expect(result).toBe(true);
-	});
-
-	it('should return false when env var is set, forceFullExecutionData is undefined, and mode is not integrated', () => {
-		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
-
+	it('should return false when forceFullExecutionData is undefined and mode is not integrated', () => {
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'getResponseMode').mockReturnValue('responseNode');
+		vi.spyOn(activeExecutions, 'getResponseMode').mockReturnValue('responseNode');
 
 		// @ts-expect-error Private method
 		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
@@ -617,9 +1408,7 @@ describe('needsFullExecutionData', () => {
 		expect(result).toBe(false);
 	});
 
-	it('should return true when env var is set and mode is integrated', () => {
-		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
-
+	it('should return true when mode is integrated', () => {
 		// @ts-expect-error Private method
 		const result = runner.needsFullExecutionData('integrated', 'exec-id', undefined);
 
@@ -629,8 +1418,9 @@ describe('needsFullExecutionData', () => {
 
 describe('pre-persist context establishment', () => {
 	const callOrder: string[] = [];
-	let establishSpy: jest.SpyInstance;
-	let addSpy: jest.SpyInstance;
+	let establishSpy: MockInstance;
+	let addSpy: MockInstance;
+	let gateSpy: MockInstance | undefined;
 	let capturedAddData: IWorkflowExecutionDataProcess | undefined;
 
 	const buildRunData = (
@@ -645,6 +1435,7 @@ describe('pre-persist context establishment', () => {
 				nodes: [],
 				connections: {},
 				settings: undefined,
+				staticData: {},
 			},
 			executionData,
 			userId: 'u1',
@@ -681,9 +1472,9 @@ describe('pre-persist context establishment', () => {
 		capturedAddData = undefined;
 
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValue();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValue();
 
-		establishSpy = jest
+		establishSpy = vi
 			.spyOn(core, 'establishExecutionContext')
 			.mockImplementation(async (_workflow, runExecutionData) => {
 				callOrder.push('establishExecutionContext');
@@ -704,7 +1495,7 @@ describe('pre-persist context establishment', () => {
 			});
 
 		const activeExecutions = Container.get(ActiveExecutions);
-		addSpy = jest
+		addSpy = vi
 			.spyOn(activeExecutions, 'add')
 			.mockImplementation(async (data: IWorkflowExecutionDataProcess) => {
 				capturedAddData = data;
@@ -716,6 +1507,8 @@ describe('pre-persist context establishment', () => {
 	afterEach(() => {
 		establishSpy.mockRestore();
 		addSpy.mockRestore();
+		gateSpy?.mockRestore();
+		gateSpy = undefined;
 	});
 
 	it('calls establishExecutionContext before activeExecutions.add', async () => {
@@ -737,6 +1530,52 @@ describe('pre-persist context establishment', () => {
 			headers: { authorization: '**********' },
 		});
 		expect(capturedAddData!.executionData!.executionData!.runtimeData).toBeDefined();
+	});
+
+	it('does not persist when preExecute blocks the run', async () => {
+		const workflowPreExecute = Container.get(WorkflowPreExecute);
+		gateSpy = vi.spyOn(workflowPreExecute, 'run').mockRejectedValue(new Error('blocked'));
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).rejects.toThrow('blocked');
+
+		expect(addSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not run preExecute when credential authorization fails', async () => {
+		const unauthorized = new Error('unauthorized');
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		vi.spyOn(permissionChecker, 'check').mockRejectedValueOnce(unauthorized);
+
+		addSpy.mockReset();
+		addSpy.mockResolvedValue('exec-1');
+		// @ts-expect-error Private method
+		const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+
+		const workflowPreExecute = Container.get(WorkflowPreExecute);
+		gateSpy = vi.spyOn(workflowPreExecute, 'run');
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).resolves.toBe('exec-1');
+
+		expect(gateSpy).not.toHaveBeenCalled();
+		expect(failExecution).toHaveBeenCalledWith(data, 'exec-1', unauthorized, undefined);
+	});
+
+	it('skips the preExecute gate when claiming an existing execution', async () => {
+		const workflowPreExecute = Container.get(WorkflowPreExecute);
+		gateSpy = vi.spyOn(workflowPreExecute, 'run');
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(
+			runner.run(data, undefined, undefined, { executionId: 'e1', expectedStatus: 'waiting' }),
+		).rejects.toThrow('short-circuit for test');
+
+		expect(gateSpy).not.toHaveBeenCalled();
+		expect(addSpy).toHaveBeenCalled();
 	});
 
 	it('skips establishExecutionContext when data.executionData is undefined', async () => {
@@ -763,8 +1602,8 @@ describe('pre-persist context establishment', () => {
 	});
 
 	describe('when establishExecutionContext throws', () => {
-		const lifecycleRunHook = jest.fn().mockResolvedValue(undefined);
-		const responseReject = jest.fn();
+		const lifecycleRunHook = vi.fn().mockResolvedValue(undefined);
+		const responseReject = vi.fn();
 
 		beforeEach(() => {
 			establishSpy.mockReset();
@@ -782,10 +1621,10 @@ describe('pre-persist context establishment', () => {
 
 			lifecycleRunHook.mockClear();
 			responseReject.mockClear();
-			jest
-				.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-				.mockReturnValue(mock<core.ExecutionLifecycleHooks>({ runHook: lifecycleRunHook }));
-			jest.spyOn(Container.get(ActiveExecutions), 'finalizeExecution').mockReturnValue();
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain').mockReturnValue(
+				mock<core.ExecutionLifecycleHooks>({ runHook: lifecycleRunHook }),
+			);
+			vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution').mockReturnValue();
 		});
 
 		it('clears the trigger-item stack so raw headers do not get persisted', async () => {
@@ -793,7 +1632,7 @@ describe('pre-persist context establishment', () => {
 
 			await runner.run(data, undefined, undefined, undefined, {
 				reject: responseReject,
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				promise: Promise.resolve() as never,
 			} as never);
 
@@ -806,7 +1645,7 @@ describe('pre-persist context establishment', () => {
 
 			const executionId = await runner.run(data, undefined, undefined, undefined, {
 				reject: responseReject,
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				promise: Promise.resolve() as never,
 			} as never);
 
@@ -820,6 +1659,17 @@ describe('pre-persist context establishment', () => {
 				expect.objectContaining({ message: 'hook augmentation failed' }),
 			);
 		});
+
+		it('does not run preExecute when context establishment failed', async () => {
+			const workflowPreExecute = Container.get(WorkflowPreExecute);
+			gateSpy = vi.spyOn(workflowPreExecute, 'run');
+
+			const data = buildRunData(buildExecutionDataWithHeader());
+
+			await runner.run(data);
+
+			expect(gateSpy).not.toHaveBeenCalled();
+		});
 	});
 });
 
@@ -827,17 +1677,17 @@ describe('streaming functionality', () => {
 	it('should setup heartbeat interval and sendChunk handler when streaming is enabled', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-		jest.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => {}));
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		vi.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => {}));
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
 		const mockResponse = mock<Response>({ writableEnded: false });
-		const mockSetInterval = jest.spyOn(global, 'setInterval');
+		const mockSetInterval = vi.spyOn(global, 'setInterval');
 
 		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [] },
+			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 			executionMode: 'webhook',
 			streamingEnabled: true,
@@ -845,15 +1695,13 @@ describe('streaming functionality', () => {
 		});
 
 		const mockHooks = mock<core.ExecutionLifecycleHooks>();
-		jest
-			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-			.mockReturnValue(mockHooks);
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain').mockReturnValue(mockHooks);
 
 		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
 
 		const manualExecutionService = Container.get(ManualExecutionService);
-		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+		vi.spyOn(manualExecutionService, 'runManually').mockReturnValue(
 			new PCancelable(() => {
 				return mock<IRun>();
 			}),

@@ -14,7 +14,7 @@ import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overw
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
+import { PrometheusMetricsService } from '@/metrics/prometheus';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { RedisClientService } from '@/services/redis-client.service';
@@ -93,7 +93,7 @@ export class WorkerServer {
 
 		this.endpointsConfig = endpointsConfig;
 
-		await this.mountEndpoints();
+		this.mountEndpoints();
 
 		this.logger.debug('Worker server initialized', {
 			endpoints: Object.keys(this.endpointsConfig),
@@ -106,7 +106,7 @@ export class WorkerServer {
 		this.logger.info(`\nn8n worker server listening on port ${this.port}`);
 	}
 
-	private async mountEndpoints() {
+	private mountEndpoints() {
 		const { health, overwrites, metrics } = this.endpointsConfig;
 
 		if (health) {
@@ -137,7 +137,7 @@ export class WorkerServer {
 		}
 
 		if (metrics) {
-			await this.prometheusMetricsService.init(this.app);
+			this.prometheusMetricsService.init(this.app);
 		}
 	}
 

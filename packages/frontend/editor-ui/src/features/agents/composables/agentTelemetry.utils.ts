@@ -1,3 +1,5 @@
+import { isDraftIntegration } from '@n8n/api-types';
+
 import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types';
 
 export type AgentTelemetryStatus = 'draft' | 'production';
@@ -6,7 +8,9 @@ export type AgentConfigFingerprint = {
 	instructions: string;
 	tools: string[];
 	skills: string[];
+	tasks: string[];
 	triggers: string[];
+	vector_stores: string[];
 	memory: { enabled: boolean; storage: 'n8n' } | null;
 	model: string | null;
 	config_version: string;
@@ -42,14 +46,29 @@ export function skillIdentifiersFromConfig(config: AgentJsonConfig | null): stri
 		.sort();
 }
 
+export function taskIdentifiersFromConfig(config: AgentJsonConfig | null): string[] {
+	return Array.from(new Set((config?.tasks ?? []).map((ref) => ref.id).filter(Boolean))).sort();
+}
+
 export async function buildAgentConfigFingerprint(
 	config: AgentJsonConfig | null,
 	connectedTriggers: string[],
+	additionalConfiguredTriggers: string[] = [],
 ): Promise<AgentConfigFingerprint> {
 	const instructions = config?.instructions ?? '';
 	const tools = toolIdentifiersFromConfig(config);
 	const skills = skillIdentifiersFromConfig(config);
-	const triggers = [...connectedTriggers].sort();
+	const tasks = taskIdentifiersFromConfig(config);
+	const configuredTriggers = new Set([
+		...(config?.integrations ?? [])
+			.filter((integration) => !isDraftIntegration(integration))
+			.map((integration) => integration.type),
+		...additionalConfiguredTriggers,
+	]);
+	const triggers = connectedTriggers.filter((trigger) => configuredTriggers.has(trigger)).sort();
+	const vectorStores = (config?.vectorStores ?? [])
+		.map((store) => `${store.provider}:${store.name}`)
+		.sort();
 	const memory = config?.memory
 		? { enabled: config.memory.enabled, storage: config.memory.storage }
 		: null;
@@ -59,7 +78,9 @@ export async function buildAgentConfigFingerprint(
 		instructions,
 		tools,
 		skills,
+		tasks,
 		triggers,
+		vector_stores: vectorStores,
 		memory,
 		model,
 	});
@@ -69,7 +90,9 @@ export async function buildAgentConfigFingerprint(
 		instructions,
 		tools,
 		skills,
+		tasks,
 		triggers,
+		vector_stores: vectorStores,
 		memory,
 		model,
 		config_version: configVersion,

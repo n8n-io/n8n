@@ -1,33 +1,18 @@
 import type { Project } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/stack';
 
-import {
-	CONTAINER_ONLY_CAPABILITIES,
-	CONTAINER_ONLY_MODES,
-	LICENSED_TAG,
-} from './fixtures/capabilities';
+import { ALLOW_CONTAINER_ONLY, CONTAINER_ONLY_MODES, LICENSED_TAG } from './fixtures/capabilities';
+import { ENGINE_TAG_PREFIX } from './fixtures/engine-parity';
 import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
 // Tests that require container environment (won't run against local n8n).
 // Matches:
-// - @capability:X - add-on features (email, proxy, source-control, etc.)
 // - @mode:X - infrastructure modes (postgres, queue, multi-main)
 // - @licensed - enterprise license features (log streaming, SSO, etc.)
 // - @db:reset - tests needing per-test database reset (requires isolated containers)
 const CONTAINER_ONLY = new RegExp(
-	[
-		`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})`,
-		`@mode:(${CONTAINER_ONLY_MODES.join('|')})`,
-		`@${LICENSED_TAG}`,
-		'@db:reset',
-	].join('|'),
+	[`@mode:(${CONTAINER_ONLY_MODES.join('|')})`, `@${LICENSED_TAG}`, '@db:reset'].join('|'),
 );
-
-// Escape hatch: allow `@capability:*` tests to run against a pre-started local
-// n8n. Fixtures that depend on container-provided services (proxy, mailpit,
-// etc.) must detect the no-container case and skip or fall back to direct
-// network calls. Used by `pnpm test:local:isolated` and similar workflows.
-const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
@@ -35,7 +20,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'queue', config: { workers: 1 } },
 	{
 		name: 'multi-main',
-		config: { mains: 2, workers: 1, services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+		config: { mains: 2, workers: 1 },
 	},
 ];
 
@@ -50,6 +35,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 // postgres/kafka/redis/observability.
 export const BENCHMARK_MAIN_RESOURCES = { memory: 4, cpu: 2 };
 export const BENCHMARK_WORKER_RESOURCES = { memory: 2, cpu: 1 };
+export const BENCHMARK_WEBHOOK_RESOURCES = { memory: 4, cpu: 2 };
 
 export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
 
@@ -67,9 +53,10 @@ const BENCHMARK_CONFIG: N8NConfig = {
 	postgres: true,
 	resourceQuota: BENCHMARK_MAIN_RESOURCES,
 	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
-	// Distribute load across all mains. UI tests stick to the default `first`
-	// policy so debugging hits a single predictable backend.
-	lbPolicy: 'round_robin',
+	webhookResourceQuota: BENCHMARK_WEBHOOK_RESOURCES,
+	// `least_conn` avoids keep-alive affinity that skews round_robin 50/100% with
+	// autocannon's long-lived connections across 2+ procs. UI tests use `first`.
+	lbPolicy: 'least_conn',
 	env: {
 		N8N_LOG_LEVEL: 'error',
 		N8N_DIAGNOSTICS_ENABLED: 'false',
@@ -96,12 +83,16 @@ export interface BenchOptions {
 	mains?: number;
 	/** Number of worker pods. Default: 0 (direct mode). */
 	workers?: number;
+	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
+	webhooks?: number;
 	/**
 	 * Adds the `tracing` service (Jaeger + n8n-tracer) and turns on OTEL emission.
 	 * Adds ~5-10% per-request overhead — opt in only when measuring OTEL cost or
 	 * collecting flamegraph data, not for clean ceiling numbers.
 	 */
 	tracing?: boolean;
+	/** Runs engine v2 on the shared Postgres server or a separate server. */
+	engine?: 'shared' | 'split';
 	/** Additional env vars to merge over the base. */
 	env?: Record<string, string>;
 }
@@ -118,13 +109,14 @@ export interface BenchOptions {
  *   // Queue-mode kafka (1 main + 3 workers)
  *   test.use({ capability: benchConfig('node-count-scaling', { kafka: true, workers: 3 }) });
  *
- *   // Multi-main webhook
- *   test.use({ capability: benchConfig('webhook-main-scaling', { mains: 2, workers: 2 }) });
+ *   // Dedicated webhook proc + worker
+ *   test.use({ capability: benchConfig('webhook-dedicated-proc', { webhooks: 1, workers: 1 }) });
  */
 export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConfig {
 	const services = [...(BENCHMARK_CONFIG.services ?? [])];
 	if (opts.kafka) services.push('kafka');
 	if (opts.tracing) services.push('tracing');
+	if (opts.engine === 'split') services.push('enginePostgres');
 
 	const env: Record<string, string> = {
 		...BENCHMARK_CONFIG.env,
@@ -144,6 +136,8 @@ export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConf
 		services,
 		...(opts.mains !== undefined && { mains: opts.mains }),
 		...(opts.workers !== undefined && { workers: opts.workers }),
+		...(opts.webhooks !== undefined && { webhooks: opts.webhooks }),
+		...(opts.engine !== undefined && { engine: 'in-process' as const }),
 		env,
 	};
 }
@@ -238,7 +232,7 @@ export function getProjects(): Project[] {
 				{
 					name: `${name}:infrastructure`,
 					testDir: './tests/infrastructure',
-					grep: new RegExp(`@mode:${name}|@capability:${name}`),
+					grep: new RegExp(`@mode:${name}`),
 					workers: 1,
 					timeout: 180000,
 					use: { containerConfig: config },
@@ -246,12 +240,41 @@ export function getProjects(): Project[] {
 			);
 		}
 
+		// Engine v2 parity: the same e2e specs against a main that routes every
+		// workflow to the new engine, which runs in its own container with no
+		// control plane database access. Opt-in by tag while the engine matures:
+		// any `@engine:*` tag selects the spec, and the parity fixture then runs,
+		// skips or expects failure by bucket. Drop the grep once the suite is
+		// triaged. The CI job e2e-engine blocks merges, so a spec this grep selects
+		// fails the PR when it misses the outcome its bucket asks for.
+		projects.push({
+			name: 'engine-v2:e2e',
+			testDir: './tests/e2e',
+			grep: new RegExp(ENGINE_TAG_PREFIX),
+			timeout: 180000,
+			// One worker, one stack. Every worker boots its own Postgres, main and
+			// engine, and the CI job asks for one worker anyway.
+			workers: 1,
+			use: { containerConfig: { postgres: true, engine: 'container' } },
+		});
+
 		projects.push({
 			name: 'coverage',
 			testDir: './tests/e2e',
 			timeout: 60000,
 			fullyParallel: true,
-			use: { containerConfig: {} },
+			use: {
+				containerConfig: {},
+				// workers:1 + V8 collection makes cold boot slow enough to blow the 10s
+				// global; a retry gets a fresh container, so one slow boot burns all 3.
+				navigationTimeout: 30_000,
+				// Capture only on failure (global default is `on`). The shard artifact
+				// is downloaded and aggregated each run, so keep it to coverage data
+				// plus failure diagnostics, not full traces/videos for every test.
+				trace: 'retain-on-failure',
+				video: 'retain-on-failure',
+				screenshot: 'only-on-failure',
+			},
 		});
 
 		projects.push({
@@ -261,6 +284,20 @@ export function getProjects(): Project[] {
 			timeout: 600_000,
 			retries: 0,
 			use: { containerConfig: BENCHMARKING_DEFAULT_CONFIG },
+		});
+
+		// API-only, no browser: the specs manage their own stack (they swap n8n
+		// images mid-test via stack.replaceN8N), so no containerConfig fixture.
+		projects.push({
+			name: 'encryption:infrastructure',
+			testDir: './tests/infrastructure/encryption',
+			workers: 1,
+			// One upgrade cycle boots four instances and pulls the old release.
+			timeout: 900_000,
+			retries: 0,
+			// No browser runs here — the global trace/video/screenshot capture
+			// only produces empty artifacts for these tests.
+			use: { trace: 'off', video: 'off', screenshot: 'off' },
 		});
 
 		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {
@@ -291,6 +328,13 @@ export function getProjects(): Project[] {
 		use: {
 			// Default container config for performance tests, equivalent to @cloud:starter
 			containerConfig: { resourceQuota: { memory: 0.75, cpu: 0.5 }, env: { E2E_TESTS: 'true' } },
+			// The browser runs at Chromium's default launch — no V8 heap flag, memory
+			// pressure enabled — so the canvas numbers stay representative of a real
+			// user's browser. The reported `jsHeapSizeLimit` is ~4 GB (V8's
+			// pointer-compression cage); a prior `--max-old-space-size=8192` flag
+			// couldn't raise it past that cage, so it was a no-op for the ceiling and
+			// only suppressed memory-pressure GC. canvas-execution.spec.ts logs the
+			// actual limit, so any future flag or Chromium change is visible.
 		},
 	});
 

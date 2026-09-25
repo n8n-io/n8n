@@ -4,18 +4,20 @@ import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
 
 const MAINS = 1;
+const WEBHOOKS = 1;
 const WORKERS = 1;
 const CONNECTIONS = 200;
 const DURATION_SECONDS = 180;
 
-// Same scenario as `webhook-queue-baseline.spec.ts` but with execution data
-// persisted on success. Compare this run's `exec/s` and `p50` against the
-// queue-baseline from the same CI run to read the cost of saving execution
-// data — the typical production default the rest of the bench suite suppresses
-// for clean ceiling numbers.
+// Same scenario as `webhook-dedicated-proc-baseline.spec.ts` but with execution
+// data persisted on success. Compare this run's `exec/s` and `p50` against the
+// dedicated-proc baseline from the same CI run to read the cost of saving
+// execution data — the typical production default the rest of the bench suite
+// suppresses for clean ceiling numbers.
 test.use({
 	capability: benchConfig('webhook-save-data-overhead', {
 		mains: MAINS,
+		webhooks: WEBHOOKS,
 		workers: WORKERS,
 		env: { EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'all' },
 	}),
@@ -31,7 +33,7 @@ test.describe(
 		],
 	},
 	() => {
-		test(`Async webhook + 1 noop, 1KB payload, ${CONNECTIONS} connections × ${DURATION_SECONDS}s (${MAINS} main + ${WORKERS} worker, save-on-success)`, async ({
+		test(`Async webhook + 1 noop, 1KB payload, ${CONNECTIONS} connections × ${DURATION_SECONDS}s (${MAINS} main + ${WEBHOOKS} webhook + ${WORKERS} worker, save-on-success)`, async ({
 			api,
 			services,
 			backendUrl,
@@ -56,7 +58,7 @@ test.describe(
 
 			console.log(
 				"\n[SAVE-DATA OVERHEAD] Compare this spec's exec/s and p50 against " +
-					'webhook-queue-baseline from the same run for the save-execution-data cost delta.\n',
+					'webhook-dedicated-proc-baseline from the same run for the save-execution-data cost delta.\n',
 			);
 		});
 	},

@@ -1,5 +1,5 @@
 import { watch } from 'chokidar';
-import type { EventName } from 'chokidar/handler';
+import type { EventName } from 'chokidar/handler.js';
 import {
 	type ITriggerFunctions,
 	type IDataObject,

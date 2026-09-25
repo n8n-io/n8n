@@ -1,6 +1,6 @@
 import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { ApiKey, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
@@ -10,7 +10,13 @@ import Handlebars from 'handlebars';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 
-import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
+import type {
+	EmailChangeCompletedData,
+	EmailChangeConfirmationData,
+	InviteEmailData,
+	PasswordResetData,
+	SendEmailResult,
+} from './interfaces';
 import { NodeMailer } from './node-mailer';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -18,6 +24,25 @@ import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { UrlService } from '@/services/url.service';
 import { toError } from '@/utils';
+
+const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+	day: 'numeric',
+	month: 'short',
+	year: 'numeric',
+});
+
+function formatRevokedAt(date: Date): string {
+	return REVOKED_AT_FORMATTER.format(date);
+}
+
+function formatRevokedBy(user: {
+	firstName?: string | null;
+	lastName?: string | null;
+	email: string;
+}): string {
+	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+	return fullName || user.email;
+}
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName =
@@ -27,7 +52,11 @@ type TemplateName =
 	| 'workflow-shared'
 	| 'credentials-shared'
 	| 'project-shared'
-	| 'workflow-failure';
+	| 'workflow-failure'
+	| 'api-key-revoked'
+	| 'mcp-client-revoked'
+	| 'email-change-requested'
+	| 'email-change-completed';
 
 @Service()
 export class UserManagementMailer {
@@ -75,6 +104,83 @@ export class UserManagementMailer {
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
 			body: template({ ...this.basePayload, ...passwordResetData }),
+		});
+	}
+
+	async emailChangeConfirmation(data: EmailChangeConfirmationData): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+		const template = await this.getTemplate('email-change-requested');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Confirm your n8n email change',
+			body: template({ ...this.basePayload, ...data }),
+		});
+	}
+
+	async emailChangeCompleted(data: EmailChangeCompletedData): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+		const template = await this.getTemplate('email-change-completed');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Your n8n email was changed',
+			body: template({ ...this.basePayload, ...data }),
+		});
+	}
+
+	async notifyApiKeyRevoked({
+		apiKey,
+		revoker,
+	}: {
+		apiKey: ApiKey;
+		revoker: User;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const template = await this.getTemplate('api-key-revoked');
+
+		return await this.mailer.sendMail({
+			emailRecipients: apiKey.user.email,
+			subject: 'Your n8n API key was revoked',
+			body: template({
+				...this.basePayload,
+				email: apiKey.user.email,
+				firstName: apiKey.user.firstName ?? 'there',
+				label: apiKey.label,
+				suffix: apiKey.apiKey.slice(-4),
+				revokedBy: formatRevokedBy(revoker),
+				revokedAt: formatRevokedAt(new Date()),
+				createApiKeyUrl: `${baseUrl}/settings/api`,
+			}),
+		});
+	}
+
+	async notifyMcpClientRevoked({
+		clientName,
+		owner,
+		revoker,
+	}: {
+		clientName: string;
+		owner: { email: string; firstName?: string | null };
+		revoker: User;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const template = await this.getTemplate('mcp-client-revoked');
+
+		return await this.mailer.sendMail({
+			emailRecipients: owner.email,
+			subject: 'Your n8n MCP client access was revoked',
+			body: template({
+				...this.basePayload,
+				email: owner.email,
+				firstName: owner.firstName ?? 'there',
+				clientName,
+				revokedBy: formatRevokedBy(revoker),
+				revokedAt: formatRevokedAt(new Date()),
+				mcpSettingsUrl: `${baseUrl}/settings/mcp`,
+			}),
 		});
 	}
 

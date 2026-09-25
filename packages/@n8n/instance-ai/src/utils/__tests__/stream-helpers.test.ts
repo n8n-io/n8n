@@ -1,4 +1,6 @@
-import { isRecord, parseSuspension, asResumable, resumeAgentStream } from '../stream-helpers';
+import { isRecord } from '@n8n/utils/is-record';
+
+import { parseSuspension, asResumable, resumeAgentStream } from '../stream-helpers';
 
 describe('isRecord', () => {
 	it('returns true for plain objects', () => {
@@ -101,6 +103,18 @@ describe('parseSuspension', () => {
 		expect(parseSuspension(chunk)).toBeNull();
 	});
 
+	it('surfaces runId from the chunk when present', () => {
+		const chunk = {
+			type: 'tool-call-suspended',
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			toolName: 'ask_questions',
+			suspendPayload: { requestId: 'req-1' },
+		};
+
+		expect(parseSuspension(chunk)?.runId).toBe('run-1');
+	});
+
 	it('handles missing payload gracefully', () => {
 		const chunk = { type: 'tool-call-suspended' };
 		expect(parseSuspension(chunk)).toBeNull();
@@ -126,7 +140,7 @@ describe('parseSuspension', () => {
 
 describe('asResumable', () => {
 	it('casts agent to Resumable interface', () => {
-		const agent = { resume: jest.fn() };
+		const agent = { resume: vi.fn() };
 		const resumable = asResumable(agent);
 		expect(resumable.resume).toBe(agent.resume);
 	});
@@ -135,7 +149,7 @@ describe('asResumable', () => {
 describe('resumeAgentStream', () => {
 	it('uses native agent resume in stream mode', async () => {
 		const resumed = { runId: 'run-2' };
-		const agent = { resume: jest.fn().mockResolvedValue(resumed) };
+		const agent = { resume: vi.fn().mockResolvedValue(resumed) };
 
 		await expect(resumeAgentStream(agent, { approved: true }, { runId: 'run-1' })).resolves.toBe(
 			resumed,

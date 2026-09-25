@@ -1,7 +1,6 @@
-import type { OidcConfigDto } from '@n8n/api-types';
+import type { AuthenticationMethod, OidcConfigDto } from '@n8n/api-types';
 import { createPinia, setActivePinia } from 'pinia';
 import { useSSOStore, SupportedProtocols } from '@/features/settings/sso/sso.store';
-import type { UserManagementAuthenticationMethod } from '@/Interface';
 import * as ssoApi from '@n8n/rest-api-client/api/sso';
 
 vi.mock('@n8n/rest-api-client/api/sso');
@@ -24,7 +23,7 @@ describe('SSO store', () => {
 		'should check SSO login button availability when authenticationMethod is %s and enterprise feature is %s and sso login is set to %s',
 		(authenticationMethod, saml, loginEnabled, expectation) => {
 			ssoStore.initialize({
-				authenticationMethod: authenticationMethod as UserManagementAuthenticationMethod,
+				authenticationMethod: authenticationMethod as AuthenticationMethod,
 				config: {
 					saml: {
 						loginEnabled,
@@ -41,11 +40,59 @@ describe('SSO store', () => {
 		},
 	);
 
+	describe('getSsoLoginUrl', () => {
+		const oidcLoginUrl = 'http://localhost:5678/rest/sso/oidc/login';
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should ask the backend for the SAML redirect with the destination', async () => {
+			vi.mocked(ssoApi.initSSO).mockResolvedValue('https://idp.example.com/saml?SAMLRequest=x');
+			ssoStore.initialize({
+				authenticationMethod: 'saml' as AuthenticationMethod,
+				config: { saml: { loginEnabled: true } },
+				features: { saml: true, ldap: false, oidc: false },
+			});
+
+			await expect(ssoStore.getSsoLoginUrl('/workflow/abc')).resolves.toBe(
+				'https://idp.example.com/saml?SAMLRequest=x',
+			);
+			expect(ssoApi.initSSO).toHaveBeenCalledWith(expect.anything(), '/workflow/abc');
+		});
+
+		it('should append the destination to the OIDC login URL', async () => {
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as AuthenticationMethod,
+				config: { oidc: { loginEnabled: true, loginUrl: oidcLoginUrl } },
+				features: { saml: false, ldap: false, oidc: true },
+			});
+
+			await expect(ssoStore.getSsoLoginUrl('/workflow/abc?tab=1&x=2')).resolves.toBe(
+				`${oidcLoginUrl}?redirect=%2Fworkflow%2Fabc%3Ftab%3D1%26x%3D2`,
+			);
+			await expect(ssoStore.getSsoLoginUrl()).resolves.toBe(oidcLoginUrl);
+			expect(ssoApi.initSSO).not.toHaveBeenCalled();
+		});
+
+		it('should reject when the OIDC login URL is missing', async () => {
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as AuthenticationMethod,
+				config: { oidc: { loginEnabled: true } },
+				features: { saml: false, ldap: false, oidc: true },
+			});
+
+			await expect(ssoStore.getSsoLoginUrl('/home')).rejects.toThrow(
+				'The OIDC login URL is not configured',
+			);
+		});
+	});
+
 	describe('OIDC callbackUrl after re-initialization', () => {
 		it('should populate callbackUrl when re-initialized with authenticated settings', () => {
 			// Simulate public settings (before login) — no callbackUrl
 			ssoStore.initialize({
-				authenticationMethod: 'oidc' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'oidc' as AuthenticationMethod,
 				config: {
 					oidc: { loginEnabled: false, loginUrl: 'http://localhost:5678/rest/sso/oidc/login' },
 				},
@@ -56,7 +103,7 @@ describe('SSO store', () => {
 
 			// Simulate authenticated settings (after login) — includes callbackUrl
 			ssoStore.initialize({
-				authenticationMethod: 'oidc' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'oidc' as AuthenticationMethod,
 				config: {
 					oidc: {
 						loginEnabled: false,
@@ -80,7 +127,7 @@ describe('SSO store', () => {
 		it('should initialize selectedAuthProtocol to OIDC when default authentication is OIDC', () => {
 			// Initialize with OIDC as default authentication method
 			ssoStore.initialize({
-				authenticationMethod: 'oidc' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'oidc' as AuthenticationMethod,
 				config: {
 					oidc: { loginEnabled: true },
 				},
@@ -104,7 +151,7 @@ describe('SSO store', () => {
 		it('should initialize selectedAuthProtocol to SAML when default authentication is SAML', () => {
 			// Initialize with SAML as default authentication method
 			ssoStore.initialize({
-				authenticationMethod: 'saml' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'saml' as AuthenticationMethod,
 				config: {
 					saml: { loginEnabled: true },
 				},
@@ -128,7 +175,7 @@ describe('SSO store', () => {
 		it('should initialize selectedAuthProtocol to SAML when default authentication is email', () => {
 			// Initialize with email as default authentication method
 			ssoStore.initialize({
-				authenticationMethod: 'email' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'email' as AuthenticationMethod,
 				config: {},
 				features: {
 					saml: true,
@@ -150,7 +197,7 @@ describe('SSO store', () => {
 		it('should not reinitialize selectedAuthProtocol if already set', () => {
 			// Initialize with SAML as default authentication method
 			ssoStore.initialize({
-				authenticationMethod: 'saml' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'saml' as AuthenticationMethod,
 				config: {
 					saml: { loginEnabled: true },
 				},
@@ -194,6 +241,8 @@ describe('SSO store', () => {
 				loginEnabled: true,
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
+				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			vi.mocked(ssoApi.getOidcConfig).mockResolvedValue(oidcConfig);
@@ -211,7 +260,7 @@ describe('SSO store', () => {
 		it('should reset oidc.loginEnabled to false when server config has it disabled', async () => {
 			// Start with loginEnabled = true via initialize
 			ssoStore.initialize({
-				authenticationMethod: 'oidc' as UserManagementAuthenticationMethod,
+				authenticationMethod: 'oidc' as AuthenticationMethod,
 				config: { oidc: { loginEnabled: true } },
 				features: { saml: false, ldap: false, oidc: true },
 			});
@@ -225,6 +274,8 @@ describe('SSO store', () => {
 				loginEnabled: false,
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
+				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 
 			await ssoStore.getOidcConfig();

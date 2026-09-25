@@ -132,4 +132,22 @@ describe('CredentialIcon', () => {
 
 		expect(baseElement.querySelector('.nodeIconPlaceholder')).toBeInTheDocument();
 	});
+
+	it('shows named icon when credential uses a node icon token directly', () => {
+		useCredentialsStore().setCredentialTypes([
+			mock<ICredentialType>({
+				name: 'ftp',
+				icon: 'node:ftp',
+			}),
+		]);
+
+		const { container } = renderComponent({
+			pinia,
+			props: {
+				credentialTypeName: 'ftp',
+			},
+		});
+
+		expect(container.querySelector('.nodeIconPlaceholder')).not.toBeInTheDocument();
+	});
 });

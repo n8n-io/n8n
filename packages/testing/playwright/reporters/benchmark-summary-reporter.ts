@@ -3,6 +3,7 @@ import { appendFileSync } from 'fs';
 
 interface BenchmarkRow {
 	question: string;
+	profile: string;
 	variant: string;
 	verdict: string;
 	scenario: string;
@@ -16,6 +17,11 @@ interface Column {
 }
 
 const COLUMNS: Column[] = [
+	{
+		header: 'complete',
+		suffixes: ['completion-pct'],
+		format: (v) => `${v.toFixed(1)}%`,
+	},
 	{
 		header: 'exec/s',
 		suffixes: ['throughput', 'exec-per-sec'],
@@ -55,6 +61,21 @@ const COLUMNS: Column[] = [
 		header: 'ev lag',
 		suffixes: ['event-loop-lag'],
 		format: (v) => `${(v * 1000).toFixed(0)}ms`,
+	},
+	{
+		header: 'CPU',
+		suffixes: ['main-cpu-avg'],
+		format: (v) => `${v.toFixed(0)}%`,
+	},
+	{
+		header: 'RAM',
+		suffixes: ['main-memory-mb'],
+		format: (v) => `${v.toFixed(0)}MB`,
+	},
+	{
+		header: 'PG CPU',
+		suffixes: ['pg-cpu-avg'],
+		format: (v) => `${v.toFixed(0)}%`,
 	},
 	{
 		header: 'pg tx/s',
@@ -106,6 +127,7 @@ interface QuestionShape {
 	columns: Column[];
 	showVariant: boolean;
 	showVerdict: boolean;
+	showProfile: boolean;
 }
 
 function shapeFor(rows: BenchmarkRow[]): QuestionShape {
@@ -113,6 +135,7 @@ function shapeFor(rows: BenchmarkRow[]): QuestionShape {
 		columns: COLUMNS.filter((col) => rows.some((r) => col.suffixes.some((s) => r.metrics.has(s)))),
 		showVariant: rows.some((r) => r.variant.length > 0),
 		showVerdict: rows.some((r) => r.verdict.length > 0),
+		showProfile: rows.some((r) => r.profile.length > 0),
 	};
 }
 
@@ -156,6 +179,7 @@ class BenchmarkSummaryReporter implements Reporter {
 
 			this.rows.push({
 				question,
+				profile: String(dimensions.runtime_profile ?? ''),
 				variant: String(dimensions.variant ?? ''),
 				verdict: String(dimensions.verdict ?? ''),
 				scenario,
@@ -175,16 +199,28 @@ class BenchmarkSummaryReporter implements Reporter {
 			groups.set(row.question, list);
 		}
 
+		// Skip questions whose metrics don't match any of this reporter's column
+		// patterns (e.g. canvas-perf specs that emit their own structured report).
+		// Without this, the reporter prints an empty box frame with no data.
+		const renderable = new Map<string, BenchmarkRow[]>();
+		for (const [question, rows] of groups) {
+			const shape = shapeFor(rows);
+			if (shape.columns.length > 0 || shape.showVariant || shape.showVerdict) {
+				renderable.set(question, rows);
+			}
+		}
+		if (renderable.size === 0) return;
+
 		console.log('\n');
 		console.log('Benchmark Summary');
 		console.log('══════════════════');
 
-		for (const [question, rows] of groups) {
+		for (const [question, rows] of renderable) {
 			this.renderConsoleQuestion(question, rows);
 		}
 		console.log('');
 
-		this.writeGitHubSummary(groups);
+		this.writeGitHubSummary(renderable);
 	}
 
 	private renderConsoleQuestion(question: string, rows: BenchmarkRow[]): void {
@@ -192,12 +228,14 @@ class BenchmarkSummaryReporter implements Reporter {
 		const scenario = rows[0]?.scenario ?? '';
 
 		const headerCells: string[] = [];
+		if (shape.showProfile) headerCells.push('Profile');
 		if (shape.showVariant) headerCells.push('Variant');
 		if (shape.showVerdict) headerCells.push('Verdict');
 		for (const col of shape.columns) headerCells.push(col.header);
 
 		const rowCells: string[][] = rows.map((row) => {
 			const cells: string[] = [];
+			if (shape.showProfile) cells.push(row.profile || '—');
 			if (shape.showVariant) cells.push(row.variant || '—');
 			if (shape.showVerdict) cells.push(row.verdict || '—');
 			for (const col of shape.columns) cells.push(formatCell(row, col));
@@ -213,8 +251,9 @@ class BenchmarkSummaryReporter implements Reporter {
 			leftAlign ? padRight(s, w) : pad(s, w);
 
 		// Variant + Verdict are left-aligned text; metric columns are right-aligned numbers.
-		const isText = (i: number) =>
-			(shape.showVariant && i === 0) || (shape.showVerdict && i === (shape.showVariant ? 1 : 0));
+		const textColumns =
+			Number(shape.showProfile) + Number(shape.showVariant) + Number(shape.showVerdict);
+		const isText = (i: number) => i < textColumns;
 
 		console.log('');
 		console.log(`▎ ${question}`);
@@ -244,6 +283,7 @@ class BenchmarkSummaryReporter implements Reporter {
 			lines.push('');
 
 			const headers: string[] = [];
+			if (shape.showProfile) headers.push('Profile');
 			if (shape.showVariant) headers.push('Variant');
 			if (shape.showVerdict) headers.push('Verdict');
 			for (const col of shape.columns) headers.push(col.header);
@@ -253,6 +293,7 @@ class BenchmarkSummaryReporter implements Reporter {
 
 			for (const row of rows) {
 				const cells: string[] = [];
+				if (shape.showProfile) cells.push(row.profile || '—');
 				if (shape.showVariant) cells.push(row.variant || '—');
 				if (shape.showVerdict) cells.push(row.verdict || '—');
 				for (const col of shape.columns) cells.push(formatCell(row, col));

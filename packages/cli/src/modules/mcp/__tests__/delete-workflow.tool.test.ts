@@ -1,14 +1,15 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User, WorkflowEntity } from '@n8n/db';
-
-import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';
+import type { Mock } from 'vitest';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';
+
+vi.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },
 	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow_code', displayTitle: 'Validate' },
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: {
@@ -42,18 +43,18 @@ describe('archive-workflow MCP tool', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		workflowFinderService = mockInstance(WorkflowFinderService, {
-			findWorkflowForUser: jest.fn().mockResolvedValue(mockExistingWorkflow),
+			findWorkflowForUser: vi.fn().mockResolvedValue(mockExistingWorkflow),
 		});
 		workflowService = mockInstance(WorkflowService);
 		telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 		collaborationService = mockInstance(CollaborationService, {
-			ensureWorkflowEditable: jest.fn().mockResolvedValue(undefined),
-			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
+			ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
+			broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
 		});
 	});
 
@@ -86,7 +87,7 @@ describe('archive-workflow MCP tool', () => {
 
 	describe('handler tests', () => {
 		test('successfully archives workflow and returns expected response', async () => {
-			(workflowService.archive as jest.Mock).mockResolvedValue({
+			(workflowService.archive as Mock).mockResolvedValue({
 				id: 'wf-1',
 				name: 'My Workflow',
 			});
@@ -104,7 +105,7 @@ describe('archive-workflow MCP tool', () => {
 		});
 
 		test('returns error when workflow has active write lock', async () => {
-			(collaborationService.ensureWorkflowEditable as jest.Mock).mockRejectedValue(
+			(collaborationService.ensureWorkflowEditable as Mock).mockRejectedValue(
 				new Error('Cannot modify workflow while it is being edited by a user in the editor.'),
 			);
 
@@ -118,11 +119,11 @@ describe('archive-workflow MCP tool', () => {
 		});
 
 		test('succeeds even when broadcastWorkflowUpdate rejects', async () => {
-			(workflowService.archive as jest.Mock).mockResolvedValue({
+			(workflowService.archive as Mock).mockResolvedValue({
 				id: 'wf-1',
 				name: 'My Workflow',
 			});
-			(collaborationService.broadcastWorkflowUpdate as jest.Mock).mockRejectedValue(
+			(collaborationService.broadcastWorkflowUpdate as Mock).mockRejectedValue(
 				new Error('Cache unavailable'),
 			);
 
@@ -135,7 +136,7 @@ describe('archive-workflow MCP tool', () => {
 		});
 
 		test('returns error when workflow not found or no permission to archive', async () => {
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
 
 			const tool = createTool();
 			const result = await tool.handler({ workflowId: 'wf-missing' }, {} as never);
@@ -147,9 +148,7 @@ describe('archive-workflow MCP tool', () => {
 		});
 
 		test('returns error when service throws', async () => {
-			(workflowService.archive as jest.Mock).mockRejectedValue(
-				new Error('Database connection lost'),
-			);
+			(workflowService.archive as Mock).mockRejectedValue(new Error('Database connection lost'));
 
 			const tool = createTool();
 			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
@@ -160,7 +159,7 @@ describe('archive-workflow MCP tool', () => {
 		});
 
 		test('tracks telemetry on success', async () => {
-			(workflowService.archive as jest.Mock).mockResolvedValue({
+			(workflowService.archive as Mock).mockResolvedValue({
 				id: 'wf-1',
 				name: 'My Workflow',
 			});
@@ -182,7 +181,7 @@ describe('archive-workflow MCP tool', () => {
 		});
 
 		test('tracks telemetry on failure', async () => {
-			(workflowService.archive as jest.Mock).mockRejectedValue(new Error('Unexpected error'));
+			(workflowService.archive as Mock).mockRejectedValue(new Error('Unexpected error'));
 
 			const tool = createTool();
 			await tool.handler({ workflowId: 'wf-1' }, {} as never);

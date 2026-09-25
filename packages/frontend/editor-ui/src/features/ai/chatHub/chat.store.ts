@@ -29,13 +29,14 @@ import {
 	fetchChatSettingsApi,
 	fetchChatProviderSettingsApi,
 	updateChatSettingsApi,
+	updateChatEnabledApi,
 	fetchToolsApi,
 	createToolApi,
 	updateToolApi,
 	deleteToolApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -95,8 +96,8 @@ import {
 	createFakeAgent,
 	chunkFilesBySize,
 } from './chat.utils';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { createRunExecutionData, deepCopy, type INode } from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -568,7 +569,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		const workflowsStore = useWorkflowsStore();
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
-		workflowsStore.setWorkflowExecutionData({
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData({
 			id: IN_PROGRESS_EXECUTION_ID,
 			finished: false,
 			mode: 'manual',
@@ -1121,6 +1124,12 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return providerSettings;
 	}
 
+	async function setChatEnabled(enabled: boolean) {
+		await updateChatEnabledApi(rootStore.restApiContext, enabled);
+		// Refresh module settings so isChatFeatureEnabled recomputes app-wide.
+		await settingsStore.getModuleSettings();
+	}
+
 	async function updateProviderSettings(updated: ChatProviderSettingsDto) {
 		if (!updated.enabled) {
 			updated.allowedModels = [];
@@ -1583,6 +1592,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+		setChatEnabled,
 		semanticSearchReadiness,
 
 		/**

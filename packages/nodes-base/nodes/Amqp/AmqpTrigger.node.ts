@@ -6,11 +6,14 @@ import type {
 	ITriggerResponse,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { ConnectionOptions, EventContext, ReceiverOptions } from 'rhea';
+import type { ConnectionOptions, EventContext, Receiver, ReceiverOptions } from 'rhea';
 import { create_container } from 'rhea';
 
 import { handleMessage } from './helpers/handleMessage';
 import type { AmqpCredential } from './types';
+
+const INITIAL_REATTACH_DELAY_MS = 100;
+const MAX_REATTACH_DELAY_MS = 60_000;
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,7 +22,7 @@ export class AmqpTrigger implements INodeType {
 		icon: 'file:amqp.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Listens to AMQP 1.0 Messages',
+		description: 'Listens to AMQP 1.0 messages',
 		defaults: {
 			name: 'AMQP Trigger',
 		},
@@ -40,16 +43,16 @@ export class AmqpTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'topic://sourcename.something',
-				description: 'Name of the queue of topic to listen to',
+				description: 'Name of the queue or topic to listen to',
 			},
 			{
-				displayName: 'Clientname',
+				displayName: 'Client Name',
 				name: 'clientname',
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. n8n',
 				description: 'Leave empty for non-durable topic subscriptions or queues',
-				hint: 'for durable/persistent topic subscriptions',
+				hint: 'For durable/persistent topic subscriptions',
 			},
 			{
 				displayName: 'Subscription',
@@ -58,7 +61,7 @@ export class AmqpTrigger implements INodeType {
 				default: '',
 				placeholder: 'e.g. order-worker',
 				description: 'Leave empty for non-durable topic subscriptions or queues',
-				hint: 'for durable/persistent topic subscriptions',
+				hint: 'For durable/persistent topic subscriptions',
 			},
 			{
 				displayName: 'Options',
@@ -72,7 +75,7 @@ export class AmqpTrigger implements INodeType {
 						name: 'containerId',
 						type: 'string',
 						default: '',
-						description: 'Will be used to pass to the RHEA Backend as container_id',
+						description: 'Will be passed to the RHEA backend as container_id',
 					},
 					{
 						displayName: 'Convert Body To String',
@@ -80,7 +83,7 @@ export class AmqpTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Whether to convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
+							'Whether to convert JSON body content (["body"]["content"]) from byte array to string. Needed for Azure Service Bus.',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -90,11 +93,11 @@ export class AmqpTrigger implements INodeType {
 						description: 'Whether to parse the body to an object',
 					},
 					{
-						displayName: 'Messages per Cicle',
+						displayName: 'Messages per Cycle',
 						name: 'pullMessagesNumber',
 						type: 'number',
 						default: 100,
-						description: 'Number of messages to pull from the bus for every cicle',
+						description: 'Number of messages to pull from the bus for every cycle',
 					},
 					{
 						displayName: 'Only Body',
@@ -129,7 +132,7 @@ export class AmqpTrigger implements INodeType {
 						name: 'sleepTime',
 						type: 'number',
 						default: 10,
-						description: 'Milliseconds to sleep after every cicle',
+						description: 'Milliseconds to sleep after every cycle',
 					},
 				],
 			},
@@ -146,7 +149,7 @@ export class AmqpTrigger implements INodeType {
 		const parallelProcessing = this.getNodeParameter('options.parallelProcessing', true) as boolean;
 		const pullMessagesNumber = (options.pullMessagesNumber as number) || 100;
 		const containerId = options.containerId as string;
-		const containerReconnect = (options.reconnect as boolean) || true;
+		const containerReconnect = (options.reconnect as boolean) ?? true;
 		// Keep reconnecting (exponential backoff) forever unless user sets a limit
 		const containerReconnectLimit = (options.reconnectLimit as number) ?? undefined;
 
@@ -163,22 +166,73 @@ export class AmqpTrigger implements INodeType {
 		const container = create_container();
 
 		let lastMsgId: string | number | Buffer | undefined = undefined;
+		let inFlightMessages = 0;
+		// rhea resets link credit when a reconnect attempt starts, so credit added
+		// between disconnect and reattach would double-count with the grant below
+		let receiverReady = true;
+		// a peer-forced detach replaces the link, so credit has to be granted to
+		// whichever receiver is attached now and not to the one that delivered
+		let receiver: Receiver | undefined = undefined;
+		let reattachAttempts = 0;
+		let reattachTimer: NodeJS.Timeout | undefined = undefined;
 
-		container.on('receiver_open', (context: EventContext) => {
-			context.receiver?.add_credit(pullMessagesNumber);
+		container.on('disconnected', (context: EventContext) => {
+			receiverReady = false;
+			// rhea sets reconnecting: false once it has exhausted reconnect_limit, and
+			// leaves it unset when reconnect is off - either way nothing will come back
+			if (!containerReconnect || context.reconnecting === false) {
+				this.logger.error('AMQP connection was lost and will not be reconnected', {
+					error: context.error?.message,
+				});
+				this.emitError(
+					new NodeOperationError(
+						this.getNode(),
+						context.error ?? new Error('AMQP connection lost'),
+						{ description: 'The connection will not be re-established, reactivate the workflow' },
+					),
+				);
+			}
 		});
 
-		container.on('message', async (context: EventContext) => {
+		container.on('receiver_open', (context: EventContext) => {
+			receiver = context.receiver;
+			receiverReady = true;
+			reattachAttempts = 0;
+			// a link is attached, so a still pending reattach would open a second one
+			clearTimeout(reattachTimer);
+			reattachTimer = undefined;
+			// on reconnect, executions from before the disconnect may still hold slots
+			context.receiver?.add_credit(Math.max(0, pullMessagesNumber - inFlightMessages));
+		});
+
+		// each delivered message holds 1 link credit until it is done (processed,
+		// skipped or failed), capping concurrent executions at pullMessagesNumber
+		const processMessage = async (context: EventContext) => {
+			if (!context.message) return null;
+			inFlightMessages++;
 			try {
-				const result = await handleMessage.call(this, context, {
+				return await handleMessage.call(this, context, {
 					lastMessageId: lastMsgId,
-					pullMessagesNumber,
 					jsonConvertByteArrayToString: options.jsonConvertByteArrayToString as boolean,
 					jsonParseBody: options.jsonParseBody as boolean,
 					onlyBody: options.onlyBody as boolean,
 					parallelProcessing,
-					sleepTime: options.sleepTime as number,
 				});
+			} finally {
+				setTimeout(
+					() => {
+						inFlightMessages--;
+						// while the link is down its freed slot is granted by receiver_open instead
+						if (receiverReady) (receiver ?? context.receiver)?.add_credit(1);
+					},
+					(options.sleepTime as number) || 10,
+				);
+			}
+		};
+
+		container.on('message', async (context: EventContext) => {
+			try {
+				const result = await processMessage(context);
 				if (result) {
 					lastMsgId = result.messageId;
 				}
@@ -217,13 +271,69 @@ export class AmqpTrigger implements INodeType {
 		};
 		connection.open_receiver(clientOptions);
 
-		// The "closeFunction" function gets called by n8n whenever
-		// the workflow gets deactivated and can so clean up.
-		async function closeFunction() {
+		const canReattach = () =>
+			containerReconnect &&
+			(containerReconnectLimit === undefined || reattachAttempts < containerReconnectLimit);
+
+		const scheduleReattach = () => {
+			if (reattachTimer) return;
+
+			const delay = Math.min(
+				INITIAL_REATTACH_DELAY_MS * 2 ** reattachAttempts,
+				MAX_REATTACH_DELAY_MS,
+			);
+			reattachAttempts++;
+			reattachTimer = setTimeout(() => {
+				reattachTimer = undefined;
+				connection.open_receiver(clientOptions);
+			}, delay);
+		};
+
+		// Brokers such as Azure Service Bus detach an idle link and keep the
+		// connection open, so nothing at connection level notices the stall
+		container.on('receiver_close', (context: EventContext) => {
+			receiverReady = false;
+			receiver = undefined;
+
+			const error = context.receiver?.error;
+			const detachError = error && 'condition' in error ? error : undefined;
+			const detail = {
+				condition: detachError?.condition,
+				description: detachError?.description,
+			};
+
+			if (!canReattach()) {
+				this.logger.error('AMQP receiver link was detached and will not be reattached', detail);
+				this.emitError(
+					new NodeOperationError(
+						this.getNode(),
+						'AMQP receiver link was detached and could not be reattached',
+						{ description: detachError?.description ?? detachError?.condition },
+					),
+				);
+				return;
+			}
+
+			const message = 'AMQP receiver link was detached by the peer, reattaching';
+			// a second detach with no attach in between means the link is not just idling out
+			if (reattachAttempts === 0) this.logger.info(message, detail);
+			else this.logger.warn(message, detail);
+
+			scheduleReattach();
+		});
+
+		const teardown = () => {
+			clearTimeout(reattachTimer);
+			container.removeAllListeners('disconnected');
 			container.removeAllListeners('receiver_open');
+			container.removeAllListeners('receiver_close');
 			container.removeAllListeners('message');
 			connection.close();
-		}
+		};
+
+		// The "closeFunction" function gets called by n8n whenever
+		// the workflow gets deactivated and can so clean up.
+		const closeFunction = async () => teardown();
 
 		// The "manualTriggerFunction" function gets called by n8n
 		// when a user is in the workflow editor and starts the
@@ -236,32 +346,22 @@ export class AmqpTrigger implements INodeType {
 				container.removeAllListeners('message');
 
 				const timeoutHandler = setTimeout(() => {
-					container.removeAllListeners('receiver_open');
-					container.removeAllListeners('message');
-					connection.close();
+					teardown();
 
 					reject(
 						new NodeOperationError(
 							this.getNode(),
-							'Aborted because no message received within 15 seconds',
+							'Aborted because no message was received within 15 seconds',
 							{
 								description:
-									'This 15sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
+									'This 15-second timeout only applies to manually triggered executions. Active workflows will listen indefinitely.',
 							},
 						),
 					);
 				}, 15000);
 				container.on('message', async (context: EventContext) => {
 					try {
-						const result = await handleMessage.call(this, context, {
-							lastMessageId: lastMsgId,
-							pullMessagesNumber,
-							jsonConvertByteArrayToString: options.jsonConvertByteArrayToString as boolean,
-							jsonParseBody: options.jsonParseBody as boolean,
-							onlyBody: options.onlyBody as boolean,
-							parallelProcessing,
-							sleepTime: options.sleepTime as number,
-						});
+						const result = await processMessage(context);
 						if (result) {
 							lastMsgId = result.messageId;
 						}

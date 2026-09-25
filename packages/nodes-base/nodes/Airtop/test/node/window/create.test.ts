@@ -15,11 +15,11 @@ const baseNodeParameters = {
 	additionalFields: {},
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function (method: string) {
+		apiRequest: vi.fn(async function (method: string) {
 			if (method === 'GET') {
 				return {
 					status: 'success',
@@ -45,11 +45,10 @@ describe('Test Airtop, window create operation', () => {
 
 	afterAll(() => {
 		nock.restore();
-		jest.unmock('../../../transport');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should create a window with minimal parameters', async () => {

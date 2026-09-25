@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
@@ -68,6 +68,9 @@ const iframeSrc = computed(() => {
 	}
 	if (props.canExecute) {
 		params.set('canExecute', 'true');
+	}
+	if (!props.canOpenNDV) {
+		params.set('canOpenNDV', 'false');
 	}
 	const qs = params.toString();
 	return qs ? `${basePath}?${qs}` : basePath;

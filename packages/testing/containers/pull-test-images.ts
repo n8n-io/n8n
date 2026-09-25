@@ -27,7 +27,7 @@ interface PullResult {
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 10_000;
 
-async function sleep(ms: number): Promise<void> {
+async function wait(ms: number): Promise<void> {
 	return await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -51,7 +51,7 @@ async function pullImage(image: string): Promise<PullResult> {
 					`   ⚠️  Pull attempt ${attempt}/${MAX_RETRIES} failed for ${image}: ${message}`,
 				);
 				console.warn(`   ⏳ Retrying in ${RETRY_DELAY_MS / 1000}s...`);
-				await sleep(RETRY_DELAY_MS);
+				await wait(RETRY_DELAY_MS);
 			} else {
 				console.error(`   ❌ Pull failed for ${image} after ${MAX_RETRIES} attempts: ${message}`);
 			}

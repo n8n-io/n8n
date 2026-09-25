@@ -18,7 +18,7 @@ interface NodeIconProps {
 	color?: string;
 	showTooltip?: boolean;
 	tooltipPosition?: Placement;
-	badge?: { src: string; type: IconType };
+	badge?: { src?: string; name?: string; type: IconType; tooltip?: string };
 }
 
 const props = withDefaults(defineProps<NodeIconProps>(), {

@@ -39,6 +39,20 @@ describe('ResourceLocatorDropdown', () => {
 		vi.useRealTimers();
 	});
 
+	it('should show search required message even when loading', () => {
+		renderComponent({
+			props: {
+				show: true,
+				filterRequired: true,
+				filter: '',
+				loading: true,
+				resources: [],
+			},
+		});
+
+		expect(screen.getByText('Enter a search term to show results')).toBeInTheDocument();
+	});
+
 	describe('slow loading hint', () => {
 		it('should show slow loading hint when loading and showSlowLoadNotice is true', () => {
 			const slowLoadNotice = 'This is taking longer than expected. Please wait...';
@@ -162,6 +176,62 @@ describe('ResourceLocatorDropdown', () => {
 			// Should show the actual resource name, not cached
 			expect(screen.getByText('Workflow 1')).toBeInTheDocument();
 			expect(screen.queryByText('Cached Name')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('opening a result link', () => {
+		async function clickCachedResultLink(cachedResultUrl: string) {
+			vi.useFakeTimers();
+
+			const cachedModelValue: INodeParameterResourceLocator = {
+				__rl: true,
+				value: 'workflow-cached',
+				mode: 'list',
+				cachedResultName: 'Cached Workflow',
+				cachedResultUrl,
+			};
+
+			renderComponent({
+				props: {
+					show: true,
+					resources: mockResources, // doesn't contain workflow-cached
+					modelValue: cachedModelValue,
+				},
+			});
+
+			const cachedItem = screen.getByText('Cached Workflow').closest('[data-test-id="rlc-item"]');
+
+			await fireEvent.mouseEnter(cachedItem as Element);
+			await vi.advanceTimersByTimeAsync(250);
+
+			const linkIcon = cachedItem?.querySelector('svg[data-icon="external-link"]');
+			expect(linkIcon).toBeInTheDocument();
+
+			await fireEvent.click(linkIcon as Element);
+		}
+
+		it('should open an http(s) result url with noopener,noreferrer', async () => {
+			const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+			await clickCachedResultLink('https://example.com/resource');
+
+			expect(windowOpenSpy).toHaveBeenCalledWith(
+				'https://example.com/resource',
+				'_blank',
+				'noopener,noreferrer',
+			);
+
+			windowOpenSpy.mockRestore();
+		});
+
+		it('should not open a result url with a disallowed scheme', async () => {
+			const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+			await clickCachedResultLink('javascript:alert(document.domain)');
+
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+
+			windowOpenSpy.mockRestore();
 		});
 	});
 

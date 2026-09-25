@@ -1,11 +1,10 @@
 {
-	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.go.json"],
 	"compilerOptions": {
 		"composite": true,
 		"rootDir": "src",
 		"outDir": "dist",
-		"declaration": true,
-		"tsBuildInfoFile": "dist/build.tsbuildinfo"
+		"declaration": true
 	},
 	"include": ["src/**/*.ts"],
 	"exclude": [

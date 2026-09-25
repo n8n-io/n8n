@@ -1,8 +1,8 @@
 import { Logger } from '@n8n/backend-common';
-import { Time } from '@n8n/constants';
-import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import type { McpRegistryConnection } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
@@ -12,28 +12,23 @@ import { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
+import { McpRegistryCapabilities } from './mcp-registry-capabilities';
+import {
+	listMcpRegistryServers,
+	searchMcpRegistryServers,
+	type McpRegistrySearchResult,
+} from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
 import { toEntity, fromEntity } from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
 
-type RefreshReason = 'startup' | 'leader-takeover' | 'interval';
-
-const REFRESH_INTERVAL_HOURS = 8;
-
-const REFRESH_INTERVAL_MS = REFRESH_INTERVAL_HOURS * Time.hours.toMilliseconds;
-
 @Service()
 export class McpRegistryService {
-	private refreshInterval: NodeJS.Timeout | undefined;
-
-	private refreshPromise: Promise<void> | undefined;
-
-	private isShuttingDown = false;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: McpRegistryServerRepository,
 		private readonly apiClient: McpRegistryApiClient,
+		private readonly capabilities: McpRegistryCapabilities,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly push: Push,
@@ -44,28 +39,6 @@ export class McpRegistryService {
 
 	async init(): Promise<void> {
 		await this.refreshRegistryNodeTypes(false);
-		if (this.instanceSettings.isLeader) {
-			// don't want to wait for API calls to block on init
-			void this.refreshFromApi('startup');
-			this.startPeriodicRefresh();
-		}
-	}
-
-	@OnLeaderTakeover()
-	async onLeaderTakeover(): Promise<void> {
-		await this.refreshFromApi('leader-takeover');
-		this.startPeriodicRefresh();
-	}
-
-	@OnLeaderStepdown()
-	onLeaderStepdown(): void {
-		this.stopPeriodicRefresh();
-	}
-
-	@OnShutdown()
-	shutdown(): void {
-		this.isShuttingDown = true;
-		this.stopPeriodicRefresh();
 	}
 
 	@OnPubSubEvent('reload-mcp-registry')
@@ -79,85 +52,99 @@ export class McpRegistryService {
 	async getAll({
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
+		const servers = await this.getStoredServers(includeDeprecated);
+		return servers.filter(({ requiredCapabilities }) =>
+			this.capabilities.supports(requiredCapabilities),
+		);
+	}
+
+	async get(slug: string): Promise<McpRegistryServer | undefined> {
+		const entity = await this.repository.findOneBy({ slug });
+		if (!entity) return undefined;
+
+		const server = fromEntity(entity);
+		return this.capabilities.supports(server.requiredCapabilities) ? server : undefined;
+	}
+
+	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
+		if (slugs.length === 0) {
+			return [];
+		}
+
+		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
+		return entities
+			.map(fromEntity)
+			.filter(({ requiredCapabilities }) => this.capabilities.supports(requiredCapabilities));
+	}
+
+	/**
+	 * Match active registry servers against free-text queries and return them in
+	 * the config-ready shape used by the agent-builder tools. Centralizes the
+	 * matching + mapping that used to be re-implemented per call site.
+	 */
+	async search(queries: string[]): Promise<McpRegistrySearchResult[]> {
+		return searchMcpRegistryServers(await this.getAll(), queries);
+	}
+
+	async list(limit: number): Promise<McpRegistrySearchResult[]> {
+		return listMcpRegistryServers(await this.getAll()).slice(0, limit);
+	}
+
+	async resolveBySlugs(slugs: string[]): Promise<McpRegistrySearchResult[]> {
+		const servers = await this.getBySlugs(slugs);
+		return listMcpRegistryServers(servers.filter((server) => server.status === 'active'));
+	}
+
+	async getConnection(nodeTypeName: string): Promise<McpRegistryConnection | undefined> {
+		const loader = this.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME];
+		if (!(loader instanceof McpRegistryNodeLoader)) return undefined;
+		return loader.getConnection(nodeTypeName);
+	}
+
+	/**
+	 * Refreshes the registry from the remote API and reloads the generated node
+	 * types. Skips the write and the reload when nothing changed.
+	 * Callers must serialize runs.
+	 * @throws when the remote API or the database write fails, or when the
+	 * signal aborts before the write starts. The signal cancels the API requests.
+	 */
+	async refreshFromApi(signal?: AbortSignal): Promise<void> {
+		const existingServers = await this.getStoredServers(true);
+		let updatedServers: McpRegistryServer[];
+		if (existingServers.length === 0) {
+			updatedServers = await this.apiClient.fetchAllServers(signal);
+		} else {
+			const result = await this.refreshUpdatedServers(existingServers, signal);
+			if (result === null) {
+				this.logger.debug('MCP registry is up to date');
+				return;
+			}
+
+			updatedServers = result;
+		}
+
+		signal?.throwIfAborted();
+		await this.saveServers(updatedServers);
+		await this.refreshRegistryNodeTypes(true);
+		this.notifyNodeDescriptionsUpdated();
+		await this.publishReloadCommand();
+
+		this.logger.debug('MCP registry refreshed', { serverCount: updatedServers.length });
+	}
+
+	private async getStoredServers(includeDeprecated: boolean): Promise<McpRegistryServer[]> {
 		const entities = includeDeprecated
 			? await this.repository.find()
 			: await this.repository.findBy({ status: 'active' });
 		return entities.map(fromEntity);
 	}
 
-	async get(slug: string): Promise<McpRegistryServer | undefined> {
-		const entity = await this.repository.findOneBy({ slug });
-		return entity ? fromEntity(entity) : undefined;
-	}
-
-	private startPeriodicRefresh(): void {
-		if (this.isShuttingDown || this.refreshInterval) {
-			return;
-		}
-
-		this.refreshInterval = setInterval(() => {
-			void this.refreshFromApi('interval');
-		}, REFRESH_INTERVAL_MS);
-
-		this.logger.debug('Scheduled MCP registry refresh', {
-			intervalHours: REFRESH_INTERVAL_HOURS,
-		});
-	}
-
-	private stopPeriodicRefresh(): void {
-		clearInterval(this.refreshInterval);
-		this.refreshInterval = undefined;
-	}
-
-	private async refreshFromApi(reason: RefreshReason): Promise<void> {
-		if (this.refreshPromise) {
-			await this.refreshPromise;
-			return;
-		}
-
-		this.refreshPromise = this.refreshFromApiInternal(reason);
-		try {
-			await this.refreshPromise;
-		} finally {
-			this.refreshPromise = undefined;
-		}
-	}
-
-	private async refreshFromApiInternal(reason: RefreshReason): Promise<void> {
-		try {
-			const existingServers = await this.getAll({ includeDeprecated: true });
-			let updatedServers: McpRegistryServer[];
-			if (existingServers.length === 0) {
-				updatedServers = await this.apiClient.fetchAllServers();
-			} else {
-				const result = await this.refreshUpdatedServers(existingServers);
-				if (result === null) {
-					this.logger.debug('MCP registry is up to date', { reason });
-					return;
-				}
-
-				updatedServers = result;
-			}
-
-			await this.saveServers(updatedServers);
-			await this.refreshRegistryNodeTypes(true);
-			this.notifyNodeDescriptionsUpdated();
-			await this.publishReloadCommand();
-
-			this.logger.debug('MCP registry refreshed', {
-				reason,
-				serverCount: updatedServers.length,
-			});
-		} catch (error) {
-			this.logger.error('Failed to refresh MCP registry', { error, reason });
-		}
-	}
-
 	private async refreshUpdatedServers(
 		existingServers: McpRegistryServer[],
+		signal?: AbortSignal,
 	): Promise<McpRegistryServer[] | null> {
 		const now = new Date().toISOString();
-		const metadata = await this.apiClient.fetchServersMetadata();
+		const metadata = await this.apiClient.fetchServersMetadata(signal);
 		const existingBySlug = new Map(existingServers.map((server) => [server.slug, server]));
 		const metadataSlugs = new Set(metadata.map(({ slug }) => slug));
 		const slugsToFetch = metadata
@@ -175,7 +162,7 @@ export class McpRegistryService {
 			return serversToDeprecate;
 		}
 
-		const updatedServers = await this.apiClient.fetchServersBySlugs(slugsToFetch);
+		const updatedServers = await this.apiClient.fetchServersBySlugs(slugsToFetch, signal);
 		return [...updatedServers, ...serversToDeprecate];
 	}
 

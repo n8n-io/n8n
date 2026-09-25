@@ -7,6 +7,8 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import WorkflowSelectorParameterInput, { type Props } from './WorkflowSelectorParameterInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
@@ -28,7 +30,7 @@ vi.mock('@/app/composables/useDocumentVisibility', () => ({
 	useDocumentVisibility: () => ({ onDocumentVisible }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 
@@ -46,6 +48,18 @@ vi.mock('vue-router', () => {
 	};
 });
 
+const { workflowIdHolder } = vi.hoisted(() => ({
+	workflowIdHolder: { current: (): string => '' },
+}));
+
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => workflowIdHolder.current()),
+		useRouteWorkflowId: () => computed(() => workflowIdHolder.current()),
+	};
+});
+
 const renderComponent = createComponentRenderer(WorkflowSelectorParameterInput);
 
 let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -60,6 +74,7 @@ describe('WorkflowSelectorParameterInput', () => {
 		projectsStore.isTeamProjectFeatureEnabled = false;
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowIdHolder.current = () => useWorkflowsStore().workflowId;
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 
 		// Mock store methods to prevent unhandled errors
@@ -77,6 +92,65 @@ describe('WorkflowSelectorParameterInput', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it.each([undefined, 'Previously selected workflow'])(
+		'hides setup markers while preserving the cached name: %s',
+		async (cachedResultName) => {
+			const view = renderComponent({
+				props: {
+					modelValue: {
+						__rl: true,
+						mode: 'list',
+						value: '<__PLACEHOLDER_VALUE__Choose a workflow__>',
+						cachedResultName,
+					},
+					path: '',
+					parameter: {
+						displayName: 'Workflow',
+						name: 'workflowId',
+						type: 'workflowSelector',
+						default: '',
+					},
+				},
+			});
+			await flushPromises();
+			const input = view.getByRole('textbox');
+			expect(input).not.toHaveDisplayValue(/__PLACEHOLDER_VALUE__/);
+			expect(input).toHaveValue(cachedResultName ?? '');
+			expect(workflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
+			expect(view.queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+			expect(view.emitted('update:modelValue')).toBeUndefined();
+		},
+	);
+
+	it('closes with Escape and reopens its workflow list', async () => {
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			{
+				...createTestWorkflow({ id: 'wf-choice', name: 'Workflow option' }),
+				description: undefined,
+			},
+		]);
+		const view = renderComponent({
+			props: {
+				modelValue: { __rl: true, mode: 'list', value: '' },
+				path: '',
+				parameter: {
+					displayName: 'Workflow',
+					name: 'workflowId',
+					type: 'workflowSelector',
+					default: '',
+				},
+			},
+		});
+		await flushPromises();
+		await userEvent.click(view.getByTestId('rlc-input'));
+		expect(await view.findByText('Workflow option')).toBeVisible();
+		await userEvent.click(view.getByTestId('rlc-search'));
+		await userEvent.keyboard('{Escape}');
+		await waitFor(() => expect(view.queryByText('Workflow option')).toBeNull());
+		await userEvent.click(view.getByTestId('rlc-input'));
+		expect(await view.findByText('Workflow option')).toBeVisible();
 	});
 
 	it('should update cached workflow when page is visible', async () => {

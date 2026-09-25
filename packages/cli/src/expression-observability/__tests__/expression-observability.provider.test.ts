@@ -4,13 +4,22 @@
 import type { Logger } from '@n8n/backend-common';
 import { ExpressionEngineConfig, type GlobalConfig } from '@n8n/config';
 import { EXPRESSION_METRICS } from '@n8n/expression-runtime';
-import { trace } from '@opentelemetry/api';
-import { mock } from 'jest-mock-extended';
+import type { Tracer } from '@opentelemetry/api';
 import promClient from 'prom-client';
+import { mock } from 'vitest-mock-extended';
 
 import { ExpressionObservabilityProvider } from '../expression-observability.provider';
 
+import type { OtelService } from '@/modules/otel/otel.service';
+
 const scopedLogger = mock<Logger>();
+const otelService = mock<OtelService>();
+const startSpanMock = vi.fn().mockReturnValue({
+	setStatus: vi.fn(),
+	setAttribute: vi.fn(),
+	recordException: vi.fn(),
+	end: vi.fn(),
+});
 
 function buildConfig(overrides: Partial<ExpressionEngineConfig> = {}): ExpressionEngineConfig {
 	const config = new ExpressionEngineConfig();
@@ -31,7 +40,8 @@ function buildGlobalConfig(prefix = 'n8n_'): GlobalConfig {
 
 describe('ExpressionObservabilityProvider', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		otelService.getTracer.mockReturnValue({ startSpan: startSpanMock } as unknown as Tracer);
 		promClient.register.clear();
 	});
 
@@ -41,6 +51,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ observabilityEnabled: false }),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 
 			expect(() => {
@@ -57,6 +68,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ engine: 'legacy' }),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 
 			provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
@@ -72,6 +84,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 			provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 2);
 
@@ -86,6 +99,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 			provider.metrics.gauge(EXPRESSION_METRICS.codeCacheSize.name, 42);
 
@@ -98,6 +112,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 3, {
 				status: 'success',
@@ -110,26 +125,57 @@ describe('ExpressionObservabilityProvider', () => {
 		});
 	});
 
+	describe('survives a global registry clear', () => {
+		it('re-registers expression metrics on emission without warning after a clear', async () => {
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig(),
+				buildLogger(),
+				buildGlobalConfig(),
+				otelService,
+			);
+
+			promClient.register.clear();
+
+			provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 3);
+			provider.metrics.gauge(EXPRESSION_METRICS.codeCacheSize.name, 7);
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.02, {
+				status: 'success',
+				type: 'none',
+			});
+
+			expect(scopedLogger.warn).not.toHaveBeenCalled();
+
+			const output = await promClient.register.metrics();
+			expect(output).toContain('n8n_expression_pool_acquired_total 3');
+			expect(output).toContain('n8n_expression_code_cache_size 7');
+			expect(output).toContain('n8n_expression_evaluation_duration_seconds_count');
+		});
+
+		it('still warns for genuinely unknown metric names after a clear', () => {
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig(),
+				buildLogger(),
+				buildGlobalConfig(),
+				otelService,
+			);
+
+			promClient.register.clear();
+
+			provider.metrics.counter('test.unknown', 1);
+
+			expect(scopedLogger.warn).toHaveBeenCalledWith('Emitted unknown expression metric', {
+				name: 'test.unknown',
+			});
+		});
+	});
+
 	describe('tail sampling', () => {
-		const startSpanMock = jest.fn().mockReturnValue({
-			setStatus: jest.fn(),
-			setAttribute: jest.fn(),
-			recordException: jest.fn(),
-			end: jest.fn(),
-		});
-
-		beforeEach(() => {
-			startSpanMock.mockClear();
-			jest.spyOn(trace, 'getTracer').mockReturnValue({
-				startSpan: startSpanMock,
-			} as unknown as ReturnType<typeof trace.getTracer>);
-		});
-
 		it('drops healthy spans under the slow threshold', () => {
 			const provider = new ExpressionObservabilityProvider(
 				buildConfig({ slowEvaluationThresholdMs: 50, tracesSampleRate: 0 }),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.01, {
 				status: 'success',
@@ -143,6 +189,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.1, {
 				status: 'success',
@@ -164,6 +211,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.005, {
 				status: 'error',
@@ -185,6 +233,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ tracesEnabled: false, slowEvaluationThresholdMs: 10 }),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.5, {
 				status: 'error',
@@ -200,6 +249,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 			expect(() => {
 				provider.metrics.counter('test.unknown', 1);
@@ -214,6 +264,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.01, {
@@ -243,6 +294,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
+				otelService,
 			);
 			provider.logs.info('hello', { k: 'v' });
 			provider.logs.warn('warn', { k: 'v' });

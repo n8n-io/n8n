@@ -1,8 +1,17 @@
-import { getOctokit } from '@actions/github';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import semver from 'semver';
+
+// Scripts that run through `run-workflow-script` have no node_modules: they
+// get their client through `setOctokit` and never call the release helpers.
+const actionsGithub = await import('@actions/github').catch((error) => {
+	if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
+	return null;
+});
+const require = createRequire(import.meta.url);
+/** @returns { typeof import('semver') } */
+const loadSemver = () => require('semver');
 
 export const CURRENT_MAJOR_VERSION = 2;
 export const RELEASE_CANDIDATE_BRANCH_PREFIX = 'release-candidate/';
@@ -48,8 +57,8 @@ export function pickHighestReleaseTag(tags) {
 	const versions = tags
 		.filter((t) => t.startsWith(RELEASE_PREFIX))
 		.map((t) => ({ tag: t, v: stripReleasePrefixes(t) }))
-		.filter(({ v }) => semver.valid(v))
-		.sort((a, b) => semver.rcompare(a.v, b.v));
+		.filter(({ v }) => loadSemver().valid(v))
+		.sort((a, b) => loadSemver().rcompare(a.v, b.v));
 
 	return /** @type { ReleaseVersion } */ (versions[0]?.tag) ?? null;
 }
@@ -128,7 +137,7 @@ export function resolveRcBranchForTrack(track) {
 	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
 	if (!releaseTag) return null;
 
-	const parsed = semver.parse(stripReleasePrefixes(releaseTag));
+	const parsed = loadSemver().parse(stripReleasePrefixes(releaseTag));
 	if (!parsed) return null;
 
 	return `release-candidate/${parsed.major}.${parsed.minor}.x`;
@@ -145,12 +154,12 @@ export function resolveRcBranchForTrack(track) {
  * */
 export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo) {
 	const version = tagVersionInfo.version;
-	const majorVersion = semver.major(version);
+	const majorVersion = loadSemver().major(version);
 	if (majorVersion < CURRENT_MAJOR_VERSION) {
 		return `${majorVersion}.x`;
 	}
 
-	return `${RELEASE_CANDIDATE_BRANCH_PREFIX}${majorVersion}.${semver.minor(version)}.x`;
+	return `${RELEASE_CANDIDATE_BRANCH_PREFIX}${majorVersion}.${loadSemver().minor(version)}.x`;
 }
 
 /**
@@ -248,9 +257,10 @@ export function trySh(cmd, args, opts = {}) {
  * Append outputs to GITHUB_OUTPUT if available.
  *
  * @param {Record<string, string | boolean>} obj
+ * @param {NodeJS.ProcessEnv} [env] Environment to read GITHUB_OUTPUT from.
  */
-export function writeGithubOutput(obj) {
-	const path = process.env.GITHUB_OUTPUT;
+export function writeGithubOutput(obj, env = process.env) {
+	const path = env.GITHUB_OUTPUT;
 	if (!path) return;
 
 	const lines = Object.entries(obj)
@@ -350,18 +360,37 @@ export function localRefExists(ref) {
 	return res.ok;
 }
 
+/** @type { GitHubInstance | null } */
+let injectedOctokit = null;
+
 /**
- * Initializes octokit with GITHUB_TOKEN from env vars.
+ * Use a ready client instead of building one from GITHUB_TOKEN.
+ * `run-workflow-script` passes the client that actions/github-script provides.
  *
- * Also ensures the existence of useful environment variables.
+ * @param { GitHubInstance | null } octokit
+ */
+export function setOctokit(octokit) {
+	injectedOctokit = octokit;
+}
+
+/**
+ * Returns the octokit client and the current repository.
+ *
+ * Uses the injected client when set, otherwise builds one from GITHUB_TOKEN.
  * */
 export function initGithub() {
-	const token = ensureEnvVar('GITHUB_TOKEN');
 	const repoFullName = ensureEnvVar('GITHUB_REPOSITORY');
-
 	const [owner, repo] = repoFullName.split('/');
 
-	const octokit = getOctokit(token);
+	if (injectedOctokit) {
+		return { octokit: injectedOctokit, owner, repo };
+	}
+
+	if (!actionsGithub) {
+		throw new Error('No Octokit client: call setOctokit() or install the .github/scripts dependencies');
+	}
+	const token = ensureEnvVar('GITHUB_TOKEN');
+	const octokit = actionsGithub.getOctokit(token);
 
 	return {
 		octokit,
@@ -386,6 +415,26 @@ export async function getPullRequestById(pullRequestId) {
 }
 
 /**
+ * Open PRs whose head is `headOwner:headBranch`, newest first.
+ *
+ * @param { string } headOwner Owner of the head repository (a fork owner or this org).
+ * @param { string } headBranch
+ * @returns { Promise<any[]> }
+ */
+export async function listOpenPullRequestsByHead(headOwner, headBranch) {
+	const { octokit, owner, repo } = initGithub();
+
+	const pullRequests = await octokit.rest.pulls.list({
+		owner,
+		repo,
+		state: 'open',
+		head: `${headOwner}:${headBranch}`,
+	});
+
+	return pullRequests.data;
+}
+
+/**
  * Returns the set of files changed in a PR, including previous filenames for renames.
  *
  * @param { number } pullRequestNumber
@@ -405,6 +454,218 @@ export async function getChangedFiles(pullRequestNumber) {
 		...files.map((file) => file.filename),
 		...files.map((file) => file.previous_filename).filter((filename) => filename !== undefined),
 	]);
+}
+
+/**
+ * Returns all files changed in a PR with full metadata including line counts.
+ *
+ * @param { number } pullRequestNumber
+ * @returns { Promise<Array<{ filename: string, additions: number, deletions: number, previous_filename?: string }>> }
+ * */
+export async function getPrFiles(pullRequestNumber) {
+	const { octokit, owner, repo } = initGithub();
+
+	return await octokit.paginate(octokit.rest.pulls.listFiles, {
+		owner,
+		repo,
+		pull_number: pullRequestNumber,
+		per_page: 100,
+	});
+}
+
+/**
+ * Returns all reviews submitted on a PR, in submission order.
+ *
+ * @param { number } pullRequestNumber
+ * @returns { Promise<Array<{ user: { login: string } | null, state: string, submitted_at?: string }>> }
+ * */
+export async function getPrReviews(pullRequestNumber) {
+	const { octokit, owner, repo } = initGithub();
+
+	return await octokit.paginate(octokit.rest.pulls.listReviews, {
+		owner,
+		repo,
+		pull_number: pullRequestNumber,
+		per_page: 100,
+	});
+}
+
+/**
+ * Test whether a user is an active member of an org team.
+ *
+ * Team slugs are the part after the org, e.g. `catalysts` for
+ * `@n8n-io/catalysts`. Requires a token with org members read access
+ * (the plain GITHUB_TOKEN cannot read team membership). Returns false
+ * for pending invitations and for teams that do not exist.
+ *
+ * @param { string } teamSlug
+ * @param { string } username
+ * @returns { Promise<boolean> }
+ * */
+export async function isTeamMember(teamSlug, username) {
+	const { octokit, owner } = initGithub();
+
+	try {
+		const { data } = await octokit.rest.teams.getMembershipForUserInOrg({
+			org: owner,
+			team_slug: teamSlug,
+			username,
+		});
+		return data.state === 'active';
+	} catch (ex) {
+		if (ex?.status === 404) return false;
+		throw ex;
+	}
+}
+
+/**
+ * Create (or overwrite) a commit status on the given SHA. A ruleset can list
+ * the status context as a required check to gate merges on it.
+ *
+ * @param { string } sha
+ * @param {{ state: 'success' | 'failure' | 'pending' | 'error', context: string, description: string, targetUrl?: string }} status
+ */
+export async function setCommitStatus(sha, { state, context, description, targetUrl }) {
+	const { octokit, owner, repo } = initGithub();
+
+	await octokit.rest.repos.createCommitStatus({
+		owner,
+		repo,
+		sha,
+		state,
+		context,
+		// The API rejects descriptions longer than 140 characters.
+		description: description.length > 140 ? `${description.slice(0, 139)}…` : description,
+		target_url: targetUrl,
+	});
+}
+
+/**
+ * The comment a previous run left, found by its bot marker.
+ *
+ * @param { number } pullRequestNumber
+ * @param { string } botMarker
+ * @returns { Promise<{ id: number, body: string } | undefined> }
+ */
+export async function findCommentByMarker(pullRequestNumber, botMarker) {
+	const { octokit, owner, repo } = initGithub();
+
+	const comments = await octokit.paginate(octokit.rest.issues.listComments, {
+		owner,
+		repo,
+		issue_number: pullRequestNumber,
+		per_page: 100,
+	});
+
+	const existing = comments.find((c) => c.body?.includes(botMarker));
+
+	return existing ? { id: existing.id, body: existing.body ?? '' } : undefined;
+}
+
+/**
+ * Overwrite a comment whose id is already known. A caller that edits the same
+ * comment repeatedly uses this instead of paginating every comment each time.
+ *
+ * @param { number } commentId
+ * @param { string } body
+ */
+export async function updateCommentById(commentId, body) {
+	const { octokit, owner, repo } = initGithub();
+
+	await octokit.rest.issues.updateComment({ owner, repo, comment_id: commentId, body });
+}
+
+/**
+ * Post a PR comment, or update the existing one if a previous run already
+ * left one identified by the provided bot marker.
+ *
+ * @param { number } pullRequestNumber
+ * @param { string } body
+ * @param { string } botMarker
+ * @returns { Promise<number> } the id of the comment it wrote
+ */
+export async function postOrUpdateComment(pullRequestNumber, body, botMarker) {
+	const { octokit, owner, repo } = initGithub();
+
+	const existing = await findCommentByMarker(pullRequestNumber, botMarker);
+
+	if (existing) {
+		await updateCommentById(existing.id, body);
+		return existing.id;
+	}
+
+	const created = await octokit.rest.issues.createComment({
+		owner,
+		repo,
+		issue_number: pullRequestNumber,
+		body,
+	});
+
+	return created.data.id;
+}
+
+/**
+ * Request review from the given GitHub teams on a PR.
+ *
+ * Team slugs are the part after the org, e.g. `catalysts` for
+ * `@n8n-io/catalysts`. Re-requesting an already-requested team is a no-op on
+ * GitHub's side, so this is safe to call on every PR update.
+ *
+ * @param { number } pullRequestNumber
+ * @param { string[] } teamSlugs
+ */
+export async function requestTeamReviewers(pullRequestNumber, teamSlugs) {
+	if (teamSlugs.length === 0) return;
+
+	const { octokit, owner, repo } = initGithub();
+
+	await octokit.rest.pulls.requestReviewers({
+		owner,
+		repo,
+		pull_number: pullRequestNumber,
+		team_reviewers: teamSlugs,
+	});
+}
+
+/**
+ * Add a label to a PR (issue). Adding a label that is already present is a
+ * no-op on GitHub's side.
+ *
+ * @param { number } pullRequestNumber
+ * @param { string } label
+ */
+export async function addLabel(pullRequestNumber, label) {
+	const { octokit, owner, repo } = initGithub();
+
+	await octokit.rest.issues.addLabels({
+		owner,
+		repo,
+		issue_number: pullRequestNumber,
+		labels: [label],
+	});
+}
+
+/**
+ * Remove a label from a PR (issue). Removing a label that is not present
+ * returns 404 from GitHub; that case is swallowed so the call is idempotent.
+ *
+ * @param { number } pullRequestNumber
+ * @param { string } label
+ */
+export async function removeLabel(pullRequestNumber, label) {
+	const { octokit, owner, repo } = initGithub();
+
+	try {
+		await octokit.rest.issues.removeLabel({
+			owner,
+			repo,
+			issue_number: pullRequestNumber,
+			name: label,
+		});
+	} catch (ex) {
+		if (ex?.status === 404) return;
+		throw ex;
+	}
 }
 
 /**

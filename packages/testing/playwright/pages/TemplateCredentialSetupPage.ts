@@ -2,13 +2,17 @@ import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { CredentialModal } from './components/CredentialModal';
+import { MessageBox } from './components/messageBoxLocators';
+import { SetupWorkflowCredentialsModal } from './components/SetupWorkflowCredentialsModal';
 
 export class TemplateCredentialSetupPage extends BasePage {
 	async goto(templateId: number) {
 		await this.page.goto(`/templates/${templateId}/setup`);
 	}
 
-	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly credentialModal = CredentialModal.fromPage(this.page);
+
+	readonly canvasCredentialModal = SetupWorkflowCredentialsModal.fromPage(this.page);
 
 	getTitle(titleText: string): Locator {
 		return this.page.getByRole('heading', { name: titleText, level: 1 });
@@ -43,11 +47,11 @@ export class TemplateCredentialSetupPage extends BasePage {
 	}
 
 	getCanvasCredentialModal(): Locator {
-		return this.page.getByTestId('setup-workflow-credentials-modal');
+		return this.canvasCredentialModal.getModal();
 	}
 
 	getSetupCredentialModalSteps(): Locator {
-		return this.getCanvasCredentialModal().getByTestId('setup-credentials-form-step');
+		return this.canvasCredentialModal.getFormSteps();
 	}
 
 	getCreateCredentialButton(appName: string): Locator {
@@ -55,8 +59,7 @@ export class TemplateCredentialSetupPage extends BasePage {
 	}
 
 	getMessageBox(): Locator {
-		// Using class selector as Element UI message box doesn't have semantic attributes
-		return this.page.locator('.el-message-box');
+		return new MessageBox(this.page).root;
 	}
 
 	/** Opens credential creation modal and waits for it to be visible */
@@ -69,6 +72,6 @@ export class TemplateCredentialSetupPage extends BasePage {
 	async dismissMessageBox(): Promise<void> {
 		const messageBox = this.getMessageBox();
 		await messageBox.waitFor({ state: 'visible' });
-		await messageBox.locator('.btn--cancel').click();
+		await new MessageBox(messageBox).cancelButton.click();
 	}
 }

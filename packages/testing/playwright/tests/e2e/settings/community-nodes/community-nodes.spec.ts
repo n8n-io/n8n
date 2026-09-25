@@ -70,7 +70,7 @@ test.describe(
 			});
 
 			await n8n.communityNodes.uninstallPackage();
-			await expect(n8n.communityNodes.getActionBox()).toBeVisible();
+			await expect(n8n.communityNodes.getEmptyState()).toBeVisible();
 		});
 	},
 );

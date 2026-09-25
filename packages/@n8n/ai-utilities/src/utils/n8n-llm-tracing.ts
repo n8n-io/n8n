@@ -13,6 +13,8 @@ import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
 import { logAiEvent } from './log-ai-event';
+import { redactHeaderValues } from './redact-headers';
+import { stripNonXHeaders } from './strip-non-x-headers';
 import { estimateTokensFromStringList } from './tokenizer/token-estimator';
 
 /** Normalized token usage returned by TokensUsageParser. */
@@ -87,6 +89,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	options: {
 		tokensUsageParser: TokensUsageParser;
 		errorDescriptionMapper: (error: NodeError) => string | null | undefined;
+		redactedHeaders?: string[];
 	} = {
 		// Default(OpenAI format) parser
 		tokensUsageParser: (result: LLMResult) => {
@@ -112,6 +115,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		options?: {
 			tokensUsageParser?: TokensUsageParser;
 			errorDescriptionMapper?: (error: NodeError) => string;
+			redactedHeaders?: string[];
 		},
 	) {
 		super();
@@ -216,7 +220,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
 				: undefined;
 
-		const options = llm.type === 'constructor' ? llm.kwargs : llm;
+		const options = redactHeaderValues(
+			llm.type === 'constructor' ? llm.kwargs : llm,
+			this.options.redactedHeaders ?? [],
+		);
 		const { index } = this.executionFunctions.addInputData(
 			this.connectionType,
 			[
@@ -245,17 +252,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	async handleLLMError(error: IDataObject | Error, runId: string, parentRunId?: string) {
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
-		// Filter out non-x- headers to avoid leaking sensitive information in logs
-		// eslint-disable-next-line no-prototype-builtins
-		if (typeof error === 'object' && error?.hasOwnProperty('headers')) {
-			const errorWithHeaders = error as { headers: Record<string, unknown> };
-
-			Object.keys(errorWithHeaders.headers).forEach((key) => {
-				if (!key.startsWith('x-')) {
-					delete errorWithHeaders.headers[key];
-				}
-			});
-		}
+		stripNonXHeaders(error);
 
 		if (error instanceof NodeError) {
 			if (this.options.errorDescriptionMapper) {

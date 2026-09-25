@@ -1,4 +1,5 @@
 import http from 'node:http';
+import request from 'supertest';
 
 import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server';
 
@@ -49,26 +50,35 @@ describe('TaskBrokerServer', () => {
 			});
 
 		it('should return 429 when too many upgrade requests are made', async () => {
-			// First 5 should be allowed (will fail auth with 401, but not rate-limited)
-			for (let i = 0; i < 5; i++) {
-				const status = await sendUpgradeRequest();
-				expect(status).toBe(401);
-			}
+			// The rate limiter allows 5 requests per 1s window. Fire all requests
+			// concurrently so they land within the same window — sending them
+			// sequentially can exceed 1s on a slow runner, resetting the counter.
+			// Each request uses its own connection (not the shared keep-alive
+			// agent) so a rate-limited response can't reset a sibling request.
+			const responseStatusCodes = await Promise.all(Array.from({ length: 6 }, sendUpgradeRequest));
 
-			// 6th should be rate-limited
-			const status = await sendUpgradeRequest();
-			expect(status).toBe(429);
+			expect(responseStatusCodes.filter((code) => code === 401)).toHaveLength(5);
+			expect(responseStatusCodes.filter((code) => code === 429)).toHaveLength(1);
 		});
 	});
 
 	describe('/runners/auth', () => {
 		it('should return 429 when too many requests are made', async () => {
-			await agent.post('/runners/auth').send({ token: 'invalid' }).expect(403);
-			await agent.post('/runners/auth').send({ token: 'invalid' }).expect(403);
-			await agent.post('/runners/auth').send({ token: 'invalid' }).expect(403);
-			await agent.post('/runners/auth').send({ token: 'invalid' }).expect(403);
-			await agent.post('/runners/auth').send({ token: 'invalid' }).expect(403);
-			await agent.post('/runners/auth').send({ token: 'invalid' }).expect(429);
+			// The rate limiter allows 5 requests per 1s window. Fire all requests
+			// concurrently so they land within the same window — sending them
+			// sequentially can exceed 1s on a slow runner, resetting the counter.
+			// Each request uses its own connection (not the shared keep-alive
+			// agent) so a rate-limited response can't reset a sibling request.
+			const responses = await Promise.all(
+				Array.from(
+					{ length: 6 },
+					async () => await request(server.app).post('/runners/auth').send({ token: 'invalid' }),
+				),
+			);
+
+			const statusCodes = responses.map((res) => res.status);
+			expect(statusCodes.filter((code) => code === 403)).toHaveLength(5);
+			expect(statusCodes.filter((code) => code === 429)).toHaveLength(1);
 		});
 	});
 });

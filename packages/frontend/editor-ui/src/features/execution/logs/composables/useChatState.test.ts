@@ -35,12 +35,6 @@ vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
 		}),
 	};
 });
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(() => ({
-		setWorkflowExecutionData: vi.fn(),
-		setActiveExecutionId: vi.fn(),
-	})),
-}));
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: vi.fn(() => ({
 		updateNodesExecutionIssues: vi.fn(),

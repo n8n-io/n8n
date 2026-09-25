@@ -1,19 +1,10 @@
-import type { ITelemetryTrackProperties } from 'n8n-workflow';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
-export type AgentChatMode = 'build' | 'test';
 export type AgentCreateSource = 'button' | 'dropdown' | 'card';
-export type AgentConfigPart =
-	| 'instructions'
-	| 'model'
-	| 'memory'
-	| 'tools'
-	| 'skills'
-	| 'triggers'
-	| 'name'
-	| 'description';
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();
@@ -24,7 +15,7 @@ export function useAgentTelemetry() {
 	// Telemetry is best-effort: every track call is wrapped so a RudderStack
 	// failure can never surface to a caller (and never takes down a critical
 	// path like publish or save).
-	function safeTrack(event: string, props: ITelemetryTrackProperties) {
+	function safeTrack<T extends TelemetryEventDef>(event: T, props: InferTelemetryProps<T>) {
 		try {
 			telemetry.track(event, props);
 		} catch {
@@ -32,36 +23,24 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackClickedNewAgent(source: AgentCreateSource) {
-		safeTrack('User clicked new agent', { source, ...common() });
-	}
-
-	function trackSubmittedMessage(params: {
-		agentId: string;
-		mode: AgentChatMode;
-		status: AgentTelemetryStatus;
-		agentConfig: AgentConfigFingerprint;
-	}) {
-		safeTrack('User submitted message to agent', {
-			agent_id: params.agentId,
-			mode: params.mode,
-			status: params.status,
-			agent_config: params.agentConfig,
+	function trackClickedNewAgent(source: AgentCreateSource, agentId: string) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
+			source,
+			agent_id: agentId,
 			...common(),
 		});
 	}
 
-	function trackEditedConfig(params: {
+	function trackSubmittedMessage(params: {
 		agentId: string;
-		part: AgentConfigPart;
-		configVersion: string;
 		status: AgentTelemetryStatus;
+		agentConfig: AgentConfigFingerprint;
 	}) {
-		safeTrack('User edited agent config', {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_SUBMITTED_MESSAGE_TO_AGENT, {
 			agent_id: params.agentId,
-			part: params.part,
-			config_version: params.configVersion,
+			mode: 'test', // Constant dimension kept for warehouse-schema stability.
 			status: params.status,
+			agent_config: params.agentConfig,
 			...common(),
 		});
 	}
@@ -73,7 +52,7 @@ export function useAgentTelemetry() {
 		configVersion: string;
 		status: AgentTelemetryStatus;
 	}) {
-		safeTrack('User added trigger to agent', {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_ADDED_TRIGGER_TO_AGENT, {
 			agent_id: params.agentId,
 			trigger_type: params.triggerType,
 			triggers: params.triggers,
@@ -83,59 +62,8 @@ export function useAgentTelemetry() {
 		});
 	}
 
-	function trackAddedTools(params: {
-		agentId: string;
-		toolAdded: string;
-		tools: string[];
-		configVersion: string;
-		status: AgentTelemetryStatus;
-	}) {
-		safeTrack('User added tools to agent', {
-			agent_id: params.agentId,
-			tool_added: params.toolAdded,
-			tools: params.tools,
-			config_version: params.configVersion,
-			status: params.status,
-			...common(),
-		});
-	}
-
-	function trackAddedSkills(params: {
-		agentId: string;
-		skillAdded: string;
-		skills: string[];
-		configVersion: string;
-		status: AgentTelemetryStatus;
-	}) {
-		safeTrack('User added skills to agent', {
-			agent_id: params.agentId,
-			skill_added: params.skillAdded,
-			skills: params.skills,
-			config_version: params.configVersion,
-			status: params.status,
-			...common(),
-		});
-	}
-
-	function trackPublishedAgent(params: { agentId: string; configVersion: string }) {
-		safeTrack('User published agent', {
-			agent_id: params.agentId,
-			config_version: params.configVersion,
-			status: 'production' as const,
-			...common(),
-		});
-	}
-
-	function trackUnpublishedAgent(params: { agentId: string }) {
-		safeTrack('User unpublished agent', {
-			agent_id: params.agentId,
-			status: 'draft' as const,
-			...common(),
-		});
-	}
-
 	function trackOpenedToolFromList(params: { agentId: string; toolType: string }) {
-		safeTrack('User opened agent tool', {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_TOOL, {
 			agent_id: params.agentId,
 			tool_type: params.toolType,
 			...common(),
@@ -143,7 +71,7 @@ export function useAgentTelemetry() {
 	}
 
 	function trackOpenedSkillFromList(params: { agentId: string; skillId: string }) {
-		safeTrack('User opened agent skill', {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_SKILL, {
 			agent_id: params.agentId,
 			skill_id: params.skillId,
 			...common(),
@@ -151,23 +79,131 @@ export function useAgentTelemetry() {
 	}
 
 	function trackOpenedAddSkillModal(params: { agentId: string }) {
-		safeTrack('User opened add skill modal', {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_ADD_SKILL_MODAL, {
 			agent_id: params.agentId,
 			...common(),
 		});
 	}
 
+	function trackImportedSkill(params: {
+		agentId: string;
+		source: 'skill_file' | 'folder';
+		status: 'success' | 'error';
+		referenceCount?: number;
+		error?: string;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_IMPORTED_AGENT_SKILL, {
+			agent_id: params.agentId,
+			source: params.source,
+			status: params.status,
+			reference_count: params.referenceCount ?? 0,
+			...(params.error ? { error: params.error } : {}),
+			...common(),
+		});
+	}
+
+	function trackStartedChannelSetup(params: { agentId: string; channelType: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_STARTED_AGENT_CHANNEL_SETUP, {
+			agent_id: params.agentId,
+			channel_type: params.channelType,
+			...common(),
+		});
+	}
+
+	function trackClosedChannelSetup(params: {
+		agentId: string;
+		channelType: string;
+		completed: boolean;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLOSED_AGENT_CHANNEL_SETUP, {
+			agent_id: params.agentId,
+			channel_type: params.channelType,
+			completed: params.completed,
+			...common(),
+		});
+	}
+
+	function trackFailedToConnectChannel(params: {
+		agentId: string;
+		channelType: string;
+		stage: 'persist' | 'before_save' | 'connect';
+		conflict: boolean;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_FAILED_TO_CONNECT_AGENT_CHANNEL, {
+			agent_id: params.agentId,
+			channel_type: params.channelType,
+			stage: params.stage,
+			conflict: params.conflict,
+			...common(),
+		});
+	}
+
+	function trackCheckedTeamsCredential(params: {
+		agentId: string;
+		trigger: 'auto' | 'recheck';
+		status: 'ok' | 'failed';
+		reason?: InferTelemetryProps<
+			typeof TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL
+		>['reason'];
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL, {
+			agent_id: params.agentId,
+			trigger: params.trigger,
+			status: params.status,
+			...(params.reason ? { reason: params.reason } : {}),
+			...common(),
+		});
+	}
+
+	function trackClickedDeployToAzure(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_DEPLOY_TO_AZURE_FOR_TEAMS_CHANNEL, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackDownloadedTeamsAppPackage(params: {
+		agentId: string;
+		status: 'success' | 'error';
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_DOWNLOADED_TEAMS_APP_PACKAGE, {
+			agent_id: params.agentId,
+			status: params.status,
+			...common(),
+		});
+	}
+
+	function trackDuplicatedAgent(params: {
+		sourceAgentId: string;
+		agentId: string;
+		projectId: string;
+	}) {
+		try {
+			telemetry.track('User duplicated agent', {
+				source_agent_id: params.sourceAgentId,
+				agent_id: params.agentId,
+				project_id: params.projectId,
+				...common(),
+			});
+		} catch {
+			// Swallow — telemetry must not break user-facing flows.
+		}
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
-		trackEditedConfig,
 		trackAddedTrigger,
-		trackAddedTools,
-		trackAddedSkills,
-		trackPublishedAgent,
-		trackUnpublishedAgent,
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackImportedSkill,
+		trackDuplicatedAgent,
+		trackStartedChannelSetup,
+		trackClosedChannelSetup,
+		trackFailedToConnectChannel,
+		trackCheckedTeamsCredential,
+		trackClickedDeployToAzure,
+		trackDownloadedTeamsAppPackage,
 	};
 }

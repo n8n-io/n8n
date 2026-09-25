@@ -1,10 +1,10 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { accessSync, constants as fsConstants } from 'fs';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
 import {
@@ -22,6 +22,7 @@ import {
 	getTrackingInformationFromPullResult,
 	hasOwnerChanged,
 	isWorkflowModified,
+	mapInBatches,
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 	sourceControlFoldersExistCheck,
@@ -177,7 +178,7 @@ const license = mock<License>();
 const sourceControlPreferencesService = mock<SourceControlPreferencesService>();
 
 beforeAll(async () => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 	license.isSourceControlLicensed.mockReturnValue(true);
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchName: 'main',
@@ -245,6 +246,56 @@ describe('Source Control Helper', () => {
 		});
 	});
 
+	describe('mapInBatches', () => {
+		it('should preserve input order and length', async () => {
+			const items = Array.from({ length: 45 }, (_, i) => i);
+
+			// Resolve items out of order within each batch to prove order is preserved
+			const result = await mapInBatches(items, 20, async (item) => {
+				await new Promise((resolve) => setTimeout(resolve, item % 3));
+				return item * 2;
+			});
+
+			expect(result).toEqual(items.map((item) => item * 2));
+		});
+
+		it('should never run more than batchSize items concurrently', async () => {
+			let inFlight = 0;
+			let maxInFlight = 0;
+
+			await mapInBatches(
+				Array.from({ length: 45 }, (_, i) => i),
+				20,
+				async (item) => {
+					inFlight++;
+					maxInFlight = Math.max(maxInFlight, inFlight);
+					await new Promise((resolve) => setImmediate(resolve));
+					inFlight--;
+					return item;
+				},
+			);
+
+			expect(maxInFlight).toBeLessThanOrEqual(20);
+			expect(maxInFlight).toBeGreaterThan(1);
+		});
+
+		it('should reject when an item fails', async () => {
+			await expect(
+				mapInBatches([1, 2, 3], 2, async (item) => {
+					await Promise.resolve();
+					if (item === 2) throw new Error('boom');
+					return item;
+				}),
+			).rejects.toThrow('boom');
+		});
+
+		it('should return an empty array for empty input', async () => {
+			const fn = vi.fn();
+			await expect(mapInBatches([], 20, fn)).resolves.toEqual([]);
+			expect(fn).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getTrackingInformationFromPrePushResult', () => {
 		it('should get tracking information from pre-push results', () => {
 			const userId = 'userId';
@@ -284,49 +335,127 @@ describe('Source Control Helper', () => {
 	});
 
 	describe('isWorkflowModified', () => {
-		it('should detect modifications when version IDs differ', () => {
-			const local = createWorkflowVersion();
-			const remote = createWorkflowVersion({ versionId: 'version2' });
+		const directions = ['push', 'pull'] as const;
 
-			expect(isWorkflowModified(local, remote)).toBe(true);
-		});
+		test.each(directions)(
+			'should detect modifications when version IDs differ (%s)',
+			(direction) => {
+				const local = createWorkflowVersion();
+				const remote = createWorkflowVersion({ versionId: 'version2' });
 
-		it('should detect modifications when parent folder IDs differ', () => {
-			const local = createWorkflowVersion();
-			const remote = createWorkflowVersion({ parentFolderId: 'folder2' });
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
 
-			expect(isWorkflowModified(local, remote)).toBe(true);
-		});
+		test.each(directions)(
+			'should detect modifications when parent folder IDs differ (%s)',
+			(direction) => {
+				const local = createWorkflowVersion();
+				const remote = createWorkflowVersion({ parentFolderId: 'folder2' });
 
-		it('should not detect modifications when version IDs and parent folder IDs are the same', () => {
-			const local = createWorkflowVersion();
-			const remote = createWorkflowVersion();
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
 
-			expect(isWorkflowModified(local, remote)).toBe(false);
-		});
+		test.each(directions)(
+			'should not detect modifications when version IDs and parent folder IDs are the same (%s)',
+			(direction) => {
+				const local = createWorkflowVersion();
+				const remote = createWorkflowVersion();
 
-		it('should not consider it modified when remote parent folder ID is undefined', () => {
-			const local = createWorkflowVersion();
-			const remote = createWorkflowVersion({ parentFolderId: undefined });
+				expect(isWorkflowModified(local, remote, direction)).toBe(false);
+			},
+		);
 
-			expect(isWorkflowModified(local, remote)).toBe(false);
-		});
+		test.each(directions)(
+			'should not consider it modified when remote parent folder ID is undefined (%s)',
+			(direction) => {
+				const local = createWorkflowVersion();
+				const remote = createWorkflowVersion({ parentFolderId: undefined });
 
-		it('should detect modifications when parent folder IDs differ and remote parent folder ID is defined', () => {
-			const local = createWorkflowVersion({ parentFolderId: null });
-			const remote = createWorkflowVersion();
+				expect(isWorkflowModified(local, remote, direction)).toBe(false);
+			},
+		);
 
-			expect(isWorkflowModified(local, remote)).toBe(true);
-		});
+		test.each(directions)(
+			'should detect modifications when parent folder IDs differ and remote parent folder ID is defined (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ parentFolderId: null });
+				const remote = createWorkflowVersion();
 
-		it('should handle null parent folder IDs correctly', () => {
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
+
+		test.each(directions)('should handle null parent folder IDs correctly (%s)', (direction) => {
 			const local = createWorkflowVersion({ parentFolderId: null });
 			const remote = createWorkflowVersion({ parentFolderId: null });
 
-			expect(isWorkflowModified(local, remote)).toBe(false);
+			expect(isWorkflowModified(local, remote, direction)).toBe(false);
 		});
 
-		it('should detect modifications when owner changes', () => {
+		test.each(directions)(
+			'should detect modifications when descriptions differ (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ description: 'Old description' });
+				const remote = createWorkflowVersion({ description: 'New description' });
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
+
+		test.each(directions)(
+			'should detect modifications when remote description is cleared (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ description: 'Some description' });
+				const remote = createWorkflowVersion({ description: null });
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
+
+		it('should ignore a legacy remote file without description key on pull', () => {
+			const local = createWorkflowVersion({ description: 'Some description' });
+			const remote = createWorkflowVersion({ description: undefined });
+
+			expect(isWorkflowModified(local, remote, 'pull')).toBe(false);
+		});
+
+		it('should detect a local description against a legacy remote file on push', () => {
+			const local = createWorkflowVersion({ description: 'Some description' });
+			const remote = createWorkflowVersion({ description: undefined });
+
+			expect(isWorkflowModified(local, remote, 'push')).toBe(true);
+		});
+
+		it('should not flag a workflow without description against a legacy remote file on push', () => {
+			const local = createWorkflowVersion({ description: null });
+			const remote = createWorkflowVersion({ description: undefined });
+
+			expect(isWorkflowModified(local, remote, 'push')).toBe(false);
+		});
+
+		test.each(directions)(
+			'should treat null and undefined local descriptions as equal to remote null (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ description: undefined });
+				const remote = createWorkflowVersion({ description: null });
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(false);
+			},
+		);
+
+		test.each(directions)(
+			'should treat empty string and null descriptions as equal (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ description: '' });
+				const remote = createWorkflowVersion({ description: null });
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(false);
+			},
+		);
+
+		test.each(directions)('should detect modifications when owner changes (%s)', (direction) => {
 			const local = createWorkflowVersion({
 				owner: {
 					type: 'personal',
@@ -342,7 +471,7 @@ describe('Source Control Helper', () => {
 				},
 			});
 
-			expect(isWorkflowModified(local, remote)).toBe(true);
+			expect(isWorkflowModified(local, remote, direction)).toBe(true);
 		});
 	});
 
@@ -466,15 +595,15 @@ describe('Source Control Helper', () => {
 	describe('readTagAndMappingsFromSourceControlFile', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
-			jest.resetModules();
-			jest.unmock('node:fs/promises');
+			vi.resetModules();
+			vi.unmock('node:fs/promises');
 		});
 
 		it('should return default mapping if the file path is not valid', async () => {
 			const filePath = 'invalid/path/tags-and-mappings.json';
 			// Import the function after resetting modules
 			const { readTagAndMappingsFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 			const result = await readTagAndMappingsFromSourceControlFile(filePath);
 			expect(result).toEqual({
@@ -487,15 +616,15 @@ describe('Source Control Helper', () => {
 	describe('readFoldersFromSourceControlFile', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
-			jest.resetModules();
-			jest.unmock('node:fs/promises');
+			vi.resetModules();
+			vi.unmock('node:fs/promises');
 		});
 
 		it('should return default folders if the file path is not valid', async () => {
 			const filePath = 'invalid/path/folders.json';
 			// Import the function after resetting modules
 			const { readFoldersFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 			const result = await readFoldersFromSourceControlFile(filePath);
 			expect(result).toEqual({
@@ -507,15 +636,15 @@ describe('Source Control Helper', () => {
 	describe('readDataTablesFromSourceControlFile', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
-			jest.resetModules();
-			jest.unmock('node:fs/promises');
+			vi.resetModules();
+			vi.unmock('node:fs/promises');
 		});
 
 		it('should return empty array if the file path is not valid (ENOENT)', async () => {
 			const filePath = 'invalid/path/data_tables.json';
 			// Import the function after resetting modules
 			const { readDataTablesFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 			const result = await readDataTablesFromSourceControlFile(filePath);
 			expect(result).toEqual([]);
@@ -537,13 +666,13 @@ describe('Source Control Helper', () => {
 			];
 
 			// Mock fsReadFile to return valid JSON
-			jest.doMock('node:fs/promises', () => ({
-				readFile: jest.fn().mockResolvedValue(JSON.stringify(mockDataTables)),
+			vi.doMock('node:fs/promises', () => ({
+				readFile: vi.fn().mockResolvedValue(JSON.stringify(mockDataTables)),
 			}));
 
 			// Import the function after mocking
 			const { readDataTablesFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 
 			const result = await readDataTablesFromSourceControlFile('valid/path/data_tables.json');
@@ -656,6 +785,27 @@ describe('Source Control Helper', () => {
 			const creds2 = mockCredential({ isGlobal: true });
 
 			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should return false when isResolvable differs', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ isResolvable: true });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should return false when resolvableAllowFallback differs', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ resolvableAllowFallback: true });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(false);
+		});
+
+		it('should treat undefined and false resolver fields as equal', () => {
+			const creds1 = mockCredential();
+			const creds2 = mockCredential({ isResolvable: false, resolvableAllowFallback: false });
+
+			expect(areSameCredentials(creds1, creds2)).toBe(true);
 		});
 
 		it('should return true when both have undefined data', () => {
@@ -1116,7 +1266,7 @@ describe('Source Control Helper', () => {
 			expect(result.port).toBe(5000); // Number from remote
 		});
 
-		it('should only include fields present in remote', () => {
+		it('should keep local fields that are absent from remote', () => {
 			const local = {
 				apiKey: 'secret',
 				port: 3000,
@@ -1125,14 +1275,32 @@ describe('Source Control Helper', () => {
 			const remote = {
 				port: 8080,
 				apiKey: '', // Plain string sanitized to empty
-				// extraField is NOT in remote, so won't be in result
+				// extraField is NOT in remote (e.g. left at its default when pushed)
 			};
 
 			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
 
 			expect(result.apiKey).toBe('secret'); // Local preserved (empty skipped)
 			expect(result.port).toBe(8080); // Merged from remote
-			expect(result.extraField).toBeUndefined(); // Not in remote, not in result
+			expect(result.extraField).toBe('local-only'); // Absent from remote, local retained
+		});
+
+		it('should not reset a locally selected option field the remote stub omits', () => {
+			// A stub pushed from an instance where the option was left at its default
+			// omits that field entirely. Pulling it must not reset a different local selection.
+			const local = {
+				apikey: 'prod-secret',
+				environment: 'https://api.example.com', // non-default selection on this instance
+			};
+			const remote = {
+				apikey: '', // secret blanked in the stub
+				// environment omitted because the pushing instance used the default
+			} as ICredentialDataDecryptedObject;
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			expect(result.apikey).toBe('prod-secret');
+			expect(result.environment).toBe('https://api.example.com');
 		});
 
 		it('should handle empty local object', () => {
@@ -1157,8 +1325,8 @@ describe('Source Control Helper', () => {
 
 			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
 
-			// Remote is empty, so result is empty (remote is source of truth for which fields exist)
-			expect(result).toEqual({});
+			// Remote carries no fields, so every local field is retained rather than wiped
+			expect(result).toEqual({ apiKey: 'secret', port: 3000 });
 		});
 
 		it('should handle both empty objects', () => {

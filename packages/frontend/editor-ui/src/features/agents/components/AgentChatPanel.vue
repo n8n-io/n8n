@@ -1,14 +1,49 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
-import { N8nButton, N8nCallout, N8nIconButton } from '@n8n/design-system';
+import {
+	computed,
+	ref,
+	toRef,
+	watch,
+	onMounted,
+	onBeforeUnmount,
+	useTemplateRef,
+	nextTick,
+} from 'vue';
+import {
+	N8nAiActivityStepGroup,
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nLink,
+	N8nSendStopButton,
+} from '@n8n/design-system';
+import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
+import {
+	APPROVAL_TOOL_NAME,
+	WAIT_TOOL_NAME,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
+	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
+	PROVIDER_CAPABILITIES,
+} from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
-import type { AgentJsonConfig } from '../types';
+import type {
+	AgentContinueLoadedEvent,
+	AgentSendToAssistantEvent,
+	AgentJsonConfig,
+} from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
+import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
+import { TIME } from '@/app/constants/durations';
+import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
 
 const props = withDefaults(
 	defineProps<{
@@ -16,42 +51,273 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		mode?: 'panel' | 'inline';
-		endpoint?: 'build' | 'chat';
-		initialMessage?: string;
 		continueSessionId?: string;
+		newSession?: boolean;
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canEditAgent?: boolean;
+		canSendToAssistant?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
+		backgroundJobsActive?: boolean;
 	}>(),
 	{
 		visible: true,
 		mode: 'panel',
-		endpoint: 'chat',
-		initialMessage: undefined,
 		continueSessionId: undefined,
+		newSession: false,
 		canEditAgent: true,
+		canSendToAssistant: false,
 		beforeSend: undefined,
 		inputDraft: undefined,
+		backgroundJobsActive: false,
 	},
 );
 
 const emit = defineEmits<{
-	codeUpdated: [];
-	codeDelta: [delta: string];
-	configUpdated: [];
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
-	'continue-loaded': [count: number];
+	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'session-created': [sessionId: string];
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 }>();
 
 const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
+const toast = useToast();
+
+const {
+	messages,
+	isStreaming,
+	refresh,
+	isCancelling,
+	messagingState,
+	fatalError,
+	warnings,
+	loadHistory,
+	sendMessage,
+	stopGenerating,
+	detachStream,
+	resume,
+	cancelAndSteer,
+	dismissFatalError,
+	dismissWarning,
+} = useAgentChatStream({
+	projectId: toRef(props, 'projectId'),
+	agentId: toRef(props, 'agentId'),
+	continueSessionId: toRef(props, 'continueSessionId'),
+	newSession: toRef(props, 'newSession'),
+	onHistoryLoaded: (count) => {
+		if (props.continueSessionId) {
+			emit('continue-loaded', { sessionId: props.continueSessionId, count });
+		}
+	},
+	onSessionCreated: (sessionId) => emit('session-created', sessionId),
+});
+
+const { jobs: backgroundJobs } = useAgentBackgroundJobs({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	threadId: () => props.continueSessionId,
+	active: () => props.backgroundJobsActive,
+	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
+});
+const backgroundRunningCount = computed(
+	() => backgroundJobs.value.filter((job) => job.status === 'running').length,
+);
+const backgroundTitle = computed(() => {
+	const count = backgroundRunningCount.value;
+	if (count === 0) {
+		return locale.baseText('agents.chat.backgroundTasks.finished', {
+			adjustToNumber: backgroundJobs.value.length,
+		});
+	}
+	return locale.baseText('agents.chat.backgroundTasks.runningCount', {
+		adjustToNumber: count,
+		interpolate: { count },
+	});
+});
+const backgroundTraceRoute = computed(() => ({
+	name: AGENT_SESSION_DETAIL_VIEW,
+	params: {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		threadId: props.continueSessionId,
+	},
+}));
+const backgroundJobStatuses = computed(() => ({
+	running: {
+		icon: 'loader-circle',
+		label: locale.baseText('agents.chat.backgroundTasks.status.running'),
+	},
+	completed: {
+		icon: 'circle-check',
+		label: locale.baseText('agents.chat.backgroundTasks.status.completed'),
+	},
+	failed: { icon: 'circle-x', label: locale.baseText('agents.chat.backgroundTasks.status.failed') },
+	cancelled: {
+		icon: 'circle-x',
+		label: locale.baseText('agents.chat.backgroundTasks.status.cancelled'),
+	},
+	waiting: {
+		icon: 'circle',
+		label: locale.baseText('agents.chat.backgroundTasks.status.waiting'),
+	},
+}));
+const backgroundJobRows = computed(() =>
+	backgroundJobs.value.map((job) => ({
+		...job,
+		label: locale.baseText(
+			job.kind === 'workflow'
+				? 'agents.chat.backgroundTasks.workflow'
+				: 'agents.chat.backgroundTasks.subagent',
+			{ interpolate: { title: job.title } },
+		),
+		indicator:
+			backgroundJobStatuses.value[
+				job.kind === 'workflow' && job.status === 'running' ? 'waiting' : job.status
+			],
+	})),
+);
+const now = ref(Date.now());
+const documentVisibility = useDocumentVisibility();
+const { pause: pauseTimer, resume: resumeTimer } = useIntervalFn(
+	() => {
+		now.value = Date.now();
+	},
+	TIME.SECOND,
+	{ immediate: false },
+);
+watch(
+	() =>
+		props.backgroundJobsActive &&
+		backgroundRunningCount.value > 0 &&
+		documentVisibility.value === 'visible',
+	(active) => {
+		if (active) {
+			now.value = Date.now();
+			resumeTimer();
+		} else pauseTimer();
+	},
+	{ immediate: true },
+);
+const backgroundElapsed = computed(() => {
+	const startedAt = backgroundJobs.value[0]?.startedAt;
+	const start = startedAt ? Date.parse(startedAt) : now.value;
+	const end = backgroundRunningCount.value
+		? now.value
+		: Math.max(...backgroundJobs.value.map((job) => Date.parse(job.settledAt ?? '') || now.value));
+	const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((end - start) / TIME.SECOND)) : 0;
+	const minutes = Math.floor(seconds / 60);
+	const remainder = String(seconds % 60).padStart(2, '0');
+	return minutes < 60
+		? `${minutes}:${remainder}`
+		: `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}:${remainder}`;
+});
+
+const attachedFiles = ref<File[]>([]);
+const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
+const showBackgroundJobs = computed(
+	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
+);
+
+function focusInput(options?: FocusOptions) {
+	chatInput.value?.focus(options);
+}
+
+watch(
+	[
+		showBackgroundJobs,
+		() => props.projectId,
+		() => props.agentId,
+		() => props.continueSessionId,
+		() => props.visible,
+	],
+	async ([shown, ...target], [wasShown, ...previousTarget], onCleanup) => {
+		if (
+			shown ||
+			!wasShown ||
+			!props.visible ||
+			target.some((value, index) => value !== previousTarget[index]) ||
+			!backgroundJobCard.value?.contains(document.activeElement)
+		) {
+			return;
+		}
+
+		let cancelled = false;
+		onCleanup(() => {
+			cancelled = true;
+		});
+		// Check focus before the card disappears, then wait for the composer to update.
+		await nextTick();
+		if (
+			cancelled ||
+			disposed ||
+			!props.visible ||
+			showBackgroundJobs.value ||
+			document.activeElement !== document.body
+		) {
+			return;
+		}
+		focusInput({ preventScroll: true });
+	},
+);
+
+const attachmentCapabilities = computed(() => {
+	const provider = props.agentConfig?.model?.split('/')[0];
+	return provider ? PROVIDER_CAPABILITIES[provider]?.attachments : undefined;
+});
+const showAttach = computed(() => {
+	const capabilities = attachmentCapabilities.value;
+	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
+});
+const acceptedMimeTypes = computed(() => {
+	const capabilities = attachmentCapabilities.value;
+	if (!capabilities) return undefined;
+	return [
+		capabilities.image ? 'image/*' : null,
+		capabilities.pdf ? 'application/pdf' : null,
+		capabilities.audio ? 'audio/*' : null,
+	]
+		.filter((entry): entry is string => entry !== null)
+		.join(',');
+});
+
+function handleFilesSelected(files: File[]) {
+	for (const file of files) {
+		if (attachedFiles.value.length >= MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE) {
+			toast.showMessage({
+				type: 'error',
+				title: locale.baseText('agents.chat.attachments.tooMany', {
+					interpolate: { limit: String(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE) },
+				}),
+			});
+			break;
+		}
+		if (file.size > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
+			toast.showMessage({
+				type: 'error',
+				title: locale.baseText('agents.chat.attachments.tooLarge', {
+					interpolate: {
+						fileName: file.name,
+						limit: String(MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB),
+					},
+				}),
+			});
+			continue;
+		}
+		attachedFiles.value.push(file);
+	}
+}
+
+function handleFileRemove(file: File) {
+	attachedFiles.value = attachedFiles.value.filter((f) => f !== file);
+}
 
 const internalInputText = ref(props.inputDraft ?? '');
 const inputText = computed<string>({
@@ -65,43 +331,35 @@ const inputText = computed<string>({
 	},
 });
 const isPreparingToSend = ref(false);
+let disposed = false;
+let queuedExternalMessage: string | undefined;
+let submittingQueuedExternalMessage = false;
 
-const {
-	messages,
-	isStreaming,
-	messagingState,
-	fatalError,
-	loadHistory,
-	sendMessage,
-	stopGenerating,
-	resume,
-	dismissFatalError,
-} = useAgentChatStream({
-	projectId: toRef(props, 'projectId'),
-	agentId: toRef(props, 'agentId'),
-	endpoint: toRef(props, 'endpoint'),
-	continueSessionId: toRef(props, 'continueSessionId'),
-	onCodeUpdated: () => emit('codeUpdated'),
-	onCodeDelta: (d) => emit('codeDelta', d),
-	onConfigUpdated: () => emit('configUpdated'),
-	onHistoryLoaded: (count) => {
-		if (props.continueSessionId) emit('continue-loaded', count);
-	},
-});
+type SubmitResult = 'sent' | 'busy' | 'rejected';
+
+const RUNTIME_ISSUE_PATH_PREFIXES = [
+	{ prefix: 'tools.', key: 'agents.chat.misconfigured.missing.tools' },
+	{ prefix: 'mcpServers.', key: 'agents.chat.misconfigured.missing.mcpServers' },
+	{ prefix: 'subAgents.agents.', key: 'agents.chat.misconfigured.missing.subAgents.agents' },
+] as const;
 
 function humaniseMissingField(field: string): string {
-	// `skill:<id>` is a parameterised token — render it through a single i18n
-	// entry so a new id doesn't require a translations change.
 	if (field.startsWith('skill:')) {
 		return locale.baseText('agents.chat.misconfigured.missing.skill', {
 			interpolate: { id: field.slice('skill:'.length) },
 		});
 	}
-	// Map backend-emitted field ids onto i18n keys. Unknown fields fall back to
-	// their raw id so a new backend-side value still renders something useful.
-	const key = `agents.chat.misconfigured.missing.${field}`;
-	const translated = locale.baseText(key as never);
-	return translated === key ? field : translated;
+	const exactKey = `agents.chat.misconfigured.missing.${field}`;
+	const exactTranslation = locale.baseText(exactKey as never);
+	if (exactTranslation !== exactKey) {
+		return exactTranslation;
+	}
+	for (const { prefix, key } of RUNTIME_ISSUE_PATH_PREFIXES) {
+		if (field.startsWith(prefix)) {
+			return locale.baseText(key);
+		}
+	}
+	return field;
 }
 
 const missingFields = computed(() => {
@@ -109,123 +367,219 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
-const hasOpenInteractiveQuestion = computed(() =>
-	messages.value.some((message) => message.interactive && !message.interactive.resolvedAt),
+/**
+ * Only the last turn can hold the input. A parked run is always the tail of the
+ * transcript, so anything after it — a resumed answer, a later turn — means that
+ * suspension is history. Reading the tail rather than the first open card
+ * anywhere keeps one abandoned card from wedging the chat for good, and keeps it
+ * from hiding a real question on the current turn.
+ */
+const openInteractive = computed(() => findTailOpenInteractive(messages.value));
+const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
+const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
+// A waiting card is an interactive the user can act on, but never a question:
+// its resume arrives from the workflow, so typing must not cancel and steer it.
+const hasOpenWaitCard = computed(() => openInteractive.value?.toolName === WAIT_TOOL_NAME);
+const hasOpenInteractiveQuestion = computed(
+	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWaitCard.value,
+);
+const hasOpenSuspension = computed(
+	() =>
+		messages.value[messages.value.length - 1]?.toolCalls?.some(
+			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
+		) ?? false,
+);
+/**
+ * A parked run owns the conversation: sending now would start a second run
+ * whose context has the pending tool call stripped out, so the model would
+ * re-invoke the same tool. Only an open question is exempt — answering or
+ * steering it resumes the same run. Stop stays available either way.
+ */
+const inputBlockedBySuspension = computed(
+	() =>
+		hasOpenApproval.value ||
+		hasOpenWaitCard.value ||
+		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
+);
+const isSubmissionBlocked = computed(
+	() =>
+		isStreaming.value ||
+		isCancelling.value ||
+		isPreparingToSend.value ||
+		inputBlockedBySuspension.value,
+);
+// Tools still pending/running after the stream ended (desync): the backend
+// finished but their terminal events never arrived. Surfacing Stop here lets
+// the user clear the stale pulsing state without reloading the chat.
+const hasInFlightToolCalls = computed(() =>
+	messages.value.some((message) =>
+		message.toolCalls?.some(
+			(toolCall) =>
+				toolCall.state === TOOL_CALL_STATE.PENDING || toolCall.state === TOOL_CALL_STATE.RUNNING,
+		),
+	),
+);
+const showSuspensionStopAlongsideSend = computed(
+	() => hasOpenInteractiveQuestion.value && !isStreaming.value && !isCancelling.value,
+);
+const showStopAsPrimaryAction = computed(
+	() =>
+		isStreaming.value ||
+		isCancelling.value ||
+		inputBlockedBySuspension.value ||
+		(!isStreaming.value && hasInFlightToolCalls.value),
 );
 
-const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
+const chatPlaceholder = computed(() => {
+	if (hasOpenApproval.value) {
+		return locale.baseText('agents.chat.approval.inputPlaceholder');
+	}
+	if (inputBlockedBySuspension.value) {
+		return locale.baseText('agents.chat.waiting.inputPlaceholder');
+	}
+	if (hasOpenInteractiveQuestion.value) {
+		return locale.baseText('agents.chat.answerQuestionPlaceholder');
+	}
 
-const chatPlaceholder = computed(() =>
-	isBuilderReadOnly.value
-		? locale.baseText('agents.builder.readonly.placeholder')
-		: hasOpenInteractiveQuestion.value
-			? locale.baseText('agents.chat.answerQuestionPlaceholder')
-			: locale.baseText('agents.chat.input.placeholder'),
-);
-
-function onOpenBuild() {
-	dismissFatalError();
-	emit('open-build');
-}
+	const agentName = props.agentConfig?.name?.trim();
+	return agentName
+		? locale.baseText('agents.chat.input.placeholder.withAgent', {
+				interpolate: { agentName },
+			})
+		: locale.baseText('agents.chat.input.placeholder');
+});
 
 watch(isStreaming, (v) => emit('update:streaming', v));
+watch(isSubmissionBlocked, (blocked) => {
+	if (!blocked) void submitQueuedExternalMessage();
+});
+watch(
+	() => props.visible,
+	(visible) => {
+		if (visible) refresh();
+	},
+);
 
-async function onSubmit() {
+function consumeQueuedExternalMessage(message: string) {
+	if (queuedExternalMessage !== message) return;
+	queuedExternalMessage = undefined;
+	emit('initial-consumed');
+}
+
+async function onSubmit(): Promise<SubmitResult> {
 	const text = inputText.value.trim();
-	if (
-		!text ||
-		isStreaming.value ||
-		isPreparingToSend.value ||
-		isBuilderReadOnly.value ||
-		hasOpenInteractiveQuestion.value
-	)
-		return;
+	const files = [...attachedFiles.value];
+	if (!text && files.length === 0) return 'rejected';
+	if (isSubmissionBlocked.value) return 'busy';
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	const isCurrentTarget = () =>
+		!disposed &&
+		props.projectId === target.projectId &&
+		props.agentId === target.agentId &&
+		props.continueSessionId === target.continueSessionId;
+
+	if (hasOpenInteractiveQuestion.value) {
+		if (!text) return 'rejected';
+		const result = await cancelAndSteer(text, () => {
+			if (!isCurrentTarget()) return;
+			if (inputText.value.trim() === text) inputText.value = '';
+			consumeQueuedExternalMessage(text);
+		});
+		if (isCurrentTarget()) consumeQueuedExternalMessage(text);
+		return result === 'busy' ? 'busy' : 'sent';
+	}
 
 	isPreparingToSend.value = true;
 	try {
-		await props.beforeSend?.();
-	} catch {
-		// Autosave errors are surfaced by the caller that owns the flush.
-		isPreparingToSend.value = false;
-		return;
-	}
-
-	try {
-		inputText.value = '';
+		try {
+			await props.beforeSend?.();
+		} catch {
+			return 'rejected';
+		}
+		if (!isCurrentTarget()) return 'rejected';
 
 		const fingerprint = await buildAgentConfigFingerprint(
 			props.agentConfig,
 			props.connectedTriggers,
 		);
+		if (!isCurrentTarget()) return 'rejected';
+		// Keep the draft if a local resume or cancellation started during preparation.
+		if (isStreaming.value || isCancelling.value) return 'busy';
+
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
-			mode: props.endpoint === 'build' ? 'build' : 'test',
 			status: props.agentStatus,
 			agentConfig: fingerprint,
 		});
 
-		await sendMessage(text);
+		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
+			if (!isCurrentTarget()) return;
+			if (inputText.value.trim() === text) inputText.value = '';
+			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
+			consumeQueuedExternalMessage(text);
+		});
+		isPreparingToSend.value = false;
+		const result = await sending;
+		if (isCurrentTarget()) consumeQueuedExternalMessage(text);
+		if (result === 'busy') return 'busy';
+		return 'sent';
 	} finally {
 		isPreparingToSend.value = false;
 	}
 }
 
 function sendMessageFromOutside(message: string) {
-	if (hasOpenInteractiveQuestion.value) return;
+	if (inputBlockedBySuspension.value) return;
+	queuedExternalMessage = message;
 	inputText.value = message;
-	void onSubmit();
+	void submitQueuedExternalMessage();
 }
 
-defineExpose({ sendMessageFromOutside });
+async function submitQueuedExternalMessage() {
+	const message = queuedExternalMessage;
+	if (!message || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
 
-// Capture the seed message locally so later clearing of `props.initialMessage`
-// by the parent (which does so on `nextTick` to prevent the same prompt
-// bleeding into the other chat panel) can't race the `onMounted` guard below.
-const seedMessage = props.initialMessage;
-
-// Seed the initial message synchronously during setup (not onMounted) so the
-// user bubble is in `messages` before Vue performs the first render. Without
-// this, the panel renders once with an empty message list and THEN the user
-// message appears — visible as a 1-frame flash of the blank/centered layout.
-//
-// `sendMessage` is an async function but the push to `messages` happens
-// before any await, so calling it here runs the sync prefix (push + set
-// `isStreaming = true` inside streamFromEndpoint) before setup returns. The
-// fetch itself continues to run async in the background.
-async function sendSeedMessage(message: string): Promise<void> {
+	submittingQueuedExternalMessage = true;
+	let result: SubmitResult = 'rejected';
 	try {
-		await props.beforeSend?.();
-		const sending = sendMessage(message);
-		emit('initial-consumed');
-		await sending;
-	} catch {
-		// Autosave errors are surfaced by the caller that owns the flush.
+		inputText.value = message;
+		result = await onSubmit();
+	} finally {
+		submittingQueuedExternalMessage = false;
+	}
+
+	if (result === 'rejected' && queuedExternalMessage === message) {
+		queuedExternalMessage = undefined;
+	}
+	if (queuedExternalMessage && !isSubmissionBlocked.value) {
+		await nextTick();
+		void submitQueuedExternalMessage();
 	}
 }
 
-// Skip the seed when the build chat is read-only
-const consumesSeed = !!seedMessage && !isBuilderReadOnly.value;
-if (consumesSeed) {
-	void sendSeedMessage(seedMessage as string);
+function getConversationMarkdown(): string {
+	return messages.value
+		.filter((message) => message.content.trim().length > 0)
+		.map((message) => {
+			const speaker = message.role === 'user' ? 'User' : 'Agent';
+			return `**${speaker}:**\n\n${message.content.trim()}`;
+		})
+		.join('\n\n---\n\n');
 }
+
+defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside });
 
 onMounted(() => {
-	// When we actually seeded a message, there's no prior thread to load —
-	// the agent was just created in this panel and the history endpoint
-	// would 404. Otherwise (including the read-only suppression path) load
-	// whatever history exists so the panel shows real content instead of a
-	// misleading "describe your agent" empty state.
-	if (consumesSeed) {
-		return;
-	}
 	void loadHistory();
 });
 
-// Abort any in-flight stream when the panel unmounts (e.g. route change,
-// chat mode reset). Without this the fetch keeps running and its reader
-// accumulates bytes until the browser gc's it.
 onBeforeUnmount(() => {
-	stopGenerating();
+	disposed = true;
+	detachStream();
 });
 </script>
 
@@ -237,18 +591,10 @@ onBeforeUnmount(() => {
 					{{ locale.baseText('agents.chat.misconfigured.title') }}
 				</span>
 				<span v-if="missingFields" :class="$style.errorBannerDetail">
-					{{ locale.baseText('agents.chat.misconfigured.missingPrefix') }} {{ missingFields }}
+					{{ locale.baseText('agents.chat.misconfigured.issuesPrefix') }} {{ missingFields }}
 				</span>
 			</div>
 			<template #trailingContent>
-				<N8nButton
-					variant="outline"
-					size="xsmall"
-					data-testid="agent-misconfigured-open-build"
-					@click="onOpenBuild"
-				>
-					{{ locale.baseText('agents.chat.misconfigured.openBuild') }}
-				</N8nButton>
 				<N8nIconButton
 					icon="x"
 					variant="ghost"
@@ -260,50 +606,160 @@ onBeforeUnmount(() => {
 			</template>
 		</N8nCallout>
 
-		<!--
-			Suppress the centered empty state when we have an `initialMessage` to
-			seed. Without this, the panel briefly renders the empty view before
-			the seedMessage push (during setup) lands in `messages` — visible as
-			a flicker of the centered layout under the mode transition.
-		-->
-		<AgentChatEmptyState
-			v-if="messages.length === 0 && !isStreaming && !initialMessage"
-			:endpoint="endpoint"
-		/>
+		<div
+			v-for="(warning, index) in warnings"
+			:key="`${warning.code ?? 'mcp'}-${index}`"
+			:class="$style.warningBanner"
+		>
+			<N8nCallout theme="warning" slim :data-test-id="`agent-chat-warning-${index}`">
+				<div :class="$style.warningBannerBody">
+					<span :class="$style.warningBannerTitle">
+						{{ locale.baseText('agents.chat.warning.mcp.title') }}
+					</span>
+					<span :class="$style.warningBannerDetail">{{
+						warning.server
+							? locale.baseText('agents.chat.warning.mcp.detail', {
+									interpolate: { server: warning.server, error: warning.message },
+								})
+							: warning.message
+					}}</span>
+				</div>
+				<template #trailingContent>
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="locale.baseText('agents.chat.warning.dismiss')"
+						:title="locale.baseText('agents.chat.warning.dismiss')"
+						@click="dismissWarning(index)"
+					/>
+				</template>
+			</N8nCallout>
+		</div>
+
+		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :agent-config="agentConfig" />
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
 			:messaging-state="messagingState"
 			:project-id="projectId"
 			:agent-id="agentId"
+			:session-id="continueSessionId"
+			:can-send-to-assistant="canSendToAssistant"
 			@resume="resume"
+			@send-to-assistant="emit('send-to-assistant', $event)"
 		/>
 
 		<div :class="$style.inputArea">
-			<slot name="above-input" />
 			<ChatInputBase
+				ref="chatInput"
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
-				:is-streaming="messagingState === 'receiving'"
+				:is-streaming="showStopAsPrimaryAction"
+				show-voice
+				:show-attach="showAttach"
+				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="
-					!hasOpenInteractiveQuestion &&
+					!inputBlockedBySuspension &&
 					!isStreaming &&
+					!isCancelling &&
 					!isPreparingToSend &&
-					!isBuilderReadOnly &&
-					inputText.trim().length > 0
+					(inputText.trim().length > 0 || attachedFiles.length > 0)
 				"
-				:disabled="
-					isBuilderReadOnly ||
-					hasOpenInteractiveQuestion ||
-					isPreparingToSend ||
-					(isStreaming && messagingState !== 'receiving')
-				"
+				:disabled="inputBlockedBySuspension || isPreparingToSend"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"
+				@files-selected="handleFilesSelected"
 			>
+				<template v-if="showBackgroundJobs" #header>
+					<div
+						ref="backgroundJobCard"
+						:class="$style.backgroundJobs"
+						data-testid="agent-background-jobs"
+					>
+						<N8nAiActivityStepGroup
+							:key="continueSessionId"
+							:label="backgroundTitle"
+							full-width
+							content-position="above"
+						>
+							<template #prefix>
+								<N8nIcon
+									:icon="backgroundRunningCount ? 'loader-circle' : 'circle'"
+									:spin="backgroundRunningCount > 0"
+									size="small"
+									:class="{ [$style.jobSpinner]: backgroundRunningCount > 0 }"
+									aria-hidden="true"
+								/>
+							</template>
+							<template #header-trailing>
+								<span
+									:class="$style.jobTimer"
+									aria-live="off"
+									data-testid="agent-background-jobs-timer"
+									>{{ backgroundElapsed }}</span
+								>
+							</template>
+							<div :class="$style.backgroundJobDetails">
+								<ul :class="$style.backgroundJobList">
+									<li v-for="job in backgroundJobRows" :key="job.id">
+										<span
+											role="img"
+											:aria-label="job.indicator.label"
+											:title="job.indicator.label"
+											:class="[
+												$style.jobStatus,
+												{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
+											]"
+											:data-status="job.status"
+										>
+											<N8nIcon
+												:icon="job.indicator.icon"
+												:spin="job.indicator.icon === 'loader-circle'"
+												size="small"
+												:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
+											/>
+										</span>
+										<span>{{ job.label }}</span>
+									</li>
+								</ul>
+								<N8nLink
+									v-if="continueSessionId"
+									:to="backgroundTraceRoute"
+									theme="text"
+									size="small"
+									underline
+									data-testid="agent-background-jobs-trace"
+								>
+									<span :class="$style.jobTraceLabel">
+										<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
+										{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
+									</span>
+								</N8nLink>
+							</div>
+						</N8nAiActivityStepGroup>
+					</div>
+				</template>
+				<template v-if="attachedFiles.length > 0" #attachments>
+					<div :class="$style.attachmentsStrip">
+						<AttachmentPreview
+							v-for="(file, index) in attachedFiles"
+							:key="`${file.name}-${index}`"
+							:file="file"
+							is-removable
+							@remove="handleFileRemove"
+						/>
+					</div>
+				</template>
 				<template #footer-start>
 					<slot name="footer-start" />
+					<N8nSendStopButton
+						v-if="showSuspensionStopAlongsideSend"
+						streaming
+						stop-button-test-id="agent-chat-suspended-stop-button"
+						@stop="stopGenerating"
+					/>
 				</template>
 			</ChatInputBase>
 		</div>
@@ -311,6 +767,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .panel {
 	position: relative;
 	width: 400px;
@@ -330,10 +788,99 @@ onBeforeUnmount(() => {
 }
 
 .inputArea {
+	flex-shrink: 0;
 	padding: var(--spacing--xs) var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	width: 100%;
+	max-width: 800px;
+	margin: 0 auto;
+}
+
+.backgroundJobs {
+	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
+	border-bottom: var(--border);
+	min-width: 0;
+
+	--ai-activity-step--height: auto;
+	--ai-activity-step--min-height: var(--height--xl);
+	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
+	--ai-activity-step--color: var(--text-color);
+}
+
+.backgroundJobDetails {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm);
+	border-bottom: var(--border);
+	border-bottom-style: dashed;
+}
+
+.backgroundJobList {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	max-height: 20vh;
+	overflow-y: auto;
+
+	li {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--spacing--2xs);
+		padding-block: var(--spacing--3xs);
+		font-size: var(--font-size--sm);
+		color: var(--text-color--subtle);
+		overflow-wrap: anywhere;
+		line-height: var(--line-height--lg);
+	}
+}
+
+.jobStatus {
+	display: inline-flex;
+	flex-shrink: 0;
+	line-height: inherit;
+	color: var(--color--foreground--shade-2);
+
+	&[data-status='completed'] {
+		color: var(--color--success);
+		@include motion.fade-in;
+	}
+
+	&[data-status='failed'] {
+		color: var(--color--danger);
+	}
+}
+
+.jobWaiting circle {
+	fill: currentColor;
+}
+
+.jobTraceLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.jobSpinner {
+	flex-shrink: 0;
+	color: var(--color--primary);
+}
+
+.jobTimer {
+	font-variant-numeric: tabular-nums;
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtler);
+}
+
+.attachmentsStrip {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs) 0;
 }
 
 .errorBanner {
@@ -356,5 +903,28 @@ onBeforeUnmount(() => {
 .errorBannerDetail {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
+}
+
+.warningBanner {
+	margin: var(--spacing--sm);
+	flex-shrink: 0;
+}
+
+.warningBannerBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	flex: 1;
+	min-width: 0;
+}
+
+.warningBannerTitle {
+	font-weight: var(--font-weight--bold);
+}
+
+.warningBannerDetail {
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+	word-break: break-word;
 }
 </style>

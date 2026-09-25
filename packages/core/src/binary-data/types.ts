@@ -1,3 +1,4 @@
+import type { BlobMetadata, PreWriteBlobMetadata } from '@n8n/blob-storage';
 import type { Readable } from 'stream';
 
 import type { BINARY_DATA_MODES } from './binary-data.config';
@@ -24,15 +25,11 @@ export namespace BinaryData {
 	 */
 	export type StoredMode = Exclude<ConfigMode | UpgradedMode, 'default'>;
 
-	export type Metadata = {
-		fileName?: string;
-		mimeType?: string;
-		fileSize: number;
-	};
+	export type Metadata = BlobMetadata;
 
 	export type WriteResult = { fileId: string; fileSize: number };
 
-	export type PreWriteMetadata = Omit<Metadata, 'fileSize'>;
+	export type PreWriteMetadata = PreWriteBlobMetadata;
 
 	export type FileLocation =
 		| { type: 'execution'; workflowId: string; executionId: string }

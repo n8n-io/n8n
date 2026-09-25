@@ -1,0 +1,28 @@
+diff --git a/dist/auth.cjs b/dist/auth.cjs
+index 37cb150e17c88285b79d62883715b33dab80ac6a..6c73f2a6f4d6e05c97bf1dd8c6334bb6ef4e7638 100644
+--- a/dist/auth.cjs
++++ b/dist/auth.cjs
+@@ -54,6 +54,9 @@ var GoogleAbstractedFetchClient = class {
+ 						body = JSON.stringify(err.response.data);
+ 					} catch {}
+ 				}
++				// gaxios (responseType "stream") parses the error body into err.message
++				// while leaving response.data unset; fall back so the detail isn't lost
++				if (body === undefined && typeof err?.message === "string" && err.message.length > 0) body = err.message;
+ 				this._throwRequestError(status, body, err?.response ?? { status }, context);
+ 			}
+ 			throw fetchError;
+diff --git a/dist/auth.js b/dist/auth.js
+index b3f1afa39a53dfb2b4e7020df01e17f54996dacc..111cb0005d210addf190036be9e191597f72da91 100644
+--- a/dist/auth.js
++++ b/dist/auth.js
+@@ -54,6 +54,9 @@ var GoogleAbstractedFetchClient = class {
+ 						body = JSON.stringify(err.response.data);
+ 					} catch {}
+ 				}
++				// gaxios (responseType "stream") parses the error body into err.message
++				// while leaving response.data unset; fall back so the detail isn't lost
++				if (body === undefined && typeof err?.message === "string" && err.message.length > 0) body = err.message;
+ 				this._throwRequestError(status, body, err?.response ?? { status }, context);
+ 			}
+ 			throw fetchError;

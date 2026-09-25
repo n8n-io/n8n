@@ -9,6 +9,8 @@ export const userScopes = [
 	'files:read',
 	'files:write',
 	'groups:read',
+	// Private-channel management: conversations.create/invite/kick/archive/rename/setTopic.
+	'groups:write',
 	'groups:history',
 	'im:read',
 	'im:history',
@@ -23,6 +25,17 @@ export const userScopes = [
 	'users.profile:read',
 	'users.profile:write',
 	'users:read',
+	// Needed so /users.info returns the responder's email for the HITL capture-responder option.
+	'users:read.email',
+	// Real-time Search API (assistant.search.context) scopes, used by message:search
+	// from node version 2.7. Message search only, so no files/users scopes.
+	'search:read.public',
+	'search:read.private',
+	'search:read.im',
+	'search:read.mpim',
+	// NOTE: Kept so a credential that is re-authorized after 2.7 lands
+	// can still run message:search on node versions <= 2.6
+	// which call the deprecated search.messages.
 	'search:read',
 ];
 
@@ -115,7 +128,7 @@ export class SlackOAuth2Api implements ICredentialType {
 		},
 		{
 			displayName:
-				'If you get an Invalid Scopes error, make sure you add the correct one <a target="_blank" href="https://docs.n8n.io/integrations/builtin/credentials/slack/#using-oauth">here</a> to your Slack integration',
+				'If you get an Invalid Scopes error, make sure you add the correct one <a target="_blank" href="https://docs.n8n.io/integrations/builtin/credentials/slack/#using-oauth2">here</a> to your Slack integration',
 			name: 'notice',
 			type: 'notice',
 			default: '',

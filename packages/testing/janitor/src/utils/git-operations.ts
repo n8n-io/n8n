@@ -24,6 +24,19 @@ export function getGitRoot(cwd: string): string {
 	}
 }
 
+/** Content of `filePath` at git `ref`, or null if it doesn't exist there. */
+export function getFileAtRef(filePath: string, ref: string): string | null {
+	try {
+		const relativePath = path.relative(getGitRoot(process.cwd()), path.resolve(filePath));
+		return execFileSync('git', ['show', `${ref}:${relativePath}`], {
+			encoding: 'utf-8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+		});
+	} catch {
+		return null;
+	}
+}
+
 export function parseGitStatus(
 	output: string,
 	gitRoot: string,

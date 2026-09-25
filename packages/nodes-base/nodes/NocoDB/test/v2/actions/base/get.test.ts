@@ -2,12 +2,16 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/base/get.operation';
 import { apiRequest } from '../../../../v2/transport';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport/index';
 
-jest.mock('../../../../v2/transport/index', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport/index');
+vi.mock('../../../../v2/transport/index', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>(
+		'../../../../v2/transport/index',
+	);
 	return {
 		...originalModule,
-		apiRequest: { call: jest.fn() },
+		apiRequest: { call: vi.fn() },
 	};
 });
 
@@ -15,16 +19,16 @@ describe('NocoDB  base get action', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn(() => [{ json: {} }]),
-			continueOnFail: jest.fn(() => false),
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn(() => [{ json: {} }]),
+			continueOnFail: vi.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
-				constructExecutionMetaData: jest.fn((items) => items),
+				returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: vi.fn((items) => items),
 			},
-			getNode: jest.fn(() => {}),
+			getNode: vi.fn(() => {}),
 		} as unknown as IExecuteFunctions;
-		(apiRequest.call as jest.Mock).mockClear();
+		(apiRequest.call as Mock).mockClear();
 	});
 
 	describe('execute', () => {
@@ -35,8 +39,8 @@ describe('NocoDB  base get action', () => {
 			const mockTable1Response = { id: 'table1', title: 'Table 1' };
 			const mockTable2Response = { id: 'table2', title: 'Table 2' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockReturnValue(mockBaseId);
-			(apiRequest.call as jest.Mock)
+			(mockExecuteFunctions.getNodeParameter as Mock).mockReturnValue(mockBaseId);
+			(apiRequest.call as Mock)
 				.mockResolvedValueOnce(mockBaseResponse) // For base data
 				.mockResolvedValueOnce(mockTablesListResponse) // For tables list
 				.mockResolvedValueOnce(mockTable1Response) // For table1 details
@@ -99,9 +103,9 @@ describe('NocoDB  base get action', () => {
 			const mockBaseId = 'testBaseId';
 			const errorMessage = 'Test error message';
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockReturnValue(mockBaseId);
-			(mockExecuteFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
-			(apiRequest.call as jest.Mock).mockRejectedValue(new Error(errorMessage));
+			(mockExecuteFunctions.getNodeParameter as Mock).mockReturnValue(mockBaseId);
+			(mockExecuteFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(apiRequest.call as Mock).mockRejectedValue(new Error(errorMessage));
 
 			const result = await execute.call(mockExecuteFunctions);
 
@@ -113,9 +117,9 @@ describe('NocoDB  base get action', () => {
 			const errorMessage = 'Test error message';
 			const mockError = new Error(errorMessage);
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockReturnValue(mockBaseId);
-			(mockExecuteFunctions.continueOnFail as jest.Mock).mockReturnValue(false);
-			(apiRequest.call as jest.Mock).mockRejectedValue(mockError);
+			(mockExecuteFunctions.getNodeParameter as Mock).mockReturnValue(mockBaseId);
+			(mockExecuteFunctions.continueOnFail as Mock).mockReturnValue(false);
+			(apiRequest.call as Mock).mockRejectedValue(mockError);
 
 			await expect(execute.call(mockExecuteFunctions)).rejects.toThrow('Test error message');
 		});

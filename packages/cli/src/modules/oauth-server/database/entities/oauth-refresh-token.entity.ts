@@ -1,0 +1,44 @@
+import { JsonColumn, User, WithTimestamps } from '@n8n/db';
+import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
+
+import { OAuthClient } from './oauth-client.entity';
+
+@Entity('oauth_refresh_tokens')
+export class RefreshToken extends WithTimestamps {
+	@Column({ type: 'varchar', primary: true })
+	token: string;
+
+	@ManyToOne(
+		() => OAuthClient,
+		(client) => client.refreshTokens,
+		{ onDelete: 'CASCADE' },
+	)
+	client: OAuthClient;
+
+	@Index()
+	@Column({ type: String })
+	clientId: string;
+
+	@ManyToOne(() => User, { onDelete: 'CASCADE' })
+	user: User;
+
+	@Index()
+	@Column({ type: String })
+	userId: string;
+
+	@Index()
+	@Column({ type: 'int' })
+	expiresAt: number;
+
+	/** OAuth scopes of the originating grant, reissued on every rotation. */
+	@JsonColumn()
+	scope: string[];
+
+	/**
+	 * RFC 8707 resource the grant was approved for — the audience of every access
+	 * token minted from it, carried unchanged across rotations. Never null: the
+	 * mint path resolves the default resource before the row is written.
+	 */
+	@Column({ type: 'varchar' })
+	resource: string;
+}

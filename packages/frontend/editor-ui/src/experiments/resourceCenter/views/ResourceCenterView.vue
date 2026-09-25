@@ -20,7 +20,8 @@ import { quickStartWorkflows } from '../data/quickStartWorkflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { filterTemplateNodes } from '@/app/utils/nodeTypesUtils';
 
 const READY_TO_RUN_ARTWORK_EXCLUDED_TYPES = new Set([

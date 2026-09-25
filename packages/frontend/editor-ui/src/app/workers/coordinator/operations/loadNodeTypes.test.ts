@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { CoordinatorState, TabConnection } from '../types';
 import type { DataWorkerApi } from '../../data/worker';
 import type * as Comlink from 'comlink';
-import { loadNodeTypes } from './loadNodeTypes';
+import { loadNodeTypes, getAllNodeTypes, getNodeType } from './loadNodeTypes';
 
 describe('Coordinator loadNodeTypes Operation', () => {
 	beforeEach(() => {
@@ -25,6 +25,8 @@ describe('Coordinator loadNodeTypes Operation', () => {
 			close: vi.fn().mockResolvedValue(undefined),
 			isInitialized: vi.fn().mockReturnValue(true),
 			loadNodeTypes: vi.fn().mockResolvedValue(undefined),
+			getAllNodeTypes: vi.fn().mockResolvedValue([]),
+			getNodeType: vi.fn().mockResolvedValue(null),
 			...overrides,
 		} as unknown as Comlink.Remote<DataWorkerApi>;
 	}
@@ -170,6 +172,84 @@ describe('Coordinator loadNodeTypes Operation', () => {
 			await expect(loadNodeTypes(state, 'http://localhost:5678')).rejects.toThrow();
 
 			expect(loadNodeTypesFn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getAllNodeTypes', () => {
+		it('should throw error when no active data worker is available', async () => {
+			const state = createMockState({ version: '1.0.0' });
+
+			await expect(getAllNodeTypes(state)).rejects.toThrow(
+				'[Coordinator] No active data worker available',
+			);
+		});
+
+		it('should return node types from the active data worker', async () => {
+			const nodeTypes = [{ name: 'n8n-nodes-base.set' }];
+			const state = createStateWithActiveTab({
+				getAllNodeTypes: vi.fn().mockResolvedValue(nodeTypes),
+			});
+			state.initialized = true;
+
+			const result = await getAllNodeTypes(state);
+
+			expect(result).toEqual(nodeTypes);
+		});
+
+		it('should ensure initialization before reading', async () => {
+			const state = createStateWithActiveTab();
+			state.initialized = false;
+			state.version = '1.0.0';
+			const worker = state.tabs.get('active-tab')?.dataWorker;
+
+			await getAllNodeTypes(state);
+
+			expect(worker?.initialize).toHaveBeenCalledWith({ version: '1.0.0' });
+			expect(worker?.getAllNodeTypes).toHaveBeenCalled();
+		});
+
+		it('should propagate errors from the data worker', async () => {
+			const state = createStateWithActiveTab({
+				getAllNodeTypes: vi.fn().mockRejectedValue(new Error('read failed')),
+			});
+			state.initialized = true;
+
+			await expect(getAllNodeTypes(state)).rejects.toThrow('read failed');
+		});
+	});
+
+	describe('getNodeType', () => {
+		it('should throw error when no active data worker is available', async () => {
+			const state = createMockState({ version: '1.0.0' });
+
+			await expect(getNodeType(state, 'n8n-nodes-base.set', 1)).rejects.toThrow(
+				'[Coordinator] No active data worker available',
+			);
+		});
+
+		it('should pass name and version to the active data worker and return its result', async () => {
+			const nodeType = { name: 'n8n-nodes-base.set', version: 2 };
+			const state = createStateWithActiveTab({
+				getNodeType: vi.fn().mockResolvedValue(nodeType),
+			});
+			state.initialized = true;
+			const worker = state.tabs.get('active-tab')?.dataWorker;
+
+			const result = await getNodeType(state, 'n8n-nodes-base.set', 2);
+
+			expect(worker?.getNodeType).toHaveBeenCalledWith('n8n-nodes-base.set', 2);
+			expect(result).toEqual(nodeType);
+		});
+
+		it('should return null when the node type is not found', async () => {
+			const state = createStateWithActiveTab({
+				getNodeType: vi.fn().mockResolvedValue(null),
+			});
+			state.initialized = true;
+
+			const result = await getNodeType(state, 'unknown', 1);
+
+			expect(result).toBeNull();
 		});
 	});
 });

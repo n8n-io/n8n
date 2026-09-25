@@ -6,7 +6,7 @@ import { pillColors } from '../session-timeline.styles';
 
 const props = withDefaults(
 	defineProps<{
-		kind: EventKind | 'idle';
+		kind: EventKind | 'idle' | 'subagent';
 		label?: string;
 		showLabel?: boolean;
 	}>(),
@@ -18,19 +18,28 @@ const props = withDefaults(
 
 const icon = computed((): IconName => {
 	switch (props.kind) {
+		case 'background-task-signal':
+			return 'list-checks';
 		case 'user':
 			return 'user';
 		case 'agent':
+		case 'subagent':
 			return 'bot';
+		case 'skill':
+			return 'book-open';
 		case 'tool':
 			return 'wrench';
 		case 'workflow':
 			return 'workflow';
 		case 'node':
 			return 'box';
+		case 'execution-error':
+			return 'circle-x';
 		case 'suspension':
 		case 'idle':
 			return 'clock';
+		case 'hitl-response':
+			return 'message-square';
 		default:
 			return 'info';
 	}
@@ -41,7 +50,7 @@ const iconStyle = computed(() => pillColors(props.kind));
 
 <template>
 	<span :class="[$style.pill, showLabel && $style.withLabel]" :style="iconStyle">
-		<N8nIcon :icon="icon" size="small" />
+		<N8nIcon :icon="icon" size="medium" />
 		<span v-if="showLabel && label" :class="$style.label">{{ label }}</span>
 	</span>
 </template>
@@ -53,7 +62,7 @@ const iconStyle = computed(() => pillColors(props.kind));
 	justify-content: center;
 	width: var(--height--2xs);
 	height: var(--height--2xs);
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius);
 	flex-shrink: 0;
 }
 

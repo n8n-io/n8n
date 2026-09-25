@@ -1,7 +1,7 @@
 import { computed, ref, toValue, type ComputedRef, type MaybeRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 
 import {
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
@@ -12,19 +12,19 @@ import {
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
@@ -94,17 +94,15 @@ export function useNodeExecution(
 	const toast = useToast();
 	const message = useMessage();
 	const externalHooks = useExternalHooks();
+	const { askAi } = useEditorContext();
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = injectNDVStore();
 	const uiStore = useUIStore();
-	const workflowState = injectWorkflowState();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowExecutionStateStore = computed(() =>
-		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
-	);
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 	const nodeHelpers = useNodeHelpers();
@@ -146,16 +144,16 @@ export function useNodeExecution(
 	const isNodeRunning = computed(() => {
 		if (!workflowExecutionStateStore.value.isWorkflowRunning || codeGenerationInProgress.value)
 			return false;
-		const triggeredNode = workflowsStore.executedNode;
+		const triggeredNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 		return (
-			workflowState.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
+			workflowExecutionStateStore.value.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
 			triggeredNode === nodeRef.value?.name
 		);
 	});
 
 	const isListening = computed(() => {
 		const waitingOnWebhook = workflowExecutionStateStore.value.executionWaitingForWebhook;
-		const executedNode = workflowsStore.executedNode;
+		const executedNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 
 		return (
 			!!nodeRef.value &&
@@ -267,7 +265,7 @@ export function useNodeExecution(
 
 	async function stopWaitingForWebhook() {
 		try {
-			await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+			await workflowsStore.removeTestWebhook(workflowDocumentStore.value.workflowId);
 		} catch (error) {
 			toast.showError(error, 'Error stopping webhook');
 		}
@@ -293,6 +291,7 @@ export function useNodeExecution(
 				workflowDocumentStore.value.documentId,
 				ndvStore.value.activeNode,
 				ndvStore.value.pushRef,
+				askAi.value,
 				5,
 			);
 
@@ -420,7 +419,7 @@ export function useNodeExecution(
 			// Normal execution
 			const telemetryPayload = {
 				node_type: nodeType.value ? nodeType.value.name : null,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 				source: telemetrySource,
 				push_ref: ndvStore.value.pushRef,
 			};
@@ -440,9 +439,10 @@ export function useNodeExecution(
 	}
 
 	async function stopExecution(): Promise<void> {
-		if (isListening.value) {
+		// While the run waits for a test webhook there is no execution to stop.
+		if (workflowExecutionStateStore.value.executionWaitingForWebhook) {
 			await stopWaitingForWebhook();
-		} else if (isListeningForWorkflowEvents.value) {
+		} else {
 			await stopCurrentExecution();
 		}
 	}

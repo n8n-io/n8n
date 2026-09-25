@@ -8,12 +8,15 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowPublishHistoryRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { INodeType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import '@/zod-alias-support';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
+import { WorkflowService } from '@/workflows/workflow.service';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { createMember, createOwner } from '../shared/db/users';
@@ -21,6 +24,7 @@ import { createMember, createOwner } from '../shared/db/users';
 mockInstance(LoadNodesAndCredentials);
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublishHistoryRepository);
+const mockNodeTypes = mockInstance(NodeTypes);
 
 const command = setupTestCommand(ImportWorkflowsCommand);
 
@@ -185,7 +189,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 			`--userId=${member.id}`,
 		]),
 	).rejects.toThrowError(
-		`The credential with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the user with the ID "${member.id}"`,
+		`The workflow with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the user with the ID "${member.id}"`,
 	);
 
 	//
@@ -266,7 +270,97 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 	});
 });
 
-test('`import:workflow --projectId ...` should fail if the credential already exists and is owned by another project', async () => {
+test('`import:workflow --userId ...` should succeed if the workflow already exists and is owned by the same user', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
+		`--userId=${owner.id}`,
+	]);
+
+	const before = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(before).toMatchObject({
+		workflows: [expect.objectContaining({ id: '998', name: 'active-workflow' })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
+		`--userId=${owner.id}`,
+	]);
+
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(after).toMatchObject({
+		workflows: [expect.objectContaining({ id: '998', name: 'active-workflow updated' })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+});
+
+test('`import:workflow --projectId ...` should succeed if the workflow already exists and is owned by the same project', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
+		`--projectId=${ownerProject.id}`,
+	]);
+
+	const before = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(before).toMatchObject({
+		workflows: [expect.objectContaining({ id: '998', name: 'active-workflow' })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
+		`--projectId=${ownerProject.id}`,
+	]);
+
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(after).toMatchObject({
+		workflows: [expect.objectContaining({ id: '998', name: 'active-workflow updated' })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+});
+
+test('`import:workflow --projectId ...` should fail if the workflow already exists and is owned by another project', async () => {
 	//
 	// ARRANGE
 	//
@@ -308,7 +402,7 @@ test('`import:workflow --projectId ...` should fail if the credential already ex
 			`--projectId=${memberProject.id}`,
 		]),
 	).rejects.toThrowError(
-		`The credential with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the project with the ID "${memberProject.id}"`,
+		`The workflow with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the project with the ID "${memberProject.id}"`,
 	);
 
 	//
@@ -376,13 +470,39 @@ test('should preserve versionMetadata from JSON file when importing', async () =
 describe('--activeState flag', () => {
 	const globalConfig = Container.get(GlobalConfig);
 	const originalMode = globalConfig.executions.mode;
+	const originalUseWorkflowPublicationService =
+		globalConfig.workflows.useWorkflowPublicationService;
 
+	// Asserts on the legacy activation path (`ActiveWorkflowManager` calls).
 	beforeAll(() => {
 		globalConfig.executions.mode = 'queue';
+		globalConfig.workflows.useWorkflowPublicationService = false;
 	});
 
 	afterAll(() => {
 		globalConfig.executions.mode = originalMode;
+		globalConfig.workflows.useWorkflowPublicationService = originalUseWorkflowPublicationService;
+	});
+
+	// TODO: fix this workaround being needed for these tests to run.
+	// It was introduced after refactoring the ImportService used by the import command
+	// from using the ActiveWorkflowManager to activate/deactivate workflows to the WorkflowService.
+	beforeEach(() => {
+		// Bypass webhook conflict detection to avoid infrastructure dependencies
+		// (getWorkflowExecutionData → VariablesService.getAllCached → CacheService/Redis)
+		vi.spyOn(Container.get(WorkflowService) as any, '_findConflictingWebhooks').mockResolvedValue(
+			[],
+		);
+
+		mockNodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
+			if (nodeType === 'n8n-nodes-base.webhook') {
+				return {
+					description: { webhooks: undefined, properties: [] },
+					webhook: vi.fn(),
+				} as unknown as INodeType;
+			}
+			return { description: { properties: [] } } as unknown as INodeType;
+		});
 	});
 
 	describe('fromJson', () => {
@@ -410,7 +530,7 @@ describe('--activeState flag', () => {
 		});
 
 		it('should deactivate the previously active version and activate the new version when importing a workflow json with an ID that already exists for an active workflow', async () => {
-			await createOwner();
+			const owner = await createOwner();
 
 			await command.run([
 				'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
@@ -441,12 +561,12 @@ describe('--activeState flag', () => {
 			expect(activeWorkflowManager.add).toHaveBeenLastCalledWith('998', 'activate');
 
 			const publishHistoryRepo = Container.get(WorkflowPublishHistoryRepository);
-			expect(publishHistoryRepo.addRecord).toHaveBeenCalledTimes(2);
+			expect(publishHistoryRepo.addRecord).toHaveBeenCalledTimes(3);
 			expect(publishHistoryRepo.addRecord).toHaveBeenLastCalledWith({
 				workflowId: '998',
 				versionId: second.versionId,
 				event: 'activated',
-				userId: null,
+				userId: owner.id,
 			});
 		});
 	});
@@ -464,8 +584,8 @@ describe('--activeState flag', () => {
 			expect(active.activeVersionId).toBe(active.versionId);
 
 			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
-			jest.mocked(activeWorkflowManager.add).mockClear();
-			jest.mocked(activeWorkflowManager.remove).mockClear();
+			vi.mocked(activeWorkflowManager.add).mockClear();
+			vi.mocked(activeWorkflowManager.remove).mockClear();
 
 			await command.run([`--input=${fixture}`, '--activeState=false']);
 

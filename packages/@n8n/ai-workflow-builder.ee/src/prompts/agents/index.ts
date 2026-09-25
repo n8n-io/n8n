@@ -11,7 +11,6 @@ export {
 	formatTechniqueList,
 	formatExampleCategorizations,
 } from './discovery.prompt';
-export type { DiscoveryPromptOptions } from './discovery.prompt';
 export {
 	buildResponderPrompt,
 	buildRecursionErrorWithWorkflowGuidance,

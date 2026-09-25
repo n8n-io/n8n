@@ -1,15 +1,16 @@
+import { credentialDescriptionSchema } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import get from 'lodash/get';
 import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	extractProviderKeysFromExpression,
 	getExternalSecretExpressionPaths,
 } from './external-secrets.utils';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 // #region External Secrets
 
@@ -171,6 +172,23 @@ export async function validateAccessToReferencedSecretProviders(
 			);
 		}
 	}
+}
+
+// #endregion
+
+// #region Description
+
+/** Parses a description. The column is `text`, so every write path must call this. */
+export function parseCredentialDescription(description: unknown): string | null {
+	if (description === undefined) return null;
+
+	const result = credentialDescriptionSchema.safeParse(description);
+
+	if (!result.success) {
+		throw new BadRequestError(result.error.issues[0].message);
+	}
+
+	return result.data;
 }
 
 // #endregion

@@ -3,9 +3,11 @@ import {
 	createRunExecutionData,
 	isTrimmedNodeExecutionData,
 } from 'n8n-workflow';
+import { CANCELLABLE_EXECUTION_STATUSES } from './executions.constants';
 import type {
 	ITaskData,
 	ExecutionStatus,
+	ExecutionSummary,
 	IDataObject,
 	INode,
 	IPinData,
@@ -45,13 +47,18 @@ import NodeExecutionErrorMessage from '@/app/components/NodeExecutionErrorMessag
 import { parse } from 'flatted';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
+export function hasCancellableExecutions(executions: ExecutionSummary[]): boolean {
+	const cancellableStatuses = new Set<ExecutionStatus>(CANCELLABLE_EXECUTION_STATUSES);
+
+	return executions.some((execution) => cancellableStatuses.has(execution.status));
+}
+
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
 		workflowId: 'all',
 		status: 'all',
 		startDate: '',
 		endDate: '',
-		tags: [],
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
@@ -65,10 +72,6 @@ export const executionFilterToQueryFilter = (
 	const queryFilter: IDataObject = {};
 	if (filter.workflowId !== 'all') {
 		queryFilter.workflowId = filter.workflowId;
-	}
-
-	if (!isEmpty(filter.tags)) {
-		queryFilter.tags = filter.tags;
 	}
 
 	if (!isEmpty(filter.annotationTags)) {
@@ -367,6 +370,13 @@ export function getExecutionErrorToastConfiguration({
 	lastNodeExecuted?: string;
 }) {
 	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
+
+	if (error.name === 'WorkflowHasIssuesError') {
+		return {
+			title: i18n.baseText('pushConnection.workflowHasIssues.title'),
+			message: h('div', { style: 'white-space: pre-line' }, error.message),
+		};
+	}
 
 	if (error.name === 'SubworkflowOperationError') {
 		return { title: error.message, message: error.description ?? '' };

@@ -10,11 +10,6 @@ import {
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 import { useUIStore } from '@/app/stores/ui.store';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -49,6 +44,9 @@ const {
 		isWorkflowRunning: false,
 		executionWaitingForWebhook: false,
 		chatPartialExecutionDestinationNode: undefined as string | undefined,
+		executingNode: {
+			isNodeExecuting: vi.fn().mockReturnValue(false),
+		},
 	},
 	mockNodeTypesStore: {
 		getNodeType: vi.fn(),
@@ -72,6 +70,7 @@ const {
 		confirm: vi.fn(),
 	},
 	mockWorkflowDocumentStore: {
+		workflowId: '123',
 		updateNodeProperties: vi.fn(),
 		getNodeByName: vi.fn(),
 		getStartNode: vi.fn(),
@@ -104,6 +103,18 @@ vi.mock('@/app/stores/workflows.store', () => ({
 
 vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	useWorkflowExecutionStateStore: vi.fn().mockReturnValue(mockWorkflowExecutionStateStore),
+	injectWorkflowExecutionStateStore: vi.fn(() => ({
+		// Plain accessor so per-test reassignment of the mock fields is always
+		// picked up.
+		get value() {
+			return {
+				...mockWorkflowExecutionStateStore,
+				get activeExecutionExecutedNode() {
+					return mockWorkflowsStore.executedNode;
+				},
+			};
+		},
+	})),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -137,7 +148,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: vi.fn().mockReturnValue(mockMessage),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({
 		track: vi.fn(),
 		trackAiTransform: vi.fn(),
@@ -151,7 +162,7 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -163,14 +174,6 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 		run: vi.fn(),
 	}),
 }));
-
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
 
 vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 	needsAgentInput: vi.fn().mockReturnValue(false),
@@ -192,16 +195,12 @@ function createTestNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	} as INodeUi;
 }
 
-let workflowState: WorkflowState;
 let uiStore: ReturnType<typeof useUIStore>;
 
 describe('useNodeExecution', () => {
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
-
-		workflowState = vi.mocked(useWorkflowState());
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		uiStore = useUIStore();
 
@@ -210,6 +209,9 @@ describe('useNodeExecution', () => {
 		mockWorkflowsStore.executedNode = undefined;
 		mockWorkflowExecutionStateStore.executionWaitingForWebhook = false;
 		mockWorkflowExecutionStateStore.chatPartialExecutionDestinationNode = undefined;
+		mockWorkflowExecutionStateStore.executingNode.isNodeExecuting
+			.mockReset()
+			.mockReturnValue(false);
 		mockWorkflowDocumentStore.checkIfNodeHasChatParent.mockReturnValue(false);
 		mockWorkflowsStore.removeTestWebhook.mockReset();
 		mockWorkflowsStore.getNodeByName.mockReset();
@@ -861,6 +863,18 @@ describe('useNodeExecution', () => {
 			await stopExecution();
 
 			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('123');
+		});
+
+		it('should stop webhook wait from a non-trigger node', async () => {
+			mockNodeTypesStore.isTriggerNode.mockReturnValue(false);
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
+			const node = ref(createTestNode({ name: 'Edit Fields' }));
+
+			const { stopExecution } = useNodeExecution(node);
+			await stopExecution();
+
+			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('123');
+			expect(mockRunWorkflow.stopCurrentExecution).not.toHaveBeenCalled();
 		});
 
 		it('should stop current execution when listening for workflow events', async () => {

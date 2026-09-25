@@ -1,6 +1,6 @@
-import type { AgentRuntime } from '../../runtime/agent-runtime';
-import { InMemoryMemory } from '../../runtime/memory-store';
-import type { BuiltMemory, MemoryConfig, ObservationalMemoryConfig } from '../../types';
+import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
+import { InMemoryMemory } from '../../runtime/memory/memory-store';
+import type { BuiltMemory, MemoryConfig } from '../../types';
 import { Agent } from '../agent';
 import {
 	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
@@ -65,12 +65,13 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveObservationalMemoryConfig({}, { defaultModel: 'openai/gpt-4o-mini' });
 
 		expect(resolved).toMatchObject({
-			observerThresholdTokens: 500,
-			reflectorThresholdTokens: 4_000,
-			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+			observerThresholdTokens: 50_000,
+			reflectorThresholdTokens: 60_000,
+			renderTokenBudget: 67_500,
 			observationLogTailLimit: 20,
 			lockTtlMs: DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
 		});
+		expect(resolved.midRunObservation).toBeUndefined();
 		expect(typeof resolved.observe).toBe('function');
 		expect(typeof resolved.reflect).toBe('function');
 	});
@@ -85,6 +86,7 @@ describe('Memory builder — observation log memory', () => {
 				renderTokenBudget: 789,
 				observationLogTailLimit: 3,
 				lockTtlMs: 1_000,
+				midRunObservation: false,
 				observe,
 				reflect,
 			},
@@ -97,6 +99,7 @@ describe('Memory builder — observation log memory', () => {
 			renderTokenBudget: 789,
 			observationLogTailLimit: 3,
 			lockTtlMs: 1_000,
+			midRunObservation: false,
 		});
 		expect(resolved.observe).toBe(observe);
 		expect(resolved.reflect).toBe(reflect);
@@ -137,35 +140,46 @@ describe('Memory builder — observation log memory', () => {
 			.instructions('You are a test assistant.')
 			.memory(memory);
 
-		const runtime = await (agent as unknown as { build(): Promise<AgentRuntime> }).build();
-		const runtimeConfig = (
-			runtime as unknown as {
-				config: {
-					observationLog?: { renderTokenBudget?: number };
-					observationalMemory?: ObservationalMemoryConfig;
-				};
-			}
-		).config;
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
 
 		expect(runtimeConfig.observationLog).toEqual({
 			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 		});
 		expect(runtimeConfig.observationalMemory).toMatchObject({
-			observerThresholdTokens: 500,
-			reflectorThresholdTokens: 4_000,
+			observerThresholdTokens: 50_000,
+			reflectorThresholdTokens: 60_000,
 		});
+		expect(runtimeConfig.observationalMemory?.midRunObservation).toBeUndefined();
 		expect(typeof runtimeConfig.observationalMemory?.observe).toBe('function');
 		expect(typeof runtimeConfig.observationalMemory?.reflect).toBe('function');
 	});
 
+	it('passes midRunObservation through agent build', async () => {
+		const memory = new Memory()
+			.storage(new InMemoryMemory())
+			.observationalMemory({ midRunObservation: false });
+		const agent = new Agent('a')
+			.model('openai/gpt-4o-mini')
+			.instructions('You are a test assistant.')
+			.memory(memory);
+
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
+
+		expect(runtimeConfig.observationalMemory?.midRunObservation).toBe(false);
+	});
+
 	it('rejects backends that do not implement the observation-log store', () => {
 		const minimalBackend = {
-			getThread: jest.fn().mockResolvedValue(null),
-			saveThread: jest.fn().mockResolvedValue({}),
-			deleteThread: jest.fn().mockResolvedValue(undefined),
-			getMessages: jest.fn().mockResolvedValue([]),
-			saveMessages: jest.fn().mockResolvedValue(undefined),
-			deleteMessages: jest.fn().mockResolvedValue(undefined),
+			getThread: vi.fn().mockResolvedValue(null),
+			saveThread: vi.fn().mockResolvedValue({}),
+			deleteThread: vi.fn().mockResolvedValue(undefined),
+			getMessages: vi.fn().mockResolvedValue([]),
+			saveMessages: vi.fn().mockResolvedValue(undefined),
+			deleteMessages: vi.fn().mockResolvedValue(undefined),
 			describe: () => ({
 				name: 'minimal',
 				constructorName: 'MinimalMemory',

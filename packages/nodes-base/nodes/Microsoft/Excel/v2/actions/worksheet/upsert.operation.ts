@@ -204,6 +204,7 @@ export async function execute(
 	const nodeVersion = this.getNode().typeVersion;
 
 	try {
+		// Whole-batch operation: every param (including the SP target) is read at item 0.
 		const workbookId = this.getNodeParameter('workbook', 0, undefined, {
 			extractValue: true,
 		}) as string;
@@ -224,6 +225,11 @@ export async function execute(
 				this,
 				'PATCH',
 				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 		}
 
@@ -240,6 +246,9 @@ export async function execute(
 				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 				undefined,
 				query,
+				undefined,
+				undefined,
+				0,
 			);
 
 			range = (worksheetData.address as string).split('!')[1];
@@ -256,6 +265,10 @@ export async function execute(
 				'PATCH',
 				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 				{ values },
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 		}
 
@@ -351,6 +364,9 @@ export async function execute(
 					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 					undefined,
 					{ select: 'address' },
+					undefined,
+					undefined,
+					0,
 				);
 
 				const usedRange = parseAddress(address as string);
@@ -366,6 +382,10 @@ export async function execute(
 			'PATCH',
 			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 			{ values: updateSummary.updatedData },
+			undefined,
+			undefined,
+			undefined,
+			0,
 		);
 
 		const { updatedRows } = updateSummary;

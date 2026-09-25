@@ -8,6 +8,7 @@ import {
 	createAgentWithConcurrentMixedTools,
 	collectTextDeltas,
 } from './helpers';
+import { createCancellation } from '../../index';
 import type { StreamChunk } from '../../index';
 
 const describe = describeIf('anthropic');
@@ -97,6 +98,51 @@ describe('concurrent tool execution integration', () => {
 		// The resumed tool should NOT be in the remaining list
 		const remainingIds = second.pendingSuspend!.map((s) => s.toolCallId);
 		expect(remainingIds).not.toContain(firstToolCallId);
+	});
+
+	it('cancels one of multiple suspended delete_file tool calls and resolves the batch', async () => {
+		const agent = createAgentWithConcurrentInterruptibleCalls('anthropic');
+
+		const first = await agent.generate(
+			'Delete these two files: /tmp/cancel-a.txt and /tmp/cancel-b.txt. You MUST call delete_file for each file in a single turn using parallel tool calls.',
+		);
+
+		expect(first.finishReason).toBe('tool-calls');
+		expect(first.pendingSuspend).toBeDefined();
+		expect(first.pendingSuspend!.length).toBeGreaterThanOrEqual(2);
+
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		const resumed = await agent.resume(
+			'generate',
+			createCancellation('Cancel the delete operation. Do not delete any of the files.'),
+			{ runId, toolCallId },
+		);
+
+		expect(resumed.finishReason).toBe('stop');
+		expect(resumed.pendingSuspend).toBeUndefined();
+		expect(resumed.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					tool: 'delete_file',
+					output:
+						'[Tool call cancelled. User said: "Cancel the delete operation. Do not delete any of the files."]',
+					canceled: true,
+				}),
+			]),
+		);
+		expect(resumed.getState().messageList.messages).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					content: expect.arrayContaining([
+						expect.objectContaining({
+							type: 'tool-call',
+							output: '[Skipped: a sibling tool call was cancelled]',
+							canceled: true,
+						}),
+					]),
+				}),
+			]),
+		);
 	});
 
 	it('resumes all suspended tools one by one until the LLM loop continues (stream)', async () => {

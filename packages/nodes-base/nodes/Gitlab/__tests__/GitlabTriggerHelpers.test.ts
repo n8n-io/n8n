@@ -1,6 +1,7 @@
 import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
 
 import { generateWebhookSecret, verifySignature } from '../GitlabTriggerHelpers';
+import type { Mock } from 'vitest';
 
 describe('GitlabTriggerHelpers', () => {
 	describe('generateWebhookSecret', () => {
@@ -22,14 +23,14 @@ describe('GitlabTriggerHelpers', () => {
 
 		beforeEach(() => {
 			mockWebhookFunctions = {
-				getHeaderData: jest.fn(),
-				getWorkflowStaticData: jest.fn(),
+				getHeaderData: vi.fn(),
+				getWorkflowStaticData: vi.fn(),
 			};
 		});
 
 		it('should return true when no secret is stored (backward compatibility)', () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({});
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 
 			const result = verifySignature.call(mockWebhookFunctions as IWebhookFunctions);
 			expect(result).toBe(true);
@@ -38,10 +39,10 @@ describe('GitlabTriggerHelpers', () => {
 		it('should return true when token matches stored secret', () => {
 			const secret = 'auto-generated-secret';
 
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-gitlab-token': secret,
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: secret,
 			} as IDataObject);
 
@@ -50,10 +51,10 @@ describe('GitlabTriggerHelpers', () => {
 		});
 
 		it('should return false when token does not match (different length)', () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-gitlab-token': 'wrong',
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'correct-secret',
 			} as IDataObject);
 
@@ -62,10 +63,10 @@ describe('GitlabTriggerHelpers', () => {
 		});
 
 		it('should return false when token does not match (same length)', () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-gitlab-token': 'wrong-secret-aa',
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'correct-secret-',
 			} as IDataObject);
 
@@ -74,8 +75,8 @@ describe('GitlabTriggerHelpers', () => {
 		});
 
 		it('should return false when token header is missing but secret is stored', () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({});
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'expected-secret',
 			} as IDataObject);
 
@@ -84,10 +85,10 @@ describe('GitlabTriggerHelpers', () => {
 		});
 
 		it('should return false when token header has wrong type', () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-gitlab-token': ['unexpected-array'],
 			});
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
 				webhookSecret: 'expected-secret',
 			} as IDataObject);
 

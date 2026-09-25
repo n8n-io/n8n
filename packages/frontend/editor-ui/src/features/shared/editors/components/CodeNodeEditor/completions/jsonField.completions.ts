@@ -1,16 +1,17 @@
 import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { isAllowedInDotNotation } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import { useI18n } from '@n8n/i18n';
 import type { IRunData, IDataObject } from 'n8n-workflow';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
+import { matchBeforeCursor } from './utils';
 
 function useJsonFieldCompletions() {
 	const i18n = useI18n();
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
@@ -31,9 +32,8 @@ function useJsonFieldCompletions() {
 		variablesToValues: Record<string, string>,
 	): CompletionResult | null => {
 		const pattern = new RegExp(`(${escape(matcher)})\..*`);
-		const preCursor = context.matchBefore(pattern);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, pattern);
+		if (!preCursor) return null;
 
 		const inputNodeName = getInputNodeName();
 		if (!inputNodeName) return null;
@@ -273,7 +273,7 @@ function useJsonFieldCompletions() {
 			} catch {}
 		}
 
-		const runData: IRunData | null = workflowsStore.getWorkflowRunData;
+		const runData: IRunData | null = workflowExecutionStateStore.value.activeExecutionRunData;
 
 		const nodeRunData = runData?.[nodeName];
 

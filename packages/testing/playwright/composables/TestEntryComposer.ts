@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 
 import { setupDefaultInterceptors } from '../config/intercepts';
 import type { n8nPage } from '../pages/n8nPage';
+import { ApiHelpers } from '../services/api-helper';
 import type { TestUser } from '../services/user-api-helper';
 
 /**
@@ -24,8 +25,9 @@ export class TestEntryComposer {
 	 */
 	async fromBlankCanvas() {
 		await this.n8n.navigate.toWorkflow('new');
-		// Verify we're on canvas
-		await this.n8n.canvas.canvasPane().isVisible();
+		// Wait for the canvas loader to clear before returning so tests don't
+		// interact with a canvas still covered by the full-screen loader.
+		await this.n8n.canvas.waitForBlankCanvasReady();
 	}
 
 	/**
@@ -41,8 +43,8 @@ export class TestEntryComposer {
 		const response = await this.n8n.api.projects.createProject();
 
 		const projectId = response.id;
-		await this.n8n.page.goto(`workflow/new?projectId=${projectId}`);
-		await this.n8n.canvas.canvasPane().isVisible();
+		await this.n8n.navigate.toWorkflow('new', { projectId });
+		await this.n8n.canvas.waitForBlankCanvasReady();
 		return projectId;
 	}
 
@@ -59,8 +61,35 @@ export class TestEntryComposer {
 	 */
 	async fromImportedWorkflow(workflowFile: string) {
 		const workflowImportResult = await this.n8n.api.workflows.importWorkflowFromFile(workflowFile);
-		await this.n8n.page.goto(`workflow/${workflowImportResult.workflowId}`);
+		await this.n8n.navigate.toWorkflow(workflowImportResult.workflowId);
+		// Wait for the canvas loading overlay to clear and the imported nodes to
+		// render before returning, so tests don't interact with a canvas that is
+		// still covered by the full-screen loader.
+		await this.n8n.canvas.waitForCanvasReady();
+		await this.n8n.canvas.getCanvasNodes().first().waitFor({ state: 'visible' });
 		return workflowImportResult;
+	}
+
+	/**
+	 * Start UI test on the canvas of an existing workflow (e.g. one created via
+	 * the API). Waits for the canvas loader to clear and the workflow's nodes to
+	 * render before returning, so tests don't interact with a canvas still
+	 * covered by the full-screen loader.
+	 */
+	async fromExistingWorkflow(workflowId: string) {
+		await this.n8n.navigate.toWorkflow(workflowId);
+		await this.n8n.canvas.waitForCanvasReady();
+		await this.n8n.canvas.getCanvasNodes().first().waitFor({ state: 'visible' });
+	}
+
+	async fromInstanceAi() {
+		await this.n8n.navigate.toInstanceAi();
+		await this.n8n.instanceAi.getChatInput().waitFor({ state: 'visible', timeout: 30_000 });
+	}
+
+	async fromInstanceAiThread(threadId: string) {
+		await this.n8n.instanceAi.gotoThread(threadId);
+		await this.n8n.instanceAi.getChatInput().waitFor({ state: 'visible', timeout: 30_000 });
 	}
 
 	/**
@@ -73,9 +102,31 @@ export class TestEntryComposer {
 		await action();
 		const newPage = await newPagePromise;
 		await newPage.waitForLoadState('domcontentloaded');
-		// Use the constructor from the current instance to avoid circular dependency
-		const n8nPageConstructor = this.n8n.constructor as new (page: Page) => n8nPage;
-		return new n8nPageConstructor(newPage);
+		return this.wrapPage(newPage);
+	}
+
+	/**
+	 * Open a fresh tab in the current browser context (shared session) and
+	 * return an n8nPage facade bound to it. Use for multi-tab scenarios such
+	 * as the instance-ai memory benchmarks that drive several threads in
+	 * parallel within the same authenticated context.
+	 */
+	async newTab(): Promise<n8nPage> {
+		const newPage = await this.n8n.page.context().newPage();
+		return this.wrapPage(newPage);
+	}
+
+	/**
+	 * Wraps a page in a new n8nPage that keeps this instance's API options, so a
+	 * workflow created from the new page lands on the same engine.
+	 * Uses the constructor from the current instance to avoid a circular import.
+	 */
+	private wrapPage(page: Page): n8nPage {
+		const n8nPageConstructor = this.n8n.constructor as new (page: Page, api: ApiHelpers) => n8nPage;
+		return new n8nPageConstructor(
+			page,
+			new ApiHelpers(page.context().request, this.n8n.api.options),
+		);
 	}
 
 	/**
@@ -103,7 +154,7 @@ export class TestEntryComposer {
 		const context = await browser.newContext();
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
-		const newN8n = new (this.n8n.constructor as new (page: Page) => n8nPage)(page);
+		const newN8n = this.wrapPage(page);
 		await newN8n.api.login({ email: user.email, password: user.password });
 		return newN8n;
 	}

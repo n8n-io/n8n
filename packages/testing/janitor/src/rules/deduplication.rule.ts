@@ -1,6 +1,7 @@
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
 
-import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { isComponentFile, getRelativePath } from '../utils/paths.js';
@@ -30,7 +31,7 @@ interface TestIdUsage {
  *
  * Only flags when the same {root}:{testId} combination appears in multiple files.
  */
-export class DeduplicationRule extends BaseRule {
+export class DeduplicationRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'deduplication';
 	readonly name = 'Deduplication';
 	readonly description = 'Test IDs should be unique within their scope';
@@ -41,7 +42,15 @@ export class DeduplicationRule extends BaseRule {
 		return config.patterns.pages;
 	}
 
-	analyze(_project: Project, files: SourceFile[]): Violation[] {
+	protected projectConfig(): AstProjectConfig {
+		return { packages: ['.'], spec: { globs: this.getTargetGlobs() } };
+	}
+
+	analyze(context: { rootDir: string }): Violation[] {
+		return this.projects(context).flatMap(({ project }) => this.analyzeProject(project));
+	}
+
+	analyzeProject(project: Project, files: SourceFile[] = project.getSourceFiles()): Violation[] {
 		const { pagesScope, componentsScope } = this.buildSelectorMaps(files);
 
 		return [
@@ -139,7 +148,7 @@ export class DeduplicationRule extends BaseRule {
 				if (!file) continue;
 
 				violations.push(
-					this.createViolation(
+					this.fileViolation(
 						file,
 						usage.line,
 						usage.column,

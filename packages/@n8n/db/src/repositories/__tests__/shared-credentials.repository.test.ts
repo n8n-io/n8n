@@ -1,7 +1,9 @@
 import { Container } from '@n8n/di';
 import { In, type SelectQueryBuilder } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { Project } from '../../entities';
 import { SharedCredentials } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { SharedCredentialsRepository } from '../shared-credentials.repository';
@@ -10,10 +12,10 @@ describe('SharedCredentialsRepository', () => {
 	const entityManager = mockEntityManager(SharedCredentials);
 	const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
 
-	let queryBuilder: jest.Mocked<SelectQueryBuilder<SharedCredentials>>;
+	let queryBuilder: Mocked<SelectQueryBuilder<SharedCredentials>>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		queryBuilder = mock<SelectQueryBuilder<SharedCredentials>>();
 		queryBuilder.where.mockReturnThis();
@@ -21,7 +23,7 @@ describe('SharedCredentialsRepository', () => {
 		queryBuilder.innerJoin.mockReturnThis();
 		queryBuilder.select.mockReturnThis();
 
-		jest.spyOn(sharedCredentialsRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+		vi.spyOn(sharedCredentialsRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 	});
 
 	describe('findByCredentialIds', () => {
@@ -34,12 +36,29 @@ describe('SharedCredentialsRepository', () => {
 			await sharedCredentialsRepository.findByCredentialIds(credentialIds, role);
 
 			expect(entityManager.find).toHaveBeenCalledWith(SharedCredentials, {
-				relations: { credentials: true, project: { projectRelations: { user: true, role: true } } },
+				relations: { credentials: true },
 				where: {
 					credentialsId: In(credentialIds),
 					role,
 				},
 			});
+		});
+	});
+
+	describe('findOwnerProjectsByCredentialIds', () => {
+		it('should map each credential id to its owner project', async () => {
+			const project = mock<Project>({ id: 'project1' });
+			entityManager.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred1', project }),
+			]);
+
+			const result = await sharedCredentialsRepository.findOwnerProjectsByCredentialIds(['cred1']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedCredentials, {
+				where: { credentialsId: In(['cred1']), role: 'credential:owner' },
+				relations: { project: true },
+			});
+			expect(result).toEqual(new Map([['cred1', project]]));
 		});
 	});
 

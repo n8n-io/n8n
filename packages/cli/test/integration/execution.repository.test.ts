@@ -2,12 +2,13 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createExecution } from '@test-integration/db/executions';
-import { createOwner } from '@test-integration/db/users';
 import { stringify, parse } from 'flatted';
 import { DateTime } from 'luxon';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
+
+import { createExecution } from '@test-integration/db/executions';
+import { createOwner } from '@test-integration/db/users';
 
 describe('UserRepository', () => {
 	let executionRepository: ExecutionRepository;
@@ -69,6 +70,60 @@ describe('UserRepository', () => {
 				execution1.id,
 			]);
 		});
+
+		test('pages by ID, even when the timestamps disagree', async () => {
+			// The timestamps descend while the IDs ascend, so a timestamp order
+			// would page these rows in the opposite order.
+			const now = DateTime.utc();
+			const workflow = await createWorkflow({}, owner);
+			const first = await createExecution(
+				{ startedAt: now.plus({ minute: 3 }).toJSDate() },
+				workflow,
+			);
+			const second = await createExecution(
+				{ startedAt: now.plus({ minute: 2 }).toJSDate() },
+				workflow,
+			);
+			const third = await createExecution({ startedAt: null }, workflow);
+
+			const page = async (beforeId?: string) =>
+				await executionRepository.findManyByRangeQuery({
+					workflowId: workflow.id,
+					user: owner,
+					kind: 'range',
+					range: { limit: 1, beforeId },
+				});
+
+			// Walk the pages the way the cursor does: the first page has no cursor.
+			const [newest] = await page();
+			expect(newest.id).toBe(third.id);
+
+			const [middle] = await page(newest.id);
+			expect(middle.id).toBe(second.id);
+
+			const [oldest] = await page(middle.id);
+			expect(oldest.id).toBe(first.id);
+		});
+
+		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution(
+				{ jsonSizeBytes: 4096, binaryDataSizeBytes: 2048, workflowVersionId: 'v-123' },
+				workflow,
+			);
+
+			const [summary] = await executionRepository.findManyByRangeQuery({
+				workflowId: workflow.id,
+				user: owner,
+				kind: 'range',
+				range: { limit: 10 },
+			});
+
+			expect(summary.id).toBe(execution.id);
+			expect(summary.jsonSizeBytes).toBe(4096);
+			expect(summary.binaryDataSizeBytes).toBe(2048);
+			expect(summary.workflowVersionId).toBe('v-123');
+		});
 	});
 
 	describe('setRunning', () => {
@@ -122,6 +177,19 @@ describe('UserRepository', () => {
 				statusUpdate: 'success' as ExecutionStatus,
 				conditions: undefined,
 				updateExpected: true,
+			},
+			// CAT-3862: executions enqueued before a restart are claimed while still `new`
+			{
+				statusInDB: 'new' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
+				conditions: { requireStatus: 'new' as ExecutionStatus },
+				updateExpected: true,
+			},
+			{
+				statusInDB: 'new' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
+				conditions: { requireStatus: 'waiting' as ExecutionStatus },
+				updateExpected: false,
 			},
 		])(
 			'should return $updateExpected with status before: "$statusInDB", status after: "$statusUpdate" and conditions: $conditions',

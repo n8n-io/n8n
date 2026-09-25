@@ -1,0 +1,425 @@
+import {
+	APPROVAL_RESUME_SCHEMA,
+	type InterruptibleToolContext,
+	type ToolContext,
+} from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
+import { z } from 'zod';
+
+import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
+import {
+	actionNeedsApproval,
+	messageSchema,
+	type IntegrationCardComponent,
+} from './integration-tool-definitions';
+import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
+import {
+	isIntegrationMessageContext,
+	readIntegrationMessageContext,
+	replaceIntegrationMessageContext,
+} from './integration-message-context';
+import type {
+	IntegrationAction,
+	IntegrationActionExecutor,
+	IntegrationMessageContext,
+	IntegrationMessageContextStore,
+	IntegrationMessageTarget,
+	IntegrationContextQuery,
+	IntegrationContextQueryExecutor,
+	IntegrationToolConnectionDescriptor,
+} from './integration-tool-types';
+import type { RawActionToolOperation, RawContextToolOperation } from './integration-tool-schema';
+
+/** Resume shape for the action tool, including a follow-up interactive card. */
+export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
+
+export async function executeContextToolOperation(params: {
+	operation: RawContextToolOperation;
+	descriptor: IntegrationToolConnectionDescriptor;
+	queryExecutor: IntegrationContextQueryExecutor;
+	persistence: ToolContext['persistence'];
+}): Promise<unknown> {
+	const { operation, descriptor, queryExecutor, persistence } = params;
+
+	if (isCurrentContextQuery(operation.query)) {
+		if (!persistence) {
+			return {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.NO_THREAD_CONTEXT,
+					message: 'There is no current agent thread context.',
+				},
+			};
+		}
+		const context = readIntegrationMessageContext(persistence);
+		if (!context || context.integrationConnectionId !== descriptor.integrationConnectionId) {
+			if (operation.query === 'get_current_message_context') {
+				return { ok: true, context: null };
+			}
+			if (operation.query === 'get_current_subject') {
+				return { ok: true, subject: null };
+			}
+			return {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
+					message: 'There is no current message context for this integration connection.',
+				},
+			};
+		}
+		if (operation.query === 'get_current_message_context') {
+			return { ok: true, context };
+		}
+		if (operation.query === 'get_current_subject') {
+			return { ok: true, subject: context.subject ?? null };
+		}
+		if (operation.query === 'get_current_user') {
+			if (!context.interactingUserId) {
+				return {
+					ok: false,
+					error: {
+						code: INTEGRATION_ERROR_CODES.NO_INTERACTING_USER_CONTEXT,
+						message: 'The latest message context does not include an interacting user ID.',
+					},
+				};
+			}
+			return await queryExecutor.execute({
+				descriptor,
+				query: 'get_user',
+				input: { userId: context.interactingUserId },
+				persistence,
+			});
+		}
+
+		const channelId = getTargetChannelId(context.target);
+		if (!channelId) {
+			return {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.NO_CHANNEL_CONTEXT,
+					message: 'The latest message context does not include a channel ID.',
+				},
+			};
+		}
+		return await queryExecutor.execute({
+			descriptor,
+			query: 'get_channel_info',
+			input: { channelId },
+			persistence,
+		});
+	}
+
+	return await queryExecutor.execute({
+		descriptor,
+		query: operation.query,
+		input: operation.input,
+		persistence,
+	});
+}
+
+export async function executeActionToolBatch(params: {
+	operations: RawActionToolOperation[];
+	descriptor: IntegrationToolConnectionDescriptor;
+	messageContextStore: IntegrationMessageContextStore;
+	actionExecutor: IntegrationActionExecutor;
+	ctx: ToolContext;
+}): Promise<unknown> {
+	const { operations, descriptor, messageContextStore, actionExecutor, ctx } = params;
+	let currentMessageContext = getOptionalCurrentContext({
+		descriptor,
+		persistence: ctx.persistence,
+	});
+
+	const results: Array<{ action: IntegrationAction; result: unknown }> = [];
+	for (const operation of operations) {
+		const result = await executeActionToolOperation({
+			operation,
+			descriptor,
+			messageContextStore,
+			actionExecutor,
+			ctx,
+			currentMessageContext,
+			allowSuspend: false,
+		});
+
+		const nextMessageContext = extractSuccessfulMessageContext(result);
+		if (nextMessageContext) currentMessageContext = nextMessageContext;
+
+		results.push({ action: operation.action, result });
+	}
+
+	return { ok: true, results };
+}
+
+export async function executeActionToolOperation(params: {
+	operation: RawActionToolOperation;
+	descriptor: IntegrationToolConnectionDescriptor;
+	messageContextStore: IntegrationMessageContextStore;
+	actionExecutor: IntegrationActionExecutor;
+	ctx: ToolContext;
+	interruptCtx?: InterruptibleToolContext;
+	currentMessageContext?: IntegrationMessageContext;
+	allowSuspend: boolean;
+	/** Action the user just approved, so the gate below lets it through once. */
+	approvedAction?: string;
+}): Promise<unknown> {
+	const {
+		operation,
+		descriptor,
+		messageContextStore,
+		actionExecutor,
+		ctx,
+		interruptCtx,
+		allowSuspend,
+		approvedAction,
+	} = params;
+	const persistence = ctx.persistence;
+	const message = parseMessage(operation.input.message);
+	const actionInput = message === undefined ? operation.input : { ...operation.input, message };
+	const awaitsResponse = shouldAwaitResponse(message);
+
+	if (awaitsResponse && !allowSuspend) {
+		return {
+			ok: false,
+			error: {
+				code: INTEGRATION_ERROR_CODES.ACTION_FAILED,
+				message:
+					'Batch actions cannot include cards that wait for a user response. Send that action separately.',
+			},
+		};
+	}
+
+	const needsApproval =
+		operation.action !== approvedAction &&
+		actionNeedsApproval(descriptor.approval, operation.action);
+
+	if (needsApproval) {
+		// A batch cannot suspend, so a gated action inside one has to be refused
+		// rather than run — otherwise batching would be a way around the gate.
+		if (!allowSuspend || !interruptCtx) {
+			return {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.ACTION_NEEDS_APPROVAL,
+					message: `The action "${operation.action}" needs approval, which cannot be asked for here. Send that action on its own.`,
+				},
+			};
+		}
+
+		return await interruptCtx.suspend(
+			{
+				type: 'approval',
+				toolName: operation.action,
+				displayName: describeActionForApproval(operation),
+				args: actionInput,
+			},
+			// The card's buttons are shaped from this schema, so the decision comes
+			// back as `{ approved }` rather than the tool's own resume shape.
+			{ resumeSchema: APPROVAL_RESUME_SCHEMA },
+		);
+	}
+
+	let currentMessageContext = params.currentMessageContext;
+	if (operation.action === 'respond') {
+		if (!currentMessageContext) {
+			const contextResult = getRespondContext({ descriptor, persistence });
+			if (!contextResult.ok) {
+				return contextResult;
+			}
+			currentMessageContext = contextResult.context;
+		}
+	} else if (!currentMessageContext && persistence) {
+		currentMessageContext = getOptionalCurrentContext({ descriptor, persistence });
+	}
+
+	const result = await actionExecutor.execute({
+		descriptor,
+		action: operation.action,
+		input: actionInput,
+		awaitResponse: awaitsResponse,
+		runId: ctx.runId,
+		toolCallId: ctx.toolCallId,
+		currentMessageContext,
+	});
+
+	if (!result.ok) return result;
+
+	let actionResult = result;
+	if (result.messageContext && persistence) {
+		const messageContext = withPreviousSubject(result.messageContext, currentMessageContext);
+		await messageContextStore.setLatest(
+			persistence.threadId,
+			persistence.resourceId,
+			messageContext,
+		);
+		replaceIntegrationMessageContext(persistence, messageContext);
+		// Task-run sends bind the outbound thread so inbound replies continue
+		// that task session. Chat mentions stay on their own thread.
+		// respond/edit/reaction operate on existing threads and do not bind.
+		if (
+			(operation.action === 'send_dm' || operation.action === 'send_channel_message') &&
+			descriptor.agentId &&
+			messageContext.target.threadId &&
+			isTaskRunMemoryResourceId(persistence.resourceId)
+		) {
+			await messageContextStore.bindSession(
+				`${descriptor.agentId}:${messageContext.target.threadId}`,
+				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+			);
+		}
+		actionResult = { ...result, messageContext };
+	}
+
+	if (!awaitsResponse) return actionResult;
+
+	return await interruptCtx?.suspend(
+		{
+			type: 'integration_action',
+			action: operation.action,
+			integrationConnectionId: descriptor.integrationConnectionId,
+			messageContext: actionResult.messageContext,
+		},
+		// An approval resume leaves APPROVAL_RESUME_SCHEMA on this tool call. Name
+		// the action-tool schema here so a follow-up card is not still expecting
+		// `{ approved }`.
+		{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
+	);
+}
+
+/**
+ * Label for the approval card. The card only shows this line, so it has to name
+ * the destination — approving a bare `send_channel_message` tells the user
+ * nothing about where the message goes.
+ */
+function describeActionForApproval(operation: RawActionToolOperation): string {
+	const { channelId, userId, messageId, issueId } = operation.input;
+	const target = [channelId, userId, messageId, issueId].find(
+		(value) => typeof value === 'string' && value.length > 0,
+	);
+	return target ? `${operation.action} → ${String(target)}` : operation.action;
+}
+
+function isCurrentContextQuery(query: IntegrationContextQuery): boolean {
+	return (
+		query === 'get_current_message_context' ||
+		query === 'get_current_subject' ||
+		query === 'get_current_user' ||
+		query === 'get_current_channel_info'
+	);
+}
+
+function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined {
+	const result = messageSchema.safeParse(value);
+	return result.success ? result.data : undefined;
+}
+
+function shouldAwaitResponse(message: z.infer<typeof messageSchema> | undefined): boolean {
+	const card = message?.card;
+	if (card?.awaitResponse === true) return true;
+	return card?.components.some(isInteractiveCardComponent) ?? false;
+}
+
+function isInteractiveCardComponent(component: IntegrationCardComponent): boolean {
+	switch (component.type) {
+		case 'button':
+		case 'select':
+		case 'radio_select':
+			return true;
+		case 'section':
+			return component.button !== undefined;
+		default:
+			return false;
+	}
+}
+
+function withPreviousSubject(
+	context: IntegrationMessageContext,
+	previousContext: IntegrationMessageContext | undefined,
+): IntegrationMessageContext {
+	if (!previousContext) return context;
+	if (context.integrationConnectionId !== previousContext.integrationConnectionId) return context;
+	const replyExpectation = context.replyExpectation ?? previousContext.replyExpectation;
+	const replyTarget =
+		context.replyTarget ??
+		previousContext.replyTarget ??
+		(replyExpectation ? previousContext.target : undefined);
+	const replyMessageId =
+		context.replyMessageId ??
+		previousContext.replyMessageId ??
+		(replyExpectation ? previousContext.messageId : undefined);
+
+	return {
+		...context,
+		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
+		...(!context.agentUserId && previousContext.agentUserId
+			? { agentUserId: previousContext.agentUserId }
+			: {}),
+		...(replyExpectation ? { replyExpectation } : {}),
+		...(replyTarget ? { replyTarget } : {}),
+		...(replyMessageId ? { replyMessageId } : {}),
+	};
+}
+
+function extractSuccessfulMessageContext(result: unknown): IntegrationMessageContext | undefined {
+	if (!isRecord(result) || result.ok !== true) return undefined;
+	const messageContext = result.messageContext;
+	return isIntegrationMessageContext(messageContext) ? messageContext : undefined;
+}
+
+function getOptionalCurrentContext(params: {
+	descriptor: IntegrationToolConnectionDescriptor;
+	persistence: ToolContext['persistence'];
+}): IntegrationMessageContext | undefined {
+	const context = readIntegrationMessageContext(params.persistence);
+	return context?.integrationConnectionId === params.descriptor.integrationConnectionId
+		? context
+		: undefined;
+}
+
+function getRespondContext(params: {
+	descriptor: IntegrationToolConnectionDescriptor;
+	persistence: ToolContext['persistence'];
+}):
+	| { ok: true; context: IntegrationMessageContext }
+	| { ok: false; error: { code: string; message: string } } {
+	const { descriptor, persistence } = params;
+	if (!persistence) {
+		return {
+			ok: false,
+			error: {
+				code: INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
+				message: 'There is no current message context. Use an explicit send action.',
+			},
+		};
+	}
+
+	const context = readIntegrationMessageContext(persistence);
+	if (!context) {
+		return {
+			ok: false,
+			error: {
+				code: INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
+				message: 'There is no current message context. Use an explicit send action.',
+			},
+		};
+	}
+
+	if (context.integrationConnectionId !== descriptor.integrationConnectionId) {
+		return {
+			ok: false,
+			error: {
+				code: INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT_FOR_INTEGRATION,
+				message: 'The latest message context belongs to another integration connection.',
+			},
+		};
+	}
+
+	return { ok: true, context };
+}
+
+function getTargetChannelId(target: IntegrationMessageTarget): string | undefined {
+	if (target.type === 'thread' || target.type === 'channel') {
+		return target.channelId;
+	}
+	return undefined;
+}

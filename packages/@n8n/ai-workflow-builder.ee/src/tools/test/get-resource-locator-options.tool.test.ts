@@ -1,9 +1,11 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
 
 import {
 	createWorkflow,
 	createNode,
+	createNodeType,
 	nodeTypes,
 	parseToolResult,
 	createToolConfig,
@@ -17,21 +19,19 @@ import {
 import type { ResourceLocatorCallback } from '../../types/callbacks';
 import { createGetResourceLocatorOptionsTool } from '../get-resource-locator-options.tool';
 
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-		content: JSON.stringify(params),
-	})),
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
+	Command: vi.fn(function (params: Record<string, unknown>) {
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
 describe('getResourceLocatorOptions tool', () => {
-	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
-		typeof getCurrentTaskInput
-	>;
+	const mockGetCurrentTaskInput = getCurrentTaskInput as MockedFunction<typeof getCurrentTaskInput>;
 	let parsedNodeTypes: INodeTypeDescription[];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		parsedNodeTypes = [
 			nodeTypes.code,
 			nodeTypes.httpRequest,
@@ -224,6 +224,65 @@ describe('getResourceLocatorOptions tool', () => {
 			);
 		});
 
+		it('should fetch options for parameters using loadOptionsMethod', async () => {
+			const mockResults = createResourceLocatorResults([
+				{ name: 'Engineering', value: 'team-eng' },
+				{ name: 'Support', value: 'team-support' },
+			]);
+			const mockCallback = mockResourceLocatorCallback(mockResults);
+			const tool = createGetResourceLocatorOptionsTool(
+				[
+					...parsedNodeTypes,
+					createNodeType({
+						name: 'n8n-nodes-base.linear',
+						displayName: 'Linear',
+						credentials: [{ name: 'linearOAuth2Api', required: true }],
+						properties: [
+							{
+								displayName: 'Team Name or ID',
+								name: 'teamId',
+								type: 'options',
+								default: '',
+								typeOptions: {
+									loadOptionsMethod: 'getTeams',
+								},
+							},
+						],
+					}),
+				],
+				mockCallback,
+			).tool;
+			const credentials = { linearOAuth2Api: { id: 'cred1', name: 'Linear' } };
+			const workflow = createWorkflow([
+				createNode({
+					id: 'linear1',
+					name: 'Linear',
+					type: 'n8n-nodes-base.linear',
+					credentials,
+					parameters: { resource: 'issue' },
+				}),
+			]);
+
+			setupWorkflowState(mockGetCurrentTaskInput, workflow);
+			const config = createToolConfig('get_resource_locator_options', 'call-load-options');
+
+			const result = await tool.invoke({ nodeId: 'linear1', parameterPath: 'teamId' }, config);
+			const content = parseToolResult<ParsedToolContent>(result);
+			const message = content.update.messages[0]?.kwargs.content;
+
+			expect(message).toContain('<display_name>Engineering</display_name>');
+			expect(message).toContain('<id>team-eng</id>');
+			expect(message).toContain('<display_name>Support</display_name>');
+			expect(mockCallback).toHaveBeenCalledWith(
+				'getTeams',
+				'parameters.teamId',
+				{ name: 'n8n-nodes-base.linear', version: 1 },
+				{ resource: 'issue' },
+				credentials,
+				undefined,
+			);
+		});
+
 		it('should handle empty results', async () => {
 			const mockResults = createResourceLocatorResults([]);
 			const mockCallback = mockResourceLocatorCallback(mockResults);
@@ -253,11 +312,11 @@ describe('getResourceLocatorOptions tool', () => {
 
 	describe('callback errors', () => {
 		it('should handle callback errors gracefully', async () => {
-			const mockCallback = jest
+			const mockCallback = vi
 				.fn()
 				.mockRejectedValue(
 					new Error('API rate limit exceeded'),
-				) as jest.MockedFunction<ResourceLocatorCallback>;
+				) as MockedFunction<ResourceLocatorCallback>;
 			const tool = createGetResourceLocatorOptionsTool(parsedNodeTypes, mockCallback).tool;
 			const workflow = createWorkflow([
 				createNode({
@@ -281,12 +340,12 @@ describe('getResourceLocatorOptions tool', () => {
 		});
 
 		it('should handle callback timeout', async () => {
-			const mockCallback = jest.fn().mockImplementation(
+			const mockCallback = vi.fn().mockImplementation(
 				async () =>
 					await new Promise((_, reject) => {
 						setTimeout(() => reject(new Error('Request timed out')), 100);
 					}),
-			) as jest.MockedFunction<ResourceLocatorCallback>;
+			) as MockedFunction<ResourceLocatorCallback>;
 			const tool = createGetResourceLocatorOptionsTool(parsedNodeTypes, mockCallback).tool;
 			const workflow = createWorkflow([
 				createNode({

@@ -2,15 +2,15 @@ import type { CommunityNodeType } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import type { Push } from '@/push';
 import type { NodeRequest } from '@/requests';
 
 import type { CommunityNodeTypesService } from '../community-node-types.service';
-import { CommunityPackagesController } from '../community-packages.controller';
 import type { CommunityPackagesConfig } from '../community-packages.config';
+import { CommunityPackagesController } from '../community-packages.controller';
 import { CommunityPackagesLifecycleService } from '../community-packages.lifecycle.service';
 import type { CommunityPackagesService } from '../community-packages.service';
 import type { InstalledPackages } from '../installed-packages.entity';
@@ -42,7 +42,7 @@ describe('CommunityPackagesController', () => {
 	const controller = new CommunityPackagesController(lifecycle);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('installPackage', () => {
@@ -77,7 +77,11 @@ describe('CommunityPackagesController', () => {
 			});
 			communityNodeTypesService.findVetted.mockResolvedValue(
 				mock<CommunityNodeType>({
-					checksum: 'checksum',
+					npmVersion: '1.1.1',
+					checksum: 'latest-checksum',
+					// The requested version is older than the registry's latest, so its
+					// checksum must come from the per-version history.
+					nodeVersions: [{ npmVersion: '1.0.0', checksum: 'checksum' }],
 				}),
 			);
 			communityPackagesService.parseNpmPackageName.mockReturnValue({
@@ -85,8 +89,7 @@ describe('CommunityPackagesController', () => {
 				packageName: 'n8n-nodes-test',
 				version: '1.1.1',
 			});
-			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(false);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({
 				status: 'OK',
 			});

@@ -1,4 +1,5 @@
 import type { ContextEstablishmentResult } from '@n8n/decorators';
+import type { Mocked } from 'vitest';
 
 import { BearerTokenExtractor } from '../bearer-token-extractor';
 import type { HttpHeaderExtractor } from '../http-header-extractor';
@@ -6,13 +7,13 @@ import { createOptions, createTriggerItem } from './utils';
 
 describe('BearerTokenExtractor', () => {
 	let bearerTokenExtractor: BearerTokenExtractor;
-	let mockHttpHeaderExtractor: jest.Mocked<HttpHeaderExtractor>;
+	let mockHttpHeaderExtractor: Mocked<HttpHeaderExtractor>;
 
 	beforeEach(() => {
 		mockHttpHeaderExtractor = {
-			isApplicableToTriggerNode: jest.fn(),
-			execute: jest.fn(),
-		} as unknown as jest.Mocked<HttpHeaderExtractor>;
+			isApplicableToTriggerNode: vi.fn(),
+			execute: vi.fn(),
+		} as unknown as Mocked<HttpHeaderExtractor>;
 
 		bearerTokenExtractor = new BearerTokenExtractor(mockHttpHeaderExtractor);
 	});

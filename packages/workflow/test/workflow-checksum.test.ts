@@ -1,3 +1,6 @@
+import { vi } from 'vitest';
+
+import type { INode } from '../src/interfaces';
 import { calculateWorkflowChecksum, type WorkflowSnapshot } from '../src/workflow-checksum';
 
 describe('calculateWorkflowChecksum', () => {
@@ -231,6 +234,140 @@ describe('calculateWorkflowChecksum', () => {
 			expect(fallbackChecksum).toMatch(/^[0-9a-f]{64}$/);
 		} finally {
 			Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
+		}
+	});
+
+	// Key-permutation invariance must hold *inside* arrays too — pins the
+	// recursive normalisation of array elements.
+	it('should produce the same checksum when keys are reordered inside array elements', async () => {
+		const workflow1: WorkflowSnapshot = {
+			...baseWorkflow,
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [250, 300],
+					parameters: { alpha: 1, beta: 2, gamma: { x: 'a', y: 'b' } },
+				},
+				{
+					id: 'node2',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [500, 300],
+					parameters: { foo: 'bar', baz: 'qux' },
+				},
+			],
+		};
+
+		const workflow2: WorkflowSnapshot = {
+			...baseWorkflow,
+			nodes: [
+				{
+					parameters: { gamma: { y: 'b', x: 'a' }, beta: 2, alpha: 1 },
+					position: [250, 300],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.manualTrigger',
+					name: 'Start',
+					id: 'node1',
+				},
+				{
+					parameters: { baz: 'qux', foo: 'bar' },
+					position: [500, 300],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					name: 'Set',
+					id: 'node2',
+				},
+			],
+		};
+
+		const checksum1 = await calculateWorkflowChecksum(workflow1);
+		const checksum2 = await calculateWorkflowChecksum(workflow2);
+
+		expect(checksum1).toBe(checksum2);
+	});
+
+	// Arrays are ordered, not sets — swapping element positions must change
+	// the checksum, even with recursive key normalisation.
+	it('should generate different checksums when array element order differs', async () => {
+		const nodeA: INode = {
+			id: 'a',
+			name: 'A',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const nodeB: INode = {
+			id: 'b',
+			name: 'B',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const checksumAB = await calculateWorkflowChecksum({ ...baseWorkflow, nodes: [nodeA, nodeB] });
+		const checksumBA = await calculateWorkflowChecksum({ ...baseWorkflow, nodes: [nodeB, nodeA] });
+
+		expect(checksumAB).not.toBe(checksumBA);
+	});
+
+	// Non-plain objects (Date, Map, class instances) are passed through
+	// opaquely — not descended into. If they were treated as plain objects,
+	// `Object.keys(date)` would be empty and a Date would collide with `{}`.
+	it('should treat non-plain objects in meta as opaque (distinct from empty object)', async () => {
+		const dateWorkflow: WorkflowSnapshot = {
+			...baseWorkflow,
+			meta: { stamp: new Date('2025-01-15T00:00:00.000Z') },
+		};
+		const emptyWorkflow: WorkflowSnapshot = {
+			...baseWorkflow,
+			meta: { stamp: {} },
+		};
+
+		const dateChecksum = await calculateWorkflowChecksum(dateWorkflow);
+		const emptyChecksum = await calculateWorkflowChecksum(emptyWorkflow);
+
+		expect(dateChecksum).not.toBe(emptyChecksum);
+	});
+
+	// Two different Date instants must hash differently — they would both
+	// collapse to `{}` if the recursive sort branch ran on them.
+	it('should generate different checksums when a Date value in meta changes', async () => {
+		const earlyWorkflow: WorkflowSnapshot = {
+			...baseWorkflow,
+			meta: { stamp: new Date('2025-01-15T00:00:00.000Z') },
+		};
+		const lateWorkflow: WorkflowSnapshot = {
+			...baseWorkflow,
+			meta: { stamp: new Date('2030-06-15T00:00:00.000Z') },
+		};
+
+		const earlyChecksum = await calculateWorkflowChecksum(earlyWorkflow);
+		const lateChecksum = await calculateWorkflowChecksum(lateWorkflow);
+
+		expect(earlyChecksum).not.toBe(lateChecksum);
+	});
+
+	// When WebCrypto is available, the implementation must call subtle.digest
+	// — both fallback and webcrypto paths produce the same hash, so without
+	// this spy the choice of branch is unobservable.
+	it('should use the WebCrypto subtle.digest path when available', async () => {
+		const subtle = globalThis.crypto?.subtle;
+		if (!subtle) return;
+
+		const digestSpy = vi.spyOn(subtle, 'digest');
+		try {
+			const checksum = await calculateWorkflowChecksum(baseWorkflow);
+			expect(digestSpy).toHaveBeenCalledTimes(1);
+			expect(digestSpy).toHaveBeenCalledWith('SHA-256', expect.any(Uint8Array));
+			expect(checksum).toMatch(/^[0-9a-f]{64}$/);
+		} finally {
+			digestSpy.mockRestore();
 		}
 	});
 });

@@ -1,7 +1,8 @@
-import type { Project, SourceFile } from 'ts-morph';
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
+import { Node, type Project, type PropertyAccessExpression, type SourceFile } from 'ts-morph';
 
-import { BaseRule } from './base-rule.js';
-import { getConfig } from '../config.js';
+import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
 import { truncateText } from '../utils/ast-helpers.js';
 
@@ -28,7 +29,7 @@ import { truncateText } from '../utils/ast-helpers.js';
  * - API service files themselves (services/**) can make raw calls
  * - Fixture setup files can make raw calls
  */
-export class ApiPurityRule extends BaseRule {
+export class ApiPurityRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'api-purity';
 	readonly name = 'API Purity';
 	readonly description = 'Tests and composables should use API services, not raw HTTP calls';
@@ -39,7 +40,15 @@ export class ApiPurityRule extends BaseRule {
 		return [...config.patterns.tests, ...config.patterns.flows];
 	}
 
-	analyze(_project: Project, files: SourceFile[]): Violation[] {
+	protected projectConfig(): AstProjectConfig {
+		return { packages: ['.'], spec: { globs: this.getTargetGlobs() } };
+	}
+
+	analyze(context: { rootDir: string }): Violation[] {
+		return this.projects(context).flatMap(({ project }) => this.analyzeProject(project));
+	}
+
+	analyzeProject(project: Project, files: SourceFile[] = project.getSourceFiles()): Violation[] {
 		const violations: Violation[] = [];
 		const config = getConfig();
 
@@ -56,13 +65,23 @@ export class ApiPurityRule extends BaseRule {
 
 				let match;
 				while ((match = regex.exec(content)) !== null) {
+					const matchedNode = file.getDescendantAtPos(match.index);
+					const propertyAccess = matchedNode?.getParent();
+					if (
+						match[0].startsWith('fetch') &&
+						Node.isPropertyAccessExpression(propertyAccess) &&
+						this.isPlaywrightRouteFetch(propertyAccess)
+					) {
+						continue;
+					}
+
 					// Get some context around the match for allowPattern checking
 					const contextStart = Math.max(0, match.index - 50);
 					const contextEnd = Math.min(content.length, match.index + match[0].length + 50);
 					const context = content.substring(contextStart, contextEnd);
 
 					// Check if this matches any allow patterns
-					if (this.isAllowed(context)) {
+					if (ruleAllows(this.id, context)) {
 						continue;
 					}
 
@@ -77,7 +96,7 @@ export class ApiPurityRule extends BaseRule {
 					const suggestion = this.getSuggestion(matchText);
 
 					violations.push(
-						this.createViolation(
+						this.fileViolation(
 							file,
 							line,
 							column,
@@ -90,6 +109,38 @@ export class ApiPurityRule extends BaseRule {
 		}
 
 		return violations;
+	}
+
+	private isPlaywrightRouteFetch(propertyAccess: PropertyAccessExpression): boolean {
+		const receiver = propertyAccess.getExpression();
+		if (!Node.isIdentifier(receiver)) return false;
+
+		const routeParameter = receiver
+			.getSymbol()
+			?.getDeclarations()
+			.find((declaration) => Node.isParameterDeclaration(declaration));
+		const routeHandler = routeParameter?.getParent();
+		if (
+			!routeHandler ||
+			(!Node.isArrowFunction(routeHandler) && !Node.isFunctionExpression(routeHandler))
+		) {
+			return false;
+		}
+
+		const routeCall = routeHandler.getParent();
+		if (!Node.isCallExpression(routeCall)) return false;
+
+		const routeMethod = routeCall.getExpression();
+		if (!Node.isPropertyAccessExpression(routeMethod) || routeMethod.getName() !== 'route') {
+			return false;
+		}
+
+		const routeTarget = routeMethod.getExpression();
+		const routeTargetName = Node.isPropertyAccessExpression(routeTarget)
+			? routeTarget.getName()
+			: routeTarget.getText();
+
+		return routeTargetName === 'page' || routeTargetName === 'context';
 	}
 
 	/**

@@ -30,18 +30,6 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowState', async (importOriginal) => {
-	const actual = (await importOriginal()) as object;
-	return {
-		...actual,
-		useWorkflowState: vi.fn(() => ({
-			getNewWorkflowDataAndMakeShareable: vi.fn(),
-			setActiveExecutionId: vi.fn(),
-			resetState: vi.fn(),
-		})),
-	};
-});
-
 vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 	useWorkflowInitialization: vi.fn(() => ({
 		isLoading: ref(false),

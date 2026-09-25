@@ -3,7 +3,14 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
-const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'plan', 'task-control']);
+const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'task-control']);
+const SKILL_TOOLS = new Set([
+	'create_skills',
+	'list_skills',
+	'read_skill',
+	'update_skill',
+	'load_skill',
+]);
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 type I18n = ReturnType<typeof useI18n>;
 type SkillFileGroup = 'references' | 'scripts' | 'templates' | 'examples' | 'assets';
@@ -95,22 +102,42 @@ function extractSkillScriptPath(command: string): string | undefined {
 	return sandboxSkillDirMatch?.[1];
 }
 
+function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined {
+	switch (operation) {
+		case 'editing':
+			return 'instanceAi.tools.build-agent.editing';
+		case 'exploring':
+			return 'instanceAi.tools.build-agent.exploring';
+		case 'testing':
+			return 'instanceAi.tools.build-agent.testing';
+		case 'publishing':
+			return 'instanceAi.tools.build-agent.publishing';
+		default:
+			return undefined;
+	}
+}
+
 export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'complete-checkpoint') return 'circle-check';
-	if (toolName === 'delegate' || toolName.endsWith('-with-agent')) return 'share';
-	if (toolName === 'list_skills' || toolName === 'load_skill') return 'book-open';
+	if (toolName.endsWith('-with-agent')) return 'share';
+	if (toolName === 'resolve_integration') return 'share';
+	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
 	if (toolName === 'data-tables') return 'table';
+	if (toolName === 'activity') return 'history';
+	if (toolName === 'conversation-history') return 'message-square';
+	if (toolName === 'mcp-servers') return 'plug';
 	if (
 		toolName === 'workflows' ||
 		toolName === 'executions' ||
 		toolName === 'nodes' ||
-		toolName === 'templates'
+		toolName === 'templates' ||
+		toolName === 'search_nodes' ||
+		toolName === 'get_node_types'
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
 	if (toolName === 'credentials') return 'key-round';
-	if (toolName === 'task-control' || toolName === 'updateWorkingMemory' || toolName === 'plan')
-		return 'brain';
+	if (toolName === 'task-control' || toolName === 'updateWorkingMemory') return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
 	if (toolName === 'workspace' || toolName.startsWith('workspace_')) return 'folder';
 	if (toolName.includes('data-table')) return 'table';
@@ -122,7 +149,8 @@ export function getToolIcon(toolName: string): IconName {
 		return 'workflow';
 	}
 	if (toolName.includes('credential')) return 'key-round';
-	return 'settings';
+	// Fallback for tools without a dedicated mapping.
+	return 'wrench';
 }
 
 /**
@@ -133,6 +161,15 @@ export function useToolLabel() {
 	const i18n = useI18n();
 
 	function getToolLabel(toolName: string, args?: Record<string, unknown>): string {
+		if (toolName === 'build-agent') {
+			const operationKey = getBuildAgentOperationKey(args?.operation);
+			if (operationKey) return i18n.baseText(operationKey);
+		}
+		if (toolName === 'agent-context' && typeof args?.type === 'string') {
+			const lookupKey = `instanceAi.tools.agent-context.${args.type}` as BaseTextKey;
+			const lookupLabel = i18n.baseText(lookupKey);
+			if (lookupLabel !== lookupKey) return lookupLabel;
+		}
 		if (toolName === 'load_skill') {
 			const name = typeof args?.name === 'string' ? args.name : undefined;
 			const filePath = typeof args?.filePath === 'string' ? args.filePath : undefined;
@@ -178,17 +215,11 @@ export function useToolLabel() {
 
 	function getToggleLabel(toolCall: InstanceAiToolCallState): string | undefined {
 		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
-		if (toolCall.toolName === 'delegate') {
-			return i18n.baseText('instanceAi.stepTimeline.showBrief');
-		}
 		return i18n.baseText('instanceAi.stepTimeline.showData');
 	}
 
 	function getHideLabel(toolCall: InstanceAiToolCallState): string | undefined {
 		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
-		if (toolCall.toolName === 'delegate') {
-			return i18n.baseText('instanceAi.stepTimeline.hideBrief');
-		}
 		return i18n.baseText('instanceAi.stepTimeline.hideData');
 	}
 

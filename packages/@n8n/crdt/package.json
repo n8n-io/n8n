@@ -1,16 +1,17 @@
 {
   "name": "@n8n/crdt",
-  "version": "0.5.0",
+  "version": "0.11.0",
   "description": "CRDT abstraction layer for n8n collaborative editing",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -34,9 +35,14 @@
     "yjs": "^13.6.20"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:",
     "vitest-websocket-mock": "^0.5.0"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

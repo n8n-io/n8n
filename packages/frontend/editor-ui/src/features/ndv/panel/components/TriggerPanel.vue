@@ -15,8 +15,7 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -25,7 +24,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import {
@@ -36,6 +35,7 @@ import {
 	N8nPulse,
 	N8nSpinner,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
@@ -55,11 +55,8 @@ const emit = defineEmits<{
 const workflowId = useInjectWorkflowId();
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const workflowExecutionStateStore = computed(() =>
-	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
-);
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const ndvStore = injectNDVStore();
 
 const router = useRouter();
@@ -179,7 +176,7 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	const executedNode = workflowsStore.executedNode;
+	const executedNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 	const isCurrentNodeExecuted = executedNode === props.nodeName;
 	const isChildNodeExecuted = executedNode
 		? (workflowDocumentStore?.value?.getParentNodes(executedNode).includes(props.nodeName) ?? false)
@@ -191,7 +188,7 @@ const isListeningForEvents = computed(() => {
 const workflowRunning = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 
 const isActivelyPolling = computed(() => {
-	const triggeredNode = workflowsStore.executedNode;
+	const triggeredNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 
 	return workflowRunning.value && isPollingNode.value && props.nodeName === triggeredNode;
 });
@@ -396,6 +393,7 @@ const onNodeExecute = () => {
 				key="listening"
 				:class="$style.action"
 				data-test-id="trigger-listening"
+				data-ndv-empty-state
 			>
 				<N8nPulse>
 					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
@@ -413,15 +411,18 @@ const onNodeExecute = () => {
 							}}
 						</N8nText>
 					</div>
-					<CopyInput
-						:value="webhookTestUrl"
-						:toast-title="i18n.baseText('ndv.trigger.copiedTestUrl')"
-						class="mb-2xl"
-						size="medium"
-						:collapse="true"
-						:copy-button-text="i18n.baseText('generic.clickToCopy')"
-						@copy="onTestLinkCopied"
-					></CopyInput>
+					<N8nTooltip :content="webhookTestUrl" placement="top" as-child>
+						<CopyInput
+							:value="webhookTestUrl"
+							:toast-title="i18n.baseText('ndv.trigger.copiedTestUrl')"
+							:class="['mb-2xl', $style.webhookUrl]"
+							size="medium"
+							:collapse="true"
+							truncate="start"
+							:copy-button-text="i18n.baseText('generic.clickToCopy')"
+							@copy="onTestLinkCopied"
+						></CopyInput>
+					</N8nTooltip>
 					<NodeExecuteButton
 						data-test-id="trigger-execute-button"
 						:node-name="nodeName"
@@ -454,7 +455,12 @@ const onNodeExecute = () => {
 					/>
 				</div>
 			</div>
-			<div v-else key="default">
+			<div
+				v-else
+				key="default"
+				:data-ndv-empty-state="isWebhookNode ? '' : undefined"
+				:data-ndv-pane-min="isWebhookNode ? undefined : ''"
+			>
 				<div v-if="isActivelyPolling" class="mb-xl">
 					<N8nSpinner type="ring" />
 				</div>
@@ -469,7 +475,32 @@ const onNodeExecute = () => {
 						</N8nText>
 					</div>
 
+					<template v-if="isWebhookNode">
+						<span :class="$style.fullListen">
+							<NodeExecuteButton
+								data-test-id="trigger-execute-button"
+								:node-name="nodeName"
+								size="medium"
+								telemetry-source="inputs"
+								@execute="onNodeExecute"
+							/>
+						</span>
+						<span :class="$style.compactListen">
+							<NodeExecuteButton
+								icon-only
+								hide-label
+								size="medium"
+								:node-name="nodeName"
+								:aria-label="i18n.baseText('ndv.execute.listenForTestEvent')"
+								:tooltip="i18n.baseText('ndv.execute.listenForTestEvent')"
+								telemetry-source="inputs"
+								data-test-id="trigger-execute-button-compact"
+								@execute="onNodeExecute"
+							/>
+						</span>
+					</template>
 					<NodeExecuteButton
+						v-else
 						data-test-id="trigger-execute-button"
 						:node-name="nodeName"
 						size="medium"
@@ -478,24 +509,26 @@ const onNodeExecute = () => {
 					/>
 				</div>
 
-				<N8nText v-if="activationHint" size="small" @click="onLinkClick">
-					<span v-n8n-html="activationHint"></span>&nbsp;
-				</N8nText>
-				<N8nLink
-					v-if="activationHint && executionsHelp"
-					size="small"
-					@click="expandExecutionHelp"
-					>{{ i18n.baseText('ndv.trigger.moreInfo') }}</N8nLink
-				>
-				<N8nInfoAccordion
-					v-if="executionsHelp"
-					ref="help"
-					:class="$style.accordion"
-					:title="i18n.baseText('ndv.trigger.executionsHint.question')"
-					:description="executionsHelp"
-					:event-bus="executionsHelpEventBus"
-					@click:body="onLinkClick"
-				></N8nInfoAccordion>
+				<div :class="$style.hints">
+					<N8nText v-if="activationHint" size="small" @click="onLinkClick">
+						<span v-n8n-html="activationHint"></span>&nbsp;
+					</N8nText>
+					<N8nLink
+						v-if="activationHint && executionsHelp"
+						size="small"
+						@click="expandExecutionHelp"
+						>{{ i18n.baseText('ndv.trigger.moreInfo') }}</N8nLink
+					>
+					<N8nInfoAccordion
+						v-if="executionsHelp"
+						ref="help"
+						:class="$style.accordion"
+						:title="i18n.baseText('ndv.trigger.executionsHint.question')"
+						:description="executionsHelp"
+						:event-bus="executionsHelpEventBus"
+						@click:body="onLinkClick"
+					></N8nInfoAccordion>
+				</div>
 			</div>
 		</Transition>
 	</div>
@@ -536,6 +569,35 @@ const onNodeExecute = () => {
 	align-items: center;
 	text-align: center;
 	margin-bottom: var(--spacing--2xl);
+	width: 100%;
+	min-width: 0;
+}
+
+.webhookUrl {
+	width: 100%;
+	min-width: 0;
+}
+
+.fullListen {
+	display: contents;
+}
+
+.compactListen {
+	display: none;
+}
+
+@container ndvPane (max-width: 220px) {
+	.fullListen {
+		display: none;
+	}
+
+	.compactListen {
+		display: contents;
+	}
+
+	.hints {
+		display: none;
+	}
 }
 
 .shake {

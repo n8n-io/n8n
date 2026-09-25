@@ -1,7 +1,7 @@
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { OpenAIToolType } from '@langchain/classic/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from '@langchain/classic/experimental/openai_assistant';
-import { assertCredentialAllowsUrl, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -14,6 +14,7 @@ import { getConnectedTools, mergeCustomHeaders } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from './utils';
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
 
@@ -350,13 +351,7 @@ export class OpenAiAssistant implements INodeType {
 				const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
 				if (options.baseURL) {
-					assertCredentialAllowsUrl({
-						node: this.getNode(),
-						credentialData: credentials,
-						url: options.baseURL,
-						pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
-						surface: 'OpenAI',
-					});
+					assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 				}
 
 				const client = new OpenAIClient({

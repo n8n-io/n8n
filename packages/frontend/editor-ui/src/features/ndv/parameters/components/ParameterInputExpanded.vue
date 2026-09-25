@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { isValueExpression as isValueExpressionUtil } from '@/app/utils/nodeTypesUtils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
@@ -33,6 +33,7 @@ type Props = {
 	documentationUrl?: string;
 	eventSource?: string;
 	label?: IParameterLabel;
+	hideRequiredIndicator?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -175,7 +176,7 @@ defineExpose({
 		<N8nInputLabel
 			:label="i18n.credText(activeCredentialType).inputLabelDisplayName(parameter)"
 			:tooltip-text="i18n.credText(activeCredentialType).inputLabelDescription(parameter)"
-			:required="parameter.required"
+			:required="parameter.required && !hideRequiredIndicator"
 			:show-tooltip="focused"
 			:show-options="menuExpanded"
 			:data-test-id="parameter.name"
@@ -188,6 +189,7 @@ defineExpose({
 					:is-read-only="false"
 					:show-options="!isFixedCollectionType"
 					:show-expression-selector="!isFixedCollectionType"
+					:show-focus-panel="false"
 					:is-value-expression="isValueExpression"
 					@update:model-value="optionSelected"
 					@menu-expanded="onMenuExpanded"

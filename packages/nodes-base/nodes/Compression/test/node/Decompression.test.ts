@@ -1,27 +1,44 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, IBinaryData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import * as fflate from 'fflate';
-
 import { Compression } from '../../Compression.node';
+import { boundedGunzip } from '../../decompress/BoundedGunzip';
+import { boundedUntar } from '../../decompress/BoundedUntar';
+import { boundedUnzip } from '../../decompress/BoundedUnzip';
+import type { Mocked } from 'vitest';
 
-jest.mock('fflate');
+vi.mock('../../decompress/BoundedGunzip');
+vi.mock('../../decompress/BoundedUntar');
+vi.mock('../../decompress/BoundedUnzip');
 
-const mockFflate = (
-	method: 'unzip' | 'gunzip' | 'zip' | 'gunzip',
-	data: any,
-	error: any = null,
-) => {
-	jest.mocked(fflate[method]).mockImplementation((_, callback) => {
-		callback(error, data);
-		return () => {};
-	});
+const mockBoundedUnzip = (data: Record<string, Buffer>, error?: Error) => {
+	if (error) {
+		vi.mocked(boundedUnzip).mockRejectedValue(error);
+	} else {
+		vi.mocked(boundedUnzip).mockResolvedValue(data);
+	}
+};
+
+const mockBoundedUntar = (data: Record<string, Buffer>, error?: Error) => {
+	if (error) {
+		vi.mocked(boundedUntar).mockRejectedValue(error);
+	} else {
+		vi.mocked(boundedUntar).mockResolvedValue(data);
+	}
+};
+
+const mockBoundedGunzip = (data: Buffer, error?: Error) => {
+	if (error) {
+		vi.mocked(boundedGunzip).mockRejectedValue(error);
+	} else {
+		vi.mocked(boundedGunzip).mockResolvedValue(data);
+	}
 };
 
 describe('Compression Node - Decompress Operation', () => {
 	let compression: Compression;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	const mockNode: INode = {
 		id: 'test-node',
 		name: 'Compression',
@@ -34,7 +51,7 @@ describe('Compression Node - Decompress Operation', () => {
 	beforeEach(() => {
 		compression = new Compression();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: { test: 'data' } }]);
@@ -50,7 +67,7 @@ describe('Compression Node - Decompress Operation', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Zip Decompression', () => {
@@ -62,18 +79,18 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'zip',
 			};
 
-			const mockZipContents = {
-				file1_txt: new Uint8Array([72, 101, 108, 108, 111]),
-				file2_txt: new Uint8Array([87, 111, 114, 108, 100]),
+			const mockZipContents: Record<string, Buffer> = {
+				file1_txt: Buffer.from([72, 101, 108, 108, 111]),
+				file2_txt: Buffer.from([87, 111, 114, 108, 100]),
 			};
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock zip data'));
-			mockFflate('unzip', mockZipContents);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock zip data'),
+			);
+			mockBoundedUnzip(mockZipContents);
 
-			jest.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
 				async (buffer, fileName) =>
 					({
 						data: buffer.toString('base64'),
@@ -92,7 +109,7 @@ describe('Compression Node - Decompress Operation', () => {
 			expect(result[0][0].binary?.file_0).toBeDefined();
 			expect(result[0][0].binary?.file_1).toBeDefined();
 			expect(result[0][0].pairedItem).toEqual({ item: 0 });
-			expect(fflate.unzip).toHaveBeenCalledTimes(1);
+			expect(boundedUnzip).toHaveBeenCalledTimes(1);
 		});
 
 		it('should skip __MACOSX files when decompressing zip', async () => {
@@ -103,19 +120,19 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'zip',
 			};
 
-			const mockZipContents = {
-				file1_txt: new Uint8Array([72, 101, 108, 108, 111]),
-				__MACOSX_file1_txt: new Uint8Array([0, 0, 0]),
-				file2_txt: new Uint8Array([87, 111, 114, 108, 100]),
+			const mockZipContents: Record<string, Buffer> = {
+				file1_txt: Buffer.from([72, 101, 108, 108, 111]),
+				__MACOSX_file1_txt: Buffer.from([0, 0, 0]),
+				file2_txt: Buffer.from([87, 111, 114, 108, 100]),
 			};
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock zip data'));
-			mockFflate('unzip', mockZipContents);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock zip data'),
+			);
+			mockBoundedUnzip(mockZipContents);
 
-			jest.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
 				async (buffer, fileName) =>
 					({
 						data: buffer.toString('base64'),
@@ -129,7 +146,7 @@ describe('Compression Node - Decompress Operation', () => {
 
 			expect(result[0][0].binary?.file_0).toBeDefined();
 			expect(result[0][0].binary?.file_1).toBeDefined();
-			expect(jest.mocked(mockExecuteFunctions.helpers.prepareBinaryData)).toHaveBeenCalledTimes(2);
+			expect(vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData)).toHaveBeenCalledTimes(2);
 		});
 
 		it('should process multiple zip files from comma-separated binary properties', async () => {
@@ -149,17 +166,17 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'zip',
 			};
 
-			const mockZipContents = {
-				file_txt: new Uint8Array([72, 101, 108, 108, 111]),
+			const mockZipContents: Record<string, Buffer> = {
+				file_txt: Buffer.from([72, 101, 108, 108, 111]),
 			};
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock zip data'));
-			mockFflate('unzip', mockZipContents);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock zip data'),
+			);
+			mockBoundedUnzip(mockZipContents);
 
-			jest.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
 				async (buffer, fileName) =>
 					({
 						data: buffer.toString('base64'),
@@ -171,12 +188,12 @@ describe('Compression Node - Decompress Operation', () => {
 
 			await compression.execute.call(mockExecuteFunctions);
 
-			expect(fflate.unzip).toHaveBeenCalledTimes(2);
-			expect(jest.mocked(mockExecuteFunctions.helpers.assertBinaryData)).toHaveBeenCalledWith(
+			expect(boundedUnzip).toHaveBeenCalledTimes(2);
+			expect(vi.mocked(mockExecuteFunctions.helpers.assertBinaryData)).toHaveBeenCalledWith(
 				0,
 				'data1',
 			);
-			expect(jest.mocked(mockExecuteFunctions.helpers.assertBinaryData)).toHaveBeenCalledWith(
+			expect(vi.mocked(mockExecuteFunctions.helpers.assertBinaryData)).toHaveBeenCalledWith(
 				0,
 				'data2',
 			);
@@ -192,15 +209,15 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'gz',
 			};
 
-			const mockGunzipData = new Uint8Array([72, 101, 108, 108, 111]);
+			const mockGunzipData = Buffer.from([72, 101, 108, 108, 111]);
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock gzip data'));
-			mockFflate('gunzip', mockGunzipData);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock gzip data'),
+			);
+			mockBoundedGunzip(mockGunzipData);
 
-			jest.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
 				data: 'SGVsbG8=',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
@@ -215,7 +232,7 @@ describe('Compression Node - Decompress Operation', () => {
 			expect(result[0][0].binary?.file_0?.fileName).toBe('test.txt');
 			expect(result[0][0].binary?.file_0?.fileExtension).toBe('txt');
 			expect(result[0][0].binary?.file_0?.mimeType).toBe('text/plain');
-			expect(fflate.gunzip).toHaveBeenCalledTimes(1);
+			expect(boundedGunzip).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle gzip file with .gzip extension', async () => {
@@ -226,15 +243,15 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'gzip',
 			};
 
-			const mockGunzipData = new Uint8Array([72, 101, 108, 108, 111]);
+			const mockGunzipData = Buffer.from([72, 101, 108, 108, 111]);
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock gzip data'));
-			mockFflate('gunzip', mockGunzipData);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock gzip data'),
+			);
+			mockBoundedGunzip(mockGunzipData);
 
-			jest.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
 				data: 'SGVsbG8=',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
@@ -244,7 +261,7 @@ describe('Compression Node - Decompress Operation', () => {
 			const result = await compression.execute.call(mockExecuteFunctions);
 
 			expect(result[0][0].binary?.file_0).toBeDefined();
-			expect(fflate.gunzip).toHaveBeenCalledTimes(1);
+			expect(boundedGunzip).toHaveBeenCalledTimes(1);
 		});
 
 		it('should determine mime type and file extension for gzip file', async () => {
@@ -255,18 +272,17 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'gz',
 			};
 
-			const mockGunzipData = new Uint8Array([123, 125]);
+			const mockGunzipData = Buffer.from([123, 125]);
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock gzip data'));
-			mockFflate('gunzip', mockGunzipData);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock gzip data'),
+			);
+			mockBoundedGunzip(mockGunzipData);
 
 			let callCount = 0;
-			jest
-				.mocked(mockExecuteFunctions.helpers.prepareBinaryData)
-				.mockImplementation(async (buffer, fileName, mimeType) => {
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
+				async (buffer, fileName, mimeType) => {
 					callCount++;
 					if (callCount === 1) {
 						return {
@@ -282,7 +298,8 @@ describe('Compression Node - Decompress Operation', () => {
 						fileName: fileName ?? 'data',
 						fileExtension: 'json',
 					} as IBinaryData;
-				});
+				},
+			);
 
 			const result = await compression.execute.call(mockExecuteFunctions);
 
@@ -308,15 +325,15 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'gz',
 			};
 
-			const mockGunzipData = new Uint8Array([72, 101, 108, 108, 111]);
+			const mockGunzipData = Buffer.from([72, 101, 108, 108, 111]);
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock gzip data'));
-			mockFflate('gunzip', mockGunzipData);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock gzip data'),
+			);
+			mockBoundedGunzip(mockGunzipData);
 
-			jest.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
 				data: 'SGVsbG8=',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
@@ -327,11 +344,115 @@ describe('Compression Node - Decompress Operation', () => {
 
 			expect(result[0][0].binary?.file_0).toBeDefined();
 			expect(result[0][0].binary?.file_1).toBeDefined();
-			expect(fflate.gunzip).toHaveBeenCalledTimes(2);
+			expect(boundedGunzip).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('Tar Decompression', () => {
+		const tarContents: Record<string, Buffer> = {
+			'a.txt': Buffer.from([72, 101, 108, 108, 111]),
+			'sub/b.txt': Buffer.from([87, 111, 114, 108, 100]),
+		};
+
+		const prepareBinaryDataPassthrough = () => {
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
+				async (buffer, fileName) =>
+					({
+						data: buffer.toString('base64'),
+						mimeType: 'text/plain',
+						fileName: fileName ?? 'file',
+						fileExtension: 'txt',
+					}) as IBinaryData,
+			);
+		};
+
+		it('should decompress a tar file successfully', async () => {
+			const mockBinaryData: IBinaryData = {
+				data: 'base64data',
+				mimeType: 'application/x-tar',
+				fileName: 'test.tar',
+				fileExtension: 'tar',
+			};
+
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock tar data'),
+			);
+			mockBoundedUntar(tarContents);
+			prepareBinaryDataPassthrough();
+
+			const result = await compression.execute.call(mockExecuteFunctions);
+
+			expect(result[0][0].binary?.file_0).toBeDefined();
+			expect(result[0][0].binary?.file_1).toBeDefined();
+			expect(boundedUntar).toHaveBeenCalledTimes(1);
+			expect(boundedUnzip).not.toHaveBeenCalled();
+		});
+
+		it('should route a .tar.gz file to tar extraction, not gzip', async () => {
+			const mockBinaryData: IBinaryData = {
+				data: 'base64data',
+				mimeType: 'application/gzip',
+				fileName: 'archive.tar.gz',
+				fileExtension: 'gz',
+			};
+
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock targz data'),
+			);
+			mockBoundedUntar(tarContents);
+			prepareBinaryDataPassthrough();
+
+			const result = await compression.execute.call(mockExecuteFunctions);
+
+			expect(result[0][0].binary?.file_0).toBeDefined();
+			expect(boundedUntar).toHaveBeenCalledTimes(1);
+			expect(boundedGunzip).not.toHaveBeenCalled();
+		});
+
+		it('should decompress a .tgz file via tar extraction', async () => {
+			const mockBinaryData: IBinaryData = {
+				data: 'base64data',
+				mimeType: 'application/gzip',
+				fileName: 'archive.tgz',
+				fileExtension: 'tgz',
+			};
+
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock tgz data'),
+			);
+			mockBoundedUntar(tarContents);
+			prepareBinaryDataPassthrough();
+
+			const result = await compression.execute.call(mockExecuteFunctions);
+
+			expect(result[0][0].binary?.file_0).toBeDefined();
+			expect(boundedUntar).toHaveBeenCalledTimes(1);
+			expect(boundedGunzip).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('Error Handling', () => {
+		it('should throw NodeOperationError for an unsupported archive format', async () => {
+			const mockBinaryData: IBinaryData = {
+				data: 'base64data',
+				mimeType: 'application/x-rar-compressed',
+				fileName: 'archive.rar',
+				fileExtension: 'rar',
+			};
+
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock rar data'),
+			);
+
+			await expect(compression.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				NodeOperationError,
+			);
+		});
+
 		it('should throw error when file extension is not found', async () => {
 			const mockBinaryData: IBinaryData = {
 				data: 'base64data',
@@ -340,7 +461,7 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: undefined,
 			};
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
 
 			await expect(compression.execute.call(mockExecuteFunctions)).rejects.toThrow(
 				NodeOperationError,
@@ -355,11 +476,11 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'zip',
 			};
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('invalid zip data'));
-			mockFflate('unzip', null, new Error('Invalid zip file'));
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('invalid zip data'),
+			);
+			mockBoundedUnzip({}, new Error('Invalid zip file'));
 			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 
 			const result = await compression.execute.call(mockExecuteFunctions);
@@ -377,11 +498,11 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'zip',
 			};
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('invalid zip data'));
-			mockFflate('unzip', null, new Error('Invalid zip file'));
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('invalid zip data'),
+			);
+			mockBoundedUnzip({}, new Error('Invalid zip file'));
 			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
 			await expect(compression.execute.call(mockExecuteFunctions)).rejects.toThrow(
@@ -397,11 +518,11 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'gz',
 			};
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('invalid gzip data'));
-			mockFflate('gunzip', null, new Error('Invalid gzip file'));
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('invalid gzip data'),
+			);
+			mockBoundedGunzip(Buffer.alloc(0), new Error('Invalid gzip file'));
 			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 
 			const result = await compression.execute.call(mockExecuteFunctions);
@@ -416,10 +537,10 @@ describe('Compression Node - Decompress Operation', () => {
 				fileName: 'test.zip',
 			};
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock zip data'));
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock zip data'),
+			);
 
 			await expect(compression.execute.call(mockExecuteFunctions)).rejects.toThrow(
 				NodeOperationError,
@@ -441,15 +562,15 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'gz',
 			};
 
-			const mockGunzipData = new Uint8Array([72, 101, 108, 108, 111]);
+			const mockGunzipData = Buffer.from([72, 101, 108, 108, 111]);
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock gzip data'));
-			mockFflate('gunzip', mockGunzipData);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock gzip data'),
+			);
+			mockBoundedGunzip(mockGunzipData);
 
-			jest.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
 				data: 'SGVsbG8=',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
@@ -484,17 +605,17 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'zip',
 			};
 
-			const mockZipContents = {
-				file1_txt: new Uint8Array([72, 101, 108, 108, 111]),
+			const mockZipContents: Record<string, Buffer> = {
+				file1_txt: Buffer.from([72, 101, 108, 108, 111]),
 			};
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock zip data'));
-			mockFflate('unzip', mockZipContents);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock zip data'),
+			);
+			mockBoundedUnzip(mockZipContents);
 
-			jest.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
 				data: 'SGVsbG8=',
 				mimeType: 'text/plain',
 				fileName: 'file1.txt',
@@ -514,11 +635,11 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'zip',
 			};
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock zip data'));
-			mockFflate('unzip', {});
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock zip data'),
+			);
+			mockBoundedUnzip({});
 
 			const result = await compression.execute.call(mockExecuteFunctions);
 
@@ -543,15 +664,15 @@ describe('Compression Node - Decompress Operation', () => {
 				fileExtension: 'gz',
 			};
 
-			const mockGunzipData = new Uint8Array([72, 101, 108, 108, 111]);
+			const mockGunzipData = Buffer.from([72, 101, 108, 108, 111]);
 
-			jest.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
-			jest
-				.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer)
-				.mockResolvedValue(Buffer.from('mock gzip data'));
-			mockFflate('gunzip', mockGunzipData);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock gzip data'),
+			);
+			mockBoundedGunzip(mockGunzipData);
 
-			jest.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
 				data: 'SGVsbG8=',
 				mimeType: 'text/plain',
 				fileName: 'test.txt',
@@ -560,11 +681,11 @@ describe('Compression Node - Decompress Operation', () => {
 
 			const result = await compression.execute.call(mockExecuteFunctions);
 
-			expect(jest.mocked(mockExecuteFunctions.helpers.assertBinaryData)).toHaveBeenCalledWith(
+			expect(vi.mocked(mockExecuteFunctions.helpers.assertBinaryData)).toHaveBeenCalledWith(
 				0,
 				'data1',
 			);
-			expect(jest.mocked(mockExecuteFunctions.helpers.assertBinaryData)).toHaveBeenCalledWith(
+			expect(vi.mocked(mockExecuteFunctions.helpers.assertBinaryData)).toHaveBeenCalledWith(
 				0,
 				'data2',
 			);

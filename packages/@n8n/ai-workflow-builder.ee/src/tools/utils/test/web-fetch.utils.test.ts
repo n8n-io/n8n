@@ -1,8 +1,9 @@
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
+import { createResultError, createResultOk } from '@n8n/utils/result';
 import axios, { type AxiosRequestConfig } from 'axios';
-import { createResultError, createResultOk } from 'n8n-workflow';
 import type { LookupFunction } from 'node:net';
 import { Readable } from 'node:stream';
+import type { Mock } from 'vitest';
 
 import { WEB_FETCH_MAX_BYTES } from '../../../constants';
 import { CrossHostRedirectError, type SsrfGuard } from '../ssrf-guard';
@@ -13,16 +14,16 @@ import {
 	isUrlInUserMessages,
 } from '../web-fetch.utils';
 
-jest.mock('axios', () => ({ __esModule: true, default: { get: jest.fn() } }));
+vi.mock('axios', () => ({ __esModule: true, default: { get: vi.fn() } }));
 
-const mockGet = axios.get as jest.Mock;
+const mockGet = axios.get as Mock;
 
 /** Build a guard whose IP checks pass by default; override per test. */
 function makeGuard(overrides: Partial<SsrfGuard> = {}): SsrfGuard {
 	return {
-		validateUrl: jest.fn(async () => createResultOk(undefined)),
-		validateRedirectSync: jest.fn(),
-		createSecureLookup: jest.fn((): LookupFunction => (() => {}) as unknown as LookupFunction),
+		validateUrl: vi.fn(async () => createResultOk(undefined)),
+		validateRedirectSync: vi.fn(),
+		createSecureLookup: vi.fn((): LookupFunction => (() => {}) as unknown as LookupFunction),
 		...overrides,
 	};
 }
@@ -39,7 +40,7 @@ function axiosResponse(body: string | Buffer, contentType: string, responseUrl: 
 
 describe('web-fetch.utils', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('normalizeHost', () => {
@@ -79,7 +80,7 @@ describe('web-fetch.utils', () => {
 
 		it('runs a pre-flight SSRF check before connecting', async () => {
 			const guard = makeGuard({
-				validateUrl: jest.fn(async () => createResultError(new Error('blocked'))),
+				validateUrl: vi.fn(async () => createResultError(new Error('blocked'))),
 			});
 
 			const result = await fetchUrl('http://10.0.0.1', guard);
@@ -136,7 +137,7 @@ describe('web-fetch.utils', () => {
 
 		it('detects PDF content type and returns unsupported', async () => {
 			const response = axiosResponse('%PDF-1.4', 'application/pdf', 'https://example.com/doc.pdf');
-			const destroySpy = jest.spyOn(response.data, 'destroy');
+			const destroySpy = vi.spyOn(response.data, 'destroy');
 			mockGet.mockResolvedValue(response);
 
 			const result = await fetchUrl('https://example.com/doc.pdf', makeGuard());
@@ -186,6 +187,76 @@ describe('web-fetch.utils', () => {
 			const result = await extractReadableContent(html, 'https://example.com/empty');
 			expect(result.content).toBe('');
 			expect(result.truncated).toBe(false);
+		});
+
+		it('should preserve tables as GFM Markdown', async () => {
+			const html = `
+				<html>
+				<head><title>Pricing</title></head>
+				<body>
+					<article>
+						<h1>Pricing</h1>
+						<table>
+							<thead><tr><th>Plan</th><th>Price</th><th>Seats</th></tr></thead>
+							<tbody>
+								<tr><td>Starter</td><td>9 EUR</td><td>3</td></tr>
+								<tr><td>Pro</td><td>29 EUR</td><td>10</td></tr>
+							</tbody>
+						</table>
+					</article>
+				</body>
+				</html>
+			`;
+
+			const result = await extractReadableContent(html, 'https://example.com/pricing');
+
+			expect(result.content).toContain(
+				'| Plan | Price | Seats |\n| --- | --- | --- |\n| Starter | 9 EUR | 3   |\n| Pro | 29 EUR | 10  |',
+			);
+		});
+
+		it('should use the first row as the header when a table contains only td cells', async () => {
+			const html = `
+				<html>
+				<head><title>Regions</title></head>
+				<body>
+					<article>
+						<table>
+							<tr><td>Region</td><td>Status</td></tr>
+							<tr><td>Europe</td><td>Available</td></tr>
+						</table>
+					</article>
+				</body>
+				</html>
+			`;
+
+			const result = await extractReadableContent(html, 'https://example.com/regions');
+
+			expect(result.content).toContain(
+				'| Region | Status |\n| --- | --- |\n| Europe | Available |',
+			);
+			expect(result.content).not.toContain('|     |     |');
+		});
+
+		it('should fall back to plain text when a table expands beyond the cell limit', async () => {
+			const html = `
+				<html>
+				<head><title>Oversized Table</title></head>
+				<body>
+					<article>
+						<table>
+							<tr><th colspan="1001">Expanded header</th></tr>
+							<tr><td>Body value</td></tr>
+						</table>
+					</article>
+				</body>
+				</html>
+			`;
+
+			const result = await extractReadableContent(html, 'https://example.com/oversized-table');
+
+			expect(result.content).toContain('Expanded header Body value');
+			expect(result.content).not.toContain('|');
 		});
 
 		it('should truncate content exceeding max chars', async () => {

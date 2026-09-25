@@ -1,3 +1,4 @@
+import { TypedEmitter } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
@@ -12,7 +13,6 @@ import type {
 	MaybeHash,
 	Hash,
 } from '@/services/cache/cache.types';
-import { TypedEmitter } from '@/typed-emitter';
 import { isObject } from '@/utils';
 
 type CacheEvents = {
@@ -23,6 +23,8 @@ type CacheEvents = {
 
 @Service()
 export class CacheService extends TypedEmitter<CacheEvents> {
+	private readonly takingKeys = new Set<string>();
+
 	constructor(private readonly globalConfig: GlobalConfig) {
 		super();
 	}
@@ -36,7 +38,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
 		if (useRedis) {
-			const { RedisClientService } = await import('../redis-client.service');
+			const { RedisClientService } = await import('../redis-client.service.js');
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = this.globalConfig.redis.prefix;
@@ -52,7 +54,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 				extraOptions: { keyPrefix: prefix },
 			});
 
-			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager');
+			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager.js');
 			const redisStore = redisStoreUsingClient(redisClient, {
 				ttl: this.globalConfig.cache.redis.ttl,
 			});
@@ -208,6 +210,41 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		}
 
 		return fallbackValue;
+	}
+
+	/**
+	 * Retrieve primitive values under many keys in one round-trip. The result
+	 * is positional: `result[i]` is the value for `keys[i]`, or `undefined`
+	 * when the key is missing.
+	 */
+	async getMany<T = unknown>(keys: string[]): Promise<Array<T | undefined>> {
+		if (!this.cache) await this.init();
+
+		if (keys.length === 0) return [];
+
+		// The store's `mget` is untyped (`unknown[]`); `get<T>` makes the same
+		// caller-asserted promise through the store's generic.
+		return (await this.cache.store.mget(...keys)) as Array<T | undefined>;
+	}
+
+	/** Atomically retrieve and delete a primitive value. */
+	async take<T = unknown>(key: string): Promise<T | undefined> {
+		if (!this.cache) await this.init();
+		if (!key) return undefined;
+
+		if (this.cache.kind === 'redis') {
+			return await this.cache.store.getdel<T>(key);
+		}
+
+		if (this.takingKeys.has(key)) return undefined;
+		this.takingKeys.add(key);
+		try {
+			const value = await this.cache.store.get<T>(key);
+			await this.cache.store.del(key);
+			return value;
+		} finally {
+			this.takingKeys.delete(key);
+		}
 	}
 
 	/**

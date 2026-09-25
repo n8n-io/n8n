@@ -28,7 +28,7 @@ export const opportunityOperations: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities',
+						url: '=/pipelines/{{toPathSegment($parameter.pipelineId)}}/opportunities',
 					},
 				},
 				action: 'Create an opportunity',
@@ -39,7 +39,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
+						url: '=/pipelines/{{toPathSegment($parameter.pipelineId)}}/opportunities/{{toPathSegment($parameter.opportunityId)}}',
 					},
 					output: {
 						postReceive: [
@@ -60,7 +60,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
+						url: '=/pipelines/{{toPathSegment($parameter.pipelineId)}}/opportunities/{{toPathSegment($parameter.opportunityId)}}',
 					},
 				},
 				action: 'Get an opportunity',
@@ -71,7 +71,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities',
+						url: '=/pipelines/{{toPathSegment($parameter.pipelineId)}}/opportunities',
 					},
 					send: {
 						paginate: true,
@@ -85,7 +85,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
+						url: '=/pipelines/{{toPathSegment($parameter.pipelineId)}}/opportunities/{{toPathSegment($parameter.opportunityId)}}',
 					},
 					send: {
 						preSend: [opportunityUpdatePreSendAction, splitTagsPreSendAction],

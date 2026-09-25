@@ -1,14 +1,11 @@
 import {
 	buildN8nObservationLogReflectorPrompt,
-	DEFAULT_REFLECTOR_PROMPT,
 	DEFAULT_REFLECTOR_THRESHOLD_TOKENS,
 } from '../observation-log-reflector';
 
 describe('n8n observation-log reflector policy', () => {
 	it('uses the n8n reflector defaults', () => {
-		expect(DEFAULT_REFLECTOR_THRESHOLD_TOKENS).toBe(4_000);
-		expect(DEFAULT_REFLECTOR_PROMPT).toContain('Return JSON with two arrays');
-		expect(DEFAULT_REFLECTOR_PROMPT).toContain('CRITICAL');
+		expect(DEFAULT_REFLECTOR_THRESHOLD_TOKENS).toBe(60_000);
 	});
 
 	it('builds the reflector prompt from active log and token budget', () => {

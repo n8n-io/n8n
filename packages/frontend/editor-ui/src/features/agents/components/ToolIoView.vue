@@ -1,19 +1,11 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, provide } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { Workflow } from 'n8n-workflow';
 import type { IDataObject, INodeExecutionData, IRunData } from 'n8n-workflow';
-import { ChatSymbol } from '@n8n/chat/constants';
-import type { Chat } from '@n8n/chat/types';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import RunData from '@/features/ndv/runData/components/RunData.vue';
+import StandaloneRunData from '@/features/ndv/runData/components/StandaloneRunData.vue';
+import StandaloneRunDataHost from '@/features/ndv/runData/components/StandaloneRunDataHost.vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
-import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 /**
  * Renders input/output for a single tool/node call using the same RunData
@@ -21,9 +13,8 @@ import type { WorkflowObjectAccessors } from '@/app/types/workflow';
  * the surrounding node list, since a tool call is always one logical node.
  *
  * Synthesizes a fake two-node workflow (an input source + the tool node) so
- * RunData's input pane has a previous node to walk back to, populates the
- * workflows store with the synthesized execution, and tears it all down on
- * unmount.
+ * RunData's input pane has a previous node to walk back to. The standalone
+ * host owns the isolated stores needed to render that execution.
  */
 const props = withDefaults(
 	defineProps<{
@@ -49,19 +40,9 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-const workflowsStore = useWorkflowsStore();
-const workflowState = useWorkflowState();
-const workflowHelpers = useWorkflowHelpers();
-const nodeTypesStore = useNodeTypesStore();
 
 const SYNTHETIC_ID = '__tool_io__';
 const INPUT_NODE_NAME = '__tool_io_input__';
-
-provide(
-	WorkflowIdKey,
-	computed(() => SYNTHETIC_ID),
-);
-provide(ChatSymbol, null as unknown as Chat);
 
 function wrap(value: unknown): INodeExecutionData[] {
 	if (value === undefined || value === null) return [{ json: {} }];
@@ -199,92 +180,42 @@ const synthExecution = computed<IExecutionResponse>(() => {
 	} as unknown as IExecutionResponse;
 });
 
-const synthWorkflow = computed<WorkflowObjectAccessors>(
-	() =>
-		new Workflow({
-			...synthExecution.value.workflowData,
-			nodeTypes: workflowHelpers.getNodeTypes(),
-		}) as unknown as WorkflowObjectAccessors,
-);
-
-const toolNodeUi = computed<INodeUi>(() => {
-	return synthExecution.value.workflowData.nodes.find((n) => n.name === props.name) as INodeUi;
-});
-
-let previousWorkflowExecutionData: typeof workflowsStore.workflowExecutionData | null = null;
-let unmounted = false;
-
-onMounted(async () => {
-	previousWorkflowExecutionData = workflowsStore.workflowExecutionData;
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	// If the component unmounted while node-types were loading, the unmount
-	// hook already restored the previous execution data — installing the synth
-	// payload now would clobber the real workflow's state.
-	if (unmounted) return;
-	workflowState.setWorkflowExecutionData(synthExecution.value);
-});
-
-onBeforeUnmount(() => {
-	unmounted = true;
-	workflowState.setWorkflowExecutionData(previousWorkflowExecutionData);
+const toolNodeUi = computed<INodeUi | null>(() => {
+	return synthExecution.value.workflowData.nodes.find((node) => node.name === props.name) ?? null;
 });
 </script>
 
 <template>
-	<div :class="$style.root">
-		<div :class="$style.pane">
-			<div :class="$style.paneTitle">
-				{{ i18n.baseText('agentSessions.timeline.input') }}
+	<StandaloneRunDataHost v-slot="{ workflowObject, workflowExecution }" :execution="synthExecution">
+		<div :class="$style.root">
+			<div :class="$style.pane" data-test-id="agent-session-run-data-input">
+				<div :class="$style.paneTitle">
+					{{ i18n.baseText('agentSessions.timeline.input') }}
+				</div>
+				<StandaloneRunData
+					:key="`tool-input-${name}`"
+					:node="toolNodeUi"
+					:run-index="0"
+					:workflow-object="workflowObject"
+					:workflow-execution="workflowExecution"
+					pane-type="input"
+				/>
 			</div>
-			<RunData
-				:key="`tool-input-${name}`"
-				:node="toolNodeUi"
-				:run-index="0"
-				:workflow-object="synthWorkflow"
-				:workflow-execution="synthExecution.data"
-				pane-type="input"
-				display-mode="schema"
-				:disable-display-mode-selection="true"
-				:disable-run-index-selection="true"
-				:compact="true"
-				:show-actions-on-hover="true"
-				:disable-pin="true"
-				:disable-edit="true"
-				:disable-hover-highlight="true"
-				:disable-settings-hint="true"
-				:collapsing-table-column-name="null"
-				table-header-bg-color="light"
-				executing-message=""
-				no-data-in-branch-message=""
-			/>
-		</div>
-		<div :class="$style.pane">
-			<div :class="$style.paneTitle">
-				{{ i18n.baseText('agentSessions.timeline.output') }}
+			<div :class="$style.pane" data-test-id="agent-session-run-data-output">
+				<div :class="$style.paneTitle">
+					{{ i18n.baseText('agentSessions.timeline.output') }}
+				</div>
+				<StandaloneRunData
+					:key="`tool-output-${name}`"
+					:node="toolNodeUi"
+					:run-index="0"
+					:workflow-object="workflowObject"
+					:workflow-execution="workflowExecution"
+					pane-type="output"
+				/>
 			</div>
-			<RunData
-				:key="`tool-output-${name}`"
-				:node="toolNodeUi"
-				:run-index="0"
-				:workflow-object="synthWorkflow"
-				:workflow-execution="synthExecution.data"
-				pane-type="output"
-				display-mode="schema"
-				:disable-display-mode-selection="true"
-				:disable-run-index-selection="true"
-				:compact="true"
-				:show-actions-on-hover="true"
-				:disable-pin="true"
-				:disable-edit="true"
-				:disable-hover-highlight="true"
-				:disable-settings-hint="true"
-				:collapsing-table-column-name="null"
-				table-header-bg-color="light"
-				executing-message=""
-				no-data-in-branch-message=""
-			/>
 		</div>
-	</div>
+	</StandaloneRunDataHost>
 </template>
 
 <style module lang="scss">

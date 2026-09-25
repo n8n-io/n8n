@@ -3,27 +3,39 @@ import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { createRouter, createWebHistory, RouterLink } from 'vue-router';
 import { randomInt, type ExecutionSummary, type AnnotationVote } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { IWorkflowDb } from '@/Interface';
-import type { ExecutionSummaryWithScopes } from '../../executions.types';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import type { ExecutionSummaryWithScopes, IExecutionResponse } from '../../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import type { FrontendSettings } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
-import { nextTick, computed } from 'vue';
+import { nextTick, computed, ref } from 'vue';
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 
 const showMessage = vi.fn();
 const showError = vi.fn();
 const showToast = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError, showToast }),
+}));
+
+// Force the add-to-dataset action available so tests can assert the
+// execution status/mode gating in the component itself.
+vi.mock('@/features/ai/evaluation.ee/composables/useAddExecutionToDataset', () => ({
+	useAddExecutionToDataset: () => ({
+		isFeatureEnabled: ref(true),
+		hasDataTableConfig: ref(true),
+		fetchDataTableConfigs: vi.fn(),
+		openModal: vi.fn(),
+	}),
 }));
 
 const routes = [
@@ -31,6 +43,11 @@ const routes = [
 	{
 		path: '/workflow/:workflowId/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
+		component: { template: '<div></div>' },
+	},
+	{
+		path: '/workflow/:workflowId/executions/:executionId',
+		name: VIEWS.EXECUTION_PREVIEW,
 		component: { template: '<div></div>' },
 	},
 	{
@@ -84,6 +101,17 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
 		stubs: {
 			// UN STUB router-link
 			RouterLink,
+			// The preview canvas loads and evicts per-execution data stores on mount,
+			// which would clobber the state these tests seed.
+			ExecutionPreviewHost: true,
+			// Reka UI tooltips don't open in jsdom, so expose the props the component
+			// passes and assert the wiring instead of driving the popup.
+			N8nTooltip: {
+				name: 'N8nTooltip',
+				props: ['disabled', 'content'],
+				template:
+					'<div :data-tooltip-disabled="disabled" :data-tooltip-content="content"><slot /></div>',
+			},
 		},
 		plugins: [router],
 		provide: {
@@ -147,6 +175,82 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		});
 
 		expect(getByTestId('stop-execution')).toBeDisabled();
+	});
+
+	it('shows the add-to-dataset button for a successful non-evaluation execution', () => {
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeInTheDocument();
+	});
+
+	it('enables the add-to-dataset button when the user can update the workflow', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['workflow:update'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeEnabled();
+	});
+
+	it('disables the add-to-dataset button when the user cannot update the workflow', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['workflow:read'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeDisabled();
+	});
+
+	it('enables the delete button when the user can delete executions', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['execution:delete'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-delete-button')).toBeEnabled();
+	});
+
+	it('disables the delete button when the user can edit the workflow but not delete its executions', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['workflow:read', 'workflow:update', 'workflow:execute'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-delete-button')).toBeDisabled();
+	});
+
+	it('hides the add-to-dataset button for evaluation-mode executions', () => {
+		const { queryByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'evaluation' } },
+		});
+
+		expect(queryByTestId('execution-preview-add-to-dataset-button')).toBeNull();
+	});
+
+	it('hides the add-to-dataset button for non-successful executions', () => {
+		const { queryByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'error', mode: 'manual' } },
+		});
+
+		expect(queryByTestId('execution-preview-add-to-dataset-button')).toBeNull();
 	});
 
 	it('should display vote buttons when annotation is enabled', async () => {
@@ -327,6 +431,40 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		expect(queryByTestId('execution-preview-ellipsis-button')).not.toBeInTheDocument();
 	});
 
+	describe('execution data size', () => {
+		it('shows the combined json + binary size in human-readable form', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					execution: {
+						...executionData,
+						status: 'success',
+						jsonSizeBytes: 100 * 1024,
+						binaryDataSizeBytes: 44 * 1024,
+					},
+				},
+			});
+
+			await nextTick();
+
+			expect(getByTestId('execution-preview-id').textContent).toContain('144KB');
+		});
+
+		it('omits the size segment when both sizes are zero/undefined', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					execution: { ...executionData, status: 'success' },
+				},
+			});
+
+			await nextTick();
+
+			const header = getByTestId('execution-preview-id').textContent ?? '';
+			expect(header).toContain('ID#');
+			expect(header).not.toContain('KB');
+			expect(header).not.toContain('MB');
+		});
+	});
+
 	describe('workflow version link', () => {
 		const makeVersion = (overrides: Partial<WorkflowVersion> = {}): WorkflowVersion => ({
 			versionId: faker.string.uuid(),
@@ -449,6 +587,94 @@ describe('WorkflowExecutionsPreview.vue', () => {
 				versionId,
 			);
 			expect(queryByTestId('execution-preview-version-link')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('redacted execution data', () => {
+		const previewPath = `/workflow/${executionData.workflowId}/executions/${executionData.id}`;
+		const debugPath = `/workflow/${executionData.workflowId}/debug/${executionData.id}`;
+
+		// The store exposes `execution` as readonly, so state seeding does not work.
+		// Run the real actions instead and fill it the way the preview does.
+		const seedExecution = (redactionInfo?: {
+			isRedacted: boolean;
+			reason: string;
+			canReveal: boolean;
+		}) => {
+			useExecutionDataStore(createExecutionDataId(executionData.id)).setExecution({
+				id: executionData.id,
+				data: { resultData: { runData: {} }, redactionInfo },
+			} as unknown as IExecutionResponse);
+		};
+
+		beforeEach(async () => {
+			createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: {
+								[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+								[EnterpriseEditionFeature.DebugInEditor]: true,
+							},
+						},
+					},
+				},
+				stubActions: false,
+			});
+
+			// Keyed by the workflow id the renderer injects, so the real
+			// getWorkflowById grants the update permission the button needs.
+			useWorkflowsListStore().workflowsById['test-workflow-id'] = {
+				scopes: ['workflow:update'],
+			} as IWorkflowDb;
+
+			await router.push(previewPath);
+		});
+
+		// The copy never names the reason: end-user credential data is unrevealable to
+		// everyone but the executing user, so a permissions claim would be wrong there.
+		test.each(['workflow_redaction_policy', 'dynamic_credentials'])(
+			'should block the debug button and explain why for reason %s',
+			async (reason) => {
+				seedExecution({ isRedacted: true, reason, canReveal: false });
+
+				const { getByTestId } = renderComponent({ props: { execution: executionData } });
+
+				await userEvent.click(getByTestId('execution-debug-button'));
+				expect(router.currentRoute.value.path).toBe(previewPath);
+
+				const tooltip = getByTestId('execution-debug-button').closest('[data-tooltip-content]');
+				expect(tooltip?.getAttribute('data-tooltip-disabled')).toBe('false');
+				expect(tooltip?.getAttribute('data-tooltip-content')).toBe(
+					'This execution data is redacted and cannot be revealed, so it cannot be pinned in the editor.',
+				);
+			},
+		);
+
+		it('should allow debugging when the data can be revealed', async () => {
+			seedExecution({ isRedacted: true, reason: 'policy', canReveal: true });
+
+			const { getByTestId } = renderComponent({ props: { execution: executionData } });
+
+			expect(
+				getByTestId('execution-debug-button')
+					.closest('[data-tooltip-content]')
+					?.getAttribute('data-tooltip-disabled'),
+			).toBe('true');
+
+			await userEvent.click(getByTestId('execution-debug-button'));
+
+			expect(router.currentRoute.value.path).toBe(debugPath);
+		});
+
+		it('should allow debugging when the data is not redacted', async () => {
+			seedExecution();
+
+			const { getByTestId } = renderComponent({ props: { execution: executionData } });
+
+			await userEvent.click(getByTestId('execution-debug-button'));
+
+			expect(router.currentRoute.value.path).toBe(debugPath);
 		});
 	});
 });

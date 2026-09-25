@@ -1,13 +1,15 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, toRaw } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
@@ -18,7 +20,7 @@ import type {
 	NodeError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { isCommunityPackageName } from 'n8n-workflow';
+import { isCommunityPackageName, replaceCircularReferences } from 'n8n-workflow';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL, VIEWS } from '@/app/constants';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -53,16 +55,24 @@ const assistantHelpers = useAIAssistantHelpers();
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 
-const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
+const executionId = computed(() => workflowExecutionStateStore.value.activeExecution?.id);
+
+// Error payloads can carry live request/response objects, whose graphs are
+// circular. Vue interpolates via `JSON.stringify`, which throws on those — and
+// the render error blanks the whole panel — so interpolate sanitized copies.
+// `toRaw` keeps the copy off the reactive proxy, which is far cheaper to walk.
+const safeContext = computed(() => replaceCircularReferences(toRaw(props.error.context)));
+const safeExtra = computed(() => replaceCircularReferences(toRaw(props.error.extra)));
+const safeCause = computed(() => replaceCircularReferences(toRaw(props.error.cause)));
 
 const displayCause = computed(() => {
-	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
+	return JSON.stringify(safeCause.value ?? '').length < MAX_DISPLAY_DATA_SIZE;
 });
 
 const node = computed(() => {
@@ -134,14 +144,30 @@ const prepareRawMessages = computed(() => {
 	return returnData;
 });
 
+const { aiAssistant, instanceAi } = useEditorContext();
+const instanceAiCapability = useInstanceAiEditorCapability();
+
 const isAskAssistantAvailable = computed(() => {
 	if (!node.value || isSubNodeError.value) {
 		return false;
 	}
 	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
 
-	return chatPanelStore.canShowAiButtonOnCanvas && !isCustomNode && !nodeIsHidden();
+	return (
+		chatPanelStore.isEditableCanvasView &&
+		!isCustomNode &&
+		!nodeIsHidden() &&
+		aiAssistant.value &&
+		!instanceAi.value
+	);
 });
+
+// Replaces the assistant button when Instance AI is on: hands the workflow off
+// like the canvas action. Gated on `openWorkflow` so it's hidden in the artifact.
+const isInstanceAiHandoffAvailable = computed(
+	() =>
+		chatPanelStore.isEditableCanvasView && instanceAi.value && !!instanceAiCapability.openWorkflow,
+);
 
 const assistantAlreadyAsked = computed(() => {
 	return assistantStore.isNodeErrorActive({
@@ -303,7 +329,7 @@ function getParameterName(
 }
 
 function copyErrorDetails() {
-	const error = props.error;
+	const error = toRaw(props.error);
 
 	const errorInfo: IDataObject = {
 		errorMessage: getErrorMessage(),
@@ -383,7 +409,7 @@ function copyErrorDetails() {
 
 	errorInfo.n8nDetails = n8nDetails;
 
-	void clipboard.copy(JSON.stringify(errorInfo, null, 2));
+	void clipboard.copy(JSON.stringify(replaceCircularReferences(errorInfo), null, 2));
 	copySuccess();
 }
 
@@ -456,6 +482,10 @@ async function onAskAssistantClick() {
 		workflowId: workflowId.value,
 	});
 }
+
+async function onInstanceAiHandoffClick() {
+	await instanceAiCapability.openWorkflow?.('node_error_view');
+}
 </script>
 
 <template>
@@ -481,6 +511,16 @@ async function onAskAssistantClick() {
 					class="node-error-view__button"
 					data-test-id="node-error-view-open-node-button"
 					@click="onOpenErrorNodeDetailClick"
+				/>
+			</div>
+			<div
+				v-if="isInstanceAiHandoffAvailable"
+				class="node-error-view__button"
+				data-test-id="node-error-view-instance-ai-button"
+			>
+				<N8nInlineAskAssistantButton
+					:label="i18n.baseText('instanceAi.askAiAssistant')"
+					@click="onInstanceAiHandoffClick"
 				/>
 			</div>
 			<div
@@ -550,7 +590,7 @@ async function onAskAssistantClick() {
 								{{ i18n.baseText('nodeErrorView.details.errorData') }}
 							</p>
 							<div class="node-error-view__details-value">
-								<pre><code>{{ error.context.data }}</code></pre>
+								<pre><code>{{ safeContext?.data }}</code></pre>
 							</div>
 						</div>
 						<div v-if="error.extra" class="node-error-view__details-row">
@@ -558,15 +598,15 @@ async function onAskAssistantClick() {
 								{{ i18n.baseText('nodeErrorView.details.errorExtra') }}
 							</p>
 							<div class="node-error-view__details-value">
-								<pre><code>{{ error.extra }}</code></pre>
+								<pre><code>{{ safeExtra }}</code></pre>
 							</div>
 						</div>
-						<div v-if="error.context && error.context.request" class="node-error-view__details-row">
+						<div v-if="error.context?.request" class="node-error-view__details-row">
 							<p class="node-error-view__details-label">
 								{{ i18n.baseText('nodeErrorView.details.request') }}
 							</p>
 							<div class="node-error-view__details-value">
-								<pre><code>{{ error.context.request }}</code></pre>
+								<pre><code>{{ safeContext?.request }}</code></pre>
 							</div>
 						</div>
 					</div>
@@ -658,20 +698,17 @@ async function onAskAssistantClick() {
 								{{ i18n.baseText('nodeErrorView.details.errorCause') }}
 							</p>
 
-							<pre class="node-error-view__details-value"><code>{{ error.cause }}</code></pre>
+							<pre class="node-error-view__details-value"><code>{{ safeCause }}</code></pre>
 						</div>
 
-						<div
-							v-if="error.context && error.context.causeDetailed"
-							class="node-error-view__details-row"
-						>
+						<div v-if="error.context?.causeDetailed" class="node-error-view__details-row">
 							<p class="node-error-view__details-label">
 								{{ i18n.baseText('nodeErrorView.details.causeDetailed') }}
 							</p>
 
 							<pre
 								class="node-error-view__details-value"
-							><code>{{ error.context.causeDetailed }}</code></pre>
+							><code>{{ safeContext?.causeDetailed }}</code></pre>
 						</div>
 
 						<div v-if="error.stack" class="node-error-view__details-row">

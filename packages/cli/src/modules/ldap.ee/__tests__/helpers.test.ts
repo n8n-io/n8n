@@ -1,7 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { generateNanoId, AuthIdentity, User, UserRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import * as helpers from '../helpers.ee';
 
@@ -97,17 +98,17 @@ describe('Ldap/helpers', () => {
 
 	describe('processUsers', () => {
 		let transactionManager: EntityManager;
-		let mockManagerTransaction: jest.Mock;
+		let mockManagerTransaction: Mock;
 
 		beforeEach(() => {
 			transactionManager = mock<EntityManager>({
-				findOne: jest.fn(),
-				findOneBy: jest.fn(),
-				save: jest.fn(),
-				update: jest.fn(),
+				findOne: vi.fn(),
+				findOneBy: vi.fn(),
+				save: vi.fn(),
+				update: vi.fn(),
 			});
 
-			mockManagerTransaction = jest.fn();
+			mockManagerTransaction = vi.fn();
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(userRepository as any).manager = { transaction: mockManagerTransaction };
 
@@ -145,7 +146,7 @@ describe('Ldap/helpers', () => {
 				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
 			);
 
-			(transactionManager.findOneBy as jest.Mock)
+			(transactionManager.findOneBy as Mock)
 				.mockResolvedValueOnce(authIdentity) // First call for AuthIdentity
 				.mockResolvedValueOnce(existingUser); // Second call for User
 
@@ -192,7 +193,7 @@ describe('Ldap/helpers', () => {
 				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
 			);
 
-			(transactionManager.findOneBy as jest.Mock)
+			(transactionManager.findOneBy as Mock)
 				.mockResolvedValueOnce(authIdentity) // First call for AuthIdentity
 				.mockResolvedValueOnce(existingUser); // Second call for User
 
@@ -231,7 +232,7 @@ describe('Ldap/helpers', () => {
 				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
 			);
 
-			(transactionManager.findOne as jest.Mock).mockResolvedValueOnce(existingLocalUser);
+			(transactionManager.findOne as Mock).mockResolvedValueOnce(existingLocalUser);
 
 			//
 			// ACT
@@ -243,7 +244,7 @@ describe('Ldap/helpers', () => {
 			//
 			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
 			expect(transactionManager.save).toHaveBeenCalledTimes(1);
-			const savedAuthIdentity = (transactionManager.save as jest.Mock).mock.calls[0][0];
+			const savedAuthIdentity = (transactionManager.save as Mock).mock.calls[0][0];
 			expect(savedAuthIdentity).toBeInstanceOf(AuthIdentity);
 			expect(savedAuthIdentity.providerId).toBe(ldapId);
 			expect(savedAuthIdentity.providerType).toBe('ldap');
@@ -273,7 +274,7 @@ describe('Ldap/helpers', () => {
 				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
 			);
 
-			(transactionManager.findOne as jest.Mock).mockResolvedValueOnce(existingLocalUser);
+			(transactionManager.findOne as Mock).mockResolvedValueOnce(existingLocalUser);
 
 			//
 			// ACT
@@ -311,8 +312,8 @@ describe('Ldap/helpers', () => {
 				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
 			);
 
-			(transactionManager.findOne as jest.Mock).mockResolvedValueOnce(null);
-			(userRepository.createUserWithProject as jest.Mock).mockResolvedValueOnce({
+			(transactionManager.findOne as Mock).mockResolvedValueOnce(null);
+			(userRepository.createUserWithProject as Mock).mockResolvedValueOnce({
 				user: createdUser,
 			});
 
@@ -328,7 +329,7 @@ describe('Ldap/helpers', () => {
 				ldapUser,
 				transactionManager,
 			);
-			const savedAuthIdentity = (transactionManager.save as jest.Mock).mock.calls[0][0];
+			const savedAuthIdentity = (transactionManager.save as Mock).mock.calls[0][0];
 			expect(savedAuthIdentity).toBeInstanceOf(AuthIdentity);
 			expect(savedAuthIdentity.providerId).toBe(ldapId);
 			expect(savedAuthIdentity.userId).toBe(createdUser.id);

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -11,13 +11,15 @@ describe('FavoritesEventRelay', () => {
 	const favoritesService = mock<FavoritesService>();
 	new FavoritesEventRelay(eventService, favoritesService).init();
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('workflow-deleted', () => {
 		it('should delete favorites for the deleted workflow', async () => {
 			const event: RelayEventMap['workflow-deleted'] = {
 				user: mock(),
 				workflowId: 'wf1',
+				workflowName: 'Favourited Workflow',
+				projectId: 'project1',
 				publicApi: false,
 			};
 
@@ -74,6 +76,21 @@ describe('FavoritesEventRelay', () => {
 			await new Promise(setImmediate);
 
 			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('proj1', 'project');
+		});
+	});
+
+	describe('agent-deleted', () => {
+		it('should delete favorites for the deleted agent', async () => {
+			const event: RelayEventMap['agent-deleted'] = {
+				agentId: 'agent1',
+				projectId: 'proj1',
+			};
+
+			eventService.emit('agent-deleted', event);
+
+			await new Promise(setImmediate);
+
+			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('agent1', 'agent');
 		});
 	});
 });

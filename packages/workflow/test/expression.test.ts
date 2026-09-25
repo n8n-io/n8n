@@ -183,11 +183,59 @@ describe('Expression', () => {
 			expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
 		});
 
+		it('should not resolve denylisted globals through an indirect reference', () => {
+			const wrapped = (expr: string) =>
+				`={{ (() => { try { return ${expr}; } catch (e) { return 'threw:' + e.message; } })() }}`;
+
+			expect(evaluate(wrapped("(() => eval)()('1+1')"))).toMatch(/^threw:/);
+			expect(evaluate(wrapped("(() => Function)()('return 1')()"))).toMatch(/^threw:/);
+			expect(evaluate(wrapped('[eval][0]("1+1")'))).toMatch(/^threw:/);
+		});
+
 		it('should expose correct process properties in sandbox', () => {
 			expect(evaluate('={{process.version}}')).toMatch(/^v\d+\.\d+\.\d+/);
 			expect(evaluate('={{typeof process.pid}}')).toBe('number');
 			expect(evaluate('={{process.version}}')).not.toBe(process.pid);
 			expect(evaluate('={{process.version}}')).toBe(process.version);
+		});
+
+		it('should expose an empty env and no methods on the sandboxed process', () => {
+			expect(evaluate('={{ JSON.stringify(process.env) }}')).toBe('{}');
+
+			expect(evaluate('={{ Object.keys(process).sort().join(",") }}')).toBe(
+				'arch,env,pid,platform,ppid,release,version,versions',
+			);
+
+			for (const name of ['mainModule', 'getBuiltinModule', 'binding', 'dlopen']) {
+				expect(() => evaluate(`={{ process.${name} }}`)).toThrowError(
+					`Cannot access "${name}" due to security concerns`,
+				);
+			}
+
+			expect(evaluate('={{ typeof process.require }}')).toBe('undefined');
+		});
+
+		it('should keep global objects isolate-local under the vm engine', (ctx) => {
+			if (Expression.getActiveImplementation() !== 'vm') {
+				ctx.skip();
+			}
+
+			const hostRandom = Math.random;
+			const hostNow = Date.now;
+			try {
+				expect(evaluate('={{ (() => { Math.random = () => 0.42; return "done"; })() }}')).toBe(
+					'done',
+				);
+				expect(evaluate('={{ (() => { Date.now = () => 0; return "done"; })() }}')).toBe('done');
+
+				expect(Math.random).toBe(hostRandom);
+				expect(Date.now).toBe(hostNow);
+				expect(Math.random()).not.toBe(0.42);
+				expect(Date.now()).not.toBe(0);
+			} finally {
+				Math.random = hostRandom;
+				Date.now = hostNow;
+			}
 		});
 
 		it('should not able to do arbitrary code execution', () => {
@@ -673,6 +721,48 @@ describe('Expression', () => {
 						return ___n8n_data;
 					})()}}`,
 				],
+				[
+					'class instance field named `__sanitize`',
+					`={{(() => {
+						class A { __sanitize = 1 }
+						return new A().__sanitize;
+					})()}}`,
+				],
+				[
+					'class static field named `__sanitize`',
+					`={{(() => {
+						class A { static __sanitize = 1 }
+						return A.__sanitize;
+					})()}}`,
+				],
+				[
+					'class method named `___n8n_data`',
+					`={{(() => {
+						class A { ___n8n_data(v) { return v } }
+						return 1;
+					})()}}`,
+				],
+				[
+					'class static block beside a static member named `__sanitize`',
+					`={{(() => {
+						class A { static __sanitize = 1; static { A.ready = true } }
+						return A.__sanitize;
+					})()}}`,
+				],
+				[
+					'class field with a computed string-literal key `___n8n_data`',
+					`={{(() => {
+						class A { ['___n8n_data'] = 1 }
+						return new A()['___n8n_data'];
+					})()}}`,
+				],
+				[
+					'class field with a template-literal key `__sanitize`',
+					'={{(() => {' +
+						' class A { [`__sanitize`] = 1 }' +
+						' return new A().__sanitize;' +
+						' })()}}',
+				],
 			];
 
 			for (const [name, payload] of reservedVariablePayloads) {
@@ -680,6 +770,72 @@ describe('Expression', () => {
 					expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
 				});
 			}
+
+			it('should reject a computed member access under a class field named `__sanitize`', () => {
+				const payload =
+					'={{ new (class { __sanitize = String; result = ({})["cons" + "tructor"] })().result }}';
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
+
+			it('should allow a class field with an unreserved name', () => {
+				const payload = `={{(() => {
+					class A { safe = 1 }
+					return new A().safe;
+				})()}}`;
+
+				expect(evaluate(payload)).toBe(1);
+			});
+
+			it('should allow an object literal with a `__sanitize` key', () => {
+				const payload = `={{(() => {
+					const o = { __sanitize: (v) => v };
+					return o.__sanitize(5);
+				})()}}`;
+
+				expect(evaluate(payload)).toBe(5);
+			});
+
+			it('should allow a computed class key', () => {
+				const payload = `={{(() => {
+					const key = 'safe';
+					class A { [key] = 1 }
+					return new A().safe;
+				})()}}`;
+
+				expect(evaluate(payload)).toBe(1);
+			});
+
+			it.each([
+				[
+					'concatenation',
+					"={{ new (class { ['__' + 'sanitize'] = ''.concat.bind(''); r = ({})['con' + 'structor'] })().r }}",
+				],
+				[
+					'static field',
+					"={{ (class { static ['__' + 'sanitize'] = ''.concat.bind(''); static r = ({})['con' + 'structor'] }).r }}",
+				],
+				[
+					'method call',
+					"={{ new (class { ['__sanitize'.toString()] = ''.concat.bind(''); r = ({})['con' + 'structor'] })().r }}",
+				],
+				[
+					'template substitution',
+					"={{ new (class { [`${''}__sanitize`] = ''.concat.bind(''); r = ({})['con' + 'structor'] })().r }}",
+				],
+			])(
+				'should keep the reserved sanitizer reachable only lexically (%s key)',
+				(_name, payload) => {
+					expect(() => evaluate(payload)).toThrow(/due to security concerns/);
+				},
+			);
+
+			it('should reject a `__sanitize` field on a class that extends a base', () => {
+				const payload =
+					'={{ new (class extends String { __sanitize = "".concat.bind("constructor"); r = ({})["con" + "structor"] })().r }}';
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
 
 			it('should block extend() constructor access on arrow functions', () => {
 				expect(() => evaluate('={{ extend((() => {}), "constructor", ["return 1"])() }}')).toThrow(
@@ -1289,6 +1445,66 @@ describe('Expression', () => {
 					{ json: { value: 'second' } },
 				]),
 			).toBe('second');
+		});
+	});
+
+	// CAT-3267: `$jmespath($json, query)` returned null under the VM engine
+	// because `$json` is an in-isolate lazy proxy that could not cross the
+	// isolate bridge to the host-side `$jmespath` wrapper. The fix resolves
+	// `$jmespath` / `$jmesPath` entirely in-isolate so the proxy never crosses
+	// the bridge. Both engines must return the queried value.
+	describe('$jmespath through expression engine (engine parity)', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const workflow = new Workflow({
+			id: 'test-jmespath',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-id',
+					name: 'node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+
+		beforeAll(async () => {
+			await workflow.expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await workflow.expression.releaseIsolate();
+		});
+
+		const evaluate = (expr: string, data: INodeExecutionData[]) =>
+			workflow.expression.getParameterValue(expr, null, 0, 0, 'node', data, 'manual', {});
+
+		it('queries an in-isolate $json proxy (parity)', () => {
+			expect(
+				evaluate('={{ $jmespath($json, "users[*].name") }}', [
+					{ json: { users: [{ name: 'a' }, { name: 'b' }] } },
+				]),
+			).toEqual(['a', 'b']);
+		});
+
+		it('queries via the $jmesPath alias (parity)', () => {
+			expect(
+				evaluate('={{ $jmesPath($json, "users[*].name") }}', [
+					{ json: { users: [{ name: 'a' }, { name: 'b' }] } },
+				]),
+			).toEqual(['a', 'b']);
+		});
+
+		it('resolves a nested-object query (parity)', () => {
+			expect(
+				evaluate('={{ $jmespath($json, "user.address.city") }}', [
+					{ json: { user: { address: { city: 'Berlin' } } } },
+				]),
+			).toBe('Berlin');
 		});
 	});
 

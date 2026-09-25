@@ -1,6 +1,7 @@
+import type { AgentJsonConfig } from '@n8n/api-types';
+
 import type { Agent } from '../entities/agent.entity';
 import { composeJsonConfig, decomposeJsonConfig } from '../json-config/agent-config-composition';
-import type { AgentJsonConfig } from '@n8n/api-types';
 
 describe('composeJsonConfig', () => {
 	it('returns the schema with empty integrations when none are stored', () => {
@@ -44,9 +45,7 @@ describe('decomposeJsonConfig', () => {
 			name: 'A',
 			model: 'anthropic/claude',
 			instructions: 'x',
-			integrations: [
-				{ type: 'schedule', active: true, cronExpression: '0 9 * * *', wakeUpPrompt: 'go' },
-			],
+			integrations: [{ type: 'telegram', credentialId: 'cred-1' }],
 		} as unknown as AgentJsonConfig;
 		const { schemaConfig, integrations } = decomposeJsonConfig(input);
 		expect(schemaConfig).not.toHaveProperty('integrations');

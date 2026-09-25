@@ -166,7 +166,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	const fromAllCalendars = this.getNodeParameter('fromAllCalendars', index) as boolean;
 
 	if (fromAllCalendars) {
-		const response = await microsoftApiRequest.call(this, 'GET', '/calendars', undefined, {
+		const response = await microsoftApiRequest.call(this, 'GET', '/calendars', index, undefined, {
 			$select: 'id',
 		});
 		for (const calendar of response.value) {
@@ -192,6 +192,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 				'value',
 				'GET',
 				endpoint,
+				index,
 				undefined,
 				qs,
 			);
@@ -201,7 +202,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 
 			if (qs.$top <= 0) break;
 
-			const response = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
+			const response = await microsoftApiRequest.call(this, 'GET', endpoint, index, undefined, qs);
 			responseData.push(...response.value);
 		}
 	}

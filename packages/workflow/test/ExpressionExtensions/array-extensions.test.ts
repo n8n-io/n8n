@@ -2,6 +2,7 @@
 
 import { evaluate } from './helpers';
 import { arrayExtensions } from '../../src/extensions/array-extensions';
+import { jsonParse } from '../../src/utils';
 
 describe('Data Transformation Functions', () => {
 	describe('Array Data Transformation Functions', () => {
@@ -101,6 +102,34 @@ describe('Data Transformation Functions', () => {
 			]);
 		});
 
+		describe('.unique()', () => {
+			const unique = arrayExtensions.functions.unique as (
+				value: unknown[],
+				extraArgs: string[],
+			) => unknown[];
+
+			test('should keep an element that does not own the compared field', () => {
+				const inherited = Object.create({ name: 'Nathan' }) as object;
+
+				expect(unique([{ name: 'Nathan' }, inherited], ['name'])).toHaveLength(2);
+			});
+
+			test('should read a compared field served by a proxy without a getOwnPropertyDescriptor trap', () => {
+				const proxyFor = (name: string) => {
+					const fields: Record<string, unknown> = { name };
+					return new Proxy(
+						{},
+						{
+							has: (_target, key) => typeof key === 'string' && Object.hasOwn(fields, key),
+							get: (_target, key) => (typeof key === 'string' ? fields[key] : undefined),
+						},
+					);
+				};
+
+				expect(unique([proxyFor('Nathan'), proxyFor('Jan')], ['name'])).toHaveLength(2);
+			});
+		});
+
 		test('.isEmpty() should work correctly on an array', () => {
 			expect(evaluate('={{ [].isEmpty() }}')).toEqual(true);
 		});
@@ -125,12 +154,78 @@ describe('Data Transformation Functions', () => {
 			).toEqual({ test1: 1, test2: 2, test3: 3, test4: 4 });
 		});
 
+		test('.merge() should drop elements past the length of the shorter array', () => {
+			expect(evaluate('={{ [{ a: 1 }, { b: 2 }].merge([{ c: 3 }]) }}')).toEqual({
+				a: 1,
+				c: 3,
+			});
+		});
+
+		test('.mergeIntoObject() should keep all elements when the base array is longer', () => {
+			expect(evaluate('={{ [{ a: 1 }, { b: 2 }].mergeIntoObject([{ c: 3 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
+		test('.mergeIntoObject() should keep all elements when the argument array is longer', () => {
+			expect(evaluate('={{ [{ a: 1 }].mergeIntoObject([{ b: 2 }, { c: 3 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
+		test('.mergeIntoObject() should keep the base object when the counterpart at that index is not an object', () => {
+			expect(
+				evaluate('={{ [{ a: 1 }, { b: 2 }].mergeIntoObject([{ c: 3 }, "not an object"]) }}'),
+			).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
 		test('.merge() should work correctly without arguments', () => {
 			expect(
 				evaluate(
 					'={{ [{ a: 1, some: null }, { a: 2, c: "something" }, 2, "asds", { b: 23 }, null, [1, 2]].merge() }}',
 				),
 			).toEqual({ a: 1, some: null, c: 'something', b: 23 });
+		});
+
+		describe('.merge() and .mergeIntoObject()', () => {
+			const merge = arrayExtensions.functions.merge as (
+				value: unknown[],
+				extraArgs: unknown[][],
+			) => Record<string, unknown>;
+			const mergeIntoObject = arrayExtensions.functions.mergeIntoObject as (
+				value: unknown[],
+				extraArgs: unknown[][],
+			) => Record<string, unknown>;
+
+			describe.each([
+				['.merge()', merge],
+				['.mergeIntoObject()', mergeIntoObject],
+			])('%s', (_name, mergeFn) => {
+				test('should merge an incoming field named toString', () => {
+					const result = mergeFn([{ a: 1 }], [[{ toString: 'value' }]]);
+
+					expect(Object.prototype.hasOwnProperty.call(result, 'toString')).toBe(true);
+					expect(result.toString).toBe('value');
+				});
+
+				test('should treat an own __proto__ field of a source object as an ordinary field', () => {
+					const source = jsonParse<Record<string, unknown>>('{"__proto__": {"marker": "set"}}');
+
+					const result = mergeFn([source], [[{ a: 1 }]]);
+
+					expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+					expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
+					expect(({} as Record<string, unknown>).marker).toBeUndefined();
+				});
+			});
 		});
 
 		test('.smartJoin() should work correctly on an array of objects', () => {
@@ -144,6 +239,55 @@ describe('Data Transformation Functions', () => {
 			});
 		});
 
+		describe('.smartJoin()', () => {
+			const smartJoin = arrayExtensions.functions.smartJoin as (
+				value: unknown[],
+				extraArgs: string[],
+			) => Record<string, unknown>;
+
+			test('should join own key and value fields', () => {
+				expect(
+					smartJoin(
+						[
+							{ field: 'age', value: 2 },
+							{ field: 'city', value: 'Berlin' },
+						],
+						['field', 'value'],
+					),
+				).toEqual({ age: 2, city: 'Berlin' });
+			});
+
+			test('should ignore inherited key and value fields', () => {
+				const source = Object.create({ field: 'age', value: 2 }) as object;
+
+				expect(smartJoin([source], ['field', 'value'])).toEqual({});
+			});
+
+			test('should read key and value fields served by a proxy without a getOwnPropertyDescriptor trap', () => {
+				const fields: Record<string, unknown> = { field: 'age', value: 2 };
+				const source = new Proxy(
+					{},
+					{
+						has: (_target, key) => typeof key === 'string' && Object.hasOwn(fields, key),
+						get: (_target, key) => (typeof key === 'string' ? fields[key] : undefined),
+					},
+				);
+
+				expect(smartJoin([source], ['field', 'value'])).toEqual({ age: 2 });
+			});
+
+			test('should treat a key named __proto__ as an ordinary field', () => {
+				const result = smartJoin(
+					[{ field: '__proto__', value: { marker: 'set' } }],
+					['field', 'value'],
+				);
+
+				expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+				expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
+				expect(({} as Record<string, unknown>).marker).toBeUndefined();
+			});
+		});
+
 		test('.renameKeys() should work correctly on an array of objects', () => {
 			expect(
 				evaluate(
@@ -153,6 +297,28 @@ describe('Data Transformation Functions', () => {
 				{ rename1: 1, test2: 2 },
 				{ rename1: 1, rename3: 3 },
 			]);
+		});
+
+		describe('.renameKeys()', () => {
+			const renameKeys = arrayExtensions.functions.renameKeys as (
+				value: unknown[],
+				extraArgs: string[],
+			) => Array<Record<string, unknown>>;
+
+			test('should rename nothing when the source name is not an own field', () => {
+				const [result] = renameKeys([{ name: 'test' }], ['toString', 'renamed']);
+
+				expect(result).toEqual({ name: 'test' });
+				expect(Object.prototype.hasOwnProperty.call(result, 'renamed')).toBe(false);
+			});
+
+			test('should treat a target name of __proto__ as an ordinary field', () => {
+				const [result] = renameKeys([{ name: { marker: 'set' } }], ['name', '__proto__']);
+
+				expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+				expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
+				expect(({} as Record<string, unknown>).marker).toBeUndefined();
+			});
 		});
 
 		test('.sum() should work on an array of numbers', () => {

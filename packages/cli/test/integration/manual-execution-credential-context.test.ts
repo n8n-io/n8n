@@ -14,9 +14,9 @@ import { LicenseState } from '@n8n/backend-common';
 import { testDb, createWorkflow } from '@n8n/backend-test-utils';
 import { ExecutionRepository, InvalidAuthTokenRepository, type IWorkflowDb } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import { toCredentialContext, toExecutionContext, type IExecutionContext } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { N8NIdentifier } from '@/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier';

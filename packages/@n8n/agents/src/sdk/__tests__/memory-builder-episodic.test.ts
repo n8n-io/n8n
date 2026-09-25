@@ -1,10 +1,10 @@
-import type { AgentRuntime } from '../../runtime/agent-runtime';
+import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
 import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
-} from '../../runtime/episodic-memory-defaults';
-import { InMemoryMemory } from '../../runtime/memory-store';
+} from '../../runtime/memory/episodic-memory-defaults';
+import { InMemoryMemory } from '../../runtime/memory/memory-store';
 import type { BuiltMemory, EpisodicMemoryConfig } from '../../types';
 import { Agent } from '../agent';
 import {
@@ -19,7 +19,7 @@ type EmbeddingProviderOpts = {
 	baseURL?: string;
 };
 
-jest.mock('@ai-sdk/openai', () => ({
+vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: (opts?: EmbeddingProviderOpts) =>
 		Object.assign(
 			(model: string) => ({
@@ -43,12 +43,12 @@ jest.mock('@ai-sdk/openai', () => ({
 
 describe('Memory builder — episodic memory', () => {
 	const minimalBackend = {
-		getThread: jest.fn().mockResolvedValue(null),
-		saveThread: jest.fn().mockResolvedValue({}),
-		deleteThread: jest.fn().mockResolvedValue(undefined),
-		getMessages: jest.fn().mockResolvedValue([]),
-		saveMessages: jest.fn().mockResolvedValue(undefined),
-		deleteMessages: jest.fn().mockResolvedValue(undefined),
+		getThread: vi.fn().mockResolvedValue(null),
+		saveThread: vi.fn().mockResolvedValue({}),
+		deleteThread: vi.fn().mockResolvedValue(undefined),
+		getMessages: vi.fn().mockResolvedValue([]),
+		saveMessages: vi.fn().mockResolvedValue(undefined),
+		deleteMessages: vi.fn().mockResolvedValue(undefined),
 		describe: () => ({
 			name: 'minimal',
 			constructorName: 'MinimalMemory',
@@ -68,14 +68,9 @@ describe('Memory builder — episodic memory', () => {
 			.instructions('You are a test assistant.')
 			.memory(memory);
 
-		const runtime = await (agent as unknown as { build(): Promise<AgentRuntime> }).build();
-		const runtimeConfig = (
-			runtime as unknown as {
-				config: {
-					episodicMemory?: EpisodicMemoryConfig;
-				};
-			}
-		).config;
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
 		const embedder = runtimeConfig.episodicMemory?.embedder as unknown as Record<string, unknown>;
 
 		expect(runtimeConfig.episodicMemory).toMatchObject({
@@ -85,7 +80,6 @@ describe('Memory builder — episodic memory', () => {
 		});
 		expect(runtimeConfig.episodicMemory).not.toHaveProperty('halfLifeDays');
 		expect(runtimeConfig.episodicMemory).not.toHaveProperty('maxEntryLength');
-		expect(typeof runtimeConfig.episodicMemory?.extract).toBe('function');
 		expect(typeof runtimeConfig.episodicMemory?.reflect).toBe('function');
 		expect(embedder.provider).toBe('openai');
 		expect(embedder.modelId).toBe('text-embedding-3-small');
@@ -99,15 +93,12 @@ describe('Memory builder — episodic memory', () => {
 			modelId: 'embedding',
 			specificationVersion: 'v2',
 		} as unknown as NonNullable<EpisodicMemoryConfig['embedder']>;
-		const extract: NonNullable<EpisodicMemoryConfig['extract']> = async () =>
-			await Promise.resolve({ entries: [] });
 		const reflect: NonNullable<EpisodicMemoryConfig['reflect']> = async () =>
 			await Promise.resolve({
 				drop: [],
 				merge: [],
 			});
 		const prompts = {
-			extraction: 'extract prompt',
 			reflection: 'reflect prompt',
 			recallToolInstruction: 'recall prompt',
 		};
@@ -120,7 +111,6 @@ describe('Memory builder — episodic memory', () => {
 				maxEntryLength: 400,
 				embedder,
 				embeddingModel: 'custom/model',
-				extract,
 				reflect,
 				prompts,
 			} as unknown as EpisodicMemoryConfig,
@@ -136,7 +126,6 @@ describe('Memory builder — episodic memory', () => {
 		expect(resolved).not.toHaveProperty('halfLifeDays');
 		expect(resolved).not.toHaveProperty('maxEntryLength');
 		expect(resolved.embedder).toBe(embedder);
-		expect(resolved.extract).toBe(extract);
 		expect(resolved.reflect).toBe(reflect);
 	});
 
@@ -156,7 +145,6 @@ describe('Memory builder — episodic memory', () => {
 				memory: minimalBackend,
 				episodicMemory: {
 					embedder: { specificationVersion: 'v2' } as never,
-					extract: async () => await Promise.resolve({ entries: [] }),
 				},
 			}),
 		).toThrow(/BuiltEpisodicMemoryStore/);

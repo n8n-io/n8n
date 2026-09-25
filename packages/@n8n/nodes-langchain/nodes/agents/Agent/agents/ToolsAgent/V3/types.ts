@@ -32,8 +32,10 @@ export type AgentOptions = {
 	maxIterations?: number;
 	returnIntermediateSteps?: boolean;
 	passthroughBinaryImages?: boolean;
+	passthroughBinaryPdfs?: boolean;
 	enableStreaming?: boolean;
 	maxTokensFromMemory?: number;
+	forceToolCallOnFirstIteration?: boolean;
 	tracingMetadata?: {
 		values?: TracingMetadataEntry[];
 	};

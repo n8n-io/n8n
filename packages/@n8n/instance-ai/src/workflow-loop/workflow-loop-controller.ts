@@ -19,6 +19,10 @@ import {
 	createRemediation,
 	remainingPostSubmitRemediations,
 } from './remediation';
+import {
+	buildRemediationForVerification,
+	shouldVerifyBeforeSetup,
+} from './setup-verification-policy';
 import type {
 	AttemptRecord,
 	RemediationMetadata,
@@ -85,7 +89,9 @@ export function handleBuildOutcome(
 		MAX_POST_SUBMIT_REMEDIATION_SUBMITS - postSubmitRemediationSubmitsUsed,
 	);
 	const remediation = withRemainingSubmitFixes(outcome.remediation, remainingSubmitFixes);
-	applyRemediationToAttempt(attempt, remediation);
+	const shouldVerifyFirst = shouldVerifyBeforeSetup(outcome);
+	const effectiveRemediation = buildRemediationForVerification(outcome, remediation);
+	applyRemediationToAttempt(attempt, effectiveRemediation);
 
 	if (!outcome.submitted) {
 		const preSaveSubmitFailures = normalizedState.successfulSubmitSeen
@@ -97,8 +103,8 @@ export function handleBuildOutcome(
 		const postSubmitBudgetExhausted =
 			normalizedState.successfulSubmitSeen &&
 			postSubmitRemediationSubmitsUsed >= MAX_POST_SUBMIT_REMEDIATION_SUBMITS;
-		let terminalRemediation = remediation;
-		if (preSaveBudgetExhausted && remediation?.shouldEdit !== false) {
+		let terminalRemediation = effectiveRemediation;
+		if (preSaveBudgetExhausted && effectiveRemediation?.shouldEdit !== false) {
 			terminalRemediation = createRemediation({
 				category: 'blocked',
 				shouldEdit: false,
@@ -108,7 +114,7 @@ export function handleBuildOutcome(
 				guidance:
 					'The workflow could not be saved after three submit attempts. Stop editing and explain the blocker to the user.',
 			});
-		} else if (postSubmitBudgetExhausted && remediation?.shouldEdit !== false) {
+		} else if (postSubmitBudgetExhausted && effectiveRemediation?.shouldEdit !== false) {
 			terminalRemediation = createRemediation({
 				category: 'blocked',
 				shouldEdit: false,
@@ -129,8 +135,10 @@ export function handleBuildOutcome(
 			outcome.blockingReason ??
 			outcome.failureSignature ??
 			'Builder failed to submit workflow';
+		const sourceFilePath = outcome.sourceFilePath ?? normalizedState.sourceFilePath;
 		const nextState: WorkflowLoopState = {
 			...normalizedState,
+			...(sourceFilePath ? { sourceFilePath } : {}),
 			lastTaskId: outcome.taskId,
 			preSaveSubmitFailures,
 			postSubmitRemediationSubmitsUsed,
@@ -144,7 +152,13 @@ export function handleBuildOutcome(
 			action:
 				outcome.needsUserInput || terminalRemediation?.shouldEdit === false
 					? { type: 'blocked', reason }
-					: { type: 'continue_building', reason },
+					: nextState.sourceFilePath
+						? {
+								type: 'continue_building',
+								reason,
+								sourceFilePath: nextState.sourceFilePath,
+							}
+						: { type: 'continue_building', reason },
 			attempt,
 		};
 	}
@@ -157,9 +171,17 @@ export function handleBuildOutcome(
 			? outcome.mockedCredentialTypes
 			: undefined;
 	const hasUnresolvedPlaceholders = outcome.hasUnresolvedPlaceholders ?? undefined;
+	const sourceFilePath = outcome.sourceFilePath ?? normalizedState.sourceFilePath;
+	// Deliberately not carried over from the previous build: a credential added since then
+	// must still route setup, even if an earlier build had nothing but skipped ones left.
+	const setupSkippedByUser =
+		outcome.setupRequirement?.status === 'not_required' &&
+		outcome.setupRequirement.reason === 'skipped-by-user';
 	const updatedState: WorkflowLoopState = {
 		...normalizedState,
 		workflowId: outcome.workflowId ?? normalizedState.workflowId,
+		...(sourceFilePath ? { sourceFilePath } : {}),
+		setupSkippedByUser,
 		lastTaskId: outcome.taskId,
 		mockedCredentialTypes: mockedCredentialTypes ?? normalizedState.mockedCredentialTypes,
 		hasUnresolvedPlaceholders:
@@ -169,10 +191,10 @@ export function handleBuildOutcome(
 			? (normalizedState.preSaveSubmitFailures ?? 0)
 			: 0,
 		postSubmitRemediationSubmitsUsed,
-		lastRemediation: remediation,
+		lastRemediation: effectiveRemediation,
 	};
 
-	if (outcome.needsUserInput) {
+	if (outcome.needsUserInput && !shouldVerifyFirst) {
 		return {
 			state: { ...updatedState, phase: 'blocked', status: 'blocked' },
 			action: { type: 'blocked', reason: outcome.blockingReason ?? 'Needs user input' },
@@ -189,6 +211,7 @@ export function handleBuildOutcome(
 				summary: outcome.summary,
 				mockedCredentialTypes,
 				hasUnresolvedPlaceholders: updatedState.hasUnresolvedPlaceholders,
+				setupSkippedByUser: updatedState.setupSkippedByUser,
 			},
 			attempt,
 		};
@@ -223,6 +246,7 @@ export function handleVerificationVerdict(
 	const attempt = makeAttempt(normalizedState, 'verify', attempts);
 	attempt.executionId = verdict.executionId;
 	attempt.failureSignature = verdict.failureSignature;
+	attempt.workflowInspection = verdict.workflowInspection;
 	attempt.diagnosis = verdict.diagnosis;
 	const remediation = withRemainingSubmitFixes(
 		verdict.remediation,
@@ -239,6 +263,7 @@ export function handleVerificationVerdict(
 				status: 'blocked',
 				lastExecutionId: verdict.executionId,
 				lastFailureSignature: verdict.failureSignature,
+				lastWorkflowInspection: verdict.workflowInspection,
 				lastRemediation: remediation,
 			},
 			action: { type: 'blocked', reason: remediation.guidance },
@@ -248,6 +273,9 @@ export function handleVerificationVerdict(
 
 	switch (verdict.verdict) {
 		case 'verified': {
+			// The loop still completes on a partial run — re-issuing verification
+			// would replay the same coverage forever. Only the claim is downgraded,
+			// so `done` carries an honest verdict instead of a blocked state.
 			attempt.result = 'success';
 			return {
 				state: {
@@ -255,14 +283,17 @@ export function handleVerificationVerdict(
 					phase: 'done',
 					status: 'completed',
 					lastExecutionId: verdict.executionId,
+					lastWorkflowInspection: verdict.workflowInspection,
 					lastRemediation: remediation,
 				},
 				action: {
 					type: 'done',
 					workflowId: verdict.workflowId,
 					summary: verdict.summary,
+					claim: verdict.claim,
 					mockedCredentialTypes: normalizedState.mockedCredentialTypes,
 					hasUnresolvedPlaceholders: normalizedState.hasUnresolvedPlaceholders,
+					setupSkippedByUser: normalizedState.setupSkippedByUser,
 				},
 				attempt,
 			};
@@ -275,6 +306,7 @@ export function handleVerificationVerdict(
 					...normalizedState,
 					phase: 'done',
 					status: 'completed',
+					lastWorkflowInspection: verdict.workflowInspection,
 					lastRemediation: remediation,
 				},
 				action: {
@@ -283,6 +315,7 @@ export function handleVerificationVerdict(
 					summary: verdict.summary,
 					mockedCredentialTypes: normalizedState.mockedCredentialTypes,
 					hasUnresolvedPlaceholders: normalizedState.hasUnresolvedPlaceholders,
+					setupSkippedByUser: normalizedState.setupSkippedByUser,
 				},
 				attempt,
 			};
@@ -295,6 +328,7 @@ export function handleVerificationVerdict(
 					...normalizedState,
 					phase: 'blocked',
 					status: 'blocked',
+					lastWorkflowInspection: verdict.workflowInspection,
 					lastRemediation: remediation,
 				},
 				action: { type: 'blocked', reason: verdict.diagnosis ?? 'Needs user input' },
@@ -310,6 +344,7 @@ export function handleVerificationVerdict(
 					phase: 'blocked',
 					status: 'blocked',
 					lastFailureSignature: verdict.failureSignature,
+					lastWorkflowInspection: verdict.workflowInspection,
 					lastRemediation: remediation,
 				},
 				action: { type: 'blocked', reason: verdict.summary },
@@ -323,6 +358,9 @@ export function handleVerificationVerdict(
 			return escalateToRepair(normalizedState, attempts, verdict, attempt, remediation, {
 				type: 'patch',
 				workflowId: verdict.workflowId,
+				...(normalizedState.sourceFilePath
+					? { sourceFilePath: normalizedState.sourceFilePath }
+					: {}),
 				failedNodeName: verdict.failedNodeName ?? 'unknown',
 				diagnosis: verdict.diagnosis ?? verdict.summary,
 				patch: verdict.patch,
@@ -335,6 +373,7 @@ export function handleVerificationVerdict(
 
 			const failureDetails = [
 				verdict.diagnosis ?? '',
+				verdict.workflowInspection ? `Workflow inspection: ${verdict.workflowInspection}` : '',
 				verdict.failedNodeName ? `Failed node: ${verdict.failedNodeName}` : '',
 				verdict.failureSignature ? `Signature: ${verdict.failureSignature}` : '',
 			]
@@ -344,6 +383,9 @@ export function handleVerificationVerdict(
 			return escalateToRepair(normalizedState, attempts, verdict, attempt, remediation, {
 				type: 'rebuild',
 				workflowId: verdict.workflowId,
+				...(normalizedState.sourceFilePath
+					? { sourceFilePath: normalizedState.sourceFilePath }
+					: {}),
 				failureDetails: failureDetails || verdict.summary,
 			});
 		}
@@ -377,6 +419,7 @@ function escalateToRepair(
 				phase: 'blocked',
 				status: 'blocked',
 				lastFailureSignature: verdict.failureSignature,
+				lastWorkflowInspection: verdict.workflowInspection,
 				lastRemediation: blockedRemediation,
 			},
 			action: {
@@ -398,17 +441,27 @@ function escalateToRepair(
 				'The workflow was saved, but the automatic repair budget is exhausted. Stop editing and explain the blocker to the user.',
 		});
 		applyRemediationToAttempt(attempt, blockedRemediation);
+		// Lead the blocked reason with the concrete verification failure, then the
+		// budget-exhaustion guidance. The guidance alone ("repair budget exhausted,
+		// stop editing") tells the agent *what to do next* but buries *what went
+		// wrong* — the agent needs the latter to explain the real blocker to the
+		// user. Fall back to guidance only when the verdict carries no failure text.
+		const failureDetail = describeVerificationFailure(verdict);
+		const reason = failureDetail
+			? `${failureDetail} ${blockedRemediation.guidance}`
+			: blockedRemediation.guidance;
 		return {
 			state: {
 				...state,
 				phase: 'blocked',
 				status: 'blocked',
 				lastFailureSignature: verdict.failureSignature,
+				lastWorkflowInspection: verdict.workflowInspection,
 				lastRemediation: blockedRemediation,
 			},
 			action: {
 				type: 'blocked',
-				reason: blockedRemediation.guidance,
+				reason,
 			},
 			attempt,
 		};
@@ -421,7 +474,9 @@ function escalateToRepair(
 			status: 'active',
 			rebuildAttempts: state.rebuildAttempts + 1,
 			lastFailureSignature: verdict.failureSignature,
+			lastFailedNodeName: verdict.failedNodeName ?? state.lastFailedNodeName,
 			lastExecutionId: verdict.executionId,
+			lastWorkflowInspection: verdict.workflowInspection,
 			lastRemediation: remediation,
 		},
 		action,
@@ -456,6 +511,22 @@ function applyRemediationToAttempt(
 	attempt.remediationCategory = remediation.category;
 	attempt.remediationShouldEdit = remediation.shouldEdit;
 	attempt.remediationGuidance = remediation.guidance;
+}
+
+/**
+ * Compose a concise, human-readable description of *what* a verification verdict
+ * found, so blocked actions can surface the concrete failure rather than only
+ * generic remediation guidance. `summary` is always present; `diagnosis` and
+ * `failureSignature` are appended when they add information.
+ */
+function describeVerificationFailure(verdict: VerificationResult): string {
+	return [
+		verdict.summary,
+		verdict.diagnosis && verdict.diagnosis !== verdict.summary ? verdict.diagnosis : '',
+		verdict.failureSignature ? `Signature: ${verdict.failureSignature}` : '',
+	]
+		.filter(Boolean)
+		.join('. ');
 }
 
 /**
@@ -496,6 +567,7 @@ export function formatAttemptHistory(attempts: AttemptRecord[]): string {
 	const lines = attempts.map((a) => {
 		let line = `Attempt ${a.attempt} [${a.action}]: ${a.result}`;
 		if (a.failureSignature) line += ` — ${a.failureSignature}`;
+		if (a.workflowInspection) line += ` | Inspection: ${a.workflowInspection}`;
 		if (a.diagnosis) line += ` | ${a.diagnosis}`;
 		if (a.fixApplied) line += ` | Fix: ${a.fixApplied}`;
 		return line;

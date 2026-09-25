@@ -12,23 +12,23 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import ProjectCreateResource from './ProjectCreateResource.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
-import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import { NEW_AGENT_VIEW } from '@/features/agents/constants';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
+import PromotionBanners from '@/features/integrations/promotions.ee/components/PromotionBanners.vue';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 const route = useRoute();
@@ -39,7 +39,7 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const agentTelemetry = useAgentTelemetry();
+const { createAgent } = useCreateAgent();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 
@@ -121,7 +121,11 @@ const externalSecretsProviderPermissions = computed(
 const showSettings = computed(
 	() =>
 		!!route?.params?.projectId &&
-		(!!projectPermissions.value.update || !!externalSecretsProviderPermissions.value.read) &&
+		// Each section of the settings page is entered by its own scope, so any one
+		// of them is enough to reach the page.
+		(!!projectPermissions.value.update ||
+			!!projectPermissions.value.manageMembers ||
+			!!externalSecretsProviderPermissions.value.read) &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
 
@@ -132,21 +136,21 @@ const showFolders = computed(() => {
 	);
 });
 
-const customProjectTabs = computed((): Array<TabOptions<string>> => {
-	// Determine the type of tab based on the current project page
-	let tabType: 'shared' | 'overview' | 'project';
+const pageType = computed(() => {
 	if (projectPages.isSharedSubPage) {
-		tabType = 'shared';
+		return 'shared';
 	} else if (projectPages.isOverviewSubPage) {
-		tabType = 'overview';
+		return 'overview';
 	} else {
-		tabType = 'project';
+		return 'project';
 	}
+});
+
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	// Only pick up tabs from active modules
-	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
-		settingsStore.isModuleActive,
-	);
-	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+	const moduleTabs = uiStore.moduleTabs[pageType.value];
+	const activeModules = Object.keys(moduleTabs).filter(settingsStore.isModuleActive);
+	return activeModules.flatMap((module) => moduleTabs[module]);
 });
 
 const ACTION_TYPES = {
@@ -196,6 +200,7 @@ const createVariableButton = computed(() => ({
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
+		!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables] ||
 		(!projectVariablePermissions.value.create && !globalVariablesPermissions.value.create),
 }));
 
@@ -381,20 +386,9 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 		telemetry.track('User clicked header add variable button');
 	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
-		agentTelemetry.trackClickedNewAgent(source);
-		void router.push({ name: NEW_AGENT_VIEW, query: { projectId } });
+		createAgent(source, projectId);
 	},
 } as const;
-
-const pageType = computed(() => {
-	if (projectPages.isSharedSubPage) {
-		return 'shared';
-	} else if (projectPages.isOverviewSubPage) {
-		return 'overview';
-	} else {
-		return 'project';
-	}
-});
 
 const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
@@ -540,10 +534,13 @@ const onSelect = (action: string, source: CreateSource) => {
 				:additional-tabs="customProjectTabs"
 			/>
 		</div>
+		<PromotionBanners />
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .projectHeader {
 	display: flex;
 	align-items: flex-start;
@@ -598,7 +595,7 @@ const onSelect = (action: string, source: CreateSource) => {
 	opacity: 1;
 }
 
-@include mixins.breakpoint('xs-only') {
+@include breakpoints.breakpoint('xs-only') {
 	.projectHeader {
 		flex-direction: column;
 		align-items: flex-start;

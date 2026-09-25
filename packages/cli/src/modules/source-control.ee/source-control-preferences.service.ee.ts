@@ -9,6 +9,8 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { readFile, writeFile } from 'node:fs/promises';
 import * as path from 'path';
 
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+
 import {
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
@@ -36,6 +38,7 @@ export class SourceControlPreferencesService {
 		private readonly cipher: Cipher,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly sourceControlConfig: SourceControlConfig,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {
 		this.sshFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_SSH_FOLDER);
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -55,6 +58,9 @@ export class SourceControlPreferencesService {
 			preferences,
 			this._sourceControlPreferences,
 		);
+		// Mirror into core so consumers can check write access without
+		// depending on this module.
+		this.instanceWriteAccess.setReadOnly(this._sourceControlPreferences.branchReadOnly ?? false);
 	}
 
 	isSourceControlSetup() {
@@ -323,7 +329,7 @@ export class SourceControlPreferencesService {
 	 */
 	private async broadcastReloadSourceControlConfiguration(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-source-control-config' });
 			this.logger.debug('Broadcasting source control configuration reload to other main instances');
 		}

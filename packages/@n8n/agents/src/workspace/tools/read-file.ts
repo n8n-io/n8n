@@ -9,7 +9,11 @@ export function createReadFileTool(filesystem: WorkspaceFilesystem): BuiltTool {
 		.description('Read the contents of a file from the workspace')
 		.input(
 			z.object({
-				path: z.string().describe('Path to the file to read'),
+				path: z
+					.string()
+					.describe(
+						'Path to the file to read, relative to the workspace root (absolute paths must be under it)',
+					),
 				encoding: z.enum(['utf-8', 'base64']).optional().describe('File encoding (default: utf-8)'),
 			}),
 		)
@@ -18,9 +22,10 @@ export function createReadFileTool(filesystem: WorkspaceFilesystem): BuiltTool {
 				content: z.string().describe('File content'),
 			}),
 		)
-		.handler(async (input) => {
+		.handler(async (input, ctx) => {
 			const content = await filesystem.readFile(input.path, {
 				encoding: (input.encoding ?? 'utf-8') as BufferEncoding,
+				abortSignal: ctx.abortSignal,
 			});
 			return { content: content.toString() };
 		})

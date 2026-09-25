@@ -15,11 +15,11 @@ import {
 import { createNodeSearchTool } from '../node-search.tool';
 
 // Mock LangGraph dependencies
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-		content: JSON.stringify(params),
-	})),
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
+	Command: vi.fn(function (params: Record<string, unknown>) {
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
 describe('NodeSearchTool', () => {
@@ -27,7 +27,7 @@ describe('NodeSearchTool', () => {
 	let nodeSearchTool: ReturnType<typeof createNodeSearchTool>['tool'];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Create a comprehensive test node set
 		nodeTypesList = [
@@ -79,7 +79,7 @@ describe('NodeSearchTool', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('invoke', () => {

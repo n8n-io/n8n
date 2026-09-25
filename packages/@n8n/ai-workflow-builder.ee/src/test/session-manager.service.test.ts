@@ -1,20 +1,21 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import { MemorySaver } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
-import { mock, mockClear } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { Mock, Mocked, MockInstance, MockedClass } from 'vitest';
+import { mock, mockClear } from 'vitest-mock-extended';
 
 import { SessionManagerService } from '@/session-manager.service';
 import { getBuilderToolsForDisplay } from '@/tools/builder-tools';
 import type { ISessionStorage, StoredSession } from '@/types/session-storage';
 import * as streamProcessor from '@/utils/stream-processor';
 
-jest.mock('@langchain/langgraph', () => ({
-	MemorySaver: jest.fn(),
+vi.mock('@langchain/langgraph', () => ({
+	MemorySaver: vi.fn(),
 }));
-jest.mock('../utils/stream-processor');
-jest.mock('../tools/builder-tools', () => ({
-	getBuilderToolsForDisplay: jest.fn().mockReturnValue([]),
+vi.mock('../utils/stream-processor');
+vi.mock('../tools/builder-tools', () => ({
+	getBuilderToolsForDisplay: vi.fn().mockReturnValue([]),
 }));
 
 describe('SessionManagerService', () => {
@@ -22,9 +23,9 @@ describe('SessionManagerService', () => {
 	let mockLogger: ReturnType<typeof mock<Logger>>;
 	let mockMemorySaver: ReturnType<typeof mock<MemorySaver>>;
 	let mockParsedNodeTypes: INodeTypeDescription[];
-	let formatMessagesSpy: jest.SpyInstance;
+	let formatMessagesSpy: MockInstance;
 
-	const MockedMemorySaver = MemorySaver as jest.MockedClass<typeof MemorySaver>;
+	const MockedMemorySaver = MemorySaver as MockedClass<typeof MemorySaver>;
 
 	beforeEach(() => {
 		mockLogger = mock<Logger>();
@@ -43,10 +44,12 @@ describe('SessionManagerService', () => {
 			},
 		];
 
-		MockedMemorySaver.mockImplementation(() => mockMemorySaver);
+		MockedMemorySaver.mockImplementation(function () {
+			return mockMemorySaver;
+		});
 
 		// Mock formatMessages to return a simple formatted array
-		formatMessagesSpy = jest.spyOn(streamProcessor, 'formatMessages').mockImplementation(() => [
+		formatMessagesSpy = vi.spyOn(streamProcessor, 'formatMessages').mockImplementation(() => [
 			{ role: 'human', content: 'Hello' },
 			{ role: 'assistant', content: 'Hi there!' },
 		]);
@@ -57,7 +60,7 @@ describe('SessionManagerService', () => {
 	afterEach(() => {
 		mockClear(mockLogger);
 		mockClear(mockMemorySaver);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('constructor', () => {
@@ -79,9 +82,9 @@ describe('SessionManagerService', () => {
 
 		it('should return true when storage is configured', () => {
 			const mockStorage: ISessionStorage = {
-				getSession: jest.fn(),
-				saveSession: jest.fn(),
-				deleteSession: jest.fn(),
+				getSession: vi.fn(),
+				saveSession: vi.fn(),
+				deleteSession: vi.fn(),
 			};
 			const serviceWithStorage = new SessionManagerService(
 				mockParsedNodeTypes,
@@ -111,7 +114,7 @@ describe('SessionManagerService', () => {
 			service.updateNodeTypes(newNodeTypes);
 
 			// Verify by calling getSessions which uses nodeTypes internally
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue({
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue({
 				checkpoint: {
 					channel_values: {
 						messages: [new HumanMessage('Test')],
@@ -203,7 +206,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 
 			const result = await service.getSessions(workflowId, userId);
 
@@ -234,7 +237,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 
 			// Since there are no messages, formatMessages will be called with empty array
 			formatMessagesSpy.mockReturnValue([]);
@@ -255,7 +258,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 			formatMessagesSpy.mockReturnValue([]);
 
 			const result = await service.getSessions(workflowId, userId);
@@ -280,7 +283,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 			formatMessagesSpy.mockReturnValue([]);
 
 			const result = await service.getSessions(workflowId, userId);
@@ -294,7 +297,7 @@ describe('SessionManagerService', () => {
 			const workflowId = 'non-existent-workflow';
 			const userId = 'test-user';
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(null);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(null);
 
 			const result = await service.getSessions(workflowId, userId);
 
@@ -306,7 +309,7 @@ describe('SessionManagerService', () => {
 			const userId = 'test-user';
 			const error = new Error('Failed to get checkpoint');
 
-			(mockMemorySaver.getTuple as jest.Mock).mockRejectedValue(error);
+			(mockMemorySaver.getTuple as Mock).mockRejectedValue(error);
 
 			const result = await service.getSessions(workflowId, userId);
 
@@ -328,7 +331,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 
 			const result = await service.getSessions(workflowId, undefined);
 
@@ -349,7 +352,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 
 			await service.getSessions(workflowId, userId);
 
@@ -379,7 +382,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 			formatMessagesSpy.mockReturnValue([
 				{ role: 'human', content: 'Test' },
 				{ role: 'assistant', content: 'Let me help', tool_calls: [{ name: 'test_tool' }] },
@@ -411,7 +414,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 
 			const result = await service.getSessions(workflowId, userId, 'code-builder');
 
@@ -436,7 +439,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 
 			await service.getSessions(workflowId, userId);
 
@@ -476,7 +479,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 
 			await customService.getSessions(workflowId, userId);
 
@@ -494,7 +497,7 @@ describe('SessionManagerService', () => {
 			const userId = 'test-user';
 			const messageId = 'msg-123';
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(null);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(null);
 
 			const result = await service.truncateMessagesAfter(workflowId, userId, messageId);
 
@@ -518,7 +521,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 
 			const result = await service.truncateMessagesAfter(workflowId, userId, messageId);
 
@@ -549,7 +552,7 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
 
 			const result = await service.truncateMessagesAfter(workflowId, userId, messageId);
 
@@ -591,8 +594,8 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-			(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 			const result = await service.truncateMessagesAfter(workflowId, userId, messageId);
 
@@ -637,14 +640,14 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-			(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 			const result = await service.truncateMessagesAfter(workflowId, userId, messageId);
 
 			expect(result).toBe(true);
 			// Verify the call to put includes only messages before msg-3
-			const putCall = (mockMemorySaver.put as jest.Mock).mock.calls[0] as unknown[];
+			const putCall = (mockMemorySaver.put as Mock).mock.calls[0] as unknown[];
 			const updatedCheckpoint = putCall[1] as { channel_values: { messages: unknown[] } };
 			expect(updatedCheckpoint.channel_values.messages).toHaveLength(2);
 			expect(updatedCheckpoint.channel_values.messages).toEqual([msg1, msg2]);
@@ -670,8 +673,8 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-			(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 			await service.truncateMessagesAfter(workflowId, userId, messageId);
 
@@ -697,7 +700,7 @@ describe('SessionManagerService', () => {
 			const messageId = 'msg-123';
 			const error = new Error('Database error');
 
-			(mockMemorySaver.getTuple as jest.Mock).mockRejectedValue(error);
+			(mockMemorySaver.getTuple as Mock).mockRejectedValue(error);
 
 			const result = await service.truncateMessagesAfter(workflowId, userId, messageId);
 
@@ -732,8 +735,8 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-			(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 			await service.truncateMessagesAfter(workflowId, userId, messageId);
 
@@ -763,8 +766,8 @@ describe('SessionManagerService', () => {
 				metadata: null,
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-			(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 			const result = await service.truncateMessagesAfter(workflowId, userId, messageId);
 
@@ -792,8 +795,8 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-			(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 			const result = await service.truncateMessagesAfter(workflowId, undefined, messageId);
 
@@ -827,8 +830,8 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-			(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 			const result = await service.truncateMessagesAfter(
 				workflowId,
@@ -862,8 +865,8 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-			(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 			const result = await service.truncateMessagesAfter(workflowId, userId, messageId);
 
@@ -919,11 +922,11 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock)
+			(mockMemorySaver.getTuple as Mock)
 				.mockResolvedValueOnce(messagesCheckpoint) // loadMessagesForTruncation
 				.mockResolvedValueOnce(messagesCheckpoint) // update checkpoint
 				.mockResolvedValueOnce(sessionCheckpoint); // resetCodeBuilderSession
-			(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+			(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 			const result = await service.truncateMessagesAfter(
 				workflowId,
@@ -975,8 +978,8 @@ describe('SessionManagerService', () => {
 				},
 			};
 
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
-			(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue(mockCheckpoint);
+			(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 			const result = await service.truncateMessagesAfter(workflowId, userId, messageId);
 
@@ -1004,7 +1007,7 @@ describe('SessionManagerService', () => {
 		};
 
 		function mockCheckpointWithMessages(msgs: Array<Record<string, unknown>>) {
-			(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue({
+			(mockMemorySaver.getTuple as Mock).mockResolvedValue({
 				checkpoint: {
 					channel_values: {
 						messages: [new HumanMessage('initial request')],
@@ -1225,14 +1228,14 @@ describe('SessionManagerService', () => {
 	});
 
 	describe('with persistent storage', () => {
-		let mockStorage: jest.Mocked<ISessionStorage>;
+		let mockStorage: Mocked<ISessionStorage>;
 		let serviceWithStorage: SessionManagerService;
 
 		beforeEach(() => {
 			mockStorage = {
-				getSession: jest.fn(),
-				saveSession: jest.fn(),
-				deleteSession: jest.fn(),
+				getSession: vi.fn(),
+				saveSession: vi.fn(),
+				deleteSession: vi.fn(),
 			};
 			serviceWithStorage = new SessionManagerService(mockParsedNodeTypes, mockStorage, mockLogger);
 		});
@@ -1372,7 +1375,7 @@ describe('SessionManagerService', () => {
 			});
 
 			it('should do nothing when no checkpoint exists', async () => {
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(null);
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue(null);
 
 				await serviceWithStorage.saveSessionFromCheckpointer('thread-123');
 
@@ -1381,7 +1384,7 @@ describe('SessionManagerService', () => {
 
 			it('should save messages from checkpointer to storage', async () => {
 				const messages = [new HumanMessage('Hello'), new AIMessage('Hi there!')];
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue({
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue({
 					checkpoint: {
 						channel_values: { messages },
 					},
@@ -1402,7 +1405,7 @@ describe('SessionManagerService', () => {
 
 			it('should include previousSummary when provided', async () => {
 				const messages = [new HumanMessage('Hello')];
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue({
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue({
 					checkpoint: {
 						channel_values: { messages },
 					},
@@ -1418,7 +1421,7 @@ describe('SessionManagerService', () => {
 			});
 
 			it('should handle empty messages array', async () => {
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue({
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue({
 					checkpoint: {
 						channel_values: { messages: [] },
 					},
@@ -1434,7 +1437,7 @@ describe('SessionManagerService', () => {
 			});
 
 			it('should handle invalid messages by saving empty array', async () => {
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue({
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue({
 					checkpoint: {
 						channel_values: { messages: [{ invalid: 'object' }] },
 					},
@@ -1469,7 +1472,7 @@ describe('SessionManagerService', () => {
 
 			it('should fall back to checkpointer when storage is empty', async () => {
 				mockStorage.getSession.mockResolvedValue(null);
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue({
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue({
 					checkpoint: {
 						channel_values: { messages: [new HumanMessage('Checkpoint message')] },
 						ts: '2023-12-01T12:00:00Z',
@@ -1493,8 +1496,8 @@ describe('SessionManagerService', () => {
 					},
 					metadata: { source: 'input' as const, step: 1, parents: {} },
 				};
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(existingCheckpoint);
-				(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue(existingCheckpoint);
+				(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 				await serviceWithStorage.clearSession('thread-123');
 
@@ -1523,8 +1526,8 @@ describe('SessionManagerService', () => {
 					},
 					metadata: { source: 'input' as const, step: 1, parents: {} },
 				};
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(existingCheckpoint);
-				(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue(existingCheckpoint);
+				(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 				await service.clearSession('thread-123');
 
@@ -1543,7 +1546,7 @@ describe('SessionManagerService', () => {
 			});
 
 			it('should handle non-existent checkpointer state gracefully', async () => {
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(null);
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue(null);
 
 				await service.clearSession('thread-123');
 
@@ -1555,7 +1558,7 @@ describe('SessionManagerService', () => {
 			});
 
 			it('should continue even if checkpointer clear fails', async () => {
-				(mockMemorySaver.getTuple as jest.Mock).mockRejectedValue(new Error('Checkpointer error'));
+				(mockMemorySaver.getTuple as Mock).mockRejectedValue(new Error('Checkpointer error'));
 
 				await serviceWithStorage.clearSession('thread-123');
 
@@ -1572,7 +1575,7 @@ describe('SessionManagerService', () => {
 			});
 
 			it('should clear pending HITL state for the thread', async () => {
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(null);
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue(null);
 
 				serviceWithStorage.setPendingHitl('thread-123', {
 					type: 'questions',
@@ -1600,7 +1603,7 @@ describe('SessionManagerService', () => {
 
 		describe('clearAllSessions', () => {
 			it('should clear the main multi-agent thread', async () => {
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(null);
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue(null);
 				mockStorage.deleteSession.mockResolvedValue(undefined);
 
 				await serviceWithStorage.clearAllSessions('test-workflow', 'test-user');
@@ -1655,10 +1658,10 @@ describe('SessionManagerService', () => {
 					previousSummary: 'Summary',
 					updatedAt: new Date(),
 				});
-				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue({
+				(mockMemorySaver.getTuple as Mock).mockResolvedValue({
 					checkpoint: { channel_values: {} },
 				});
-				(mockMemorySaver.put as jest.Mock).mockResolvedValue(undefined);
+				(mockMemorySaver.put as Mock).mockResolvedValue(undefined);
 
 				const result = await serviceWithStorage.truncateMessagesAfter(
 					'test-workflow',

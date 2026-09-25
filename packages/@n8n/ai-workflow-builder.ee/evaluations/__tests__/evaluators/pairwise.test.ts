@@ -6,17 +6,17 @@
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
 import { PAIRWISE_METRICS } from '../../evaluators/pairwise/metrics';
 
 // Store mock for runJudgePanel
-const mockRunJudgePanel = jest.fn();
+const mockRunJudgePanel = vi.fn();
 
 // Mock the judge panel module
-jest.mock('../../evaluators/pairwise/judge-panel', () => ({
+vi.mock('../../evaluators/pairwise/judge-panel', () => ({
 	runJudgePanel: (...args: unknown[]): unknown => mockRunJudgePanel(...args),
 }));
 
@@ -74,13 +74,13 @@ describe('Pairwise Evaluator', () => {
 		feedback.find((f) => f.evaluator === 'pairwise' && f.metric === metric);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockLlm = mock<BaseChatModel>();
 	});
 
 	describe('createPairwiseEvaluator()', () => {
 		it('should create an evaluator with correct name', async () => {
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			expect(evaluator.name).toBe('pairwise');
@@ -89,7 +89,7 @@ describe('Pairwise Evaluator', () => {
 		it('should call runJudgePanel with workflow and criteria', async () => {
 			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
 
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
@@ -109,7 +109,7 @@ describe('Pairwise Evaluator', () => {
 		it('should use custom number of judges', async () => {
 			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
 
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm, { numJudges: 5 });
 
 			const workflow = createMockWorkflow();
@@ -127,7 +127,7 @@ describe('Pairwise Evaluator', () => {
 		it('should pass through empty criteria when context has no dos/donts', async () => {
 			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
 
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
@@ -150,7 +150,7 @@ describe('Pairwise Evaluator', () => {
 				createMockPanelResult({ majorityPass: true, primaryPasses: 2 }),
 			);
 
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
@@ -169,7 +169,7 @@ describe('Pairwise Evaluator', () => {
 		it('should return feedback with diagnostic score', async () => {
 			mockRunJudgePanel.mockResolvedValue(createMockPanelResult({ avgDiagnosticScore: 0.85 }));
 
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
@@ -187,7 +187,7 @@ describe('Pairwise Evaluator', () => {
 		it('should return feedback for each judge', async () => {
 			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
 
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
@@ -221,7 +221,7 @@ describe('Pairwise Evaluator', () => {
 				}),
 			);
 
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
@@ -236,7 +236,7 @@ describe('Pairwise Evaluator', () => {
 		it('should handle evaluation errors gracefully', async () => {
 			mockRunJudgePanel.mockRejectedValue(new Error('Judge panel failed'));
 
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
@@ -250,7 +250,7 @@ describe('Pairwise Evaluator', () => {
 		it('should accept criteria with only dos (no donts)', async () => {
 			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
 
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
@@ -270,7 +270,7 @@ describe('Pairwise Evaluator', () => {
 		it('should accept criteria with only donts (no dos)', async () => {
 			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
 
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
+			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise/index.js');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();

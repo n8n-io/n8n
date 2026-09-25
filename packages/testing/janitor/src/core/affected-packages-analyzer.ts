@@ -21,12 +21,88 @@ function parseJsonFile<T>(path: string): T {
 	}
 }
 
+/**
+ * Strip line and block comments from JSONC, skipping anything inside string
+ * literals. turbo.json is JSONC (turborepo allows comments); a plain
+ * `JSON.parse` throws on it. Trailing commas are not stripped — turbo.json
+ * doesn't use them.
+ */
+export function stripJsonComments(text: string): string {
+	let out = '';
+	let inString = false;
+	let quote = '';
+	let inLineComment = false;
+	let inBlockComment = false;
+
+	for (let i = 0; i < text.length; i++) {
+		const char = text[i];
+		const next = text[i + 1];
+
+		if (inLineComment) {
+			if (char === '\n') {
+				inLineComment = false;
+				out += char;
+			}
+			continue;
+		}
+		if (inBlockComment) {
+			if (char === '*' && next === '/') {
+				inBlockComment = false;
+				i++;
+			}
+			continue;
+		}
+		if (inString) {
+			out += char;
+			if (char === '\\') {
+				out += next ?? '';
+				i++;
+			} else if (char === quote) {
+				inString = false;
+			}
+			continue;
+		}
+		if (char === '"' || char === "'") {
+			inString = true;
+			quote = char;
+			out += char;
+			continue;
+		}
+		if (char === '/' && next === '/') {
+			inLineComment = true;
+			i++;
+			continue;
+		}
+		if (char === '/' && next === '*') {
+			inBlockComment = true;
+			i++;
+			continue;
+		}
+		out += char;
+	}
+	return out;
+}
+
+export function parseJsoncFile<T>(path: string): T {
+	try {
+		return JSON.parse(stripJsonComments(readFileSync(path, 'utf-8'))) as T;
+	} catch (cause) {
+		throw new Error(`Failed to parse ${path}: ${(cause as Error).message}`);
+	}
+}
+
 export { findWorkspaceRoot } from './path-utils.js';
 
 interface WorkspacePackage {
 	name: string;
 	dir: string;
 	workspaceDeps: string[];
+}
+
+/** Optional `janitor` block in a workspace package.json. */
+interface JanitorPackageConfig {
+	/** Workspace deps whose changes never affect this package's tests, e.g. a served asset bundle. */
+	ignoreDepsForScoping?: unknown;
 }
 
 export interface AnalyzeOptions {
@@ -67,15 +143,37 @@ function loadWorkspacePackages(rootDir: string): WorkspacePackage[] {
 	}));
 }
 
+/**
+ * Read `janitor.ignoreDepsForScoping`. A malformed list or a name that is not a
+ * declared workspace dep would silently keep the edge and re-widen CI, so it
+ * throws instead of falling back.
+ */
+function readIgnoredDeps(pkg: Record<string, unknown>, workspaceDeps: Set<string>): Set<string> {
+	const config = pkg.janitor as JanitorPackageConfig | undefined;
+	const list = config?.ignoreDepsForScoping;
+	if (list === undefined) return new Set();
+
+	const where = `janitor.ignoreDepsForScoping in package "${String(pkg.name)}"`;
+	if (!Array.isArray(list) || !list.every((name): name is string => typeof name === 'string')) {
+		throw new Error(`${where} must be an array of package names`);
+	}
+	const unknown = list.filter((name) => !workspaceDeps.has(name));
+	if (unknown.length > 0) {
+		throw new Error(`${where} names non-workspace-dependencies: ${unknown.join(', ')}`);
+	}
+	return new Set(list);
+}
+
 function collectWorkspaceDeps(pkg: Record<string, unknown>, known: Set<string>): string[] {
 	const deps = new Set<string>();
 	for (const field of ['dependencies', 'devDependencies'] as const) {
 		const block = pkg[field];
 		if (!block || typeof block !== 'object') continue;
-		for (const name of Object.keys(block as Record<string, string>)) {
+		for (const name of Object.keys(block)) {
 			if (known.has(name)) deps.add(name);
 		}
 	}
+	for (const name of readIgnoredDeps(pkg, deps)) deps.delete(name);
 	return [...deps];
 }
 
@@ -87,7 +185,7 @@ interface TurboBinding {
 function loadTurboExtraInputs(rootDir: string, packages: WorkspacePackage[]): TurboBinding[] {
 	const turboFile = join(rootDir, 'turbo.json');
 	if (!existsSync(turboFile)) return [];
-	const parsed = parseJsonFile<{ tasks?: Record<string, { inputs?: string[] }> }>(turboFile);
+	const parsed = parseJsoncFile<{ tasks?: Record<string, { inputs?: string[] }> }>(turboFile);
 
 	const bindings: TurboBinding[] = [];
 	for (const [taskId, task] of Object.entries(parsed.tasks ?? {})) {

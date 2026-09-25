@@ -1,5 +1,4 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
-import { InstanceAiPage } from '../../../../pages/InstanceAiPage';
 import { BENCHMARK_PROMPTS, WARMUP_PROMPT } from '../../../../utils/benchmark/instance-ai-driver';
 import { runMemoryBenchmark, type MemoryPhase } from '../harness/memory-harness';
 
@@ -8,7 +7,7 @@ test.use(instanceAiTestConfig);
 const CANCEL_ITERATIONS = 5;
 
 test.describe(
-	'Instance-AI Memory: Cancel/Abort Cleanup @capability:observability',
+	'Instance-AI Memory: Cancel/Abort Cleanup',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
@@ -34,19 +33,16 @@ test.describe(
 					name: `cancel-${i + 1}`,
 					action: async () => {
 						// Open a tab, send prompt, then cancel mid-flight
-						const page = await n8n.page.context().newPage();
-						const ai = new InstanceAiPage(page);
+						const tab = await n8n.start.newTab();
+						const { page, instanceAi: ai } = tab;
 
-						await page.goto('/instance-ai');
+						await page.goto('/assistant');
 						await ai.getContainer().waitFor({ state: 'visible', timeout: 15_000 });
 						await ai.getChatInput().waitFor({ state: 'visible', timeout: 10_000 });
-						await ai.sidebar.getNewThreadButton().click();
-						await page.waitForURL(/\/instance-ai\/[0-9a-f-]+/, { timeout: 10_000 });
-
-						const threadId = page.url().match(/\/instance-ai\/([0-9a-f-]+)/)?.[1];
-
 						await ai.getChatInput().fill(BENCHMARK_PROMPTS[i % BENCHMARK_PROMPTS.length]);
 						await ai.getSendButton().click();
+						await page.waitForURL(/\/assistant\/[0-9a-f-]+/, { timeout: 10_000 });
+						const threadId = ai.getCurrentThreadId();
 
 						// Wait for run to start, then cancel
 						await ai.getStopButton().waitFor({ state: 'visible', timeout: 30_000 });

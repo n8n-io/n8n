@@ -1,5 +1,9 @@
-import type { RoleAssignmentsResponse, RoleProjectMembersResponse } from '@n8n/api-types';
-import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import type {
+	RoleAssignmentsResponse,
+	RoleMembersResponse,
+	RoleProjectMembersResponse,
+} from '@n8n/api-types';
+import { CreateRoleDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
@@ -21,24 +25,29 @@ import type {
 	Scope,
 	Role as RoleDTO,
 	AssignableProjectRole,
+	AssignableGlobalRole,
 	RoleNamespace,
 } from '@n8n/permissions';
 import {
 	combineScopes,
+	CUSTOM_ROLE_SCOPE_WHITELIST,
 	getAuthPrincipalScopes,
 	getRoleScopes,
 	isBuiltInRole,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
+	withMandatoryInstanceScopes,
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { isUniqueConstraintError } from '@/response-helper';
 
 import { RoleCacheService } from './role-cache.service';
+import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service';
 
 @Service()
 export class RoleService {
@@ -48,6 +57,8 @@ export class RoleService {
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleCacheService: RoleCacheService,
 		private readonly logger: Logger,
+		private readonly roleDeletionCheckProxy: RoleDeletionCheckProxy,
+		private readonly eventService: EventService,
 	) {}
 
 	private dbRoleToRoleDTO(role: Role, usedByUsers?: number, usedByProjects?: number): RoleDTO {
@@ -58,6 +69,14 @@ export class RoleService {
 			usedByUsers,
 			usedByProjects,
 		};
+	}
+
+	async getRoleMembers(slug: string): Promise<RoleMembersResponse> {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (!role) throw new NotFoundError('Role not found'); // 404
+		if (role.roleType !== 'global') throw new BadRequestError('Role is not a global role'); // 400
+		const members = await this.roleRepository.findUsersWithGlobalRole(role.slug);
+		return { members, total: members.length };
 	}
 
 	async getAllRoles(withCount: boolean = false): Promise<RoleDTO[]> {
@@ -123,7 +142,15 @@ export class RoleService {
 		return { members };
 	}
 
-	async removeCustomRole(slug: string) {
+	async removeCustomRole({
+		slug,
+		reassignRoleSlug,
+		userId,
+	}: {
+		slug: string;
+		reassignRoleSlug?: string;
+		userId: string;
+	}) {
 		const role = await this.roleRepository.findBySlug(slug);
 		if (!role) {
 			throw new NotFoundError('Role not found');
@@ -134,50 +161,125 @@ export class RoleService {
 
 		// Check if any users is globally or project assigned to the role
 		const usersWithRole = await this.roleRepository.countUsersWithRole(role);
-		if (usersWithRole > 0) {
+		if (usersWithRole > 0 && !reassignRoleSlug) {
 			throw new BadRequestError('Cannot delete role assigned to users');
 		}
 
-		await this.roleRepository.removeBySlug(slug);
+		// Let optional modules (e.g. SSO provisioning) veto deletion of a role
+		// they still reference, so it isn't silently orphaned.
+		const blockers = await this.roleDeletionCheckProxy.findRoleDeletionBlockers(slug);
+		if (blockers.length > 0) {
+			throw new BadRequestError(`Cannot delete role: ${blockers.join('; ')}`);
+		}
+
+		if (usersWithRole > 0 && reassignRoleSlug) {
+			await this.reassignUsersAndRemoveRole(role, reassignRoleSlug);
+		} else {
+			await this.roleRepository.removeBySlug(slug);
+		}
 
 		// Invalidate cache after role deletion
 		await this.roleCacheService.invalidateCache();
 
-		return this.dbRoleToRoleDTO(role);
+		const result = this.dbRoleToRoleDTO(role);
+
+		this.eventService.emit('custom-role-deleted', {
+			userId,
+			roleSlug: result.slug,
+		});
+
+		return result;
 	}
 
-	private async resolveScopes(scopeSlugs: string[] | undefined): Promise<DBScope[] | undefined> {
+	private async reassignUsersAndRemoveRole(role: Role, reassignRoleSlug: string) {
+		if (reassignRoleSlug === role.slug) {
+			throw new BadRequestError('Cannot reassign users to the role being deleted');
+		}
+
+		const reassignRole = await this.roleRepository.findBySlug(reassignRoleSlug);
+		if (!reassignRole) {
+			throw new BadRequestError(`Reassignment role "${reassignRoleSlug}" does not exist`);
+		}
+		if (reassignRole.roleType !== role.roleType) {
+			throw new BadRequestError('Reassignment role must be of the same type as the deleted role');
+		}
+
+		await this.roleRepository.reassignUsersAndRemove(role, reassignRoleSlug);
+	}
+
+	private async resolveScopes(
+		scopeSlugs: string[] | undefined,
+		roleType: 'project' | 'global',
+	): Promise<DBScope[] | undefined> {
 		if (!scopeSlugs) {
 			return undefined;
 		}
 
-		if (scopeSlugs.length === 0) {
+		// Mandatory options are baseline behaviour for every instance role, so the write
+		// path adds them even when the caller leaves them out. The editor does the same
+		// on the form, so a role saved through either surface holds the same scopes.
+		// Both branches dedup, because `findByList` returns distinct rows and a repeated
+		// input slug would otherwise be reported as invalid.
+		const requested =
+			roleType === 'global' ? withMandatoryInstanceScopes(scopeSlugs) : [...new Set(scopeSlugs)];
+
+		if (requested.length === 0) {
 			return [];
 		}
 
-		const scopes = await this.scopeRepository.findByList(scopeSlugs);
-		if (scopes.length !== scopeSlugs.length) {
-			const invalidScopes = scopeSlugs.filter((slug) => !scopes.some((s) => s.slug === slug));
+		const scopes = await this.scopeRepository.findByList(requested);
+		if (scopes.length !== requested.length) {
+			const invalidScopes = requested.filter((slug) => !scopes.some((s) => s.slug === slug));
 			throw new Error(`The following scopes are invalid: ${invalidScopes.join(', ')}`);
+		}
+
+		const resolvedScopes = scopes.map((s) => s.slug);
+
+		if (resolvedScopes.some((slug) => !CUSTOM_ROLE_SCOPE_WHITELIST[roleType].has(slug))) {
+			const invalidScopes = resolvedScopes.filter(
+				(slug) => !CUSTOM_ROLE_SCOPE_WHITELIST[roleType].has(slug),
+			);
+			throw new BadRequestError(
+				`The following scopes are not allowed for ${roleType} roles: ${invalidScopes.join(', ')}`,
+			);
 		}
 
 		return scopes;
 	}
 
-	async updateCustomRole(slug: string, newData: UpdateRoleDto) {
-		const { displayName, description, scopes: scopeSlugs } = newData;
+	async updateCustomRole({
+		slug,
+		newRole,
+		userId,
+	}: {
+		slug: string;
+		// Optional fields keep this compatible with both the internal PATCH and public PUT endpoints.
+		newRole: { displayName?: string; description?: string | null; scopes?: string[] };
+		userId: string;
+	}) {
+		const { displayName, description, scopes: scopeSlugs } = newRole;
+
+		const roleType = slug.startsWith('project:') ? 'project' : 'global';
 
 		try {
 			const updatedRole = await this.roleRepository.updateRole(slug, {
 				displayName,
 				description,
-				scopes: await this.resolveScopes(scopeSlugs),
+				scopes: await this.resolveScopes(scopeSlugs, roleType),
 			});
 
 			// Invalidate cache after role update
 			await this.roleCacheService.invalidateCache();
 
-			return this.dbRoleToRoleDTO(updatedRole);
+			const result = this.dbRoleToRoleDTO(updatedRole);
+
+			this.eventService.emit('custom-role-updated', {
+				userId,
+				roleSlug: result.slug,
+				scopes: result.scopes,
+			});
+
+			return result;
 		} catch (error) {
 			if (error instanceof UserError && error.message === 'Role not found') {
 				throw new NotFoundError('Role not found');
@@ -201,7 +303,7 @@ export class RoleService {
 		if (newRole.description) {
 			role.description = newRole.description;
 		}
-		const scopes = await this.resolveScopes(newRole.scopes);
+		const scopes = await this.resolveScopes(newRole.scopes, newRole.roleType);
 		if (scopes === undefined) throw new BadRequestError('Scopes are required');
 		role.scopes = scopes;
 		role.systemRole = false;
@@ -221,6 +323,12 @@ export class RoleService {
 			}
 			throw error;
 		}
+	}
+
+	/** True if the slug is an existing global-scoped role (built-in or custom). */
+	async isGlobalRole(slug: string): Promise<boolean> {
+		const role = await this.roleRepository.findBySlug(slug);
+		return role?.roleType === 'global';
 	}
 
 	async checkRolesExist(
@@ -295,13 +403,21 @@ export class RoleService {
 		const entityType = isWorkflow ? 'workflow' : 'credential';
 		entity.scopes = this.combineResourceScopes(entityType, user, shared, userProjectRelations);
 
-		if (
-			entityType === 'credential' &&
-			'isGlobal' in entity &&
-			entity.isGlobal &&
-			!entity.scopes.includes('credential:read')
-		) {
-			entity.scopes.push('credential:read');
+		if (entityType === 'credential' && 'isGlobal' in entity && entity.isGlobal) {
+			if (!entity.scopes.includes('credential:read')) {
+				entity.scopes.push('credential:read');
+			}
+
+			// End-user credentials require the recipient to connect their own
+			// account, so a global share must also grant `credential:connect`.
+			// Static credentials stay read-only.
+			if (!('isResolvable' in entity)) {
+				throw new UnexpectedError('isResolvable must be selected whenever isGlobal is');
+			}
+
+			if (entity.isResolvable && !entity.scopes.includes('credential:connect')) {
+				entity.scopes.push('credential:connect');
+			}
 		}
 
 		return entity;
@@ -352,11 +468,11 @@ export class RoleService {
 		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
-	isRoleLicensed(role: AssignableProjectRole) {
+	isRoleLicensed(role: AssignableProjectRole | AssignableGlobalRole) {
 		// TODO: move this info into FrontendSettings
 
 		if (!isBuiltInRole(role)) {
-			// This is a custom role, there for we need to check if
+			// This is a custom role, therefore we need to check if
 			// custom roles are licensed
 			return this.license.isCustomRolesLicensed();
 		}

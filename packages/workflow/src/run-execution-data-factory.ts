@@ -9,6 +9,7 @@ import type {
 	IWaitingForExecutionSource,
 	StartNodeData,
 	ExecutionError,
+	RelatedAgentRun,
 	RelatedExecution,
 	INode,
 } from './interfaces';
@@ -44,6 +45,7 @@ export interface CreateFullRunExecutionDataOptions {
 		runtimeData?: IExecutionContext;
 	} | null;
 	parentExecution?: RelatedExecution;
+	parentAgentRun?: RelatedAgentRun;
 	resumeToken?: string;
 	waitTill?: Date;
 	manualData?: IRunExecutionData['manualData'];
@@ -92,6 +94,7 @@ export function createRunExecutionData(
 		resultData: buildResultData(options.resultData),
 		executionData: buildExecutionData(options.executionData),
 		parentExecution: options.parentExecution,
+		parentAgentRun: options.parentAgentRun,
 		resumeToken: options.resumeToken ?? generateSecureToken(),
 		waitTill: options.waitTill,
 		manualData: options.manualData,

@@ -1,33 +1,38 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsSettings } from '../insights.settings';
 
 describe('InsightsSettings', () => {
-	let licenseMock: jest.Mocked<LicenseState>;
+	let licenseMock: Mocked<LicenseState>;
+	let repositoryMock: Mocked<InsightsByPeriodRepository>;
 	let insightsSettings: InsightsSettings;
 
 	beforeAll(() => {
 		licenseMock = mock<LicenseState>();
-		insightsSettings = new InsightsSettings(licenseMock);
+		repositoryMock = mock<InsightsByPeriodRepository>();
+		repositoryMock.getEarliestDataDate.mockResolvedValue(null);
+		insightsSettings = new InsightsSettings(licenseMock, repositoryMock);
 	});
 
-	test('returns correct summary and dashboard licenses', () => {
+	test('returns correct summary and dashboard licenses', async () => {
 		licenseMock.isInsightsSummaryLicensed.mockReturnValue(true);
 		licenseMock.isInsightsDashboardLicensed.mockReturnValue(true);
 
-		const result = insightsSettings.settings();
+		const result = await insightsSettings.settings();
 
 		expect(result.summary).toBe(true);
 		expect(result.dashboard).toBe(true);
 	});
 
 	describe('dateRanges', () => {
-		test('returns correct ranges when hourly data is enabled and max history is unlimited', () => {
+		test('returns correct ranges when hourly data is enabled and max history is unlimited', async () => {
 			licenseMock.getInsightsMaxHistory.mockReturnValue(-1);
 			licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
 
-			const result = insightsSettings.settings();
+			const result = await insightsSettings.settings();
 
 			expect(result.dateRanges).toEqual([
 				{ key: 'day', licensed: true, granularity: 'hour' },
@@ -40,11 +45,11 @@ describe('InsightsSettings', () => {
 			]);
 		});
 
-		test('returns correct ranges when hourly data is enabled and max history is 365 days', () => {
+		test('returns correct ranges when hourly data is enabled and max history is 365 days', async () => {
 			licenseMock.getInsightsMaxHistory.mockReturnValue(365);
 			licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
 
-			const result = insightsSettings.settings();
+			const result = await insightsSettings.settings();
 
 			expect(result.dateRanges).toEqual([
 				{ key: 'day', licensed: true, granularity: 'hour' },
@@ -57,11 +62,11 @@ describe('InsightsSettings', () => {
 			]);
 		});
 
-		test('returns correct ranges when hourly data is disabled and max history is 30 days', () => {
+		test('returns correct ranges when hourly data is disabled and max history is 30 days', async () => {
 			licenseMock.getInsightsMaxHistory.mockReturnValue(30);
 			licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
 
-			const result = insightsSettings.settings();
+			const result = await insightsSettings.settings();
 
 			expect(result.dateRanges).toEqual([
 				{ key: 'day', licensed: false, granularity: 'hour' },
@@ -74,11 +79,11 @@ describe('InsightsSettings', () => {
 			]);
 		});
 
-		test('returns correct ranges when max history is less than 7 days', () => {
+		test('returns correct ranges when max history is less than 7 days', async () => {
 			licenseMock.getInsightsMaxHistory.mockReturnValue(5);
 			licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
 
-			const result = insightsSettings.settings();
+			const result = await insightsSettings.settings();
 
 			expect(result.dateRanges).toEqual([
 				{ key: 'day', licensed: false, granularity: 'hour' },
@@ -91,11 +96,11 @@ describe('InsightsSettings', () => {
 			]);
 		});
 
-		test('returns correct ranges when max history is 90 days and hourly data is enabled', () => {
+		test('returns correct ranges when max history is 90 days and hourly data is enabled', async () => {
 			licenseMock.getInsightsMaxHistory.mockReturnValue(90);
 			licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
 
-			const result = insightsSettings.settings();
+			const result = await insightsSettings.settings();
 
 			expect(result.dateRanges).toEqual([
 				{ key: 'day', licensed: true, granularity: 'hour' },

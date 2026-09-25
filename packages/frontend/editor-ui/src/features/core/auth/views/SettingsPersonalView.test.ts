@@ -1,16 +1,16 @@
 import { createPinia } from 'pinia';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { waitAllPromises, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import SettingsPersonalView from './SettingsPersonalView.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { confirmPasswordEventBus } from '../auth.eventBus';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import { ROLE } from '@n8n/api-types';
+import { AuthenticationMethod, ROLE } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { UserManagementAuthenticationMethod } from '@/Interface';
 
 let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -54,7 +54,7 @@ describe('SettingsPersonalView', () => {
 
 		await settingsStore.getSettings();
 		ssoStore.initialize({
-			authenticationMethod: UserManagementAuthenticationMethod.Email,
+			authenticationMethod: AuthenticationMethod.Email,
 			config: settingsStore.settings.sso,
 			features: {
 				saml: true,
@@ -74,6 +74,55 @@ describe('SettingsPersonalView', () => {
 
 		expect(getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email')).toBeEnabled();
 		expect(getByTestId('change-password-link')).toBeInTheDocument();
+	});
+
+	describe('when saving basic info', () => {
+		it('should save a name-only change through updateUserName', async () => {
+			const updateUserNameSpy = vi
+				.spyOn(usersStore, 'updateUserName')
+				.mockResolvedValue({ id: '1', isPending: false });
+			const requestEmailChangeSpy = vi.spyOn(usersStore, 'requestEmailChange');
+
+			const { getByTestId, getAllByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const firstNameInput = getAllByRole('textbox')[0];
+			await fireEvent.update(firstNameInput, 'Jane');
+			await waitAllPromises();
+
+			getByTestId('save-settings-button').click();
+			await waitAllPromises();
+
+			expect(updateUserNameSpy).toHaveBeenCalledWith({ firstName: 'Jane', lastName: 'Doe' });
+			expect(requestEmailChangeSpy).not.toHaveBeenCalled();
+		});
+
+		it('should route an email change through requestEmailChange, not updateUser', async () => {
+			const requestEmailChangeSpy = vi
+				.spyOn(usersStore, 'requestEmailChange')
+				.mockResolvedValue({ status: 'confirmation-sent' });
+			const updateUserSpy = vi.spyOn(usersStore, 'updateUser');
+
+			const { getByTestId, getAllByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const emailInput = getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email')!;
+			await fireEvent.update(emailInput, 'new@example.com');
+			await waitAllPromises();
+
+			getByTestId('save-settings-button').click();
+			await waitAllPromises();
+
+			// The password modal collects the current password; simulate confirming it.
+			confirmPasswordEventBus.emit('close', { currentPassword: 'secret' });
+			await waitAllPromises();
+
+			expect(requestEmailChangeSpy).toHaveBeenCalledWith({
+				email: 'new@example.com',
+				currentPassword: 'secret',
+			});
+			expect(updateUserSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('when changing theme', () => {
@@ -160,6 +209,29 @@ describe('SettingsPersonalView', () => {
 			).toBeDisabled();
 			expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
 			expect(queryByTestId('mfa-section')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('when signed in via LDAP', () => {
+		beforeEach(() => {
+			vi.spyOn(ssoStore, 'isEnterpriseLdapEnabled', 'get').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'isMfaFeatureEnabled', 'get').mockReturnValue(true);
+			usersStore.usersById[currentUser.id] = { ...currentUser, signInType: 'ldap' };
+		});
+
+		it('should let a member configure MFA while hiding password change', async () => {
+			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
+
+			const { queryByTestId, getAllByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			// LDAP has no native 2FA, so n8n's own MFA stays configurable...
+			expect(queryByTestId('mfa-section')).toBeInTheDocument();
+			// ...but password/email remain managed externally.
+			expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
+			expect(
+				getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email'),
+			).toBeDisabled();
 		});
 	});
 

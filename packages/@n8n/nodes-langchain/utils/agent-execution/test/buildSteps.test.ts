@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import type { EngineResponse } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -410,6 +411,8 @@ describe('buildSteps', () => {
 				expect(result[0].action.messageLog).toHaveLength(1);
 
 				const message = result[0].action.messageLog![0];
+				expect(message.content).toEqual([]);
+				expect(result[0].action.log).toBe('Calling Calculator Node');
 				expect(message).toHaveProperty('tool_calls');
 				expect(message.tool_calls).toHaveLength(1);
 				expect(message.tool_calls?.[0]).toMatchObject({
@@ -417,6 +420,96 @@ describe('buildSteps', () => {
 					name: 'Calculator_Node',
 					type: 'tool_call',
 				});
+			});
+
+			it('should preserve a tool argument named id in reconstructed history', () => {
+				// AI-2805: The resource ID and the tool-call ID are separate values.
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [
+						{
+							action: {
+								actionType: 'ExecutionNodeAction',
+								nodeName: 'Linear MCP Client',
+								input: { id: 'DEVP-1168' },
+								type: NodeConnectionTypes.AiTool,
+								id: 'call_TQdiKfJlpe8peHxrG1ilND2N',
+								metadata: {
+									itemIndex: 0,
+								},
+							},
+							data: {
+								data: {
+									ai_tool: [[{ json: { identifier: 'DEVP-1168' } }]],
+								},
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
+							},
+						},
+					],
+					metadata: {},
+				};
+
+				const result = buildSteps(response, itemIndex);
+
+				expect(result[0].action.messageLog?.[0]?.tool_calls?.[0]).toMatchObject({
+					id: 'call_TQdiKfJlpe8peHxrG1ilND2N',
+					args: { id: 'DEVP-1168' },
+				});
+			});
+
+			it('should keep user ID arguments separate from engine action IDs', () => {
+				const reservedFields = new Set(['id', 'log', 'type', 'tool', 'toolCallId']);
+				const toolArgumentsArbitrary = fc.dictionary(
+					fc.string({ minLength: 1, maxLength: 20 }).filter((key) => !reservedFields.has(key)),
+					fc.jsonValue(),
+					{ maxKeys: 8 },
+				);
+
+				fc.assert(
+					fc.property(
+						toolArgumentsArbitrary,
+						fc.uniqueArray(fc.string({ minLength: 1 }), { minLength: 3, maxLength: 3 }),
+						(toolArguments, [userId, actionId, changedActionId]) => {
+							const input = { ...toolArguments, id: userId };
+							const createResponse = (id: string): EngineResponse<RequestResponseMetadata> => ({
+								actionResponses: [
+									{
+										action: {
+											actionType: 'ExecutionNodeAction',
+											nodeName: 'Tool',
+											input,
+											type: NodeConnectionTypes.AiTool,
+											id,
+											metadata: { itemIndex },
+										},
+										data: {
+											data: { ai_tool: [[{ json: {} }]] },
+											executionTime: 0,
+											startTime: 0,
+											executionIndex: 0,
+											source: [],
+										},
+									},
+								],
+								metadata: {},
+							});
+
+							const [step] = buildSteps(createResponse(actionId), itemIndex);
+							const [changedIdStep] = buildSteps(createResponse(changedActionId), itemIndex);
+							const toolCall = step.action.messageLog?.[0]?.tool_calls?.[0];
+							const changedIdToolCall = changedIdStep.action.messageLog?.[0]?.tool_calls?.[0];
+
+							expect(toolCall?.args).toEqual(input);
+							expect(toolCall?.id).toBe(actionId);
+							expect(step.action.toolCallId).toBe(actionId);
+							expect(changedIdToolCall?.id).toBe(changedActionId);
+							expect(changedIdStep.action.toolCallId).toBe(changedActionId);
+							expect(changedIdToolCall?.args).toEqual(toolCall?.args);
+						},
+					),
+				);
 			});
 
 			it('should use custom log if provided', () => {
@@ -820,6 +913,59 @@ describe('buildSteps', () => {
 			});
 		});
 
+		it('should reconstruct thinking blocks with empty thinking text', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_omitted_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_omitted_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: '',
+									thinkingType: 'thinking',
+									thinkingSignature: 'encrypted_signature_abc',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result[0].action.messageLog?.[0].content).toEqual([
+				{
+					type: 'thinking',
+					thinking: '',
+					signature: 'encrypted_signature_abc',
+				},
+				{
+					type: 'tool_use',
+					id: 'call_omitted_1',
+					name: 'Calculator',
+					input: { expression: '2+2' },
+				},
+			]);
+		});
+
 		it('should reconstruct AIMessage with redacted_thinking content blocks', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
@@ -878,7 +1024,7 @@ describe('buildSteps', () => {
 			});
 		});
 
-		it('should use string content when no thinking blocks present', () => {
+		it('should use empty content and tool_calls when no thinking blocks are present', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -917,9 +1063,9 @@ describe('buildSteps', () => {
 			expect(result[0].action.messageLog).toHaveLength(1);
 
 			const message = result[0].action.messageLog![0];
-			expect(typeof message.content).toBe('string');
-			expect(message.content).toContain('Calling Calculator');
+			expect(message.content).toEqual([]);
 			expect(message).toHaveProperty('tool_calls');
+			expect(message.tool_calls?.[0].name).toBe('Calculator');
 		});
 
 		it('should handle thinking content without thinkingType', () => {
@@ -961,8 +1107,9 @@ describe('buildSteps', () => {
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
-			// Should fall back to string content when thinkingType is missing
-			expect(typeof message.content).toBe('string');
+			// Should fall back to default tool_calls format when thinkingType is missing
+			expect(message.content).toEqual([]);
+			expect(message.tool_calls?.[0].name).toBe('Calculator');
 		});
 
 		it('should work alongside Gemini thought_signature', () => {
@@ -1026,6 +1173,96 @@ describe('buildSteps', () => {
 			});
 			// When thinking blocks are present, tool_calls is not used (everything is in content array)
 			// Note: Anthropic thinking and Gemini thought_signature are mutually exclusive
+		});
+	});
+
+	describe('DeepSeek reasoning_content reconstruction', () => {
+		it('should reconstruct AIMessage with reasoning_content in additional_kwargs', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								deepseek: {
+									reasoningContent: 'The user wants me to add 2+2, I should call the calculator.',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			expect(message.additional_kwargs?.reasoning_content).toBe(
+				'The user wants me to add 2+2, I should call the calculator.',
+			);
+			// Unlike Anthropic thinking, DeepSeek keeps tool_calls (content stays a plain array)
+			expect(message.tool_calls).toHaveLength(1);
+			expect(message.tool_calls?.[0]).toMatchObject({
+				id: 'call_123',
+				name: 'Calculator',
+				type: 'tool_call',
+			});
+		});
+
+		it('should not set additional_kwargs when reasoning_content is absent', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			expect(message.additional_kwargs?.reasoning_content).toBeUndefined();
 		});
 	});
 
@@ -1111,53 +1348,6 @@ describe('buildSteps', () => {
 			expect(result[0].action.tool).toBe('Calculator_Node');
 		});
 
-		it('should use HITL toolName in message content', () => {
-			const response: EngineResponse<RequestResponseMetadata> = {
-				actionResponses: [
-					{
-						action: {
-							actionType: 'ExecutionNodeAction',
-							nodeName: 'HITL Node',
-							input: {
-								id: 'call_123',
-								input: { query: 'test' },
-							},
-							type: NodeConnectionTypes.AiTool,
-							id: 'call_123',
-							metadata: {
-								itemIndex: 0,
-								hitl: {
-									toolName: 'custom_tool',
-									gatedToolNodeName: 'Custom Tool',
-									originalInput: { query: 'test' },
-								},
-							},
-						},
-						data: {
-							data: {
-								ai_tool: [[{ json: { result: 'success' } }]],
-							},
-							executionTime: 0,
-							startTime: 0,
-							executionIndex: 0,
-							source: [],
-						},
-					},
-				],
-				metadata: {},
-			};
-
-			const result = buildSteps(response, itemIndex);
-
-			expect(result).toHaveLength(1);
-			const message = result[0].action.messageLog![0];
-			// Message content should use the HITL toolName
-			expect(message.content).toContain('Calling custom_tool');
-			expect(message.content).not.toContain('HITL Node');
-			// Tool call should also use the HITL toolName
-			expect(message.tool_calls?.[0].name).toBe('custom_tool');
-		});
-
 		it('should use converted nodeName in message content when HITL metadata is absent', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
@@ -1193,8 +1383,7 @@ describe('buildSteps', () => {
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
-			// Message content should use the converted tool name
-			expect(message.content).toContain('Calling My_Custom_Node');
+			expect(message.content).toEqual([]);
 			expect(message.tool_calls?.[0].name).toBe('My_Custom_Node');
 		});
 
@@ -1474,6 +1663,10 @@ describe('buildSteps', () => {
 			expect(message.additional_kwargs.__gemini_function_call_thought_signatures__).toEqual({
 				call_123: 'gemini_thought_sig_abc123',
 			});
+			// Content is empty, so the function call is the only Gemini request part; the
+			// signatures array must align with the parts or google-common drops it entirely
+			expect(message.content).toEqual([]);
+			expect(message.additional_kwargs.signatures).toEqual(['gemini_thought_sig_abc123']);
 		});
 
 		it('should group parallel tool calls into shared AIMessage with Gemini signature', () => {

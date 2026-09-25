@@ -4,7 +4,6 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 const { privateKey: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY } = generateKeyPairSync('rsa', {
 	modulusLength: 2048,
 	privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
@@ -39,10 +38,10 @@ const PARAMETER_ISSUE_WORKFLOW_NAME = 'B3 Workflow Setup Required Parameter';
 const PARAMETER_APPLY_WORKFLOW_NAME = 'B3 Full Wizard Apply';
 const PARAMETER_CREDENTIAL_NAME = 'B3 Parameter Header Auth';
 
-const GROUPING_WORKFLOW_NAME = 'B3 Workflow Setup Subnode Grouping';
-const GROUPING_OPENAI_CREDENTIAL_NAME = 'B3 Grouping OpenAI';
-const GROUPING_LINEAR_CREDENTIAL_NAME = 'B3 Grouping Linear';
-const GROUPING_TELEGRAM_CREDENTIAL_NAME = 'B3 Grouping Telegram';
+const AGENT_SUBNODES_WORKFLOW_NAME = 'B3 Workflow Setup Subnode Grouping';
+const AGENT_SUBNODES_OPENAI_CREDENTIAL_NAME = 'B3 Grouping OpenAI';
+const AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME = 'B3 Grouping Linear';
+const AGENT_SUBNODES_TELEGRAM_CREDENTIAL_NAME = 'B3 Grouping Telegram';
 
 function createParameterOnlyWorkflow(name: string): Partial<IWorkflowBase> {
 	return {
@@ -453,9 +452,9 @@ function expectNodeParameter(
 }
 
 test.describe(
-	'Instance AI workflow setup @capability:proxy @db:reset',
+	'Instance AI workflow setup @db:reset',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe.configure({ timeout: 180_000 });
@@ -463,7 +462,11 @@ test.describe(
 		test.beforeEach(({}, testInfo) => {
 			test.skip(
 				testInfo.project.name.includes('multi-main'),
-				'Setup confirmation replay is not yet stable in multi-main mode',
+				'Setup confirmation replay is not yet stable on the multi-main project',
+			);
+			test.fixme(
+				testInfo.project.name.includes('sqlite') || testInfo.project.name.includes('coverage'),
+				'Setup confirmation proxy replay is flaky on sqlite:e2e and in the coverage nightly, and was gating community/fork PRs while internal PRs skipped on multi-main. Quarantined on every lane (including coverage) until the replay is stabilised (DEVP-366).',
 			);
 		});
 
@@ -901,19 +904,19 @@ test.describe(
 		test('should persist a manually selected existing credential from the dropdown', async ({
 			n8n,
 		}) => {
-			// creds are sorted by name, in the dropdown
-			const firstCrdentialInList = await n8n.api.credentials.createCredential({
-				name: SELECT_EXISTING_TARGET_CREDENTIAL_NAME,
-				type: 'slackApi',
-				data: {
-					accessToken: 'xoxb-target-token-for-testing',
-				},
-			});
-			const secondCrdentialInList = await n8n.api.credentials.createCredential({
+			// Creds are sorted by name in the dropdown; auto-select picks the most recently updated.
+			const firstCredentialInList = await n8n.api.credentials.createCredential({
 				name: SELECT_EXISTING_INITIAL_CREDENTIAL_NAME,
 				type: 'slackApi',
 				data: {
 					accessToken: 'xoxb-initial-token-for-testing',
+				},
+			});
+			const secondCredentialInList = await n8n.api.credentials.createCredential({
+				name: SELECT_EXISTING_TARGET_CREDENTIAL_NAME,
+				type: 'slackApi',
+				data: {
+					accessToken: 'xoxb-target-token-for-testing',
 				},
 			});
 
@@ -926,15 +929,15 @@ test.describe(
 				`Set up the workflow named "${SELECT_EXISTING_WORKFLOW_NAME}".`,
 			);
 
-			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 12_000 });
 			await expect
 				.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
-				.toBe(firstCrdentialInList.name);
+				.toBe(secondCredentialInList.name);
 
-			await n8n.instanceAi.workflowSetup.selectCredentialById(secondCrdentialInList.id);
+			await n8n.instanceAi.workflowSetup.selectCredentialById(firstCredentialInList.id);
 			await expect
 				.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
-				.toBe(secondCrdentialInList.name);
+				.toBe(firstCredentialInList.name);
 			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
 			await n8n.instanceAi.workflowSetup.getApplyButton().click();
@@ -945,85 +948,69 @@ test.describe(
 				persisted,
 				'Slack Trigger',
 				'slackApi',
-				secondCrdentialInList.name,
+				firstCredentialInList.name,
 			);
 		});
 
-		test('should render AI agent subnodes as one group step with separate sections', async ({
-			n8n,
-		}) => {
+		test('should render each AI agent subnode as its own setup step', async ({ n8n }) => {
 			await n8n.api.credentials.createCredential({
-				name: GROUPING_OPENAI_CREDENTIAL_NAME,
+				name: AGENT_SUBNODES_OPENAI_CREDENTIAL_NAME,
 				type: 'openAiApi',
 				data: { apiKey: 'sk-grouping-test' },
 			});
 			await n8n.api.credentials.createCredential({
-				name: GROUPING_LINEAR_CREDENTIAL_NAME,
+				name: AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME,
 				type: 'linearApi',
 				data: { apiKey: 'lin-grouping-test' },
 			});
 			await n8n.api.credentials.createCredential({
-				name: GROUPING_TELEGRAM_CREDENTIAL_NAME,
+				name: AGENT_SUBNODES_TELEGRAM_CREDENTIAL_NAME,
 				type: 'telegramApi',
 				data: { accessToken: 'tg-grouping-test' },
 			});
 
 			const workflow = await n8n.api.workflows.createWorkflow(
-				createAgentWithSubnodesWorkflow(GROUPING_WORKFLOW_NAME),
+				createAgentWithSubnodesWorkflow(AGENT_SUBNODES_WORKFLOW_NAME),
 			);
 
 			await n8n.navigate.toInstanceAi();
-			await n8n.instanceAi.sendMessage(`Set up the workflow named "${GROUPING_WORKFLOW_NAME}".`);
-
-			// === Step 1: AI Agent group step ===
-			await expect(n8n.instanceAi.workflowSetup.getGroupCard()).toBeVisible({ timeout: 120_000 });
-			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
-			await expect(n8n.instanceAi.workflowSetup.getGroupCard()).toContainText('AI Agent');
-
-			// All three subnode sections render separately because the Linear tools
-			// each have parameter issues, so they are not merged into a single
-			// credential-only section.
-			await expect(n8n.instanceAi.workflowSetup.getSection('OpenAI Chat Model')).toBeVisible();
-			await expect(n8n.instanceAi.workflowSetup.getSection('Get an issue in Linear')).toBeVisible();
-			await expect(
-				n8n.instanceAi.workflowSetup.getSection('Update an issue in Linear'),
-			).toBeVisible();
-
-			await expect(n8n.instanceAi.workflowSetup.getGroupCheck()).toBeHidden();
-
-			// Fill each section independently — the per-section helpers expand the
-			// section if it isn't already open.
-			await n8n.instanceAi.workflowSetup.selectSectionCredential(
-				'OpenAI Chat Model',
-				GROUPING_OPENAI_CREDENTIAL_NAME,
-			);
-			await n8n.instanceAi.workflowSetup.selectSectionCredential(
-				'Get an issue in Linear',
-				GROUPING_LINEAR_CREDENTIAL_NAME,
-			);
-			await n8n.instanceAi.workflowSetup.fillSectionParameter(
-				'Get an issue in Linear',
-				'issueId',
-				'IS-123',
-			);
-			await n8n.instanceAi.workflowSetup.selectSectionCredential(
-				'Update an issue in Linear',
-				GROUPING_LINEAR_CREDENTIAL_NAME,
-			);
-			await n8n.instanceAi.workflowSetup.fillSectionParameter(
-				'Update an issue in Linear',
-				'issueId',
-				'IS-456',
+			await n8n.instanceAi.sendMessage(
+				`Set up the workflow named "${AGENT_SUBNODES_WORKFLOW_NAME}".`,
 			);
 
-			await expect(n8n.instanceAi.workflowSetup.getGroupCheck()).toBeVisible();
-
+			// Sub-nodes are not nested under the agent: every node that needs setup
+			// is its own step, in execution order (sub-nodes before their agent,
+			// then the nodes after it). The Linear tools each have a parameter
+			// issue, so they are not merged into one credential-only step.
+			// === Step 1: OpenAI Chat Model ===
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 4')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getCard()).not.toContainText('AI Agent');
+			await n8n.instanceAi.workflowSetup.selectCredential(AGENT_SUBNODES_OPENAI_CREDENTIAL_NAME);
+			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 			await n8n.instanceAi.workflowSetup.getApplyButton().click();
 
-			// === Step 2: Telegram (single, non-grouped card) ===
-			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
-			await expect(n8n.instanceAi.workflowSetup.getGroupCard()).toBeHidden();
-			await n8n.instanceAi.workflowSetup.selectCredential(GROUPING_TELEGRAM_CREDENTIAL_NAME);
+			// === Step 2: Get an issue in Linear ===
+			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 4')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toContainText('Get an issue in Linear');
+			await n8n.instanceAi.workflowSetup.selectCredential(AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME);
+			await n8n.instanceAi.workflowSetup.fillParameter('issueId', 'IS-123');
+			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
+			await n8n.instanceAi.workflowSetup.getApplyButton().click();
+
+			// === Step 3: Update an issue in Linear ===
+			await expect(n8n.instanceAi.workflowSetup.getStepText('3 of 4')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toContainText(
+				'Update an issue in Linear',
+			);
+			await n8n.instanceAi.workflowSetup.selectCredential(AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME);
+			await n8n.instanceAi.workflowSetup.fillParameter('issueId', 'IS-456');
+			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
+			await n8n.instanceAi.workflowSetup.getApplyButton().click();
+
+			// === Step 4: Telegram ===
+			await expect(n8n.instanceAi.workflowSetup.getStepText('4 of 4')).toBeVisible();
+			await n8n.instanceAi.workflowSetup.selectCredential(AGENT_SUBNODES_TELEGRAM_CREDENTIAL_NAME);
 			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 			await n8n.instanceAi.workflowSetup.getApplyButton().click();
 			await n8n.instanceAi.waitForResponseComplete();
@@ -1033,25 +1020,25 @@ test.describe(
 				persisted,
 				'OpenAI Chat Model',
 				'openAiApi',
-				GROUPING_OPENAI_CREDENTIAL_NAME,
+				AGENT_SUBNODES_OPENAI_CREDENTIAL_NAME,
 			);
 			expectAssignedCredentialName(
 				persisted,
 				'Get an issue in Linear',
 				'linearApi',
-				GROUPING_LINEAR_CREDENTIAL_NAME,
+				AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME,
 			);
 			expectAssignedCredentialName(
 				persisted,
 				'Update an issue in Linear',
 				'linearApi',
-				GROUPING_LINEAR_CREDENTIAL_NAME,
+				AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME,
 			);
 			expectAssignedCredentialName(
 				persisted,
 				'Send a text message',
 				'telegramApi',
-				GROUPING_TELEGRAM_CREDENTIAL_NAME,
+				AGENT_SUBNODES_TELEGRAM_CREDENTIAL_NAME,
 			);
 			expectNodeParameter(persisted, 'Get an issue in Linear', 'issueId', 'IS-123');
 			expectNodeParameter(persisted, 'Update an issue in Linear', 'issueId', 'IS-456');

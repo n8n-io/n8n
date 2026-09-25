@@ -1,25 +1,29 @@
-import type { WorkflowLoopState, AttemptRecord } from '../../workflow-loop/workflow-loop-state';
+import type { Mock } from 'vitest';
+
+import type {
+	WorkflowBuildOutcome,
+	WorkflowLoopState,
+	AttemptRecord,
+} from '../../workflow-loop/workflow-loop-state';
 import { patchThread, type PatchableThreadMemory } from '../thread-patch';
 import type * as ThreadPatch from '../thread-patch';
 import { WorkflowLoopStorage } from '../workflow-loop-storage';
 
-jest.mock('../thread-patch', () => {
-	const actual =
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		jest.requireActual<typeof ThreadPatch>('../thread-patch');
+vi.mock('../thread-patch', async () => {
+	const actual = await vi.importActual<typeof ThreadPatch>('../thread-patch');
 
 	return {
 		...actual,
-		patchThread: jest.fn(),
+		patchThread: vi.fn(),
 	};
 });
 
-const mockedPatchThread = jest.mocked(patchThread);
-type TestMemory = PatchableThreadMemory & { getThread: jest.Mock };
+const mockedPatchThread = vi.mocked(patchThread);
+type TestMemory = PatchableThreadMemory & { getThread: Mock };
 
 function makeMemory(): TestMemory {
 	return {
-		getThread: jest.fn(),
+		getThread: vi.fn(),
 	};
 }
 
@@ -47,6 +51,20 @@ function makeAttempt(overrides: Partial<AttemptRecord> = {}): AttemptRecord {
 	};
 }
 
+function makeOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
+	return {
+		workItemId: 'wi-1',
+		runId: 'run-1',
+		taskId: 'task-1',
+		workflowId: 'wf-1',
+		submitted: true,
+		triggerType: 'manual_or_testable',
+		needsUserInput: false,
+		summary: 'Submitted.',
+		...overrides,
+	};
+}
+
 const baseThread = {
 	id: 'thread-1',
 	title: 'Test',
@@ -60,16 +78,91 @@ describe('WorkflowLoopStorage', () => {
 	let storage: WorkflowLoopStorage;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		memory = makeMemory();
 		storage = new WorkflowLoopStorage(memory);
+	});
+
+	it('updates the latest outcome without replacing other work items', async () => {
+		const current = {
+			...baseThread,
+			metadata: {
+				otherMetadata: true,
+				instanceAiWorkflowLoop: {
+					'wi-1': {
+						state: makeState(),
+						attempts: [],
+						lastBuildOutcome: makeOutcome({ verifyAttempts: 3 }),
+					},
+					'wi-2': { state: makeState({ workItemId: 'wi-2' }), attempts: [] },
+				},
+			},
+		};
+		mockedPatchThread.mockImplementationOnce(
+			async (_memory, { update }) =>
+				await Promise.resolve({
+					...current,
+					...update(current),
+				}),
+		);
+		await storage.updateBuildOutcome('thread-1', 'wi-1', (outcome) => {
+			expect(outcome.verifyAttempts).toBe(3);
+			return { ...outcome, verifyAttempts: 4 };
+		});
+		const saved: unknown = await mockedPatchThread.mock.results[0].value;
+		expect(saved).toMatchObject({
+			metadata: {
+				otherMetadata: true,
+				instanceAiWorkflowLoop: {
+					'wi-1': { lastBuildOutcome: { verifyAttempts: 4 } },
+					'wi-2': { state: { workItemId: 'wi-2' } },
+				},
+			},
+		});
+	});
+
+	it('rejects a verification update when the thread disappeared', async () => {
+		mockedPatchThread.mockResolvedValueOnce(null);
+		await expect(
+			storage.updateBuildOutcome('thread-1', 'wi-1', (outcome) => outcome),
+		).rejects.toThrow('could not be saved');
+	});
+
+	it('rejects a verification update when the build outcome disappeared', async () => {
+		mockedPatchThread.mockImplementationOnce(
+			async (_memory, { update }) =>
+				await Promise.resolve({
+					...baseThread,
+					...update(baseThread),
+				}),
+		);
+		await expect(
+			storage.updateBuildOutcome('thread-1', 'wi-1', (outcome) => outcome),
+		).rejects.toThrow('state is unavailable');
+	});
+
+	it('rejects an update when saving its patch fails', async () => {
+		const state = makeState();
+		mockedPatchThread.mockImplementation((_memory, { update }) => {
+			update({
+				...baseThread,
+				metadata: { instanceAiWorkflowLoop: { 'wi-1': { state, attempts: [] } } },
+			});
+			throw new Error('Save failed');
+		});
+		await expect(
+			storage.updateWorkItem('thread-1', 'wi-1', (record) => ({
+				...record,
+				state: { ...record.state, phase: 'verifying' },
+			})),
+		).rejects.toThrow('Save failed');
 	});
 
 	describe('getWorkItem', () => {
 		it('returns work item from thread metadata', async () => {
 			const state = makeState();
 			const attempts = [makeAttempt()];
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {
 					instanceAiWorkflowLoop: {
@@ -84,7 +177,7 @@ describe('WorkflowLoopStorage', () => {
 		});
 
 		it('returns null for unknown work item', async () => {
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {
 					instanceAiWorkflowLoop: {},
@@ -95,7 +188,7 @@ describe('WorkflowLoopStorage', () => {
 		});
 
 		it('returns null when no loop metadata exists', async () => {
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {},
 			});
@@ -147,12 +240,203 @@ describe('WorkflowLoopStorage', () => {
 		});
 	});
 
+	describe('setup routing claims', () => {
+		it('claims an unrouted direct work item', async () => {
+			const state = makeState({ status: 'completed', phase: 'done', workflowId: 'wf-1' });
+
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
+				const result = update({
+					...baseThread,
+					metadata: {
+						instanceAiWorkflowLoop: {
+							'wi-1': { state, attempts: [] },
+						},
+					},
+				});
+				const next = result?.metadata?.instanceAiWorkflowLoop as Record<
+					string,
+					{ state: WorkflowLoopState }
+				>;
+				expect(next['wi-1'].state).toEqual(
+					expect.objectContaining({
+						setupRoutingClaimId: 'claim-1',
+						setupRoutingClaimedAt: '2026-01-01T00:00:00.000Z',
+						setupRoutingClaimExpiresAt: '2026-01-01T00:15:00.000Z',
+					}),
+				);
+				return baseThread as never;
+			});
+
+			const claimed = await storage.claimSetupRouting('thread-1', 'wi-1', {
+				claimId: 'claim-1',
+				claimedAt: '2026-01-01T00:00:00.000Z',
+				expiresAt: '2026-01-01T00:15:00.000Z',
+			});
+
+			expect(claimed?.state.setupRoutingClaimId).toBe('claim-1');
+		});
+
+		it('does not claim a planned work item', async () => {
+			const state = makeState({
+				status: 'completed',
+				phase: 'done',
+				workflowId: 'wf-1',
+				plannedTaskId: 'planned-1',
+			});
+
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
+				const result = update({
+					...baseThread,
+					metadata: {
+						instanceAiWorkflowLoop: {
+							'wi-1': { state, attempts: [] },
+						},
+					},
+				});
+				expect(result).toBeNull();
+				return baseThread as never;
+			});
+
+			const claimed = await storage.claimSetupRouting('thread-1', 'wi-1', {
+				claimId: 'claim-1',
+				claimedAt: '2026-01-01T00:00:00.000Z',
+				expiresAt: '2026-01-01T00:15:00.000Z',
+			});
+
+			expect(claimed).toBeNull();
+		});
+
+		it('does not claim a work item with a planned owner', async () => {
+			const state = makeState({
+				status: 'completed',
+				phase: 'done',
+				workflowId: 'wf-1',
+				owner: { type: 'planned', taskId: 'planned-1' },
+			});
+
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
+				const result = update({
+					...baseThread,
+					metadata: {
+						instanceAiWorkflowLoop: {
+							'wi-1': { state, attempts: [] },
+						},
+					},
+				});
+				expect(result).toBeNull();
+				return baseThread as never;
+			});
+
+			const claimed = await storage.claimSetupRouting('thread-1', 'wi-1', {
+				claimId: 'claim-1',
+				claimedAt: '2026-01-01T00:00:00.000Z',
+				expiresAt: '2026-01-01T00:15:00.000Z',
+			});
+
+			expect(claimed).toBeNull();
+		});
+
+		it('does not claim a work item whose last outcome belongs to a planned task', async () => {
+			const state = makeState({
+				status: 'completed',
+				phase: 'done',
+				workflowId: 'wf-1',
+			});
+			const lastBuildOutcome = makeOutcome({ plannedTaskId: 'planned-1' });
+
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
+				const result = update({
+					...baseThread,
+					metadata: {
+						instanceAiWorkflowLoop: {
+							'wi-1': { state, attempts: [], lastBuildOutcome },
+						},
+					},
+				});
+				expect(result).toBeNull();
+				return baseThread as never;
+			});
+
+			const claimed = await storage.claimSetupRouting('thread-1', 'wi-1', {
+				claimId: 'claim-1',
+				claimedAt: '2026-01-01T00:00:00.000Z',
+				expiresAt: '2026-01-01T00:15:00.000Z',
+			});
+
+			expect(claimed).toBeNull();
+		});
+
+		it('marks setup routed for the matching claim and clears the claim', async () => {
+			const state = makeState({
+				status: 'completed',
+				phase: 'done',
+				workflowId: 'wf-1',
+				setupRoutingClaimId: 'claim-1',
+				setupRoutingClaimedAt: '2026-01-01T00:00:00.000Z',
+				setupRoutingClaimExpiresAt: '2026-01-01T00:15:00.000Z',
+			});
+
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
+				const result = update({
+					...baseThread,
+					metadata: {
+						instanceAiWorkflowLoop: {
+							'wi-1': { state, attempts: [] },
+						},
+					},
+				});
+				const next = result?.metadata?.instanceAiWorkflowLoop as Record<
+					string,
+					{ state: WorkflowLoopState }
+				>;
+				expect(next['wi-1'].state.setupRoutedAt).toBe('2026-01-01T00:01:00.000Z');
+				expect(next['wi-1'].state.setupRoutingClaimId).toBeUndefined();
+				return baseThread as never;
+			});
+
+			await expect(
+				storage.markSetupRouted('thread-1', 'wi-1', 'claim-1', '2026-01-01T00:01:00.000Z'),
+			).resolves.toBe(true);
+		});
+
+		it('releases the matching setup routing claim', async () => {
+			const state = makeState({
+				status: 'completed',
+				phase: 'done',
+				workflowId: 'wf-1',
+				setupRoutingClaimId: 'claim-1',
+				setupRoutingClaimedAt: '2026-01-01T00:00:00.000Z',
+				setupRoutingClaimExpiresAt: '2026-01-01T00:15:00.000Z',
+			});
+
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
+				const result = update({
+					...baseThread,
+					metadata: {
+						instanceAiWorkflowLoop: {
+							'wi-1': { state, attempts: [] },
+						},
+					},
+				});
+				const next = result?.metadata?.instanceAiWorkflowLoop as Record<
+					string,
+					{ state: WorkflowLoopState }
+				>;
+				expect(next['wi-1'].state.setupRoutingClaimId).toBeUndefined();
+				expect(next['wi-1'].state.setupRoutedAt).toBeUndefined();
+				return baseThread as never;
+			});
+
+			await storage.releaseSetupRoutingClaim('thread-1', 'wi-1', 'claim-1');
+		});
+	});
+
 	describe('getActiveWorkItem', () => {
 		it('returns the active work item', async () => {
 			const activeState = makeState({ workItemId: 'wi-active', status: 'active' });
 			const doneState = makeState({ workItemId: 'wi-done', status: 'completed' });
 
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {
 					instanceAiWorkflowLoop: {
@@ -169,7 +453,7 @@ describe('WorkflowLoopStorage', () => {
 		it('returns null when no active work item exists', async () => {
 			const doneState = makeState({ workItemId: 'wi-done', status: 'completed' });
 
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {
 					instanceAiWorkflowLoop: {
@@ -182,12 +466,33 @@ describe('WorkflowLoopStorage', () => {
 		});
 
 		it('returns null when no loop metadata', async () => {
-			jest.mocked(memory.getThread).mockResolvedValue({
+			vi.mocked(memory.getThread).mockResolvedValue({
 				...baseThread,
 				metadata: {},
 			});
 
 			expect(await storage.getActiveWorkItem('thread-1')).toBeNull();
+		});
+	});
+
+	describe('listWorkItems', () => {
+		it('returns all stored work items', async () => {
+			const firstState = makeState({ workItemId: 'wi-1' });
+			const secondState = makeState({ workItemId: 'wi-2' });
+
+			vi.mocked(memory.getThread).mockResolvedValue({
+				...baseThread,
+				metadata: {
+					instanceAiWorkflowLoop: {
+						'wi-1': { state: firstState, attempts: [] },
+						'wi-2': { state: secondState, attempts: [] },
+					},
+				},
+			});
+
+			const result = await storage.listWorkItems('thread-1');
+
+			expect(result.map((record) => record.state.workItemId)).toEqual(['wi-1', 'wi-2']);
 		});
 	});
 });

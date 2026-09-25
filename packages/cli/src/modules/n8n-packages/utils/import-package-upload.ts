@@ -1,7 +1,9 @@
+import {
+	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
+} from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
 import multer from 'multer';
-
-import { IMPORT_PACKAGE_REQUEST_FORM_FIELDS } from '@n8n/api-types';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -9,16 +11,25 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
  * Allowed keys on `req.body` after multipart parsing. Includes `package` because
  * express-openapi-validator inserts an empty-string placeholder for file parts.
  */
-const IMPORT_PACKAGE_BODY_FIELD_SET = new Set<string>([
+export const IMPORT_PACKAGE_BODY_FIELD_SET = new Set<string>([
 	...IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
 	'package',
 ]);
 
-/** Max length for optional routing ids in multipart form fields. */
-const IMPORT_PACKAGE_FIELD_SIZE_BYTES = 128;
+/** Include `package` because express-openapi-validator adds a placeholder for the file part. */
+export const IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET = new Set<string>([
+	...IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
+	'package',
+]);
 
-/** `package` file + optional `projectId` / `folderId` fields + small margin. */
-const IMPORT_PACKAGE_MAX_PARTS = 5;
+/** Max length for multipart text fields, including JSON credential bindings. */
+const IMPORT_PACKAGE_FIELD_SIZE_BYTES = 64 * 1024;
+
+/**
+ * `package` file + every documented form field, plus one because busboy rejects
+ * the request when the part count reaches (not exceeds) the limit.
+ */
+const IMPORT_PACKAGE_MAX_PARTS = IMPORT_PACKAGE_REQUEST_FORM_FIELDS.length + 2;
 
 export function createN8nPackageMulterOptions(globalConfig: GlobalConfig): multer.Options {
 	const maxFileSizeBytes = globalConfig.endpoints.payloadSizeMax * 1024 * 1024;
@@ -48,10 +59,13 @@ export function getPackageUploadFile(req: {
 	return files.find((file) => file.fieldname === 'package');
 }
 
-export function resolveImportPackageUpload(req: {
-	files?: Express.Multer.File[] | Record<string, Express.Multer.File[]>;
-	body?: Record<string, unknown>;
-}): Express.Multer.File {
+export function resolveImportPackageUpload(
+	req: {
+		files?: Express.Multer.File[] | Record<string, Express.Multer.File[]>;
+		body?: Record<string, unknown>;
+	},
+	allowedBodyFields: Set<string> = IMPORT_PACKAGE_BODY_FIELD_SET,
+): Express.Multer.File {
 	const packageFile = getPackageUploadFile(req);
 	if (!packageFile?.buffer?.length) {
 		throw new BadRequestError('Multipart field "package" is required');
@@ -64,7 +78,7 @@ export function resolveImportPackageUpload(req: {
 	}
 
 	for (const key of Object.keys(req.body ?? {})) {
-		if (!IMPORT_PACKAGE_BODY_FIELD_SET.has(key)) {
+		if (!allowedBodyFields.has(key)) {
 			throw new BadRequestError(`Unexpected form field "${key}"`);
 		}
 	}

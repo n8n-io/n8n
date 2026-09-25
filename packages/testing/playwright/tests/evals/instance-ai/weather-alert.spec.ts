@@ -22,10 +22,9 @@ type StubWorkflowNode = { type: string; name: string };
 type StubWorkflow = { nodes: StubWorkflowNode[] };
 type StubBuildResult = { workflow: StubWorkflow; tokensUsed: number; durationMs: number };
 
-const FIXTURE_PATH = join(
-	__dirname,
-	'../../../../../@n8n/instance-ai/evaluations/data/workflows/weather-alert.json',
-);
+// Local snapshot of the weather-alert case (the corpus lives in LangTracer;
+// this smoke spec only needs a stable fixture shape, not the live case).
+const FIXTURE_PATH = join(__dirname, 'fixtures/weather-alert.json');
 
 function loadFixture(): EvalFixture {
 	return JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as EvalFixture;
@@ -48,18 +47,24 @@ function stubBuildWorkflow(_prompt: string): Promise<StubBuildResult> {
 
 const fixture = loadFixture();
 
-test.describe('eval: weather-alert', () => {
-	for (const scenario of fixture.scenarios) {
-		// eslint-disable-next-line playwright/valid-title
-		test(scenario.name, async ({ traced }) => {
-			const result = await traced(`weather-alert/${scenario.name}`, () =>
-				stubBuildWorkflow(fixture.prompt),
-			);
+test.describe(
+	'eval: weather-alert',
+	{ annotation: [{ type: 'owner', description: 'instanceAI' }] },
+	() => {
+		for (const scenario of fixture.scenarios) {
+			// eslint-disable-next-line playwright/valid-title
+			test(scenario.name, async ({ traced }) => {
+				const result = await traced(`weather-alert/${scenario.name}`, () =>
+					stubBuildWorkflow(fixture.prompt),
+				);
 
-			expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.scheduleTrigger');
-			expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.gmail');
-			expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.if');
-			expect(result.tokensUsed).toBeGreaterThan(0);
-		});
-	}
-});
+				expect(result.workflow.nodes.map((n) => n.type)).toContain(
+					'n8n-nodes-base.scheduleTrigger',
+				);
+				expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.gmail');
+				expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.if');
+				expect(result.tokensUsed).toBeGreaterThan(0);
+			});
+		}
+	},
+);

@@ -7,7 +7,12 @@ import { EvaluationErrorCode } from '@n8n/api-types';
 import type { EvaluationConfig, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
-import { getChildNodes, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
+import {
+	EVALUATION_TRIGGER_NODE_TYPE,
+	getChildNodes,
+	getParentNodes,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -38,10 +43,30 @@ export class EvaluationConfigValidator {
 		this.checkReachability(args, errors);
 		this.checkMetricUniqueness(args, errors);
 		this.checkBooleanCoercion(args, errors);
+		this.checkMetricInputsNonEmpty(args, errors);
 		this.checkDatasetSource(args, errors);
 		await this.checkDataTableAccess(args, errors);
 		await this.checkLlmJudgeProvidersAndCredentials(args, errors);
 		return errors;
+	}
+
+	// z.string().min(1) accepts whitespace but the runtime checks don't.
+	private checkMetricInputsNonEmpty(args: ValidateArgs, errors: EvaluationApiError[]): void {
+		for (const metric of args.config.metrics) {
+			for (const { name, path, value } of collectMetricInputStrings(metric)) {
+				if (typeof value !== 'string' || value.trim().length === 0) {
+					errors.push({
+						code: EvaluationErrorCode.METRIC_INPUT_EMPTY,
+						message: `Metric "${metric.name}" input "${name}" must not be empty`,
+						details: {
+							metricId: metric.id,
+							metricName: metric.name,
+							field: path,
+						},
+					});
+				}
+			}
+		}
 	}
 
 	private getNodeByName(workflow: IWorkflowBase, name: string): INode | undefined {
@@ -93,10 +118,19 @@ export class EvaluationConfigValidator {
 		const byDest = mapConnectionsByDestination(workflow.connections);
 		const parents = getParentNodes(byDest, config.startNodeName, 'main', 1);
 
-		if (parents.length > 1) {
+		// A pre-existing Evaluation Trigger can converge on the entry node alongside
+		// the workflow's real trigger (added to enable evaluation without disturbing
+		// production) — the compiler always displaces whichever trigger fed the entry
+		// node, so that doesn't make it ambiguous. Only flag genuine ambiguity: more
+		// than one non-evaluation-trigger parent.
+		const nonEvalParents = parents.filter(
+			(name) => this.getNodeByName(workflow, name)?.type !== EVALUATION_TRIGGER_NODE_TYPE,
+		);
+
+		if (nonEvalParents.length > 1) {
 			errors.push({
 				code: EvaluationErrorCode.AMBIGUOUS_ENTRY_NODE,
-				message: `Entry node "${config.startNodeName}" has multiple upstream parents (${parents.join(', ')})`,
+				message: `Entry node "${config.startNodeName}" has multiple upstream parents (${nonEvalParents.join(', ')})`,
 				details: { nodeName: config.startNodeName },
 			});
 		}
@@ -244,6 +278,60 @@ export class EvaluationConfigValidator {
 			}
 		}
 	}
+}
+
+type MetricInputField = { name: string; path: string; value: unknown };
+
+function collectMetricInputStrings(metric: EvaluationMetric): MetricInputField[] {
+	if (metric.type === 'expression') {
+		return [{ name: 'expression', path: 'config.expression', value: metric.config.expression }];
+	}
+	if (metric.type === 'llm_judge') {
+		const { actualAnswer, expectedAnswer, userQuery } = metric.config.inputs;
+		const out: MetricInputField[] = [
+			{ name: 'actualAnswer', path: 'config.inputs.actualAnswer', value: actualAnswer },
+		];
+		if (expectedAnswer !== undefined) {
+			out.push({
+				name: 'expectedAnswer',
+				path: 'config.inputs.expectedAnswer',
+				value: expectedAnswer,
+			});
+		}
+		if (userQuery !== undefined) {
+			out.push({ name: 'userQuery', path: 'config.inputs.userQuery', value: userQuery });
+		}
+		return out;
+	}
+	if (metric.type === 'string_similarity' || metric.type === 'categorization') {
+		return [
+			{
+				name: 'actualAnswer',
+				path: 'config.inputs.actualAnswer',
+				value: metric.config.inputs.actualAnswer,
+			},
+			{
+				name: 'expectedAnswer',
+				path: 'config.inputs.expectedAnswer',
+				value: metric.config.inputs.expectedAnswer,
+			},
+		];
+	}
+	if (metric.type === 'tools_used') {
+		return [
+			{
+				name: 'expectedTools',
+				path: 'config.inputs.expectedTools',
+				value: metric.config.inputs.expectedTools,
+			},
+			{
+				name: 'intermediateSteps',
+				path: 'config.inputs.intermediateSteps',
+				value: metric.config.inputs.intermediateSteps,
+			},
+		];
+	}
+	return [];
 }
 
 /**

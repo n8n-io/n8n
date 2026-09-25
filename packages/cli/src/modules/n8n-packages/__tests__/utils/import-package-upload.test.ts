@@ -1,3 +1,4 @@
+import { IMPORT_PACKAGE_REQUEST_FORM_FIELDS } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import multer from 'multer';
@@ -7,6 +8,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import {
 	createN8nPackageMulterOptions,
 	getPackageUploadFile,
+	IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
 	listUploadFiles,
 	resolveImportPackageUpload,
 } from '../../utils/import-package-upload';
@@ -26,9 +28,18 @@ describe('createN8nPackageMulterOptions', () => {
 		expect(options.limits).toEqual({
 			fileSize: 8 * 1024 * 1024,
 			files: 1,
-			parts: 5,
-			fieldSize: 128,
+			parts: IMPORT_PACKAGE_REQUEST_FORM_FIELDS.length + 2,
+			fieldSize: 64 * 1024,
 		});
+	});
+
+	it('allows the package file plus every documented form field', () => {
+		// busboy emits partsLimit when the part count *reaches* the limit, so the
+		// limit must strictly exceed the largest legitimate request.
+		const options = createN8nPackageMulterOptions(Container.get(GlobalConfig));
+		const maxLegitimateParts = IMPORT_PACKAGE_REQUEST_FORM_FIELDS.length + 1;
+
+		expect(options.limits?.parts).toBeGreaterThan(maxLegitimateParts);
 	});
 });
 
@@ -89,11 +100,16 @@ describe('resolveImportPackageUpload', () => {
 		expect(file.buffer).toBe(packageBuffer);
 	});
 
-	it('accepts only optional routing fields in the body', () => {
+	it('accepts routing, credential binding, and workflow policy fields in the body', () => {
 		expect(() =>
 			resolveImportPackageUpload({
 				files: [makeFile('package', packageBuffer)],
-				body: { folderId: 'fld-1', package: '' },
+				body: {
+					folderId: 'fld-1',
+					bindings: '{"credentials":{"source":"target"}}',
+					workflowConflictPolicy: 'skip',
+					package: '',
+				},
 			}),
 		).not.toThrow();
 	});
@@ -128,5 +144,50 @@ describe('resolveImportPackageUpload', () => {
 				body: { evil: 'true' },
 			}),
 		).toThrow('Unexpected form field "evil"');
+	});
+
+	describe('with the selection body field set', () => {
+		it('accepts the selection form fields', () => {
+			expect(() =>
+				resolveImportPackageUpload(
+					{
+						files: [makeFile('package', packageBuffer)],
+						body: {
+							selectedProjectId: 'P1',
+							selectedWorkflowIds: '["WFA"]',
+							deletedWorkflowIds: '["WFB"]',
+							workflowConflictPolicy: 'new-version',
+							workflowIdPolicy: 'source',
+							package: '',
+						},
+					},
+					IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
+				),
+			).not.toThrow();
+		});
+
+		it.each(['folderConflictPolicy', 'projectId', 'folderId'])(
+			'rejects the %s field, which the selection endpoint does not accept',
+			(field) => {
+				expect(() =>
+					resolveImportPackageUpload(
+						{
+							files: [makeFile('package', packageBuffer)],
+							body: { selectedProjectId: 'P1', [field]: 'x' },
+						},
+						IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
+					),
+				).toThrow(`Unexpected form field "${field}"`);
+			},
+		);
+
+		it('leaves the default field set unchanged', () => {
+			expect(() =>
+				resolveImportPackageUpload({
+					files: [makeFile('package', packageBuffer)],
+					body: { selectedProjectId: 'P1' },
+				}),
+			).toThrow('Unexpected form field "selectedProjectId"');
+		});
 	});
 });

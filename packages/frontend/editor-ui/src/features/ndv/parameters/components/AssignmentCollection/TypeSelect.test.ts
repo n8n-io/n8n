@@ -18,6 +18,13 @@ describe('TypeSelect.vue', () => {
 		vi.clearAllMocks();
 	});
 
+	it('uses the medium-height token for the trigger container', () => {
+		const { getByTestId } = renderComponent();
+		const triggerContainer = getByTestId('assignment-type-select').querySelector('span');
+
+		expect(triggerContainer).toHaveStyle({ height: 'var(--height--md)' });
+	});
+
 	it('renders default state correctly and emit events', async () => {
 		const { getByTestId, emitted } = renderComponent();
 		const typeSelect = getByTestId('assignment-type-select');

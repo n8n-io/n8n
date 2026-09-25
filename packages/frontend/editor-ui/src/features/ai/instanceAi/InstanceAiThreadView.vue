@@ -1,92 +1,106 @@
 <script lang="ts" setup>
-import {
-	computed,
-	nextTick,
-	onMounted,
-	onUnmounted,
-	provide,
-	ref,
-	useTemplateRef,
-	watch,
-} from 'vue';
-import { storeToRefs } from 'pinia';
+import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
 	N8nHeading,
 	N8nIconButton,
 	N8nResizeWrapper,
-	N8nScrollArea,
 	N8nText,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { useElementSize, useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
+import {
+	StorageSerializers,
+	onClickOutside,
+	useDebounceFn,
+	useElementSize,
+	useLocalStorage,
+	useWindowSize,
+} from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAgentAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import {
+	DEBOUNCE_TIME,
+	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
+	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
+} from '@/app/constants';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
-import { isPendingItemFloating } from './confirmationKinds';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import {
+	getAgentBuilderTargetFromThreadMetadata,
+	getAgentPreviewSessionFromThreadMetadata,
+	getAgentPreviewViewFromThreadMetadata,
+	getThreadDisplayTitle,
+} from './instanceAi.threadRuntime';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
-import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
+import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
+import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
 import { useTransitionGate } from './useTransitionGate';
-import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
-import { useSidebarState } from './instanceAiLayout';
-import InstanceAiMessage from './components/InstanceAiMessage.vue';
-import InstanceAiInput from './components/InstanceAiInput.vue';
+import { INSTANCE_AI_VIEW } from './constants';
+import { getDismissedContextKeys } from './instanceAi.handoffContext';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
-import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
-import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
+import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.vue';
+import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
-import AgentSection from './components/AgentSection.vue';
-import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
-import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import InstanceAiConversation from './components/InstanceAiConversation.vue';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
 import { buildFixWithAiPrompt } from './fixWithAi';
+import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import { TabsRoot } from 'reka-ui';
+import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
+import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
+import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
+import { useIsAgentWorking } from './composables/useIsAgentWorking';
+import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
 
-const props = defineProps<{
-	threadId: string;
-}>();
+const props = defineProps<{ threadId: string }>();
 
 const store = useInstanceAiStore();
+const settingsStore = useInstanceAiSettingsStore();
 const thread = provideThread(props.threadId);
-const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
-const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(isLowCredits);
-const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
-const telemetry = useTelemetry();
+const toast = useToast();
+const recentWorkflowsStore = useRecentWorkflowsStore();
+const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 
-// Running builders render in a dedicated bottom section of the conversation.
-// Once a builder finishes it falls out of this list and AgentTimeline renders
-// it in its natural chronological slot.
-const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages));
+const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversation>>('conversation');
 
-// Assistant messages whose only content has been extracted to the bottom
-// builder section (or which haven't produced anything renderable yet) would
-// otherwise leave an empty wrapper in the list — filter them out.
-const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
+// The conversation owns the composer-handoff state; read it through the
+// template ref for the agent-preview session id below and for
+// `InstanceAiArtifactsPanel`, a sibling of the conversation rather than a
+// descendant of it.
+const handoffContext = computed(() => conversationRef.value?.pendingComposerContext ?? null);
 
-// True when at least one pending confirmation should occupy the chat-input
-// slot (generic approvals + domain/web-search access). Drives the swap
-// between the input and the floating confirmation panel.
-const hasFloatingConfirmation = computed(() =>
-	thread.pendingConfirmations.some(isPendingItemFloating),
-);
+function onThreadMissing() {
+	// The user may have navigated to another thread before this one reported
+	// missing; only redirect if we're still on the thread that went missing.
+	if (router.currentRoute.value.params.threadId !== props.threadId) return;
+	void router.replace({ name: INSTANCE_AI_VIEW });
+}
+
+function onAgentAttachmentRestored(attachment: InstanceAiAgentAttachment) {
+	preview.openAgentPreview(attachment.id, attachment.projectId);
+}
 
 // --- Fix-with-AI offer (failure data emitted by the artifact host) ---
 const failedRun = ref<WorkflowFailuresReport | null>(null);
@@ -107,50 +121,192 @@ const activeFixWithAiOffer = computed(() => {
 	};
 });
 
+// --- "Test your agent" offer (post-setup suggestion) ---
+const isAgentEvalsEnabled = useAgentEvalsFlag();
+const agentEvalsStore = useAgentEvalsStore();
+
+// Passed the local runtime because this component provides the thread rather
+// than inheriting it, so the composable's own `useThread()` inject would fail.
+const isAgentWorking = useIsAgentWorking(thread);
+
+// The agent the builder actually persisted in this thread. Absent until then,
+// which is what keeps the suggestion from firing mid-build.
+const agentBuilderTarget = computed(() =>
+	getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id)),
+);
+
+/**
+ * The agent this thread would offer to test, before the checks that need its
+ * capabilities. Resolves to null for the conditions we can decide without a
+ * network call — flag off, nothing built, already dismissed — so the capability
+ * summary is never fetched for a card the user will not be shown.
+ */
+const testAgentOfferCandidate = computed(() => {
+	if (!isAgentEvalsEnabled.value) return null;
+	const target = agentBuilderTarget.value;
+	if (!target) return null;
+
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	return dismissedKeys.has(testAgentOfferKey(target.agentId)) ? null : target;
+});
+
+const offerAgentId = computed(() => testAgentOfferCandidate.value?.agentId ?? '');
+const offerProjectId = computed(() => testAgentOfferCandidate.value?.projectId ?? '');
+
+const { summary: offerAgentSummary } = useAgentCapabilitySummary(offerProjectId, offerAgentId);
+
+const activeTestAgentOffer = computed(() => {
+	const target = testAgentOfferCandidate.value;
+	if (!target) return null;
+	// Waiting for the run to settle keeps the card from appearing while the
+	// assistant is still adding tools the generated cases would need to cover.
+	if (isAgentWorking.value) return null;
+	// Don't offer to draft cases for an agent that already has some — e.g. the
+	// user generated them from the Evals tab without dismissing this card.
+	// Only suppresses when the store already knows; deliberately no fetch just to
+	// answer this, so a cold thread can still offer once against an agent whose
+	// datasets have never been loaded.
+	if (
+		agentEvalsStore.isLoaded(target.agentId) &&
+		agentEvalsStore.getDatasets(target.agentId).length
+	)
+		return null;
+	if (!isAgentWorthTesting(offerAgentSummary.value)) return null;
+
+	return target;
+});
+
 // --- Header title ---
 // Returns the resolved title once we have one, or undefined while we're still
 // figuring out which thread to show. Rendering only on a defined value avoids
 // the "New conversation" → real title flash when resuming a recent thread.
-const currentThreadTitle = computed<string | undefined>(() => {
-	const threadSummary = store.threads.find((t) => t.id === props.threadId);
-	if (threadSummary?.title && threadSummary.title !== NEW_CONVERSATION_TITLE) {
-		return threadSummary.title;
-	}
-	const firstUserMsg = thread.messages.find((m) => m.role === 'user');
-	if (firstUserMsg?.content) {
-		const text = firstUserMsg.content.trim();
-		return text.length > 60 ? text.slice(0, 60) + '…' : text;
-	}
-	return undefined;
-});
+const currentThreadTitle = computed<string | undefined>(() =>
+	getThreadDisplayTitle(
+		store.threads.find((t) => t.id === props.threadId),
+		thread.messages,
+	),
+);
+
+// The tab names the conversation, not the workflow previewed inside it — the
+// parent view claims the title so the embedded canvas can't overwrite this.
+const documentTitle = useDocumentTitle();
+watch(
+	currentThreadTitle,
+	(title) => documentTitle.set(title ?? i18n.baseText('instanceAi.view.title')),
+	{ immediate: true },
+);
 
 // --- Canvas / data table preview ---
+// null = no preference yet, so the first artifact still opens the preview.
+// Sync flush keeps a thread switch from exposing the old thread's value for a tick.
+const persistedArtifactPreviewOpen = useLocalStorage<boolean | null>(
+	() => LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN(props.threadId),
+	null,
+	{ serializer: StorageSerializers.boolean, writeDefaults: false, flush: 'sync' },
+);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	initialAgentId: () =>
+		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+	previewOpenState: () => persistedArtifactPreviewOpen.value ?? undefined,
+	onPreviewOpenChange: (open) => {
+		persistedArtifactPreviewOpen.value = open;
+	},
+});
+watch(
+	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
+	([tabId, previewVisible]) => {
+		thread.setActiveArtifactId(previewVisible ? tabId : undefined);
+	},
+	{ immediate: true },
+);
+// --- Setup panel (checklist docked above the composer) ---
+// Early setup announcements can arrive before the first workflow artifact.
+const setupPanelWorkflowId = computed(() => {
+	if (!settingsStore.isInstanceAiSetupPanelEnabled) return undefined;
+	const active = preview.activeWorkflowId.value;
+	if (preview.activeTabId.value) return active ?? undefined;
+	let latest: string | undefined;
+	for (const entry of thread.producedArtifacts.values()) {
+		if (entry.type === 'workflow') latest = entry.id;
+	}
+	return latest ?? thread.latestSetupWorkflowId;
+});
+const setupPanelProjectId = computed(() =>
+	setupPanelWorkflowId.value
+		? thread.producedArtifacts.get(setupPanelWorkflowId.value)?.projectId
+		: undefined,
+);
+const setupOverlapHeight = ref(0);
+const setupPanelRef = useTemplateRef<InstanceType<typeof InstanceAiSetupPanel>>('setupPanel');
+onUnmounted(
+	thread.registerSetupChatTelemetryContext(() => {
+		const context = setupPanelRef.value?.getChatTelemetryContext();
+		return context?.workflow_id === setupPanelWorkflowId.value ? context : undefined;
+	}),
+);
+
+const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
+const agentReturnWorkflowId = agentReturnContext?.workflowId;
+const agentReturnNodeId = ref(agentReturnContext?.nodeId);
+if (agentReturnWorkflowId) {
+	preview.openWorkflowPreview(agentReturnWorkflowId);
+}
+
+function consumeAgentReturnNodeId() {
+	agentReturnNodeId.value = undefined;
+}
+
+function openAgentChatPreview(agentId: string, projectId: string): boolean {
+	preview.openAgentPreview(agentId, projectId);
+	isAgentPreviewDockOpen.value = true;
+	return true;
+}
+
+function openWorkflowPreview(workflowId: string): boolean {
+	const artifact = thread.producedArtifacts.get(workflowId);
+	recentWorkflowsStore.registerWorkflowOpen(workflowId, artifact?.projectId ?? thread.projectId);
+	return preview.openWorkflowPreview(workflowId);
+}
+
+function selectArtifactTab(tabId: string): void {
+	const artifact = thread.producedArtifacts.get(tabId);
+	if (artifact?.type === 'workflow') {
+		recentWorkflowsStore.registerWorkflowOpen(tabId, artifact.projectId ?? thread.projectId);
+	}
+	preview.selectTab(tabId);
+}
+
+const activeAgentPreviewSessionId = computed(() => {
+	const context = handoffContext.value;
+	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
+		return context.threadId;
+	}
+
+	const metadata = store.getThreadMetadata(props.threadId);
+	const persisted =
+		getAgentPreviewViewFromThreadMetadata(metadata) ??
+		getAgentPreviewSessionFromThreadMetadata(metadata);
+	return persisted?.agentId === preview.activeAgentId.value ? persisted.threadId : undefined;
 });
 
-provide('openWorkflowPreview', preview.openWorkflowPreview);
+provide('openWorkflowPreview', openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
-
-// Focus the composer when plan-edit mode is entered. The thread runtime
-// owns the activePlanEdit state; this watcher just reacts to the transition.
-watch(
-	() => thread.activePlanEdit,
-	(next, prev) => {
-		if (next && !prev) {
-			void nextTick(() => chatInputRef.value?.focus());
-		}
-	},
+provide('openAgentPreview', preview.openAgentPreview);
+provide('openAgentChatPreview', openAgentChatPreview);
+provide('pendingComposerContext', handoffContext);
+provide(
+	'dismissPendingComposerContext',
+	(key: string) => conversationRef.value?.dismissPendingComposerContext(key) ?? false,
 );
 
 // --- Side panels ---
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
-const isArtifactsPanelPinned = useSessionStorage('instanceAi.artifactsPanelPinned', true);
 const isArtifactsPanelRevealed = ref(false);
-const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
+const isArtifactsPanelDismissedInLayout = ref(false);
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
@@ -168,6 +324,13 @@ const artifactsPreviewToggleLabel = computed(() =>
 			: 'instanceAi.artifactsPanel.showPreview',
 	),
 );
+const artifactsPanelToggleLabel = computed(() =>
+	i18n.baseText(
+		showArtifactsPanel.value
+			? 'instanceAi.artifactsPanel.hidePanel'
+			: 'instanceAi.artifactsPanel.showPanel',
+	),
+);
 const artifactsPanelTransitionName = computed(() =>
 	isPreviewPanelTransitioning.value ? 'artifacts-panel-preview' : 'artifacts-panel-fade',
 );
@@ -178,41 +341,35 @@ function toggleArtifactsPreview() {
 		return;
 	}
 
-	const firstTab = preview.allArtifactTabs.value[0];
-	if (firstTab) {
-		preview.selectTab(firstTab.id);
+	const selectedTab = preview.allArtifactTabs.value.find(
+		(tab) => tab.id === preview.activeTabId.value,
+	);
+	const tabToOpen = selectedTab ?? preview.allArtifactTabs.value[0];
+	if (tabToOpen) {
+		selectArtifactTab(tabToOpen.id);
 	}
 }
 
-function revealArtifactsPanel() {
-	if (
-		!canShowArtifactsPanel.value ||
-		isArtifactsPanelEffectivelyPinned.value ||
-		preview.isPreviewVisible.value
-	) {
+function toggleArtifactsPanel() {
+	if (!canShowArtifactsPanel.value || preview.isPreviewVisible.value) {
 		return;
 	}
+
+	if (showArtifactsPanel.value) {
+		if (isArtifactsPanelInLayout.value) {
+			isArtifactsPanelDismissedInLayout.value = true;
+			return;
+		}
+		isArtifactsPanelRevealed.value = false;
+		return;
+	}
+
+	if (isArtifactsPanelInLayout.value) {
+		isArtifactsPanelDismissedInLayout.value = false;
+		return;
+	}
+
 	isArtifactsPanelRevealed.value = true;
-}
-
-function hideArtifactsPanel(event?: FocusEvent) {
-	if (isArtifactsPanelEffectivelyPinned.value) return;
-	if (
-		event?.currentTarget instanceof HTMLElement &&
-		event.relatedTarget instanceof Node &&
-		event.currentTarget.contains(event.relatedTarget)
-	) {
-		return;
-	}
-	isArtifactsPanelRevealed.value = false;
-}
-
-function toggleArtifactsPanelPinned() {
-	if (!isArtifactsPanelPinningAvailable.value) return;
-
-	const nextPinned = !isArtifactsPanelPinned.value;
-	isArtifactsPanelPinned.value = nextPinned;
-	isArtifactsPanelRevealed.value = !nextPinned;
 }
 
 function enablePanelTransitionsAfterStableRender() {
@@ -226,69 +383,140 @@ function suppressPanelTransitionsUntilStableRender() {
 }
 
 // --- Preview panel resize (when canvas is visible) ---
-// Cap the preview at 50% of the available thread area so the chat retains at
-// least the other half when side panels or app layout chrome are visible.
 const threadAreaRef = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadAreaRef);
 const mainSidebarOccupiedWidth = computed(() =>
 	isMainSidebarCollapsed.value ? COLLAPSED_MAIN_SIDEBAR_WIDTH : (mainSidebarWidth.value ?? 0),
 );
-const instanceAiSidebarOccupiedWidth = computed(() =>
-	sidebar.collapsed.value ? 0 : (sidebar.width?.value ?? DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH),
-);
 const availableWidthForPinnedArtifactsPanel = computed(
-	() => windowWidth.value - mainSidebarOccupiedWidth.value - instanceAiSidebarOccupiedWidth.value,
+	() => windowWidth.value - mainSidebarOccupiedWidth.value,
 );
-const isArtifactsPanelPinningAvailable = computed(
+const isArtifactsPanelInLayout = computed(
 	() =>
 		availableWidthForPinnedArtifactsPanel.value >= MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
-const isArtifactsPanelEffectivelyPinned = computed(
-	() => isArtifactsPanelPinningAvailable.value && isArtifactsPanelPinned.value,
-);
 const canShowArtifactsPanel = computed(
-	() => thread.hasMessages || (Boolean(props.threadId) && thread.isHydratingThread),
-);
-const showArtifactsPanelEdge = computed(
 	() =>
-		canShowArtifactsPanel.value &&
-		!preview.isPreviewVisible.value &&
-		!isArtifactsPanelEffectivelyPinned.value,
+		thread.hasMessages ||
+		preview.allArtifactTabs.value.length > 0 ||
+		(Boolean(props.threadId) && thread.isHydratingThread),
 );
 const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
 		!preview.isPreviewVisible.value &&
-		(isArtifactsPanelEffectivelyPinned.value || isArtifactsPanelRevealed.value),
+		(isArtifactsPanelInLayout.value
+			? !isArtifactsPanelDismissedInLayout.value
+			: isArtifactsPanelRevealed.value),
+);
+const showArtifactsPanelToggle = computed(
+	() => canShowArtifactsPanel.value && !preview.isPreviewVisible.value,
 );
 const reserveArtifactsPanelLayout = computed(
-	() => showArtifactsPanel.value && isArtifactsPanelEffectivelyPinned.value,
+	() => showArtifactsPanel.value && isArtifactsPanelInLayout.value,
+);
+const shouldAnimateArtifactsPanel = computed(
+	() => isArtifactsPanelTransitionEnabled.value && isArtifactsPanelInLayout.value,
 );
 const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
-const previewPanelWidth = ref(0);
+const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
 const isResizingPreview = ref(false);
+const isThreadAreaResizing = ref(false);
 const isPreviewExpanded = ref(false);
-const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value / 2));
-const previewPanelStyle = computed(() =>
-	isPreviewExpanded.value ? undefined : { width: `${previewPanelWidth.value}px` },
+const isAgentPreviewDockOpen = ref(false);
+const MIN_SPLIT_PANEL_WIDTH = 400;
+const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
+// Share of the thread area, so the split survives window and sidebar resizes. -1 = no preference yet.
+const chatPanelWidthRatio = useLocalStorage(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO, -1, {
+	writeDefaults: false,
+});
+
+// The composer requesting focus (e.g. after a canvas action) reads as the user
+// wanting the chat back — collapse the expanded preview so it's visible again.
+// The conversation itself owns focusing the input for the same trigger.
+watch(
+	() => store.composerFocusRequest,
+	() => {
+		isPreviewExpanded.value = false;
+	},
 );
+
+watch(
+	preview.activeTabId,
+	(activeTabId, previousActiveTabId) => {
+		if (activeTabId !== previousActiveTabId) {
+			isAgentPreviewDockOpen.value = false;
+		}
+	},
+	{ flush: 'sync' },
+);
+
+// Below two panel minimums the limits meet at half, so both panels share the space evenly.
+const halfThreadAreaWidth = computed(() => Math.round(threadAreaWidth.value / 2));
+const previewMinWidth = computed(() => Math.min(MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value));
+const previewMaxWidth = computed(() =>
+	Math.max(threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value),
+);
+const previewPanelWidth = computed(() => {
+	const ratio = chatPanelWidthRatio.value;
+	const chatPanelWidth =
+		ratio >= 0 && ratio <= 1 ? threadAreaWidth.value * ratio : DEFAULT_CHAT_PANEL_CONTENT_WIDTH;
+	return Math.round(
+		Math.min(
+			Math.max(threadAreaWidth.value - chatPanelWidth, previewMinWidth.value),
+			previewMaxWidth.value,
+		),
+	);
+});
+const isPreviewResizeEnabled = computed(
+	() => !isPreviewExpanded.value && previewMinWidth.value < previewMaxWidth.value,
+);
+const shouldAnimatePreviewLayout = computed(
+	() =>
+		isPreviewPanelTransitionEnabled.value &&
+		!isResizingPreview.value &&
+		!isThreadAreaResizing.value,
+);
+const AGENT_PREVIEW_CHAT_MIN_WIDTH = 320;
+const AGENT_PREVIEW_CHAT_PREFERRED_WIDTH = 480;
+const AGENT_PREVIEW_CHAT_MAX_RATIO = 0.5;
+
+/** Keep the agent chat readable without using more than half of its preview panel. */
+const agentPreviewChatColumnWidth = computed(() => {
+	const containerWidth = isPreviewExpanded.value ? threadAreaWidth.value : previewPanelWidth.value;
+	const maximumWidth = containerWidth * AGENT_PREVIEW_CHAT_MAX_RATIO;
+	const minimumWidth = Math.min(AGENT_PREVIEW_CHAT_MIN_WIDTH, maximumWidth);
+
+	return Math.round(
+		Math.max(minimumWidth, Math.min(AGENT_PREVIEW_CHAT_PREFERRED_WIDTH, maximumWidth)),
+	);
+});
+
+/** Add custom width to Agent Preview chat when canvas area is full expanded. */
+const agentPreviewPanelStyle = computed(() => {
+	const chatColumnWidth = {
+		'--agent-preview-chat-column-width': `${agentPreviewChatColumnWidth.value}px`,
+	};
+
+	return isPreviewExpanded.value
+		? chatColumnWidth
+		: { ...chatColumnWidth, width: `${previewPanelWidth.value}px` };
+});
 
 function togglePreviewExpanded() {
 	isPreviewExpanded.value = !isPreviewExpanded.value;
 }
 
-// Clamp preview width when the available area shrinks (sidebar open, window
-// resize, etc.)
-watch(previewMaxWidth, (max) => {
-	if (previewPanelWidth.value > max) {
-		previewPanelWidth.value = max;
-	}
-});
+function handleAgentPreviewDockOpenChange(open: boolean) {
+	isAgentPreviewDockOpen.value = open;
+}
 
 function handlePreviewResize({ width }: { width: number }) {
-	previewPanelWidth.value = width;
+	// The wrapper clamps the width, so an unchanged value means the drag hit a limit: keep the stored ratio.
+	if (Math.round(width) === previewPanelWidth.value) return;
+	chatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -311,38 +539,64 @@ watch(
 			isPreviewPanelTransitioning.value = isPreviewPanelTransitionEnabled.value;
 		}
 
-		if (visible) {
+		if (!visible) {
+			isAgentPreviewDockOpen.value = false;
+		} else {
 			isArtifactsPanelRevealed.value = false;
-			previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
 		}
 	},
 	{ flush: 'sync' },
 );
 
-// Late-initialize if the panel became visible before the ResizeObserver
-// reported the container size (otherwise the panel would render at 0px).
-watch(threadAreaWidth, (width) => {
-	if (width > 0 && previewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
-		previewPanelWidth.value = Math.round(width / 2);
-	}
-});
+const finishThreadAreaResize = useDebounceFn(() => {
+	isThreadAreaResizing.value = false;
+}, getDebounceTime(DEBOUNCE_TIME.UI.RESIZE));
 
-watch(isArtifactsPanelPinningAvailable, (isAvailable) => {
-	if (!isAvailable) {
-		isArtifactsPanelRevealed.value = false;
+watch(
+	threadAreaWidth,
+	(width, previousWidth) => {
+		if (
+			typeof previousWidth === 'number' &&
+			previousWidth > 0 &&
+			width !== previousWidth &&
+			preview.isPreviewVisible.value
+		) {
+			isThreadAreaResizing.value = true;
+			void finishThreadAreaResize();
+		}
+	},
+	{ immediate: true },
+);
+
+watch(isArtifactsPanelInLayout, (isInLayout) => {
+	isArtifactsPanelRevealed.value = false;
+
+	if (isInLayout) {
+		isArtifactsPanelDismissedInLayout.value = false;
 	}
 });
 
 watch(canShowArtifactsPanel, (canShow) => {
 	if (!canShow) {
 		isArtifactsPanelRevealed.value = false;
+		isArtifactsPanelDismissedInLayout.value = false;
 	}
 });
+
+onClickOutside(
+	artifactsPanelSlotRef,
+	() => {
+		if (isArtifactsPanelInLayout.value) return;
+		isArtifactsPanelRevealed.value = false;
+	},
+	{ ignore: ['[data-test-id="instance-ai-artifacts-panel-toggle"]', '.n8n-tooltip'] },
+);
 
 watch(
 	() => props.threadId,
 	(threadId, previousThreadId) => {
 		if (threadId !== previousThreadId) {
+			isAgentPreviewDockOpen.value = false;
 			suppressPanelTransitionsUntilStableRender();
 		}
 	},
@@ -360,246 +614,43 @@ watch(
 	},
 );
 
-// --- Scroll management ---
-const scrollableRef = useTemplateRef<HTMLElement>('scrollable');
-// The actual scroll container is the reka-ui viewport inside N8nScrollArea,
-// NOT the immediate parent (which is a non-scrolling content wrapper).
-const scrollContainerRef = computed(
-	() =>
-		(scrollableRef.value?.closest('[data-reka-scroll-area-viewport]') as HTMLElement | null) ??
-		null,
-);
-const { arrivedState } = useScroll(scrollContainerRef, {
-	throttle: 100,
-	offset: { bottom: 100 },
-});
-const userScrolledUp = ref(false);
-
-watch(
-	() => arrivedState.bottom,
-	(atBottom) => {
-		userScrolledUp.value = !atBottom;
-	},
-);
-
-function scrollToBottom(smooth = false) {
-	const container = scrollContainerRef.value;
-	if (container) {
-		container.scrollTo({
-			top: container.scrollHeight,
-			behavior: smooth ? 'smooth' : 'instant',
-		});
-	}
-}
-
-// Auto-scroll when content height changes (handles text deltas, tool calls,
-// sub-agent spawns, results, etc. — anything that grows the DOM).
-let contentResizeObserver: ResizeObserver | null = null;
-
-watch(
-	scrollableRef,
-	(el) => {
-		contentResizeObserver?.disconnect();
-		if (el) {
-			contentResizeObserver = new ResizeObserver(() => {
-				if (!userScrolledUp.value) {
-					scrollToBottom();
-				}
-			});
-			contentResizeObserver.observe(el);
-		}
-	},
-	{ immediate: true },
-);
-
-// --- Chat input ref for auto-focus ---
-const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
-
-function focusChatInputIfFocusIsIdle() {
-	const activeElement = document.activeElement;
-	if (
-		activeElement instanceof HTMLElement &&
-		activeElement !== document.body &&
-		activeElement !== document.documentElement
-	) {
-		return;
-	}
-
-	chatInputRef.value?.focus();
-}
-
-// Focus input on initial render (ref rebinds when messages load)
-watch(chatInputRef, (el) => {
-	if (el) {
-		void nextTick(focusChatInputIfFocusIsIdle);
-	}
-});
-
-// Reset scroll state when switching threads so new content auto-scrolls.
-watch(
-	() => props.threadId,
-	(threadId, previousThreadId) => {
-		if (threadId !== previousThreadId) {
-			userScrolledUp.value = false;
-			void nextTick(focusChatInputIfFocusIsIdle);
-		}
-	},
-);
-
-// --- Floating input dynamic padding ---
-const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
-const inputSwapRef = useTemplateRef<HTMLElement>('inputSwap');
-const inputAreaHeight = ref(120);
-const scrollButtonBottomOffset = ref(144);
-let inputContainerResizeObserver: ResizeObserver | null = null;
-let inputSwapResizeObserver: ResizeObserver | null = null;
-
-function updateScrollButtonBottomOffset() {
-	const container = inputContainerRef.value;
-	const inputSwap = inputSwapRef.value;
-	if (!container || !inputSwap) {
-		scrollButtonBottomOffset.value = inputAreaHeight.value + 24;
-		return;
-	}
-
-	const containerBottom = container.getBoundingClientRect().bottom;
-	const inputSwapTop = inputSwap.getBoundingClientRect().top;
-	scrollButtonBottomOffset.value = Math.max(24, containerBottom - inputSwapTop + 24);
-}
-
-watch(
-	inputContainerRef,
-	(el) => {
-		inputContainerResizeObserver?.disconnect();
-		if (el) {
-			inputContainerResizeObserver = new ResizeObserver((entries) => {
-				for (const entry of entries) {
-					inputAreaHeight.value = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
-				}
-				updateScrollButtonBottomOffset();
-			});
-			inputContainerResizeObserver.observe(el);
-		}
-	},
-	{ immediate: true },
-);
-
-watch(
-	inputSwapRef,
-	(el) => {
-		inputSwapResizeObserver?.disconnect();
-		if (el) {
-			inputSwapResizeObserver = new ResizeObserver(() => {
-				updateScrollButtonBottomOffset();
-			});
-			inputSwapResizeObserver.observe(el);
-			updateScrollButtonBottomOffset();
-		}
-	},
-	{ immediate: true },
-);
-
-function reconnectThreadAfterHydration(): void {
-	void thread.loadHistoricalMessages().then((hydrationStatus) => {
-		if (hydrationStatus === 'stale') return;
-		void thread.loadThreadStatus();
-		thread.connectSSE();
-	});
-}
-
-// Validate the route's :threadId against the loaded thread list, then connect
-// this route-scoped runtime. Route changes remount this component, so no
-// store-level "active thread" state is needed here.
-async function syncRouteToStore() {
-	const requestedThreadId = props.threadId;
-	if (!store.threads.length) {
-		await store.loadThreads();
-	}
-	// User may have navigated elsewhere while we awaited
-	if (requestedThreadId !== props.threadId) return;
-	if (!store.threads.some((t) => t.id === requestedThreadId)) {
-		void router.replace({ name: INSTANCE_AI_VIEW });
-		return;
-	}
-	if (thread.sseState === 'disconnected') {
-		reconnectThreadAfterHydration();
-	}
-}
-
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
-	void syncRouteToStore();
-	void nextTick(focusChatInputIfFocusIsIdle);
 });
 
 onUnmounted(() => {
-	thread.closeSSE();
-	contentResizeObserver?.disconnect();
-	inputContainerResizeObserver?.disconnect();
-	inputSwapResizeObserver?.disconnect();
+	// This view owns its thread's runtime, so it disposes it here (closes the
+	// SSE, clears state, drops it from the store) — but only once the app has
+	// left this thread's route. Suspense can create a duplicate instance of
+	// this view for the same thread during layout transitions (e.g. an editor
+	// hand-off that loads the AIA chunks) and discard one; that discarded
+	// instance's unmount fires while the route still points at the thread, and
+	// must not tear down the runtime the live instance is rendering.
+	if (router.currentRoute.value.params.threadId !== props.threadId) {
+		store.disposeRuntime(props.threadId);
+		// Guarded by the same route check, and scoped to this thread's agent: a
+		// discarded duplicate instance must not drop a request the live instance's
+		// builder is still about to claim.
+		const offeredAgentId = agentBuilderTarget.value?.agentId;
+		if (offeredAgentId) agentEvalsStore.clearEvalsFocus(offeredAgentId);
+	}
 });
 
 const workflowPreviewRef =
 	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
-
-// --- Message handlers ---
-function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
-	// Reset scroll on new user message
-	userScrolledUp.value = false;
-
-	const planEdit = thread.activePlanEdit;
-	if (planEdit) {
-		thread.cancelPlanEdit();
-		telemetry.track('User finished providing input', {
-			thread_id: thread.id,
-			input_thread_id: planEdit.inputThreadId ?? '',
-			instance_id: rootStore.instanceId,
-			type: 'plan-review',
-			provided_inputs: [
-				{
-					label: 'plan',
-					options: ['approve', 'ask-for-edits', 'deny'],
-					option_chosen: 'ask-for-edits',
-				},
-			],
-			skipped_inputs: [],
-			num_tasks: planEdit.taskCount,
-			feedback: scrubSecretsInText(message),
-		});
-		thread.markPlanUpdatePending(planEdit.requestId);
-		void thread
-			.confirmAction(planEdit.requestId, {
-				kind: 'approval',
-				approved: false,
-				userInput: message,
-			})
-			.then((success) => {
-				if (success) {
-					thread.resolveConfirmation(planEdit.requestId, 'changes-requested');
-				} else {
-					thread.clearPlanUpdatePending(planEdit.requestId);
-				}
-			});
-		return;
-	}
-
-	void thread.sendMessage(message, attachments, rootStore.pushRef);
-}
-
-function handleStop() {
-	void thread.cancelRun();
-}
 
 function handleFixWithAiFromOffer() {
 	const offer = activeFixWithAiOffer.value;
 	if (!offer) return;
 
 	dismissedExecutionId.value = offer.executionId;
-	userScrolledUp.value = false;
+	conversationRef.value?.resetScroll();
 	void thread.sendMessage(
 		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
-		undefined,
-		rootStore.pushRef,
+		{
+			authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
+			pushRef: rootStore.pushRef,
+		},
 	);
 }
 
@@ -612,61 +663,185 @@ function dismissFixWithAiOffer() {
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	failedRun.value = report;
 }
+
+function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
+	if (
+		params.agentId !== preview.activeAgentId.value ||
+		params.projectId !== preview.activeAgentProjectId.value
+	) {
+		return;
+	}
+	if (conversationRef.value?.isDirty()) {
+		toast.showMessage({
+			title: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.title'),
+			message: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.message'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	// The request now belongs to the assistant composer beside it, so leaving the
+	// preview chat open reads as two places to ask the same thing.
+	isAgentPreviewDockOpen.value = false;
+
+	conversationRef.value?.applyHandoff(
+		buildInstanceAiAgentPreviewHandoffContext(params),
+		params.initialDraft,
+	);
+}
+
+/**
+ * Reveal the agent artifact, then hand off to the builder to select its Evals
+ * tab and generate. Generation deliberately stays in the builder: it already
+ * owns the call, its loading flag and its error toast, so driving it from here
+ * would be a second call site for the same operation.
+ */
+async function handleGenerateTestCasesFromOffer() {
+	const target = activeTestAgentOffer.value;
+	if (!target) return;
+
+	// Raise the request before revealing the artifact: the builder consumes it on
+	// mount, so ordering doesn't matter, and the panel may not be open yet.
+	agentEvalsStore.requestEvalsFocus(target.agentId, true);
+	preview.openAgentPreview(target.agentId, target.projectId);
+	await persistTestAgentOfferDismissal(target.agentId);
+}
+
+async function dismissTestAgentOffer() {
+	const target = activeTestAgentOffer.value;
+	if (!target) return;
+	await persistTestAgentOfferDismissal(target.agentId);
+}
+
+// Persisted for the CTA as well as "Maybe later": once the user has acted on the
+// suggestion, re-offering it on the next visit is noise.
+async function persistTestAgentOfferDismissal(agentId: string) {
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	dismissedKeys.add(testAgentOfferKey(agentId));
+	await store.updateThreadMetadata(thread.id, {
+		dismissedContextKeys: [...dismissedKeys],
+	});
+}
+
+function handleNewThreadClick() {
+	void router.push({ name: INSTANCE_AI_VIEW });
+}
 </script>
 
 <template>
-	<div ref="threadArea" :class="$style.threadArea">
+	<div
+		ref="threadArea"
+		:class="[
+			$style.threadArea,
+			{
+				agentPreviewDockOpen: isAgentPreviewDockOpen,
+			},
+		]"
+		data-test-id="instance-ai-thread-area"
+	>
 		<!-- Main chat area -->
-		<div :class="$style.chatArea">
-			<InstanceAiViewHeader>
-				<template #title>
-					<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
-						{{ currentThreadTitle }}
-					</N8nHeading>
-					<N8nText
-						v-if="thread.sseState === 'reconnecting'"
-						size="small"
-						color="text-light"
-						:class="$style.reconnecting"
-					>
-						{{ i18n.baseText('instanceAi.view.reconnecting') }}
-					</N8nText>
-				</template>
-				<template #actions>
-					<N8nIconButton
-						v-if="isDebugEnabled"
-						icon="bug"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						:class="{ [$style.activeButton]: showDebugPanel }"
-						@click="
-							showDebugPanel = !showDebugPanel;
-							store.debugMode = showDebugPanel;
-						"
-					/>
-					<N8nTooltip
-						:content="artifactsPreviewToggleLabel"
-						placement="bottom"
-						:show-after="TOOLTIP_DELAY_MS"
-					>
-						<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+		<div
+			:class="[
+				$style.chatArea,
+				{
+					[$style.agentPreviewLayoutTransition]: shouldAnimatePreviewLayout,
+				},
+			]"
+			:data-layout-animated="shouldAnimatePreviewLayout"
+			data-test-id="instance-ai-builder-chat"
+		>
+			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
+				<InstanceAiViewHeader :show-thread-history-label="!currentThreadTitle">
+					<template #title>
+						<N8nHeading
+							v-if="currentThreadTitle"
+							tag="h2"
+							bold
+							size="small"
+							:class="$style.headerTitle"
+						>
+							{{ currentThreadTitle }}
+						</N8nHeading>
+						<N8nText
+							v-if="thread.sseState === 'reconnecting'"
+							size="small"
+							color="text-light"
+							:class="$style.reconnecting"
+						>
+							{{ i18n.baseText('instanceAi.view.reconnecting') }}
+						</N8nText>
+					</template>
+					<template #actions>
+						<N8nTooltip
+							:content="i18n.baseText('instanceAi.thread.new')"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
 							<N8nIconButton
-								v-if="!preview.isPreviewVisible.value"
-								icon="panel-right"
+								icon="message-circle-plus"
 								variant="ghost"
 								size="small"
 								icon-size="large"
-								data-test-id="instance-ai-artifacts-preview-toggle"
-								:aria-label="artifactsPreviewToggleLabel"
-								:aria-pressed="preview.isPreviewVisible.value"
-								:disabled="!hasPreviewTabs"
-								@click="toggleArtifactsPreview"
+								:aria-label="i18n.baseText('instanceAi.thread.new')"
+								data-test-id="instance-ai-embed-new-thread"
+								@click="handleNewThreadClick"
 							/>
-						</Transition>
-					</N8nTooltip>
-				</template>
-			</InstanceAiViewHeader>
+						</N8nTooltip>
+						<N8nIconButton
+							v-if="isDebugEnabled"
+							icon="bug"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:class="{ [$style.activeButton]: showDebugPanel }"
+							@click="
+								showDebugPanel = !showDebugPanel;
+								store.debugMode = showDebugPanel;
+							"
+						/>
+						<N8nTooltip
+							:content="artifactsPanelToggleLabel"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+								<N8nIconButton
+									v-if="showArtifactsPanelToggle"
+									icon="list"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									data-test-id="instance-ai-artifacts-panel-toggle"
+									:aria-label="artifactsPanelToggleLabel"
+									:aria-pressed="showArtifactsPanel"
+									:disabled="!canShowArtifactsPanel"
+									@click="toggleArtifactsPanel"
+								/>
+							</Transition>
+						</N8nTooltip>
+						<N8nTooltip
+							:content="artifactsPreviewToggleLabel"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+								<N8nIconButton
+									v-if="!preview.isPreviewVisible.value"
+									icon="panel-right"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									data-test-id="instance-ai-artifacts-preview-toggle"
+									:aria-label="artifactsPreviewToggleLabel"
+									:aria-pressed="preview.isPreviewVisible.value"
+									:disabled="!hasPreviewTabs"
+									@click="toggleArtifactsPreview"
+								/>
+							</Transition>
+						</N8nTooltip>
+					</template>
+				</InstanceAiViewHeader>
+			</div>
 
 			<!-- Content area: chat + artifacts side by side below header -->
 			<div
@@ -680,142 +855,55 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 				:data-layout-transitions-enabled="isPreviewPanelTransitionEnabled"
 				data-test-id="instance-ai-content-area"
 			>
-				<div :class="$style.chatContent">
-					<N8nScrollArea :class="$style.scrollArea">
-						<div
-							ref="scrollable"
-							:class="$style.messageList"
-							:style="{ paddingBottom: `calc(${inputAreaHeight}px + var(--spacing--sm))` }"
-						>
-							<TransitionGroup name="message-slide">
-								<InstanceAiMessage
-									v-for="message in displayedMessages"
-									:key="message.id"
-									:message="message"
-								/>
-							</TransitionGroup>
-							<!-- Builder sub-agents are extracted from their parent assistant
-     messages and rendered here so they always sit at the bottom
-     of the conversation. -->
-							<div v-if="builderAgents.length" :class="$style.builderAgents">
-								<AgentSection
-									v-for="builder in builderAgents"
-									:key="builder.agentId"
-									:agent-node="builder"
-								/>
-							</div>
-							<!-- Inline confirmations (questions, plan review, text, setup,
-								 credential, gateway resource-decision, continue) render in
-								 the chat flow. Floating-eligible items take over the chat
-								 input slot below instead — see `hasFloatingConfirmation`. -->
-							<InstanceAiConfirmationPanel kind="inline" />
-							<Transition name="confirmation-slide">
-								<InstanceAiFixWithAiPanel
-									v-if="activeFixWithAiOffer"
-									:node-name="activeFixWithAiOffer.errors[0].nodeName"
-									:error-message="activeFixWithAiOffer.errors[0].errorMessage"
-									:failed-count="activeFixWithAiOffer.errors.length"
-									@fix-with-ai="handleFixWithAiFromOffer"
-									@dismiss="dismissFixWithAiOffer"
-								/>
-							</Transition>
-						</div>
-					</N8nScrollArea>
-
-					<!-- Scroll to bottom button -->
-					<div
-						:class="$style.scrollButtonContainer"
-						:style="{ bottom: `${scrollButtonBottomOffset}px` }"
-					>
-						<Transition name="scroll-button-fade">
-							<N8nIconButton
-								v-if="userScrolledUp && thread.hasMessages"
-								variant="outline"
-								icon="arrow-down"
-								size="large"
-								icon-size="large"
-								:class="$style.scrollToBottomButton"
-								@click="
-									scrollToBottom(true);
-									userScrolledUp = false;
-								"
+				<InstanceAiConversation
+					ref="conversation"
+					:above-input-overlap-height="setupPanelWorkflowId ? setupOverlapHeight : undefined"
+					:mentions-enabled="mentionsEnabled"
+					@thread-missing="onThreadMissing"
+					@agent-attachment-restored="onAgentAttachmentRestored"
+				>
+					<template #above-input>
+						<InstanceAiSetupPanel
+							v-if="setupPanelWorkflowId"
+							ref="setupPanel"
+							:workflow-id="setupPanelWorkflowId"
+							:project-id="setupPanelProjectId"
+							@update:overlap-height="setupOverlapHeight = $event"
+						/>
+					</template>
+					<template #inline-offers>
+						<Transition name="confirmation-slide">
+							<InstanceAiFixWithAiPanel
+								v-if="activeFixWithAiOffer"
+								:node-name="activeFixWithAiOffer.errors[0].nodeName"
+								:error-message="activeFixWithAiOffer.errors[0].errorMessage"
+								:failed-count="activeFixWithAiOffer.errors.length"
+								@fix-with-ai="handleFixWithAiFromOffer"
+								@dismiss="dismissFixWithAiOffer"
 							/>
 						</Transition>
-					</div>
-
-					<!-- Floating input — replaced by the confirmation panel while a
-						 floating-eligible approval is pending. StatusBar and credit
-						 banner stay anchored above the slot in both states. The
-						 leaving child is positioned absolutely during the cross-fade
-						 so the in-flow child can size the slot to its natural
-						 height. -->
-					<div ref="inputContainer" :class="$style.inputContainer">
-						<div :class="$style.inputConstraint">
-							<InstanceAiStatusBar />
-							<CreditWarningBanner
-								v-if="creditBanner.visible.value"
-								:credits-remaining="store.creditsRemaining"
-								:credits-quota="store.creditsQuota"
-								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-								@dismiss="creditBanner.dismiss()"
+						<Transition name="confirmation-slide">
+							<InstanceAiTestAgentPanel
+								v-if="activeTestAgentOffer"
+								@generate="handleGenerateTestCasesFromOffer"
+								@dismiss="dismissTestAgentOffer"
 							/>
-							<div ref="inputSwap" :class="$style.inputSwap">
-								<Transition name="input-swap">
-									<InstanceAiConfirmationPanel
-										v-if="hasFloatingConfirmation"
-										key="floating-confirmation"
-										kind="floating"
-									/>
-									<InstanceAiInput
-										v-else
-										ref="chatInputRef"
-										key="chat-input"
-										:is-streaming="thread.isStreaming"
-										:is-submitting="thread.isSendingMessage"
-										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-										:is-plan-edit-mode="thread.activePlanEdit !== null"
-										:current-thread-id="thread.id"
-										:amend-context="thread.amendContext"
-										:contextual-suggestion="thread.contextualSuggestion"
-										@submit="handleSubmit"
-										@stop="handleStop"
-										@cancel-plan-edit="thread.cancelPlanEdit"
-									/>
-								</Transition>
-							</div>
-						</div>
-					</div>
-				</div>
+						</Transition>
+					</template>
+				</InstanceAiConversation>
 
 				<!-- Artifacts panel (below header, beside chat) -->
-				<div
-					v-if="showArtifactsPanelEdge"
-					:class="$style.artifactsPanelEdge"
-					role="button"
-					tabindex="0"
-					:aria-label="i18n.baseText('instanceAi.artifactsPanel.showPanel')"
-					data-test-id="instance-ai-artifacts-sidebar-edge"
-					@click="revealArtifactsPanel"
-					@mouseenter="revealArtifactsPanel"
-					@focusin="revealArtifactsPanel"
-					@keydown.enter.prevent="revealArtifactsPanel"
-					@keydown.space.prevent="revealArtifactsPanel"
-				/>
-				<Transition :name="artifactsPanelTransitionName" :css="isArtifactsPanelTransitionEnabled">
+				<Transition :name="artifactsPanelTransitionName" :css="shouldAnimateArtifactsPanel">
 					<div
 						v-if="showArtifactsPanel"
-						:class="$style.artifactsPanelSlot"
+						ref="artifactsPanelSlot"
+						:class="[
+							$style.artifactsPanelSlot,
+							{ [$style.artifactsPanelSlotOverlay]: !reserveArtifactsPanelLayout },
+						]"
 						data-test-id="instance-ai-artifacts-sidebar-slot"
-						@mouseenter="revealArtifactsPanel"
-						@mouseleave="hideArtifactsPanel()"
-						@focusin="revealArtifactsPanel"
-						@focusout="hideArtifactsPanel"
 					>
-						<InstanceAiArtifactsPanel
-							:is-pinned="isArtifactsPanelEffectivelyPinned"
-							:is-pinning-available="isArtifactsPanelPinningAvailable"
-							@toggle-pinned="toggleArtifactsPanelPinned"
-						/>
+						<InstanceAiArtifactsPanel />
 					</div>
 				</Transition>
 
@@ -839,27 +927,33 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 		>
 			<div
 				v-show="preview.isPreviewVisible.value"
-				:class="[$style.canvasArea, { [$style.canvasAreaExpanded]: isPreviewExpanded }]"
-				:style="previewPanelStyle"
+				:class="[
+					$style.canvasArea,
+					{
+						[$style.canvasAreaExpanded]: isPreviewExpanded,
+						[$style.agentPreviewLayoutTransition]: shouldAnimatePreviewLayout,
+					},
+				]"
+				:style="agentPreviewPanelStyle"
 				:data-expanded="isPreviewExpanded"
 				data-test-id="instance-ai-preview-panel"
 			>
 				<N8nResizeWrapper
 					:width="previewPanelWidth"
-					:min-width="400"
+					:min-width="previewMinWidth"
 					:max-width="previewMaxWidth"
 					:supported-directions="['left']"
-					:is-resizing-enabled="!isPreviewExpanded"
+					:is-resizing-enabled="isPreviewResizeEnabled"
 					:grid-size="8"
-					:outset="true"
 					@resize="handlePreviewResize"
 					@resizestart="isResizingPreview = true"
 					@resizeend="isResizingPreview = false"
 				>
 					<TabsRoot
-						v-model="preview.activeTabId.value"
+						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
+						@update:model-value="selectArtifactTab"
 					>
 						<InstanceAiPreviewTabBar
 							:tabs="preview.allArtifactTabs.value"
@@ -871,7 +965,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
-								v-if="preview.activeWorkflowId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowId.value"
 								:key="preview.activeWorkflowId.value"
 								ref="workflowPreview"
 								:class="[
@@ -879,30 +973,50 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 									{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
+								:initial-node-id="
+									preview.activeWorkflowId.value === agentReturnWorkflowId
+										? agentReturnNodeId
+										: undefined
+								"
 								:refresh-key="preview.workflowRefreshKey.value"
+								:execution-result="preview.activeWorkflowExecutionResult.value"
+								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
-								v-if="preview.activeDataTableId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
 								:class="$style.previewSlot"
 								:data-table-id="preview.activeDataTableId.value"
 								:project-id="preview.activeDataTableProjectId.value"
 								:refresh-key="preview.dataTableRefreshKey.value"
+							/>
+							<InstanceAiAgentPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAgentId.value &&
+									preview.activeAgentProjectId.value
+								"
+								:class="$style.previewSlot"
+								:agent-id="preview.activeAgentId.value"
+								:project-id="preview.activeAgentProjectId.value"
+								:preview-session-id="activeAgentPreviewSessionId"
+								:preview-open="isAgentPreviewDockOpen"
+								:pending="preview.activeAgentPending.value"
+								@preview-open-change="handleAgentPreviewDockOpenChange"
+								@assistant-handoff="handleAgentPreviewAssistantHandoff"
 							/>
 						</div>
 					</TabsRoot>
 				</N8nResizeWrapper>
 			</div>
 		</Transition>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<OpenWorkflowInAssistantNotification :thread-id="threadId" />
 	</div>
 </template>
 
 <style lang="scss" module>
-@property --instance-ai-artifacts-layout-width {
-	syntax: '<length>';
-	inherits: true;
-	initial-value: 0;
-}
+@use '@n8n/design-system/css/mixins/motion' as motion;
 
 .threadArea {
 	--instance-ai-artifacts-panel-width: 280px;
@@ -913,6 +1027,17 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	display: flex;
 	min-width: 0;
 	overflow: hidden;
+}
+
+.agentPreviewLayoutTransition {
+	--animation--width-transition--duration: var(--duration--snappy);
+	--animation--width-transition--easing: var(--easing--ease-in-out);
+
+	@include motion.width-transition;
+}
+
+.builderChatHeader {
+	flex-shrink: 0;
 }
 
 .chatArea {
@@ -929,31 +1054,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	flex-shrink: 0;
 	min-width: 0;
 	border-left: var(--border);
-
-	// Widen the resize handle hit area for easier grabbing
-	:global([data-test-id='resize-handle']) {
-		width: 12px !important;
-		left: -6px !important;
-
-		// Visible drag indicator line
-		&::after {
-			content: '';
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			width: 2px;
-			height: 32px;
-			border-radius: 1px;
-			background: var(--color--foreground);
-			opacity: 0;
-			transition: opacity 0.15s ease;
-		}
-
-		&:hover::after {
-			opacity: 1;
-		}
-	}
 }
 
 .canvasAreaExpanded {
@@ -991,21 +1091,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 		var(--instance-ai-panel-transition-easing);
 }
 
-.artifactsPanelEdge {
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 3;
-	width: var(--spacing--xl);
-	cursor: default;
-	outline: none;
-
-	&:focus-visible {
-		box-shadow: inset calc(-1 * var(--spacing--5xs)) 0 0 var(--color--primary);
-	}
-}
-
 .artifactsPanelSlot {
 	position: absolute;
 	top: 0;
@@ -1016,31 +1101,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	min-width: var(--instance-ai-artifacts-panel-width);
 	display: flex;
 	overflow: hidden;
+	// Keep the transparent right padding from intercepting the chat scrollbar.
+	clip-path: inset(0 var(--spacing--2xs) 0 0);
 }
 
-.chatContent {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	position: relative;
-}
-
-.scrollArea {
-	flex: 1;
-	// Allow flex item to shrink below content size so reka-ui viewport scrolls
-	min-height: 0;
-}
-
-.messageList {
-	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: 800px;
-	margin: 0 auto;
-	padding: var(--spacing--sm) var(--spacing--lg);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
+.artifactsPanelSlotOverlay {
+	bottom: auto;
+	max-height: calc(100% - var(--spacing--sm));
 }
 
 .contentAreaWithPinnedArtifacts {
@@ -1049,100 +1116,12 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 
 .contentAreaWithoutLayoutTransitions {
 	transition: none;
-
-	.messageList,
-	.scrollButtonContainer,
-	.inputConstraint {
-		transition: none;
-	}
-}
-
-.builderAgents {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--xs);
-}
-
-.scrollButtonContainer {
-	position: absolute;
-	left: 0;
-	right: 0;
-	display: flex;
-	justify-content: center;
-	pointer-events: none;
-	z-index: 3;
-	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
-}
-
-.scrollToBottomButton {
-	--button--color: var(--icon-color--strong);
-	--button--color--background: var(--background--surface);
-	--button--color--background-hover: var(--color--foreground--tint-2);
-	--button--color--background-active: var(--color--foreground--tint-2);
-	--button--shadow: var(--shadow--xs);
-	--button--shadow--hover: var(--shadow--xs);
-	--button--shadow--active: var(--shadow--xs);
-	--button--border-color: var(--border-color);
-	--button--border-color--hover: var(--border-color);
-	--button--border-color--active: var(--border-color);
-	--button--border--shadow: 0 0 0 1px var(--button--border-color);
-	--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
-	--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
-	--button--radius: var(--radius--full);
-
-	pointer-events: auto;
-
-	&.scrollToBottomButton {
-		background-color: var(--background--surface);
-		border: var(--border);
-		border-radius: var(--radius--full);
-		box-shadow: var(--shadow--xs);
-		color: var(--icon-color--strong);
-
-		&:hover {
-			background-color: var(--color--foreground--tint-2);
-			box-shadow: var(--shadow--xs);
-		}
-	}
-}
-
-.inputContainer {
-	position: absolute;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	padding: 0 var(--spacing--lg) var(--spacing--sm);
-	background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
-	pointer-events: none;
-	z-index: 2;
-
-	& > * {
-		pointer-events: auto;
-	}
-}
-
-.inputConstraint {
-	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: 750px;
-	margin: 0 auto;
-	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.contentArea,
-	.messageList,
-	.scrollButtonContainer,
-	.inputConstraint {
+	.contentArea {
 		transition: none;
 	}
-}
-
-// The leaving child is detached from layout (see `.input-swap-leave-active`
-// below) so the slot follows the entering child's intrinsic height during
-// the cross-fade.
-.inputSwap {
-	position: relative;
 }
 
 .previewPanel {
@@ -1171,15 +1150,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 <style lang="scss">
 @use '@n8n/design-system/css/mixins/motion';
 
-.message-slide-enter-from {
-	opacity: 0;
-	transform: translateY(8px);
-}
-
-.message-slide-enter-active {
-	transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
 .fade-enter-from,
 .fade-leave-to {
 	opacity: 0;
@@ -1188,16 +1158,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
-}
-
-.scroll-button-fade-enter-from,
-.scroll-button-fade-leave-to {
-	opacity: 0;
-}
-
-.scroll-button-fade-enter-active,
-.scroll-button-fade-leave-active {
-	transition: opacity 0.12s ease;
 }
 
 .preview-panel-slide-enter-active,
@@ -1320,24 +1280,5 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 
 .artifacts-panel-preview-leave-active {
 	pointer-events: none;
-}
-
-// Cross-fade between the chat input and the floating confirmation panel.
-// Default-mode cross-fade: both children co-exist briefly, the leaving one
-// is absolute-positioned so it doesn't push the entering one down, and the
-// slot sizes to the in-flow (entering) child.
-.input-swap-enter-from,
-.input-swap-leave-to {
-	opacity: 0;
-}
-
-.input-swap-enter-active,
-.input-swap-leave-active {
-	transition: opacity 120ms ease;
-}
-
-.input-swap-leave-active {
-	position: absolute;
-	inset: 0;
 }
 </style>

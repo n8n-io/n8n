@@ -1,0 +1,862 @@
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
+import { computed, nextTick, ref } from 'vue';
+
+import '../../css/_tokens.scss';
+
+import N8nChatInput from './ChatInput.vue';
+import type { WorkflowSuggestion } from '../../types/assistant';
+import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
+import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
+import type {
+	DropdownMenuExposed,
+	DropdownMenuItemProps,
+} from '../N8nDropdownMenu/DropdownMenu.types';
+
+export default {
+	title: 'Areas/Assistant/ChatInput',
+	component: N8nChatInput,
+	argTypes: {
+		modelValue: {
+			control: 'text',
+		},
+		layout: {
+			control: 'select',
+			options: ['single-line', 'multiline', 'adaptive'],
+		},
+		placeholder: {
+			control: 'text',
+		},
+		maxLength: {
+			control: 'number',
+		},
+		maxLinesBeforeScroll: {
+			control: 'number',
+		},
+		streaming: {
+			control: 'boolean',
+		},
+		disabled: {
+			control: 'boolean',
+		},
+		refocusAfterSend: {
+			control: 'boolean',
+		},
+	},
+	parameters: {
+		backgrounds: { default: '--color--background--light-2' },
+		docs: {
+			description: {
+				component:
+					'A chat input with single-line and multiline layouts, submit/stop actions, and slot-based top and bottom bars.',
+			},
+		},
+	},
+};
+
+const methods = {
+	onUpdateModelValue: action('update:modelValue'),
+	onUpgradeClick: action('upgrade-click'),
+	onSubmit: action('submit'),
+	onStop: action('stop'),
+	onFocus: action('focus'),
+	onBlur: action('blur'),
+};
+
+const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nChatInput,
+	},
+	template: `
+		<div style="width: 500px; max-width: 100%;">
+			<n8n-chat-input
+				v-bind="args"
+				:modelValue="val"
+				@update:modelValue="handleUpdateModelValue"
+				@submit="onSubmit"
+				@stop="onStop"
+				@focus="onFocus"
+				@blur="onBlur"
+			/>
+		</div>
+	`,
+	data() {
+		return {
+			val: this.args.modelValue || '',
+		};
+	},
+	watch: {
+		args: {
+			handler(newArgs) {
+				if (newArgs.modelValue !== undefined) {
+					this.val = newArgs.modelValue;
+				}
+			},
+			deep: true,
+			immediate: true,
+		},
+	},
+	methods: {
+		...methods,
+		handleUpdateModelValue(value: string) {
+			this.val = value;
+			this.onUpdateModelValue(value);
+		},
+	},
+});
+
+export const Default = Template.bind({});
+Default.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+};
+
+export const SingleLine = Template.bind({});
+SingleLine.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+	layout: 'single-line',
+};
+
+export const MultiLine = Template.bind({});
+MultiLine.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+};
+
+export const Adaptive = Template.bind({});
+Adaptive.args = {
+	placeholder: 'Starts as one line and grows with your text...',
+	maxLength: 1000,
+	layout: 'adaptive',
+};
+Adaptive.parameters = {
+	docs: {
+		description: {
+			story:
+				'Adaptive supports the default icon-only send/stop button. A custom button label or action slot falls back to the multiline layout.',
+		},
+	},
+};
+
+const workflowSuggestions: WorkflowSuggestion[] = [
+	{
+		id: 'invoice-pipeline',
+		summary: 'Invoice processing pipeline',
+		prompt:
+			'Create an invoice parsing workflow using n8n forms. Extract key information and store in Airtable.',
+	},
+	{
+		id: 'ai-news-digest',
+		summary: 'Daily AI news digest',
+		prompt:
+			'Create a workflow that fetches the latest AI news every morning at 8 AM and sends a summary via Telegram.',
+	},
+	{
+		id: 'email-summary',
+		summary: 'Summarize emails with AI',
+		prompt:
+			'Build a workflow that retrieves emails, performs AI analysis, and sends a summary to Slack.',
+	},
+];
+
+interface PromptAttachment {
+	name: string;
+	type: string;
+}
+
+const promptAttachments: PromptAttachment[] = [
+	{
+		name: 'invoice-screenshot.png',
+		type: 'image/png',
+	},
+	{
+		name: 'workflow-notes.pdf',
+		type: 'application/pdf',
+	},
+];
+
+const LeadingTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nIcon,
+		N8nChatInput,
+	},
+	template: `
+		<div style="width: 500px; max-width: 100%;">
+			<n8n-chat-input v-bind="args" @submit="onSubmit" @stop="onStop">
+				<template #leading>
+					<div
+						style="
+							display: flex;
+							flex-wrap: wrap;
+							gap: var(--spacing--2xs);
+						"
+					>
+						<div
+							v-for="attachment in args.attachments"
+							:key="attachment.name"
+							style="
+								position: relative;
+								display: flex;
+								align-items: center;
+								justify-content: center;
+								width: 80px;
+								height: 80px;
+								overflow: hidden;
+								border: var(--border);
+								border-radius: var(--radius--lg);
+								background: var(--color--foreground--tint-2);
+								color: var(--color--text--tint-1);
+							"
+						>
+							<N8nIcon icon="file" size="large" />
+							<button
+								type="button"
+								:aria-label="'Remove ' + attachment.name"
+								style="
+									position: absolute;
+									top: var(--spacing--4xs);
+									right: var(--spacing--4xs);
+									display: flex;
+									align-items: center;
+									justify-content: center;
+									width: 20px;
+									height: 20px;
+									padding: 0;
+									color: white;
+									background: color-mix(in srgb, var(--color--foreground--shade-2) 70%, transparent);
+									border: none;
+									border-radius: 50%;
+									cursor: pointer;
+								"
+								@click.stop="onRemoveAttachment(attachment.name)"
+							>
+								<N8nIcon icon="x" size="small" />
+							</button>
+						</div>
+					</div>
+				</template>
+			</n8n-chat-input>
+		</div>
+	`,
+	methods: {
+		onSubmit: methods.onSubmit,
+		onStop: methods.onStop,
+		onRemoveAttachment: action('remove-attachment'),
+	},
+});
+
+const TrailingTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nChatInput,
+	},
+	template: `
+		<div style="width: 500px; max-width: 100%;">
+			<n8n-chat-input v-bind="args" @submit="onSubmit" @stop="onStop">
+				<template #trailing>
+					<div
+						style="
+							display: flex;
+							flex-wrap: wrap;
+							gap: var(--spacing--2xs);
+						"
+					>
+						<button
+							v-for="suggestion in args.suggestions"
+							:key="suggestion.id"
+							type="button"
+							style="
+								display: inline-flex;
+								align-items: center;
+								justify-content: center;
+								padding: var(--spacing--4xs) var(--spacing--2xs);
+								border-radius: 56px;
+								border: var(--border);
+								background: var(--color--background--light-3);
+								font-size: var(--font-size--2xs);
+								color: var(--color--text--shade-1);
+							"
+						>
+							{{ suggestion.summary }}
+						</button>
+					</div>
+				</template>
+			</n8n-chat-input>
+		</div>
+	`,
+	methods: {
+		onSubmit: methods.onSubmit,
+		onStop: methods.onStop,
+	},
+});
+
+const ActionsTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nIconButton,
+		N8nChatInput,
+		N8nTooltip,
+	},
+	template: `
+		<div style="width: 500px; max-width: 100%;">
+			<n8n-chat-input v-bind="args" @submit="onSubmit" @stop="onStop">
+				<template #left-actions>
+					<n8n-tooltip content="Context">
+						<n8n-icon-button
+							icon="plus"
+							title="Context"
+							variant="ghost"
+							size="medium"
+							@click="onContextClick"
+						/>
+					</n8n-tooltip>
+				</template>
+				<template #right-actions>
+					<n8n-tooltip content="Voice">
+						<n8n-icon-button
+							icon="mic"
+							title="Voice input"
+							variant="ghost"
+							size="medium"
+							@click="onMicClick"
+						/>
+					</n8n-tooltip>
+				</template>
+			</n8n-chat-input>
+		</div>
+	`,
+	methods: {
+		onSubmit: methods.onSubmit,
+		onStop: methods.onStop,
+		onContextClick: action('context-click'),
+		onMicClick: action('mic-click'),
+	},
+});
+
+export const WithLeading = LeadingTemplate.bind({});
+WithLeading.args = {
+	placeholder: 'Ask about the attached files...',
+	maxLength: 1000,
+	attachments: promptAttachments,
+};
+
+export const WithTrailing = TrailingTemplate.bind({});
+WithTrailing.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+	suggestions: workflowSuggestions,
+};
+
+export const WithActions = ActionsTemplate.bind({});
+WithActions.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+};
+
+const ExternalDropdownTemplate: StoryFn = (args) => ({
+	components: {
+		N8nChatInput,
+		N8nDropdownMenu,
+		N8nIconButton,
+		N8nTooltip,
+	},
+	setup() {
+		const chatInputRef = ref<{
+			getInputElement: () => HTMLTextAreaElement | undefined;
+		} | null>(null);
+		const dropdownRef = ref<DropdownMenuExposed | null>(null);
+		const composerRef = ref<HTMLElement | null>(null);
+		const menuOpen = ref(false);
+		const value = ref('');
+		const mentionRange = ref<{ start: number; end: number } | null>(null);
+		const savedSelection = ref({ start: 0, end: 0 });
+		const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
+		const items: Array<DropdownMenuItemProps<string>> = [
+			{
+				id: 'orders',
+				label: 'Orders workflow',
+				selectable: true,
+				children: [
+					{ id: 'validate-order', label: 'Validate order' },
+					{
+						id: 'fulfillment',
+						label: 'Fulfillment group',
+						selectable: true,
+						children: [{ id: 'create-shipment', label: 'Create shipment' }],
+					},
+				],
+			},
+			{ id: 'invoices', label: 'Invoices workflow' },
+		];
+		const logSelect = action('select');
+
+		const findItemLabel = (
+			menuItems: Array<DropdownMenuItemProps<string>>,
+			itemId: string,
+		): string | undefined => {
+			for (const item of menuItems) {
+				if (item.id === itemId) return item.label;
+				const childLabel = item.children && findItemLabel(item.children, itemId);
+				if (childLabel) return childLabel;
+			}
+
+			return undefined;
+		};
+
+		const saveSelection = () => {
+			const input = inputElement.value;
+			if (!input) return;
+
+			savedSelection.value = {
+				start: input.selectionStart,
+				end: input.selectionEnd,
+			};
+		};
+
+		const handleCaretMove = async () => {
+			await nextTick();
+			saveSelection();
+			const range = mentionRange.value;
+			if (!range) return;
+
+			const selection = savedSelection.value;
+			if (
+				selection.start <= range.start ||
+				selection.start > range.end ||
+				selection.end > range.end
+			) {
+				menuOpen.value = false;
+				mentionRange.value = null;
+			}
+		};
+
+		const handleKeydown = (event: KeyboardEvent) => {
+			dropdownRef.value?.handleExternalKeydown(event);
+		};
+
+		const openMenu = async () => {
+			menuOpen.value = true;
+			await nextTick();
+			dropdownRef.value?.highlightFirstItem();
+		};
+
+		const handleOpenChange = async (open: boolean) => {
+			if (open) {
+				await openMenu();
+			} else {
+				menuOpen.value = false;
+				mentionRange.value = null;
+			}
+		};
+
+		const handleUpdateModelValue = async (newValue: string) => {
+			value.value = newValue;
+			await nextTick();
+			saveSelection();
+
+			const caret = inputElement.value?.selectionEnd ?? newValue.length;
+			const candidateIndex = caret - 1;
+			const followsWhitespace =
+				candidateIndex === 0 || /\s/.test(newValue[candidateIndex - 1] ?? '');
+			if (newValue[candidateIndex] === '@' && followsWhitespace) {
+				mentionRange.value = { start: candidateIndex, end: caret };
+				await openMenu();
+				return;
+			}
+
+			const range = mentionRange.value;
+			if (range && (newValue[range.start] !== '@' || caret <= range.start)) {
+				menuOpen.value = false;
+				mentionRange.value = null;
+			} else if (range) {
+				mentionRange.value = { start: range.start, end: caret };
+			}
+		};
+
+		const handleSelect = async (itemId: string) => {
+			logSelect(itemId);
+			const label = findItemLabel(items, itemId);
+			if (!label) return;
+
+			const range = mentionRange.value;
+			const start = range?.start ?? savedSelection.value.start;
+			const end = range?.end ?? savedSelection.value.end;
+			const insertedText = `"${label}"`;
+			value.value = value.value.slice(0, start) + insertedText + value.value.slice(end);
+			mentionRange.value = null;
+
+			await nextTick();
+			const caret = start + insertedText.length;
+			inputElement.value?.focus({ preventScroll: true });
+			inputElement.value?.setSelectionRange(caret, caret);
+			savedSelection.value = { start: caret, end: caret };
+		};
+
+		return {
+			args,
+			chatInputRef,
+			dropdownRef,
+			composerRef,
+			menuOpen,
+			value,
+			inputElement,
+			items,
+			handleKeydown,
+			handleOpenChange,
+			handleUpdateModelValue,
+			handleSelect,
+			handleCaretMove,
+			saveSelection,
+			onSubmit: methods.onSubmit,
+		};
+	},
+	template: `
+		<div
+			style="
+				display: flex;
+				flex-direction: column;
+				box-sizing: border-box;
+				min-height: 100vh;
+				width: 100%;
+				padding: var(--spacing--4xl) var(--spacing--lg) var(--spacing--lg);
+			"
+			@keydown.capture="handleKeydown"
+		>
+			<div ref="composerRef">
+				<N8nChatInput
+					ref="chatInputRef"
+					:model-value="value"
+					:placeholder="args.placeholder"
+					:max-length="args.maxLength"
+					@update:model-value="handleUpdateModelValue"
+					@submit="onSubmit"
+					@click="handleCaretMove"
+					@keyup="handleCaretMove"
+					@pointerdown.capture="saveSelection"
+					@select="handleCaretMove"
+				>
+					<template #right-actions>
+						<N8nDropdownMenu
+							ref="dropdownRef"
+							:model-value="menuOpen"
+							:items="items"
+							:external-focus-target="inputElement"
+							:reference="composerRef"
+							placement="top-start"
+							searchable
+							search-mode="external"
+							@update:model-value="handleOpenChange"
+							@select="handleSelect"
+						>
+							<template #trigger>
+								<N8nTooltip as-child content="Open context menu" placement="top">
+									<N8nIconButton
+										icon="at-sign"
+										title="Open context menu"
+										variant="ghost"
+										size="medium"
+									/>
+								</N8nTooltip>
+							</template>
+						</N8nDropdownMenu>
+					</template>
+				</N8nChatInput>
+			</div>
+			<p style="margin-top: var(--spacing--2xs); color: var(--text-color--subtle);">
+				Type @ at the start of the message or after a space, or use the @ button. Use Enter and the arrow keys while focus stays in the message input.
+			</p>
+		</div>
+	`,
+});
+
+export const WithExternalDropdown = ExternalDropdownTemplate.bind({});
+WithExternalDropdown.args = {
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+};
+WithExternalDropdown.parameters = {
+	layout: 'fullscreen',
+	docs: {
+		description: {
+			story:
+				'Demonstrates typed and button-triggered opening, quoted text insertion, external focus, and keyboard integration. Query filtering and attachments are not included.',
+		},
+	},
+};
+
+export const Streaming = Template.bind({});
+Streaming.args = {
+	modelValue: 'This is currently being processed...',
+	placeholder: 'Type your message here...',
+	streaming: true,
+	maxLength: 1000,
+};
+
+export const Disabled = Template.bind({});
+Disabled.args = {
+	placeholder: 'This input is disabled',
+	disabled: true,
+	maxLength: 1000,
+};
+
+export const WithInitialText = Template.bind({});
+WithInitialText.args = {
+	modelValue:
+		'Hello, this is some initial text that spans multiple lines\nto show how the component handles existing content.',
+	placeholder: 'Type your message here...',
+	maxLength: 1000,
+};
+
+export const AtCharacterLimit = Template.bind({});
+AtCharacterLimit.args = {
+	modelValue: 'This message is exactly at the character limit!!',
+	placeholder: 'Type your message here...',
+	maxLength: 48,
+};
+
+export const WithRefocusAfterSend = Template.bind({});
+WithRefocusAfterSend.args = {
+	placeholder: 'Input will refocus after send...',
+	maxLength: 1000,
+	refocusAfterSend: true,
+};
+
+const InteractiveTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nChatInput,
+	},
+	template: `
+		<div>
+			<div style="width: 500px; max-width: 100%; margin-bottom: var(--spacing--md);">
+				<n8n-chat-input
+					v-bind="args"
+					:modelValue="val"
+					:streaming="streaming"
+					@update:modelValue="handleUpdateModelValue"
+					@submit="handleSubmit"
+					@stop="handleStop"
+					@focus="onFocus"
+					@blur="onBlur"
+				/>
+			</div>
+			<div
+				style="
+					padding: var(--spacing--xs);
+					background: var(--background--subtle);
+					color: var(--text-color);
+					border: var(--border);
+					border-radius: var(--radius);
+				"
+			>
+				<p><strong>Current value:</strong> {{ val }}</p>
+				<p><strong>Character count:</strong> {{ val.length }} / {{ args.maxLength }}</p>
+				<p><strong>Streaming:</strong> {{ streaming }}</p>
+				<button
+					style="
+						margin-top: var(--spacing--xs);
+						padding: var(--spacing--3xs) var(--spacing--xs);
+						color: var(--text-color);
+						background: var(--background--surface);
+						border: var(--border);
+						border-radius: var(--radius);
+						cursor: pointer;
+					"
+					@click="streaming = !streaming"
+				>
+					Toggle Streaming (Current: {{ streaming ? 'ON' : 'OFF' }})
+				</button>
+			</div>
+		</div>
+	`,
+	data() {
+		return {
+			val: this.args.modelValue || '',
+			streaming: false,
+		};
+	},
+	watch: {
+		args: {
+			handler(newArgs) {
+				if (newArgs.modelValue !== undefined) {
+					this.val = newArgs.modelValue;
+				}
+			},
+			deep: true,
+			immediate: true,
+		},
+	},
+	methods: {
+		...methods,
+		handleUpdateModelValue(value: string) {
+			this.val = value;
+			this.onUpdateModelValue(value);
+		},
+		handleSubmit() {
+			this.onSubmit();
+			// Simulate processing
+			this.streaming = true;
+			setTimeout(() => {
+				this.streaming = false;
+				// Clear after "processing"
+				this.val = '';
+			}, 2000);
+		},
+		handleStop() {
+			this.onStop();
+			this.streaming = false;
+		},
+	},
+});
+
+export const Interactive = InteractiveTemplate.bind({});
+Interactive.args = {
+	placeholder: 'Type a message and press Enter to send...',
+	maxLength: 500,
+	refocusAfterSend: true,
+};
+
+const MultipleInstancesTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nChatInput,
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 20px;">
+			<div>
+				<h3>Single Line layout</h3>
+				<div style="width: 500px; max-width: 100%;">
+					<n8n-chat-input
+						:modelValue="val1"
+						@update:modelValue="val1 = $event"
+						:placeholder="'Single line input...'"
+						:max-length="1000"
+					/>
+				</div>
+			</div>
+			<div>
+				<h3>Multiline with short text</h3>
+				<div style="width: 500px; max-width: 100%;">
+					<n8n-chat-input
+						:modelValue="val2"
+						@update:modelValue="val2 = $event"
+						:placeholder="'Two line input...'"
+						:max-length="1000"
+					/>
+				</div>
+			</div>
+			<div>
+				<h3>Multiline with longer text</h3>
+				<div style="width: 500px; max-width: 100%;">
+					<n8n-chat-input
+						:modelValue="val3"
+						@update:modelValue="val3 = $event"
+						:placeholder="'Three line input...'"
+						:max-length="1000"
+					/>
+				</div>
+			</div>
+		</div>
+	`,
+	data() {
+		return {
+			val1: '',
+			val2: '',
+			val3: '',
+		};
+	},
+});
+
+export const DifferentSizes = MultipleInstancesTemplate.bind({});
+DifferentSizes.args = {};
+
+const SuggestionsTemplate: StoryFn = (args) => ({
+	setup: () => ({ args }),
+	components: {
+		N8nChatInput,
+	},
+	template: `
+		<div style="max-width: 710px; margin: 0 auto;">
+			<div
+				style="
+					display: flex;
+					flex-direction: column;
+					align-items: center;
+					gap: var(--spacing--md);
+					max-width: 710px;
+					width: 100%;
+				"
+			>
+				<div style="width: 100%;">
+					<N8nChatInput
+						placeholder="Describe the workflow you want to build..."
+						:streaming="args.streaming"
+						:disabled="args.disabled"
+						:credits-quota="args.creditsQuota"
+						:credits-remaining="args.creditsRemaining"
+						:show-ask-owner-tooltip="args.showAskOwnerTooltip"
+						@submit="onSubmit"
+						@upgrade-click="onUpgradeClick"
+					/>
+				</div>
+				<div
+					v-if="args.suggestions.length > 0 && !args.streaming"
+					style="
+						display: flex;
+						justify-content: center;
+						align-items: flex-start;
+						flex-wrap: wrap;
+						gap: var(--spacing--2xs);
+						width: 100%;
+					"
+				>
+					<button
+						v-for="suggestion in args.suggestions"
+						:key="suggestion.id"
+						type="button"
+						:disabled="args.disabled"
+						style="
+							display: inline-flex;
+							align-items: center;
+							justify-content: center;
+							padding: var(--spacing--4xs) var(--spacing--2xs);
+							border-radius: 56px;
+							border: var(--border);
+							background: var(--color--background--light-3);
+							font-size: var(--font-size--2xs);
+							color: var(--color--text--shade-1);
+						"
+					>
+						{{ suggestion.summary }}
+					</button>
+				</div>
+			</div>
+		</div>
+	`,
+	methods: {
+		onSubmit: methods.onSubmit,
+		onUpgradeClick: methods.onUpgradeClick,
+	},
+});
+
+export const WithWorkflowSuggestions = SuggestionsTemplate.bind({});
+WithWorkflowSuggestions.args = {
+	suggestions: workflowSuggestions,
+};
+
+export const SuggestionsDisabled = SuggestionsTemplate.bind({});
+SuggestionsDisabled.args = {
+	suggestions: workflowSuggestions,
+	disabled: true,
+};

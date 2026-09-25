@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import type { CompositeNode } from './composite-tree';
 import {
 	createDeferredConnection,

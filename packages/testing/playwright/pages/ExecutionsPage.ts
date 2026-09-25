@@ -2,6 +2,7 @@ import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { LogsPanel } from './components/LogsPanel';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class ExecutionsPage extends BasePage {
 	async goto(projectId?: string) {
@@ -9,7 +10,7 @@ export class ExecutionsPage extends BasePage {
 		await this.page.goto(url);
 	}
 
-	readonly logsPanel = new LogsPanel(this.getPreviewIframe().getByTestId('logs-panel'));
+	readonly logsPanel = new LogsPanel(this.getPreview().getByTestId('logs-panel'));
 
 	async clickDebugInEditorButton(): Promise<void> {
 		await this.clickButtonByName('Debug in editor');
@@ -32,8 +33,28 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('auto-refresh-checkbox');
 	}
 
-	getPreviewIframe() {
-		return this.page.getByTestId('workflow-preview-iframe').contentFrame();
+	/**
+	 * The debug button. The test id sits on the inner label, so step up to the
+	 * button element to assert its state.
+	 */
+	getDebugButton(): Locator {
+		return this.page.getByTestId('execution-debug-button').locator('xpath=ancestor::button');
+	}
+
+	/**
+	 * Hover the tooltip's trigger, not the disabled button: Chrome does not
+	 * dispatch mouse events to disabled form controls.
+	 */
+	async hoverDebugButton(): Promise<void> {
+		await this.getDebugButton().locator('xpath=ancestor::a').hover();
+	}
+
+	getPreview(): Locator {
+		return this.page.getByTestId('execution-preview-host');
+	}
+
+	getPreviewCanvasNodes(): Locator {
+		return this.getPreview().getByTestId('canvas-node');
 	}
 
 	async clickLastExecutionItem(): Promise<void> {
@@ -65,6 +86,18 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('execution-list-empty');
 	}
 
+	getNoTriggerContent(): Locator {
+		return this.page.getByTestId('workflow-execution-no-trigger-content');
+	}
+
+	getAddFirstStepButton(): Locator {
+		return this.page.getByRole('button', { name: 'Add first step' });
+	}
+
+	getNoContent(): Locator {
+		return this.page.getByTestId('workflow-execution-no-content');
+	}
+
 	getSuccessfulExecutionItems(): Locator {
 		return this.page.locator('[data-test-execution-status="success"]');
 	}
@@ -81,10 +114,11 @@ export class ExecutionsPage extends BasePage {
 	}
 
 	/**
-	 * Get error notifications in the preview iframe
+	 * Get error notifications shown while previewing an execution. The preview
+	 * renders natively, so its notifications surface at the app level.
 	 */
 	getErrorNotificationsInPreview(): Locator {
-		return this.getPreviewIframe().locator('.el-notification:has(.el-notification--error)');
+		return this.page.locator('.el-notification:has(.el-notification--error)');
 	}
 
 	getFirstExecutionItem(): Locator {
@@ -93,7 +127,7 @@ export class ExecutionsPage extends BasePage {
 
 	async deleteExecutionInPreview(): Promise<void> {
 		await this.page.getByTestId('execution-preview-delete-button').click();
-		await this.page.locator('button.btn--confirm').click();
+		await new MessageBox(this.page).confirmButton.click();
 	}
 
 	// Filter methods
@@ -109,8 +143,18 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('executions-filter-status-select');
 	}
 
+	getStatusOption(status: string): Locator {
+		return this.getVisiblePopoverOption(status);
+	}
+
 	async openFilter(): Promise<void> {
 		await this.getFilterButton().click();
+	}
+
+	async openNodeExecutionDetails(name: string): Promise<void> {
+		await this.getPreview()
+			.locator(`[data-test-id="canvas-node"][data-node-name="${name}"]`)
+			.dblclick();
 	}
 
 	getFilterBadge(): Locator {
@@ -127,6 +171,6 @@ export class ExecutionsPage extends BasePage {
 
 	async selectFilterStatus(status: string): Promise<void> {
 		await this.getStatusSelect().getByRole('combobox').click();
-		await this.page.getByRole('option', { name: status }).click();
+		await this.getVisiblePopoverOption(status).click();
 	}
 }

@@ -1,6 +1,9 @@
 import type {
+	Cron,
+	CronExpression,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
+	IExecutionContext,
 	INode,
 	INodeType,
 	INodeTypes,
@@ -46,7 +49,10 @@ describe('TriggerContext', () => {
 		testParameter: 'testValue',
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		executionContext: undefined,
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const activation: WorkflowActivateMode = 'init';
 
@@ -74,6 +80,59 @@ describe('TriggerContext', () => {
 
 			expect(credentials).toEqual({ secret: 'token' });
 		});
+
+		it('should identify credentials requested by a trigger', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await triggerContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				expect.anything(),
+				testCredentialType,
+				mode,
+				expect.objectContaining({ node }),
+				false,
+				undefined,
+				{ credentialUsage: 'trigger' },
+			);
+		});
+
+		it("should preserve the entry point's execution context", async () => {
+			const executionContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1,
+				source: 'manual',
+				credentials: 'sealed-credential-context',
+			};
+			const additionalDataWithContext = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+			additionalDataWithContext.executionContext = executionContext;
+			const context = new TriggerContext(
+				workflow,
+				node,
+				additionalDataWithContext,
+				mode,
+				activation,
+			);
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await context.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.objectContaining({ executionContext }),
+				expect.anything(),
+				testCredentialType,
+				mode,
+				expect.objectContaining({ node }),
+				false,
+				undefined,
+				{ credentialUsage: 'trigger' },
+			);
+		});
 	});
 
 	describe('getNodeParameter', () => {
@@ -98,6 +157,33 @@ describe('TriggerContext', () => {
 	describe('getExecutionContext', () => {
 		it('should return undefined', () => {
 			expect(triggerContext.getExecutionContext()).toBeUndefined();
+		});
+	});
+
+	describe('scheduling helpers', () => {
+		it('should expose injected scheduling functions through helpers', () => {
+			const registerCron = vi.fn();
+			const context = new TriggerContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+				undefined,
+				undefined,
+				undefined,
+				{ registerCron },
+			);
+
+			const cron: Cron = { expression: '0 0 9 * * *' as CronExpression };
+			const onTick = vi.fn();
+			context.helpers.registerCron(cron, onTick);
+
+			expect(registerCron).toHaveBeenCalledWith(cron, onTick);
+		});
+
+		it('should fall back to the in-memory scheduling functions when none are injected', () => {
+			expect(typeof triggerContext.helpers.registerCron).toBe('function');
 		});
 	});
 });

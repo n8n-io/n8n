@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import { computed, ref } from 'vue';
 import dateformat from 'dateformat';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -17,7 +18,8 @@ import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 
 import {
@@ -25,10 +27,11 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nCard,
-	N8nIcon,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
+
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
@@ -59,7 +62,7 @@ const toast = useToast();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { hasDependencies } = useDependencies();
 const { authorize, isOAuthCredentialType } = useCredentialOAuth();
 
@@ -73,16 +76,10 @@ const credentialPermissions = computed(() => getResourcePermissions(props.data.s
 
 const isPrivateUnconnected = computed(
 	() =>
-		isDynamicCredentialsEnabled.value &&
+		isPrivateCredentialsEnabled.value &&
 		props.data.isResolvable === true &&
-		props.data.connectedByMe === false,
-);
-
-const isPrivateConnected = computed(
-	() =>
-		isDynamicCredentialsEnabled.value &&
-		props.data.isResolvable === true &&
-		props.data.connectedByMe === true,
+		props.data.connectedByMe === false &&
+		credentialPermissions.value.connect === true,
 );
 
 const actions = computed(() => {
@@ -93,7 +90,12 @@ const actions = computed(() => {
 		},
 	];
 
-	if (credentialPermissions.value.delete) {
+	// Deleting an end-user credential removes every user's own connection,
+	// so it additionally requires the createEndUser permission.
+	if (
+		credentialPermissions.value.delete &&
+		(!props.data.isResolvable || credentialPermissions.value.createEndUser)
+	) {
 		items.push({
 			label: locale.baseText('credentials.item.delete'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
@@ -107,7 +109,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (isDynamicCredentialsEnabled.value && props.data.isResolvable && props.data.connectedByMe) {
+	if (isPrivateCredentialsEnabled.value && props.data.isResolvable && props.data.connectedByMe) {
 		items.push({
 			label: locale.baseText('credentials.item.disconnect'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.DISCONNECT,
@@ -125,7 +127,7 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const credentialHasDependents = computed(() => hasDependencies(props.data.id));
+const credentialHasDependents = computed(() => hasDependencies(props.data.id, 'credential'));
 
 function onClick() {
 	emit('click', props.data.id);
@@ -238,33 +240,15 @@ function moveResource() {
 		<template #header>
 			<N8nText tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
-				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+				<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 					{{ locale.baseText('credentials.item.readonly') }}
 				</N8nBadge>
-				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
+				<N8nBadge v-if="needsSetup" class="ml-3xs" variant="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
-				<N8nTooltip v-if="isDynamicCredentialsEnabled && data.isResolvable" placement="top">
-					<template #content>
-						<div :class="$style.tooltipContent">
-							<strong>{{ locale.baseText('credentials.dynamic.tooltipTitle') }}</strong>
-							<span>{{ locale.baseText('credentials.dynamic.tooltip') }}</span>
-						</div>
-					</template>
-					<N8nBadge
-						theme="tertiary"
-						class="ml-3xs pl-3xs pr-3xs"
-						data-test-id="credential-card-dynamic"
-					>
-						<span :class="$style.dynamicBadgeText">
-							<N8nIcon icon="key-round" size="medium" />
-							{{ locale.baseText('credentials.dynamic.badge') }}
-						</span>
-					</N8nBadge>
-				</N8nTooltip>
 			</N8nText>
 		</template>
-		<div :class="$style.cardDescription">
+		<div :class="[$style.cardDescription, { [$style.hasDescription]: data.description }]">
 			<N8nText color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
@@ -274,7 +258,30 @@ function moveResource() {
 					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 			</N8nText>
+			<span
+				v-if="isPrivateCredentialsEnabled && data.isResolvable"
+				:class="$style.privateCredentialIndicator"
+				data-test-id="credential-card-dynamic"
+			>
+				<PrivateCredentialIcon
+					:tooltip-title="locale.baseText('credentials.private.tooltipTitle')"
+					:tooltip-text="locale.baseText('credentials.private.tooltip')"
+					size="small"
+				/>
+			</span>
 		</div>
+		<N8nTooltip v-if="credentialDescriptionsEnabled && data.description" placement="top" as-child>
+			<template #content>{{ data.description }}</template>
+			<N8nText
+				tag="p"
+				size="small"
+				color="text-light"
+				:class="$style.credentialDescription"
+				data-test-id="credential-card-description"
+			>
+				{{ data.description }}
+			</N8nText>
+		</N8nTooltip>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<DependencyPill
@@ -298,7 +305,6 @@ function moveResource() {
 						{{ locale.baseText('credentials.item.connect.tooltip') }}
 					</template>
 					<N8nButton
-						type="primary"
 						size="mini"
 						:loading="isConnecting"
 						data-test-id="credential-card-connect"
@@ -307,16 +313,6 @@ function moveResource() {
 						{{ locale.baseText('credentials.item.connect') }}
 					</N8nButton>
 				</N8nTooltip>
-				<span
-					v-else-if="isPrivateConnected"
-					:class="$style.connectedLabel"
-					data-test-id="credential-card-connected"
-				>
-					<N8nIcon icon="circle-check" size="small" color="success" />
-					<N8nText size="small" color="success">
-						{{ locale.baseText('credentials.item.connected') }}
-					</N8nText>
-				</span>
 				<N8nActionToggle
 					data-test-id="credential-card-actions"
 					:actions="actions"
@@ -329,6 +325,8 @@ function moveResource() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	--card--padding: 0 0 0 var(--spacing--sm);
 
@@ -355,6 +353,26 @@ function moveResource() {
 	padding: 0 0 var(--spacing--sm);
 }
 
+.hasDescription {
+	padding-bottom: var(--spacing--3xs);
+}
+
+.credentialDescription {
+	display: block;
+	width: 0;
+	min-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	padding-bottom: var(--spacing--sm);
+}
+
+.privateCredentialIndicator {
+	display: inline-flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+}
+
 .cardActions {
 	display: flex;
 	gap: var(--spacing--2xs);
@@ -366,27 +384,7 @@ function moveResource() {
 	cursor: default;
 }
 
-.connectedLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.dynamicBadgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	height: 18px;
-}
-
-.tooltipContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
-
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;

@@ -32,13 +32,18 @@ import difference from 'lodash/difference';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 import {
+	extractAiGatewaySection,
 	finalizeItems,
 	flattenCreateElements,
+	isNodeItemRestricted,
+	sinkRestrictedNodesLast,
+	withoutRestrictedNodes,
 	groupItemsInSections,
 	isAINode,
 	nodeTypesToCreateElements,
 	mapToolSubcategoryIcon,
 	searchNodes,
+	showsAiGatewaySection,
 	sortNodeCreateElements,
 	subcategorizeItems,
 	transformNodeType,
@@ -52,7 +57,7 @@ import { useKeyboardNavigation } from './useKeyboardNavigation';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_TRANSFORM_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, INodeFilter } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 export type CommunityNodeDetails = {
 	key: string;
@@ -92,7 +97,7 @@ export interface ViewStack {
 	baselineItems?: INodeCreateElement[];
 	searchItems?: SimplifiedNodeType[];
 	forceIncludeNodes?: string[];
-	mode?: 'actions' | 'nodes' | 'community-node';
+	mode?: 'actions' | 'nodes' | 'community-node' | 'agents';
 	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
@@ -147,15 +152,41 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					popularity: nodePopularityMap,
 				}),
 			);
+			// The pinned client is read off baselineItems and skips the search results,
+			// so it needs its own restriction check; unpinned, it sinks with the rest.
+			const pinnedMcpClient =
+				stack.subcategory === AI_CATEGORY_MCP_NODES && !isNodeItemRestricted(AI_MCP_TOOL_NODE_TYPE)
+					? stack.baselineItems?.find((item) => item.key === AI_MCP_TOOL_NODE_TYPE)
+					: undefined;
+			const filteredSearchResults = pinnedMcpClient
+				? searchResults.filter((item) => item.key !== AI_MCP_TOOL_NODE_TYPE)
+				: searchResults;
 
-			const groupedNodes = groupIfAiNodes(searchResults, stack, false) ?? searchResults;
+			const groupedNodes =
+				groupIfAiNodes(filteredSearchResults, stack, false) ?? filteredSearchResults;
+			const visibleNodes = sinkRestrictedNodesLast(
+				pinnedMcpClient ? [pinnedMcpClient, ...groupedNodes] : groupedNodes,
+				isNodeItemRestricted,
+			);
 			// Set the active index to the second item if there's a section
 			// as the first item is collapsable
-			stack.activeIndex = groupedNodes.some((node) => node.type === 'section') ? 1 : 0;
+			stack.activeIndex = visibleNodes.some((node) => node.type === 'section') ? 1 : 0;
 
-			return groupedNodes;
+			return visibleNodes;
 		}
-		return finalizeItems(groupIfAiNodes(stack.baselineItems, stack, true));
+
+		// baselineItems stays unfiltered: it is also the search base, where restricted types stay findable.
+		const browseItems = withoutRestrictedNodes(stack.baselineItems, isNodeItemRestricted);
+
+		// Surface n8n Connect-powered nodes in a dedicated section at the top,
+		// extracted before grouping so they don't also land in the AI sections
+		if (showsAiGatewaySection(stack)) {
+			const extracted = extractAiGatewaySection(browseItems);
+			if (extracted) {
+				return finalizeItems([extracted.section, ...groupIfAiNodes(extracted.rest, stack, true)]);
+			}
+		}
+		return finalizeItems(groupIfAiNodes(browseItems, stack, true));
 	});
 
 	const activeViewStack = computed<ViewStack>(() => {
@@ -245,7 +276,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			return true;
 		});
 
-		return filteredSections;
+		return sinkRestrictedNodesLast(filteredSections, isNodeItemRestricted);
 	});
 
 	const itemsBySubcategory = computed(() => subcategorizeItems(nodeCreatorStore.mergedNodes));

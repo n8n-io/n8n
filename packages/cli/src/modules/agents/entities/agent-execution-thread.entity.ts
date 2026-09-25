@@ -1,6 +1,8 @@
-import { Project, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import { AGENT_TASK_ID_MAX_LENGTH } from '@n8n/api-types';
+import { Project, User, WithTimestampsAndStringId } from '@n8n/db';
+import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
+import { AgentHistory } from './agent-history.entity';
 import { Agent } from './agent.entity';
 
 /**
@@ -18,6 +20,22 @@ import { Agent } from './agent.entity';
  */
 @Entity({ name: 'agent_execution_threads' })
 export class AgentExecutionThread extends WithTimestampsAndStringId {
+	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'ownerId', foreignKeyConstraintName: 'FK_agent_execution_threads_owner' })
+	owner: Relation<User> | null;
+
+	@Index()
+	@Column({ type: 'uuid', nullable: true, comment: 'User who started this private session' })
+	ownerId: string | null;
+
+	@Column({
+		type: 'varchar',
+		length: 16,
+		default: 'user',
+		comment: 'user: private session; project: shared integration, workflow, or task session',
+	})
+	accessScope: 'user' | 'project';
+
 	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
 	agent: Agent;
@@ -38,6 +56,17 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 8, nullable: true })
 	emoji: string | null;
 
+	/**
+	 * Parent session thread id that delegated this run, for navigating back to
+	 * it. Holds another thread's id, so it matches the id column width (128).
+	 */
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	parentThreadId: string | null;
+
+	/** Saved agent id of the parent that delegated this run. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	parentAgentId: string | null;
+
 	@ManyToOne(() => Project, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'projectId' })
 	project: Project;
@@ -45,6 +74,36 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@Index()
 	@Column({ type: 'varchar', length: 255 })
 	projectId: string;
+
+	/**
+	 * Published task ID that triggered this session. Intentionally not a live
+	 * FK: published task runs can outlive mutable draft task definition rows.
+	 */
+	@Column({
+		type: 'varchar',
+		length: AGENT_TASK_ID_MAX_LENGTH,
+		nullable: true,
+		comment:
+			'Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows',
+	})
+	taskId: string | null;
+
+	/**
+	 * Published agent version that supplied the task snapshot for this session.
+	 * Null for manual draft runs and non-task sessions.
+	 */
+	@ManyToOne(() => AgentHistory, { onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'taskVersionId' })
+	taskVersion: AgentHistory | null;
+
+	@Index()
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Published agent_history version that supplied the task snapshot',
+	})
+	taskVersionId: string | null;
 
 	/** Stable, project-scoped incrementing counter assigned at creation. */
 	@Column({ type: 'int', default: 0 })
@@ -63,3 +122,5 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@Column({ type: 'int', default: 0 })
 	totalDuration: number;
 }
+
+export type AgentThreadAccess = Pick<AgentExecutionThread, 'ownerId' | 'accessScope'>;

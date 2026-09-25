@@ -151,23 +151,27 @@ describe(useZoomAdjustedValues, () => {
 		});
 	});
 
-	describe('calculateNodeBorderOpacity', () => {
-		it('should return base opacity values at zoom 1.0', () => {
+	describe('calculateNodeBorderOpacityStyle', () => {
+		it('should map base opacity values to CSS custom properties at zoom 1.0', () => {
 			const viewport = createViewport(1.0);
-			const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
+			const { calculateNodeBorderOpacityStyle } = useZoomAdjustedValues(viewport);
 
-			const opacity = calculateNodeBorderOpacity();
-			expect(opacity.value.light).toBe('0.100');
-			expect(opacity.value.dark).toBe('0.200');
+			const style = calculateNodeBorderOpacityStyle();
+			expect(style.value).toEqual({
+				'--canvas-node--border--opacity-light': '0.100',
+				'--canvas-node--border--opacity-dark': '0.200',
+			});
 		});
 
-		it('should return max opacity values at minimum zoom', () => {
+		it('should map max opacity values to CSS custom properties at minimum zoom', () => {
 			const viewport = createViewport(0.2);
-			const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
+			const { calculateNodeBorderOpacityStyle } = useZoomAdjustedValues(viewport);
 
-			const opacity = calculateNodeBorderOpacity();
-			expect(opacity.value.light).toBe('0.700');
-			expect(opacity.value.dark).toBe('0.700');
+			const style = calculateNodeBorderOpacityStyle();
+			expect(style.value).toEqual({
+				'--canvas-node--border--opacity-light': '0.700',
+				'--canvas-node--border--opacity-dark': '0.700',
+			});
 		});
 	});
 });

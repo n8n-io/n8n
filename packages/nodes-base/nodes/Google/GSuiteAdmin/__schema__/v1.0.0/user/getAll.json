@@ -26,6 +26,9 @@
                     },
                     "primary": {
                         "type": "boolean"
+                    },
+                    "type": {
+                        "type": "string"
                     }
                 }
             }
@@ -52,6 +55,9 @@
             "type": "boolean"
         },
         "isEnrolledIn2Sv": {
+            "type": "boolean"
+        },
+        "isGuestUser": {
             "type": "boolean"
         },
         "isMailboxSetup": {
@@ -91,15 +97,44 @@
                 }
             }
         },
+        "organizations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customType": {
+                        "type": "string"
+                    },
+                    "department": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "orgUnitPath": {
             "type": "string"
         },
         "primaryEmail": {
             "type": "string"
         },
+        "recoveryEmail": {
+            "type": "string"
+        },
         "suspended": {
             "type": "boolean"
+        },
+        "thumbnailPhotoEtag": {
+            "type": "string"
+        },
+        "thumbnailPhotoUrl": {
+            "type": "string"
         }
     },
-    "version": 2
+    "version": 4
 }

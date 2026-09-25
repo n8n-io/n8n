@@ -11,23 +11,80 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- Write all technical text (code comments, PR descriptions, issue and ticket
+  descriptions, docs) in ASD-STE100 Simplified Technical English: use short
+  sentences, the active voice, and one instruction for each sentence
+- **Secrets on the command line:** if a developer opted into anonymous dev
+  metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
+  of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a
+  subcommand or baked into a flag — are dropped, and the home dir is stripped from
+  paths, but other args are sent as-is — so never put secrets in a command. Pass
+  sensitive values via environment variables, which are never captured.
+- When adding comments, keep them concise and to the point - explain the "why"
+  in a line or two; don't be overly verbose. Comments should be scoped and
+  relevant to the surrounding code, not just to the current task
 - We use Linear as a ticket tracking system
 - We use Posthog for feature flags
+- To find registered telemetry events (names, descriptions, properties), run
+  `pnpm --filter @n8n/telemetry catalog` (`--json` for structured output). The
+  registry is being adopted incrementally, so search call sites if the catalog
+  has no match. The `n8n:telemetry` skill covers adding or changing events
 - When starting to work on a new ticket – create a new branch from fresh
   master with the name specified in Linear ticket
 - When creating a new branch for a ticket in Linear - use the branch name
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+- **Developing v3 features:** land normal feature work on `master` behind an
+  opt-in flag; introduce breaking changes only on the `3.x` branch. See
+  [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
+- The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
+  error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
+  comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
+- **Shared utilities:** before you hand-roll a utility (`isRecord`, secret or
+  PII redaction, JSON extraction from LLM output, Zod to JSON Schema, model-id
+  parsing, …), you MUST check the shared packages for an existing
+  implementation and use it: `@n8n/utils` (generic helpers, redaction),
+  `@n8n/ai-utilities` (AI- and LLM-specific helpers) and `n8n-workflow`
+  (workflow graph and traversal). A new shared helper usually belongs in one of
+  these packages too; domain logic stays in the package that owns the domain.
 
-## Claude Code Plugin
+## Agent Skills and Claude Code Plugin
 
-n8n-specific skills, commands, and agents live in `.claude/plugins/n8n/` and
-are namespaced under `n8n:`. Use `n8n:` prefix when invoking them
-(e.g. `/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent).
-See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
+n8n shared skills live in `.agents/skills/`. Claude Code consumes them through
+symlinks in `.claude/plugins/n8n/skills/`; OpenCode reads `.agents/skills/`
+directly. Harness-specific overrides remain real directories in the harness
+path, such as `.opencode/skills/setup-mcps/`. See
+[skills README](.agents/skills/AGENTS.md) for editing and sync guidance.
+
+n8n-specific Claude Code commands and agents live in `.claude/plugins/n8n/` and
+are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
+`/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent). See
+[plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
+
+For full-repo lint and typecheck, use `pnpm agent:lint` and
+`pnpm agent:typecheck`. They save full logs and return compact results.
+For focused tests, use `pnpm agent:test` or `pnpm agent:playwright`.
+Run each command with `--help` for its package, script, and file options.
+
+### Fresh checkout / agent setup
+
+For a fresh checkout (cat-bot, a new hire, any agent verifying the repo
+builds), prefer `pnpm agent:setup` over running install + build + tests by
+hand. It chains them in one process, caps per-process memory and turbo
+concurrency so a 6GB box doesn't OOM, streams all output to
+`.agent-setup/<step>.log` (gitignored), and surfaces only a one-line summary
+per step plus the tail of the failing log. A machine-readable
+`.agent-setup/summary.json` is always written so a backgrounded run is
+readable in a single shot — no polling, no scrolling logs.
+
+```bash
+pnpm agent:setup                 # install → build → test (full suite)
+pnpm agent:setup install         # one step at a time
+pnpm agent:setup --json          # JSON summary on stdout (for scripts/agents)
+```
 
 ### Building
 Use `pnpm build` to build all packages. ALWAYS redirect the output of the
@@ -42,28 +99,32 @@ You can inspect the last few lines of the build log file to check for errors:
 tail -n 20 build.log
 ```
 
-### Testing
-- `pnpm test` - Run all tests
-- `pnpm test:affected` - Runs tests based on what has changed since the last
-  commit
+If build outputs or the turbo cache are stale (e.g. after switching branches
+or worktrees) but dependencies haven't changed, use `pnpm reset` (lightweight
+by default) for a fast recovery: it cleans build outputs and force-rebuilds
+(keeping `node_modules` and untracked files). If that doesn't fix your issue,
+use `pnpm reset --full`, which also wipes untracked files and reinstalls
+dependencies.
 
-Running a particular test file requires going to the directory of that test
-and running: `pnpm test <test-file>`.
+### Seeding a local instance
 
-When changing directories, use `pushd` to navigate into the directory and
-`popd` to return to the previous directory. When in doubt, use `pwd` to check
-your current directory.
+An empty instance is a bad place to test anything that reads a user's work.
+These commands fill one. They are dev tooling on the private root package, so
+they never reach a user.
 
-### Code Quality
-- `pnpm lint` - Lint code
-- `pnpm typecheck` - Run type checks
+```bash
+N8N_API_KEY=<jwt> pnpm seed:preference   # 10 workflows in one house style, plus history
+N8N_API_KEY=<jwt> pnpm seed:account      # ~500 varied workflows across 30 projects
+pnpm inspect:activity                    # read-only activity_event viewer on 127.0.0.1
+```
 
-Always run lint and typecheck before committing code to ensure quality.
-Execute these commands from within the specific package directory you're
-working on (e.g., `cd packages/cli && pnpm lint`). Run the full repository
-check only when preparing the final PR. When your changes affect type
-definitions, interfaces in `@n8n/api-types`, or cross-package dependencies,
-build the system before running lint and typecheck.
+Both seed profiles delete their own prior output, so a re-run replaces it.
+That clear step deletes anything named `[seed]` and any empty team project,
+whoever made them, so do not point either at a shared instance. The viewer is
+unauthenticated and serves the whole table: keep it on loopback.
+
+See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md) for
+profiles, tokens, determinism, and the other commands.
 
 ## Architecture Overview
 
@@ -77,11 +138,11 @@ The monorepo is organized into these key packages:
 - **`packages/workflow`**: Core workflow interfaces and types
 - **`packages/core`**: Workflow execution engine
 - **`packages/cli`**: Express server, REST API, and CLI commands
-- **`packages/editor-ui`**: Vue 3 frontend application
-- **`packages/@n8n/i18n`**: Internationalization for UI text
+- **`packages/frontend/editor-ui`**: Vue 3 frontend application
+- **`packages/frontend/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
-- **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
+- **`packages/@n8n/instance-ai`**: "n8n Assistant" in the UI, "Instance AI" in code — n8n Assistant backend. See its `CLAUDE.md` for architecture docs.
 - **`@n8n/design-system`**: Vue component library for UI consistency
 - **`@n8n/config`**: Centralized configuration management
 
@@ -89,7 +150,7 @@ The monorepo is organized into these key packages:
 
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
-- **Testing:** Jest (unit) + Playwright (E2E)
+- **Testing:** Vitest (unit) + Playwright (UI, API, infrastructure, lifecycle, performance, and E2E orchestration)
 - **Database:** TypeORM with SQLite/PostgreSQL support
 - **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
@@ -140,48 +201,149 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
   top-level `import`. Applies especially to native modules and large parsers.
 
 ### Error Handling
-- Don't use `ApplicationError` class in CLI and nodes for throwing errors,
-  because it's deprecated. Use `UnexpectedError`, `OperationalError` or
-  `UserError` instead.
+- Don't use the deprecated `ApplicationError` class anywhere — it's a
+  compatibility shim kept only so community nodes keep resolving. Use one of
+  these instead, picking by cause:
+  - `UserError` — the user caused it (invalid input, unauthorized action,
+    business-rule violation).
+  - `OperationalError` — a transient, expected issue (network request failing,
+    DB query timing out) that should be handled gracefully.
+  - `UnexpectedError` — a bug in the code (logic mistake, unhandled case,
+    failed assertion) that developers need to fix.
 - Import from appropriate error classes in each package
+
+### Persistence layer & the TypeORM boundary
+
+TypeORM (`@n8n/typeorm`) must stay in the **persistence layer** — the `@n8n/db`
+package or a backend module's own `database/` folder (entity/repository files).
+Business logic — services, controllers, handlers, commands, factories — must not
+import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). In
+`packages/cli` this is enforced by the `misplaced-n8n-typeorm-import` lint rule;
+a new import (or an inline `eslint-disable` of the rule) fails CI.
+
+- **Pattern:** when a query needs operators (`In`, `IsNull`, `LessThan`,
+  `FindOptionsWhere`, …), put it behind a **use-case-named repository method**
+  that takes plain parameters and returns domain-shaped values — not a generic
+  `find(options)` passthrough.
+- **Transactions:** transaction orchestration belongs in the persistence layer.
+  Don't reach for `.manager` / `.manager.transaction(...)` or
+  `createQueryBuilder(...)` in business logic. Use the sanctioned primitive in
+  `@n8n/db`: inject the abstract `TransactionRunner` and wrap the unit of work in
+  `txRunner.run(ctx, async (ctx) => …)`. The callback receives an
+  `OperationContext` carrying the active transaction; thread that `ctx` into the
+  repository methods you call. `run` **requires** a context — pass an empty `{}`
+  at the operation entry point, and reuse the one you were handed everywhere
+  below it (a context that already carries a transaction is joined, not nested).
+  Repositories extend `BaseRepository` and resolve the right `EntityManager` with
+  `this.managerFor(ctx)`; the `Transaction` handle is opaque and never exposes a
+  driver type to business logic. See `oauth-token.service.ts` +
+  `oauth-*-token.repository.ts` for a worked example.
+- **Anti-patterns reviewers reject** — they hide the dependency instead of
+  removing it:
+  - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
+  - Relabeling the import from `@n8n/typeorm` to `@n8n/db` to silence the rule
+    (`@n8n/db` re-exports several operators/types, but this relabels the
+    dependency rather than removing it).
+  - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
+    operator import — trades a visible leak for an invisible one.
+
+### ESLint configuration layers
+
+Rule policy lives in four shared configs in `@n8n/eslint-config`, and a package
+config picks exactly one:
+
+| layer | subpath | for |
+|---|---|---|
+| `baseConfig` | `@n8n/eslint-config/base` | runtime-agnostic libraries |
+| `backendConfig` | `@n8n/eslint-config/backend` | anything that runs on Node; adds the network and encryption boundaries |
+| `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages |
+| `nodesConfig` | `@n8n/eslint-config/nodes` | `n8n-nodes-base` and `@n8n/nodes-langchain`; adds the node and credential file rules |
+
+A package config may add `ignores`, an additive plugin config, a block that
+raises rules to `error`, and blocks scoped to `files`. It must not turn a rule
+down for the whole package: every lint script runs with `--quiet`, so a `warn`
+enforces nothing and reads as if it did. The code-health rule
+`lint-config-layering` enforces this, with existing debt in
+`.code-health-baseline.json`, which only shrinks.
+
+To stop enforcing a rule everywhere, retire it in `base.ts` with the count
+behind the decision. To enforce one again in a package that is ready, set it to
+`error` there. `node scripts/lint-parity/majority.mjs` prints how many packages
+downgrade each rule, and `scripts/lint-parity/snapshot.mjs` plus `diff.mjs`
+prove a config change only altered what you meant it to.
+
+### Encryption boundary
+
+New code encrypts and decrypts only through `cipher.encryptV2()` /
+`cipher.decryptV2()` — the key-manager module decides which key is used and in
+which output format. Enforced in CI by the rules in
+`packages/@n8n/eslint-config/src/configs/encryption-boundary.ts` (part of
+`backendConfig`, and so of `nodesConfig`; every package that runs on Node
+extends one of those layers):
+
+- `Cipher` does not expose the legacy or explicit-key methods.
+- The raw AES classes stay inside `packages/core/src/encryption/`.
+- **Deployment keys are never deleted** — data encrypted with a key becomes
+  unreadable without it. Deactivate keys instead; the repository does not expose
+  deletion and database triggers reject direct deletion.
+- Inline disables that name these rules, and bare line-form disables, are
+  themselves lint errors. The code-health rule `encryption-boundary` (CI
+  "Static Analysis") is the enforcement layer: it checks that every package
+  that depends on `n8n-core` or `@n8n/db` extends `backendConfig` (or
+  `nodesConfig`) at `error` severity, and rejects every directive form that
+  would silence the
+  rules in non-test code (`eslint-disable*` and inline `eslint` configuration
+  comments). Widening the boundary happens in `encryption-boundary.ts` only;
+  that file and the rule files require security (IAM) approval via OWNERS.
 
 ### Frontend Development
 - Refer to `packages/frontend/AGENTS.md`
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use `design-system-rules` skill in reviews
+- Always use the `design-system` skill in reviews
 
-### Testing Guidelines
-- **Always work from within the package directory** when running tests
-- **Mock all external dependencies** in unit tests
-- **Prefer reusing hoisted shared `mock<T>(...)` fixtures** when a typed mock is immutable and used across tests. This rule exists to avoid massive test slowdowns from repeatedly creating nested proxy mocks while preserving the type contract. Avoid replacing these with `as unknown as T` helpers for entities like `User`.
-- **Confirm test cases with user** before writing unit tests
-- **Typecheck is critical before committing** - always run `pnpm typecheck`
-- **When modifying pinia stores**, check for unused computed properties
-- **For Vitest packages that use `@n8n/di` decorators**, use `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`. It enables SWC `decoratorMetadata` (esbuild doesn't emit it) and externalizes workspace packages that register services (`@n8n/di`, `@n8n/config`, `@n8n/constants`, `n8n-workflow`) so a single DI `Container` instance is shared across the runtime. Loading them through Vitest's pipeline alongside their CJS dist produces two `Container`s and `Container.get(...)` returns `undefined`.
+### Verify changes
 
-What we use for testing and writing tests:
-- For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
-- We use `nock` for server mocking
-- For frontend we use `vitest`
-- For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
-  See `packages/testing/playwright/README.md` for details.
-- **To iterate on a feature without docker rebuilds**, boot service containers
-  and run `pnpm dev` locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
-  then `pnpm dev`. See [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
-- **For Playwright test maintenance/cleanup**, see @packages/testing/playwright/AGENTS.md (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
+- Run focused tests from the owning package: `pnpm test <test-file>`.
+- Run that package's `pnpm lint` and `pnpm typecheck` before committing code.
+  Build first when shared types or cross-package dependencies change.
+- Use Vitest for unit tests. Use
+  [Playwright](packages/testing/playwright/AGENTS.md) when a test needs its
+  browser, fixtures, or managed containers.
+- For Vitest packages with `@n8n/di` decorators, use
+  `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`.
+- Check import and mock side effects before running tests. Keep tests out of
+  user-owned directories. Set `N8N_USER_FOLDER` to a test-owned directory before
+  importing n8n settings. Clean up only paths that the test created.
+- CI runs [`@n8n/code-health`](packages/testing/code-health/README.md) static
+  analysis on PRs. It checks monorepo rules, including dependency hygiene and
+  encryption-boundary coverage.
+
+### Local development
+
+| Goal | Command |
+|------|---------|
+| Run product E2E against a local instance | `pnpm --filter=n8n-playwright test:local` |
+| Run backend with PostgreSQL, Redis, email, and proxy services | `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`, then `pnpm dev:be` |
+| Add editor hot reload | `pnpm dev:fe:editor` |
+| Start a Codespace backend and share its port | `pnpm dev:up` |
+
+The root `pnpm dev` command does not start a server. See the
+[Playwright guide](packages/testing/playwright/README.md) and the
+[Codespaces guide](.devcontainer/codespaces/README.md) for details.
 
 ### Common Development Tasks
 
 When implementing features:
 1. Define API types in `packages/@n8n/api-types`
 2. Implement backend logic in `packages/cli` module, follow
-   `@packages/cli/scripts/backend-module/backend-module-guide.md`
+   `scripts/backend-module/backend-module-guide.md`
 3. Add API endpoints via controllers
-4. Update frontend in `packages/editor-ui` with i18n support
+4. Update frontend in `packages/frontend/editor-ui` with i18n support. For a
+   frontend feature module, obey
+   `packages/@n8n/module-cli/frontend-module-guide.md`
 5. Write tests with proper mocks
-6. Run `pnpm typecheck` to verify types
 
 ## Design Principles
 
@@ -223,11 +385,24 @@ titles, test descriptions, and Linear URLs.
 - **Linear references:** Never include the URL slug
   (e.g. `.../N8N-1234/fix-ssrf-vulnerability`).
 
+### Customer Confidentiality
+
+**This is a public repository.** Never mention customer names in any
+public-facing artifact — not all customers have agreed to be named publicly,
+and naming them can reveal security-relevant details about their setup.
+
+This applies to PR titles and descriptions, branch names, commit messages,
+code, code comments, test names and test data, and fixtures. When implementing
+a customer request, describe the use case neutrally (e.g. "a customer with a
+large multi-main setup", not the company name) and use generic placeholder
+names (e.g. `Acme Corp`) in tests and examples.
+
 ## Github Guidelines
 - When creating a PR, use the conventions in
   `.github/pull_request_template.md` and
   `.github/pull_request_title_conventions.md`.
 - Use `gh pr create --draft` to create draft PRs.
-- Always reference the Linear ticket in the PR description,
-  use `https://linear.app/n8n/issue/[TICKET-ID]`
+- If there is a corresponding Linear ticket, reference it in the PR
+  description using `https://linear.app/n8n/issue/[TICKET-ID]`. Do not
+  create a Linear ticket on your own — ask first.
 - always link to the github issue if mentioned in the linear ticket.

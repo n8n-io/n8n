@@ -94,12 +94,13 @@ export class IdleScalingPool implements IPool {
 		if (this.idleTimeoutMs === undefined) return;
 		if (this.idleTimer) clearTimeout(this.idleTimer);
 		this.idleTimer = setTimeout(() => this.triggerScaleDown(), this.idleTimeoutMs);
-		this.idleTimer.unref();
+		// In a browser `setTimeout` returns a number, which has no `unref`.
+		if (typeof this.idleTimer === 'object') this.idleTimer.unref();
 	}
 
 	private triggerScaleUp(): void {
 		if (this.pendingScaleUp || this.innerPool || this.disposed) return;
-		this.logger?.info('[IdleScalingPool] Scaling up from idle');
+		this.logger?.debug('[IdleScalingPool] Scaling up from idle');
 		this.observability?.metrics.counter(EXPRESSION_METRICS.poolScaledUp.name, 1);
 
 		const newInner = this.createInnerPool();
@@ -124,7 +125,7 @@ export class IdleScalingPool implements IPool {
 
 	private triggerScaleDown(): void {
 		if (this.pendingScaleDown || this.pendingScaleUp || !this.innerPool || this.disposed) return;
-		this.logger?.info('[IdleScalingPool] Scaling to 0 after inactivity', {
+		this.logger?.debug('[IdleScalingPool] Scaling to 0 after inactivity', {
 			idleTimeoutMs: this.idleTimeoutMs,
 		});
 		this.observability?.metrics.counter(EXPRESSION_METRICS.poolScaledToZero.name, 1);

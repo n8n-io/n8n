@@ -1,32 +1,30 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
-/* eslint-disable @typescript-eslint/no-require-imports */
+import { readFile } from 'fs/promises';
 import type { TiktokenEncoding } from 'js-tiktoken/lite';
-import { Tiktoken } from 'js-tiktoken/lite';
+import { Tiktoken, getEncodingNameForModel } from 'js-tiktoken/lite';
+import { jsonParse } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { getEncoding, encodingForModel } from 'src/utils/tokenizer/tiktoken';
 
-jest.mock('js-tiktoken/lite', () => ({
-	Tiktoken: jest.fn(),
-	getEncodingNameForModel: jest.fn(),
+vi.mock('js-tiktoken/lite', () => ({
+	Tiktoken: vi.fn(),
+	getEncodingNameForModel: vi.fn(),
 }));
 
-jest.mock('fs/promises', () => ({
-	readFile: jest.fn(),
+vi.mock('fs/promises', () => ({
+	readFile: vi.fn(),
 }));
 
-jest.mock('n8n-workflow', () => ({
-	jsonParse: jest.fn(),
+vi.mock('n8n-workflow', () => ({
+	jsonParse: vi.fn(),
 }));
 
 describe('tiktoken utils', () => {
-	const mockReadFile = require('fs/promises').readFile;
-	const mockJsonParse = require('n8n-workflow').jsonParse;
+	const mockReadFile = readFile as unknown as Mock;
+	const mockJsonParse = vi.mocked(jsonParse);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Set up mock implementations
 		mockReadFile.mockImplementation(async (path: string) => {
@@ -46,7 +44,9 @@ describe('tiktoken utils', () => {
 	describe('getEncoding', () => {
 		it('should return Tiktoken instance for cl100k_base encoding', async () => {
 			const mockTiktoken = {};
-			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
+			(Tiktoken as unknown as Mock).mockImplementation(function () {
+				return mockTiktoken;
+			});
 
 			const result = await getEncoding('cl100k_base');
 
@@ -56,7 +56,9 @@ describe('tiktoken utils', () => {
 
 		it('should return Tiktoken instance for o200k_base encoding', async () => {
 			const mockTiktoken = {};
-			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
+			(Tiktoken as unknown as Mock).mockImplementation(function () {
+				return mockTiktoken;
+			});
 
 			const result = await getEncoding('o200k_base');
 
@@ -66,7 +68,9 @@ describe('tiktoken utils', () => {
 
 		it('should map p50k_base to cl100k_base encoding', async () => {
 			const mockTiktoken = {};
-			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
+			(Tiktoken as unknown as Mock).mockImplementation(function () {
+				return mockTiktoken;
+			});
 
 			const result = await getEncoding('p50k_base');
 
@@ -76,7 +80,9 @@ describe('tiktoken utils', () => {
 
 		it('should map r50k_base to cl100k_base encoding', async () => {
 			const mockTiktoken = {};
-			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
+			(Tiktoken as unknown as Mock).mockImplementation(function () {
+				return mockTiktoken;
+			});
 
 			const result = await getEncoding('r50k_base');
 
@@ -86,7 +92,9 @@ describe('tiktoken utils', () => {
 
 		it('should map gpt2 to cl100k_base encoding', async () => {
 			const mockTiktoken = {};
-			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
+			(Tiktoken as unknown as Mock).mockImplementation(function () {
+				return mockTiktoken;
+			});
 
 			const result = await getEncoding('gpt2');
 
@@ -96,7 +104,9 @@ describe('tiktoken utils', () => {
 
 		it('should map p50k_edit to cl100k_base encoding', async () => {
 			const mockTiktoken = {};
-			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
+			(Tiktoken as unknown as Mock).mockImplementation(function () {
+				return mockTiktoken;
+			});
 
 			const result = await getEncoding('p50k_edit');
 
@@ -106,7 +116,9 @@ describe('tiktoken utils', () => {
 
 		it('should return cl100k_base for unknown encoding', async () => {
 			const mockTiktoken = {};
-			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
+			(Tiktoken as unknown as Mock).mockImplementation(function () {
+				return mockTiktoken;
+			});
 
 			const result = await getEncoding('unknown_encoding' as unknown as TiktokenEncoding);
 
@@ -116,10 +128,12 @@ describe('tiktoken utils', () => {
 
 		it('should use cache for repeated calls with same encoding', async () => {
 			const mockTiktoken = {};
-			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
+			(Tiktoken as unknown as Mock).mockImplementation(function () {
+				return mockTiktoken;
+			});
 
 			// Clear any previous calls to isolate this test
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Use a unique encoding that hasn't been cached yet
 			const uniqueEncoding = 'test_encoding' as TiktokenEncoding;
@@ -138,14 +152,16 @@ describe('tiktoken utils', () => {
 
 	describe('encodingForModel', () => {
 		it('should call getEncodingNameForModel and return encoding for cl100k_base', async () => {
-			const mockGetEncodingNameForModel = require('js-tiktoken/lite').getEncodingNameForModel;
+			const mockGetEncodingNameForModel = vi.mocked(getEncodingNameForModel);
 			const mockTiktoken = {};
 
 			mockGetEncodingNameForModel.mockReturnValue('cl100k_base');
-			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
+			(Tiktoken as unknown as Mock).mockImplementation(function () {
+				return mockTiktoken;
+			});
 
 			// Clear previous calls since cl100k_base might be cached from previous tests
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockGetEncodingNameForModel.mockReturnValue('cl100k_base');
 
 			const result = await encodingForModel('gpt-3.5-turbo');
@@ -157,15 +173,17 @@ describe('tiktoken utils', () => {
 		});
 
 		it('should handle gpt-4 model with o200k_base', async () => {
-			const mockGetEncodingNameForModel = require('js-tiktoken/lite').getEncodingNameForModel;
+			const mockGetEncodingNameForModel = vi.mocked(getEncodingNameForModel);
 			const mockTiktoken = { isO200k: true };
 
 			// Use o200k_base to test a different encoding
 			mockGetEncodingNameForModel.mockReturnValue('o200k_base');
-			(Tiktoken as unknown as jest.Mock).mockReturnValue(mockTiktoken);
+			(Tiktoken as unknown as Mock).mockImplementation(function () {
+				return mockTiktoken;
+			});
 
 			// Clear mocks and set up for this test
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockGetEncodingNameForModel.mockReturnValue('o200k_base');
 
 			const result = await encodingForModel('gpt-4');

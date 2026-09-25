@@ -4,12 +4,12 @@
  * Consumed by:
  * - Code Builder Agent (ai-workflow-builder.ee)
  * - MCP Server (external SDK reference)
- * - Instance AI builder sub-agent
+ * - Instance AI workflow-builder skill
  */
 export const EXPRESSION_REFERENCE = `Available variables inside \`expr('{{ ... }}')\`:
 
-- \`$json\` — current item's JSON data from the immediate predecessor node
-- \`$('NodeName').item.json\` — access any node's output by name
+- \`$json\` — current item's JSON data from the immediate predecessor node only
+- \`$('NodeName').item.json\` — access the output item from another node that is paired with the current item
 - \`nodeJson(node, 'field.path')\` — SDK helper equivalent to \`expr('{{ $("NodeName").item.json.field.path }}')\`
 - \`$input.first()\` — first item from immediate predecessor
 - \`$input.all()\` — all items from immediate predecessor
@@ -38,6 +38,13 @@ Dynamic data from other nodes — \`$()\` MUST always be inside \`{{ }}\`, never
 - CORRECT: \`expr('{{ $("Source").all().map(i => ({ option: i.json.name })) }}')\` — $() inside {{ }}
 - CORRECT: \`expr('{{ { "fields": [{ "values": $("Fetch Projects").all().map(i => ({ option: i.json.name })) }] } }}')\` — complex JSON inside {{ }}
 
+Item flow semantics — choose the reference that matches the current item:
+
+- Use \`$('NodeName').item.json.field\` or \`nodeJson(sourceNode, 'field')\` when the current node needs the value from the same paired item produced upstream.
+- Do NOT use \`.first()\` or \`$input.first()\` for per-item data in a multi-item workflow. \`.first()\` always reads item 0, so every downstream item reuses the first value.
+- Use \`.first()\` only when the workflow genuinely needs one global first item, such as a single configuration row.
+- If an upstream value is needed after another node replaces item JSON, reference the upstream node explicitly with \`$('Extract Data').item.json.field\`; do not expect the value to still exist on \`$json\`.
+
 When \`$json\` is unsafe - use \`nodeJson(node, 'path')\` or \`$('NodeName').item.json.path\` instead:
 
 - AI Agent subnodes: memory, language model, parser, retriever, vector store, and tool subnodes do not have the same immediate predecessor context as a main-flow node.
@@ -46,6 +53,9 @@ When \`$json\` is unsafe - use \`nodeJson(node, 'path')\` or \`$('NodeName').ite
 - Multi-branch fan-in: if a node receives data after IF/Switch/Merge-style branching, \`$json\` only means the current incoming item and may not contain the source field you need.
   WRONG: \`expr('{{ $json.userId }}')\`
   CORRECT: \`nodeJson(userLookup, 'user.id')\`
+- Replacing nodes: if the current output no longer contains a field extracted earlier, read the earlier node directly.
+  WRONG: \`expr('{{ $json.eventId }}')\`
+  CORRECT: \`nodeJson(extractEventId, 'eventId')\`
 - Further-upstream data: if the value comes from any node other than the immediate main predecessor, reference that node explicitly.
   WRONG: \`expr('{{ $json.email }}')\`
   CORRECT: \`nodeJson(formTrigger, 'body.email')\``;

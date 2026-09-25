@@ -5,9 +5,9 @@ import { applyWorkflowBooleanSettingFilter } from '../apply-workflow-boolean-set
 
 function createMockQb() {
 	const qb = {
-		andWhere: jest.fn(),
-		where: jest.fn(),
-		orWhere: jest.fn(),
+		andWhere: vi.fn(),
+		where: vi.fn(),
+		orWhere: vi.fn(),
 	} as unknown as SelectQueryBuilder<object>;
 	return qb;
 }

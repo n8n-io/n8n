@@ -1,6 +1,6 @@
 import { searxngSearch } from '../searxng-search';
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 beforeEach(() => {
@@ -170,6 +170,24 @@ describe('searxngSearch', () => {
 		const [url] = mockFetch.mock.calls[0] as [string];
 		expect(url).toContain('http://searxng:8080/search');
 		expect(url).not.toContain('http://searxng:8080//search');
+	});
+
+	it('uses an injected fetch implementation instead of the global one', async () => {
+		const injectedFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => MOCK_SEARXNG_RESPONSE,
+		});
+
+		const result = await searxngSearch(
+			'http://searxng:8080',
+			'stripe webhooks',
+			{},
+			injectedFetch as unknown as typeof fetch,
+		);
+
+		expect(injectedFetch).toHaveBeenCalledTimes(1);
+		expect(mockFetch).not.toHaveBeenCalled();
+		expect(result.results).toHaveLength(2);
 	});
 
 	it('defaults to 5 results when maxResults is not specified', async () => {

@@ -1,52 +1,63 @@
+import * as openai from '@langchain/openai';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 
+import * as langchainChatModelAdapter from 'src/adapters/langchain-chat-model';
 import { supplyModel } from 'src/suppliers/supplyModel';
+import * as failedAttemptHandler from 'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
+import * as httpProxyAgent from 'src/utils/http-proxy-agent';
+import * as n8nLlmTracing from 'src/utils/n8n-llm-tracing';
 
-const mockLangchainAdapterInstance = { __brand: 'LangchainChatModelAdapter' };
+const { mockLangchainAdapterInstance } = vi.hoisted(() => ({
+	mockLangchainAdapterInstance: { __brand: 'LangchainChatModelAdapter' },
+}));
 
-jest.mock('@langchain/openai', () => ({
-	ChatOpenAI: jest.fn().mockImplementation(function (this: any) {
+vi.mock('@langchain/openai', () => ({
+	ChatOpenAI: vi.fn().mockImplementation(function (this: any) {
 		// Return a new object each time so metadata can be set independently
 		return { __brand: 'ChatOpenAI', metadata: {} };
 	}),
 }));
 
-jest.mock('src/utils/http-proxy-agent', () => ({
-	getProxyAgent: jest.fn().mockReturnValue({ __agent: true }),
+vi.mock('src/utils/http-proxy-agent', () => ({
+	getProxyAgent: vi.fn().mockReturnValue({ __agent: true }),
 }));
 
-jest.mock('src/utils/n8n-llm-tracing', () => ({
-	N8nLlmTracing: jest.fn().mockImplementation(function (this: unknown) {
+vi.mock('src/utils/n8n-llm-tracing', () => ({
+	N8nLlmTracing: vi.fn().mockImplementation(function (this: unknown) {
 		return this;
 	}),
 }));
 
-jest.mock('src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler', () => ({
-	makeN8nLlmFailedAttemptHandler: jest.fn().mockReturnValue(jest.fn()),
+vi.mock('src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler', () => ({
+	makeN8nLlmFailedAttemptHandler: vi.fn().mockReturnValue(vi.fn()),
 }));
 
-jest.mock('src/adapters/langchain-chat-model', () => ({
-	LangchainChatModelAdapter: jest.fn().mockImplementation(() => mockLangchainAdapterInstance),
+vi.mock('src/adapters/langchain-chat-model', () => ({
+	LangchainChatModelAdapter: vi.fn(function () {
+		return mockLangchainAdapterInstance;
+	}),
 }));
 
-const { ChatOpenAI } = jest.requireMock('@langchain/openai');
-const { LangchainChatModelAdapter } = jest.requireMock('src/adapters/langchain-chat-model');
-const { getProxyAgent } = jest.requireMock('src/utils/http-proxy-agent');
-const { makeN8nLlmFailedAttemptHandler } = jest.requireMock(
-	'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler',
+const ChatOpenAI = vi.mocked(openai.ChatOpenAI);
+const LangchainChatModelAdapter = vi.mocked(langchainChatModelAdapter.LangchainChatModelAdapter);
+const getProxyAgent = vi.mocked(httpProxyAgent.getProxyAgent);
+const makeN8nLlmFailedAttemptHandler = vi.mocked(
+	failedAttemptHandler.makeN8nLlmFailedAttemptHandler,
 );
-const { N8nLlmTracing } = jest.requireMock('src/utils/n8n-llm-tracing');
+const N8nLlmTracing = vi.mocked(n8nLlmTracing.N8nLlmTracing);
 
 describe('supplyModel', () => {
+	const egressFilter = { createSecureLookup: vi.fn() };
 	const mockCtx = {
-		getNode: jest.fn(),
-		addOutputData: jest.fn(),
-		addInputData: jest.fn(),
-		getNextRunIndex: jest.fn(),
+		getNode: vi.fn(),
+		addOutputData: vi.fn(),
+		addInputData: vi.fn(),
+		getNextRunIndex: vi.fn(),
+		helpers: { getSecureEgressFilter: vi.fn().mockReturnValue(egressFilter) },
 	} as unknown as ISupplyDataFunctions;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('OpenAI model path', () => {
@@ -181,10 +192,14 @@ describe('supplyModel', () => {
 				timeout: 12345,
 			});
 
-			expect(getProxyAgent).toHaveBeenCalledWith('https://api.openai.com', {
-				headersTimeout: 12345,
-				bodyTimeout: 12345,
-			});
+			expect(getProxyAgent).toHaveBeenCalledWith(
+				'https://api.openai.com',
+				{
+					headersTimeout: 12345,
+					bodyTimeout: 12345,
+				},
+				egressFilter,
+			);
 
 			expect(ChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -199,9 +214,9 @@ describe('supplyModel', () => {
 			const chatModel = {
 				provider: 'anthropic',
 				modelId: 'claude-3',
-				generate: jest.fn(),
-				stream: jest.fn(),
-				withTools: jest.fn().mockReturnThis(),
+				generate: vi.fn(),
+				stream: vi.fn(),
+				withTools: vi.fn().mockReturnThis(),
 			};
 
 			const result = supplyModel(mockCtx, chatModel);
@@ -217,9 +232,9 @@ describe('supplyModel', () => {
 				type: 'custom',
 				provider: 'custom',
 				modelId: 'custom-model',
-				generate: jest.fn(),
-				stream: jest.fn(),
-				withTools: jest.fn().mockReturnThis(),
+				generate: vi.fn(),
+				stream: vi.fn(),
+				withTools: vi.fn().mockReturnThis(),
 			};
 
 			const result = supplyModel(mockCtx, modelWithOtherType);
@@ -233,9 +248,9 @@ describe('supplyModel', () => {
 			const modelWithoutType = {
 				provider: 'google',
 				modelId: 'gemini-pro',
-				generate: jest.fn(),
-				stream: jest.fn(),
-				withTools: jest.fn().mockReturnThis(),
+				generate: vi.fn(),
+				stream: vi.fn(),
+				withTools: vi.fn().mockReturnThis(),
 			};
 
 			const result = supplyModel(mockCtx, modelWithoutType);

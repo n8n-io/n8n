@@ -1,4 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
 import type { Schema } from 'n8n-workflow';
 
 import { generateSchemaJSDoc, schemaToOutputSample } from './execution-schema-jsdoc';

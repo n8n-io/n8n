@@ -26,6 +26,9 @@ export const EvaluationErrorCode = {
 	METRIC_NODE_REF_DELETED: 'METRIC_NODE_REF_DELETED',
 	LLM_PROVIDER_REMOVED: 'LLM_PROVIDER_REMOVED',
 	COMPILATION_FAILED: 'COMPILATION_FAILED',
+	// A metric's input mapping is whitespace-only after trim — accepts a
+	// non-empty string at the schema level but resolves to nothing at run time.
+	METRIC_INPUT_EMPTY: 'METRIC_INPUT_EMPTY',
 } as const;
 
 export type EvaluationErrorCode = (typeof EvaluationErrorCode)[keyof typeof EvaluationErrorCode];

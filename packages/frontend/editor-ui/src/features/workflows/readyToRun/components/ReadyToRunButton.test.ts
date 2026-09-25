@@ -8,12 +8,6 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
-vi.mock('@/composables/useToast', () => ({
-	useToast: () => ({
-		showError: vi.fn(),
-	}),
-}));
-
 vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
 	useProjectPages: () => ({
 		isOverviewSubPage: false,

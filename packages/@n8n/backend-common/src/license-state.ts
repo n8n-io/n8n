@@ -66,6 +66,10 @@ export class LicenseState {
 		return this.isLicensed(LICENSE_FEATURES.PERSONAL_SPACE_POLICY);
 	}
 
+	isWorkflowReviewsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.WORKFLOW_REVIEWS);
+	}
+
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
 	}
@@ -110,6 +114,14 @@ export class LicenseState {
 		return this.isLicensed('feat:aiGateway');
 	}
 
+	isAiGatewayCloudUbbLicensed() {
+		return this.isLicensed('feat:aiGatewayCloudUbb');
+	}
+
+	isAiAssistantCloudUbbEntitlementLicensed() {
+		return this.isLicensed('feat:aiAssistantCloudUbbEntitlement');
+	}
+
 	isAdvancedExecutionFiltersLicensed() {
 		return this.isLicensed('feat:advancedExecutionFilters');
 	}
@@ -124,6 +136,18 @@ export class LicenseState {
 
 	isBinaryDataS3Licensed() {
 		return this.isLicensed('feat:binaryDataS3');
+	}
+
+	isBinaryDataAzureLicensed() {
+		return this.isLicensed('feat:binaryDataAz');
+	}
+
+	isExecutionDataS3Licensed() {
+		return this.isLicensed('feat:executionDataS3');
+	}
+
+	isExecutionDataAzureLicensed() {
+		return this.isLicensed('feat:executionDataAz');
 	}
 
 	isMultiMainLicensed() {
@@ -148,6 +172,10 @@ export class LicenseState {
 
 	isWorkerViewLicensed() {
 		return this.isLicensed('feat:workerView');
+	}
+
+	isWorkerPoolsLicensed() {
+		return this.isLicensed('feat:workerPools');
 	}
 
 	isProjectRoleAdminLicensed() {
@@ -194,6 +222,10 @@ export class LicenseState {
 		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
 
+	isOtelCustomSpanAttributesLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES);
+	}
+
 	// --------------------
 	//      integers
 	// --------------------
@@ -232,6 +264,11 @@ export class LicenseState {
 
 	getMaxTeamProjects() {
 		return this.getValue('quota:maxTeamProjects') ?? 0;
+	}
+
+	isTeamProjectsLicensed() {
+		const quota = this.getMaxTeamProjects();
+		return quota === UNLIMITED_LICENSE_QUOTA || quota > 0;
 	}
 
 	getMaxWorkflowsWithEvaluations() {

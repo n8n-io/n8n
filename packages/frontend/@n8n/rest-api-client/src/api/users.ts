@@ -1,16 +1,19 @@
 import type {
+	ChangeEmailRequestDto,
+	ChangeEmailResponse,
+	ConfirmEmailChangeRequestDto,
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
 	UserSelfSettingsUpdateRequestDto,
 	UsersListFilterDto,
 	UserUpdateRequestDto,
-	Role,
 	UsersList,
 	User,
 } from '@n8n/api-types';
-import type { Scope } from '@n8n/permissions';
+import type { AssignableGlobalRole, Scope } from '@n8n/permissions';
 import type {
+	FeatureFlagPayloads,
 	FeatureFlags,
 	IDataObject,
 	IPersonalizationSurveyAnswersV4,
@@ -73,6 +76,7 @@ export interface IUserResponse extends User {
 
 export interface CurrentUserResponse extends IUserResponse {
 	featureFlags?: FeatureFlags;
+	featureFlagPayloads?: FeatureFlagPayloads;
 }
 
 export interface IUser extends IUserResponse {
@@ -149,6 +153,27 @@ export async function updateCurrentUser(
 	return await makeRestApiRequest(context, 'PATCH', '/me', params);
 }
 
+export async function requestEmailChange(
+	context: IRestApiContext,
+	params: ChangeEmailRequestDto,
+): Promise<ChangeEmailResponse> {
+	return await makeRestApiRequest(context, 'POST', '/change-email', params);
+}
+
+export async function resolveEmailChangeToken(
+	context: IRestApiContext,
+	params: { token: string },
+): Promise<{ email: string }> {
+	return await makeRestApiRequest(context, 'GET', '/resolve-change-email-token', params);
+}
+
+export async function confirmEmailChange(
+	context: IRestApiContext,
+	params: ConfirmEmailChangeRequestDto,
+): Promise<{ success: true }> {
+	return await makeRestApiRequest(context, 'POST', '/confirm-email-change', params);
+}
+
 export async function updateCurrentUserSettings(
 	context: IRestApiContext,
 	settings: UserSelfSettingsUpdateRequestDto,
@@ -215,7 +240,8 @@ export async function submitPersonalizationSurvey(
 
 export interface UpdateGlobalRolePayload {
 	id: string;
-	newRoleName: Role;
+	// Allows custom global role slugs in addition to built-in roles (assignable = any non-owner global role).
+	newRoleName: AssignableGlobalRole;
 }
 
 export async function updateGlobalRole(

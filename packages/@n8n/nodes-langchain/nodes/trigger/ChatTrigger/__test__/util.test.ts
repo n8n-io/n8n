@@ -45,8 +45,8 @@ describe('util', () => {
 				title: '',
 				message: '',
 				options: [
-					{ label: 'Disapprove', url: 'https://no.com', style: 'secondary' },
-					{ label: 'Approve', url: 'https://yes.com', style: 'primary' },
+					{ label: 'Disapprove', url: 'https://no.com', style: 'secondary', approved: false },
+					{ label: 'Approve', url: 'https://yes.com', style: 'primary', approved: true },
 				],
 			});
 			ctx.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));

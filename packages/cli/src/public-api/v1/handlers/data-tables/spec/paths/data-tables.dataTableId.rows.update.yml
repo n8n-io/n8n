@@ -1,5 +1,6 @@
 patch:
   x-eov-operation-id: updateDataTableRows
+  x-required-scope: dataTableRow:update
   x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
   tags:
     - DataTable

@@ -1,13 +1,6 @@
-import {
-	TextEditorDocument,
-	findDivergenceContext,
-	formatTextWithLineNumbers,
-} from '@n8n/ai-utilities/text-editor';
+import { TextEditorDocument } from '@n8n/ai-utilities/text-editor';
 
 const WORKFLOW_FILE_PATH = '/workflow.js';
-
-export { findDivergenceContext };
-export { formatTextWithLineNumbers as formatCodeWithLineNumbers };
 
 /**
  * Manages the virtual workflow code file used by the code builder agent.

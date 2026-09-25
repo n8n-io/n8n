@@ -13,7 +13,7 @@ describe('CredentialDependencyRepository', () => {
 	const repository = Container.get(CredentialDependencyRepository);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('findCredentialIdsByDependencyId', () => {
@@ -39,11 +39,11 @@ describe('CredentialDependencyRepository', () => {
 	describe('upsertDependenciesForCredential', () => {
 		it('deduplicates ids and inserts once with orIgnore', async () => {
 			const qb = {
-				insert: jest.fn().mockReturnThis(),
-				into: jest.fn().mockReturnThis(),
-				values: jest.fn().mockReturnThis(),
-				orIgnore: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue(undefined),
+				insert: vi.fn().mockReturnThis(),
+				into: vi.fn().mockReturnThis(),
+				values: vi.fn().mockReturnThis(),
+				orIgnore: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue(undefined),
 			};
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 
@@ -89,7 +89,7 @@ describe('CredentialDependencyRepository', () => {
 				{ dependencyId: 'provider-keep' } as CredentialDependency,
 			]);
 
-			const upsertSpy = jest
+			const upsertSpy = vi
 				.spyOn(repository, 'upsertDependenciesForCredential')
 				.mockResolvedValue(undefined);
 
@@ -157,8 +157,16 @@ describe('CredentialDependencyRepository', () => {
 
 describe('addCredentialDependencyExistsFilter', () => {
 	it('applies the EXISTS dependency filter using andWhere', () => {
+		const subQuery = {
+			select: vi.fn().mockReturnThis(),
+			from: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			andWhere: vi.fn().mockReturnThis(),
+			getQuery: vi.fn().mockReturnValue('(SELECT 1 FROM "cd")'),
+		};
 		const qb = {
-			andWhere: jest.fn().mockReturnThis(),
+			subQuery: vi.fn().mockReturnValue(subQuery),
+			andWhere: vi.fn().mockReturnThis(),
 		};
 		const filter = {
 			dependencyType: 'externalSecretProvider',
@@ -167,10 +175,15 @@ describe('addCredentialDependencyExistsFilter', () => {
 
 		const result = addCredentialDependencyExistsFilter(qb as never, filter);
 
-		expect(qb.andWhere).toHaveBeenCalledWith(
-			expect.stringContaining('FROM credential_dependency cd'),
-			filter,
-		);
+		expect(subQuery.select).toHaveBeenCalledWith('1');
+		expect(subQuery.from).toHaveBeenCalledWith(CredentialDependency, 'cd');
+		expect(subQuery.where).toHaveBeenCalledWith('cd.credentialId = credential.id');
+		// Both dependency conditions must be present, or the filter matches any dependency row.
+		expect(subQuery.andWhere.mock.calls).toEqual([
+			['cd.dependencyType = :dependencyType'],
+			['cd.dependencyId = :dependencyId'],
+		]);
+		expect(qb.andWhere).toHaveBeenCalledWith('EXISTS (SELECT 1 FROM "cd")', filter);
 		expect(result).toBe(qb);
 	});
 });

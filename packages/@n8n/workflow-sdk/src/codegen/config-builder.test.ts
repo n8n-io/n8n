@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import { buildConfigString, type ConfigEntry } from './config-builder';
 
 describe('buildConfigString', () => {

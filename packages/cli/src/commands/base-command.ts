@@ -1,45 +1,57 @@
 import 'reflect-metadata';
+import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import {
 	inDevelopment,
 	inTest,
 	LicenseState,
+	LockService,
 	Logger,
 	ModuleRegistry,
 	ModulesConfig,
 } from '@n8n/backend-common';
+import { installGlobalProxyAgent } from '@n8n/backend-network';
+import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { DbConnection } from '@n8n/db';
+import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
+import { SystemTaskMetadata } from '@n8n/decorators';
+import type { SystemTaskClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
+	BinaryDataBlobManager,
 	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
 	DataDeduplicationService,
 	ErrorReporter,
 	ExecutionContextHookRegistry,
+	StorageConfig,
 } from 'n8n-core';
-import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
-import { ensureError, Expression, sleep, UnexpectedError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { Expression, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
-import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -79,10 +91,34 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
+	/**
+	 * Whether to connect to the control plane database. The engine data plane
+	 * process runs without one, so it also skips the migrations, the persisted
+	 * instance identity and the encryption bootstrap that need it.
+	 */
+	protected needsDb = true;
+
 	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
+	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
+	protected needsExpressionEngine = false;
+
+	/**
+	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
+	 * Only server processes hold the encryption key these are derived from.
+	 */
+	protected seedsInstanceIdentity = false;
+
+	/** Whether this command runs the main server process (`n8n start`). */
+	protected readonly isMainServer: boolean = false;
+
 	async init(): Promise<void> {
+		// First, so any default-agent egress during init already honours the proxy
+		// env vars. Sentry is unaffected either way: its transport builds its own
+		// agent and reads only the lowercase http(s)_proxy / no_proxy variables.
+		this.installOutboundProxyAgents();
+
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
@@ -92,8 +128,11 @@ export abstract class BaseCommand<F = never> {
 			deploymentName,
 			profilesSampleRate,
 			tracesSampleRate,
+			tracesSlowSpanThresholdMs,
+			webhookTracesSampleRate,
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
+			eventLoopBlockDetectionEnabled,
 		} = this.globalConfig.sentry;
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
@@ -102,10 +141,13 @@ export abstract class BaseCommand<F = never> {
 			release: `n8n@${N8N_VERSION}`,
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
-			withEventLoopBlockDetection: true,
+			withEventLoopBlockDetection: eventLoopBlockDetectionEnabled,
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
 			tracesSampleRate,
+			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
+			webhookEndpoint: this.globalConfig.endpoints.webhook,
+			webhookTracesSampleRate,
 			profilesSampleRate,
 			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {
@@ -125,27 +167,57 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(LoadNodesAndCredentials).init();
 
-		await this.dbConnection
-			.init()
-			.catch(
-				async (error: Error) =>
-					await this.exitWithCrash('There was an error initializing DB', error),
-			);
-
-		// This needs to happen after DB.init() or otherwise DB Connection is not
-		// available via the dependency Container that services depend on.
-		if (inDevelopment || inTest) {
-			this.shutdownService.validate();
+		const useRedisForLocking =
+			this.globalConfig.executions.mode === 'queue' ||
+			this.globalConfig.multiMainSetup.enabled ||
+			this.globalConfig.cache.backend === 'redis';
+		if (useRedisForLocking) {
+			const { RedisLockService } = await import('@/scaling/redis-lock.service.js');
+			Container.get(LockService).setProvider(Container.get(RedisLockService));
 		}
 
-		await this.server?.init();
+		if (this.needsDb) {
+			await this.dbConnection
+				.init()
+				.catch(
+					async (error: Error) =>
+						await this.exitWithCrash('There was an error initializing DB', error),
+				);
 
-		await this.dbConnection
-			.migrate()
-			.catch(
-				async (error: Error) =>
-					await this.exitWithCrash('There was an error running database migrations', error),
-			);
+			// This needs to happen after DB.init() or otherwise DB Connection is not
+			// available via the dependency Container that services depend on.
+			if (inDevelopment || inTest) {
+				this.shutdownService.validate();
+			}
+
+			await this.server?.init();
+
+			await this.dbConnection
+				.migrate()
+				.catch(
+					async (error: Error) =>
+						await this.exitWithCrash('There was an error running database migrations', error),
+				);
+
+			// Apply the persisted instance identity so every command (e.g. license:info)
+			// sees the same instanceId as the running server. Non-fatal for one-off
+			// commands, which must keep working with restricted DB credentials.
+			try {
+				await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
+					canSeed: this.seedsInstanceIdentity,
+				});
+			} catch (error) {
+				if (this.seedsInstanceIdentity) throw error;
+				this.logger.warn('Could not read the instance identity from the DB, using derived values', {
+					error: ensureError(error),
+				});
+			}
+
+			// Wire the encryption key provider (and seed keys on a seeding main) before
+			// anything encrypts or decrypts. This must run for every entrypoint —
+			// servers and one-off commands — since the cipher has no fallback path.
+			await Container.get(EncryptionBootstrapService).run();
+		}
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
@@ -174,7 +246,7 @@ export abstract class BaseCommand<F = never> {
 				);
 			}
 
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module.js');
 			await Container.get(TaskRunnerModule).start();
 		}
 
@@ -183,19 +255,71 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
+		Container.get(ActivityEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
-		const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
-			this.globalConfig.expressionEngine;
-		await Expression.initExpressionEngine({
-			engine,
-			poolSize,
-			maxCodeCacheSize,
-			bridgeTimeout,
-			bridgeMemoryLimit,
-			idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
-			observability: Container.get(ExpressionObservabilityProvider),
-		});
+		if (this.needsExpressionEngine) {
+			const {
+				engine,
+				poolSize,
+				maxCodeCacheSize,
+				bridgeTimeout,
+				bridgeMemoryLimit,
+				idleTimeout,
+				lazyAcquire,
+				compileCache,
+			} = this.globalConfig.expressionEngine;
+			const observability = Container.get(ExpressionObservabilityProvider);
+			try {
+				await Expression.initExpressionEngine({
+					engine,
+					poolSize,
+					maxCodeCacheSize,
+					bridgeTimeout,
+					bridgeMemoryLimit,
+					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+					lazyAcquire,
+					compileCache,
+					observability,
+				});
+			} catch (error) {
+				await this.exitWithCrash(
+					'Could not initialize the vm expression engine (see errors above for details). If they point at isolated-vm, check that it installed correctly, e.g. that native build scripts were not skipped.',
+					error,
+				);
+			}
+		} else {
+			// Record the configured engine so an unexpected expression evaluation on a
+			// vm-configured instance fails loudly instead of silently using the legacy engine
+			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
+		}
+	}
+
+	/**
+	 * Registers the system tasks this command runs and hands the registry to the
+	 * runner, which routes them. `ownTasks` are the tasks only this command runs,
+	 * on top of the ones every server command runs.
+	 */
+	protected async initSystemTasks(ownTasks: SystemTaskClass[] = []): Promise<void> {
+		const metadata = Container.get(SystemTaskMetadata);
+		for (const taskClass of [...(await instanceSystemTasks(this.globalConfig)), ...ownTasks]) {
+			metadata.register(taskClass);
+		}
+
+		// Imported here so one-off CLI commands do not load the runner's scheduler graph.
+		const { SystemTaskRunner } = await import('@/scheduling/system-tasks/system-task-runner.js');
+		await Container.get(SystemTaskRunner).init();
+	}
+
+	/**
+	 * Installs the env-proxy global agents so default-agent HTTP honours the proxy
+	 * environment variables. In `main-only` outbound proxy mode, only the main
+	 * server process installs them.
+	 */
+	protected installOutboundProxyAgents() {
+		if (this.globalConfig.outboundProxy.mode === 'all' || this.isMainServer) {
+			installGlobalProxyAgent();
+		}
 	}
 
 	protected async stopProcess() {
@@ -207,7 +331,7 @@ export abstract class BaseCommand<F = never> {
 		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
 		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
 			const { CommunityPackagesService } = await import(
-				'@/modules/community-packages/community-packages.service'
+				'@/modules/community-packages/community-packages.service.js'
 			);
 			await Container.get(CommunityPackagesService).init();
 		}
@@ -229,7 +353,9 @@ export abstract class BaseCommand<F = never> {
 		}
 	}
 
-	protected async exitWithCrash(message: string, error: unknown) {
+	protected async exitWithCrash(message: string, error: unknown): Promise<never> {
+		// the error reporter only sends to Sentry when a DSN is configured, so also log to the console
+		this.logger.error(message, { error });
 		this.errorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
 		await sleep(2000);
 		process.exit(1);
@@ -243,12 +369,22 @@ export abstract class BaseCommand<F = never> {
 		throw new UnexpectedError(message);
 	}
 
+	/** Print an error banner, optionally preceded by a command-specific summary. */
+	protected logError(error: Error, summary?: string) {
+		if (summary) this.logger.error(summary);
+		this.logger.error('\nGOT ERROR');
+		this.logger.error('====================================');
+		this.logger.error(error.message);
+		this.logger.error(error.stack!);
+	}
+
 	async initBinaryDataService() {
 		const binaryDataConfig = Container.get(BinaryDataConfig);
 		const binaryDataService = Container.get(BinaryDataService);
 		const isS3WriteMode = binaryDataConfig.mode === 's3';
+		const isAzureWriteMode = binaryDataConfig.mode === 'azure';
 
-		const { DatabaseManager } = await import('@/binary-data/database.manager');
+		const { DatabaseManager } = await import('@/binary-data/database.manager.js');
 		binaryDataService.setManager('database', Container.get(DatabaseManager));
 
 		if (isS3WriteMode) {
@@ -261,30 +397,123 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
-		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
+		if (isAzureWriteMode) {
+			const isLicensed = Container.get(LicenseState).isBinaryDataAzureLicensed();
+			if (!isLicensed) {
+				this.logger.error(
+					'Azure Blob binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+			if (Container.get(AzureBlobConfig).containerName === '') {
+				this.logger.error(
+					'Azure Blob binary data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
 
-		if (isS3Configured) {
-			try {
-				const { ObjectStoreService } = await import(
-					'n8n-core/dist/binary-data/object-store/object-store.service.ee'
+		const executionDataMode = Container.get(StorageConfig).mode;
+		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
+		const isAzureConfigured = Container.get(AzureBlobConfig).containerName !== '';
+		const isExecutionDataS3Mode = executionDataMode === 's3';
+		const isExecutionDataAzureMode = executionDataMode === 'azure';
+		const isExecutionDataS3Licensed = Container.get(LicenseState).isExecutionDataS3Licensed();
+		const isExecutionDataAzureLicensed = Container.get(LicenseState).isExecutionDataAzureLicensed();
+
+		if (isExecutionDataS3Mode) {
+			if (!isExecutionDataS3Licensed) {
+				this.logger.error(
+					'S3 execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
 				);
-				const objectStoreService = Container.get(ObjectStoreService);
-				await objectStoreService.init();
-				const { ObjectStoreManager } = await import(
-					'n8n-core/dist/binary-data/object-store.manager'
+				process.exit(1);
+			}
+			if (!isS3Configured) {
+				this.logger.error(
+					'S3 execution data storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
 				);
-				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
-			} catch {
-				if (isS3WriteMode) {
-					this.logger.error(
-						'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
-					);
-					process.exit(1);
-				}
+				process.exit(1);
+			}
+		}
+
+		if (isExecutionDataAzureMode) {
+			if (!isExecutionDataAzureLicensed) {
+				this.logger.error(
+					'Azure Blob execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
+				);
+				process.exit(1);
+			}
+			if (!isAzureConfigured) {
+				this.logger.error(
+					'Azure Blob execution data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
+
+		try {
+			const objectStoreService = await this.initObjectStoreIfConfigured();
+			if (objectStoreService) {
+				binaryDataService.setManager(
+					's3',
+					new BinaryDataBlobManager(new S3ByteStore(objectStoreService), this.errorReporter),
+				);
+			}
+		} catch {
+			if (isS3WriteMode || isExecutionDataS3Mode) {
+				this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
+				process.exit(1);
+			}
+		}
+
+		try {
+			const azureBlobService = await this.initAzureStoreIfConfigured();
+			if (azureBlobService) {
+				binaryDataService.setManager(
+					'azure',
+					new BinaryDataBlobManager(new AzureByteStore(azureBlobService), this.errorReporter),
+				);
+			}
+		} catch {
+			if (isAzureWriteMode || isExecutionDataAzureMode) {
+				this.logger.error(
+					'Failed to connect to Azure Blob storage. Please check your Azure configuration.',
+				);
+				process.exit(1);
 			}
 		}
 
 		await binaryDataService.init();
+	}
+
+	protected async initObjectStoreIfConfigured() {
+		if (Container.get(ObjectStoreConfig).bucket.name === '') return undefined;
+
+		const { ObjectStoreService } = await import('@n8n/blob-storage/object-store');
+		const objectStoreService = Container.get(ObjectStoreService);
+		await objectStoreService.init();
+
+		Container.get(ExecutionDataJsonStore).registerByteStore(
+			's3',
+			new S3ByteStore(objectStoreService),
+		);
+
+		return objectStoreService;
+	}
+
+	protected async initAzureStoreIfConfigured() {
+		if (Container.get(AzureBlobConfig).containerName === '') return;
+
+		const { AzureBlobService } = await import('@n8n/blob-storage/azure-blob');
+		const azureBlobService = Container.get(AzureBlobService);
+		await azureBlobService.init();
+
+		Container.get(ExecutionDataJsonStore).registerByteStore(
+			'az',
+			new AzureByteStore(azureBlobService),
+		);
+
+		return azureBlobService;
 	}
 
 	protected async initDataDeduplicationService() {

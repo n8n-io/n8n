@@ -1,8 +1,8 @@
+import { workflow, trigger, node } from '@n8n/workflow-sdk';
 import flatted from 'flatted';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { workflow, trigger, node } from '../../../../../@n8n/workflow-sdk/src';
 import { test, expect } from '../../../fixtures/base';
 
 const TRIGGER_NAME = 'Manual Trigger';
@@ -54,7 +54,7 @@ function createCodeNodeWorkflow(): IWorkflowBase {
 }
 
 test.describe(
-	'Code node API execution @capability:task-runner',
+	'Code node API execution',
 	{
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},

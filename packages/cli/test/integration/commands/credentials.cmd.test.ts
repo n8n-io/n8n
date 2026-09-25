@@ -1,15 +1,27 @@
+import { GlobalConfig } from '@n8n/config';
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { CredentialsEntity, DbLock, DbLockService, InstanceCredentialAssignment } from '@n8n/db';
+import { Container } from '@n8n/di';
 import * as fs from 'fs';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import * as os from 'os';
 import * as path from 'path';
 
 import '@/zod-alias-support';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
+import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
+import type { InstanceCredentialUse } from '@/credentials/instance-credential-use.registry';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
+import {
+	createCredentials,
+	encryptCredentialData,
+	getAllCredentials,
+	getAllSharedCredentials,
+} from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
 
 type CredentialFixture = {
@@ -24,9 +36,26 @@ const [credentialsFixture] = jsonParse<CredentialFixture[]>(
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportCredentialsCommand);
+const IMPORT_CREDENTIAL_USE = {
+	id: 'test:credential-import',
+	credentialTypes: ['aws'],
+	validate: ({ data }) => {
+		if (data.region !== 'us-east-1') throw new Error('Invalid imported provider connection');
+	},
+} satisfies InstanceCredentialUse;
+
+beforeAll(() => {
+	Container.get(InstanceCredentialBroker).registerUse(IMPORT_CREDENTIAL_USE);
+});
 
 beforeEach(async () => {
-	await testDb.truncate(['CredentialsEntity', 'SharedCredentials', 'User']);
+	Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = true;
+	await testDb.truncate([
+		'InstanceCredentialAssignment',
+		'CredentialsEntity',
+		'SharedCredentials',
+		'User',
+	]);
 });
 
 test('import:credentials should import a credential', async () => {
@@ -169,6 +198,117 @@ test('import:credentials should include only selected credential properties', as
 	expect(after.credentials[0].updatedAt.toISOString()).not.toBe(credentialsFixture.updatedAt);
 });
 
+test('import:credentials should trim a description and store a blank one as null', async () => {
+	await createOwner();
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description.json',
+	]);
+
+	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
+
+	expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	expect(byId.get('desc-blank')).toBeNull();
+});
+
+test('import:credentials should keep a stored description when the file omits it', async () => {
+	await createOwner();
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description.json',
+	]);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description-omitted.json',
+	]);
+
+	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c]));
+	expect(byId.get('desc-untrimmed')?.name).toBe('cred-untrimmed-description-reimported');
+	expect(byId.get('desc-untrimmed')?.description).toBe('Read-only key for reporting.');
+});
+
+test.each([
+	['a non-string', 42],
+	['an over-cap', 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1)],
+])(
+	'import:credentials should reject %s description and keep the stored one',
+	async (_label, description) => {
+		await createOwner();
+		await command.run([
+			'--input=./test/integration/commands/import-credentials/credentials-description.json',
+		]);
+
+		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+		const inputPath = path.join(temporaryDirectory, 'credentials.json');
+		fs.writeFileSync(
+			inputPath,
+			JSON.stringify([
+				{
+					id: 'desc-untrimmed',
+					name: 'cred-untrimmed-description',
+					type: 'aws',
+					data: { region: 'eu-west-1' },
+					description,
+				},
+			]),
+		);
+
+		try {
+			await expect(command.run([`--input=${inputPath}`])).rejects.toThrow(
+				'Credential "desc-untrimmed"',
+			);
+		} finally {
+			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+		}
+
+		const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
+		expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	},
+);
+
+test.each([false, undefined])(
+	'import:credentials ignores descriptions and preserves stored values when the flag is %s',
+	async (enabled) => {
+		await createOwner();
+		await command.run([
+			'--input=./test/integration/commands/import-credentials/credentials-description.json',
+		]);
+		if (enabled === undefined) {
+			delete Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG];
+		} else {
+			Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = enabled;
+		}
+		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+		const inputPath = path.join(temporaryDirectory, 'credentials.json');
+		fs.writeFileSync(
+			inputPath,
+			JSON.stringify(
+				['desc-untrimmed', 'desc-new'].map((id) => ({
+					id,
+					name: 'Reporting account',
+					type: 'aws',
+					data: { region: 'eu-west-1' },
+					description: 42,
+				})),
+			),
+		);
+
+		try {
+			await command.run([`--input=${inputPath}`]);
+		} finally {
+			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+		}
+
+		const byId = new Map(
+			(await getAllCredentials()).map((credential) => [credential.id, credential]),
+		);
+		expect(byId.get('desc-untrimmed')).toMatchObject({
+			name: 'Reporting account',
+			description: 'Read-only key for reporting.',
+		});
+		expect(byId.get('desc-new')?.description).toBeNull();
+	},
+);
+
 test('import:credentials should exclude selected credential properties', async () => {
 	const owner = await createOwner();
 	const ownerProject = await getPersonalProject(owner);
@@ -289,6 +429,57 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 	});
 });
 
+test('`import:credentials --userId ...` should succeed if the credential exists already and is owned by the same user', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials.json',
+		`--userId=${owner.id}`,
+	]);
+
+	const before = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(before).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-updated.json',
+		`--userId=${owner.id}`,
+	]);
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [
+			expect.objectContaining({
+				id: '123',
+				name: 'cred-aws-prod',
+			}),
+		],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+});
+
 test("only update credential, don't create or update owner if neither `--userId` nor `--projectId` is passed", async () => {
 	//
 	// ARRANGE
@@ -347,6 +538,51 @@ test("only update credential, don't create or update owner if neither `--userId`
 			expect.objectContaining({
 				credentialsId: '123',
 				projectId: memberProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+});
+
+test('`import:credentials --projectId ...` should succeed if the credential exists already and is owned by the same project', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials.json',
+		`--projectId=${ownerProject.id}`,
+	]);
+
+	const before = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(before).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-updated.json',
+		`--projectId=${ownerProject.id}`,
+	]);
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(after).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-prod' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
 				role: 'credential:owner',
 			}),
 		],
@@ -425,6 +661,140 @@ test('`import:credential --projectId ...` should fail if the credential already 
 	});
 });
 
+test('import:credentials should preserve the usage scope of existing instance credentials', async () => {
+	await createOwner();
+	await createCredentials({
+		id: '123',
+		name: 'instance-model-cred',
+		type: 'aws',
+		data: 'encrypted',
+		usageScope: 'instance',
+	});
+	await command.run(['--input=./test/integration/commands/import-credentials/credentials.json']);
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(after.credentials).toEqual([
+		expect.objectContaining({ id: '123', usageScope: 'instance' }),
+	]);
+	expect(after.sharings).toEqual([]);
+});
+
+test('import:credentials should reject changing an existing provider connection type', async () => {
+	await createOwner();
+	await createCredentials({
+		id: '123',
+		name: 'instance-model-cred',
+		type: 'apiKey',
+		data: 'encrypted',
+		usageScope: 'instance',
+	});
+
+	await expect(
+		command.run(['--input=./test/integration/commands/import-credentials/credentials.json']),
+	).rejects.toThrow('Provider connection type cannot be changed');
+});
+
+test('import:credentials should validate an assigned provider connection', async () => {
+	await createOwner();
+	const entity = new CredentialsEntity();
+	Object.assign(entity, {
+		id: '123',
+		name: 'instance-model-cred',
+		type: 'aws',
+		data: { region: 'us-east-1' },
+		usageScope: 'instance',
+	});
+	await encryptCredentialData(entity);
+	entity.id = '123';
+	const credential = await createCredentials(entity);
+	const dbLockService = Container.get(DbLockService);
+	await dbLockService.withLock(DbLock.INSTANCE_AI_SETTINGS, async (transactionManager) => {
+		await transactionManager.insert(InstanceCredentialAssignment, {
+			credentialUseId: IMPORT_CREDENTIAL_USE.id,
+			credentialId: credential.id,
+		});
+	});
+
+	let importSettled = false;
+	let importPromise: ReturnType<typeof command.run> | undefined;
+	const withLockSpy = vi.spyOn(dbLockService, 'withLock');
+	try {
+		await dbLockService.withLock(DbLock.INSTANCE_AI_SETTINGS, async () => {
+			importPromise = command.run([
+				'--input=./test/integration/commands/import-credentials/credentials.json',
+			]);
+			void importPromise.then(
+				() => {
+					importSettled = true;
+				},
+				() => {
+					importSettled = true;
+				},
+			);
+			await vi.waitFor(() => expect(withLockSpy).toHaveBeenCalledTimes(2));
+			expect(importSettled).toBe(false);
+		});
+	} finally {
+		withLockSpy.mockRestore();
+	}
+
+	if (!importPromise) throw new Error('Expected credential import to start');
+	const importError: unknown = await importPromise.then(
+		() => undefined,
+		(error: unknown) => error,
+	);
+	expect(importError).toBeInstanceOf(Error);
+	if (!(importError instanceof Error)) throw new Error('Expected credential import to fail');
+	expect(importError.message).toContain('Invalid imported provider connection');
+	await expect(getAllCredentials()).resolves.toEqual([
+		expect.objectContaining({
+			id: credential.id,
+			name: 'instance-model-cred',
+			data: credential.data,
+		}),
+	]);
+});
+
+test.each([
+	['null', null],
+	['empty', ''],
+	['invalid', 'not-encrypted'],
+])('import:credentials should reject %s provider connection data', async (_label, data) => {
+	await createOwner();
+	const entity = new CredentialsEntity();
+	Object.assign(entity, {
+		id: '123',
+		name: 'instance-model-cred',
+		type: 'aws',
+		data: { region: 'us-east-1' },
+		usageScope: 'instance',
+	});
+	await encryptCredentialData(entity);
+	const credential = await createCredentials(entity);
+	const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+	const inputPath = path.join(temporaryDirectory, 'credentials.json');
+	fs.writeFileSync(
+		inputPath,
+		JSON.stringify([{ id: credential.id, name: 'changed', type: credential.type, data }]),
+	);
+
+	try {
+		await expect(command.run([`--input=${inputPath}`])).rejects.toThrow();
+	} finally {
+		fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+	}
+	await expect(getAllCredentials()).resolves.toEqual([
+		expect.objectContaining({
+			id: credential.id,
+			name: 'instance-model-cred',
+			data: credential.data,
+		}),
+	]);
+});
+
 test('`import:credential --projectId ... --userId ...` fails explaining that only one of the options can be used at a time', async () => {
 	await expect(
 		command.run([
@@ -435,4 +805,8 @@ test('`import:credential --projectId ... --userId ...` fails explaining that onl
 	).rejects.toThrowError(
 		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 	);
+});
+
+afterEach(() => {
+	delete Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG];
 });

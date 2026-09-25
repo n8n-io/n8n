@@ -1,3 +1,5 @@
+import type { INodeTypes } from 'n8n-workflow';
+
 import type { NodeInstance, WorkflowJSON } from './types/base';
 import { workflow } from './workflow-builder';
 import { splitInBatches } from './workflow-builder/control-flow-builders/split-in-batches';
@@ -8,6 +10,7 @@ import {
 	tool,
 	outputParser,
 } from './workflow-builder/node-builders/subnode-builders';
+import { generateDeterministicGroupId } from './workflow-builder/string-utils';
 
 describe('Workflow Builder', () => {
 	describe('workflow()', () => {
@@ -746,6 +749,382 @@ describe('Workflow Builder', () => {
 		});
 	});
 
+	describe('NodeChain.onError()', () => {
+		it('binds the error route to the node that declares continueErrorOutput, not the tail', () => {
+			// INS-425 regression: sendGmail.to(markSent).onError(markFailed) attached
+			// the error edge to Mark Sent (tail) instead of Send Gmail, producing a
+			// connection from an output port Mark Sent does not have.
+			const t = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.3,
+				config: { name: 'Daily' },
+			});
+			const sendGmail = node({
+				type: 'n8n-nodes-base.gmail',
+				version: 2.2,
+				config: { name: 'Send Gmail', onError: 'continueErrorOutput' },
+			});
+			const markSent = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Mark Sent' },
+			});
+			const markFailed = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Mark Failed' },
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).to(sendGmail.to(markSent).onError(markFailed));
+
+			const json = wf.toJSON();
+
+			// Error edge originates from the gmail node's error pin
+			expect(json.connections['Send Gmail']?.main[0]?.[0]?.node).toBe('Mark Sent');
+			expect(json.connections['Send Gmail']?.main[1]?.[0]?.node).toBe('Mark Failed');
+			// Mark Sent has no phantom second output
+			expect(json.connections['Mark Sent']?.main[1]).toBeUndefined();
+		});
+
+		it('falls back to the tail and makes its error pin real when no chain node declares continueErrorOutput', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const fetchNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch' },
+			});
+			const writeNode = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Write' },
+			});
+			const failHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Log Failure' },
+			});
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(fetchNode.to(writeNode).onError(failHandler));
+
+			const json = wf.toJSON();
+
+			// Tail keeps the error route, but its error pin must actually exist
+			const writeJson = json.nodes.find((n) => n.name === 'Write');
+			expect(writeJson?.onError).toBe('continueErrorOutput');
+			expect(json.connections['Write']?.main[1]?.[0]?.node).toBe('Log Failure');
+		});
+
+		it('node-level .onError() implies onError: continueErrorOutput on the node', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Handler' },
+			});
+
+			httpNode.onError(errorHandler);
+
+			const wf = workflow('test-id', 'Test').add(httpNode).add(errorHandler);
+			const json = wf.toJSON();
+
+			const httpJson = json.nodes.find((n) => n.name === 'HTTP');
+			expect(httpJson?.onError).toBe('continueErrorOutput');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Error Handler');
+		});
+
+		// The route is the more specific instruction, so it wins over an onError mode that
+		// exposes no error pin. Keeping the mode emitted a connection from an output the node
+		// does not have: the handler never ran, and the `error_routes_consistent` check counts
+		// that as a broken workflow.
+		it('opens the error output port over an explicit onError mode that has none', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueRegularOutput' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Handler' },
+			});
+
+			httpNode.onError(errorHandler);
+
+			const wf = workflow('test-id', 'Test').add(httpNode).add(errorHandler);
+			const json = wf.toJSON();
+
+			const httpJson = json.nodes.find((n) => n.name === 'HTTP');
+			expect(httpJson?.onError).toBe('continueErrorOutput');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Error Handler');
+		});
+	});
+
+	describe('WorkflowBuilder.onError()', () => {
+		// INS-1314 defect 4: `.add(a).to(b).onError(h)` threw
+		// "...to(...).onError is not a function". `.onError()` existed on the node and on
+		// the chain, but not on the workflow builder that `.to()` returns.
+		const buildRetryFlow = () => {
+			const schedule = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { name: 'Every Hour' },
+			});
+			const loadUniverse = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Load Universe' },
+			});
+			const fetchPositions = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch Positions' },
+			});
+			const sendFetchFailure = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.3,
+				config: { name: 'Send Fetch Failure' },
+			});
+			const compute = node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: { name: 'Compute' },
+			});
+			return { schedule, loadUniverse, fetchPositions, sendFetchFailure, compute };
+		};
+
+		/** A two-node workflow as `fromJSON()` reads it, with the cursor left on `Fetch`. */
+		const importedFlow = (fetchOverrides?: Partial<WorkflowJSON['nodes'][number]>) =>
+			({
+				id: 'test-id',
+				name: 'Imported',
+				nodes: [
+					{
+						id: 't',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'h',
+						name: 'Fetch',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0],
+						parameters: {},
+						...fetchOverrides,
+					},
+				],
+				connections: { Start: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] } },
+			}) satisfies WorkflowJSON;
+
+		it('routes the error output of the node the cursor is on', () => {
+			const { schedule, loadUniverse, fetchPositions, sendFetchFailure, compute } =
+				buildRetryFlow();
+
+			const json = workflow('test-id', 'Test')
+				.add(schedule)
+				.to(loadUniverse)
+				.to(fetchPositions)
+				.onError(sendFetchFailure)
+				.to(compute)
+				.toJSON();
+
+			expect(json.nodes.map((n) => n.name)).toEqual([
+				'Every Hour',
+				'Load Universe',
+				'Fetch Positions',
+				'Send Fetch Failure',
+				'Compute',
+			]);
+			// Main output continues the flow; the error pin carries the handler.
+			expect(json.connections['Fetch Positions']?.main[0]?.[0]?.node).toBe('Compute');
+			expect(json.connections['Fetch Positions']?.main[1]?.[0]?.node).toBe('Send Fetch Failure');
+			// The handler is a leaf, not the source of the continuation.
+			expect(json.connections['Send Fetch Failure']).toBeUndefined();
+		});
+
+		it('turns on the error output port of the node it attaches to', () => {
+			const { schedule, fetchPositions, sendFetchFailure } = buildRetryFlow();
+
+			const json = workflow('test-id', 'Test')
+				.add(schedule)
+				.to(fetchPositions)
+				.onError(sendFetchFailure)
+				.toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Fetch Positions')?.onError).toBe(
+				'continueErrorOutput',
+			);
+		});
+
+		// A node that continues on its regular output has no error pin. Left as it was, the
+		// route serialized as a connection from an output the node does not have: the handler
+		// never received an item, and the save only reported a warning. Nodes read from a user
+		// workflow carry this value whenever the node uses the legacy `continueOnFail` flag.
+		it.each(['continueRegularOutput', 'stopWorkflow'] as const)(
+			'opens the error output port of a node that declares %s',
+			(onError) => {
+				const { schedule, sendFetchFailure } = buildRetryFlow();
+				const fetchPositions = node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { name: 'Fetch Positions', onError },
+				});
+
+				const json = workflow('test-id', 'Test')
+					.add(schedule)
+					.to(fetchPositions)
+					.onError(sendFetchFailure)
+					.toJSON();
+
+				expect(json.nodes.find((n) => n.name === 'Fetch Positions')?.onError).toBe(
+					'continueErrorOutput',
+				);
+				expect(json.connections['Fetch Positions']?.main[1]?.[0]?.node).toBe('Send Fetch Failure');
+			},
+		);
+
+		it('matches wiring the same error route on the node itself', () => {
+			const viaBuilder = buildRetryFlow();
+			const viaNode = buildRetryFlow();
+
+			const fromBuilder = workflow('test-id', 'Test')
+				.add(viaBuilder.schedule)
+				.to(viaBuilder.fetchPositions)
+				.onError(viaBuilder.sendFetchFailure)
+				.to(viaBuilder.compute)
+				.toJSON();
+
+			const fromNode = workflow('test-id', 'Test')
+				.add(viaNode.schedule)
+				.to(viaNode.fetchPositions.onError(viaNode.sendFetchFailure))
+				.to(viaNode.compute)
+				.toJSON();
+
+			expect(fromBuilder.connections).toEqual(fromNode.connections);
+		});
+
+		it('keeps the cursor on the source node so sibling routes stack', () => {
+			const { schedule, fetchPositions, sendFetchFailure, compute } = buildRetryFlow();
+			const auditFailure = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Audit Failure' },
+			});
+
+			const json = workflow('test-id', 'Test')
+				.add(schedule)
+				.to(fetchPositions)
+				.onError(sendFetchFailure)
+				.onError(auditFailure)
+				.to(compute)
+				.toJSON();
+
+			expect(json.connections['Fetch Positions']?.main[1]?.map((c) => c.node)).toEqual([
+				'Send Fetch Failure',
+				'Audit Failure',
+			]);
+			expect(json.connections['Fetch Positions']?.main[0]?.[0]?.node).toBe('Compute');
+		});
+
+		it('routes the error output of an imported node', () => {
+			// Every other connection method on a handle from fromJSON() throws by design;
+			// an error route is the one the handle records, so the builder can declare it.
+			const notify = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.3,
+				config: { name: 'Notify' },
+			});
+
+			const json = workflow.fromJSON(importedFlow()).onError(notify).toJSON();
+
+			// fromJSON leaves the cursor on the last imported node.
+			expect(json.connections.Fetch?.main[1]?.[0]?.node).toBe('Notify');
+			expect(json.nodes.find((n) => n.name === 'Fetch')?.onError).toBe('continueErrorOutput');
+			expect(json.nodes.map((n) => n.name)).toContain('Notify');
+		});
+
+		it('opens the error output port of an imported node that continues on its regular output', () => {
+			// The read path carries a legacy `continueOnFail` node over as
+			// `continueRegularOutput`, so this is the common shape of a user's node.
+			const notify = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.3,
+				config: { name: 'Notify' },
+			});
+
+			const json = workflow
+				.fromJSON(importedFlow({ onError: 'continueRegularOutput' }))
+				.onError(notify)
+				.toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Fetch')?.onError).toBe('continueErrorOutput');
+			expect(json.connections.Fetch?.main[1]?.[0]?.node).toBe('Notify');
+		});
+
+		it('leaves the imported onError value alone when no route is declared', () => {
+			const json = workflow.fromJSON(importedFlow({ onError: 'continueRegularOutput' })).toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Fetch')?.onError).toBe('continueRegularOutput');
+		});
+
+		it('expands a chain handler on an imported node instead of collapsing it', () => {
+			const notify = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.3,
+				config: { name: 'Notify' },
+			});
+			const escalate = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Escalate' },
+			});
+
+			const json = workflow.fromJSON(importedFlow()).onError(notify.to(escalate)).toJSON();
+
+			// Every chain node is present, and the route enters at the chain head.
+			expect(json.nodes.map((n) => n.name)).toEqual(['Start', 'Fetch', 'Notify', 'Escalate']);
+			expect(json.connections.Fetch?.main[1]?.[0]?.node).toBe('Notify');
+			expect(json.connections.Notify?.main[0]?.[0]?.node).toBe('Escalate');
+			// No self-loop on the tail.
+			expect(json.connections.Escalate).toBeUndefined();
+		});
+
+		// An array target has no name for the graph to resolve, so both handlers used to
+		// vanish: no connection, no node, no complaint.
+		it('explains itself when handed an array of handlers', () => {
+			const { schedule, fetchPositions, sendFetchFailure, compute } = buildRetryFlow();
+			const build = () =>
+				workflow('test-id', 'Test')
+					.add(schedule)
+					.to(fetchPositions)
+					.onError([sendFetchFailure, compute] as never);
+
+			expect(build).toThrow('.onError() takes one handler, not an array');
+			expect(build).toThrow('.onError(notify).onError(logFailure)');
+		});
+
+		it('explains itself when there is no node to attach to', () => {
+			const { sendFetchFailure } = buildRetryFlow();
+
+			expect(() => workflow('test-id', 'Test').onError(sendFetchFailure)).toThrow(
+				'.onError() must follow adding a node',
+			);
+		});
+	});
+
 	describe('.settings()', () => {
 		it('should update workflow settings', () => {
 			const wf = workflow('test-id', 'Test Workflow').settings({
@@ -766,6 +1145,16 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 			expect(json.settings?.timezone).toBe('America/New_York');
 			expect(json.settings?.executionTimeout).toBe(3600);
+		});
+
+		it('should serialize workflow-level error workflow settings', () => {
+			const wf = workflow('test-id', 'Test Workflow').settings({
+				errorWorkflow: 'error-handler-123',
+			});
+
+			const json = wf.toJSON();
+
+			expect(json.settings?.errorWorkflow).toBe('error-handler-123');
 		});
 	});
 
@@ -836,6 +1225,109 @@ describe('Workflow Builder', () => {
 		});
 	});
 
+	describe('node groups', () => {
+		it('emits a group authored via .group() with members resolved to node ids', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const fetch = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch' },
+			});
+			const transform = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Transform' },
+			});
+
+			const json = workflow('wf-1', 'Test')
+				.add(t)
+				.to(fetch)
+				.to(transform)
+				.group('Ingestion', [fetch, transform])
+				.toJSON();
+
+			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
+			expect(json.nodeGroups).toEqual([
+				{
+					id: generateDeterministicGroupId('wf-1', 'Ingestion'),
+					name: 'Ingestion',
+					nodeIds: [idByName.get('Fetch'), idByName.get('Transform')],
+				},
+			]);
+		});
+
+		it('omits nodeGroups when no group was declared', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+
+			expect(workflow('wf-1', 'Test').add(t).toJSON().nodeGroups).toBeUndefined();
+		});
+
+		it('preserves a group id imported via fromJSON across a round-trip', () => {
+			const source: WorkflowJSON = {
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'id-b',
+						name: 'B',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [10, 0],
+						parameters: {},
+					},
+				],
+				connections: { A: { main: [[{ node: 'B', type: 'main', index: 0 }]] } },
+				nodeGroups: [{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a', 'id-b'] }],
+			};
+
+			const json = workflow.fromJSON(source).toJSON();
+
+			expect(json.nodeGroups).toEqual([
+				{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a', 'id-b'] },
+			]);
+		});
+
+		it('keeps an imported group after the builder is modified', () => {
+			const source: WorkflowJSON = {
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a'] }],
+			};
+
+			const added = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B' } });
+			const json = workflow.fromJSON(source).to(added).toJSON();
+
+			expect(json.nodeGroups).toEqual([{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a'] }]);
+		});
+	});
+
 	describe('.toString()', () => {
 		it('should serialize to JSON string', () => {
 			const wf = workflow('test-id', 'Test Workflow');
@@ -843,6 +1335,40 @@ describe('Workflow Builder', () => {
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Testing toString() output
 			const parsed = JSON.parse(str) as { name: string };
 			expect(parsed.name).toBe('Test Workflow');
+		});
+	});
+
+	describe('validate() with a node-type provider', () => {
+		const json = {
+			id: 'wf',
+			name: 'Workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 99,
+					position: [0, 0] as [number, number],
+					parameters: { value: '{{ $json.name }}' },
+				},
+			],
+			connections: {},
+		};
+
+		it('still validates when the provider cannot resolve a node version', () => {
+			const provider = {
+				getByName: () => {
+					throw new Error('Unrecognized node type');
+				},
+				getKnownTypes: () => ({}),
+				getByNameAndVersion: () => {
+					throw new Error('Node type "set" is not available in version 99');
+				},
+			} as unknown as INodeTypes;
+
+			const result = workflow.fromJSON(json).validate({ nodeTypesProvider: provider });
+
+			expect(result.warnings.map((warning) => warning.code)).toContain('MISSING_EXPRESSION_PREFIX');
 		});
 	});
 
@@ -1608,6 +2134,113 @@ describe('Workflow Builder', () => {
 
 			// pinData should not exist or be undefined when no nodes have pinData
 			expect(json.pinData).toBeUndefined();
+		});
+
+		type IfNode = NodeInstance<'n8n-nodes-base.if', string, unknown>;
+		const cfg = (name: string, pinData?: Array<Record<string, string>>) =>
+			pinData ? { name, pinData } : { name };
+		const manualTrigger = (name: string) =>
+			trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name } });
+		const ifNode = (name: string, pin?: Array<Record<string, string>>) =>
+			node({ type: 'n8n-nodes-base.if', version: 2.2, config: cfg(name, pin) }) as IfNode;
+		const noOp = (name: string, pin?: Array<Record<string, string>>) =>
+			node({ type: 'n8n-nodes-base.noOp', version: 1, config: cfg(name, pin) });
+		const setNode = (name: string, pin?: Array<Record<string, string>>) =>
+			node({ type: 'n8n-nodes-base.set', version: 3.4, config: cfg(name, pin) });
+
+		it('should collect pinData from a branching node passed as a builder', () => {
+			const t = manualTrigger('Start');
+			const route = ifNode('Route', [{ decision: 'pinned' }]);
+			const yes = noOp('Yes');
+			const no = noOp('No');
+
+			const wf = workflow('test-id', 'Test').add(t).to(route.onTrue!(yes).onFalse(no));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['Route']).toEqual([{ decision: 'pinned' }]);
+		});
+
+		it('should collect pinData from the prefix chain of a builder', () => {
+			const t = manualTrigger('Start');
+			const prep = setNode('Prep', [{ result: 'pinned' }]);
+			const route = ifNode('Route');
+			const yes = noOp('Yes');
+			const no = noOp('No');
+
+			const wf = workflow('test-id', 'Test').add(t).to(prep.to(route).onTrue!(yes).onFalse(no));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['Prep']).toEqual([{ result: 'pinned' }]);
+		});
+
+		it('should key pinData by the renamed node when a prefix-chain node collides with an existing name', () => {
+			const t = manualTrigger('Start');
+			const existingPrep = setNode('Prep');
+			const pinnedPrep = setNode('Prep', [{ result: 'pinned' }]);
+			const route = ifNode('Route');
+			const yes = noOp('Yes');
+			const no = noOp('No');
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(existingPrep)
+				.to(pinnedPrep.to(route).onTrue!(yes).onFalse(no));
+			const json = wf.toJSON();
+
+			// The colliding chain node is stored as 'Prep 1'; its pins must follow the rename
+			// instead of attaching to the unrelated pre-existing 'Prep'.
+			expect(json.nodes.map((n) => n.name)).toContain('Prep 1');
+			expect(json.pinData).toEqual({ 'Prep 1': [{ result: 'pinned' }] });
+		});
+
+		it('should collect pinData from a chain used as a branch target', () => {
+			const t = manualTrigger('Start');
+			const route = ifNode('Route');
+			const first = setNode('First', [{ head: 'pinned' }]);
+			const second = setNode('Second', [{ tail: 'pinned' }]);
+			const no = noOp('No');
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(route.onTrue!(first.to(second)).onFalse(no));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['First']).toEqual([{ head: 'pinned' }]);
+			expect(json.pinData?.['Second']).toEqual([{ tail: 'pinned' }]);
+		});
+
+		it('should collect pinData from a nested builder used as a branch target', () => {
+			const t = manualTrigger('Start');
+			const outer = ifNode('Outer');
+			const inner = ifNode('Inner');
+			const x = noOp('X', [{ result: 'pinned' }]);
+			const y = noOp('Y');
+			const z = noOp('Z');
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(outer.onTrue!(inner.onTrue!(x).onFalse(y)).onFalse(z));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['X']).toEqual([{ result: 'pinned' }]);
+		});
+
+		it('should collect pinData from SplitInBatches done and each targets', () => {
+			const t = manualTrigger('Start');
+			const sibNode = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				config: { name: 'SIB' },
+			});
+			const doneNode = noOp('Done', [{ result: 'pinned' }]);
+			const eachNode = noOp('Each');
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(splitInBatches(sibNode).onDone(doneNode).onEachBatch(eachNode));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['Done']).toEqual([{ result: 'pinned' }]);
 		});
 	});
 

@@ -1,0 +1,98 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"id": "c055762a-8fe7-4141-a639-df2372f30060",
+			"typeVersion": 1.1,
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [272, 352]
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [704, 352],
+			"id": "949ed603-c2fc-4ea9-a663-675959c44d44",
+			"name": "Wait",
+			"webhookId": "a47006a8-c373-4fe9-b145-0a6a2c1f59bb"
+		},
+		{
+			"parameters": {
+				"errorMessage": "Error from sub-workflow after webhook resume"
+			},
+			"type": "n8n-nodes-base.stopAndError",
+			"typeVersion": 1,
+			"position": [928, 352],
+			"id": "3d0d8d2c-2b6f-4f1a-9d4a-2c2f3b6a7e10",
+			"name": "Stop and Error"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "10f14daa-106e-45ba-8f57-13b5f998da5e",
+							"name": "type",
+							"value": "child - before",
+							"type": "string"
+						},
+						{
+							"id": "83f6250b-e16f-49bd-8d8c-b2074b6a2e9f",
+							"name": "webhook",
+							"value": "={{ $execution.resumeUrl }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [480, 352],
+			"id": "f5ba9e8a-6510-42c2-a264-972cbb4cc912",
+			"name": "Edit Fields"
+		}
+	],
+	"connections": {
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Stop and Error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": true
+}

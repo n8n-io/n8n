@@ -1,5 +1,7 @@
 /**
- * Browser/computer-use *discoverability* asserts on the assembled system prompt.
+ * Browser/computer-use *discoverability* asserts on the assembled system prompt
+ * and the credentials tool description (which carries the needsBrowserSetup
+ * routing that used to live in the orchestrator routing index).
  *
  * These tests pin the orchestrator-level wiring that connects discovery
  * signals (OAuth setup, local files, screenshots, platform migration, shell
@@ -8,31 +10,31 @@
  * not churn them but intent-shifting edits fail loudly.
  */
 
-import type { LocalGatewayStatus } from '../../types';
+import { createCredentialsTool } from '../../tools/credentials.tool';
+import type { ComputerUseState } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
-const browserCapableOptions: {
-	browserAvailable: boolean;
-	localGateway: LocalGatewayStatus;
-} = {
-	browserAvailable: true,
-	localGateway: { status: 'connected', capabilities: ['browser', 'filesystem'] },
+const browserCapableOptions: { computerUseState: ComputerUseState } = {
+	computerUseState: {
+		localComputer: { status: 'connected', toolCategories: ['filesystem'] },
+		browser: { status: 'connected', toolCategories: ['browser'] },
+	},
 };
 
 describe('getSystemPrompt — browser/computer-use discoverability', () => {
-	describe('orchestrator → Computer Use credential setup skill', () => {
+	describe('credentials tool → Computer Use credential setup skill', () => {
 		it('routes needsBrowserSetup=true credential responses to the Computer Use skill', () => {
-			const prompt = getSystemPrompt({});
+			const tool = createCredentialsTool({} as never);
 
-			expect(prompt).toContain('needsBrowserSetup=true');
-			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(tool.description).toContain('needsBrowserSetup=true');
+			expect(tool.description).toContain('credential-setup-with-computer-use');
+			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 
-		it('does not route browser credential setup through delegate', () => {
-			const prompt = getSystemPrompt({});
+		it('routes browser credential setup through Computer Use tools', () => {
+			const tool = createCredentialsTool({} as never);
 
-			expect(prompt).toMatch(/Computer Use `browser_\*` tools directly \(not `delegate`\)/);
+			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 	});
 
@@ -45,24 +47,51 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		});
 
 		it('omits the Computer Use section when computer use is disabled globally', () => {
-			const prompt = getSystemPrompt({ localGateway: { status: 'disabledGlobally' } });
+			const prompt = getSystemPrompt({
+				computerUseState: {
+					localComputer: { status: 'unavailable' },
+					browser: { status: 'unavailable' },
+				},
+			});
 
 			expect(prompt).not.toContain('## Computer Use');
 			expect(prompt).not.toContain('When to suggest or use Computer Use');
 		});
 
-		it('still includes proactive suggestions when computer use is set up but disconnected', () => {
-			const prompt = getSystemPrompt({ localGateway: { status: 'disconnected' } });
+		it('omits the Computer Use section when the client renders no + menu entry for this user', () => {
+			const prompt = getSystemPrompt({
+				computerUseState: {
+					localComputer: { status: 'unavailable' },
+					browser: { status: 'unavailable' },
+				},
+			});
 
-			expect(prompt).toContain('When to suggest or use Computer Use');
-			expect(prompt).toContain('Credential / OAuth setup');
+			expect(prompt).not.toContain('## Computer Use');
+			expect(prompt).not.toContain('+ button beside the chat input');
+		});
+
+		it('still includes proactive suggestions when computer use is set up but disconnected', () => {
+			const prompt = getSystemPrompt({
+				computerUseState: {
+					localComputer: { status: 'disconnected' },
+					browser: { status: 'disconnected' },
+				},
+			});
+
+			expect(prompt).toContain('Proactively suggest connecting');
+			expect(prompt).toContain('credential/OAuth/API-key setup');
 		});
 
 		it('still includes proactive suggestions when computer use has not been set up', () => {
-			const prompt = getSystemPrompt({ localGateway: { status: 'disabled' } });
+			const prompt = getSystemPrompt({
+				computerUseState: {
+					localComputer: { status: 'disabledByUser' },
+					browser: { status: 'disconnected' },
+				},
+			});
 
-			expect(prompt).toContain('When to suggest or use Computer Use');
-			expect(prompt).toContain('Credential / OAuth setup');
+			expect(prompt).toContain('Proactively suggest connecting');
+			expect(prompt).toContain('credential/OAuth/API-key setup');
 		});
 	});
 
@@ -142,11 +171,47 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		});
 	});
 
+	describe('MCP server guidance belongs to the tool, not the prompt', () => {
+		// Guidance lives on `mcp-servers`, which is never deferred, so its description
+		// reaches every request the way a prompt section would — without a second copy.
+		it('says nothing about MCP servers', () => {
+			const prompt = getSystemPrompt({ toolSearchEnabled: true, mcpToolSearchEnabled: true });
+
+			expect(prompt).not.toContain('mcp-servers');
+			expect(prompt).not.toContain('## MCP Servers');
+		});
+	});
+
+	// INS-749: n8n-docs is always loaded now, so telling the orchestrator to
+	// discover it via search_tools is both wrong and a nudge away from the tool
+	// it should reach for first on n8n questions.
+	describe('n8n-docs is presented as already available, not as something to discover', () => {
+		// The Tool Discovery section only renders with tool search on, which is where
+		// the stale "search for n8n docs" example lived.
+		const toolSearchOptions = { ...browserCapableOptions, toolSearchEnabled: true };
+
+		it('does not offer n8n docs as a search_tools discovery example', () => {
+			const prompt = getSystemPrompt(toolSearchOptions);
+
+			expect(prompt).toContain('## Tool Discovery');
+			expect(prompt).not.toMatch(/search "n8n docs"/i);
+		});
+
+		it('tells the orchestrator to answer n8n questions from n8n-docs rather than web search', () => {
+			const prompt = getSystemPrompt(toolSearchOptions);
+
+			expect(prompt).toMatch(/prefer[^.]{0,60}n8n-docs/i);
+			expect(prompt).toMatch(/n8n-docs[^.]{0,120}already (loaded|available)/i);
+		});
+	});
+
 	describe('browser availability state propagates to the prompt', () => {
 		it('includes browser automation rules when browser is available', () => {
 			const prompt = getSystemPrompt({
-				browserAvailable: true,
-				localGateway: { status: 'connected', capabilities: ['browser'] },
+				computerUseState: {
+					localComputer: { status: 'disconnected' },
+					browser: { status: 'connected', toolCategories: ['browser'] },
+				},
 			});
 
 			expect(prompt).toContain('Browser Automation rules');
@@ -154,8 +219,10 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 
 		it('shows the browser-disabled notice when computer use is connected without browser', () => {
 			const prompt = getSystemPrompt({
-				browserAvailable: false,
-				localGateway: { status: 'connected', capabilities: ['filesystem'] },
+				computerUseState: {
+					localComputer: { status: 'connected', toolCategories: ['filesystem'] },
+					browser: { status: 'disconnected' },
+				},
 			});
 
 			expect(prompt).toContain('Browser Automation (Disabled in Computer Use)');

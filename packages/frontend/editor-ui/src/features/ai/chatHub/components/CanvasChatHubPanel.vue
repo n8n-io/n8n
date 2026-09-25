@@ -3,8 +3,8 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nScrollArea, N8nText, N8nTooltip } from '@n8n/design-system';
-import { useClipboard } from '@/app/composables/useClipboard';
-import { useToast } from '@/app/composables/useToast';
+import { useClipboard } from '@n8n/composables/useClipboard';
+import { useToast } from '@n8n/composables/useToast';
 import type {
 	AgentIconOrEmoji,
 	ChatHubSendMessageRequest,
@@ -13,13 +13,13 @@ import type {
 	ChatSessionId,
 } from '@n8n/api-types';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { flattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '../chat.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useChatSession } from '../composables/useChatSession';
-import { useFileDrop } from '../composables/useFileDrop';
+import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
 import ChatMessage from './ChatMessage.vue';
 import ChatPrompt from './ChatPrompt.vue';
 import ChatGreetings from './ChatGreetings.vue';

@@ -1,14 +1,16 @@
-jest.mock('../binaryChecks/index', () => ({
-	runBinaryChecks: jest.fn(),
+import { vi } from 'vitest';
+
+vi.mock('../binaryChecks/index', () => ({
+	runBinaryChecks: vi.fn(),
 }));
 
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { CheckOutcome } from '../binaryChecks/types';
 import type { WorkflowResponse } from '../clients/n8n-client';
+import { runWorkflowChecks } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { runWorkflowChecks } from '../harness/runner';
 
-const mockedRunBinaryChecks = jest.mocked(runBinaryChecks);
+const mockedRunBinaryChecks = vi.mocked(runBinaryChecks);
 
 const silentLogger: EvalLogger = {
 	info: () => {},
@@ -19,6 +21,7 @@ const silentLogger: EvalLogger = {
 	isVerbose: false,
 };
 
+// @ts-expect-error - Partial
 const fakeWorkflow: WorkflowResponse = {
 	id: 'wf-1',
 	name: 'Demo',
@@ -45,7 +48,7 @@ const sampleOutcomes: CheckOutcome[] = [
 ];
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('runWorkflowChecks', () => {

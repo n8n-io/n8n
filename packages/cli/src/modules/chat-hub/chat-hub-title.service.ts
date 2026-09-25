@@ -7,7 +7,7 @@ import {
 	ChatHubCustomAgentModel,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ExecutionRepository, User } from '@n8n/db';
+import { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -23,6 +23,7 @@ import {
 } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
@@ -42,7 +43,7 @@ export class ChatHubTitleService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ChatHubExecutionService,
 		private readonly sessionRepository: ChatHubSessionRepository,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 	) {
@@ -84,7 +85,7 @@ export class ChatHubTitleService {
 		incomingCredentials: INodeCredentials,
 		incomingModel: ChatHubConversationModel,
 	) {
-		return await this.sessionRepository.manager.transaction(async (trx) => {
+		return await this.sessionRepository.runInTransaction({}, async (trx, ctx) => {
 			const { resolvedCredentials, resolvedModel, credentialId, projectId } =
 				await this.resolveCredentialsAndModelForTitle(
 					user,
@@ -114,7 +115,7 @@ export class ChatHubTitleService {
 				attachments,
 				resolvedCredentials,
 				resolvedModel,
-				trx,
+				ctx,
 				providerSettings,
 			);
 		});
@@ -129,7 +130,7 @@ export class ChatHubTitleService {
 
 		await this.executionService.waitForExecutionCompletion(executionId);
 
-		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+		const execution = await this.executionPersistence.findWithUnflattenedData(executionId, [
 			workflowData.id,
 		]);
 

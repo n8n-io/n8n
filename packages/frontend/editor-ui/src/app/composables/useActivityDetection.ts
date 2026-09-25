@@ -1,13 +1,16 @@
 import { onMounted, onUnmounted, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
-export function useActivityDetection() {
-	const collaborationStore = useCollaborationStore();
+type ActivityDetectionStore = {
+	recordActivity: () => void;
+	isCurrentTabWriter: boolean;
+};
 
+export function useActivityDetection(store: ActivityDetectionStore) {
 	const recordActivity = useDebounceFn(() => {
-		collaborationStore.recordActivity();
+		store.recordActivity();
 	}, getDebounceTime(DEBOUNCE_TIME.COLLABORATION.ACTIVITY));
 
 	const events = ['mousedown', 'keydown', 'touchstart'];
@@ -26,7 +29,7 @@ export function useActivityDetection() {
 
 	// Watch for writer status changes
 	watch(
-		() => collaborationStore.isCurrentTabWriter,
+		() => store.isCurrentTabWriter,
 		(isWriter) => {
 			if (isWriter) {
 				attachListeners();
@@ -38,7 +41,7 @@ export function useActivityDetection() {
 
 	onMounted(() => {
 		// Attach listeners if current tab is writer
-		if (collaborationStore.isCurrentTabWriter) {
+		if (store.isCurrentTabWriter) {
 			attachListeners();
 		}
 	});

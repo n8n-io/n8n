@@ -3,7 +3,7 @@ import { test, expect, chatHubTestConfig } from './fixtures';
 test.use(chatHubTestConfig);
 
 test.describe(
-	'Tools usage @capability:proxy',
+	'Tools usage',
 	{
 		annotation: [{ type: 'owner', description: 'Chat' }],
 	},

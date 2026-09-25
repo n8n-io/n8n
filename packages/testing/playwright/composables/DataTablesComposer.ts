@@ -22,13 +22,12 @@ export class DataTableComposer {
 		source: 'empty-state' | 'header-dropdown',
 		fromDataTableTab: boolean = true,
 	) {
-		await this.n8n.projectComposer.createProject(projectName);
-		const { projectId } = await this.n8n.projectComposer.createProject();
+		const { projectId } = await this.n8n.projectComposer.createProject(projectName);
 
 		if (fromDataTableTab) {
-			await this.n8n.page.goto(`projects/${projectId}/datatables`);
+			await this.n8n.navigate.toDatatables(projectId);
 		} else {
-			await this.n8n.page.goto(`projects/${projectId}`);
+			await this.n8n.navigate.toProject(projectId);
 		}
 
 		if (source === 'empty-state') {
@@ -37,6 +36,6 @@ export class DataTableComposer {
 			await this.n8n.dataTable.clickAddDataTableAction(fromDataTableTab);
 		}
 		await this.n8n.dataTableComposer.createNewDataTable(dataTableName);
-		await this.n8n.page.goto(`projects/${projectId}/datatables`);
+		await this.n8n.navigate.toDatatables(projectId);
 	}
 }

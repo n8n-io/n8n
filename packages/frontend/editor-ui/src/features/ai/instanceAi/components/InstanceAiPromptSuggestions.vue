@@ -8,13 +8,14 @@ import {
 	isPromptSuggestion,
 	type InstanceAiEmptyStateSuggestion,
 } from '../emptyStateSuggestions';
+import type { InstanceAiPrefillDeclaration } from '../prefills';
 
 const props = defineProps<{
 	suggestions: readonly InstanceAiEmptyStateSuggestion[];
 	disabled: boolean;
 }>();
 
-interface SubmitSuggestionPayload {
+interface InsertSuggestionPayload extends InstanceAiPrefillDeclaration {
 	promptKey: BaseTextKey;
 	suggestionId: string;
 	suggestionKind: 'prompt' | 'quick_example';
@@ -24,7 +25,7 @@ interface SubmitSuggestionPayload {
 const emit = defineEmits<{
 	'preview-change': [promptKey: BaseTextKey | null];
 	'quick-examples-opened': [payload: { suggestionId: string; position: number }];
-	'submit-suggestion': [payload: SubmitSuggestionPayload];
+	'insert-suggestion': [payload: InsertSuggestionPayload];
 }>();
 
 const i18n = useI18n();
@@ -70,13 +71,13 @@ function getQuickExamplePosition(exampleId: string) {
 	return index >= 0 ? index + 1 : 0;
 }
 
-function submitSuggestion(payload: SubmitSuggestionPayload) {
+function insertSuggestion(payload: InsertSuggestionPayload) {
 	if (props.disabled) {
 		return;
 	}
 
 	closeQuickExamples();
-	emit('submit-suggestion', payload);
+	emit('insert-suggestion', payload);
 }
 
 function handleDocumentKeydown(event: KeyboardEvent) {
@@ -142,11 +143,12 @@ function handleSuggestionClick(suggestion: InstanceAiEmptyStateSuggestion) {
 	clearHoverTimer();
 
 	if (isPromptSuggestion(suggestion)) {
-		submitSuggestion({
+		insertSuggestion({
 			promptKey: suggestion.promptKey,
 			suggestionId: suggestion.id,
 			suggestionKind: 'prompt',
 			position: getTopLevelPosition(suggestion.id),
+			prefillType: 'v1_opener',
 		});
 		return;
 	}
@@ -251,11 +253,12 @@ function handleQuickExampleLeave() {
 						:data-test-id="`instance-ai-quick-example-${example.id}`"
 						:disabled="props.disabled"
 						@click="
-							submitSuggestion({
+							insertSuggestion({
 								promptKey: example.promptKey,
 								suggestionId: example.id,
 								suggestionKind: 'quick_example',
 								position: getQuickExamplePosition(example.id),
+								prefillType: 'v1_opener',
 							})
 						"
 						@mouseenter="handleQuickExampleEnter(example.promptKey)"

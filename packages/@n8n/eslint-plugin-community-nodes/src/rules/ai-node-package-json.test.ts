@@ -12,6 +12,11 @@ ruleTester.run('ai-node-package-json', AiNodePackageJsonRule, {
 			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": 1 }, "peerDependencies": { "n8n-workflow": "*", "ai-node-sdk": "*" } }',
 		},
 		{
+			name: 'both n8n.aiNodeSdkVersion and scoped @n8n/ai-node-sdk peer dependency present',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": 1 }, "peerDependencies": { "n8n-workflow": "*", "@n8n/ai-node-sdk": "*" } }',
+		},
+		{
 			name: 'neither n8n.aiNodeSdkVersion nor ai-node-sdk present (non-AI package)',
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "version": "1.0.0" }',

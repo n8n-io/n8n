@@ -50,6 +50,7 @@ ${colors.yellow}Options:${colors.reset}
   --services-only   Start services only (no n8n containers), write .env for local dev
   --services <list> Comma-separated services (e.g. postgres,redis,mailpit,proxy,kafka)
   --postgres        Use PostgreSQL instead of SQLite
+  --engine          Run engine v2 in its own container (implies --postgres, not for --services-only)
   --queue           Enable queue mode (requires PostgreSQL)
   --source-control  Enable source control (Git) container for testing
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
@@ -63,6 +64,7 @@ ${colors.yellow}Options:${colors.reset}
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
+  --network <name>  Docker network name (default: auto-generated)
   --env KEY=VALUE   Set environment variables
   --plan <plan>     Use performance plan preset (${Object.keys(BASE_PERFORMANCE_PLANS).join(', ')})
   --help, -h        Show this help
@@ -140,6 +142,7 @@ async function main() {
 			help: { type: 'boolean', short: 'h' },
 			'services-only': { type: 'boolean' },
 			postgres: { type: 'boolean' },
+			engine: { type: 'boolean' },
 			queue: { type: 'boolean' },
 			services: { type: 'string' },
 			'source-control': { type: 'boolean' },
@@ -154,6 +157,7 @@ async function main() {
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
+			network: { type: 'string' },
 			env: { type: 'string', multiple: true },
 			plan: { type: 'string' },
 		},
@@ -192,13 +196,15 @@ async function main() {
 
 	// Build configuration
 	const config: N8NConfig = {
-		postgres: values.postgres ?? false,
+		postgres: Boolean(values.postgres || values.engine),
+		...(values.engine ? { engine: 'container' as const } : {}),
 		services,
 		projectName:
 			values.name ??
 			(servicesOnly
 				? `n8n-svc-${Math.random().toString(36).substring(7)}`
 				: `n8n-stack-${Math.random().toString(36).substring(7)}`),
+		networkName: values.network,
 	};
 
 	// Handle queue mode (mains > 1 or workers > 0)
@@ -231,9 +237,13 @@ async function main() {
 		if (values.queue || values.mains || values.workers) {
 			log.warn('Performance plans use SQLite only. Queue mode ignored.');
 		}
+		if (values.engine) {
+			log.warn('Performance plans use SQLite only. Engine v2 ignored.');
+		}
 
 		config.resourceQuota = plan;
 		config.postgres = false; // Force SQLite for performance plans
+		delete config.engine; // Engine v2 needs Postgres
 		config.mains = 1; // Force single instance for performance plans
 		config.workers = 0;
 
@@ -264,6 +274,10 @@ async function main() {
 			log.error('No services specified. Use flags like --postgres, --redis, --mailpit, etc.');
 			process.exit(1);
 		}
+		if (values.engine) {
+			// TODO(CAT-4579): write the engine env into `.env` and make the flag work here.
+			log.warn('Services-only mode starts no n8n. Engine v2 ignored.');
+		}
 
 		log.header('Starting service containers');
 		log.info(`Project: ${config.projectName}`);
@@ -273,6 +287,7 @@ async function main() {
 			const stack = await createServiceStack({
 				services,
 				projectName: config.projectName,
+				networkName: config.networkName,
 			});
 
 			const envVars = writeDevEnvFile(stack, services);
@@ -449,6 +464,7 @@ function displayConfig(config: N8NConfig) {
 	log.info(`Mode: ${modeStr}`);
 
 	const enabledFeatures: string[] = [];
+	if (config.engine) enabledFeatures.push(`Engine v2 (${config.engine})`);
 	if (services.includes('gitea')) enabledFeatures.push('Source Control (Gitea)');
 	if (services.includes('keycloak')) enabledFeatures.push('OIDC (Keycloak)');
 	if (services.includes('victoriaLogs')) enabledFeatures.push('Observability');

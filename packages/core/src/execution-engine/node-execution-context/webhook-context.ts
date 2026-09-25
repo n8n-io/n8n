@@ -1,30 +1,38 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Request, Response } from 'express';
 import type {
 	AINodeConnectionType,
 	CloseFunction,
+	CredentialCheckResult,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
-	ITaskDataConnections,
 	IUser,
 	IWebhookData,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
+	N8nOAuth2ValidationResult,
 	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
+	N8nOAuth2FlowResult,
+	N8nOAuth2RefreshResult,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
-import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
+import {
+	getBinaryHelperFunctions,
+	getNodeBinaryHelperFunctions,
+} from './utils/binary-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
+
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
 
@@ -45,8 +53,22 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		if (runExecutionData?.executionData !== undefined) {
 			executionData = runExecutionData.executionData.nodeExecutionStack[0];
 			if (executionData !== undefined) {
-				connectionInputData = executionData.data.main[0]!;
+				connectionInputData = executionData.data.main[0] ?? [];
 			}
+		}
+
+		if (executionData === undefined && additionalData.httpRequest) {
+			const req = additionalData.httpRequest;
+			connectionInputData = [
+				{
+					json: {
+						body: (req.body ?? {}) as IDataObject,
+						headers: req.headers,
+						params: req.params,
+						query: req.query,
+					},
+				},
+			];
 		}
 
 		super(
@@ -67,20 +89,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 		};
 
-		this.nodeHelpers = {
-			copyBinaryFile: async (filePath, fileName, mimeType) =>
-				await copyBinaryFile(
-					this.workflow.id,
-					this.additionalData.executionId!,
-					filePath,
-					fileName,
-					mimeType,
-				),
-		};
+		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getCredentials<T>(type);
+		return await this._getRunlessCredentials<T>(type);
 	}
 
 	getBodyData() {
@@ -105,7 +118,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 	getResponseObject(): Response {
 		if (this.additionalData.httpResponse === undefined) {
-			throw new ApplicationError('Response is missing');
+			throw new UnexpectedError('Response is missing');
 		}
 		return this.additionalData.httpResponse;
 	}
@@ -113,7 +126,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	private assertHttpRequest() {
 		const { httpRequest } = this.additionalData;
 		if (httpRequest === undefined) {
-			throw new ApplicationError('Request is missing');
+			throw new UnexpectedError('Request is missing');
 		}
 		return httpRequest;
 	}
@@ -129,27 +142,116 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		);
 	}
 
+	getWebhookResourceUrl(name: WebhookType): string | undefined {
+		// Unlike `getNodeWebhookUrl`, names the endpoint actually being served, since token
+		// minting and verification must agree on it (see `IWebhookFunctions`).
+		return getNodeWebhookUrl(
+			name,
+			this.workflow,
+			this.node,
+			this.additionalData,
+			this.mode,
+			this.additionalKeys,
+			this.webhookData.isTest,
+		);
+	}
+
 	getWebhookName() {
 		return this.webhookData.webhookDescription.name;
 	}
 
+	isChatSessionTest() {
+		return this.webhookData.isChatSessionTest === true;
+	}
+
+	logHitlResponse(payload: { approved: boolean; authorized: boolean }) {
+		this.additionalData.logHitlResponse?.({
+			...payload,
+			nodeType: this.node.type,
+			executionId: this.additionalData.executionId,
+			workflowId: this.workflow.id,
+		});
+	}
+
+	async getTestWebhookUser(): Promise<IUser | undefined> {
+		// Only test-webhook registrations record the user who started the run, so this is
+		// `undefined` on a production webhook by construction.
+		const userId = this.webhookData.userId;
+		if (!userId) return undefined;
+		return await this.additionalData.getUserById?.(userId);
+	}
+
 	async validateCookieAuth(cookieValue: string): Promise<IUser> {
 		if (!this.additionalData.validateCookieAuth) {
-			throw new ApplicationError('Cookie auth validation is not available');
+			throw new UnexpectedError('Cookie auth validation is not available');
 		}
 		return await this.additionalData.validateCookieAuth(cookieValue);
+	}
+
+	async beginN8nOAuth2Flow(
+		resourceUrl: string,
+		metadata?: Record<string, string>,
+	): Promise<string> {
+		if (!this.additionalData.beginN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.beginN8nOAuth2Flow(resourceUrl, metadata);
+	}
+
+	async completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult> {
+		if (!this.additionalData.completeN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.completeN8nOAuth2Flow(code, state);
+	}
+
+	async refreshN8nOAuth2Flow(
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
+		if (!this.additionalData.refreshN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.refreshN8nOAuth2Flow(refreshToken, resourceUrl);
+	}
+
+	async validateN8nOAuth2Token(
+		token: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2ValidationResult> {
+		if (!this.additionalData.validateN8nOAuth2Token) {
+			throw new UnexpectedError('OAuth2 token validation is not available');
+		}
+		return await this.additionalData.validateN8nOAuth2Token(token, resourceUrl);
+	}
+
+	async establishTriggerIdentity(token: string, resource: string, subject?: string): Promise<void> {
+		if (!this.additionalData.establishTriggerIdentity) {
+			throw new UnexpectedError('Trigger identity establishment is not available');
+		}
+		await this.additionalData.establishTriggerIdentity(token, resource, subject);
+	}
+
+	async checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined> {
+		if (!this.additionalData.checkTriggerCredentialStatus) {
+			return undefined;
+		}
+		return await this.additionalData.checkTriggerCredentialStatus();
 	}
 
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
+		options?: number | { inputData?: IDataObject },
 	): Promise<unknown> {
+		const inputData =
+			typeof options === 'object' && options !== null ? options.inputData : undefined;
 		// To be able to use expressions like "$json.sessionId" set the
 		// body data the webhook received to what is normally used for
-		// incoming node data.
+		// incoming node data, unless the trigger supplied its own shape.
 		const connectionInputData: INodeExecutionData[] = [
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			{ json: this.additionalData.httpRequest?.body || {} },
+			{ json: inputData ?? (this.additionalData.httpRequest?.body || {}) },
 		];
 		const runExecutionData = this.runExecutionData ?? createEmptyRunExecutionData();
 		const executeData: IExecuteData = {
@@ -166,7 +268,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			runExecutionData,
 			this.runIndex,
 			connectionInputData,
-			{} as ITaskDataConnections,
+			{},
 			this.additionalData,
 			executeData,
 			this.mode,

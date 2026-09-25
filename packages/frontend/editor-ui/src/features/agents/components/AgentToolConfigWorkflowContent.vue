@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
+import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import WorkflowToolConfigContent from './WorkflowToolConfigContent.vue';
 import type { WorkflowToolRef } from '../types';
 
 const props = defineProps<{
 	initialRef: WorkflowToolRef;
+	projectId?: string;
+	showApprovalSetting?: boolean;
+	approvalRequired?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'update:valid': [valid: boolean];
 	'update:node-name': [name: string];
+	'update:approvalRequired': [required: boolean];
 }>();
 
 const contentRef = ref<InstanceType<typeof WorkflowToolConfigContent> | null>(null);
@@ -31,10 +36,25 @@ function getAllOutputs() {
 	return contentRef.value?.allOutputs ?? false;
 }
 
+function getWorkflow() {
+	return contentRef.value?.getWorkflow() ?? '';
+}
+
+function getWorkflowId() {
+	return contentRef.value?.getWorkflowId();
+}
+
+function getInputs() {
+	return contentRef.value?.getInputs();
+}
+
 defineExpose({
 	getName,
 	getDescription,
 	getAllOutputs,
+	getWorkflow,
+	getWorkflowId,
+	getInputs,
 	handleChangeName,
 });
 </script>
@@ -43,7 +63,16 @@ defineExpose({
 	<WorkflowToolConfigContent
 		ref="contentRef"
 		:initial-ref="props.initialRef"
+		:project-id="props.projectId"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"
-	/>
+	>
+		<template #commonSettings>
+			<AgentToolConfigApprovalSetting
+				v-if="props.showApprovalSetting"
+				:model-value="props.approvalRequired ?? false"
+				@update:model-value="emit('update:approvalRequired', $event)"
+			/>
+		</template>
+	</WorkflowToolConfigContent>
 </template>

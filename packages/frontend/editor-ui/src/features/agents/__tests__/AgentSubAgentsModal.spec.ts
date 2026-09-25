@@ -1,0 +1,415 @@
+/* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
+import { mount } from '@vue/test-utils';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import AgentSubAgentsModal from '../components/AgentSubAgentsModal.vue';
+
+const closeModalMock = vi.fn();
+
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
+			({
+				'agents.builder.subAgents.modal.title': 'Sub-agents',
+				'agents.builder.subAgents.modal.selectAgent': `Select ${options?.interpolate?.name ?? ''}`,
+				'agents.builder.subAgents.modal.empty.title': 'No sub-agents available',
+				'agents.builder.subAgents.modal.empty.description': 'Published agents show here',
+				'agents.builder.subAgents.modal.search.placeholder': 'Search agents',
+				'agents.builder.subAgents.modal.noResults.title': 'No matching agents',
+				'agents.builder.subAgents.modal.noResults.description': 'Try another search term.',
+				'agents.builder.subAgents.modal.add': 'Add sub-agent',
+				'agents.builder.subAgents.modal.added': 'Added',
+				'agents.builder.subAgents.modal.addAriaLabel': `Add ${options?.interpolate?.name ?? ''} as a sub-agent`,
+				'agents.builder.subAgents.modal.remove': 'Remove sub-agent',
+				'projects.header.create.agent': 'Create agent',
+				'projectRoles.agent:create.tooltip': 'Create new agents',
+				'agents.builder.subAgents.useWhen.label': 'When should this agent be used?',
+				'agents.builder.subAgents.useWhen.hint': 'Tell the parent agent when to delegate work.',
+				'agents.builder.subAgents.useWhen.placeholder': 'Use for billing questions',
+				'agents.builder.subAgents.useWhen.characterCount': '0/512',
+				'agents.builder.subAgents.useWhen.validation.maxLength': `Use when must be ${options?.interpolate?.max ?? ''} characters or less`,
+				'generic.back': 'Back',
+				'generic.cancel': 'Cancel',
+				'generic.save': 'Save',
+			})[key] ?? key,
+	}),
+}));
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({
+		closeModal: closeModalMock,
+		modalsById: { agentSubAgentsModal: { open: true } },
+	}),
+}));
+
+vi.mock('../components/modals/AgentModalMultiStep.vue', async () => ({
+	default: (await import('./utils/AgentModalTestStub')).AgentModalMultiStepTestStub,
+}));
+
+vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
+	default: {
+		name: 'ToolsConnectionModal',
+		props: [
+			'items',
+			'categories',
+			'detailItem',
+			'searchPlaceholder',
+			'emptyMessage',
+			'noResultsMessage',
+			'createAction',
+			'connectLabel',
+			'connectAriaLabel',
+			'connectedLabel',
+		],
+		emits: ['connect', 'open-detail', 'create'],
+		template: `
+			<div>
+				<button
+					v-if="createAction"
+					data-testid="agent-sub-agents-modal-create"
+					@click="$emit('create')"
+				>
+					<span>{{ createAction.label }}</span>
+					<span data-testid="agent-sub-agents-modal-create-description">{{ createAction.description }}</span>
+				</button>
+				<div
+					v-if="items.length === 0"
+					data-testid="agent-sub-agents-modal-empty"
+				>{{ emptyMessage }}</div>
+				<div
+					v-for="item in items"
+					:key="item.id"
+					data-testid="agent-sub-agents-modal-row"
+				>
+					<span>{{ item.title }}</span>
+					<button
+						v-if="item.status === 'connected'"
+						data-testid="agent-sub-agents-modal-added"
+						@click="$emit('open-detail', item)"
+					>{{ connectedLabel(item) }}</button>
+					<button
+						v-else
+						:aria-label="connectAriaLabel(item)"
+						data-testid="agent-sub-agents-modal-add"
+						@click="$emit('connect', item)"
+					>{{ connectLabel(item) }}</button>
+				</div>
+			</div>
+		`,
+	},
+}));
+
+vi.mock('@n8n/design-system', () => ({
+	N8nEmptyState: {
+		props: ['heading', 'description'],
+		template: '<div v-bind="$attrs">{{ heading }} {{ description }}</div>',
+	},
+	N8nCallout: {
+		props: ['theme'],
+		template: '<div v-bind="$attrs"><slot /></div>',
+	},
+	N8nButton: {
+		props: ['variant', 'size', 'disabled'],
+		emits: ['click'],
+		template:
+			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	},
+	N8nHeading: { template: '<h2><slot /></h2>', props: ['tag', 'size'] },
+	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
+	N8nInput: {
+		props: ['modelValue', 'placeholder', 'clearable', 'size'],
+		emits: ['update:modelValue'],
+		template:
+			'<input v-bind="$attrs" :value="modelValue" :placeholder="placeholder" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+	},
+	N8nMarkdownEditor: {
+		name: 'N8nMarkdownEditor',
+		props: ['modelValue', 'showToolbar'],
+		emits: ['update:modelValue'],
+		template:
+			'<textarea v-bind="$attrs" :value="modelValue" :data-show-toolbar="showToolbar" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+	},
+	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
+	N8nText: { template: '<span><slot /></span>', props: ['size', 'color', 'bold'] },
+}));
+
+describe('AgentSubAgentsModal', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('configures useWhen before adding a single agent', async () => {
+		const onConfirm = vi.fn();
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [
+						{ id: 'agent-2', name: 'Billing Agent' },
+						{ id: 'agent-3', name: 'Research Agent' },
+					],
+					onConfirm,
+				},
+			},
+		});
+
+		const addButtons = wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]');
+		expect(addButtons).toHaveLength(2);
+		expect(addButtons[0].text()).toBe('Add sub-agent');
+		expect(addButtons[1].attributes('aria-label')).toBe('Add Research Agent as a sub-agent');
+
+		await addButtons[1].trigger('click');
+
+		expect(wrapper.find('h2').text()).toBe('Research Agent');
+		expect(
+			wrapper
+				.get('[data-testid="agent-sub-agents-modal-use-when"]')
+				.attributes('data-show-toolbar'),
+		).toBe('floating');
+		const confirmButton = wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]');
+		expect(confirmButton.attributes('disabled')).toBeUndefined();
+
+		await wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').setValue('a'.repeat(513));
+		expect(
+			wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]').attributes('disabled'),
+		).toBeUndefined();
+		await confirmButton.trigger('click');
+		expect(onConfirm).not.toHaveBeenCalled();
+
+		await wrapper
+			.find('[data-testid="agent-sub-agents-modal-use-when"]')
+			.setValue('Use for deep research and source synthesis.');
+		await confirmButton.trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			agentId: 'agent-3',
+			useWhen: 'Use for deep research and source synthesis.',
+		});
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
+	});
+
+	it('adds a sub-agent without useWhen guidance', async () => {
+		const onConfirm = vi.fn();
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [{ id: 'agent-2', name: 'Billing Agent' }],
+					onConfirm,
+				},
+			},
+		});
+
+		await wrapper.find('[data-testid="agent-sub-agents-modal-add"]').trigger('click');
+
+		const confirmButton = wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]');
+		expect(confirmButton.attributes('disabled')).toBeUndefined();
+		await confirmButton.trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith({ agentId: 'agent-2' });
+		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
+	});
+
+	it('keeps an added sub-agent visible and opens its existing configuration', async () => {
+		const onConfirm = vi.fn();
+		const onRemove = vi.fn();
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [
+						{
+							id: 'agent-2',
+							name: 'Billing Agent',
+							added: true,
+							useWhen: 'Use for invoice questions.',
+						},
+					],
+					onConfirm,
+					onRemove,
+				},
+			},
+		});
+
+		const addedButton = wrapper.find('[data-testid="agent-sub-agents-modal-added"]');
+		expect(addedButton.text()).toBe('Added');
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-add"]').exists()).toBe(false);
+
+		await addedButton.trigger('click');
+
+		expect(wrapper.find('h2').text()).toBe('Billing Agent');
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').element).toHaveProperty(
+			'value',
+			'Use for invoice questions.',
+		);
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-remove"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]').trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			agentId: 'agent-2',
+			useWhen: 'Use for invoice questions.',
+		});
+	});
+
+	it('passes the agents and asset-specific copy to the shared picker', async () => {
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [
+						{ id: 'agent-2', name: 'Billing Agent' },
+						{ id: 'agent-3', name: 'Research Agent' },
+					],
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		const picker = wrapper.getComponent({ name: 'ToolsConnectionModal' });
+		expect(picker.props('searchPlaceholder')).toBe('Search agents');
+		expect(picker.props('emptyMessage')).toBe('No sub-agents available');
+		expect(picker.props('noResultsMessage')).toBe('No matching agents');
+		expect(picker.props('items')).toEqual([
+			expect.objectContaining({ agentId: 'agent-2', title: 'Billing Agent' }),
+			expect.objectContaining({ agentId: 'agent-3', title: 'Research Agent' }),
+		]);
+
+		await wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')[1].trigger('click');
+
+		expect(wrapper.find('h2').text()).toBe('Research Agent');
+	});
+
+	it('returns to the list from the configure step', async () => {
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [{ id: 'agent-2', name: 'Billing Agent' }],
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		await wrapper.find('[data-testid="agent-sub-agents-modal-add"]').trigger('click');
+		expect(wrapper.find('h2').text()).toBe('Billing Agent');
+
+		await wrapper.find('[data-testid="agent-modal-back"]').trigger('click');
+
+		expect(wrapper.find('h2').text()).toBe('Sub-agents');
+		expect(wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')).toHaveLength(1);
+	});
+
+	it('edits an existing sub-agent useWhen and removes it', async () => {
+		const onConfirm = vi.fn();
+		const onRemove = vi.fn();
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					selectedAgent: { id: 'agent-2', name: 'Billing Agent' },
+					useWhen: 'Use for invoice questions.',
+					onConfirm,
+					onRemove,
+				},
+			},
+		});
+
+		expect(wrapper.find('h2').text()).toBe('Billing Agent');
+		expect(wrapper.find('[data-testid="agent-modal-back"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').element).toHaveProperty(
+			'value',
+			'Use for invoice questions.',
+		);
+
+		await wrapper.find('[data-testid="agent-sub-agents-modal-use-when"]').setValue('');
+		await wrapper.find('[data-testid="agent-sub-agents-modal-confirm"]').trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith({ agentId: 'agent-2' });
+		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
+
+		closeModalMock.mockClear();
+		await wrapper.find('[data-testid="agent-sub-agents-modal-remove"]').trigger('click');
+
+		expect(onRemove).toHaveBeenCalledWith('agent-2');
+		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
+	});
+
+	it('renders the invalid-reasons callout when opened with reasons', () => {
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					selectedAgent: { id: 'agent-2', name: 'Billing Agent' },
+					invalidReasons: ["This agent isn't published yet."],
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		const callout = wrapper.find('[data-testid="agent-sub-agents-modal-invalid-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain("This agent isn't published yet.");
+	});
+
+	it('omits the invalid-reasons callout when no reasons are given', () => {
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					selectedAgent: { id: 'agent-2', name: 'Billing Agent' },
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-invalid-callout"]').exists()).toBe(
+			false,
+		);
+	});
+
+	it('shows an empty state when no agents are available', () => {
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [],
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-empty"]').exists()).toBe(true);
+		expect(wrapper.get('[data-testid="agent-sub-agents-modal-empty"]').text()).toBe(
+			'No sub-agents available',
+		);
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-add"]').exists()).toBe(false);
+	});
+
+	it('shows the create agent subtitle and opens agent creation', async () => {
+		const onCreateAgent = vi.fn();
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					agents: [],
+					onCreateAgent,
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		expect(wrapper.get('[data-testid="agent-sub-agents-modal-create"]').text()).toContain(
+			'Create agent',
+		);
+		expect(wrapper.get('[data-testid="agent-sub-agents-modal-create-description"]').text()).toBe(
+			'Create new agents',
+		);
+
+		await wrapper.get('[data-testid="agent-sub-agents-modal-create"]').trigger('click');
+
+		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
+		expect(onCreateAgent).toHaveBeenCalledOnce();
+	});
+});

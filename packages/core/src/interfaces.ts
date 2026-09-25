@@ -1,5 +1,4 @@
 import type {
-	ITriggerResponse,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	ValidationResult,
 } from 'n8n-workflow';
@@ -14,10 +13,6 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
 	timezone?: string;
 	saveManualRuns?: boolean;
-}
-
-export interface IWorkflowData {
-	triggerResponses?: ITriggerResponse[];
 }
 
 export type ExtendedValidationResult = ValidationResult & { fieldName?: string };

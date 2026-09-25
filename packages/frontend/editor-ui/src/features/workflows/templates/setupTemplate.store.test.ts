@@ -20,7 +20,7 @@ import {
 	nodeTypeReadImap,
 	nodeTypeTelegram,
 	nodeTypeTwitter,
-} from '@/app/utils/testData/nodeTypeTestData';
+} from '@/app/utils/test-utils/nodeTypeTestData';
 import * as testData from './__tests__/setupTemplate.store.testData';
 
 const mockCredentialsResponse = (id: string) =>

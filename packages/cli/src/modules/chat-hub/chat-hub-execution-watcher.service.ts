@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { ExecutionRepository, type IExecutionResponse } from '@n8n/db';
+import { type IExecutionResponse } from '@n8n/db';
 import {
 	OnLifecycleEvent,
 	type WorkflowExecuteAfterContext,
@@ -9,6 +9,7 @@ import { Service } from '@n8n/di';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import {
 	ChatHubExecutionStore,
@@ -33,7 +34,7 @@ export class ChatHubExecutionWatcherService {
 		private readonly executionStore: ChatHubExecutionStore,
 		private readonly messageRepository: ChatHubMessageRepository,
 		private readonly chatHubExecutionService: ChatHubExecutionService,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly chatStreamService: ChatStreamService,
 		private readonly executionManager: ChatExecutionManager,
 	) {
@@ -175,7 +176,7 @@ export class ChatHubExecutionWatcherService {
 
 		// Check if we should auto-resume (after a response was sent by Chat node)
 		if (context.responseMode === 'responseNodes') {
-			const execution = await this.executionRepository.findSingleExecution(executionId, {
+			const execution = await this.executionPersistence.findSingleExecution(executionId, {
 				includeData: true,
 				unflattenData: true,
 			});

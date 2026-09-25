@@ -109,6 +109,14 @@ describe('DirectoryLoader', () => {
 			expect(mockFs.readFileSync).not.toHaveBeenCalled();
 		});
 
+		it('should build custom icon URLs relative to the custom directory for absolute source paths', () => {
+			const loader = new CustomDirectoryLoader(directory);
+
+			loader.loadNodeFromFile(`${directory}/dist/Node1/Node1.node.js`);
+
+			expect(mockNode1.description.iconUrl).toBe('icons/CUSTOM/dist/Node1/node1.svg');
+		});
+
 		it('should load custom nodes when specified with CUSTOM prefix in includeNodes', async () => {
 			const loader = new CustomDirectoryLoader(directory, [], ['CUSTOM.node1', 'CUSTOM.node2']);
 
@@ -487,6 +495,25 @@ describe('DirectoryLoader', () => {
 			expect(loader.loadedNodes).toEqual([]);
 			expect(loader.known.nodes).toEqual({});
 			expect(loader.known.credentials).toEqual({});
+		});
+
+		it('should drop the require cache under the directory, but leave other entries', () => {
+			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
+			mockFs.readdirSync.mockReturnValue([]);
+
+			const loader = new PackageDirectoryLoader(directory);
+
+			const ownModule = `${directory}/dist/Node1/Node1.node.js`;
+			const foreignModule = '/somewhere/else/dist/Other.node.js';
+			require.cache[ownModule] = mock<NodeJS.Module>({ filename: ownModule });
+			require.cache[foreignModule] = mock<NodeJS.Module>({ filename: foreignModule });
+
+			loader.reset();
+
+			expect(require.cache[ownModule]).toBeUndefined();
+			expect(require.cache[foreignModule]).toBeDefined();
+
+			delete require.cache[foreignModule];
 		});
 	});
 

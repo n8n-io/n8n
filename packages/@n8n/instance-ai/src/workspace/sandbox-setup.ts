@@ -12,25 +12,32 @@
  *     package.json                    # @n8n/workflow-sdk dependency
  *     tsconfig.json                   # strict, noEmit, skipLibCheck
  *     node_modules/@n8n/workflow-sdk/ # full SDK with .d.ts types
- *     workflows/                      # existing n8n workflows as JSON
  *     node-types/
  *       index.txt                     # searchable catalog: nodeType | displayName | description | version
  *     src/
  *       workflow.ts                   # agent writes main workflow here
  *     chunks/
  *       *.ts                          # reusable node/workflow modules
+ *     knowledge-base/
+ *       index.json                    # combined catalog of guides and templates
+ *       best-practices/
+ *         index.json                  # technique guide catalog
+ *         *.md                        # guide content per technique
+ *       templates/
+ *         index.json                  # curated template catalog
+ *         *.ts                        # SDK workflow examples
  */
 
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { createRequire } from 'node:module';
-import { gunzipSync } from 'node:zlib';
 
 import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
-import type { BuilderTemplatesBundle } from './builder-templates-service';
 import {
 	isLinkWorkspaceSdkEnabled,
-	packWorkspaceSdk,
-	type WorkspaceSdkTarball,
+	packSandboxLinkedWorkspacePackages,
+	type WorkspacePackageTarball,
 } from './pack-workspace-sdk';
 import {
 	runInSandbox,
@@ -39,31 +46,29 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
+import {
+	loadWorkflowDiagnosticsWorker,
+	SANDBOX_TYPESCRIPT_VERSION,
+	TSCONFIG_JSON,
+	WORKFLOW_DIAGNOSTICS_FILENAME,
+} from './sandbox-typescript';
+import { joinWorkspacePath } from './workspace-paths';
+import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
+import { traceSandboxOperation, sandboxFileBytes } from '../tracing/sandbox-tracing';
+
+export { TSCONFIG_JSON } from './sandbox-typescript';
 
 const hostRequire = createRequire(__filename);
-const NOOP_LOGGER: Logger = {
-	info: () => {},
-	warn: () => {},
-	error: () => {},
-	debug: () => {},
-};
-const TAR_BLOCK_SIZE = 512;
-const TAR_TYPE_REGULAR = '0';
-const TEMPLATE_ENTRY_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.ts$/;
 
 type SandboxWorkspaceSetupStep =
 	| 'resolve-workspace-root'
 	| 'read-initialization-marker'
 	| 'list-node-types'
 	| 'write-workspace-files'
-	| 'write-curated-examples'
+	| 'materialize-knowledge-base'
 	| 'install-dependencies'
 	| 'link-workspace-sdk'
 	| 'write-initialization-marker';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 export class SandboxWorkspaceSetupError extends Error {
 	constructor(
@@ -77,19 +82,11 @@ export class SandboxWorkspaceSetupError extends Error {
 
 async function setupStep<T>(step: SandboxWorkspaceSetupStep, action: () => Promise<T>): Promise<T> {
 	try {
-		return await action();
+		return await traceSandboxOperation(step, {}, action);
 	} catch (error) {
 		throw new SandboxWorkspaceSetupError(step, error);
 	}
 }
-
-export const WORKSPACE_DIR = 'workspace';
-
-/** Default home directory inside the n8n sandbox service container. */
-export const N8N_SANDBOX_HOME = '/home/user';
-
-/** Absolute workspace root for n8n sandbox service Dockerfile steps (build-time). */
-export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
 
 /**
  * Resolve a dependency's installed version from the host's node_modules.
@@ -104,6 +101,58 @@ function resolveHostDepVersion(name: string): string {
 		return '*';
 	}
 }
+
+/**
+ * Flags shared by every `npm install` that runs inside a sandbox or a snapshot build.
+ * `--no-audit` matters most: npm otherwise posts the whole tree to the registry's
+ * advisories endpoint and blocks until it answers or its 300s fetch timeout expires,
+ * so a slow registry turns a 10s install into minutes. Nobody reads the audit or
+ * funding output in a sandbox.
+ */
+const NPM_INSTALL_BASE_FLAGS = '--ignore-scripts --no-audit --no-fund';
+
+/**
+ * Install from the warm npm cache and skip freshness checks. Correct only where the
+ * cache was baked from the same pinned `PACKAGE_JSON`: the Daytona snapshot and the
+ * snapshot bake that produces it.
+ */
+export const NPM_INSTALL_FLAGS = `${NPM_INSTALL_BASE_FLAGS} --prefer-offline`;
+
+/**
+ * Same flags, but revalidate registry metadata before resolving. A cache that predates
+ * the pinned SDK version holds a packument without it, and `--prefer-offline` trusts
+ * that stale packument and fails the install.
+ */
+export const NPM_INSTALL_FLAGS_REFRESH_METADATA = `${NPM_INSTALL_BASE_FLAGS} --prefer-online`;
+
+/**
+ * Pick install flags for the sandbox the workspace runs on. The two providers do not
+ * offer the same cache guarantee:
+ *
+ *   - Daytona installs from a snapshot that `SnapshotManager` bakes per n8n version,
+ *     running this same pinned `PACKAGE_JSON`. The cached packument therefore always
+ *     resolves the pinned SDK version, so take the fast offline path.
+ *   - n8n-sandbox installs against an image cache that can lag the pin, so refresh
+ *     metadata up front rather than pay a failed install first.
+ *
+ * Unknown providers get the refresh path: it works against any cache and only costs
+ * latency, while the offline path fails outright once the pin moves ahead.
+ */
+export function resolveNpmInstallFlags(workspace: SandboxWorkspace): string {
+	return workspace.sandbox?.provider === 'daytona'
+		? NPM_INSTALL_FLAGS
+		: NPM_INSTALL_FLAGS_REFRESH_METADATA;
+}
+
+/**
+ * Budget for the whole install step, every attempt together. A healthy install runs
+ * in under a second and the sandbox gateway already cuts a single command at 30s, so
+ * this is generous. It exists for the fault case: the sandbox terminates a command at
+ * its own timeout and reports that as a non-zero exit code, so without a shared
+ * deadline a timed-out first attempt would hand a second, equally long attempt to the
+ * retry below.
+ */
+const INSTALL_STEP_BUDGET_MS = 120_000;
 
 /**
  * Versions pinned from the host's installed packages. Pinning is load-bearing
@@ -145,38 +194,10 @@ const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
  */
 const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
 
-function assertSafeWorkspaceRelativePath(path: string): void {
-	const segments = path.split('/');
-	if (
-		path.length === 0 ||
-		path.startsWith('/') ||
-		path.includes('\\') ||
-		path.includes('\0') ||
-		segments.some((segment) => segment === '..')
-	) {
-		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
-	}
-}
-
-function joinWorkspacePath(root: string, path: string): string {
-	assertSafeWorkspaceRelativePath(path);
-
-	const normalizedRoot = root.replace(/\/+$/, '') || '/';
-	const normalizedPath = path
-		.split('/')
-		.filter((segment) => segment.length > 0 && segment !== '.')
-		.join('/');
-
-	if (normalizedPath.length === 0) {
-		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
-	}
-
-	return normalizedRoot === '/' ? `/${normalizedPath}` : `${normalizedRoot}/${normalizedPath}`;
-}
-
 function buildPackageJson(sdkSpecifier: string | null): string {
 	const dependencies: Record<string, string> = {
 		tsx: SANDBOX_TSX_VERSION,
+		typescript: SANDBOX_TYPESCRIPT_VERSION,
 	};
 	if (sdkSpecifier) {
 		dependencies['@n8n/workflow-sdk'] = sdkSpecifier;
@@ -210,86 +231,60 @@ export const PACKAGE_JSON = buildPackageJson(
 	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
 );
 
-/**
- * Return the absolute on-disk path of a host-installed package, or `null`
- * if it can't be resolved. Used by the local provider to point the sandbox
- * at the workspace SDK via a `file:` reference instead of the npm registry.
- */
-function resolveHostDepPath(name: string): string | null {
-	try {
-		const pkgPath = hostRequire.resolve(`${name}/package.json`);
-		return pkgPath.slice(0, pkgPath.length - '/package.json'.length);
-	} catch {
-		return null;
-	}
-}
-
-/**
- * Build a PACKAGE_JSON that points `@n8n/workflow-sdk` at its host-resolved
- * location via `file:` — so the local provider picks up workspace SDK
- * changes after `pnpm build` without needing a publish.
- *
- * Falls back to the registry-pinned PACKAGE_JSON if the SDK can't be
- * resolved on disk (e.g. a stripped-down test harness).
- */
-function buildLocalProviderPackageJson(): string {
-	const sdkPath = resolveHostDepPath('@n8n/workflow-sdk');
-	if (!sdkPath) return PACKAGE_JSON;
-	return buildPackageJson(`file:${sdkPath}`);
-}
-
-function getSandboxProvider(workspace: SandboxWorkspace): string | undefined {
-	return workspace.filesystem?.provider ?? workspace.sandbox?.provider;
-}
-
-function buildWorkspacePackageJson(workspace: SandboxWorkspace): string {
-	return getSandboxProvider(workspace) === 'local' ? buildLocalProviderPackageJson() : PACKAGE_JSON;
-}
-
-let sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
+let linkedPackagesPromise: Promise<WorkspacePackageTarball[] | null> | null = null;
 
 export async function linkWorkspaceSdkIfEnabled(
 	workspace: SandboxWorkspace,
 	root: string,
-	logger?: Logger,
+	logger: Logger,
 ): Promise<void> {
-	if (!isLinkWorkspaceSdkEnabled() || getSandboxProvider(workspace) === 'local') return;
+	if (!isLinkWorkspaceSdkEnabled()) return;
 
-	sdkTarballPromise ??= packWorkspaceSdk(logger ?? NOOP_LOGGER).catch((error: unknown) => {
-		sdkTarballPromise = null;
+	linkedPackagesPromise ??= packSandboxLinkedWorkspacePackages(logger).catch((error: unknown) => {
+		linkedPackagesPromise = null;
 		throw error;
 	});
-	const packed = await sdkTarballPromise;
-	if (!packed) {
-		sdkTarballPromise = null;
+	const packedPackages = await linkedPackagesPromise;
+	if (!packedPackages?.length) {
+		linkedPackagesPromise = null;
 		throw new Error(
-			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but the workspace SDK could not be packed. Run `pnpm build` in packages/@n8n/workflow-sdk or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but workspace packages could not be packed. Run `pnpm build` in packages/@n8n/utils, packages/workflow, and packages/@n8n/workflow-sdk, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
 		);
 	}
 
-	const remotePath = joinWorkspacePath(root, packed.filename);
-	if (workspace.filesystem) {
-		await writeWorkspaceFile(workspace, workspace.filesystem, remotePath, packed.tarball);
-	} else {
-		await writeFileViaSandbox(workspace, remotePath, packed.tarball);
+	const remotePaths: string[] = [];
+	for (const packed of packedPackages) {
+		const remotePath = joinWorkspacePath(root, packed.filename);
+		remotePaths.push(remotePath);
+		if (workspace.filesystem) {
+			await writeWorkspaceFile(workspace, workspace.filesystem, remotePath, packed.tarball);
+		} else {
+			await writeFileViaSandbox(workspace, remotePath, packed.tarball);
+		}
 	}
 
+	const tarballArgs = remotePaths
+		.map((remotePath) => `'${escapeSingleQuotes(remotePath)}'`)
+		.join(' ');
 	const install = await runInSandbox(
 		workspace,
-		`npm install '${escapeSingleQuotes(remotePath)}' --no-save --ignore-scripts --force`,
+		`npm install ${tarballArgs} --no-save --force ${resolveNpmInstallFlags(workspace)}`,
 		root,
 	);
 	if (install.exitCode !== 0) {
-		logger?.error('Failed to link workspace SDK into sandbox', {
+		logger.error('Failed to link workspace packages into sandbox', {
 			exitCode: install.exitCode,
 			stderr: install.stderr,
 		});
-		throw new Error(`Failed to install workspace SDK tarball: ${install.stderr}`);
+		throw new Error(`Failed to install workspace package tarballs: ${install.stderr}`);
 	}
 
-	logger?.info('Linked workspace SDK into sandbox', {
-		version: packed.version,
-		sdkPath: packed.sdkPath,
+	logger.info('Linked workspace packages into sandbox', {
+		packages: packedPackages.map((packed) => ({
+			name: packed.packageName,
+			version: packed.version,
+			path: packed.packagePath,
+		})),
 	});
 }
 
@@ -307,38 +302,21 @@ try {
   }
   const validation = wf.validate();
   const json = wf.toJSON({ tidyUp: true });
+  const declaredOutputJson = typeof wf.generatePinData === 'function'
+    ? wf.generatePinData().toJSON({ tidyUp: true })
+    : undefined;
+  const declaredOutputFixtures = declaredOutputJson?.pinData;
   const warnings = [...(validation.errors || []), ...(validation.warnings || [])];
   // Use a replacer to preserve undefined values as null — newCredential() produces
   // NewCredentialImpl which serializes to undefined in toJSON(). Without this,
   // JSON.stringify drops the credential keys entirely and the server can't resolve them.
   const replacer = (k, v) => v === undefined ? null : v;
-  console.log(JSON.stringify({ success: true, workflow: json, warnings }, replacer));
+  console.log(JSON.stringify({ success: true, workflow: json, declaredOutputFixtures, warnings }, replacer));
 } catch (e) {
   console.log(JSON.stringify({ success: false, errors: [e instanceof Error ? e.message : String(e)] }));
   process.exit(1);
 }
 `;
-
-export const TSCONFIG_JSON = JSON.stringify(
-	{
-		compilerOptions: {
-			strict: true,
-			// Disable strictNullChecks because the SDK's ifElse() returns NodeInstance
-			// where onTrue?/onFalse? are optional in the type (they're always present at runtime).
-			// Without this, tsc rejects `.onTrue()` / `.onFalse()` calls.
-			strictNullChecks: false,
-			noEmit: true,
-			target: 'ES2022',
-			module: 'ES2022',
-			moduleResolution: 'bundler',
-			esModuleInterop: true,
-			skipLibCheck: true,
-		},
-		include: ['src/**/*.ts', 'chunks/**/*.ts'],
-	},
-	null,
-	2,
-);
 
 /**
  * Build a searchable catalog line for a node type.
@@ -359,42 +337,59 @@ export function formatNodeCatalogLine(node: SearchableNodeDescription): string {
 }
 
 /** Dirs the agent's `list_files` may probe; some providers 404 on missing dirs. */
-const ALWAYS_PRESENT_DIRS: readonly string[] = ['src', 'chunks', 'workflows'];
+const ALWAYS_PRESENT_DIRS: readonly string[] = ['src', 'chunks'];
 
 async function writeWorkspaceFiles(
 	workspace: SandboxWorkspace,
 	root: string,
 	files: Map<string, string>,
 ): Promise<void> {
-	const filesystem = workspace.filesystem;
-	if (filesystem) {
-		// `writeFile` only creates parent dirs as a side-effect of writing a file.
-		await Promise.all(
-			ALWAYS_PRESENT_DIRS.map(
-				async (dir) =>
-					await createWorkspaceDirectory(workspace, filesystem, joinWorkspacePath(root, dir)),
-			),
-		);
-		await Promise.all(
-			[...files].map(
-				async ([path, content]) =>
-					await writeWorkspaceFile(workspace, filesystem, joinWorkspacePath(root, path), content),
-			),
-		);
-		return;
-	}
+	return await traceSandboxOperation(
+		'write-files',
+		{
+			kind: 'batch',
+			inputs: {
+				fileCount: files.size,
+				bytes: [...files.values()].reduce((sum, content) => sum + sandboxFileBytes(content), 0),
+			},
+		},
+		async () => {
+			const filesystem = workspace.filesystem;
+			if (filesystem) {
+				// `writeFile` only creates parent dirs as a side-effect of writing a file.
+				await Promise.all(
+					ALWAYS_PRESENT_DIRS.map(
+						async (dir) =>
+							await createWorkspaceDirectory(workspace, filesystem, joinWorkspacePath(root, dir)),
+					),
+				);
+				await Promise.all(
+					[...files].map(
+						async ([path, content]) =>
+							await writeWorkspaceFile(
+								workspace,
+								filesystem,
+								joinWorkspacePath(root, path),
+								content,
+							),
+					),
+				);
+				return;
+			}
 
-	const dirList = ALWAYS_PRESENT_DIRS.map(
-		(dir) => `'${escapeSingleQuotes(joinWorkspacePath(root, dir))}'`,
-	).join(' ');
-	const result = await runInSandbox(workspace, `mkdir -p ${dirList}`);
-	if (result.exitCode !== 0) {
-		throw new Error(`Sandbox setup failed: ${result.stderr}`);
-	}
+			const dirList = ALWAYS_PRESENT_DIRS.map(
+				(dir) => `'${escapeSingleQuotes(joinWorkspacePath(root, dir))}'`,
+			).join(' ');
+			const result = await runInSandbox(workspace, `mkdir -p ${dirList}`);
+			if (result.exitCode !== 0) {
+				throw new Error(`Sandbox setup failed: ${result.stderr}`);
+			}
 
-	for (const [path, content] of files) {
-		await writeFileViaSandbox(workspace, joinWorkspacePath(root, path), content);
-	}
+			for (const [path, content] of files) {
+				await writeFileViaSandbox(workspace, joinWorkspacePath(root, path), content);
+			}
+		},
+	);
 }
 
 type WorkspaceFilesystem = NonNullable<SandboxWorkspace['filesystem']>;
@@ -430,7 +425,11 @@ async function writeWorkspaceFile(
 		await filesystem.writeFile(path, content, { recursive: true });
 	} catch (error) {
 		try {
-			await writeFileViaSandbox(workspace, path, content);
+			await traceSandboxOperation(
+				'file-command-fallback',
+				{ inputs: { path } },
+				async () => await writeFileViaSandbox(workspace, path, content),
+			);
 		} catch (fallbackError) {
 			throw new Error(
 				`Failed to write sandbox workspace file "${path}": ${getErrorMessage(error)}; command fallback failed: ${getErrorMessage(fallbackError)}`,
@@ -439,216 +438,36 @@ async function writeWorkspaceFile(
 	}
 }
 
-/**
- * Resolve the absolute workspace root by querying $HOME from the sandbox.
- * Caches per workspace instance (WeakMap) so parallel sandboxes don't collide.
- */
-const workspaceRootCache = new WeakMap<SandboxWorkspace, string>();
-
-function getLocalFilesystemRoot(workspace: SandboxWorkspace): string | null {
-	const filesystem = workspace.filesystem;
-	if (!filesystem) return null;
-
-	const provider = filesystem.provider;
-	if (provider !== 'local' && provider !== 'lazy') return null;
-
-	const basePath = Reflect.get(filesystem, 'basePath');
-	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
-}
-
-async function initializeLazyFilesystem(workspace: SandboxWorkspace): Promise<void> {
-	const filesystem = workspace.filesystem;
-	if (filesystem?.provider !== 'lazy') return;
-
-	await filesystem.init?.();
-}
-
-export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
-	const cached = workspaceRootCache.get(workspace);
-	if (cached) return cached;
-
-	const localRoot = getLocalFilesystemRoot(workspace);
-	if (localRoot) {
-		workspaceRootCache.set(workspace, localRoot);
-		return localRoot;
-	}
-
-	await initializeLazyFilesystem(workspace);
-	const initializedLocalRoot = getLocalFilesystemRoot(workspace);
-	if (initializedLocalRoot) {
-		workspaceRootCache.set(workspace, initializedLocalRoot);
-		return initializedLocalRoot;
-	}
-
-	const result = await runInSandbox(workspace, 'echo $HOME');
-	const home = result.stdout.trim() || '/home/daytona';
-	const root = `${home}/${WORKSPACE_DIR}`;
-	workspaceRootCache.set(workspace, root);
-	return root;
-}
-
-/**
- * Validate the exact archive shape published by n8n-sdk-templates before the
- * sandbox ever sees the bytes. This is intentionally narrow: a gzip-wrapped tar
- * with only regular top-level files (`index.txt` and `<slug>.ts`). Rejecting
- * everything else prevents path traversal, symlink/hardlink writes, and nested
- * output when the sandbox later runs `tar -xzf`.
- */
-function validateBuilderTemplatesArchive(archive: Buffer): string | null {
-	let tar: Buffer;
-	try {
-		tar = gunzipSync(archive);
-	} catch (error) {
-		return `failed to gunzip archive: ${getErrorMessage(error)}`;
-	}
-
-	let offset = 0;
-	while (offset + TAR_BLOCK_SIZE <= tar.length) {
-		const header = tar.subarray(offset, offset + TAR_BLOCK_SIZE);
-		// A zero header marks the end of a tar archive. We do not require the
-		// optional second zero block because `tar` itself accepts archives with
-		// one terminator, and this is only a preflight guard before extraction.
-		if (isZeroBlock(header)) return null;
-
-		// USTAR stores long path components as `prefix` + `name`. Combining them
-		// before validation ensures nested or absolute paths cannot hide in either
-		// field independently.
-		const name = readTarString(header, 0, 100);
-		const prefix = readTarString(header, 345, 155);
-		const entryName = prefix ? `${prefix}/${name}` : name;
-		const typeFlag = readTarString(header, 156, 1);
-		const size = parseTarOctal(header, 124, 12);
-
-		if (size === null) return `invalid size for archive entry "${entryName}"`;
-		// Empty type is the old tar spelling for a regular file; `0` is the USTAR
-		// spelling. All other types include directories, symlinks, hardlinks, and
-		// metadata extensions, none of which belong in the curated bundle.
-		if (typeFlag !== '' && typeFlag !== TAR_TYPE_REGULAR) {
-			return `unsupported archive entry type "${typeFlag}" for "${entryName}"`;
-		}
-		if (!isAllowedTemplateEntryName(entryName)) {
-			return `unsupported archive entry path "${entryName}"`;
-		}
-
-		// Tar payloads are padded to 512-byte blocks, so jump over the file content
-		// plus padding to land exactly on the next header.
-		const dataBlocks = Math.ceil(size / TAR_BLOCK_SIZE);
-		offset += TAR_BLOCK_SIZE + dataBlocks * TAR_BLOCK_SIZE;
-	}
-
-	return offset === tar.length ? null : 'trailing partial tar header';
-}
-
-function isAllowedTemplateEntryName(name: string): boolean {
-	if (name === 'index.txt') return true;
-	return TEMPLATE_ENTRY_PATTERN.test(name);
-}
-
-function isZeroBlock(block: Buffer): boolean {
-	return block.every((byte) => byte === 0);
-}
-
-function readTarString(block: Buffer, start: number, length: number): string {
-	const field = block.subarray(start, start + length);
-	const nullIndex = field.indexOf(0);
-	return field.subarray(0, nullIndex === -1 ? field.length : nullIndex).toString('utf-8');
-}
-
-function parseTarOctal(block: Buffer, start: number, length: number): number | null {
-	const raw = readTarString(block, start, length).trim();
-	if (!/^[0-7]+$/.test(raw)) return null;
-	const parsed = Number.parseInt(raw, 8);
-	return Number.isSafeInteger(parsed) ? parsed : null;
-}
-
-/**
- * Write the curated workflow examples archive into `${root}/examples/`.
- *
- * Used by the Daytona / n8n-sandbox factory paths. The local provider
- * deliberately skips this — dev iteration on the SDK doesn't need the
- * curated reference set, and the agent there operates fine without it
- * (same fallback as a cold start with the CDN unreachable).
- *
- * The CDN payload is a flat `.tar.gz` of `<slug>.ts` + `index.txt`. We
- * write the bytes into the sandbox and run `tar -xzf` in-sandbox to
- * expand them into `examples/` — far cheaper than 100+ individual
- * `writeFile` round-trips for remote providers. The archive file is
- * removed after extraction so it doesn't leak into the agent's view.
- *
- * No-op when the bundle is empty (e.g. `templatesService` was not
- * configured, or the CDN fetch failed and there was no disk cache).
- */
-export async function writeCuratedExamples(
+async function readWorkspaceFile(
 	workspace: SandboxWorkspace,
-	bundle: BuilderTemplatesBundle | null,
-	logger?: Logger,
-): Promise<void> {
-	if (!bundle?.archive) return;
-
-	if (workspace.filesystem?.provider === 'local') {
-		logger?.debug('[sandbox-setup] skipping curated examples for local provider');
-		return;
-	}
-
-	// Defense-in-depth for the curated CDN bundle. This validates the narrow
-	// archive shape we publish, not arbitrary user-supplied tar files.
-	const validationError = validateBuilderTemplatesArchive(bundle.archive);
-	if (validationError) {
-		logger?.warn('[sandbox-setup] rejected curated examples archive', {
-			error: validationError,
-			archiveBytes: bundle.archive.byteLength,
-			archiveVersion: bundle.version,
-		});
-		return;
-	}
-
-	const start = Date.now();
-	const root = await getWorkspaceRoot(workspace);
-	const archivePath = `${root}/.templates.tar.gz`;
-	const examplesDir = `${root}/examples`;
-
-	if (workspace.filesystem) {
-		await workspace.filesystem.mkdir(examplesDir, { recursive: true });
-		await workspace.filesystem.writeFile(archivePath, bundle.archive, { recursive: true });
-	} else {
-		const mkdirResult = await runInSandbox(
-			workspace,
-			`mkdir -p '${escapeSingleQuotes(examplesDir)}'`,
-		);
-		if (mkdirResult.exitCode !== 0) {
-			logger?.warn('[sandbox-setup] failed to create examples/ dir', {
-				stderr: mkdirResult.stderr,
-			});
-			return;
+	path: string,
+): Promise<string | null> {
+	const filesystem = workspace.filesystem;
+	if (filesystem?.readFile) {
+		try {
+			const content = await filesystem.readFile(path, { encoding: 'utf-8' });
+			return typeof content === 'string' ? content : content.toString('utf-8');
+		} catch {
+			if (!workspace.sandbox) return null;
 		}
-		await writeFileViaSandbox(workspace, archivePath, bundle.archive);
 	}
 
-	// Extract and clean up in one command so a partial state isn't left
-	// behind if `tar` exits non-zero. `rm -f` is always run; the exec's
-	// status is `tar`'s exit code. `2>&1` folds tar's stderr into stdout so
-	// the failure cause is still visible if the sandbox runtime drops stderr.
-	// Avoid the variable name `status` — it's a read-only builtin in zsh.
-	const extract = await runInSandbox(
-		workspace,
-		`tar -xzf '${escapeSingleQuotes(archivePath)}' -C '${escapeSingleQuotes(examplesDir)}' 2>&1; rc=$?; rm -f '${escapeSingleQuotes(archivePath)}'; exit $rc`,
-	);
-	if (extract.exitCode !== 0) {
-		logger?.warn('[sandbox-setup] failed to extract curated examples', {
-			exitCode: extract.exitCode,
-			stderr: extract.stderr,
-			stdout: extract.stdout,
-			archivePath,
-			archiveBytes: bundle.archive.byteLength,
-			archiveVersion: bundle.version,
+	return await readFileViaSandbox(workspace, path);
+}
+
+async function materializeKnowledgeBaseStep(
+	workspace: SandboxWorkspace,
+	root: string,
+	context: InstanceAiContext,
+): Promise<void> {
+	await setupStep('materialize-knowledge-base', async () => {
+		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
+		await materializeKnowledgeBaseIntoWorkspace({
+			workspace,
+			root,
+			logger: context.logger,
+			templatesArchive: templatesBundle?.archive ?? null,
 		});
-		return;
-	}
-
-	logger?.debug('[sandbox-setup] prepared curated examples', {
-		bytes: bundle.archive.byteLength,
-		version: bundle.version,
-		durationMs: Date.now() - start,
 	});
 }
 
@@ -664,95 +483,102 @@ export async function setupSandboxWorkspace(
 	workspace: SandboxWorkspace,
 	context: InstanceAiContext,
 ): Promise<boolean> {
-	const root = await setupStep(
-		'resolve-workspace-root',
-		async () => await getWorkspaceRoot(workspace),
-	);
-	const markerFile = joinWorkspacePath(root, '.sandbox-initialized');
+	return await traceSandboxOperation(
+		'initialize-workspace',
+		{ processResult: (initialized) => ({ outputs: { initialized, reused: !initialized } }) },
+		async () => {
+			const root = await setupStep(
+				'resolve-workspace-root',
+				async () => await getWorkspaceRoot(workspace),
+			);
+			const markerFile = joinWorkspacePath(root, '.sandbox-initialized');
 
-	// Check marker file for idempotency
-	const marker = await setupStep(
-		'read-initialization-marker',
-		async () => await readFileViaSandbox(workspace, markerFile),
-	);
-	if (marker !== null) return false;
-
-	// ── Collect all files ──────────────────────────────────────────────────
-
-	const files = new Map<string, string>();
-
-	// Config files. Local provider runs on the dev host, so point the SDK at
-	// its workspace location via `file:` — this makes SDK changes visible in
-	// the sandbox after `pnpm build`, without a publish. Daytona/n8n-sandbox
-	// stay on the registry-pinned PACKAGE_JSON (they can't see the host FS).
-	files.set('package.json', buildWorkspacePackageJson(workspace));
-	files.set('tsconfig.json', TSCONFIG_JSON);
-	files.set('build.mjs', BUILD_MJS);
-
-	// Node types catalog
-	const nodeTypes = await setupStep(
-		'list-node-types',
-		async () => await context.nodeService.listSearchable(),
-	);
-	const catalogLines = nodeTypes.map(formatNodeCatalogLine);
-	files.set('node-types/index.txt', catalogLines.join('\n'));
-
-	// Existing workflows as JSON (fetch in parallel)
-	try {
-		const workflows = await context.workflowService.list({ limit: 100 });
-		const results = await Promise.allSettled(
-			workflows.map(async (summary) => {
-				const detail = await context.workflowService.get(summary.id);
-				return { id: summary.id, json: JSON.stringify(detail, null, 2) };
-			}),
-		);
-		for (const r of results) {
-			if (r.status === 'fulfilled') {
-				files.set(`workflows/${r.value.id}.json`, r.value.json);
+			// Check marker file for idempotency
+			const marker = await setupStep(
+				'read-initialization-marker',
+				async () => await readWorkspaceFile(workspace, markerFile),
+			);
+			if (marker !== null) {
+				await materializeKnowledgeBaseStep(workspace, root, context);
+				return false;
 			}
-		}
-	} catch {
-		// Workflow listing failed — continue without syncing
-	}
 
-	// ── Write workspace files ──────────────────────────────────────────────
+			// ── Collect all files ──────────────────────────────────────────────────
 
-	await setupStep(
-		'write-workspace-files',
-		async () => await writeWorkspaceFiles(workspace, root, files),
+			const files = new Map<string, string>();
+
+			files.set('package.json', PACKAGE_JSON);
+			files.set('tsconfig.json', TSCONFIG_JSON);
+			files.set('build.mjs', BUILD_MJS);
+			files.set(WORKFLOW_DIAGNOSTICS_FILENAME, await loadWorkflowDiagnosticsWorker());
+
+			// Node types catalog
+			const nodeTypes = await setupStep(
+				'list-node-types',
+				async () => await context.nodeService.listSearchable(),
+			);
+			const catalogLines = nodeTypes.map(formatNodeCatalogLine);
+			files.set('node-types/index.txt', catalogLines.join('\n'));
+
+			// ── Write workspace files ──────────────────────────────────────────────
+
+			await setupStep(
+				'write-workspace-files',
+				async () => await writeWorkspaceFiles(workspace, root, files),
+			);
+			await materializeKnowledgeBaseStep(workspace, root, context);
+
+			// npm install (must run after package.json is in place)
+			await setupStep('install-dependencies', async () => {
+				// One deadline covers both attempts. The signal stops us waiting; it does not kill
+				// the remote command, which the sandbox collects at its own timeout.
+				const deadline = Date.now() + INSTALL_STEP_BUDGET_MS;
+				const install = async (flags: string) =>
+					await runInSandbox(workspace, `npm install ${flags}`, {
+						cwd: root,
+						abortSignal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+					});
+
+				const flags = resolveNpmInstallFlags(workspace);
+				let npmResult = await install(flags);
+				if (
+					npmResult.exitCode !== 0 &&
+					flags !== NPM_INSTALL_FLAGS_REFRESH_METADATA &&
+					Date.now() < deadline
+				) {
+					// A snapshot older than the pinned SDK version holds a packument that cannot
+					// resolve it. That is the one failure the cache causes, and refreshing metadata
+					// is the only way out, so retry once with whatever budget is left. Providers
+					// that already refresh have nothing left to try.
+					context.logger.warn('Sandbox npm install failed against the cache; refreshing metadata', {
+						stderr: npmResult.stderr.slice(0, 500),
+						remainingMs: deadline - Date.now(),
+					});
+					npmResult = await install(NPM_INSTALL_FLAGS_REFRESH_METADATA);
+				}
+				if (npmResult.exitCode !== 0) {
+					throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
+				}
+			});
+
+			if (isLinkWorkspaceSdkEnabled()) {
+				await setupStep(
+					'link-workspace-sdk',
+					async () => await linkWorkspaceSdkIfEnabled(workspace, root, context.logger),
+				);
+			}
+
+			await setupStep(
+				'write-initialization-marker',
+				async () =>
+					await writeWorkspaceFiles(
+						workspace,
+						root,
+						new Map([['.sandbox-initialized', new Date().toISOString()]]),
+					),
+			);
+
+			return true;
+		},
 	);
-	await setupStep(
-		'write-curated-examples',
-		async () =>
-			await writeCuratedExamples(
-				workspace,
-				(await context.templatesService?.getBundle()) ?? null,
-				context.logger,
-			),
-	);
-
-	// npm install (must run after package.json is in place)
-	await setupStep('install-dependencies', async () => {
-		const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);
-		if (npmResult.exitCode !== 0) {
-			throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
-		}
-	});
-
-	await setupStep(
-		'link-workspace-sdk',
-		async () => await linkWorkspaceSdkIfEnabled(workspace, root, context.logger),
-	);
-
-	await setupStep(
-		'write-initialization-marker',
-		async () =>
-			await writeWorkspaceFiles(
-				workspace,
-				root,
-				new Map([['.sandbox-initialized', new Date().toISOString()]]),
-			),
-	);
-
-	return true;
 }

@@ -1,5 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
-
+import { UserError } from './errors';
 import { NodeOperationError } from './errors/node-operation.error';
 import type {
 	ICredentialDataDecryptedObject,
@@ -21,7 +20,7 @@ export const DOMAIN_RESTRICTION_FIELDS: INodeProperties[] = [
 			{
 				name: 'All',
 				value: 'all',
-				description: 'Allow all requests when used in the HTTP Request node',
+				description: 'Allow all requests when used in the HTTP Request or GraphQL node',
 			},
 			{
 				name: 'Specific Domains',
@@ -31,11 +30,12 @@ export const DOMAIN_RESTRICTION_FIELDS: INodeProperties[] = [
 			{
 				name: 'None',
 				value: 'none',
-				description: 'Block all requests when used in the HTTP Request node',
+				description: 'Block all requests when used in the HTTP Request or GraphQL node',
 			},
 		],
 		default: 'all',
-		description: 'Control which domains this credential can be used with in HTTP Request nodes',
+		description:
+			'Control which domains this credential can be used with in HTTP Request or GraphQL nodes',
 	},
 	{
 		displayName: 'Allowed Domains',
@@ -73,6 +73,9 @@ function readAllowedDomainsField(
 }
 
 function shouldInjectDomainRestrictionFields(credentialType: ICredentialType): boolean {
+	if (credentialType.hideDomainRestrictionFields) {
+		return false;
+	}
 	return (
 		credentialType.authenticate !== undefined ||
 		credentialType.genericAuth === true ||
@@ -102,14 +105,7 @@ export function isDomainAllowed(options: { url: string; allowedDomains: string }
 		return true;
 	}
 
-	let url: URL;
-	try {
-		url = new URL(urlString);
-	} catch {
-		return false;
-	}
-
-	const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+	const hostname = toHostname(urlString);
 	if (!hostname) return false;
 
 	const allowedDomainsList = allowedDomains
@@ -130,7 +126,32 @@ export function isDomainAllowed(options: { url: string; allowedDomains: string }
 	return false;
 }
 
-/** Throws `ApplicationError` when `node` is omitted, so callers without an `INode` (axios helper) get a wrappable error. */
+/**
+ * The host alone — it is all the allowlist decision uses, and the only part the
+ * reader needs in order to act on the error. Dropping the rest keeps per-request
+ * values out of a message that is persisted with the execution.
+ */
+function toDisplayHost(url: string): string {
+	try {
+		return new URL(url).host;
+	} catch {
+		// No host to name. Fall back to the URL without the parts that carry
+		// per-request values: cut at the first `?`/`#` and drop any `user:pass@`.
+		return url.split(/[?#]/)[0].replace(/^([A-Za-z][\w+.-]*:\/\/)[^/@]*@/, '$1');
+	}
+}
+
+/** Hostname of an absolute URL, normalised for matching. `undefined` when there is none. */
+export function toHostname(url: string | undefined): string | undefined {
+	if (!url) return undefined;
+	try {
+		return new URL(url).hostname.toLowerCase().replace(/\.$/, '') || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/** Throws `UserError` when `node` is omitted, so callers without an `INode` (axios helper) get a wrappable error. */
 export function assertUrlAllowed(options: {
 	url: string;
 	allowedDomains?: string;
@@ -140,35 +161,65 @@ export function assertUrlAllowed(options: {
 	if (!allowedDomains) return;
 	if (isDomainAllowed({ url, allowedDomains })) return;
 
-	const message = `Domain not allowed: This credential is restricted from accessing ${url}. Only the following domains are allowed: ${allowedDomains}`;
-	throw node ? new NodeOperationError(node, message) : new ApplicationError(message);
+	const message = `Domain not allowed: This credential is restricted from accessing ${toDisplayHost(url)}. Only the following domains are allowed: ${allowedDomains}`;
+	throw node ? new NodeOperationError(node, message) : new UserError(message);
 }
 
-/** Returns the allowlist for forwarding to per-hop redirect checks; `undefined` means allow-all. */
+/**
+ * Returns the allowlist for forwarding to per-hop redirect checks; `undefined` means allow-all.
+ *
+ * `'none'` blocks the caller outright, unless `credentialOwnedSurface` says the URL comes from
+ * a node definition rather than from the user — set that only for such callers, never for a
+ * URL that arrives as request input.
+ *
+ * On such a surface, pass `nodeEndpointUrl` and its host joins the `'domains'` allowlist, so a
+ * list the user wrote with the HTTP Request node in mind does not stop the credential working in
+ * the node it belongs to. A node that decides its endpoint later — in `preSend`, or in the
+ * credential's own `authenticate` — has no host to offer here and stays subject to the list.
+ */
 export function getCredentialAllowedDomains(options: {
 	node: INode;
 	credentialData: ICredentialDataDecryptedObject;
 	surface?: string;
+	credentialOwnedSurface?: boolean;
+	nodeEndpointUrl?: string;
 }): string | undefined {
-	const { node, credentialData, surface = DEFAULT_SURFACE } = options;
+	const {
+		node,
+		credentialData,
+		surface = DEFAULT_SURFACE,
+		credentialOwnedSurface,
+		nodeEndpointUrl,
+	} = options;
 	const mode = readMode(credentialData);
+	// Guarded on the flag: a surface where the user picks the URL must never widen its allowlist.
+	const endpointHost = credentialOwnedSurface ? toHostname(nodeEndpointUrl) : undefined;
+	// A comma is a legal host character and would split into extra allowlist entries.
+	const ownHost = endpointHost?.includes(',') ? undefined : endpointHost;
 
 	if (mode === 'none') {
-		throw new NodeOperationError(
-			node,
-			`This credential is configured to prevent use within an ${surface} node`,
-		);
+		if (!credentialOwnedSurface) {
+			throw new NodeOperationError(
+				node,
+				`This credential is configured to prevent use within an ${surface} node`,
+			);
+		}
+		return undefined;
 	}
 
 	if (mode === 'domains') {
 		const allowedDomains = readAllowedDomainsField(credentialData);
 		if (!allowedDomains) {
+			if (ownHost) return ownHost;
 			throw new NodeOperationError(
 				node,
 				'No allowed domains specified. Configure allowed domains or change restriction setting.',
 			);
 		}
-		return allowedDomains;
+		if (!ownHost || isDomainAllowed({ url: `https://${ownHost}`, allowedDomains })) {
+			return allowedDomains;
+		}
+		return `${ownHost}, ${allowedDomains}`;
 	}
 
 	return undefined;
@@ -219,4 +270,35 @@ export function assertCredentialAllowsUrl(options: {
 	}
 
 	return undefined;
+}
+
+/**
+ * Allowlist for a request the credential itself issues — its own token exchange, against a
+ * host the credential declares. `undefined` means unrestricted.
+ *
+ * This is a credential-owned surface in the sense `getCredentialAllowedDomains` means it,
+ * so `'none'` is a no-op here for the same reason it is there: the editor writes `'none'`
+ * by default when it creates OAuth and quick-connect credentials, and blocking on it would
+ * stop those credentials obtaining a token at all. Only an explicit `'domains'` list
+ * applies. Unlike that function it takes no `INode`, because `runPreAuthentication` has
+ * none to give.
+ *
+ * The list is never widened by the host being requested: unlike a node endpoint declared
+ * in a node definition, a hook's target is read from a credential field the user typed.
+ *
+ * @throws {UserError} if `'domains'` is set with an empty list.
+ */
+export function getCredentialOwnRequestAllowedDomains(
+	credentialData: ICredentialDataDecryptedObject,
+): string | undefined {
+	if (readMode(credentialData) !== 'domains') return undefined;
+
+	const allowedDomains = readAllowedDomainsField(credentialData);
+	if (!allowedDomains) {
+		throw new UserError(
+			'No allowed domains specified. Configure allowed domains or change restriction setting.',
+		);
+	}
+
+	return allowedDomains;
 }

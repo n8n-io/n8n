@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UserError } from 'n8n-workflow';
 import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
 
 import { normalizeItems } from '../normalize-items';
@@ -104,7 +104,7 @@ describe('normalizeItems', () => {
 			},
 		];
 		test.each(errorTests)('$description', ({ input }) => {
-			expect(() => normalizeItems(input)).toThrow(ApplicationError);
+			expect(() => normalizeItems(input)).toThrow(UserError);
 			expect(() => normalizeItems(input)).toThrow('Inconsistent item format');
 		});
 	});

@@ -10,11 +10,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
-		test('Kafka node publishes messages to topic @capability:kafka', async ({
-			api,
-			n8n,
-			services,
-		}) => {
+		test('Kafka node publishes messages to topic', async ({ api, n8n, services }) => {
 			const kafka = services.kafka;
 			const topic = `producer-test-${nanoid()}`;
 			const testPayload = { greeting: 'Hello from n8n Kafka node' };
@@ -91,7 +87,7 @@ test.describe(
 				{ makeUnique: true },
 			);
 
-			await n8n.page.goto(`/workflow/${workflowId}`);
+			await n8n.start.fromExistingWorkflow(workflowId);
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				'Workflow executed successfully',
 			);
@@ -103,7 +99,7 @@ test.describe(
 			expect(JSON.parse(messages[0].value)).toMatchObject(testPayload);
 		});
 
-		test('Kafka Trigger node processes messages @capability:kafka', async ({ api, services }) => {
+		test('Kafka Trigger node processes messages', async ({ api, services }) => {
 			const kafka = services.kafka;
 			const topic = `trigger-test-${nanoid()}`;
 			const groupId = `n8n-test-group-${nanoid()}`;

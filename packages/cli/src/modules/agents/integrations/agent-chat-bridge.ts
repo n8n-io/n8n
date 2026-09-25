@@ -1,117 +1,189 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
-import { Container } from '@n8n/di';
-import type { ActionEvent, Author, Chat, Message, MessageSubject, Thread } from 'chat';
-import type { Logger } from 'n8n-workflow';
-
-import type { AgentsService } from '../agents.service';
-import type { RichSuspendPayload } from '../types';
-import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
-import type { AgentChatIntegration } from './agent-chat-integration';
-import { ChatIntegrationRegistry } from './agent-chat-integration';
-import { CallbackStore } from './callback-store';
-import { RICH_INTERACTION_RESUME_JSON_SCHEMA, type ComponentMapper } from './component-mapper';
-import { IntegrationMessageContextService } from './integration-message-context.service';
+import { isAttachmentValidationError, type AgentMessage, type StreamChunk } from '@n8n/agents';
 import {
-	buildIntegrationConnectionId,
-	type IntegrationMessageContext,
-	type IntegrationMessageSubject,
+	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
+	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
+	type AgentIntegrationConfig,
+	type AgentMessageAuthor,
+} from '@n8n/api-types';
+import { LockNamespace, LockService } from '@n8n/backend-common';
+import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
+import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
+import { UserError, type Logger } from 'n8n-workflow';
+
+import { CacheService } from '@/services/cache/cache.service';
+
+import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentMessageQueueService } from '../agent-message-queue.service';
+import type {
+	AgentExecutionAdmission,
+	QueuedIntegrationMessage,
+} from '../types/agent-queued-message';
+import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
+import { AgentConversationStateService } from '../agent-conversation-state.service';
+import type {
+	AgentExecutionOrchestratorService,
+	ExecuteForChatPublishedConfig,
+} from '../agent-execution-orchestrator.service';
+import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import { AgentResourceRepository } from '../repositories/agent-resource.repository';
+import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
+import type { AgentSessionMode } from '../utils/agent-thread-access';
+import { resolveInboundMimeType } from '../utils/inbound-attachments';
+import type {
+	AgentChatIntegration,
+	BridgeExecutionContext,
+	PlatformAgentContext,
+} from './agent-chat-integration';
+import {
+	ChatIntegrationRegistry,
+	onceStatusHandle,
+	postToUserOrThread,
+} from './agent-chat-integration';
+import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
+import { AgentChatMessageContextBridge } from './agent-chat-message-context';
+import {
+	AgentChatStreamConsumer,
+	type SuspensionHandlingResult,
+} from './agent-chat-stream-consumer';
+import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
+import { CallbackStore, type CallbackMetadata } from './callback-store';
+import type { ComponentMapper, ShortenCallback } from './component-mapper';
+import { loadChatSdk } from './esm-loader';
+import { IntegrationMessageContextService } from './integration-message-context.service';
+import type {
+	IntegrationMessageContext,
+	IntegrationPlatformMessageContext,
+	ReplyExpectation,
 } from './integration-tools';
-import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
-import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import { downloadDiscordAttachment } from './platforms/discord-operations';
 
-interface PlatformAgentContext {
-	agentUserId?: string;
+import { type InternalThread, toInternalThreadId } from './types';
+
+import { rateLimitMessageFromError } from './channel-rate-limit';
+
+const RESET_SESSION_COMMAND = '/new';
+
+/** Lock key prefix for the per-conversation session state, shared across mains. */
+const SESSION_LOCK_KEY_PREFIX = 'agents:chat-session-generation';
+/** Matches the rotation suffix appended to a rotated thread id, e.g. "#3". */
+const SESSION_GENERATION_SUFFIX_RE = /#\d+$/;
+
+function toMessageAuthor(author: Author): AgentMessageAuthor {
+	const name = (author.userName || author.fullName || author.userId).replace(/[\[\]\r\n]/g, '');
+	return { id: author.userId, name: name || author.userId };
 }
 
-interface SlackThreadContext {
-	channelId: string;
-	threadTs: string;
-	hasRealThreadTs: boolean;
+function formatPlatformMessageContext(context: IntegrationPlatformMessageContext): string {
+	return [
+		'Telegram metadata for this message follows.',
+		'<telegram_message_context>',
+		JSON.stringify(context),
+		'</telegram_message_context>',
+		'Use these values when a tool needs Telegram identifiers.',
+	].join('\n');
 }
 
-interface SlackAssistantStatusAdapter {
-	setAssistantStatus(
-		channelId: string,
-		threadTs: string,
-		status: string,
-		loadingMessages?: string[],
-	): Promise<void>;
+interface InboundMessage {
+	/** Prepared, trimmed text. It can be empty when the message has attachments. */
+	text: string;
+	attachments: Attachment[];
 }
 
-interface AgentExecutor {
-	executeForChatPublished(config: {
-		agentId: string;
-		projectId: string;
-		message: string;
-		memory: { threadId: InternalThread; resourceId: string };
-		integrationType?: string;
-	}): AsyncGenerator<StreamChunk>;
-
-	resumeForChat(config: {
-		agentId: string;
-		projectId: string;
-		runId: string;
-		toolCallId: string;
-		resumeData: unknown;
-		integrationType?: string;
-	}): AsyncGenerator<StreamChunk>;
+interface TurnSession {
+	/** The active platform session, with the `/new` or idle generation applied. */
+	activeThreadId: InternalThread;
+	/** The session that the turn runs in. A task-session binding can redirect it. */
+	memory: { threadId: InternalThread; resourceId: string };
+	sessionMode: AgentSessionMode;
 }
 
-const SLACK_THINKING_STATUS = 'Thinking...';
-const SLACK_STATUS_RETRY_DELAY_MS = 750;
+/**
+ * Detects `/new` for adapters that deliver it as plain text rather than a
+ * slash command (i.e. everything but Telegram — see the `onSlashCommand`
+ * registration). Only treated as the reset command alone: a `/new`
+ * sent together with an attachment falls through to a normal turn instead
+ * of silently dropping the attachment along with the reset. Returns
+ * whether the caller must reset the session instead of running a turn.
+ */
+function isResetCommand(inbound: InboundMessage): boolean {
+	return inbound.text.toLowerCase() === RESET_SESSION_COMMAND && inbound.attachments.length === 0;
+}
 
-function isIntegrationActionSuspendPayload(value: unknown): boolean {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'type' in value &&
-		value.type === 'integration_action'
+function buildModelMessage(
+	labelledText: string,
+	bridgeExecutionContext: BridgeExecutionContext,
+): string {
+	const modelContext: string[] = [];
+	if (bridgeExecutionContext.historyContext) {
+		modelContext.push(bridgeExecutionContext.historyContext);
+	}
+	if (bridgeExecutionContext.platformMessage) {
+		modelContext.push(formatPlatformMessageContext(bridgeExecutionContext.platformMessage));
+	}
+	modelContext.push(
+		bridgeExecutionContext.platformMessage
+			? `The actual user message follows.\n${labelledText}`
+			: labelledText,
 	);
+	return modelContext.join('\n\n');
 }
 
-function toIntegrationMessageSubject(
-	subject: MessageSubject | null | undefined,
-): IntegrationMessageSubject | undefined {
-	if (!subject || typeof subject.type !== 'string' || typeof subject.id !== 'string') {
-		return undefined;
-	}
+interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeForChat'> {
+	getSessionMode?(threadId: string): Promise<AgentSessionMode>;
 
-	const assignee = toIntegrationSubjectPerson(subject.assignee);
-	const author = toIntegrationSubjectPerson(subject.author);
-	const labels = subject.labels?.filter((label) => typeof label === 'string');
+	executeForChatPublished(
+		config: Omit<ExecuteForChatPublishedConfig, 'memory'> & {
+			memory: { threadId: InternalThread; resourceId: string };
+		},
+	): AsyncGenerator<StreamChunk>;
 
-	return {
-		type: subject.type,
-		id: subject.id,
-		...(typeof subject.title === 'string' ? { title: subject.title } : {}),
-		...(typeof subject.description === 'string' ? { description: subject.description } : {}),
-		...(typeof subject.url === 'string' ? { url: subject.url } : {}),
-		...(typeof subject.status === 'string' ? { status: subject.status } : {}),
-		...(labels && labels.length > 0 ? { labels } : {}),
-		...(assignee ? { assignee } : {}),
-		...(author ? { author } : {}),
-	};
+	/** An open approval prevents automatic session rotation. */
+	findOpenSuspension?(config: {
+		agentId: string;
+		threadId: string;
+	}): Promise<OpenSuspension | null>;
+
+	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
+	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
 }
 
-function toIntegrationSubjectPerson(
-	person: MessageSubject['assignee'] | MessageSubject['author'],
-): IntegrationMessageSubject['assignee'] | undefined {
-	if (!person || typeof person.id !== 'string' || typeof person.name !== 'string') {
-		return undefined;
+/** An open checkpoint prevents automatic session rotation. */
+interface OpenSuspension {
+	suspendPayload?: unknown;
+}
+
+function errorText(error: unknown): string {
+	const rateLimitMessage = rateLimitMessageFromError(error);
+	if (rateLimitMessage !== undefined) return `⚠️ ${rateLimitMessage}`;
+	if (isAttachmentValidationError(error)) {
+		return '⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.';
 	}
-	return {
-		id: person.id,
-		name: person.name,
-	};
+	if (
+		isRecord(error) &&
+		typeof error.message === 'string' &&
+		error.message.includes('Output blocked by content filtering policy')
+	) {
+		return `⚠️ ${error.message}`;
+	}
+	if (error instanceof UserError) {
+		return `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`;
+	}
+	return '⚠️ Something went wrong while processing your request. Please try again.';
 }
 
 /**
  * Bridges Chat SDK events to the agent execution pipeline.
  *
- * Registers three handlers on a Chat SDK `Bot` instance:
- * 1. `onNewMention` — new @mentions and DMs → subscribe + execute
+ * Registers four handlers on a Chat SDK `Bot` instance:
+ * 1. `onNewMention` — new @mentions and DMs → subscribe + enqueue
  * 2. `onSubscribedMessage` — follow-up messages in subscribed threads
  * 3. `onAction` — button clicks for HITL resume flow
+ * 4. `onSlashCommand` — /new session reset for adapters that never deliver a
+ *    leading "/" as a plain message (e.g. Telegram)
  *
  * Stream consumption has two strategies, selected per integration via the
  * `disableStreaming` flag on `AgentChatIntegration`:
@@ -126,31 +198,17 @@ function toIntegrationSubjectPerson(
  * `error`) flush any pending text before being handled, preserving ordering.
  */
 export class AgentChatBridge {
-	/** Short-lived set of run IDs that have been resumed to prevent double resumption */
-	private readonly activeResumedRuns = new Set<string>();
-
 	/** Store for shortening callback data on platforms with size limits (Telegram) */
 	private readonly callbackStore?: CallbackStore;
-
-	/** When true, buffer deltas and post as a single message (see integration flag). */
-	private readonly disableStreaming: boolean;
 
 	/** Resolved integration for this platform (may be undefined for unknown types). */
 	private readonly integrationImpl: AgentChatIntegration | undefined;
 
-	/**
-	 * In-flight `rich_interaction` tool inputs keyed by toolCallId. Populated on
-	 * the `tool-call` chunk; consumed on the matching `tool-result` chunk when
-	 * the result carries `displayOnly: true` (display-only render path) or
-	 * cleared on `tool-call-suspended` (interactive HITL path, where the
-	 * suspendPayload itself carries the components).
-	 *
-	 * Storing the input here is the cleanest way to render a display-only
-	 * card from the bridge without leaking chat-SDK semantics into the agent
-	 * framework: the framework just emits tool-call/tool-result; the bridge
-	 * decides which results trigger a card post.
-	 */
-	private readonly richInteractionInputs = new Map<string, unknown>();
+	private readonly messageContextBridge: AgentChatMessageContextBridge;
+
+	private readonly streamConsumer: AgentChatStreamConsumer;
+
+	private readonly hitlResumeHandler: AgentChatHitlResumeHandler;
 
 	constructor(
 		private readonly chat: Chat,
@@ -159,14 +217,71 @@ export class AgentChatBridge {
 		private readonly componentMapper: ComponentMapper,
 		private readonly logger: Logger,
 		private readonly n8nProjectId: string,
-		private readonly integration: AgentCredentialIntegrationConfig,
-		private readonly messageContextStore?: IntegrationMessageContextService,
+		private readonly integration: AgentIntegrationConfig,
+		messageContextStore?: IntegrationMessageContextService,
+		private readonly attachmentService?: AgentChatAttachmentService,
+		private readonly discordHttpClient?: HttpRequestClient,
+		private readonly messageQueue: AgentMessageQueueService = Container.get(
+			AgentMessageQueueService,
+		),
 	) {
 		this.integrationImpl = Container.get(ChatIntegrationRegistry).get(integration.type);
+		this.messageContextBridge = new AgentChatMessageContextBridge(
+			messageContextStore,
+			integration,
+			agentId,
+			logger,
+		);
 		if (this.integrationImpl?.needsShortCallbackData) {
-			this.callbackStore = new CallbackStore();
+			this.callbackStore = new CallbackStore(
+				Container.get(CacheService),
+				Container.get(LockService),
+				`${agentId}:${integration.type}:${integration.credentialId}`,
+			);
 		}
-		this.disableStreaming = this.integrationImpl?.disableStreaming ?? false;
+		const disableStreaming = this.integrationImpl?.disableStreaming ?? false;
+		// Matches this platform's action tool names as generated by
+		// getIntegrationToolConnectionDescriptors: `${type}_action`,
+		// `${type}_2_action`, … for additional connections of the same type.
+		const actionToolNamePattern = new RegExp(`^${integration.type}(_\\d+)?_action$`);
+		this.streamConsumer = new AgentChatStreamConsumer({
+			disableStreaming,
+			logger: this.logger,
+			postErrorToThread: this.postErrorToThread.bind(this),
+			handleSuspension: this.handleSuspension.bind(this),
+			handleMessage: this.handleMessage.bind(this),
+			isIntegrationActionTool: (toolName) => actionToolNamePattern.test(toolName),
+		});
+		this.hitlResumeHandler = new AgentChatHitlResumeHandler({
+			agentId,
+			projectId: n8nProjectId,
+			integration,
+			agentService,
+			logger,
+			callbackStore: this.callbackStore,
+			deleteActionMessageBeforeResume:
+				this.integrationImpl?.deleteActionMessageBeforeResume ?? true,
+			formatActionDecisionMessage: (params) =>
+				this.integrationImpl?.formatActionDecisionMessage?.(params),
+			settleActionMessage: this.integrationImpl?.settleActionMessage?.bind(this.integrationImpl),
+			resolvePlatformThreadId: this.resolvePlatformThreadId.bind(this),
+			toAgentThreadId: this.toAgentThreadId.bind(this),
+			getPlatformAgentContext: this.getPlatformAgentContext.bind(this),
+			messageContextBridge: this.messageContextBridge,
+			streamConsumer: this.streamConsumer,
+			createResumeExecutionContext: async (thread) => {
+				const params = {
+					chat: this.chat,
+					thread,
+					logger: this.logger,
+					agentId: this.agentId,
+				};
+				const resumeExecutionContext =
+					await this.integrationImpl?.createResumeExecutionContext?.(params);
+				if (resumeExecutionContext) return resumeExecutionContext;
+				return {};
+			},
+		});
 		this.registerHandlers();
 	}
 
@@ -177,18 +292,36 @@ export class AgentChatBridge {
 	static create(
 		chat: Chat,
 		agentId: string,
-		agentService: AgentsService,
+		agentService: AgentExecutionOrchestratorService,
 		componentMapper: ComponentMapper,
 		logger: Logger,
 		n8nProjectId: string,
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
-			async *executeForChatPublished({ memory, agentId: aid, message, integrationType }) {
+			getSessionMode: async (threadId) => await agentService.getSessionMode(threadId),
+			async *executeForChatPublished({
+				memory,
+				agentId: aid,
+				message,
+				modelMessage,
+				author,
+				attachments,
+				integrationType,
+				sandboxPrincipalHash,
+				messageContext,
+				contextConversation,
+				sessionMode,
+				admittedExecution,
+				abortSignal,
+			}) {
 				yield* agentService.executeForChatPublished({
 					agentId: aid,
 					projectId: n8nProjectId,
 					message,
+					modelMessage,
+					author,
+					attachments,
 					memory: {
 						threadId: memory.threadId.id,
 						resourceId: memory.resourceId,
@@ -197,10 +330,30 @@ export class AgentChatBridge {
 						}),
 					},
 					integrationType,
+					sandboxPrincipalHash,
+					messageContext,
+					contextConversation,
+					sessionMode,
+					admittedExecution,
+					abortSignal,
 				});
 			},
 			async *resumeForChat(config) {
 				yield* agentService.resumeForChat(config);
+			},
+			async findOpenSuspension({ agentId: aid, threadId }) {
+				const { suspendedCheckpoint } = await Container.get(AgentConversationStateService).inspect(
+					aid,
+					threadId,
+				);
+				if (!suspendedCheckpoint) return null;
+				const suspended = Object.values(suspendedCheckpoint.pendingToolCalls ?? {}).find(
+					(toolCall) => toolCall.suspended,
+				);
+				return suspended ? { suspendPayload: suspended.suspendPayload } : null;
+			},
+			async isResumable({ agentId: aid, runId }) {
+				return await Container.get(AgentConversationStateService).isResumable(aid, runId);
 			},
 		};
 		return new AgentChatBridge(
@@ -212,6 +365,12 @@ export class AgentChatBridge {
 			n8nProjectId,
 			integration,
 			Container.get(IntegrationMessageContextService),
+			Container.get(AgentChatAttachmentService),
+			integration.type === 'discord'
+				? Container.get(OutboundHttp).requests({
+						useDefaultSsrfPolicy: 'unsafe', // Discord attachment URLs are restricted to its fixed CDN host
+					})
+				: undefined,
 		);
 	}
 
@@ -223,8 +382,13 @@ export class AgentChatBridge {
 		this.chat.onNewMention(async (thread, message) => {
 			try {
 				if (!this.canUserAccess(message.author)) return;
-				await thread.subscribe();
-				await this.executeAndStream(thread, message);
+				const anchoredThread = this.anchorInboundThread(thread, message);
+				const shouldSubscribe =
+					this.integrationImpl?.shouldSubscribeToNewMention?.({ thread, message }) ?? true;
+				if (shouldSubscribe) {
+					await anchoredThread.subscribe();
+				}
+				await this.handleInboundMessage(anchoredThread, message, { isNewMention: true });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -233,7 +397,8 @@ export class AgentChatBridge {
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
 				if (!this.canUserAccess(message.author)) return;
-				await this.executeAndStream(thread, message);
+				const anchoredThread = this.anchorInboundThread(thread, message);
+				await this.handleInboundMessage(anchoredThread, message, { isNewMention: false });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -242,25 +407,117 @@ export class AgentChatBridge {
 		this.chat.onAction(async (event) => {
 			try {
 				if (!this.canUserAccess(event.user)) return;
-				await this.handleAction(event);
+				await this.hitlResumeHandler.handleAction(event);
 			} catch (error) {
 				await this.postErrorToThread(event.thread, error);
 			}
 		});
-	}
 
-	/** Release long-lived resources (callback store timer). */
-	dispose(): void {
-		this.callbackStore?.dispose();
+		// Some adapters (e.g. Telegram) parse a leading "/" as a native slash
+		// command and never deliver it to onNewMention/onSubscribedMessage —
+		// intercept it here so /new still resets the session on those platforms.
+		// Unlike the plain-text path, this resolves the thread straight from the
+		// event's channel id, bypassing anchorInboundThread's re-anchoring — a
+		// no-op today since Telegram (the only adapter that fires this) has no
+		// messageThreadId override, but worth revisiting for a future adapter
+		// that has both.
+		this.chat.onSlashCommand(RESET_SESSION_COMMAND, async (event) => {
+			const thread = this.chat.thread(event.channel.id);
+			try {
+				if (!this.canUserAccess(event.user)) return;
+				await this.resetSession(thread);
+			} catch (error) {
+				await this.postErrorToThread(thread, error);
+			}
+		});
 	}
 
 	private canUserAccess(author: Author): boolean {
 		return this.integrationImpl?.isUserAllowed?.(author, this.integration) ?? true;
 	}
 
+	/**
+	 * Re-anchor an inbound conversation at the message's own thread on platforms
+	 * where a top-level post arrives through the channel-level pseudo-thread
+	 * (e.g. a Slack channel message). Conversation-scoped DMs and group DMs stay
+	 * on their inbound thread so Agent-view chat remains one session.
+	 */
+	private anchorInboundThread(thread: Thread, message: Message): Thread {
+		const anchored = this.integrationImpl?.messageThreadId?.(
+			{ id: message.id, threadId: thread.id, raw: message.raw },
+			{ inbound: true },
+		);
+		return anchored ? this.chat.thread(anchored) : thread;
+	}
+
 	// ---------------------------------------------------------------------------
 	// Thread ID resolution — single place to apply per-platform formatting
 	// ---------------------------------------------------------------------------
+
+	/**
+	 * Resume a server-side trigger in the checkpoint's reply destination.
+	 * Older checkpoints can fall back to the stored agent thread ID.
+	 */
+	async resumeInAgentThread(
+		agentThreadId: string,
+		runId: string,
+		toolCallId: string,
+		resumeData: unknown,
+		context?: { messageContext: IntegrationMessageContext | null; allowLegacyThreadId: boolean },
+	): Promise<void> {
+		const target = context?.messageContext?.replyTarget ?? context?.messageContext?.target;
+		if (context && !target?.threadId && !context.allowLegacyThreadId) {
+			this.logger.warn('Agent resume has no reply destination', { agentId: this.agentId, runId });
+			return;
+		}
+		const prefix = `${this.agentId}:`;
+		const withoutAgentPrefix = agentThreadId.startsWith(prefix)
+			? agentThreadId.slice(prefix.length)
+			: agentThreadId;
+		// A rotated session appends "#<generation>" to the agent thread id (see
+		// resolveActiveSessionId); that bookkeeping is bridge-only and was never
+		// part of the platform's own thread id, so strip it before reconstructing
+		// the SDK thread — every formatThreadId.toSdk (or its identity fallback)
+		// expects the real platform id only.
+		const platformThreadId = withoutAgentPrefix.replace(SESSION_GENERATION_SUFFIX_RE, '');
+		const sdkThreadId =
+			target?.threadId ??
+			this.integrationImpl?.formatThreadId?.toSdk(platformThreadId) ??
+			platformThreadId;
+
+		await this.hitlResumeHandler.executeResume(
+			this.chat.thread(sdkThreadId),
+			runId,
+			toolCallId,
+			resumeData,
+			{
+				...(context ? { messageContext: context.messageContext } : {}),
+				// Nobody clicked, so this must not speak to them. It only keeps a
+				// card the resumed turn raises addressed to the person whose
+				// conversation it belongs to.
+				...(context?.messageContext?.interactingUserId
+					? { cardRecipientId: context.messageContext.interactingUserId }
+					: {}),
+			},
+		);
+	}
+
+	async deliverWakeResponse(
+		threadId: string,
+		chunks: StreamChunk[],
+		cardRecipientId?: string,
+	): Promise<void> {
+		await this.streamConsumer.consume(
+			(async function* () {
+				yield* chunks;
+			})(),
+			this.chat.thread(threadId),
+			{
+				throwOnDeliveryError: true,
+				...(cardRecipientId ? { actingUserId: cardRecipientId } : {}),
+			},
+		);
+	}
 
 	private resolvePlatformThreadId(thread: Thread<unknown, unknown>) {
 		return this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id;
@@ -270,17 +527,137 @@ export class AgentChatBridge {
 		return toInternalThreadId(`${this.agentId}:${platformThreadId}`);
 	}
 
+	/** The agent-prefixed thread id `thread` resolves to, before any session rotation. */
+	private baseThreadId(thread: Thread): string {
+		return this.toAgentThreadId(this.resolvePlatformThreadId(thread)).id;
+	}
+
+	/**
+	 * Resolves the thread to run this message in, applying the channel's
+	 * configured idle-timeout session rotation (`/new` is handled separately —
+	 * see {@link resetSession} — before this is ever called).
+	 */
+	private async resolveActiveThreadId(thread: Thread): Promise<InternalThread> {
+		const baseId = this.baseThreadId(thread);
+		const idleTimeoutMinutes = this.integration.settings?.sessionIdleTimeoutMinutes ?? null;
+		const id = await this.withSessionLock(
+			baseId,
+			async () => await this.computeGeneration(baseId, false, idleTimeoutMinutes),
+		);
+		return toInternalThreadId(id);
+	}
+
+	/**
+	 * Rotates to a brand-new session for `thread` and confirms it there.
+	 * Unbinding a task-run session (see {@link resolveSession} in
+	 * `resolveTurnSession`) and rotating the generation happen inside the same
+	 * critical section, in that order, as one unit:
+	 * - Same critical section: splitting them would let a concurrent message
+	 *   land in between and read the just-rotated generation while the old
+	 *   binding is still in place (or the reverse), running against the
+	 *   task's old memory either way.
+	 * - Unbind first: nothing here swallows its error, so a failed unbind
+	 *   aborts before the generation is touched, and propagates to the caller's
+	 *   existing catch instead of confirming success. The two stores are not
+	 *   atomic, so the opposite failure — a rotation that fails after the
+	 *   unbind landed — leaves the thread unbound but unrotated: a normal turn
+	 *   on the base session (the state `clearSessionBindings` also produces),
+	 *   never a redirect into the task's memory, and the error reply asks for a
+	 *   retry, which is idempotent. The reverse order fails worse, still
+	 *   redirecting into the task's old memory after reporting the error.
+	 */
+	private async resetSession(thread: Thread): Promise<void> {
+		const baseId = this.baseThreadId(thread);
+		await this.withSessionLock(baseId, async () => {
+			await this.messageContextBridge.unbindSession(baseId);
+			await this.computeGeneration(baseId, true, null);
+		});
+		await thread.post('🔄 Started a new session.');
+	}
+
+	/**
+	 * Runs `fn` while holding the per-thread session lock for `baseId`. Every
+	 * read and write of that thread's rotation/binding state must happen
+	 * inside this — the lock is what makes an explicit `/new` and a
+	 * concurrent idle-triggered rotation (or unbind) mutually exclusive
+	 * instead of racing on stale reads.
+	 */
+	private async withSessionLock<T>(baseId: string, fn: () => Promise<T>): Promise<T> {
+		return await Container.get(LockService).withLease(
+			LockNamespace.KNOWN_LOCKS,
+			this.sessionLockKey(baseId),
+			fn,
+		);
+	}
+
+	/**
+	 * Resolves the currently active generation for `baseId`, rotating to a new
+	 * one when `forceRotate` is set (an explicit `/new`) or the channel's
+	 * configured idle timeout has elapsed since the last message on it. The
+	 * generation pointer lives in the database, keyed by `baseId` and not by a
+	 * session's thread row, so it survives restarts and session deletion, and a
+	 * `/new` reset — which never runs an agent turn — still takes effect on the
+	 * very next unrelated message. Must be called from inside
+	 * {@link withSessionLock} for `baseId` — see there for why.
+	 *
+	 * An idle-elapsed thread that still has a run parked on it is never
+	 * rotated: the suspension is keyed on the exact thread id, so rotating
+	 * away would silently orphan it (never resumed) instead of letting the
+	 * user's reply resolve it. `/new` overrides this — abandoning a pending
+	 * suspension is the user's own explicit call there.
+	 */
+	private async computeGeneration(
+		baseId: string,
+		forceRotate: boolean,
+		idleTimeoutMinutes: number | null,
+	): Promise<string> {
+		const resources = Container.get(AgentResourceRepository);
+		const state = await resources.findChatSessionGeneration(baseId);
+		if (!forceRotate && !state && !idleTimeoutMinutes) return baseId;
+
+		const now = Date.now();
+		const currentGeneration = state?.generation ?? 0;
+		const idleExpired =
+			!forceRotate &&
+			idleTimeoutMinutes !== null &&
+			state !== null &&
+			now - state.lastActivityAt > idleTimeoutMinutes * 60_000;
+		const currentId = currentGeneration === 0 ? baseId : `${baseId}#${currentGeneration}`;
+		const rotate = forceRotate || (idleExpired && !(await this.hasOpenSuspension(currentId)));
+		const generation = rotate ? currentGeneration + 1 : currentGeneration;
+
+		// Only persist when it matters: a rotation just happened (so the next
+		// call sees it), or the idle timeout is actively configured (so
+		// lastActivityAt keeps sliding forward for the *next* expiry check).
+		// Otherwise this thread has never been touched by either mechanism, or
+		// the timeout was turned off after an earlier reset — nothing to track.
+		if (rotate || idleTimeoutMinutes !== null) {
+			await resources.saveChatSessionGeneration(baseId, { generation, lastActivityAt: now });
+		}
+		return generation === 0 ? baseId : `${baseId}#${generation}`;
+	}
+
+	private async hasOpenSuspension(threadId: string): Promise<boolean> {
+		const open = await this.agentService.findOpenSuspension?.({ agentId: this.agentId, threadId });
+		return open !== null && open !== undefined;
+	}
+
+	private sessionLockKey(baseId: string): string {
+		return `${SESSION_LOCK_KEY_PREFIX}:${baseId}`;
+	}
+
 	/**
 	 * Returns a callback shortener function for platforms with short callback
 	 * data limits (Telegram). Returns undefined for other platforms.
 	 */
-	private getShortenCallback():
-		| ((actionId: string, value: string) => Promise<{ id: string; value: string }>)
-		| undefined {
+	getShortenCallback(metadata?: CallbackMetadata): ShortenCallback | undefined {
 		if (!this.callbackStore) return undefined;
 		const store = this.callbackStore;
-		return async (actionId: string, value: string) => {
-			const key = await store.store(actionId, value);
+		return async (actionId: string, value: string, label?: string) => {
+			const key = await store.store(actionId, value, {
+				...metadata,
+				...(label !== undefined ? { label } : {}),
+			});
 			return { id: key, value: '' };
 		};
 	}
@@ -289,285 +666,363 @@ export class AgentChatBridge {
 	// Core execution pipeline
 	// ---------------------------------------------------------------------------
 
-	private async executeAndStream(thread: Thread, message: Message): Promise<void> {
-		const platformAgentContext = this.getPlatformAgentContext();
-		const text = this.prepareInboundText(message.text, platformAgentContext).trim();
-		if (!text) return;
-
-		const platformThreadId = this.resolvePlatformThreadId(thread);
-		const threadId = this.toAgentThreadId(platformThreadId);
-		const slackThreadContext = this.getSlackThreadContext(message);
-		const useNativeSlackThreadFeatures =
-			this.integration.type !== 'slack' || slackThreadContext?.hasRealThreadTs === true;
-		const statusRetry = new AbortController();
-		// startThinkingStatus (Slack assistant.threads.setStatus) and the lazy
-		// `message.subject` fetch are both remote round-trips on independent
-		// resources — run them concurrently.
-		const [, subject] = await Promise.all([
-			this.startThinkingStatus(thread, slackThreadContext, statusRetry.signal),
-			this.resolveMessageSubject(message),
-		]);
-		await this.updateLatestMessageContext(threadId.id, message.author.userId, thread, {
-			messageId: message.id,
-			interactingUserId: message.author.userId,
-			...platformAgentContext,
-			subject,
-		});
-		// threadId.id is agent-prefixed for observation storage; resourceId keeps
-		// the platform identity so episodic recall remains agent + resource scoped.
-		// Always run the published snapshot — integrations are production traffic.
-		const stream = this.agentService.executeForChatPublished({
-			agentId: this.agentId,
-			projectId: this.n8nProjectId,
-			message: text,
-			memory: {
-				threadId,
-				resourceId: integrationMemoryResourceId(this.integration.type, platformThreadId),
-			},
-			integrationType: this.integration.type,
-		});
-
-		try {
-			await this.consumeStream(stream, thread, {
-				forceBuffered: this.integration.type === 'slack' && !useNativeSlackThreadFeatures,
-			});
-		} finally {
-			statusRetry.abort();
-		}
-	}
-
-	// ---------------------------------------------------------------------------
-	// Stream consumer
-	// ---------------------------------------------------------------------------
-
-	/**
-	 * Consume the agent stream and post to the thread.
-	 *
-	 * Default: pipe text deltas as an AsyncIterable<string> to `thread.post()`
-	 * so Chat SDK can render incrementally (post-and-edit). Integrations that
-	 * set `disableStreaming` short-circuit to `consumeStreamBuffered`, which
-	 * accumulates deltas into a string and posts them as a single message per
-	 * flush event (used by Telegram to avoid Markdown streaming issues).
-	 *
-	 * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
-	 * `error`) flush any pending text first, then get handled in order.
-	 */
-	private async consumeStream(
-		stream: AsyncGenerator<StreamChunk>,
+	private async handleInboundMessage(
 		thread: Thread,
-		options: { forceBuffered?: boolean } = {},
+		message: Message,
+		options: { isNewMention: boolean },
 	): Promise<void> {
-		if (this.disableStreaming || options.forceBuffered) {
-			await this.consumeStreamBuffered(stream, thread);
+		const inbound = await this.readInboundMessage(message);
+		if (!inbound) return;
+		if (isResetCommand(inbound)) {
+			await this.resetSession(thread);
 			return;
 		}
+		await this.runTurn(thread, message, inbound, options);
+	}
 
-		// Controller for the text stream iterable that Chat SDK consumes.
-		// These are reassigned inside `createTextIterable()` (called transitively
-		// by `ensureStreamingPost()`). TypeScript cannot track mutations through
-		// closures, so it incorrectly narrows these to `never` after the
-		// assignment. We use a wrapper object to avoid the TS closure analysis issue.
-		const textStream: { yield: TextYieldFn | null; end: TextEndFn | null } = {
-			yield: null,
-			end: null,
-		};
-		let streamingPost: Promise<unknown> | null = null;
+	private async readInboundMessage(message: Message): Promise<InboundMessage | null> {
+		const platformAgentContext = this.getPlatformAgentContext();
+		const text = this.prepareInboundText(
+			await this.getInboundText(message),
+			platformAgentContext,
+		).trim();
+		// `?? []` guards rehydrated/serialized messages that predate the field.
+		const attachments = message.attachments ?? [];
+		if (!text && attachments.length === 0) return null;
+		return { text, attachments };
+	}
 
-		const createTextIterable = (): AsyncIterable<string> => {
-			const queue: string[] = [];
-			let done = false;
-			let waiting: ((result: IteratorResult<string>) => void) | null = null;
+	private async runTurn(
+		thread: Thread,
+		message: Message,
+		inbound: InboundMessage,
+		options: { isNewMention: boolean },
+	): Promise<void> {
+		const platformAgentContext = this.getPlatformAgentContext();
+		const session = await this.resolveTurnSession(thread, message);
+		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
+			inbound.attachments,
+			session.memory.threadId.id,
+			session.memory.resourceId,
+		);
+		await this.enqueueTurn({
+			thread,
+			message,
+			text: inbound.text,
+			session,
+			attachments,
+			attachmentNotes,
+			isNewMention: options.isNewMention,
+			platformAgentContext,
+		});
+	}
 
-			textStream.yield = (text: string) => {
-				if (waiting) {
-					const resolve = waiting;
-					waiting = null;
-					resolve({ value: text, done: false });
-				} else {
-					queue.push(text);
-				}
-			};
-
-			textStream.end = () => {
-				done = true;
-				if (waiting) {
-					const resolve = waiting;
-					waiting = null;
-					resolve({ value: '', done: true });
-				}
-			};
-
+	private async resolveTurnSession(thread: Thread, message: Message): Promise<TurnSession> {
+		const activeThreadId = await this.resolveActiveThreadId(thread);
+		const resourceId = integrationMemoryResourceId(this.integration.type, message.author.userId);
+		// If this thread was established by an outbound task send, continue that
+		// task's session instead of starting a fresh one. Attachments are stored
+		// on the execution thread so file-store hydration (scoped to
+		// persistence.threadId) can load them. The Slack reply thread is unchanged.
+		// The binding is always keyed by the base (pre-rotation) thread id — it's
+		// written by an outbound send that has no notion of session rotation —
+		// so it has to be looked up the same way, not by whatever generation is
+		// currently active.
+		const sessionOrigin = await this.messageContextBridge.resolveSession(this.baseThreadId(thread));
+		if (sessionOrigin) {
 			return {
-				[Symbol.asyncIterator]() {
-					return {
-						async next(): Promise<IteratorResult<string>> {
-							if (queue.length > 0) {
-								return { value: queue.shift()!, done: false };
-							}
-							if (done) {
-								return { value: '', done: true };
-							}
-							return await new Promise((resolve) => {
-								waiting = resolve;
-							});
-						},
-					};
+				activeThreadId,
+				memory: {
+					threadId: toInternalThreadId(sessionOrigin.threadId),
+					resourceId: sessionOrigin.resourceId,
 				},
+				sessionMode: 'existing',
 			};
+		}
+		return {
+			activeThreadId,
+			memory: { threadId: activeThreadId, resourceId },
+			sessionMode: (await this.agentService.getSessionMode?.(activeThreadId.id)) ?? 'new',
 		};
+	}
 
-		const startStreamingPost = () => {
-			const iterable = createTextIterable();
-			streamingPost = thread.post(iterable).catch((postError: unknown) => {
-				this.logger.error('[AgentChatBridge] Streaming post failed', {
-					error: postError instanceof Error ? postError.message : String(postError),
-				});
-			});
-		};
-
-		const endStreamingPost = async () => {
-			if (textStream.end) {
-				textStream.end();
-				textStream.end = null;
-				textStream.yield = null;
-			}
-			if (streamingPost) {
-				await streamingPost;
-				streamingPost = null;
-			}
-		};
-
-		// Don't start streaming post eagerly — wait for first text delta
-		const ensureStreamingPost = () => {
-			if (!streamingPost) startStreamingPost();
-		};
-
+	private async enqueueTurn({
+		thread,
+		message,
+		text,
+		session,
+		attachments,
+		attachmentNotes,
+		isNewMention,
+		platformAgentContext,
+	}: {
+		thread: Thread;
+		message: Message;
+		text: string;
+		session: TurnSession;
+		attachments: StoredAttachmentRef[];
+		attachmentNotes: string[];
+		isNewMention: boolean;
+		platformAgentContext: PlatformAgentContext;
+	}): Promise<void> {
+		const replyExpectation =
+			this.integrationImpl?.getReplyExpectation?.({
+				message,
+				isNewMention,
+				platformAgentContext,
+			}) ?? 'required';
 		try {
-			for await (const chunk of stream) {
-				switch (chunk.type) {
-					case 'text-delta': {
-						const { delta } = chunk;
-						ensureStreamingPost();
-						textStream.yield?.(delta);
-						break;
-					}
-					case 'reasoning-delta': {
-						const { delta } = chunk;
-						ensureStreamingPost();
-						textStream.yield?.(`_${delta}_`);
-						break;
-					}
-					case 'tool-call':
-						this.stashRichInteractionInput(chunk);
-						break;
-					case 'tool-call-suspended':
-						this.richInteractionInputs.delete(chunk.toolCallId);
-						await endStreamingPost();
-						await this.handleSuspension(chunk, thread);
-						// Don't start new streaming post — wait for next text delta
-						break;
-					case 'tool-result':
-						if (this.isRichInteractionDisplayOnly(chunk)) {
-							await endStreamingPost();
-							await this.handleDisplayOnly(chunk, thread);
-						} else {
-							this.richInteractionInputs.delete(chunk.toolCallId);
-						}
-						break;
-					case 'message':
-						await endStreamingPost();
-						await this.handleMessage(chunk, thread);
-						break;
-					case 'error':
-						await endStreamingPost();
-						await this.postErrorToThread(thread, chunk.error);
-						break;
-					default:
-						// Ignore other chunk types (finish, tool-input-*,
-						// start-step, finish-step, etc.)
-						break;
-				}
-			}
-		} finally {
-			// Always end the streaming post and drop stashed tool-call inputs so
-			// a stream that errors mid-flight between `tool-call` and the
-			// matching `tool-result` does not leak entries.
-			await endStreamingPost();
-			this.richInteractionInputs.clear();
+			const [context, subject] = await Promise.all([
+				this.resolveBridgeExecutionContext(
+					thread,
+					message,
+					platformAgentContext,
+					isNewMention,
+					replyExpectation,
+				),
+				this.messageContextBridge.resolveSubject(message),
+			]);
+			const messageContext = this.messageContextBridge.capture(thread, {
+				messageId: message.id,
+				interactingUserId: message.author.userId,
+				...context.platformAgentContext,
+				...(context.platformMessage ? { platformMessage: context.platformMessage } : {}),
+				subject,
+				replyExpectation,
+			});
+			const author = toMessageAuthor(message.author);
+			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
+			const { userId, userName, fullName, isBot, isMe } = message.author;
+			await this.messageQueue.enqueue({
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				threadId: session.memory.threadId.id,
+				sessionMode: session.sessionMode,
+				source: this.integration.type,
+				payload: {
+					kind: 'integration',
+					message: textWithNotes,
+					modelMessage: buildModelMessage(
+						`[${author.name} (${author.id})]: ${textWithNotes}`,
+						context,
+					),
+					author,
+					sender: { userId, userName, fullName, isBot, isMe },
+					attachments: attachments.length ? attachments : undefined,
+					resourceId: session.memory.resourceId,
+					credentialId: this.integration.credentialId,
+					platformThreadId: thread.id,
+					messageContext,
+					contextConversation: { threadId: session.activeThreadId.id, resourceId: userId },
+					forceBuffered: context.forceBuffered,
+					slackThreadContext: context.slackThreadContext,
+				},
+			});
+		} catch (error) {
+			await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
+			throw error;
 		}
 	}
 
-	/**
-	 * Buffered consumer — accumulates text/reasoning deltas and posts them as a
-	 * single message per flush. Used when the integration disables streaming
-	 * (e.g. Telegram).
-	 */
-	private async consumeStreamBuffered(
-		stream: AsyncGenerator<StreamChunk>,
-		thread: Thread,
+	async consumeQueuedMessage(
+		payload: QueuedIntegrationMessage,
+		threadId: string,
+		admittedExecution: AgentExecutionAdmission,
+		abortSignal: AbortSignal,
+		integration: AgentIntegrationConfig,
 	): Promise<void> {
-		let buffer = '';
-
-		const flushBuffer = async () => {
-			const text = buffer;
-			buffer = '';
-			if (!text.trim()) return;
-			try {
-				// Chat SDK's streaming path wraps accumulated deltas as `{ markdown }`
-				// so the platform adapter applies its markdown parse-mode (Telegram:
-				// sendMessage with parse_mode=Markdown). A raw string bypasses that
-				// and renders as plain text, so we post the buffered message the same
-				// shape the streaming path uses under the hood.
-				await thread.post({ markdown: text });
-			} catch (postError: unknown) {
-				await this.postErrorToThread(thread, postError);
-				this.logger.error('[AgentChatBridge] Buffered post failed', {
-					error: postError instanceof Error ? postError.message : String(postError),
-				});
-			}
-		};
-
+		const thread = await this.restoreQueuedReplyThread(payload);
+		let statusHandle: ReturnType<typeof onceStatusHandle>;
 		try {
-			for await (const chunk of stream) {
-				switch (chunk.type) {
-					case 'text-delta':
-						buffer += chunk.delta;
-						break;
-					case 'reasoning-delta':
-						buffer += `_${chunk.delta}_`;
-						break;
-					case 'tool-call':
-						this.stashRichInteractionInput(chunk);
-						break;
-					case 'tool-call-suspended':
-						this.richInteractionInputs.delete(chunk.toolCallId);
-						await flushBuffer();
-						await this.handleSuspension(chunk, thread);
-						break;
-					case 'tool-result':
-						if (this.isRichInteractionDisplayOnly(chunk)) {
-							await flushBuffer();
-							await this.handleDisplayOnly(chunk, thread);
-						} else {
-							this.richInteractionInputs.delete(chunk.toolCallId);
-						}
-						break;
-					case 'message':
-						await flushBuffer();
-						await this.handleMessage(chunk, thread);
-						break;
-					case 'error':
-						await flushBuffer();
-						await this.postErrorToThread(thread, chunk.error);
-						break;
-					default:
-						break;
-				}
+			if (this.integrationImpl?.isUserAllowed?.(payload.sender, integration) === false) {
+				throw new UserError('You can no longer use this integration');
 			}
+			abortSignal.throwIfAborted();
+			if (payload.messageContext.replyExpectation !== 'optional') {
+				const context = await this.integrationImpl?.createResumeExecutionContext?.({
+					chat: this.chat,
+					thread,
+					logger: this.logger,
+					agentId: this.agentId,
+					slackThreadContext: payload.slackThreadContext,
+				});
+				statusHandle = onceStatusHandle(context?.statusHandle);
+			}
+			const stream = this.agentService.executeForChatPublished({
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				message: payload.message,
+				modelMessage: payload.modelMessage,
+				author: payload.author,
+				attachments: payload.attachments,
+				messageContext: payload.messageContext,
+				contextConversation: payload.contextConversation,
+				memory: { threadId: toInternalThreadId(threadId), resourceId: payload.resourceId },
+				sessionMode: 'existing',
+				integrationType: this.integration.type,
+				admittedExecution,
+				abortSignal,
+				sandboxPrincipalHash: hashAgentSandboxPrincipal({
+					type: 'integration-thread',
+					connectionId: payload.credentialId,
+					platform: this.integration.type,
+					platformThreadId: this.resolvePlatformThreadId(thread),
+				}),
+			});
+			await this.streamConsumer.consume(stream, thread, {
+				forceBuffered: payload.forceBuffered,
+				statusHandle,
+				actingUserId: payload.sender.userId,
+			});
+		} catch (error) {
+			await this.postErrorToThread(thread, error);
+			throw error;
 		} finally {
-			await flushBuffer();
-			this.richInteractionInputs.clear();
+			await statusHandle?.clearBeforeResponse();
 		}
+	}
+
+	private async restoreQueuedReplyThread(payload: QueuedIntegrationMessage): Promise<Thread> {
+		const thread = this.chat.thread(payload.platformThreadId);
+		const recipientTeamId = payload.slackThreadContext?.recipientTeamId;
+		if (payload.forceBuffered || !recipientTeamId) return thread;
+
+		// The SDK reads the Slack stream recipient from the current message.
+		const { Message, ThreadImpl } = await loadChatSdk();
+		return new ThreadImpl({
+			id: thread.id,
+			channelId: thread.channelId,
+			channelVisibility: thread.channelVisibility,
+			isDM: thread.isDM,
+			adapter: thread.adapter,
+			stateAdapter: this.chat.getState(),
+			currentMessage: new Message({
+				id: payload.messageContext.messageId ?? '',
+				threadId: thread.id,
+				text: payload.message,
+				formatted: { type: 'root', children: [] },
+				author: payload.sender,
+				metadata: { dateSent: new Date(payload.messageContext.updatedAt), edited: false },
+				attachments: [],
+				raw: { team_id: recipientTeamId },
+			}),
+		});
+	}
+
+	/**
+	 * Download and persist inbound platform attachments. Slack/Telegram adapters
+	 * provide `fetchData`; Discord provides a signed CDN URL. Oversize or failed
+	 * downloads degrade to a text note on the user turn — an attachment problem
+	 * never aborts the run. Returns stored refs plus the notes to append.
+	 */
+	private async storeInboundAttachments(
+		inboundAttachments: Attachment[],
+		threadId: string,
+		resourceId: string,
+	): Promise<{ attachments: StoredAttachmentRef[]; attachmentNotes: string[] }> {
+		const attachments: StoredAttachmentRef[] = [];
+		const attachmentNotes: string[] = [];
+		if (!this.attachmentService || inboundAttachments.length === 0) {
+			return { attachments, attachmentNotes };
+		}
+
+		const skipped = inboundAttachments.slice(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE);
+		for (const attachment of skipped) {
+			attachmentNotes.push(
+				`[Attachment "${attachment.name ?? 'file'}" was not processed: too many attachments in one message]`,
+			);
+		}
+
+		for (const attachment of inboundAttachments.slice(0, MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)) {
+			// Platform attachments bypass DTO validation, so cap the name to the
+			// fileName column width here.
+			const name = (attachment.name ?? 'attachment').slice(
+				0,
+				MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+			);
+			try {
+				if (
+					attachment.size !== undefined &&
+					attachment.size > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES
+				) {
+					attachmentNotes.push(
+						`[Attachment "${name}" was skipped: larger than ${MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB} MB]`,
+					);
+					continue;
+				}
+
+				const data = await this.fetchAttachmentData(attachment);
+				if (!data || data.byteLength === 0) {
+					attachmentNotes.push(`[Attachment "${name}" could not be downloaded]`);
+					continue;
+				}
+				if (data.byteLength > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
+					attachmentNotes.push(
+						`[Attachment "${name}" was skipped: larger than ${MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB} MB]`,
+					);
+					continue;
+				}
+
+				const mimeType = await resolveInboundMimeType(attachment.mimeType, data);
+				const stored = await this.attachmentService.storeInbound({
+					agentId: this.agentId,
+					projectId: this.n8nProjectId,
+					threadId,
+					resourceId,
+					source: this.integration.type,
+					fileName: name,
+					mimeType,
+					data,
+				});
+				attachments.push({
+					id: stored.id,
+					fileName: stored.fileName,
+					mimeType: stored.mimeType,
+					sizeBytes: stored.fileSizeBytes,
+				});
+			} catch (error) {
+				this.logger.warn('[AgentChatBridge] Failed to ingest attachment', {
+					agentId: this.agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				attachmentNotes.push(`[Attachment "${name}" could not be processed]`);
+			}
+		}
+
+		return { attachments, attachmentNotes };
+	}
+
+	private async fetchAttachmentData(attachment: Attachment): Promise<Buffer | null> {
+		if (attachment.fetchData) return await attachment.fetchData();
+		if (Buffer.isBuffer(attachment.data)) return attachment.data;
+		if (attachment.data) return Buffer.from(await attachment.data.arrayBuffer());
+		if (this.integration.type === 'discord' && attachment.url && this.discordHttpClient) {
+			return await downloadDiscordAttachment(attachment.url, this.discordHttpClient);
+		}
+		return null;
+	}
+
+	private async resolveBridgeExecutionContext(
+		thread: Thread<unknown, unknown>,
+		message: Message<unknown>,
+		platformAgentContext: PlatformAgentContext,
+		isNewMention: boolean,
+		replyExpectation: ReplyExpectation,
+	): Promise<BridgeExecutionContext> {
+		return (
+			(await this.integrationImpl?.createBridgeExecutionContext?.({
+				chat: this.chat,
+				thread,
+				message,
+				integration: this.integration,
+				logger: this.logger,
+				agentId: this.agentId,
+				startStatus: false,
+				isNewMention,
+				replyExpectation,
+			})) ?? { platformAgentContext }
+		);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -577,53 +1032,20 @@ export class AgentChatBridge {
 	private async handleSuspension(
 		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
 		thread: Thread,
-	): Promise<void> {
+		actingUserId?: string,
+	): Promise<SuspensionHandlingResult> {
 		const { runId, toolCallId, suspendPayload } = chunk;
 
 		if (!runId || !toolCallId) {
 			this.logger.warn('[AgentChatBridge] Suspended chunk missing runId or toolCallId');
-			return;
+			return 'failed';
 		}
 
-		// Rich interaction tool — use the structured payload directly.
-		// The payload IS the tool input (title, message, components array).
-		if (chunk.toolName === 'rich_interaction') {
-			await this.handleRichInteraction(chunk, thread);
-			return;
-		}
-
-		const payload = suspendPayload as RichSuspendPayload | Record<string, unknown> | undefined;
-		if (isIntegrationActionSuspendPayload(payload)) {
-			return;
-		}
-		const hasComponents =
-			payload &&
-			'components' in payload &&
-			Array.isArray(payload.components) &&
-			payload.components.length > 0;
-
-		let cardPayload: {
-			title?: string;
-			components: Array<{ type: string; [key: string]: unknown }>;
+		const cardPayload = buildSuspendCardPayload(suspendPayload);
+		if (!cardPayload) return 'skipped';
+		const callbackMetadata: CallbackMetadata = {
+			groupId: JSON.stringify([runId, toolCallId]),
 		};
-
-		if (hasComponents) {
-			cardPayload = payload as RichSuspendPayload;
-		} else {
-			// Plain suspend payload — auto-generate approve/deny buttons
-			const message =
-				payload && typeof payload === 'object' && 'message' in payload
-					? String(payload.message)
-					: 'Action required — approve or deny?';
-
-			cardPayload = {
-				title: message,
-				components: [
-					{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
-					{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
-				],
-			};
-		}
 
 		try {
 			const card = await this.componentMapper.toCard(
@@ -631,10 +1053,11 @@ export class AgentChatBridge {
 				runId,
 				toolCallId,
 				chunk.resumeSchema,
-				this.getShortenCallback(),
+				this.getShortenCallback(callbackMetadata),
 				this.integration.type,
 			);
-			await thread.post({ card });
+			await this.deliverSuspensionCard(thread, card, actingUserId);
+			return 'posted';
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post suspension card', {
 				agentId: this.agentId,
@@ -642,125 +1065,26 @@ export class AgentChatBridge {
 				toolCallId,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			return 'failed';
 		}
-	}
-
-	// ---------------------------------------------------------------------------
-	// Rich interaction handling
-	// ---------------------------------------------------------------------------
-
-	private async handleRichInteraction(
-		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
-		thread: Thread,
-	): Promise<void> {
-		const { runId, toolCallId, suspendPayload } = chunk;
-
-		const payload = suspendPayload as {
-			title?: string;
-			message?: string;
-			components?: Array<{ type: string; [key: string]: unknown }>;
-		};
-
-		if (!payload?.components?.length) {
-			this.logger.warn('[AgentChatBridge] rich_interaction has no components');
-			return;
-		}
-
-		try {
-			const card = await this.componentMapper.toCard(
-				payload as {
-					title?: string;
-					message?: string;
-					components: Array<{ type: string; [key: string]: unknown }>;
-				},
-				runId,
-				toolCallId,
-				RICH_INTERACTION_RESUME_JSON_SCHEMA,
-				this.getShortenCallback(),
-				this.integration.type,
-			);
-			await thread.post(card);
-		} catch (error) {
-			this.logger.error('[AgentChatBridge] Failed to post rich interaction card', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	// ---------------------------------------------------------------------------
-	// Display-only card handling (no suspension)
-	//
-	// `rich_interaction` returns `{ displayOnly: true }` from its handler when
-	// the card has no actionable components. The bridge stashes the tool-call
-	// input on the way down (carrying the components) and posts the card when
-	// the matching tool-result arrives carrying the marker. The framework
-	// itself stays free of any chat-rendering semantics.
-	// ---------------------------------------------------------------------------
-
-	private stashRichInteractionInput(chunk: Extract<StreamChunk, { type: 'tool-call' }>): void {
-		if (chunk.toolName !== 'rich_interaction') return;
-		this.richInteractionInputs.set(chunk.toolCallId, chunk.input);
-	}
-
-	private isRichInteractionDisplayOnly(
-		chunk: Extract<StreamChunk, { type: 'tool-result' }>,
-	): boolean {
-		if (chunk.toolName !== 'rich_interaction') return false;
-		const out = chunk.output;
-		return (
-			typeof out === 'object' &&
-			out !== null &&
-			'displayOnly' in out &&
-			(out as { displayOnly: unknown }).displayOnly === true
-		);
 	}
 
 	/**
-	 * Render the stashed `rich_interaction` input as a display-only card. No
-	 * resume callback can fire (no buttons/selects), so we pass a placeholder
-	 * runId — the unique IDs the component mapper builds for interactive
-	 * elements never get used.
+	 * Where the platform can address one user, the card goes to them alone, so
+	 * the rest of the conversation never sees it. Everything else falls back to
+	 * the thread: a card nobody receives leaves the run parked with nothing to
+	 * click.
 	 */
-	private async handleDisplayOnly(
-		chunk: Extract<StreamChunk, { type: 'tool-result' }>,
+	private async deliverSuspensionCard(
 		thread: Thread,
+		card: CardElement,
+		actingUserId?: string,
 	): Promise<void> {
-		const { toolCallId } = chunk;
-		const input = this.richInteractionInputs.get(toolCallId);
-		this.richInteractionInputs.delete(toolCallId);
-
-		const cardPayload = input as {
-			title?: string;
-			message?: string;
-			components?: Array<{ type: string; [key: string]: unknown }>;
-		};
-
-		if (!cardPayload?.components?.length) {
-			this.logger.warn('[AgentChatBridge] display-only rich_interaction has no components', {
-				toolCallId,
-			});
+		if (this.integrationImpl?.targetSuspensionCardAtActingUser && actingUserId) {
+			await postToUserOrThread(thread, actingUserId, { card });
 			return;
 		}
-
-		try {
-			const card = await this.componentMapper.toCard(
-				cardPayload as {
-					title?: string;
-					message?: string;
-					components: Array<{ type: string; [key: string]: unknown }>;
-				},
-				'',
-				toolCallId,
-				RICH_INTERACTION_RESUME_JSON_SCHEMA,
-				this.getShortenCallback(),
-				this.integration.type,
-			);
-			await thread.post({ card });
-		} catch (error) {
-			this.logger.error('[AgentChatBridge] Failed to post display card', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
+		await thread.post({ card });
 	}
 
 	// ---------------------------------------------------------------------------
@@ -770,12 +1094,13 @@ export class AgentChatBridge {
 	private async handleMessage(
 		chunk: Extract<StreamChunk, { type: 'message' }>,
 		thread: Thread,
-	): Promise<void> {
+		throwOnDeliveryError = false,
+	): Promise<boolean> {
 		const agentMessage: AgentMessage = chunk.message;
 
 		// AgentMessage is a union. LLM messages (Message) have a `content` array
 		// of typed content parts. Extract only text parts for display.
-		if (!('content' in agentMessage) || !Array.isArray(agentMessage.content)) return;
+		if (!('content' in agentMessage) || !Array.isArray(agentMessage.content)) return false;
 
 		const textParts = agentMessage.content
 			.filter(
@@ -786,361 +1111,45 @@ export class AgentChatBridge {
 		const textToPost = textParts.join('');
 
 		// Skip messages with no displayable text (e.g. tool-call-only messages)
-		if (!textToPost.trim()) return;
+		if (!textToPost.trim()) return false;
 
 		try {
 			await thread.post(textToPost);
+			return true;
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post message chunk', {
 				agentId: this.agentId,
 				threadId: thread.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
-		}
-	}
-
-	// ---------------------------------------------------------------------------
-	// Button interaction handling (HITL resume)
-	// ---------------------------------------------------------------------------
-
-	/** Parsed result from an action ID. */
-	private parseActionId(
-		actionId: string,
-		value: string | undefined,
-	): { runId: string; toolCallId: string; resumeData: unknown } | null {
-		if (actionId.startsWith('ri-sel:')) {
-			const parts = actionId.split(':');
-			if (parts.length < 4) {
-				this.logger.warn('[AgentChatBridge] Malformed ri-sel action ID', { actionId });
-				return null;
-			}
-			return {
-				runId: parts[2],
-				toolCallId: parts.slice(3).join(':'),
-				resumeData: { type: 'select', id: parts[1], value },
-			};
-		}
-
-		if (actionId.startsWith('resume:')) {
-			const parts = actionId.split(':');
-			if (parts.length < 4) {
-				this.logger.warn('[AgentChatBridge] Malformed action ID', { actionId });
-				return null;
-			}
-			let resumeData: unknown;
-			try {
-				resumeData = JSON.parse(value ?? '');
-			} catch {
-				resumeData = { value };
-			}
-			return { runId: parts[1], toolCallId: parts.slice(2, -1).join(':'), resumeData };
-		}
-
-		return null;
-	}
-
-	/**
-	 * Resolve short callback keys when the platform uses them (e.g. Telegram).
-	 * Returns the resolved `{ actionId, value }` or `null` if expired/missing.
-	 */
-	private async resolveCallbackData(
-		actionId: string,
-		value: string | undefined,
-		thread: Thread<unknown, unknown>,
-	): Promise<{ actionId: string; value: string | undefined } | null> {
-		if (!this.callbackStore) return { actionId, value };
-
-		const resolved = await this.callbackStore.resolve(actionId);
-		if (!resolved) {
-			this.logger.warn('[AgentChatBridge] Callback key not found or expired', { actionId });
-			await thread.post(
-				'This action is no longer available. The link may have expired or already been used.',
-			);
-			return null;
-		}
-		return { actionId: resolved.actionId, value: resolved.value };
-	}
-
-	/**
-	 * Delete the card message and apply platform-specific workarounds before
-	 * resuming the agent.
-	 */
-	private async cleanUpBeforeResume(event: ActionEvent): Promise<void> {
-		try {
-			await event.adapter.deleteMessage(event.threadId, event.messageId);
-		} catch (deleteError) {
-			this.logger.warn('[AgentChatBridge] Failed to delete card message', {
-				error: deleteError instanceof Error ? deleteError.message : String(deleteError),
-			});
-		}
-	}
-
-	/**
-	 * Guard against double resumption, then resume the agent and stream the
-	 * response back into the thread.
-	 */
-	private async executeResume(
-		thread: Thread<unknown, unknown>,
-		runId: string,
-		toolCallId: string,
-		resumeData: unknown,
-	): Promise<void> {
-		if (this.activeResumedRuns.has(runId)) {
-			this.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
-			await thread.post('This action has already been handled');
-			return;
-		}
-
-		this.activeResumedRuns.add(runId);
-		try {
-			await this.startThinkingStatus(thread);
-			const stream = this.agentService.resumeForChat({
-				agentId: this.agentId,
-				projectId: this.n8nProjectId,
-				runId,
-				toolCallId,
-				resumeData,
-				integrationType: this.integration.type,
-			});
-			await this.consumeStream(stream, thread as Thread);
-		} finally {
-			this.activeResumedRuns.delete(runId);
-		}
-	}
-
-	private async startThinkingStatus(
-		thread: Thread<unknown, unknown>,
-		slackThreadContext?: SlackThreadContext,
-		statusRetrySignal?: AbortSignal,
-	): Promise<void> {
-		if (this.integration.type !== 'slack') return;
-
-		if (slackThreadContext && !slackThreadContext.hasRealThreadTs) {
-			this.setSlackAssistantStatus(slackThreadContext, statusRetrySignal);
-			return;
-		}
-
-		try {
-			await thread.startTyping(SLACK_THINKING_STATUS);
-		} catch (error) {
-			this.logger.warn('[AgentChatBridge] Failed to set Slack assistant status', {
-				agentId: this.agentId,
-				threadId: thread.id,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	private setSlackAssistantStatus(
-		context: SlackThreadContext,
-		statusRetrySignal?: AbortSignal,
-	): void {
-		const adapter = this.getSlackAssistantStatusAdapter();
-		if (!adapter) return;
-
-		void this.setSlackAssistantStatusWithRetry(adapter, context, statusRetrySignal);
-	}
-
-	private async setSlackAssistantStatusWithRetry(
-		adapter: SlackAssistantStatusAdapter,
-		context: SlackThreadContext,
-		statusRetrySignal?: AbortSignal,
-	): Promise<void> {
-		try {
-			await adapter.setAssistantStatus(context.channelId, context.threadTs, SLACK_THINKING_STATUS, [
-				SLACK_THINKING_STATUS,
-			]);
-			return;
-		} catch (error) {
-			if (getSlackErrorCode(error) !== 'invalid_thread_ts') {
-				this.logger.warn('[AgentChatBridge] Failed to set Slack assistant status', {
-					agentId: this.agentId,
-					channelId: context.channelId,
-					threadTs: context.threadTs,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				return;
-			}
-		}
-
-		if (!(await sleep(SLACK_STATUS_RETRY_DELAY_MS, statusRetrySignal))) return;
-
-		try {
-			await adapter.setAssistantStatus(context.channelId, context.threadTs, SLACK_THINKING_STATUS, [
-				SLACK_THINKING_STATUS,
-			]);
-		} catch (error) {
-			const errorCode = getSlackErrorCode(error);
-			const logPayload = {
-				agentId: this.agentId,
-				channelId: context.channelId,
-				threadTs: context.threadTs,
-				error: error instanceof Error ? error.message : String(error),
-				...(errorCode ? { errorCode } : {}),
-			};
-			if (errorCode === 'invalid_thread_ts') {
-				this.logger.debug(
-					'[AgentChatBridge] Slack assistant status unavailable for thread',
-					logPayload,
-				);
-				return;
-			}
-			this.logger.warn('[AgentChatBridge] Failed to set Slack assistant status', logPayload);
-		}
-	}
-
-	private getSlackThreadContext(message: Message<unknown>): SlackThreadContext | undefined {
-		if (this.integration.type !== 'slack') return undefined;
-
-		const raw = message.raw;
-		if (!isRecord(raw)) return undefined;
-
-		const channelId = stringValue(raw.channel);
-		const realThreadTs = stringValue(raw.thread_ts);
-		const threadTs = realThreadTs ?? stringValue(raw.ts);
-		if (!channelId || !threadTs) return undefined;
-
-		return {
-			channelId,
-			threadTs,
-			hasRealThreadTs: realThreadTs !== undefined,
-		};
-	}
-
-	private getSlackAssistantStatusAdapter(): SlackAssistantStatusAdapter | undefined {
-		const adapter = this.chat.getAdapter('slack');
-		return isSlackAssistantStatusAdapter(adapter) ? adapter : undefined;
-	}
-
-	private async updateLatestMessageContext(
-		threadId: string,
-		resourceId: string,
-		thread: Thread<unknown, unknown>,
-		options: {
-			messageId?: string;
-			interactingUserId?: string;
-			agentUserId?: string;
-			subject?: IntegrationMessageSubject;
-		} = {},
-	): Promise<IntegrationMessageContext | undefined> {
-		if (!this.messageContextStore) return undefined;
-
-		const integrationConnectionId = buildIntegrationConnectionId(this.integration);
-		const previousContext = await this.getPreviousContext(threadId, integrationConnectionId);
-		const agentUserId = options.agentUserId ?? previousContext?.agentUserId;
-		const context: IntegrationMessageContext = {
-			integrationConnectionId,
-			platform: this.integration.type,
-			target: {
-				type: 'thread',
-				threadId: thread.id,
-				channelId: thread.channelId,
-			},
-			...(options.messageId ? { messageId: options.messageId } : {}),
-			...(options.interactingUserId ? { interactingUserId: options.interactingUserId } : {}),
-			...(agentUserId ? { agentUserId } : {}),
-			...(options.subject ? { subject: options.subject } : {}),
-			...(!options.subject && previousContext?.subject ? { subject: previousContext.subject } : {}),
-			updatedAt: new Date().toISOString(),
-		};
-
-		try {
-			await this.messageContextStore.setLatest(threadId, resourceId, context);
-			return context;
-		} catch (error) {
-			this.logger.warn('[AgentChatBridge] Failed to update latest message context', {
-				agentId: this.agentId,
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return undefined;
+			if (throwOnDeliveryError) throw error;
+			return false;
 		}
 	}
 
 	private getPlatformAgentContext(): PlatformAgentContext {
-		if (this.integration.type !== 'slack') return {};
-		const adapter = this.chat.getAdapter(this.integration.type);
-		if (!isRecord(adapter)) return {};
-		const agentUserId = stringValue(adapter.botUserId);
-		return agentUserId ? { agentUserId } : {};
+		return this.integrationImpl?.getPlatformAgentContext?.(this.chat) ?? {};
+	}
+
+	/** Keep labelled-link URLs because the Chat SDK plain-text projection removes them. */
+	private async getInboundText(message: Message): Promise<string> {
+		if (!message.formatted) return message.text;
+		const { isLinkNode, text, toPlainText, walkAst } = await loadChatSdk();
+		// Keep raw platform markdown when the adapter does not use the SDK projection.
+		if (toPlainText(message.formatted) !== message.text) return message.text;
+		const formatted = walkAst(structuredClone(message.formatted), (node) => {
+			if (!isLinkNode(node)) return node;
+			const label = toPlainText({ type: 'root', children: [node] });
+			// Keep GFM autolinks because their labels already contain the URL.
+			if ([label, `http://${label}`, `mailto:${label}`].includes(node.url)) return node;
+			return text(`[${label}](${node.url})`);
+		});
+		return toPlainText(formatted);
 	}
 
 	private prepareInboundText(text: string | undefined, context: PlatformAgentContext): string {
 		const trimmed = text?.trim() ?? '';
-		if (this.integration.type !== 'slack' || !context.agentUserId) return trimmed;
-		return stripSlackSelfMention(trimmed, context.agentUserId);
-	}
-
-	private async getPreviousContext(
-		threadId: string,
-		integrationConnectionId: string,
-	): Promise<IntegrationMessageContext | undefined> {
-		if (!this.messageContextStore) return undefined;
-		try {
-			const previousContext = await this.messageContextStore.getLatest(threadId);
-			if (previousContext?.integrationConnectionId !== integrationConnectionId) {
-				return undefined;
-			}
-			return previousContext;
-		} catch (error) {
-			this.logger.warn('[AgentChatBridge] Failed to read previous message context', {
-				agentId: this.agentId,
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return undefined;
-		}
-	}
-
-	private async resolveMessageSubject(
-		message: Message<unknown>,
-	): Promise<IntegrationMessageSubject | undefined> {
-		try {
-			return toIntegrationMessageSubject(await message.subject);
-		} catch (error) {
-			this.logger.debug(
-				`[AgentChatBridge] Failed to fetch message subject: ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-			);
-			return undefined;
-		}
-	}
-
-	/**
-	 * Handle a button/select action. Action IDs use one of two prefixes:
-	 * - `ri-sel:{selectId}:{runId}:{toolCallId}` — rich interaction select
-	 * - `resume:{runId}:{toolCallId}:{index}` — generic per-tool resume button
-	 */
-	private async handleAction(event: ActionEvent): Promise<void> {
-		const { thread } = event;
-
-		if (!thread) {
-			this.logger.warn('[AgentChatBridge] Thread is not set for event', {
-				threadId: event.threadId,
-				actionId: event.actionId,
-			});
-			return;
-		}
-
-		const callbackData = await this.resolveCallbackData(event.actionId, event.value, thread);
-		if (!callbackData) return;
-
-		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
-		if (!parsed) return;
-		// Persist the interacting user / messageId into the thread's message
-		// context so tools running on resume can read it via the message
-		// context store — no need to bolt a duplicate copy onto resumeData.
-		const platformThreadId = this.resolvePlatformThreadId(thread);
-		const threadId = this.toAgentThreadId(platformThreadId);
-		await this.updateLatestMessageContext(threadId.id, event.user.userId, thread, {
-			messageId: event.messageId,
-			interactingUserId: event.user.userId,
-			...this.getPlatformAgentContext(),
-		});
-
-		await this.cleanUpBeforeResume(event);
-		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);
+		return this.integrationImpl?.prepareInboundText?.(trimmed, context) ?? trimmed;
 	}
 
 	// ---------------------------------------------------------------------------
@@ -1150,9 +1159,9 @@ export class AgentChatBridge {
 	private async postErrorToThread(
 		thread: Thread<unknown, unknown> | null,
 		error: unknown,
+		throwOnDeliveryError = false,
 	): Promise<void> {
 		const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-
 		this.logger.error('[AgentChatBridge] Error in handler', {
 			agentId: this.agentId,
 			threadId: thread?.id,
@@ -1170,60 +1179,13 @@ export class AgentChatBridge {
 				);
 				return;
 			}
-			await thread.post('⚠️ Something went wrong while processing your request. Please try again.');
+			await thread.post(errorText(error));
 		} catch (postError) {
 			this.logger.error('[AgentChatBridge] Failed to post error message', {
 				agentId: this.agentId,
 				error: postError instanceof Error ? postError.message : String(postError),
 			});
+			if (throwOnDeliveryError) throw postError;
 		}
 	}
-}
-
-function stripSlackSelfMention(text: string, userId: string): string {
-	const escapedUserId = escapeRegExp(userId);
-	return text
-		.replace(new RegExp(`(^|\\s)<@!?${escapedUserId}(?:\\|[^>]+)?>`, 'gi'), '$1')
-		.replace(new RegExp(`(^|\\s)@${escapedUserId}\\b`, 'gi'), '$1')
-		.replace(/\s+/g, ' ')
-		.trim();
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function isSlackAssistantStatusAdapter(value: unknown): value is SlackAssistantStatusAdapter {
-	return isRecord(value) && typeof value.setAssistantStatus === 'function';
-}
-
-function stringValue(value: unknown): string | undefined {
-	return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function getSlackErrorCode(error: unknown): string | undefined {
-	if (!isRecord(error)) return undefined;
-	const data = error.data;
-	if (!isRecord(data)) return undefined;
-	return stringValue(data.error);
-}
-
-async function sleep(ms: number, signal?: AbortSignal): Promise<boolean> {
-	if (signal?.aborted) return false;
-	return await new Promise((resolve) => {
-		const timeout = setTimeout(() => {
-			signal?.removeEventListener('abort', abort);
-			resolve(true);
-		}, ms);
-		const abort = () => {
-			clearTimeout(timeout);
-			signal?.removeEventListener('abort', abort);
-			resolve(false);
-		};
-		signal?.addEventListener('abort', abort, { once: true });
-	});
 }

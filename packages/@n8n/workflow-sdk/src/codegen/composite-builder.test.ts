@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import { buildCompositeTree } from './composite-builder';
 import type {
 	LeafNode,

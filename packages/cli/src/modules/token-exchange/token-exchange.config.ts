@@ -1,4 +1,4 @@
-import { Config, Env } from '@n8n/config';
+import { Config, Env, positiveIntSchema } from '@n8n/config';
 
 @Config
 export class TokenExchangeConfig {
@@ -13,6 +13,9 @@ export class TokenExchangeConfig {
 	/** Maximum lifetime in seconds for an issued token. */
 	@Env('N8N_TOKEN_EXCHANGE_MAX_TOKEN_TTL')
 	maxTokenTtl: number = 900;
+
+	@Env('N8N_TOKEN_EXCHANGE_EXCLUDE_OWNER')
+	excludeOwner: boolean = true;
 
 	/**
 	 * JSON array of trusted key sources for JWT verification.
@@ -29,11 +32,11 @@ export class TokenExchangeConfig {
 	keyRefreshIntervalSeconds: number = 300;
 
 	/** Interval in seconds between JTI cleanup runs. */
-	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_INTERVAL_SECONDS')
+	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_INTERVAL_SECONDS', positiveIntSchema)
 	jtiCleanupIntervalSeconds: number = 60;
 
 	/** Maximum number of expired JTI rows to delete per cleanup run. */
-	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_BATCH_SIZE')
+	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_BATCH_SIZE', positiveIntSchema)
 	jtiCleanupBatchSize: number = 1000;
 
 	/** Maximum number of embed logins per ip per minute. */

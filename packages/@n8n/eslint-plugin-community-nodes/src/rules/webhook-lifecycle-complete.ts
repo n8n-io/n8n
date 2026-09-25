@@ -4,11 +4,11 @@ import {
 	createRule,
 	findClassProperty,
 	findObjectProperty,
+	getPropertyKeyName,
 	isNodeTypeClass,
+	WEBHOOK_LIFECYCLE_METHODS,
+	type WebhookLifecycleMethod,
 } from '../utils/index.js';
-
-const REQUIRED_METHODS = ['checkExists', 'create', 'delete'] as const;
-type RequiredMethod = (typeof REQUIRED_METHODS)[number];
 
 /**
  * Returns true if the description declares webhook endpoints, indicating the
@@ -26,12 +26,7 @@ function hasWebhooksDeclared(descriptionValue: TSESTree.ObjectExpression): boole
 /** Returns true when the property defines a (possibly async) method named `name`. */
 function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string): boolean {
 	if (property.type !== AST_NODE_TYPES.Property) return false;
-	if (property.computed) return false;
-
-	const keyMatches =
-		(property.key.type === AST_NODE_TYPES.Identifier && property.key.name === name) ||
-		(property.key.type === AST_NODE_TYPES.Literal && property.key.value === name);
-	if (!keyMatches) return false;
+	if (getPropertyKeyName(property) !== name) return false;
 
 	return (
 		property.value.type === AST_NODE_TYPES.FunctionExpression ||
@@ -39,8 +34,8 @@ function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string)
 	);
 }
 
-function findMissingMethods(group: TSESTree.ObjectExpression): RequiredMethod[] {
-	return REQUIRED_METHODS.filter(
+function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleMethod[] {
+	return WEBHOOK_LIFECYCLE_METHODS.filter(
 		(method) => !group.properties.some((property) => isMethodProperty(property, method)),
 	);
 }
@@ -105,12 +100,7 @@ export const WebhookLifecycleCompleteRule = createRule({
 					if (groupProperty.type !== AST_NODE_TYPES.Property) continue;
 					if (groupProperty.value.type !== AST_NODE_TYPES.ObjectExpression) continue;
 
-					const groupName =
-						groupProperty.key.type === AST_NODE_TYPES.Identifier
-							? groupProperty.key.name
-							: groupProperty.key.type === AST_NODE_TYPES.Literal
-								? String(groupProperty.key.value)
-								: 'default';
+					const groupName = getPropertyKeyName(groupProperty) ?? 'default';
 
 					const missing = findMissingMethods(groupProperty.value);
 					if (missing.length === 0) continue;

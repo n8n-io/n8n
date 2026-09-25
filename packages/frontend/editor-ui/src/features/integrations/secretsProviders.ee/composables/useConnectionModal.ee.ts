@@ -5,18 +5,16 @@ import {
 	type ConnectionProjectSummary,
 } from '@n8n/api-types';
 import type { IUpdateInformation } from '@/Interface';
-import type { INodeProperties } from 'n8n-workflow';
+import type { DisplayCondition, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import { useSecretsProviderConnection } from './useSecretsProviderConnection.ee';
-import { useRBACStore } from '@/app/stores/rbac.store';
-import { useToast } from '@/app/composables/useToast';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
-import { useSettingsStore } from '@/app/stores/settings.store';
-
 interface UseConnectionModalOptions {
 	providerTypes: Ref<SecretProviderTypeResponse[]>;
 	existingProviderNames?: Ref<string[]>;
@@ -41,7 +39,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const rbacStore = useRBACStore();
 	const toast = useToast();
 	const projectsStore = useProjectsStore();
-	const settingsStore = useSettingsStore();
 
 	// State
 	const providerKey = ref<string | undefined>(options.providerKey?.value);
@@ -67,7 +64,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			visible =
 				visible &&
 				Object.entries(property.displayOptions.show).every(([key, value]) => {
-					return value?.includes(connectionSettings.value[key] as string);
+					return (value as Array<NodeParameterValue | DisplayCondition>)?.includes(
+						connectionSettings.value[key] as string,
+					);
 				});
 		}
 
@@ -166,22 +165,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 	const isEditMode = computed(() => !!providerKey.value);
 
-	const providerTypeOptions = computed(() => {
-		const prvdrTypeOptions = providerTypes.value.map((type) => ({
+	const providerTypeOptions = computed(() =>
+		providerTypes.value.map((type) => ({
 			label: type.displayName,
 			value: type.type,
-		}));
-
-		if (settingsStore.moduleSettings['external-secrets']?.multipleConnections) {
-			// infisical has been deprecated for a long time.
-			// In order to be able to fully remove the code for it
-			// we are no longer showing users the option to create connections to infisical.
-			// Any previously existing connections will keep working for now.
-			return prvdrTypeOptions.filter((opt) => opt.value !== 'infisical');
-		}
-
-		return prvdrTypeOptions;
-	});
+		})),
+	);
 
 	const settingsUpdated = computed(() => {
 		return Object.keys(connectionSettings.value).some((key) => {

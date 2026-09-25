@@ -37,7 +37,7 @@ const effectiveVariant = computed(() => {
 const computedIconSize = computed((): IconSize | undefined => {
 	if (props.iconSize) return props.iconSize;
 	if (effectiveSize.value === 'xsmall') return 'xsmall';
-	return effectiveSize.value as IconSize;
+	return effectiveSize.value;
 });
 
 const componentTag = computed(() => {
@@ -95,10 +95,10 @@ const handleClick = (event: MouseEvent) => {
 		:disabled="componentTag === 'button' ? isDisabled || undefined : undefined"
 		:aria-disabled="isDisabled || undefined"
 		:aria-busy="loading || undefined"
-		:tabindex="componentTag === 'a' && isDisabled ? -1 : undefined"
+		:tabindex="componentTag === 'a' && isDisabled ? -1 : attrs.tabindex"
 		:class="classes"
 		:data-icon-only="iconOnly ? 'true' : undefined"
-		aria-live="polite"
+		:aria-live="attrs['aria-live'] ?? 'polite'"
 		@click="handleClick"
 	>
 		<Transition name="n8n-button-fade">
@@ -110,7 +110,7 @@ const handleClick = (event: MouseEvent) => {
 		</Transition>
 
 		<div :class="$style['button-inner']">
-			<slot name="icon">
+			<slot v-if="!loading" name="icon">
 				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
 			</slot>
 
@@ -254,12 +254,12 @@ const handleClick = (event: MouseEvent) => {
 		--button--color--background-hover: color-mix(
 			in srgb,
 			var(--button--color--background),
-			var(--background--hover)
+			light-dark(var(--color--neutral-black), var(--color--neutral-white)) 5%
 		);
 		--button--color--background-active: color-mix(
 			in srgb,
 			var(--button--color--background),
-			var(--background--active)
+			light-dark(var(--color--neutral-black), var(--color--neutral-white)) 10%
 		);
 		--button--shadow: var(--shadow--xs);
 		--button--shadow--hover: var(--shadow--xs);
@@ -391,6 +391,7 @@ const handleClick = (event: MouseEvent) => {
 }
 
 .button-inner {
+	flex: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;

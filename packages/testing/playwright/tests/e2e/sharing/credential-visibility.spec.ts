@@ -49,10 +49,9 @@ test.describe(
 
 			// Only test project credential should be visible
 			await n8n.ndv.getNodeCredentialsSelect().click();
-			const credentialDropdown = n8n.ndv.getVisiblePopper();
-			await expect(credentialDropdown.getByText(testCredName)).toBeVisible();
-			await expect(credentialDropdown.getByText(personalCredName)).toBeHidden();
-			await expect(credentialDropdown.getByText(devCredName)).toBeHidden();
+			await expect(n8n.ndv.credentials.getOptionByText(testCredName)).toBeVisible();
+			await expect(n8n.ndv.credentials.getOptionByText(personalCredName)).toBeHidden();
+			await expect(n8n.ndv.credentials.getOptionByText(devCredName)).toBeHidden();
 		});
 
 		test('should show personal and shared credentials for members', async ({ n8n, api }) => {
@@ -93,9 +92,8 @@ test.describe(
 
 			// Both own credential and shared credential should be visible
 			await memberN8n.ndv.getNodeCredentialsSelect().click();
-			const credentialDropdown = memberN8n.ndv.getVisiblePopper();
-			await expect(credentialDropdown.getByText(ownerCredName)).toBeVisible();
-			await expect(credentialDropdown.getByText(memberCredName)).toBeVisible();
+			await expect(memberN8n.ndv.credentials.getOptionByText(ownerCredName)).toBeVisible();
+			await expect(memberN8n.ndv.credentials.getOptionByText(memberCredName)).toBeVisible();
 		});
 
 		test('should only show own credentials in shared workflow for members', async ({
@@ -154,9 +152,8 @@ test.describe(
 
 			// Member should see their own credential but NOT the owner's unshared credential
 			await memberN8n.ndv.getNodeCredentialsSelect().click();
-			const credentialDropdown = memberN8n.ndv.getVisiblePopper();
-			await expect(credentialDropdown.getByText(memberCredName)).toBeVisible();
-			await expect(credentialDropdown.getByText(ownerCredName)).toBeHidden();
+			await expect(memberN8n.ndv.credentials.getOptionByText(memberCredName)).toBeVisible();
+			await expect(memberN8n.ndv.credentials.getOptionByText(ownerCredName)).toBeHidden();
 		});
 
 		test('should show owner and workflow creator credentials for global owner in shared workflows', async ({
@@ -210,7 +207,7 @@ test.describe(
 
 			// Global owner should see both their own credential and the workflow creator's credential
 			await n8n.ndv.getNodeCredentialsSelect().click();
-			const credentialOptions = n8n.ndv.getVisiblePopper().locator('li');
+			const credentialOptions = n8n.ndv.credentials.getDropdownOptions();
 			await expect(credentialOptions.filter({ hasText: ownerCredName })).toBeVisible();
 			await expect(credentialOptions.filter({ hasText: memberCredName })).toBeVisible();
 		});
@@ -240,7 +237,7 @@ test.describe(
 
 			// Owner should see member's credential (global owner privilege)
 			await n8n.ndv.getNodeCredentialsSelect().click();
-			const credentialOptions = n8n.ndv.getVisiblePopper().locator('li');
+			const credentialOptions = n8n.ndv.credentials.getDropdownOptions();
 			await expect(credentialOptions.filter({ hasText: memberCredName })).toBeVisible();
 		});
 	},

@@ -3,7 +3,8 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
-import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 
 import { RedisClientService } from '@/services/redis-client.service';
 
@@ -165,20 +166,13 @@ export class RedisInstanceStorage implements InstanceStorage {
 	}
 
 	async cleanupStaleMembers(): Promise<number> {
-		try {
-			const removed: unknown = await this.redisClient.eval(
-				CLEANUP_SCRIPT,
-				1,
-				this.membershipSetKey(),
-			);
+		const removed: unknown = await this.redisClient.eval(
+			CLEANUP_SCRIPT,
+			1,
+			this.membershipSetKey(),
+		);
 
-			return typeof removed === 'number' ? removed : 0;
-		} catch (error) {
-			this.logger.warn('Failed to cleanup stale members', {
-				error: ensureError(error).message,
-			});
-			return 0;
-		}
+		return typeof removed === 'number' ? removed : 0;
 	}
 
 	async destroy(): Promise<void> {

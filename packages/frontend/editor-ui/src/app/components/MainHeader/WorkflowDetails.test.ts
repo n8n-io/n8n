@@ -2,7 +2,6 @@ import WorkflowDetails from '@/app/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestWorkflow } from '@/__tests__/mocks';
-import type { IWorkflowDb } from '@/Interface';
 import {
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
@@ -16,29 +15,45 @@ import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
-import type { Project } from '@/features/collaboration/projects/projects.types';
+import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { shallowRef, computed } from 'vue';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { MCP_JSON_NUDGE_MODAL_KEY } from '@/experiments/mcpJsonNudge/constants';
+import { nodeViewEventBus } from '@/app/event-bus';
+import { telemetry } from '@/app/plugins/telemetry';
 
+const mockMcpNudgeCanShow = vi.hoisted(() => vi.fn(() => true));
+const mockMcpNudgeIsEligibleApartFromExperiment = vi.hoisted(() => vi.fn(() => true));
+const saveAsMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility', () => ({
+	useMcpJsonNudgeEligibility: () => ({
+		canShow: mockMcpNudgeCanShow,
+		isEligibleApartFromExperiment: mockMcpNudgeIsEligibleApartFromExperiment,
+		recordImpression: vi.fn(),
+	}),
+}));
+
+// No workflow route meta on purpose: the menu renders both on workflow-layout
+// routes and in host-embedded editors without a workflow route (e.g. the AI
+// artifact view), so nothing here may depend on route meta.
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: vi.fn().mockReturnValue({
 		params: { workflowId: 'test' },
 		query: { parentFolderId: '1' },
-		meta: {
-			nodeView: true,
-		},
+		meta: {},
 	}),
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
@@ -57,13 +72,14 @@ vi.mock('vue-router', async (importOriginal) => ({
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
+		addEventListener: vi.fn().mockReturnValue(vi.fn()),
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
-	const showToast = vi.fn();
+	const showToast = vi.fn(() => ({ close: vi.fn() }));
 	return {
 		useToast: () => ({
 			showError,
@@ -88,6 +104,30 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({
 		saveCurrentWorkflow: mockSaveCurrentWorkflow,
 	}),
+}));
+
+let mockDependenciesResult:
+	| {
+			dependencies: Array<{ type: string; id: string; name: string; projectId?: string }>;
+			inaccessibleCount: number;
+	  }
+	| undefined;
+
+const fetchDependenciesMock = vi.fn();
+const fetchDependencyCountsMock = vi.fn();
+
+vi.mock('@/app/composables/useDependencies', () => ({
+	useDependencies: () => ({
+		getDependencies: () => mockDependenciesResult,
+		fetchDependencies: fetchDependenciesMock,
+		fetchDependencyCounts: fetchDependencyCountsMock,
+		hasDependencies: () => (mockDependenciesResult?.dependencies.length ?? 0) > 0,
+	}),
+}));
+
+vi.mock('file-saver', () => ({
+	default: saveAsMock,
+	saveAs: saveAsMock,
 }));
 
 const initialState = {
@@ -194,6 +234,8 @@ describe('WorkflowDetails', () => {
 
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
+		mockMcpNudgeCanShow.mockReturnValue(true);
+		mockMcpNudgeIsEligibleApartFromExperiment.mockReturnValue(true);
 		workflowsListStore.workflowsById = {
 			'1': workflow,
 			'123': workflow,
@@ -209,17 +251,18 @@ describe('WorkflowDetails', () => {
 		message = useMessage();
 		toast = useToast();
 		router = useRouter();
+		mockDependenciesResult = undefined;
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('renders workflow name and tags', async () => {
+	it('renders workflow name', async () => {
 		vi.mocked(useRoute).mockReturnValueOnce({
 			query: { parentFolderId: '1' },
 		} as unknown as ReturnType<typeof useRoute>);
-		const { getByTestId, getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				...defaultProps,
 			},
@@ -228,8 +271,6 @@ describe('WorkflowDetails', () => {
 		const workflowNameInput = getByTestId('inline-edit-input');
 
 		expect(workflowNameInput).toHaveValue('Test Workflow');
-		expect(getByText('tag1')).toBeInTheDocument();
-		expect(getByText('tag2')).toBeInTheDocument();
 	});
 
 	it('opens share modal on share button click', async () => {
@@ -251,14 +292,142 @@ describe('WorkflowDetails', () => {
 	});
 
 	describe('Workflow menu', () => {
-		beforeEach(() => {
-			vi.mocked(useRoute).mockReturnValueOnce({
-				meta: {
-					nodeView: true,
+		it('should not show a dependencies entry when the workflow has none', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:read']);
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+
+			expect(queryByTestId('workflow-menu-item-dependencies')).not.toBeInTheDocument();
+		});
+
+		it('should show a dependencies entry and refetch details when the menu opens', async () => {
+			mockDependenciesResult = {
+				dependencies: [{ type: 'workflowCall', id: 'wf-sub', name: 'Sub-Workflow A' }],
+				inaccessibleCount: 0,
+			};
+
+			workflowDocumentStoreRef.value?.setScopes(['workflow:read']);
+			const { getByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			// The lightweight counts load on mount, so the menu knows to show the entry
+			expect(fetchDependencyCountsMock).toHaveBeenCalledWith(['1'], 'workflow');
+
+			await userEvent.click(getByTestId('workflow-menu'));
+
+			// The dependencies entry is a sub-menu; its trigger stands in for its items here
+			expect(getByTestId('workflow-menu-item-dependencies')).toBeInTheDocument();
+			expect(fetchDependenciesMock).toHaveBeenCalledWith(['1'], 'workflow');
+		});
+
+		it('shows the MCP JSON nudge and holds the export and its telemetry until the user continues', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
 				},
-				query: { parentFolderId: '1' },
-				params: { workflowId: 'test' },
-			} as unknown as ReturnType<typeof useRoute>);
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-download'));
+
+			expect(openModalSpy).toHaveBeenCalledWith({
+				name: MCP_JSON_NUDGE_MODAL_KEY,
+				data: { surface: 'export', onContinue: expect.any(Function) },
+			});
+			expect(saveAsMock).not.toHaveBeenCalled();
+			// Connect abandons the export, so it must not be reported as exported yet.
+			expect(trackSpy).not.toHaveBeenCalledWith('User exported workflow', expect.anything());
+
+			const { onContinue } = openModalSpy.mock.calls[0][0].data as { onContinue: () => void };
+			onContinue();
+
+			expect(saveAsMock).toHaveBeenCalledTimes(1);
+			expect(trackSpy).toHaveBeenCalledWith('User exported workflow', { workflow_id: '1' });
+		});
+
+		it('exports immediately when the MCP JSON nudge is not eligible', async () => {
+			mockMcpNudgeCanShow.mockReturnValue(false);
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-download'));
+
+			expect(saveAsMock).toHaveBeenCalledTimes(1);
+			expect(trackSpy).toHaveBeenCalledWith('User exported workflow', { workflow_id: '1' });
+			expect(openModalSpy).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: MCP_JSON_NUDGE_MODAL_KEY }),
+			);
+		});
+
+		it('shows the MCP JSON nudge and holds the file import until the user continues', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			const emitSpy = vi.spyOn(nodeViewEventBus, 'emit');
+			const workflowData = { nodes: [], connections: {} };
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
+				},
+			});
+
+			await userEvent.upload(
+				getByTestId('workflow-import-input'),
+				new File([JSON.stringify(workflowData)], 'workflow.json', { type: 'application/json' }),
+			);
+
+			await vi.waitFor(() =>
+				expect(openModalSpy).toHaveBeenCalledWith({
+					name: MCP_JSON_NUDGE_MODAL_KEY,
+					data: { surface: 'import_file', onContinue: expect.any(Function) },
+				}),
+			);
+			expect(emitSpy).not.toHaveBeenCalledWith('importWorkflowData', expect.anything());
+
+			const { onContinue } = openModalSpy.mock.calls.at(-1)?.[0].data as {
+				onContinue: () => void;
+			};
+			onContinue();
+
+			expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', { data: workflowData });
+		});
+
+		it('imports the file immediately when the MCP JSON nudge is not eligible', async () => {
+			mockMcpNudgeCanShow.mockReturnValue(false);
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			const emitSpy = vi.spyOn(nodeViewEventBus, 'emit');
+			const workflowData = { nodes: [], connections: {} };
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
+				},
+			});
+
+			await userEvent.upload(
+				getByTestId('workflow-import-input'),
+				new File([JSON.stringify(workflowData)], 'workflow.json', { type: 'application/json' }),
+			);
+
+			await vi.waitFor(() =>
+				expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', { data: workflowData }),
+			);
+			expect(openModalSpy).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: MCP_JSON_NUDGE_MODAL_KEY }),
+			);
 		});
 
 		it('should not have workflow duplicate and import when branch is read-only', async () => {
@@ -275,8 +444,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import')).not.toBeInTheDocument();
 		});
 
 		it('should not have workflow duplicate and import when collaboration is read-only', async () => {
@@ -293,8 +461,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import')).not.toBeInTheDocument();
 		});
 
 		it('should have workflow duplicate and import options if permission update is true', async () => {
@@ -308,10 +475,10 @@ describe('WorkflowDetails', () => {
 
 			await userEvent.click(getByTestId('workflow-menu'));
 
-			expect(getByTestId('workflow-menu-item-duplicate')).toBeInTheDocument();
-			expect(getByTestId('workflow-menu-item-import-from-url')).toBeInTheDocument();
-			expect(getByTestId('workflow-menu-item-import-from-file')).toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-share')).toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-duplicate')).not.toHaveClass('disabled');
+			// Import options live in a sub-menu; its trigger stands in for them here
+			expect(getByTestId('workflow-menu-item-import')).not.toHaveClass('disabled');
+			expect(queryByTestId('workflow-menu-item-share')).not.toHaveClass('disabled');
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
@@ -321,9 +488,7 @@ describe('WorkflowDetails', () => {
 			vi.mocked(useRoute)
 				.mockReset()
 				.mockReturnValue({
-					meta: {
-						nodeView: true,
-					},
+					meta: {},
 					query: { parentFolderId: '1', new: 'true' },
 					params: { workflowId: 'test' },
 				} as unknown as ReturnType<typeof useRoute>);
@@ -517,16 +682,11 @@ describe('WorkflowDetails', () => {
 
 		it("should navigate to team project workflows page on 'Archive' for team project workflow", async () => {
 			const teamProjectId = 'team-project-123';
-			const teamWorkflow = {
-				...workflow,
-				homeProject: {
-					id: teamProjectId,
-					name: 'Team Project',
-					type: 'team',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as IWorkflowDb);
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: teamProjectId,
+				name: 'Team Project',
+				type: 'team',
+			} as ProjectSharingData);
 			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
@@ -540,24 +700,20 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(teamWorkflow.id, 'test-checksum');
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: teamProjectId },
 			});
 		});
 
-		it("should navigate to personal workflows page on 'Archive' for personal project workflow", async () => {
-			const personalWorkflow = {
-				...workflow,
-				homeProject: {
-					id: 'personal-project-123',
-					name: 'Personal Project',
-					type: 'personal',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(personalWorkflow as IWorkflowDb);
+		it("should navigate to personal project workflows page on 'Archive' for personal project workflow", async () => {
+			const personalProjectId = 'personal-project-123';
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: personalProjectId,
+				name: 'Personal Project',
+				type: 'personal',
+			} as ProjectSharingData);
 			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
@@ -571,12 +727,10 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(
-				personalWorkflow.id,
-				'test-checksum',
-			);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledWith({
-				name: VIEWS.WORKFLOWS,
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: personalProjectId },
 			});
 		});
 
@@ -622,6 +776,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
 			expect(toast.showToast).toHaveBeenCalledTimes(1);
+			const archiveToast = vi.mocked(toast.showToast).mock.results[0].value;
 			const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
 			expect(toastConfig.message).toContain('archive-toast-delete-permanently-link');
 			expect(toastConfig.onClick).toBeDefined();
@@ -633,6 +788,8 @@ describe('WorkflowDetails', () => {
 				expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
 			});
 			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
+			// Archive toast is dismissed immediately so its stale CTA doesn't linger.
+			expect(archiveToast.close).toHaveBeenCalledTimes(1);
 		});
 
 		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {
@@ -678,17 +835,11 @@ describe('WorkflowDetails', () => {
 
 		it("should navigate to team project workflows page on 'Delete' for team project workflow", async () => {
 			const teamProjectId = 'team-project-456';
-			const teamWorkflow = {
-				...workflow,
-				isArchived: true,
-				homeProject: {
-					id: teamProjectId,
-					name: 'Team Project',
-					type: 'team',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as IWorkflowDb);
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: teamProjectId,
+				name: 'Team Project',
+				type: 'team',
+			} as ProjectSharingData);
 			workflowsListStore.deleteWorkflow.mockResolvedValue(undefined);
 
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
@@ -702,25 +853,20 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-delete'));
 
-			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: teamProjectId },
 			});
 		});
 
-		it("should navigate to personal workflows page on 'Delete' for personal project workflow", async () => {
-			const personalWorkflow = {
-				...workflow,
-				isArchived: true,
-				homeProject: {
-					id: 'personal-project-456',
-					name: 'Personal Project',
-					type: 'personal',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(personalWorkflow as IWorkflowDb);
+		it("should navigate to personal project workflows page on 'Delete' for personal project workflow", async () => {
+			const personalProjectId = 'personal-project-456';
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: personalProjectId,
+				name: 'Personal Project',
+				type: 'personal',
+			} as ProjectSharingData);
 			workflowsListStore.deleteWorkflow.mockResolvedValue(undefined);
 
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
@@ -734,9 +880,10 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-delete'));
 
-			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
 			expect(router.push).toHaveBeenCalledWith({
-				name: VIEWS.WORKFLOWS,
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: personalProjectId },
 			});
 		});
 

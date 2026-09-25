@@ -2,8 +2,11 @@ import type { Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ProjectHeader } from './components/ProjectHeader';
 
 export class ProjectSettingsPage extends BasePage {
+	readonly projectHeader = new ProjectHeader(this.page);
+
 	async goto(projectId: string) {
 		await this.page.goto(`/projects/${projectId}/settings`);
 	}
@@ -62,13 +65,55 @@ export class ProjectSettingsPage extends BasePage {
 		return this.page.getByTestId('project-members-table');
 	}
 
-	async expectTableHasMemberCount(expectedCount: number) {
-		const rows = this.getMembersTable().locator('tbody tr');
-		await expect(rows).toHaveCount(expectedCount);
+	getMemberRows(): Locator {
+		return this.getMembersTable().locator('tbody tr');
+	}
+
+	getMemberRowByEmail(email: string): Locator {
+		// Match the exact email, so `a@x.com` does not also match `ba@x.com`.
+		return this.getMemberRows().filter({ has: this.page.getByText(email, { exact: true }) });
+	}
+
+	/**
+	 * Rows for users who reach the project through a global role. Their access is
+	 * permanent, so the row has no role dropdown and no actions.
+	 */
+	getAlwaysHasAccessRows(): Locator {
+		return this.getMemberRows().filter({
+			has: this.page.getByTestId('project-member-access-label'),
+		});
+	}
+
+	getAccessLabelForRow(row: Locator): Locator {
+		return row.getByTestId('project-member-access-label');
+	}
+
+	async expectRowAlwaysHasAccess(row: Locator) {
+		await expect(this.getAccessLabelForRow(row)).toHaveText('Full access');
+		await expect(this.getMemberRoleDropdownForRow(row)).toHaveCount(0);
+		await expect(row.getByTestId('action-toggle')).toHaveCount(0);
+	}
+
+	getMembersTableHeader(name: string): Locator {
+		return this.getMembersTable().getByText(name);
+	}
+
+	getMemberRoleDropdownForRow(row: Locator): Locator {
+		return row.getByTestId('project-member-role-dropdown');
+	}
+
+	getDangerZoneTitle(): Locator {
+		return this.page.getByText('Danger zone');
+	}
+
+	getDangerZoneDescription(): Locator {
+		return this.page.getByText(
+			'When deleting a project, you can also choose to move all workflows and credentials to another project.',
+		);
 	}
 
 	getTitle() {
-		return this.page.getByTestId('project-name');
+		return this.projectHeader.getProjectName();
 	}
 
 	// Robust value assertions on inner form controls
@@ -101,6 +146,10 @@ export class ProjectSettingsPage extends BasePage {
 	// Icon picker methods
 	getIconPickerButton() {
 		return this.page.getByTestId('icon-picker-button');
+	}
+
+	getIconPickerIcon() {
+		return this.getIconPickerButton().locator('svg');
 	}
 
 	async clickIconPickerButton() {

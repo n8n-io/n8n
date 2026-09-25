@@ -9,6 +9,15 @@
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
+import { assignCredentialToNode, resolveCredentialForApply } from './credential-utils';
+import { reconcileSimulationPlan } from './reconcile-simulation-plan';
+import { buildCredentialMap } from './resolve-credentials';
+import {
+	describeSavedPublishState,
+	savedWorkflowStateSchema,
+	type SavedWorkflowState,
+} from './saved-workflow-state';
+import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { OrchestrationContext } from '../../types';
 
 export const applyWorkflowCredentialsInputSchema = z.object({
@@ -27,6 +36,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 		.output(
 			z.object({
 				success: z.boolean(),
+				...savedWorkflowStateSchema.shape,
 				appliedNodes: z.array(z.string()).optional(),
 				error: z.string().optional(),
 			}),
@@ -45,7 +55,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 			}
 
 			const { mockedCredentialsByNode } = buildOutcome;
-			const { credentialService, workflowService } = context.domainContext;
+			const { workflowService } = context.domainContext;
 
 			// Load the workflow
 			let json;
@@ -62,23 +72,18 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				const mockedTypes = mockedCredentialsByNode[nodeName];
 				if (!mockedTypes?.length) continue;
 
-				node.credentials ??= {};
+				let credentialApplied = false;
 
 				for (const credType of mockedTypes) {
 					const credId = input.credentials[credType];
 					if (!credId) continue;
 
-					try {
-						const credDetail = await credentialService.get(credId);
-						node.credentials[credType] = { id: credDetail.id, name: credDetail.name };
-					} catch {
-						return {
-							success: false,
-							error: `Credential ${credId} for type ${credType} no longer exists.`,
-						};
-					}
+					const resolved = await resolveCredentialForApply(credType, credId, context.domainContext);
+					if (!resolved.resolved) return { success: false, error: resolved.error };
+					assignCredentialToNode(node, credType, resolved.credential);
+					credentialApplied = true;
 				}
-				appliedNodes.push(nodeName);
+				if (credentialApplied) appliedNodes.push(nodeName);
 			}
 
 			if (appliedNodes.length === 0) {
@@ -86,8 +91,14 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 			}
 
 			// Save the workflow with applied credentials
+			let savedState: SavedWorkflowState;
 			try {
-				await workflowService.updateFromWorkflowJSON(input.workflowId, json);
+				const saved = await workflowService.updateFromWorkflowJSON(input.workflowId, json);
+				savedState = describeSavedPublishState(saved);
+				await refreshWorkflowSourceFileBindingFromSave(context.domainContext, input.workflowId, {
+					versionId: saved.versionId,
+					checksum: saved.checksum,
+				});
 			} catch (error) {
 				return {
 					success: false,
@@ -95,15 +106,30 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				};
 			}
 
-			// Clear verification context from the build outcome
-			await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
-				mockedCredentialsByNode: undefined,
-				verificationPinData: undefined,
-				mockedNodeNames: undefined,
-				mockedCredentialTypes: undefined,
-			});
+			// Refresh the simulation plan so the next verification executes the
+			// now-credentialed nodes instead of replaying the build-time mock.
+			// Best-effort: verify-built-workflow reconciles again on its own.
+			try {
+				const availableCredentials = await buildCredentialMap(
+					context.domainContext.credentialService,
+				);
+				const patch = await reconcileSimulationPlan({
+					buildOutcome,
+					workflow: json,
+					availableCredentials,
+					fallbackModelConfig: context.modelId,
+				});
+				if (patch) {
+					await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
+						...patch,
+						verificationPinData: undefined,
+					});
+				}
+			} catch {
+				// intentional: plan refresh is advisory
+			}
 
-			return { success: true, appliedNodes };
+			return { success: true, ...savedState, appliedNodes };
 		})
 		.build();
 }
