@@ -1,3 +1,4 @@
+import type { CreateCredentialDto } from '@n8n/api-types';
 import type { APIResponse } from '@playwright/test';
 import flatted from 'flatted';
 import { nanoid } from 'nanoid';
@@ -9,6 +10,10 @@ export const NO_OP = { type: 'n8n-nodes-base.noOp', name: 'No Operation, do noth
 export const SET = { type: 'n8n-nodes-base.set', name: 'Edit Fields' };
 export const POSTGRES = { type: 'n8n-nodes-base.postgres', name: 'Postgres' };
 export const SCHEDULE_TRIGGER_NAME = 'Schedule Trigger';
+
+/** A credential type is policed by its bare name, unlike a package-qualified node type. */
+export const POSTGRES_CREDENTIAL = 'postgres';
+export const HEADER_AUTH_CREDENTIAL = 'httpHeaderAuth';
 
 export interface PolicyViolation {
 	kind: string;
@@ -57,7 +62,8 @@ function postgresNode(credential: { id: string; name: string }): INode {
 		type: POSTGRES.type,
 		typeVersion: 2.6,
 		position: [220, 0],
-		parameters: {},
+		// A valid operation, so a publish is refused by policy only, not by missing parameters.
+		parameters: { operation: 'executeQuery', query: 'SELECT 1' },
 		credentials: { postgres: credential },
 	};
 }
@@ -82,6 +88,47 @@ export function postgresWorkflow(credential: { id: string; name: string }): Part
 		name: `Node type policy ${nanoid(8)}`,
 		nodes: [scheduleTrigger(), postgresNode(credential)],
 		connections: {},
+	};
+}
+
+export function webhookToPostgresWorkflow(credential: {
+	id: string;
+	name: string;
+}): Partial<IWorkflowBase> {
+	const webhookId = nanoid();
+	return {
+		name: `Credential type policy ${nanoid(8)}`,
+		nodes: [
+			{
+				id: nanoid(),
+				name: 'Webhook',
+				webhookId,
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+				position: [0, 0],
+				parameters: { path: webhookId, options: {} },
+			},
+			postgresNode(credential),
+		],
+		connections: { Webhook: { main: [[{ node: POSTGRES.name, type: 'main', index: 0 }]] } },
+	};
+}
+
+export function postgresCredential(projectId: string): CreateCredentialDto {
+	return {
+		name: `Postgres ${nanoid(8)}`,
+		type: POSTGRES_CREDENTIAL,
+		data: { host: 'localhost', database: 'n8n', user: 'n8n', password: 'not-used', port: 5432 },
+		projectId,
+	};
+}
+
+export function headerAuthCredential(projectId: string): CreateCredentialDto {
+	return {
+		name: `Header auth ${nanoid(8)}`,
+		type: HEADER_AUTH_CREDENTIAL,
+		data: { name: 'X-Test', value: 'not-used' },
+		projectId,
 	};
 }
 

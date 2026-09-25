@@ -44,10 +44,17 @@ export class TypePolicyApiHelper<K extends TypePolicyKind> {
 	constructor(
 		private readonly api: ApiHelpers,
 		private readonly kind: K,
+		private readonly publicApiKey?: string,
 	) {}
 
+	/** The same helper, writing through `/api/v1` with a key that holds the manage scope. */
+	viaPublicApi(apiKey: string): TypePolicyApiHelper<K> {
+		return new TypePolicyApiHelper(this.api, this.kind, apiKey);
+	}
+
 	async setInstancePolicy(policy: { rules: PolicyRule[]; defaultAction: PolicyAction }) {
-		const path = `/rest/${ENDPOINTS[this.kind].policies}/instance`;
+		const { policies } = ENDPOINTS[this.kind];
+		const path = this.publicApiKey ? `/api/v1/${policies}/instance` : `/rest/${policies}/instance`;
 		const { version } = await this.read(path);
 		await this.write(path, { ...policy, version });
 	}
@@ -56,7 +63,10 @@ export class TypePolicyApiHelper<K extends TypePolicyKind> {
 		projectId: string,
 		policy: { rules: NonDelegatingPolicyRule[]; defaultAction: NonDelegatingPolicyAction },
 	) {
-		const path = `/rest/projects/${projectId}/${ENDPOINTS[this.kind].policies}/project`;
+		const { policies } = ENDPOINTS[this.kind];
+		const path = this.publicApiKey
+			? `/api/v1/${policies}/projects/${projectId}`
+			: `/rest/projects/${projectId}/${policies}/project`;
 		const { version } = await this.read(path);
 		await this.write(path, { ...policy, version });
 	}
@@ -78,8 +88,12 @@ export class TypePolicyApiHelper<K extends TypePolicyKind> {
 		return result.data ?? result;
 	}
 
+	private get headers(): Record<string, string> {
+		return this.publicApiKey ? { 'X-N8N-API-KEY': this.publicApiKey } : {};
+	}
+
 	private async read(path: string): Promise<EffectivePolicy> {
-		const response = await this.api.request.get(path);
+		const response = await this.api.request.get(path, { headers: this.headers });
 
 		if (!response.ok()) {
 			throw new TestError(`GET ${path} failed (${response.status()}): ${await response.text()}`);
@@ -90,7 +104,7 @@ export class TypePolicyApiHelper<K extends TypePolicyKind> {
 	}
 
 	private async write(path: string, data: EffectivePolicy) {
-		const response = await this.api.request.put(path, { data });
+		const response = await this.api.request.put(path, { data, headers: this.headers });
 
 		if (!response.ok()) {
 			throw new TestError(`PUT ${path} failed (${response.status()}): ${await response.text()}`);

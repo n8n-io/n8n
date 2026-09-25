@@ -50,7 +50,9 @@ test.describe(
 			await api.enableFeature('typeAvailabilityPolicies');
 			await api.enableProjectFeatures();
 			await api.setMaxTeamProjectsQuota(-1);
+			// Specs share one instance in a local run, so clear the other kind as well.
 			await api.nodeTypePolicies.resetInstancePolicy();
+			await api.credentialTypePolicies.resetInstancePolicy();
 		});
 
 		test.describe('an instance block on an existing workflow', () => {
