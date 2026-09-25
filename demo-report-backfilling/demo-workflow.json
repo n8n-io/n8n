@@ -1,0 +1,29 @@
+[
+	{
+		"id": "demoWorkflow0001",
+		"name": "Nightly CRM sync",
+		"active": false,
+		"nodes": [
+			{
+				"parameters": { "rule": { "interval": [{ "field": "hours" }] } },
+				"id": "0b6a3d4e-1f3c-4a8e-9a55-2f1c1b7d0001",
+				"name": "Every hour",
+				"type": "n8n-nodes-base.scheduleTrigger",
+				"typeVersion": 1.2,
+				"position": [0, 0]
+			},
+			{
+				"parameters": {},
+				"id": "0b6a3d4e-1f3c-4a8e-9a55-2f1c1b7d0002",
+				"name": "Sync",
+				"type": "n8n-nodes-base.noOp",
+				"typeVersion": 1,
+				"position": [220, 0]
+			}
+		],
+		"connections": {
+			"Every hour": { "main": [[{ "node": "Sync", "type": "main", "index": 0 }]] }
+		},
+		"settings": {}
+	}
+]
