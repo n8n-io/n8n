@@ -254,7 +254,7 @@ export class OwnershipService {
 	}
 
 	async hasInstanceOwner() {
-		return await this.userRepository.hasActiveInstanceOwner();
+		return await this.userRepository.hasClaimedInstanceOwner();
 	}
 
 	async setupOwner(

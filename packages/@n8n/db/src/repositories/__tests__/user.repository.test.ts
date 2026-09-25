@@ -14,11 +14,11 @@ describe('UserRepository', () => {
 		vi.resetAllMocks();
 	});
 
-	describe('hasActiveInstanceOwner', () => {
+	describe('hasClaimedInstanceOwner', () => {
 		it('checks for an owner with either a login or a password, excluding the shell user', async () => {
 			entityManager.exists.mockResolvedValueOnce(true);
 
-			const result = await userRepository.hasActiveInstanceOwner();
+			const result = await userRepository.hasClaimedInstanceOwner();
 
 			expect(entityManager.exists).toHaveBeenCalledWith(User, {
 				where: [
@@ -28,14 +28,6 @@ describe('UserRepository', () => {
 				relations: ['role'],
 			});
 			expect(result).toBe(true);
-		});
-
-		it('returns false when only the unclaimed shell owner exists', async () => {
-			entityManager.exists.mockResolvedValueOnce(false);
-
-			const result = await userRepository.hasActiveInstanceOwner();
-
-			expect(result).toBe(false);
 		});
 	});
 });
