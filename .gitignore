@@ -8,6 +8,7 @@ dist
 coverage
 coverage-by-spec
 coverage-by-spec-backend
+/report
 npm-debug.log*
 yarn.lock
 google-generated-credentials.json
