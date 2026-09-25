@@ -1108,7 +1108,7 @@ export async function executeWebhook(
 		didSendResponse = immediateResponse.didSendResponse;
 		if (!immediateResponse.shouldContinueWorkflowExecution) return;
 
-		// Engine 2.0 cannot receive files yet. A file exists only in the node's output,
+		// Engine v2 cannot receive files yet. A file exists only in the node's output,
 		// so this check runs after the node, unlike `engineV2Webhooks.assertSupported()`.
 		if (routesToEngineV2) engineV2Webhooks.assertPayloadSupported(webhookResultData);
 
