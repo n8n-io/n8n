@@ -25,5 +25,6 @@ export async function executeDeletion(
 		this,
 		isPermanentDelete ? 'POST' : 'DELETE',
 		`${resource}${isPermanentDelete ? '/permanentDelete' : ''}`,
+		itemIndex,
 	);
 }
