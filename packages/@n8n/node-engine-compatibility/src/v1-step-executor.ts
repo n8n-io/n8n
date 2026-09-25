@@ -3,7 +3,6 @@ import type {
 	IStepExecutor,
 	StepExecutionRequest,
 	StepExecutionResult,
-	StepSlots,
 } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
@@ -54,9 +53,12 @@ import {
  * sub-workflow steps yet. A declaration replaces each failure when its path
  * exists.
  */
-function toStepResult(context: DurableWaitExecuteContext, outputs: StepSlots): StepExecutionResult {
+function toStepResult(
+	context: DurableWaitExecuteContext,
+	nodeResult: INodeExecutionData[][],
+): StepExecutionResult {
 	const { waitTill } = context.runExecutionData;
-	if (waitTill === undefined) return { outputs };
+	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		throw new UnsupportedWaitError(context.getNode().name, 'a resume request');
 	}
@@ -118,7 +120,7 @@ export class V1StepExecutor implements IStepExecutor {
 
 		return await workflow.expression.withIsolate(async () => {
 			const nodeResult = await this.runNode({ nodeType, context });
-			return toStepResult(context, toStepOutputs(nodeResult));
+			return toStepResult(context, nodeResult);
 		});
 	}
 
