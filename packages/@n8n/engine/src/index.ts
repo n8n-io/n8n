@@ -37,11 +37,14 @@ export type {
 export {
 	executionResponseSchema,
 	noopExecutionResponseSender,
+	noopResponseEmitter,
 } from './response-channel';
 export type {
 	EndedMessage,
 	ExecutionResponse,
 	ExecutionResponseSender,
+	ResponseEmitter,
+	ResponseMessage,
 	UndeliverableMessage,
 } from './response-channel';
 

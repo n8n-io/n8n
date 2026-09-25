@@ -30,8 +30,6 @@ export const MCP_SCOPE_RESOURCE_ICONS: Record<string, IconName> = {
 	communityPackage: 'package-open',
 	aiPreference: 'sliders-horizontal',
 };
-export const ELIGIBLE_WORKFLOWS_DOCS_SECTION = 'workflow-eligibility';
-
 export const MCP_SETTINGS_VIEW = 'McpSettings';
 export const MCP_WORKFLOWS_VIEW = 'McpSettingsWorkflows';
 export const MCP_AGENTS_VIEW = 'McpSettingsAgents';
@@ -40,6 +38,9 @@ export const MCP_STORE = 'mcp';
 
 export const LOADING_INDICATOR_TIMEOUT = 200;
 export const MCP_TOOLTIP_DELAY = 100;
+
+/** How many of the user's own connected clients the settings overview previews inline. */
+export const MCP_CLIENTS_PREVIEW_LIMIT = 3;
 
 export const MCP_CONNECT_POPOVER_WIDTH = 460;
 

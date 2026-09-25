@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { modalRegistry } from '@n8n/frontend-module-sdk';
 
-import type { ModalState, NewCredentialsModal } from '@/Interface';
+import type { INodeUi, ModalState, NewCredentialsModal } from '@/Interface';
 import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -335,14 +335,17 @@ describe('UI Store', () => {
 			expect(credentialModalState().workflowId).toBeUndefined();
 		});
 
-		it('should carry and clear workflowId through openExistingCredential', () => {
+		it('should carry and clear workflow context through openExistingCredential', () => {
 			const uiStore = useUIStore();
+			const contextNode = { id: 'node-1' } as INodeUi;
 
-			uiStore.openExistingCredential('cred-1', { workflowId: 'wf-1' });
+			uiStore.openExistingCredential('cred-1', { workflowId: 'wf-1', contextNode });
 			expect(credentialModalState().workflowId).toBe('wf-1');
+			expect(credentialModalState().contextNode).toStrictEqual(contextNode);
 
 			uiStore.openExistingCredential('cred-1');
 			expect(credentialModalState().workflowId).toBeUndefined();
+			expect(credentialModalState().contextNode).toBeUndefined();
 		});
 	});
 

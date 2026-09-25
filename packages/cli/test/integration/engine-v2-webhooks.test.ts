@@ -145,7 +145,7 @@ describe('webhook runs on engine 2.0', () => {
 	test('answers 400 with the reason when the response mode is unsupported', async () => {
 		const webhookId = randomUUID();
 		const trigger = webhookNode(webhookId);
-		trigger.parameters.responseMode = 'responseNode';
+		trigger.parameters.responseMode = 'streaming';
 		const workflow = await createV2Workflow(trigger);
 
 		await startListening(workflow.id);
@@ -155,9 +155,7 @@ describe('webhook runs on engine 2.0', () => {
 			.send({ order: 42 });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain(
-			"does not support the 'responseNode' response mode yet",
-		);
+		expect(response.body.message).toContain("does not support the 'streaming' response mode yet");
 		expect(startExecution).not.toHaveBeenCalled();
 	});
 });
