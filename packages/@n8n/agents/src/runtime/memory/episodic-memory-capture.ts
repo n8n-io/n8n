@@ -427,26 +427,27 @@ async function runEpisodicMemoryReflection(
 	if (reflection.drop.length === 0 && reflection.merge.length === 0) return reports;
 
 	const mergeContents = reflection.merge.map((entry) => entry.content);
+	let mergeEmbeddings: number[][] = [];
 	if (mergeContents.length > 0) {
 		const mergeEmbedded = await embedTexts(config, mergeContents, opts.executionCounter);
 		if (mergeEmbedded.report) reports.push(mergeEmbedded.report);
-		const mergeEmbeddings = mergeEmbedded.embeddings;
-		await opts.memory.episodic.applyReflection(opts.scope, {
-			drop: reflection.drop,
-			merge: reflection.merge.map((merge, index) => ({
-				supersedes: merge.supersedes,
-				entry: {
-					...opts.scope,
-					content: merge.content,
-					contentHash: hashEpisodicMemoryContent(merge.content),
-					embedding: mergeEmbeddings[index],
-					embeddingModel: config.embeddingModel,
-					createdAt: now,
-					lastSeenAt: now,
-				},
-			})),
-		});
+		mergeEmbeddings = mergeEmbedded.embeddings;
 	}
+	await opts.memory.episodic.applyReflection(opts.scope, {
+		drop: reflection.drop,
+		merge: reflection.merge.map((merge, index) => ({
+			supersedes: merge.supersedes,
+			entry: {
+				...opts.scope,
+				content: merge.content,
+				contentHash: hashEpisodicMemoryContent(merge.content),
+				embedding: mergeEmbeddings[index],
+				embeddingModel: config.embeddingModel,
+				createdAt: now,
+				lastSeenAt: now,
+			},
+		})),
+	});
 	return reports;
 }
 
