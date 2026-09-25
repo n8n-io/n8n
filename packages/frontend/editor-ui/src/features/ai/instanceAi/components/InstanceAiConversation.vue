@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import {
 	computed,
+	inject,
 	nextTick,
 	onMounted,
 	onUnmounted,
@@ -54,6 +55,10 @@ import {
 	type PendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
 import type { InstanceAiMessageAuthorship } from '../prefills';
+import type {
+	AssistantMentionArtifactReference,
+	WorkflowArtifactReference,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY } from '../constants';
 import {
 	agentPreviewContextIcon,
@@ -86,6 +91,8 @@ const props = defineProps<{
 	subject?: InstanceAiEmbedSubject;
 	/** Extra scroll space for a panel that overlays messages above the input. */
 	aboveInputOverlapHeight?: number;
+	/** Enables the dormant mention integration after the rollout gate resolves true. */
+	mentionsEnabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -109,6 +116,10 @@ const settingsStore = useInstanceAiSettingsStore();
 // `isCurrentThreadRuntime()` compares against `store.getRuntime(thread.id)` to detect a
 // disposed/recreated runtime, so an unregistered runtime object would never connect.
 const thread = useThread();
+const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined>(
+	'openWorkflowPreview',
+	undefined,
+);
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -142,6 +153,37 @@ const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => 
 		...(name ? { name } : {}),
 	};
 });
+const reservedComposerAttachmentCount = computed(
+	() =>
+		Number(Boolean(currentAgentAttachment.value)) +
+		Number(Boolean(thread.pendingWorkflowAttachment)),
+);
+const mentionArtifacts = computed<WorkflowArtifactReference[]>(() =>
+	[...thread.producedArtifacts.values()]
+		.filter((artifact) => artifact.type === 'workflow' && artifact.archived !== true)
+		.map(({ id, name }) => ({ id, name })),
+);
+const mentionActiveWorkflowId = computed(() => {
+	const activeArtifactId = thread.activeArtifactId;
+	return activeArtifactId && thread.producedArtifacts.get(activeArtifactId)?.type === 'workflow'
+		? activeArtifactId
+		: undefined;
+});
+
+function addMentionReference(reference: AssistantMentionArtifactReference): void {
+	thread.upsertTransientWorkflowReference({
+		...reference,
+		...(thread.projectId ? { projectId: thread.projectId } : {}),
+	});
+}
+
+function removeMentionReference(referenceId: string): void {
+	thread.removeTransientWorkflowReference(referenceId);
+}
+
+function openMentionWorkflow(workflowId: string): void {
+	void nextTick(() => openWorkflowPreview?.(workflowId));
+}
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -503,6 +545,7 @@ async function handleSubmit(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
+	acceptDraft: () => void = () => {},
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -534,6 +577,7 @@ async function handleSubmit(
 				restoreFailedSubmission(restoreDraft);
 				return;
 			}
+			acceptDraft();
 			// Only an accepted request revises the plan. Tracking up front would
 			// also count a dropped or failed submit the run never saw.
 			telemetry.track('User finished providing input', {
@@ -593,6 +637,7 @@ async function handleSubmit(
 				restoreFailedSubmission(restoreDraft);
 				return;
 			}
+			acceptDraft();
 			// Track message-with-nodes only after a successful send, so failed
 			// sends and retries don't inflate the node-count metric.
 			if (nodeCount > 0) {
@@ -885,9 +930,17 @@ defineExpose({
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
 										:contextual-suggestion="thread.contextualSuggestion"
+										:mentions-enabled="props.mentionsEnabled"
+										:mention-project-id="thread.projectId"
+										:mention-artifacts="mentionArtifacts"
+										:mention-active-workflow-id="mentionActiveWorkflowId"
+										:reserved-attachment-count="reservedComposerAttachmentCount"
 										@submit="handleSubmit"
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"
+										@mention-reference-added="addMentionReference"
+										@mention-reference-removed="removeMentionReference"
+										@mention-workflow-open="openMentionWorkflow"
 									/>
 								</Transition>
 							</div>

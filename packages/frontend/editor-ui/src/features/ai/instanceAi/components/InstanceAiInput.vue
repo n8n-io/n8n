@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nIconButton, N8nTag } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
@@ -23,6 +22,7 @@ import type {
 	AssistantMentionSelection,
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+import { buildMentionKey } from '@/features/ai/assistant-at-mentions/utils/buildMentionItems';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 import { instanceAiResponseNow } from '../instanceAi.responseTiming';
@@ -35,6 +35,7 @@ import {
 	type InstanceAiPrefillPayload,
 } from '../prefills';
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
+import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 
 type AmendContext = { agentId: string; role: string } | null;
 export type SuggestionPromptPayload =
@@ -273,6 +274,34 @@ const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(
 	() => attachedFiles.value.length > 0 || attachedResources.value.length > 0,
 );
+const excludedMentionKeys = computed(() => {
+	const keys = new Set<string>();
+	if (props.contextChip?.type === 'workflow-artifact') {
+		keys.add(
+			buildMentionKey('workflow', props.contextChip.workflowId, props.contextChip.workflowId),
+		);
+	}
+
+	for (const attachment of attachedResources.value) {
+		if (attachment.type === 'workflow') {
+			keys.add(buildMentionKey('workflow', attachment.id, attachment.id));
+			continue;
+		}
+		if (attachment.type !== 'nodes') continue;
+
+		for (const set of attachment.sets) {
+			if (set.canvasGroupId) {
+				keys.add(buildMentionKey('group', attachment.workflowId, set.canvasGroupId));
+				continue;
+			}
+			for (const node of set.nodes) {
+				keys.add(buildMentionKey('node', attachment.workflowId, node.id));
+			}
+		}
+	}
+
+	return [...keys];
+});
 // Fed to the composer so its size guard can account for what is already staged.
 // Summed per file after encoding — base64 pads each file individually, so encoding
 // a raw total would undercount and disagree with the backend's per-file measurement.
@@ -827,36 +856,17 @@ const resizable = computed(() => {
 			@files-selected="handleFilesSelected"
 		>
 			<template #attachments>
-				<div
-					v-if="props.contextChip"
-					:class="$style.contextChip"
-					:data-test-id="props.contextChip.testId ?? 'instance-ai-handoff-context-chip'"
-				>
-					<N8nTag :text="props.contextChip.label" :clickable="false" size="lg">
-						<template #tag>
-							<span :class="$style.contextChipContent">
-								<N8nIcon
-									:icon="props.contextChip.icon ?? 'robot'"
-									size="medium"
-									:class="$style.contextChipIcon"
-									data-test-id="instance-ai-handoff-context-chip-icon"
-								/>
-								<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
-							</span>
-							<N8nIconButton
-								icon="x"
-								size="xsmall"
-								variant="ghost"
-								:class="$style.contextChipClose"
-								:title="i18n.baseText('generic.close')"
-								:aria-label="i18n.baseText('generic.close')"
-								data-test-id="instance-ai-handoff-context-chip-dismiss"
-								@click.stop="emit('dismiss-context-chip')"
-							/>
-						</template>
-					</N8nTag>
-				</div>
-				<div v-if="attachedResources.length > 0" :class="$style.attachments">
+				<div v-if="props.contextChip || attachedResources.length > 0" :class="$style.attachments">
+					<InstanceAiResourceChip
+						v-if="props.contextChip"
+						:label="props.contextChip.label"
+						:icon="props.contextChip.icon ?? 'robot'"
+						:remove-label="i18n.baseText('generic.close')"
+						:test-id="props.contextChip.testId ?? 'instance-ai-handoff-context-chip'"
+						remove-test-id="instance-ai-handoff-context-chip-dismiss"
+						removable
+						@remove="emit('dismiss-context-chip')"
+					/>
 					<AttachmentPreview
 						v-for="(attachment, index) in attachedResources"
 						:key="`res-${index}`"
@@ -891,6 +901,7 @@ const resizable = computed(() => {
 					:project-id="props.mentionProjectId"
 					:artifacts="props.mentionArtifacts"
 					:active-workflow-id="props.mentionActiveWorkflowId"
+					:excluded-keys="excludedMentionKeys"
 					:input-element="inputElement"
 					:reference="composerRef"
 					:disabled="isBusy || isGatedBySetup"
@@ -938,40 +949,12 @@ const resizable = computed(() => {
 .attachments {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-}
-
-.contextChip {
-	--tag--min-width: 0;
-	--tag--max-width: 80%;
-
-	align-self: flex-start;
-	max-width: 100%;
-}
-
-.contextChipContent {
-	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	line-height: var(--line-height--xs);
-	overflow: hidden;
-}
+	gap: var(--spacing--2xs);
 
-.contextChipIcon {
-	flex-shrink: 0;
-}
-
-.contextChipText {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	line-height: 1.2;
-}
-
-.contextChipClose {
-	flex: 0 0 auto;
-	margin-right: calc(var(--spacing--2xs) * -1);
+	> * {
+		max-width: 80%;
+	}
 }
 
 :global(.suggestions-fade-enter-active) {
