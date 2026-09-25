@@ -200,6 +200,7 @@ import {
 	asStoredThreadContextSection,
 	cleanStoredUserMessage,
 	buildCurrentDateTimeBlock,
+	buildInstanceUrlsBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
 	buildThreadArtifactsBlock,
@@ -2624,8 +2625,6 @@ export class InstanceAiService {
 			runtimeSkills,
 			runtimeSkillCatalog: allRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
-			webhookBaseUrl: this.webhookBaseUrl,
-			formBaseUrl: this.formBaseUrl,
 			touchRun: () => this.runState.touchActiveRun(threadId),
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
 			iterationLog,
@@ -3496,6 +3495,12 @@ export class InstanceAiService {
 				instanceContext.state === 'injected' ? instanceContext.block : '',
 				threadArtifactsBlock,
 				projectSection ? buildProjectContextBlock(projectSection) : undefined,
+				resumeReason === undefined
+					? buildInstanceUrlsBlock({
+							webhookBaseUrl: this.webhookBaseUrl,
+							formBaseUrl: this.formBaseUrl,
+						})
+					: undefined,
 				pastConversationsSection
 					? buildPastConversationsBlock(pastConversationsSection)
 					: undefined,

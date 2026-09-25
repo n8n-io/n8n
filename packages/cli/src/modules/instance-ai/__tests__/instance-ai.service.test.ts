@@ -4614,59 +4614,112 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 });
 
 describe('InstanceAiService run input gates', () => {
+	function createRunInputService(enabled: boolean) {
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
+		vi.mocked(streamAgentRun).mockResolvedValueOnce({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: emptyWorkSummary(),
+		});
+		const buildBlock = vi.fn().mockResolvedValue({ state: 'absent', reason: 'disabled' });
+		const environment = {
+			instanceContextEnabled: enabled,
+			context: { setupItemsEmitter: enabled ? {} : undefined },
+			memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
+			taskStorage: { get: vi.fn(async () => undefined) },
+			orchestrationContext: {},
+		};
+		const service = Object.assign(Object.create(InstanceAiService.prototype), {
+			webhookBaseUrl: 'https://acme.example.com/webhook',
+			formBaseUrl: 'https://acme.example.com/form',
+			tracing: { createOrchestratorResumeTraceContext: vi.fn(async () => undefined) },
+			resolveContextAttachments: vi.fn(async () => []),
+			instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
+			createProxyRunConfig: vi.fn(async () => ({})),
+			browserSessionService: { getExtensionTraceContext: vi.fn() },
+			readThreadProvenance: vi.fn(async () => ({})),
+			instanceContext: { buildBlock },
+			reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
+				throw error;
+			}),
+			isRunDebugEnabled: vi.fn(() => false),
+			eventBus: { publish: vi.fn() },
+			threadPushRef: new Map(),
+			createExecutionEnvironment: vi.fn(async () => environment),
+			snapshotAttachedAgents: vi.fn(),
+			buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			resolveProjectContextSection: vi.fn(async () => ''),
+			createAgentFromEnvironment: vi.fn(async () => ({})),
+			buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+			shouldPreserveHitlOnShutdown: vi.fn(() => true),
+			runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
+			domainAccessTrackersByThread: new Map(),
+			updateInternalFollowUpFailureStreak: vi.fn(),
+		}) as {
+			executeRun: (
+				user: User,
+				threadId: string,
+				runId: string,
+				message: string,
+				controller: AbortController,
+				attachments?: undefined,
+				context?: InstanceAiHandoffContext,
+				messageGroupId?: string,
+				timeZone?: string,
+				isReplanFollowUp?: boolean,
+				checkpoint?: undefined,
+				resumeReason?: 'background_task_completed',
+			) => Promise<void>;
+		};
+		return { service, buildBlock };
+	}
+
+	it('carries the instance URLs on a user turn', async () => {
+		const { service } = createRunInputService(false);
+
+		await service.executeRun(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			'Share the form link',
+			new AbortController(),
+		);
+
+		const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
+		expect(input).toContain(
+			'<instance-urls>\nWebhook base URL: https://acme.example.com/webhook\nForm base URL: https://acme.example.com/form\n</instance-urls>',
+		);
+	});
+
+	it('omits the instance URLs on an internal follow-up', async () => {
+		const { service } = createRunInputService(false);
+
+		await service.executeRun(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			'(continue)',
+			new AbortController(),
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			false,
+			undefined,
+			'background_task_completed',
+		);
+
+		const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
+		expect(input).toEqual(expect.any(String));
+		expect(input).not.toContain('<instance-urls>');
+	});
+
 	it.each([true, false])(
 		'forwards the setup panel target and the shared instance gate: %s',
 		async (enabled) => {
-			vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
-			vi.mocked(streamAgentRun).mockResolvedValueOnce({
-				status: 'cancelled',
-				agentRunId: 'agent-run-1',
-				text: Promise.resolve(''),
-				workSummary: emptyWorkSummary(),
-			});
-			const buildBlock = vi.fn().mockResolvedValue({ state: 'absent', reason: 'disabled' });
-			const environment = {
-				instanceContextEnabled: enabled,
-				context: { setupItemsEmitter: enabled ? {} : undefined },
-				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
-				taskStorage: { get: vi.fn(async () => undefined) },
-				orchestrationContext: {},
-			};
-			const service = Object.assign(Object.create(InstanceAiService.prototype), {
-				resolveContextAttachments: vi.fn(async () => []),
-				instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
-				createProxyRunConfig: vi.fn(async () => ({})),
-				browserSessionService: { getExtensionTraceContext: vi.fn() },
-				readThreadProvenance: vi.fn(async () => ({})),
-				instanceContext: { buildBlock },
-				reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
-					throw error;
-				}),
-				isRunDebugEnabled: vi.fn(() => false),
-				eventBus: { publish: vi.fn() },
-				threadPushRef: new Map(),
-				createExecutionEnvironment: vi.fn(async () => environment),
-				snapshotAttachedAgents: vi.fn(),
-				buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
-				buildWorkflowSetupStateBlock: vi.fn(async () => ''),
-				resolveProjectContextSection: vi.fn(async () => ''),
-				createAgentFromEnvironment: vi.fn(async () => ({})),
-				buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
-				shouldPreserveHitlOnShutdown: vi.fn(() => true),
-				runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
-				domainAccessTrackersByThread: new Map(),
-				updateInternalFollowUpFailureStreak: vi.fn(),
-			}) as {
-				executeRun: (
-					user: User,
-					threadId: string,
-					runId: string,
-					message: string,
-					controller: AbortController,
-					attachments?: undefined,
-					context?: InstanceAiHandoffContext,
-				) => Promise<void>;
-			};
+			const { service, buildBlock } = createRunInputService(enabled);
 
 			await service.executeRun(
 				fakeUser,

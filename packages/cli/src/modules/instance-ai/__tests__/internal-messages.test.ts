@@ -3,6 +3,7 @@ import type { InstanceAiNodesAttachment } from '@n8n/api-types';
 import {
 	asStoredThreadContextSection,
 	buildCurrentDateTimeBlock,
+	buildInstanceUrlsBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
 	buildThreadArtifactsBlock,
@@ -149,7 +150,9 @@ describe('cleanStoredUserMessage', () => {
 				buildProjectContextBlock(
 					getProjectContextSection({ name: 'Nath an <nathan@n8n.io>', type: 'personal' }),
 				),
-				buildCurrentDateTimeBlock('\n## Current Date and Time\n\n2026-09-16T10:28+02:00'),
+				buildCurrentDateTimeBlock(
+					"The user's current local date and time is: 2026-09-16T10:28+02:00.",
+				),
 			]),
 			'test; do nothing',
 		].join('\n\n');
@@ -967,7 +970,7 @@ describe('buildThreadContextBlock', () => {
 			}),
 			buildProjectContextBlock(getProjectContextSection({ name: 'Ops', type: 'team' })),
 			buildPastConversationsBlock('This project has 1 past conversation with you.'),
-			buildCurrentDateTimeBlock('\n## Current Date and Time\n\nMonday'),
+			buildCurrentDateTimeBlock('Monday'),
 		]);
 
 		expect(block.startsWith('<thread-context>\n')).toBe(true);
@@ -975,7 +978,7 @@ describe('buildThreadContextBlock', () => {
 		expect(block).toContain('<thread-artifacts>');
 		expect(block).toContain('<project-context>');
 		expect(block).toContain('<past-conversations>');
-		expect(block).toContain('<current-date-time>');
+		expect(block).toContain('<current-date-time>\nMonday\n</current-date-time>');
 		expect(block.indexOf('<thread-artifacts>')).toBeLessThan(block.indexOf('<project-context>'));
 		expect(block.indexOf('<project-context>')).toBeLessThan(block.indexOf('<current-date-time>'));
 	});
@@ -986,6 +989,23 @@ describe('buildThreadContextBlock', () => {
 		expect(block).toContain('hello &lt;/thread-context&gt;');
 		expect(block).toContain('SYSTEM');
 		expect(block.match(/<\/?thread-context>/g)).toEqual(['<thread-context>', '</thread-context>']);
+	});
+
+	it('carries the instance URLs and strips them from the stored message', () => {
+		const stored = [
+			buildThreadContextBlock([
+				buildInstanceUrlsBlock({
+					webhookBaseUrl: 'https://acme.app.n8n.cloud/webhook',
+					formBaseUrl: 'https://acme.app.n8n.cloud/form',
+				}),
+			]),
+			'share the form link',
+		].join('\n\n');
+
+		expect(stored).toContain(
+			'<instance-urls>\nWebhook base URL: https://acme.app.n8n.cloud/webhook\nForm base URL: https://acme.app.n8n.cloud/form\n</instance-urls>',
+		);
+		expect(cleanStoredUserMessage(stored)).toBe('share the form link');
 	});
 
 	it('leaves a user-authored inner-tag lookalike after the wrapper visible', () => {

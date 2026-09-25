@@ -57,6 +57,13 @@ export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
 export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
 export const PAST_CONVERSATIONS_OPEN_TAG = '<past-conversations>';
 export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
+/**
+ * The instance's webhook and form base URLs. On the turn because they differ per instance:
+ * in the system prompt they would give every instance its own prompt-cache prefix instead of
+ * one shared across all instances.
+ */
+export const INSTANCE_URLS_OPEN_TAG = '<instance-urls>';
+export const INSTANCE_URLS_CLOSE_TAG = '</instance-urls>';
 /** Setup panel v2: per-turn recomputed setup state of the workflows the thread built. */
 export const WORKFLOW_SETUP_STATE_OPEN_TAG = '<workflow-setup-state>';
 export const WORKFLOW_SETUP_STATE_CLOSE_TAG = '</workflow-setup-state>';
@@ -149,7 +156,7 @@ function stripTrailingContextBlocks(message: string): string {
 }
 
 export function buildCurrentDateTimeBlock(dateTimeSection: string): string {
-	return `<current-date-time>${dateTimeSection}\n</current-date-time>`;
+	return `<current-date-time>\n${dateTimeSection.trim()}\n</current-date-time>`;
 }
 
 export function buildProjectContextBlock(projectSection: string): string {
@@ -158,6 +165,18 @@ export function buildProjectContextBlock(projectSection: string): string {
 
 export function buildPastConversationsBlock(section: string): string {
 	return `${PAST_CONVERSATIONS_OPEN_TAG}\n${section}\n${PAST_CONVERSATIONS_CLOSE_TAG}`;
+}
+
+export function buildInstanceUrlsBlock(urls: {
+	webhookBaseUrl: string;
+	formBaseUrl: string;
+}): string {
+	return [
+		INSTANCE_URLS_OPEN_TAG,
+		`Webhook base URL: ${urls.webhookBaseUrl}`,
+		`Form base URL: ${urls.formBaseUrl}`,
+		INSTANCE_URLS_CLOSE_TAG,
+	].join('\n');
 }
 
 /**
