@@ -125,32 +125,34 @@ describe('httpRequestWithAuthentication', () => {
 		);
 	});
 
-	test('still refreshes and resends on 401 even when preAuthenticationRetryStatusCode excludes it', async () => {
+	// An explicit preAuthenticationRetryStatusCode replaces the default, so a caller can leave 401 out.
+	test('does NOT refresh on 401 when preAuthenticationRetryStatusCode excludes it', async () => {
 		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
 		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
 		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
-		mockAdditionalData.credentialsHelper.preAuthentication
-			.mockResolvedValueOnce(undefined)
-			.mockResolvedValueOnce({ sessionToken: 'fresh' });
 		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
 
 		const error401 = Object.assign(new Error('401 - session expired'), {
 			response: { status: 401 },
 		});
-		request.mockRejectedValueOnce(error401).mockResolvedValueOnce({ ok: true });
+		request.mockRejectedValueOnce(error401);
 
-		const result = await httpRequestWithAuthentication.call(
-			mockThis,
-			'testSessionAuth',
-			requestOptions,
-			mockWorkflow,
-			mockNode,
-			mockAdditionalData,
-			{ preAuthenticationRetryStatusCode: [403, 404] },
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'testSessionAuth',
+				requestOptions,
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+				{ preAuthenticationRetryStatusCode: [403, 404] },
+			),
+		).rejects.toSatisfy(
+			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === error401,
 		);
 
-		expect(result).toEqual({ ok: true });
-		expect(request).toHaveBeenCalledTimes(2);
+		expect(request).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
 	});
 
 	// By default this path's generic preAuthentication retry only fires on exactly

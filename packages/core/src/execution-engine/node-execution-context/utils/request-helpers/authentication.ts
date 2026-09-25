@@ -27,10 +27,11 @@ import {
 } from './oauth';
 
 /**
- * Whether a failed request earns the generic `preAuthentication` refresh-and-resend. A 401 means
- * the server rejected the token, so it always does. Any other configured status can be ambiguous
- * (a gateway that answers 404 both for an expired token and for a resource that does not exist),
- * so `skipPreAuthenticationRetryWhileTokenIsFresh` lets a caller gate those on the expiry the
+ * Whether a failed request earns the generic `preAuthentication` refresh-and-resend. Only the
+ * statuses in `preAuthenticationRetryStatusCode` (default 401) do; an explicit list replaces the
+ * default. A 401 means the server rejected the token, so it skips the expiry gate. Any other
+ * configured status can be ambiguous (a gateway that answers 404 both for an expired token and for
+ * a resource that does not exist), so `skipPreAuthenticationRetryWhileTokenIsFresh` lets a caller gate those on the expiry the
  * credential stored in `n8n_expires_at`, instead of paying a token exchange and a credential
  * write per missing resource. An absent or unparsable expiry still retries.
  */
@@ -39,10 +40,7 @@ function shouldRetryAfterPreAuthentication(
 	credentials: ICredentialDataDecryptedObject,
 	options?: IAdditionalCredentialOptions,
 ): boolean {
-	if (
-		status !== 401 &&
-		!isTokenExpiredStatusCode(status, options?.preAuthenticationRetryStatusCode ?? 401)
-	) {
+	if (!isTokenExpiredStatusCode(status, options?.preAuthenticationRetryStatusCode ?? 401)) {
 		return false;
 	}
 	if (status === 401 || options?.skipPreAuthenticationRetryWhileTokenIsFresh !== true) return true;
