@@ -21,13 +21,6 @@ export default defineConfig({
 			{
 				test: {
 					...sharedTestConfig,
-					name: 'legacy-engine',
-					env: { N8N_EXPRESSION_ENGINE: 'legacy' },
-				},
-			},
-			{
-				test: {
-					...sharedTestConfig,
 					name: 'quickjs-engine',
 					env: { N8N_EXPRESSION_ENGINE: 'quickjs' },
 				},

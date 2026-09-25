@@ -79,8 +79,7 @@ const nodeWithParameters = (parameters: INodeParameters) => {
 	return { workflow, node: workflow.getNode('Webhook')! };
 };
 
-// This file runs under both vitest projects (legacy and vm), so parity is
-// pinned against both engines; the vm engine needs an acquired isolate.
+// Both VM and QuickJS need an acquired isolate for this expression path.
 const viaEngine = async (parameters: INodeParameters, template: string) => {
 	const { workflow, node } = nodeWithParameters(parameters);
 	await workflow.expression.acquireIsolate();

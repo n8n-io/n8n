@@ -9,7 +9,7 @@ import { Workflow } from '../src/workflow';
 
 // Compatibility corpus for expression syntax.
 //
-// Both engines run every case (see `vitest.config.ts`).
+// The VM and QuickJS projects run every case (see `vitest.config.ts`).
 
 describe('Expression — compatibility corpus', () => {
 	const workflow = new Workflow({
@@ -250,8 +250,6 @@ describe('Expression — compatibility corpus', () => {
 		$secrets: { vault: { token: 'placeholder' } },
 		$pageCount: 2,
 	};
-
-	const ENGINE = process.env.N8N_EXPRESSION_ENGINE ?? 'vm';
 
 	const evaluate = (expr: string) =>
 		expression.getParameterValue(
@@ -882,12 +880,7 @@ describe('Expression — compatibility corpus', () => {
 		expect(() => evaluate(expr)).toThrow();
 	});
 
-	// ── known engine divergences ──────────────────────────────────────────
-	const ENGINE_DIVERGENCES: Array<[string, string, unknown, unknown]> = [
-		['Number.format()', "={{ (1234.5678).format('0,0.00') }}", undefined, '1234.5678'],
-	];
-
-	it.each(ENGINE_DIVERGENCES)('divergent: %s', (_name, expr, legacyWant, vmWant) => {
-		expect(evaluate(expr)).toStrictEqual(ENGINE === 'legacy' ? legacyWant : vmWant);
+	it('returns the original number from Number.format()', () => {
+		expect(evaluate("={{ (1234.5678).format('0,0.00') }}")).toBe('1234.5678');
 	});
 });
