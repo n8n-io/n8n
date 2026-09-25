@@ -15,7 +15,7 @@ inputs:
     required: false
     default: 'false'
   use-pnpm-sticky-disk:
-    description: 'Mount the seeded Blacksmith pnpm store inside the CI toolchain container.'
+    description: 'Mount the seeded Blacksmith pnpm store on a Linux runner or in its job container.'
     required: false
     default: 'false'
   enable-docker-cache:
@@ -118,15 +118,15 @@ runs:
           exit 1
         fi
 
-    - name: Verify sticky disk uses the CI toolchain
-      if: inputs.use-pnpm-sticky-disk == 'true' && inputs.preinstalled-toolchain != 'true'
+    - name: Verify sticky disk platform
+      if: inputs.use-pnpm-sticky-disk == 'true' && (runner.os != 'Linux' || runner.arch != 'X64')
       shell: bash
       run: |
-        echo '::error::use-pnpm-sticky-disk requires preinstalled-toolchain'
+        echo '::error::use-pnpm-sticky-disk requires Linux X64'
         exit 1
 
     - name: Mount seeded pnpm store
-      if: inputs.use-pnpm-sticky-disk == 'true' && inputs.preinstalled-toolchain == 'true' && inputs.install-command != ''
+      if: inputs.use-pnpm-sticky-disk == 'true' && inputs.install-command != ''
       uses: useblacksmith/stickydisk@94697d49e77d0dd78b77deb85ad3de63a28b4b8a # v1
       with:
         key: n8n-io-n8n-pnpm-pilot-linux-amd64-v11
@@ -134,7 +134,7 @@ runs:
         commit: 'false'
 
     - name: Use seeded pnpm store
-      if: inputs.use-pnpm-sticky-disk == 'true' && inputs.preinstalled-toolchain == 'true' && inputs.install-command != ''
+      if: inputs.use-pnpm-sticky-disk == 'true' && inputs.install-command != ''
       shell: bash
       run: |
         mountpoint -q /pnpm-sticky-store
@@ -177,8 +177,9 @@ runs:
         # A job that installs nothing must not participate in the pnpm-store
         # cache. Its post step would save an empty store, and cache keys are
         # write-once — so if it lost the race to a real installer, every other
-        # job on that key would restore nothing and silently re-download.
-        cache: ${{ inputs.install-command != '' && 'pnpm' || '' }}
+        # job on that key would restore nothing and silently re-download. Jobs
+        # with a sticky disk must not restore and save a second pnpm store.
+        cache: ${{ inputs.install-command != '' && inputs.use-pnpm-sticky-disk != 'true' && 'pnpm' || '' }}
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # Fail fast if setup-node silently fell through to the runner's baked-in
