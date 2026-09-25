@@ -94,7 +94,7 @@ export class FsByteStore implements ByteStore {
 
 	async delete(keys: ByteStoreKey[]) {
 		const deletePaths = keys.map((key) => this.getAbsolutePath(key));
-		await Promise.all(deletePaths.map(async (p) => await fs.rm(p, { force: true })));
+		await Promise.all(deletePaths.map(async (p) => await fs.rm(p, { force: true, maxRetries: 3 })));
 		const dirs = [...new Set(deletePaths.map((p) => path.dirname(p)))];
 		await Promise.all(dirs.map(async (dir) => await this.removeEmptyAncestors(dir)));
 	}
