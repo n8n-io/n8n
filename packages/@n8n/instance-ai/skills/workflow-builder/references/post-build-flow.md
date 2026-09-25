@@ -91,6 +91,14 @@ true`, respect the user's choice and do not retry with any other setup tool.
 A result carrying `skippedByUser` names credentials the user already passed on:
 never re-open setup for those, in this turn or any later one — see
 [Credentials the user skipped](#credentials-the-user-skipped).
+A setup card is open only while the setup call is pending. Once it returns a
+result, the card is resolved: describe the outcome (e.g. credentials selected
+and ready), never that a card is open or that the user still needs to
+authorize. When a node in `nodesStillNeedingSetup` carries `parameterIssues`,
+the connected credential cannot reach the configured value (e.g. a model
+outside what the credential allows). Fix the value, then tell the user plainly
+which value did not work and what you set instead. Never silently swap a model
+or other parameter.
 After setup completes or is applied, follow
 [Mocked verification live-test follow-up](#mocked-verification-live-test-follow-up)
 if the payload or prior verification evidence says mocked credentials,
@@ -683,6 +691,20 @@ user can change their mind — say so in one short sentence rather than
 re-litigating the choice. If they had skipped that card earlier, pass
 `reopenSkipped` alongside it: `preferNewCredentials` decides what the card offers,
 `reopenSkipped` decides whether the card comes back at all.
+
+**Recover from a secret pasted into chat.** No tool writes credential values,
+and the setup card only selects or re-selects existing credentials. Re-run
+credential setup with the affected type in `preferNewCredentials`, and describe
+the card precisely: the card itself takes no value; the forms it opens do. On
+that card the user can either:
+
+- update the existing credential: select it from the list, open its edit form,
+  paste the rotated secret into the secret field, and save. This repairs every
+  other workflow that shares it.
+- create a replacement: the card opens unselected on a credential creation
+  form, where they enter the new secret.
+
+Recommend updating the existing credential when other workflows share it.
 
 **Ask which auth type to use when a service supports more than one.**
 `credentials(action="setup")` opens a picker locked to a single `credentialType`

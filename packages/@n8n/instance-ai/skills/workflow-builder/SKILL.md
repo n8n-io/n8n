@@ -535,10 +535,8 @@ resource:
 For resources that cannot be created via n8n, explain clearly what the user
 needs to create manually and what ID or value belongs in setup.
 
-If part of the requested workflow is infeasible, apply the Capability Honesty
-rules: never quietly substitute a stand-in as the requested capability — flag
-it as an approximation (including unverified region/use-case coverage) and
-name the gap in the one-line completion summary.
+If part of the requested workflow is infeasible, apply the system prompt's
+Capability Honesty rules and name the gap in the one-line completion summary.
 
 ## Compositional Workflows
 
