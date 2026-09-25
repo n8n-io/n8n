@@ -2915,9 +2915,6 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -2937,6 +2934,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/@n8n/instance-ai:
     dependencies:
