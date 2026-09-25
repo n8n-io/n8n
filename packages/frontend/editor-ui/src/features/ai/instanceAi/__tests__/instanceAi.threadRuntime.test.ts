@@ -1893,6 +1893,11 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
+					mention_count: 0,
+					workflow_mention_count: 0,
+					node_mention_count: 0,
+					group_mention_count: 0,
+					attachment_count: 0,
 				},
 			],
 			[
@@ -1906,9 +1911,47 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
+					mention_count: 0,
+					workflow_mention_count: 0,
+					node_mention_count: 0,
+					group_mention_count: 0,
+					attachment_count: 0,
 				},
 			],
 		]);
+	});
+
+	test("repeats the message's mention and attachment counts on the response event", async () => {
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-with-context' });
+
+		await activeRuntime(registry).sendMessage('Compare the workflow and node', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-1', name: 'Orders' },
+				{
+					type: 'nodes',
+					workflowId: 'workflow-1',
+					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
+				},
+			],
+			mentionCounts: {
+				mentionCount: 3,
+				workflowMentionCount: 1,
+				nodeMentionCount: 1,
+				groupMentionCount: 1,
+			},
+		});
+		finishRun('run-with-context', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+
+		expect(responseMetricCalls()[0][1]).toMatchObject({
+			run_id: 'run-with-context',
+			mention_count: 3,
+			workflow_mention_count: 1,
+			node_mention_count: 1,
+			group_mention_count: 1,
+			attachment_count: 2,
+		});
 	});
 
 	test('waits for the visible response render frame before tracking', async () => {

@@ -22,6 +22,7 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 import AssistantMentionBreadcrumbs from './AssistantMentionBreadcrumbs.vue';
 import type {
 	AssistantMentionItem,
+	AssistantMentionPickerOpenMetrics,
 	AssistantMentionSelection,
 	WorkflowArtifactReference,
 } from './assistantAtMentions.types';
@@ -101,6 +102,7 @@ const workflowProvider = createWorkflowMentionSourceProvider({
 const sources = useAssistantMentionSources([artifactProvider, workflowProvider], { excludedKeys });
 const searchPending = ref(false);
 let highlightedForCurrentOpen = false;
+let submenuOpenCount = 0;
 
 function isMenuItem(item: MentionMenuItem | undefined): item is MentionMenuItem {
 	return item !== undefined;
@@ -300,6 +302,7 @@ watch(
 	() => props.modelValue,
 	(open) => {
 		highlightedForCurrentOpen = false;
+		if (open) submenuOpenCount = 0;
 		if (open && menuItems.value.length > 0) {
 			highlightedForCurrentOpen = true;
 			void nextTick(() => dropdownRef.value?.highlightFirstItem());
@@ -351,6 +354,7 @@ function retrySources(): void {
 
 function handleSubmenuToggle(itemId: string, open: boolean): void {
 	if (!open) return;
+	submenuOpenCount++;
 	const item = itemsById.value.get(itemId);
 	if (!item || item.kind !== 'workflow') return;
 	if (artifactIndex.getEntry(item.workflowId)?.status === 'error') {
@@ -364,7 +368,26 @@ function handleExternalKeydown(event: KeyboardEvent): boolean {
 	return dropdownRef.value?.handleExternalKeydown(event) ?? false;
 }
 
-defineExpose({ handleExternalKeydown });
+/**
+ * Snapshot of the list for the dismissal telemetry. Read synchronously while the
+ * host closes the menu, so it still sees the query and rows the user looked at.
+ * Rows sharing a visible label are what the user could not tell apart.
+ */
+function getOpenMetrics(): AssistantMentionPickerOpenMetrics {
+	const rows = menuItems.value.filter((item) => item.data !== undefined);
+	const labelCounts = new Map<string, number>();
+	for (const row of rows) labelCounts.set(row.label, (labelCounts.get(row.label) ?? 0) + 1);
+	const query = props.query.trim();
+	return {
+		mode: query ? 'search' : 'browse',
+		queryLength: query.length,
+		resultCount: rows.length,
+		ambiguousResultCount: rows.filter((row) => (labelCounts.get(row.label) ?? 0) > 1).length,
+		submenuOpenCount,
+	};
+}
+
+defineExpose({ handleExternalKeydown, getOpenMetrics });
 </script>
 
 <template>

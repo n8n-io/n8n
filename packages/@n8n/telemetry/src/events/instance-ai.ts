@@ -45,6 +45,22 @@ const setupSnapshotProps = {
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
+const assistantMentionTriggerSource = z.enum(['typed', 'button']);
+// The composer has no thread on the empty view until the first send, so every
+// mention event carries an explicit null there rather than omitting the column.
+const assistantMentionThreadId = z
+	.string()
+	.nullable()
+	.describe('Thread the composer belongs to. Null before the first message creates one');
+// Shared by the send and the response events so a with/without-mentions cut reads
+// the same columns on both.
+const mentionCountProperties = {
+	mention_count: z.number().int().nonnegative(),
+	workflow_mention_count: z.number().int().nonnegative(),
+	node_mention_count: z.number().int().nonnegative(),
+	group_mention_count: z.number().int().nonnegative(),
+	attachment_count: z.number().int().nonnegative(),
+};
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
 
@@ -287,11 +303,12 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_RECEIVED_AI_ASSISTANT_RESPONSE: {
 		name: 'User received AI Assistant response',
 		description:
-			'The initial foreground AI Assistant reply was rendered after a user submitted a chat message. Starts before attachment processing and first-thread creation, then fires once when the initial run completes or pauses for user input. Automated follow-up runs do not create another sample.',
+			'The initial foreground AI Assistant reply was rendered after a user submitted a chat message. Starts before attachment processing and first-thread creation, then fires once when the initial run completes or pauses for user input. Automated follow-up runs do not create another sample. Repeats the mention and attachment counts of the message that started the run, so outcome cuts by context need no join back to "User sent builder message".',
 		properties: z.object({
 			instance_id: z.string(),
 			thread_id: z.string(),
 			run_id: z.string().describe('Run ID returned for the user-submitted message'),
+			...mentionCountProperties,
 			latency_ms: z
 				.number()
 				.int()
@@ -470,9 +487,44 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_OPENED_AI_ASSISTANT_MENTION_PICKER: {
 		name: 'User opened AI Assistant mention picker',
 		description:
-			'The user opened the n8n Assistant mention picker by typing an at sign or selecting the composer button.',
+			'The user opened the n8n Assistant mention picker by typing an at sign or selecting the composer button. Every open ends in exactly one "User selected AI Assistant mention" or one "User dismissed AI Assistant mention picker", so the two together give the pick rate per open.',
 		properties: z.object({
-			source: z.enum(['typed', 'button']),
+			thread_id: assistantMentionThreadId,
+			source: assistantMentionTriggerSource,
+		}),
+	},
+	USER_DISMISSED_AI_ASSISTANT_MENTION_PICKER: {
+		name: 'User dismissed AI Assistant mention picker',
+		description:
+			'The n8n Assistant mention picker closed without a selection. The list properties describe what was on screen at that moment: a search with result_count 0 is a resource the user could not find, a non-zero ambiguous_result_count is a list the user could not tell apart. Carries interaction metadata but no query text or resource names.',
+		properties: z.object({
+			thread_id: assistantMentionThreadId,
+			source: assistantMentionTriggerSource,
+			reason: z
+				.enum(['closed_menu', 'deleted_trigger', 'moved_caret', 'unavailable'])
+				.describe(
+					"How the picker closed. 'closed_menu' is Escape, a click outside or focus loss; 'deleted_trigger' is the typed at sign removed; 'moved_caret' is the caret leaving the mention; 'unavailable' is mentions turning off while open, e.g. a send starting",
+				),
+			mode: z.enum(['browse', 'search']).describe('Whether a filter query was present at close'),
+			query_length: z.number().int().nonnegative(),
+			result_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe(
+					'Rows the user could pick at the top level when the picker closed. Headers, loading and error rows excluded; sub-menu children not counted',
+				),
+			ambiguous_result_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Rows whose visible label matched at least one other row in the list'),
+			submenu_open_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('How many times the user opened a workflow or group sub-menu during this open'),
+			duration_ms: z.number().int().nonnegative().describe('Milliseconds the picker was open'),
 		}),
 	},
 	USER_SELECTED_AI_ASSISTANT_MENTION: {
@@ -480,6 +532,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The user selected a workflow, node, or canvas group from the n8n Assistant mention picker. The event contains interaction metadata but no resource names or IDs.',
 		properties: z.object({
+			thread_id: assistantMentionThreadId,
 			kind: assistantMentionKind,
 			mode: z.enum(['browse', 'search']),
 			source: z.enum(['artifacts', 'workflows']),
@@ -497,6 +550,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The user removed workflow, node, or canvas group context that they added through the n8n Assistant mention picker.',
 		properties: z.object({
+			thread_id: assistantMentionThreadId,
 			kind: assistantMentionKind,
 		}),
 	},
@@ -534,11 +588,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Whether the user edited the pre-filled text before sending. Always false for pre-fills that send without being shown. Null when the user typed the message.',
 				),
-			mention_count: z.number().int().nonnegative(),
-			workflow_mention_count: z.number().int().nonnegative(),
-			node_mention_count: z.number().int().nonnegative(),
-			group_mention_count: z.number().int().nonnegative(),
-			attachment_count: z.number().int().nonnegative(),
+			...mentionCountProperties,
 		}),
 	},
 	BUILDER_LISTED_WORKFLOWS: {

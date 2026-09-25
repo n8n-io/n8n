@@ -4,13 +4,17 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import type { IWorkflowDb } from '@/Interface';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import AssistantAtMentionPicker from './AssistantAtMentionPicker.vue';
-import type { AssistantMentionSelection } from './assistantAtMentions.types';
+import type {
+	AssistantMentionPickerOpenMetrics,
+	AssistantMentionSelection,
+} from './assistantAtMentions.types';
 
 const getWorkflow = vi.hoisted(() => vi.fn());
 
@@ -20,6 +24,32 @@ vi.mock('@/app/api/workflows', async (importOriginal) => ({
 }));
 
 const renderComponent = createComponentRenderer(AssistantAtMentionPicker);
+
+// The host reads the exposed metrics through a template ref; this harness does
+// the same so the test sees exactly what the dismissal event would receive.
+let readOpenMetrics: (() => AssistantMentionPickerOpenMetrics | undefined) | undefined;
+const PickerHarness = defineComponent({
+	name: 'PickerHarness',
+	props: {
+		modelValue: { type: Boolean, required: true },
+		query: { type: String, required: true },
+		projectId: { type: String, default: undefined },
+		artifacts: { type: Array, default: () => [] },
+	},
+	setup(props) {
+		const picker = ref<InstanceType<typeof AssistantAtMentionPicker> | null>(null);
+		readOpenMetrics = () => picker.value?.getOpenMetrics();
+		return () =>
+			h(AssistantAtMentionPicker, {
+				ref: picker,
+				modelValue: props.modelValue,
+				query: props.query,
+				projectId: props.projectId,
+				artifacts: props.artifacts as Array<{ id: string; name: string }>,
+			});
+	},
+});
+const renderHarness = createComponentRenderer(PickerHarness);
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -317,6 +347,71 @@ describe('AssistantAtMentionPicker', () => {
 			expect(openActionFor('Even numbers')).toHaveTextContent('2');
 		});
 		expect(getWorkflow).toHaveBeenCalledTimes(2);
+	});
+
+	it('exposes search metrics that count rows the user could not tell apart', async () => {
+		setActivePinia(createTestingPinia({ stubActions: true }));
+		const { useWorkflowsListStore } = await import('@/app/stores/workflowsList.store');
+		vi.mocked(useWorkflowsListStore().searchWorkflows).mockResolvedValue([
+			{ id: 'w1', name: 'Orders' },
+			{ id: 'w2', name: 'Orders' },
+			{ id: 'w3', name: 'Order archive' },
+		] as never);
+
+		const { getAllByRole } = renderHarness({
+			props: { modelValue: true, query: 'ord', projectId: 'project-1' },
+		});
+		await waitFor(() => expect(getAllByRole('menuitem')).toHaveLength(3));
+
+		expect(readOpenMetrics?.()).toEqual({
+			mode: 'search',
+			queryLength: 3,
+			resultCount: 3,
+			ambiguousResultCount: 2,
+			submenuOpenCount: 0,
+		});
+	});
+
+	it('counts sub-menu opens per picker open and ignores state rows', async () => {
+		getWorkflow.mockResolvedValue({
+			id: 'w1',
+			name: 'Orders',
+			versionId: 'version-1',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'First',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		} as never);
+
+		const { findByText, rerender } = renderHarness({
+			props: { modelValue: true, query: '', artifacts: [{ id: 'w1', name: 'Orders' }] },
+		});
+		// The empty "Workflows" section renders a header and a disabled state row.
+		expect(await findByText('No recent workflows')).toBeVisible();
+		const workflowRow = (await findByText('Orders')).closest('[role="menuitem"]');
+		await userEvent.click(
+			workflowRow?.querySelector('[data-sub-menu-action="open"]') as HTMLElement,
+		);
+		await findByText('First');
+
+		expect(readOpenMetrics?.()).toEqual({
+			mode: 'browse',
+			queryLength: 0,
+			resultCount: 1,
+			ambiguousResultCount: 0,
+			submenuOpenCount: 1,
+		});
+
+		await rerender({ modelValue: false });
+		await rerender({ modelValue: true });
+		expect(readOpenMetrics?.()).toMatchObject({ submenuOpenCount: 0 });
 	});
 
 	it('shows a retry action when workflow browse fails', async () => {
