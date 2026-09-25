@@ -23,6 +23,7 @@ import {
 	Body,
 	Delete,
 	Get,
+	Middleware,
 	Param,
 	Patch,
 	Post,
@@ -32,7 +33,7 @@ import {
 	Query,
 } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
@@ -64,6 +65,7 @@ type CredentialPublicDtoSource = Pick<
 	CredentialsEntity,
 	| 'id'
 	| 'name'
+	| 'description'
 	| 'type'
 	| 'isManaged'
 	| 'isGlobal'
@@ -74,10 +76,14 @@ type CredentialPublicDtoSource = Pick<
 	| 'updatedAt'
 >;
 
-function toCredentialPublicDto(credential: CredentialPublicDtoSource): CredentialPublicDto {
+function toCredentialPublicDto(
+	credential: CredentialPublicDtoSource,
+	includeDescription: boolean,
+): CredentialPublicDto {
 	return {
 		id: credential.id,
 		name: credential.name,
+		...(includeDescription && { description: credential.description ?? null }),
 		type: credential.type,
 		isManaged: credential.isManaged,
 		isGlobal: credential.isGlobal,
@@ -90,9 +96,12 @@ function toCredentialPublicDto(credential: CredentialPublicDtoSource): Credentia
 }
 
 /** The delete response adds `usageScope` to the standard credential fields. Carry over from legacy EOV handler. */
-function toDeleteCredentialPublicDto(credential: CredentialsEntity): DeleteCredentialPublicDto {
+function toDeleteCredentialPublicDto(
+	credential: CredentialsEntity,
+	includeDescription: boolean,
+): DeleteCredentialPublicDto {
 	return {
-		...toCredentialPublicDto(credential),
+		...toCredentialPublicDto(credential, includeDescription),
 		usageScope: credential.usageScope,
 	};
 }
@@ -124,6 +133,17 @@ export class CredentialsPublicController {
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
+
+	@Middleware()
+	async stripDisabledDescription(req: Request, _res: Response, next: NextFunction) {
+		try {
+			// Strip before DTO validation so disabled descriptions cannot reject a request.
+			if (req.body) await this.credentialDescriptions.stripIfDisabled(req.body);
+			next();
+		} catch (error) {
+			next(error);
+		}
+	}
 
 	@Get('/')
 	@ApiKeyScope('credential:list')
@@ -179,7 +199,7 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		return toCredentialPublicDto(credential);
+		return toCredentialPublicDto(credential, await this.credentialDescriptions.isEnabled());
 	}
 
 	@Post('/')
@@ -202,6 +222,7 @@ export class CredentialsPublicController {
 			{
 				type: body.type,
 				name: body.name,
+				description: body.description,
 				data: body.data,
 				projectId: body.projectId,
 				isResolvable: body.isResolvable,
@@ -213,12 +234,14 @@ export class CredentialsPublicController {
 
 		const project = await this.credentialsService.findCredentialOwningProject(credential.id);
 
+		const includeDescription = await this.credentialDescriptions.isEnabled();
+
 		this.eventService.emit('credentials-created', {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
 			credentialName: credential.name,
-			...((await this.credentialDescriptions.isEnabled()) && {
+			...(includeDescription && {
 				credentialDescriptionLength: credential.description?.length ?? 0,
 			}),
 			publicApi: true,
@@ -228,7 +251,7 @@ export class CredentialsPublicController {
 			jweEnabled: body.data.jweEnabled === true,
 		});
 
-		return toCredentialPublicDto(credential);
+		return toCredentialPublicDto(credential, includeDescription);
 	}
 
 	@Patch('/:credentialId')
@@ -311,7 +334,7 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		return toCredentialPublicDto(updatedCredential);
+		return toCredentialPublicDto(updatedCredential, await this.credentialDescriptions.isEnabled());
 	}
 
 	private assertKnownCredentialType(type: string): void {
@@ -385,6 +408,10 @@ export class CredentialsPublicController {
 		if (body.isResolvable !== undefined) {
 			updatePayload.isResolvable = body.isResolvable;
 		}
+		// Set after encryption, because `createEncryptedData` drops fields it does not know.
+		if (body.description !== undefined) {
+			updatePayload.description = body.description;
+		}
 		updatePayload.updatedAt = new Date();
 
 		return { updatePayload, decryptedDataForDeps };
@@ -417,7 +444,7 @@ export class CredentialsPublicController {
 
 		await this.credentialsService.delete(req.user, credentialId);
 
-		return toDeleteCredentialPublicDto(credential);
+		return toDeleteCredentialPublicDto(credential, await this.credentialDescriptions.isEnabled());
 	}
 
 	@Put('/:credentialId/transfer')

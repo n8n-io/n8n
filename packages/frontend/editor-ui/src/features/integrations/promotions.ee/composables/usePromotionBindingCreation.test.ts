@@ -116,6 +116,7 @@ it('keeps a created project after a failed credential save and resolves on closu
 	const details = {
 		id: '',
 		name: 'Edited name',
+		description: 'Edited description',
 		type: credential.credentialType,
 		data: { value: 'edited' },
 	};
@@ -135,6 +136,7 @@ it('keeps a created project after a failed credential save and resolves on closu
 		{
 			id: credential.sourceId,
 			name: 'Edited name',
+			description: 'Edited description',
 			type: credential.credentialType,
 			data: { value: 'edited' },
 			projectId: project.id,
