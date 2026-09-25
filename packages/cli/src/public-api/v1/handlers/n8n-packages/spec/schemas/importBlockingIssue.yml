@@ -202,10 +202,11 @@ oneOf:
         description: 'For `id-in-other-project`: the project that already owns the id.'
   - type: object
     description: >
-      A workflow that `folderConflictPolicy=overwrite` would remove, because the package
-      does not contain it, but the caller lacks `workflow:delete` on. Reported instead of
-      removing a subset, which would leave the project matching neither the package nor
-      its previous state.
+      A workflow the import would remove but the caller lacks `workflow:delete` on:
+      either `folderConflictPolicy=overwrite` would remove it because the package does
+      not contain it, or it is named in the selection's `deletedWorkflowIds`. Reported
+      instead of removing a subset, which would leave the project matching neither the
+      package nor its previous state.
     required:
       - type
       - workflowId
