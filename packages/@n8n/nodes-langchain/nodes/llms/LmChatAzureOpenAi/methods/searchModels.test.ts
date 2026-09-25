@@ -99,6 +99,24 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();
 	});
 
+	it('asks for the project before it requests an Entra token', async () => {
+		ctx.getNodeParameter = vi
+			.fn()
+			.mockReturnValueOnce(AuthenticationType.EntraOAuth2)
+			.mockReturnValueOnce('');
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://my-resource.services.ai.azure.com/openai/v1',
+		});
+
+		await expect(searchModels.call(ctx)).rejects.toThrow(
+			'Enter the Project to list its deployments',
+		);
+
+		expect(getTokenSpy).not.toHaveBeenCalled();
+		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();
+	});
+
 	it('derives the base URL from the Foundry endpoint origin for an api-key credential', async () => {
 		ctx.getNodeParameter = vi
 			.fn()
