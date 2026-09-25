@@ -126,6 +126,8 @@ export interface ProcessToolCallParams extends ToolCallIdentity {
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
+	/** The call already suspended, so `beforeTool` already ran. */
+	previouslySuspended?: boolean;
 	/** Checkpointed suspend payload of the tool call being resumed. */
 	suspendPayload?: unknown;
 	/** Checkpointed private continuation of the tool call being resumed. */

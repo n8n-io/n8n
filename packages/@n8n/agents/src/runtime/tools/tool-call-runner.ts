@@ -132,9 +132,9 @@ export class ToolCallRunner {
 			input,
 			runId: params.runId,
 		});
-		// First execution only: a resumed call carries resumeData and was
-		// checked before it suspended.
-		if (guardrails && guardCtx && resumeData === undefined) {
+		// Skip only a call that already suspended. An unexecuted pending call
+		// is still a first execution, even when resume data is present.
+		if (guardrails && guardCtx && !params.previouslySuspended) {
 			const stop = await guardrails.beforeTool(guardCtx);
 			if (stop) {
 				return await this.toolError(

@@ -525,6 +525,7 @@ export class ToolCallExecutor {
 			guardrails: ctx.guardrails,
 			abortSignal: ctx.abortSignal,
 			countToolCall: false,
+			previouslySuspended: entry.suspended,
 			...(entry.suspended
 				? {
 						suspendPayload: entry.suspendPayload,
